@@ -43,12 +43,22 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 
 ## Phase 0 — Pre-flight (Day 0, ~2 hours)
 
-### Step 0.1 — Lock the AFSL boundary
+### Step 0.1 — Lock the AFSL boundary — 🟡 DRAFT SHIPPED 2026-05-15 (awaiting AU fintech-lawyer review)
 - **Goal:** Decide, in writing, exactly what the Financial Health Review will and will not say. Stay on the *factual / general-information* side of the ASIC line. No personal recommendations.
-- **Time:** 30 min.
-- **Action:** Draft a one-page "Review Scope & Boundaries" doc covering: what the Review states (facts, ratios, gaps, generic TRAIL-stage observations), what it does NOT state (specific product recommendations, "you should invest in X", personal tax advice), the disclaimer at the top + bottom of every Review.
-- **Done when:** Document exists at `docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md` and you've read it twice.
-- **Gotcha:** If in doubt, leave it out. ASIC enforcement on unlicensed personal advice is active — one complaint is a business-ending event. Ask Claude to draft a first cut, then have an actual AU lawyer review before you sell Review #1 to a stranger (friendlies-only until reviewed).
+- **Time:** 30 min target — Claude draft produced ~45 min including ASIC RG / Corporations Act §766B research.
+- **What was done (2026-05-15):**
+  - Document drafted at **`docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md`** — 11 sections, ~400 lines of opinionated operational guidance
+  - Covers: (1) the legal premise in one paragraph (general advice vs personal advice, the "reasonable person" test); (2) what the Review CAN say (facts, benchmarks, gap identification, TRAIL stage observation, generic class-level info, "speak to a licensed adviser" pointers); (3) what the Review CANNOT say (specific product recommendations, personal investment / tax / insurance / property / debt / estate advice, predictive product-performance claims); (4) DO say / DON'T say cheat-sheet across 9 financial topics; (5) the exact verbatim disclaimer blocks for top + bottom of every Review + the customer acknowledgment for the intake form; (6) operator pre-delivery checklist (Reza or VA); (7) escalation guidance ("if in doubt, leave it out"); (8) what changes once the AFSL-partner upsell goes live (nothing in this doc; the partnership is a separate downstream service); (9) primary-source references (Corporations Act §766B, ASIC RG 244 / RG 175 / RG 36, MoneySmart, TPB, Barefoot Investor as a tone model); (10) status / ownership / review cadence; (11) explicit "this document is NOT legal advice" disclaimer about itself.
+  - The doc is referenced by Step 3.3 (intake form acknowledgment), Step 3.4 (Claude-drafted report system prompt guard-rails), and Step 3.6 (QA + deliver checklist) — those steps inherit this boundary discipline rather than re-defining it.
+- **Validity matrix:**
+  - ✅ **Reviews #1–5 to friendlies who sign the §5.3 acknowledgment** — OK to ship against this draft. Friendlies understand the friend-rate / draft-policy context.
+  - 🚫 **Reviews to non-friendly strangers** — NOT VALID until AU fintech-lawyer review completes. Q-GTM-5 must close (DIY draft + paid lawyer review) before Review #6 to a stranger.
+- **Lawyer review action item (Reza-side, ~AU$2–5k one-off):**
+  - Candidates to research: Sophie Grace (fintech specialist), Holding Redlich, Gilbert + Tobin's fintech team
+  - Brief them on: (a) review this document; (b) review one sample Review (draft against this template, with fake-but-realistic data); (c) sign off on the disclaimer wording; (d) recommend any structural changes
+  - Budget the ~AU$500–1k/yr re-review cadence into `GTM_TOOL_STACK.md`'s "external advisors" line when scheduled
+- **Done when:** ✅ Document exists at `docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md` (DONE); Reza has read it twice (Reza-side — recommended before delivering any friendly Review); lawyer review completed (NOT YET DONE — blocks Reviews to strangers).
+- **Gotcha:** If in doubt, leave it out. ASIC enforcement on unlicensed personal advice is active — one complaint is a business-ending event. The draft has been written conservative-side-of-the-line; the lawyer's job is to confirm or tighten, not to loosen. **Do NOT loosen language based on what other personal-finance brands appear to be getting away with — many of them are operating in technical breach and haven't been caught yet.**
 
 ### Step 0.2 — Set the success metrics
 - **Goal:** Decide what "working" looks like so you stop optimising for vibes.
