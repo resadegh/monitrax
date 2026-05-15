@@ -1,10 +1,10 @@
 # Runbook — GTM Founder Daily Digest workflow
 
 > **Audience:** Reza (operator) + future BAU support
-> **Last Updated:** 2026-05-14 (evening — cron live)
+> **Last Updated:** 2026-05-15 — Airtable Activities branch wired (Step 1.2 DONE); Day 1 of 3 toward Step 1.6 ✅ DONE
 > **Owning workstream:** `IMPLEMENTATION_PLAN.md` §0d (GTM Automation)
-> **Spec doc:** `docs/marketing/GTM_EXECUTION_PLAN.md` Step 1.6
-> **Status:** 🟢 Live — cron published, error notifications wired, first manual execution successful 2026-05-14. First scheduled run: 2026-05-15 06:45 Sydney. Confirmed ✅ DONE when 3 useful digests received without intervention.
+> **Spec doc:** `docs/marketing/GTM_EXECUTION_PLAN.md` Step 1.6 + Step 1.2
+> **Status:** 🟢 Live — cron published, error notifications wired, first scheduled morning run successful 2026-05-15 06:45 Sydney. Airtable CRM ACTIVITY branch live as of 2026-05-15. Confirmed ✅ DONE when 3 useful digests received without intervention (Day 1 ✅ — 2 more needed: Sat 16 May + Sun 17 May).
 
 ---
 
@@ -34,9 +34,10 @@ This document is the operator's reference. If something is wrong with the digest
 ```
 Cron @ 06:45 Sydney
   ├── Branch A: Gmail Unread (reza@try-monitrax.com, filtered)
-  └── Branch B: HTTP GET n8n /api/v1/executions?status=error
+  ├── Branch B: HTTP GET n8n /api/v1/executions?status=error
+  └── Branch C: Airtable - Activities last 24h (Monitrax CRM)
         ↓
-      Merge (append)
+      Merge (append, 3 inputs)
         ↓
       Compose Digest Context (Set, executeOnce: true)
         ↓
@@ -47,7 +48,7 @@ Cron @ 06:45 Sydney
       Gmail Send → admin@monitrax.com.au
 ```
 
-Plus 5 disabled `[STUB]` branches (Airtable / Stripe / Sentry / Cal.com / Smartlead) waiting to be wired when each tool comes online. They are NOT connected to the trigger — they will not fire.
+Plus 4 disabled `[STUB]` branches (Stripe / Sentry / Cal.com / Smartlead) waiting to be wired when each tool comes online. They are NOT connected to the trigger — they will not fire. (Airtable was Stub #5 until 2026-05-15 — now live, see Branch C above.)
 
 ---
 
@@ -59,6 +60,7 @@ Plus 5 disabled `[STUB]` branches (Airtable / Stripe / Sentry / Cal.com / Smartl
 | `Gmail - monitrax.com.au (send)` | Gmail OAuth2 API | Send the digest | `admin@monitrax.com.au` |
 | `Anthropic API - Monitrax` | Anthropic API | Call `claude-sonnet-4-6` | API key `reza-onboarding-api-key` |
 | `n8n API - X-N8N-API-KEY header` | Header Auth | Read n8n's own execution log | n8n internal API key `digest-self-monitor` (rotated 2026-05-14) |
+| `Airtable - Monitrax CRM` | Airtable Personal Access Token API | Read Activities from `Monitrax CRM` base (`appEDHNU0mtbWznHp`) | PAT `n8n-monitrax-crm` — scopes: `data.records:read` + `data.records:write` + `schema.bases:read`, base-restricted (least-privilege) |
 
 **Both Gmail credentials are backed by a single Google Cloud OAuth client:** project `monitrax-479700` → `n8n - Monitrax Gmail OAuth` (Web application, redirect `https://n8n.monitrax.com.au/rest/oauth2-credential/callback`). The OAuth consent screen is in Testing mode with `admin@monitrax.com.au` + `reza@try-monitrax.com` listed as test users — **both must remain test users**, removing either will break the corresponding credential at next refresh.
 
