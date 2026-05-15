@@ -3,10 +3,33 @@
 > **Single source of truth for every tool / app / service used in the go-to-market motion, and what each costs.**
 > Update this file every time a tool is added, removed, upgraded, or repriced. Referenced from `docs/marketing/GTM_EXECUTION_PLAN.md`.
 
-**Last updated:** 2026-05-14 — Reza + Claude
+**Last updated:** 2026-05-15 — Reza + Claude
 **Scope:** GTM / sales / marketing / outreach automation tooling only. Product infrastructure costs (Vercel, GCP Cloud SQL, Basiq, Firebase) are tracked separately — see the "Related non-GTM costs" section at the bottom for pointers.
 **FX assumption:** USD→AUD ≈ **1.55** (approximate; actuals vary). AUD figures are estimates for budgeting, not exact.
 **Status legend:** 🟢 Active (signed up / in use) · 🟡 Planned (in the plan, not yet signed up) · 🔵 Evaluating · ⚪ Dropped / not adopted
+
+---
+
+## 🟢 What's live RIGHT NOW (at-a-glance)
+
+> Reza directive 2026-05-15: *"the number of apps is getting overwhelming"* — this section exists so you can answer "what am I paying for / using today?" in 10 seconds without scanning the long table below.
+
+| Tool | What it does for us | Account / login | Approx. AUD/mo |
+|---|---|---|---|
+| `try-monitrax.com` (GoDaddy) | Cold-outbound sending domain | — | ~$2 |
+| Google Workspace on `try-monitrax.com` | Mailbox `reza@try-monitrax.com` (cold-out sender, Smartlead-connected) | `reza@try-monitrax.com` | ~$8.40 |
+| Google Workspace on `monitrax.com.au` | Ops mailbox `admin@monitrax.com.au` (daily digest recipient, n8n alerts) | `admin@monitrax.com.au` | already paid (existing) |
+| Smartlead | Cold-email sequencing + 2–3wk inbox warmup (currently passive-warming, no sends until ~early June) | `reza@try-monitrax.com` (OAuth) | ~$60 |
+| Hetzner Cloud VPS `n8n-1` | Hosts self-hosted n8n + Postgres + Caddy + future Documenso | `admin@monitrax.com.au` (Hetzner project `monitrax-ops`) | ~$15 all-in |
+| n8n (self-hosted) | Automation spine. Live workflows: `Founder Daily Digest v1`, `Founder Daily Digest - Error Notifier` | `admin@monitrax.com.au` (owner) | $0 (Community + free license key) |
+| Anthropic API (Claude) | Daily digest summariser (Sonnet 4.6, ~$0.15–0.60/mo). Future: outreach personalisation, Review drafting (Opus). | `reza.sadegh@ymail.com` (console) | $0–1 today; ~$50–150 once outbound + Reviews ramp |
+| Google Cloud (project `monitrax-479700`) | OAuth client backing n8n's Gmail credentials. Future: any other n8n Google integration. | `admin@monitrax.com.au` | $0 |
+| Airtable Free | CRM SSOT (`Monitrax CRM` base — Leads / Contacts / Companies / Brokerages / Deals / Reviews / Activities). The digest's CRM ACTIVITY section reads from here. | `admin@monitrax.com.au` | $0 |
+| Stripe | Payment infra (existing app use — Review payment links + future broker subs) | (existing) | per-transaction only |
+
+**Live monthly burn (as of 2026-05-15):** ~AU$85–90/mo + per-transaction Stripe + ~AU$0.50 Anthropic. Excluding the Hetzner VPS (~$15) and Smartlead (~$60), the entire GTM stack adds **less than $10/mo** until cold outbound launches.
+
+**What's NOT live yet** (in the plan, not yet signed up): Apollo · Cal.com · Loops · PostHog · Sentry · Senja · Documenso · Loom · Typefully · part-time VA. Each is queued against a specific GTM step — see "Active + planned tools" table below for full status.
 
 ---
 
@@ -22,7 +45,7 @@
 | **Anthropic API (Claude)** | AI | Outreach personalisation (Sonnet), reply classification (Sonnet), Review report drafting (Opus), support triage (Sonnet), daily-digest summarisation (Sonnet) | Pay-as-you-go | Usage-based | ~$50–150/mo (est) | 🟢 Active 2026-05-14 | Step 1.5. Workspace: `Default` on `console.anthropic.com`; key `reza-onboarding-api-key` (`sk-ant-api03-...UwAA`, created 2025-11-10); ~AU$7.50 credit on hand 2026-05-14. **First production consumer: Founder Daily Digest (Step 1.6)** — `claude-sonnet-4-6`, ~$0.005–0.02 per run = ~$0.15–0.60/mo for this workflow alone. Use prompt caching aggressively (static system prompts + templates) — cuts cost ~10×. Cost scales with outbound volume + Reviews delivered. |
 | **Google Cloud (OAuth client)** | Identity | OAuth 2.0 client for n8n's Gmail credentials (read on `reza@try-monitrax.com`, send on `admin@monitrax.com.au`). Future-use: any other n8n integration that needs Google APIs (Drive, Sheets, Calendar). | Free (consent + OAuth are free; no API quota cost at this volume) | $0 | $0 | 🟢 Active 2026-05-14 | Project `monitrax-479700`. OAuth client `n8n - Monitrax Gmail OAuth` (Web application, redirect `https://n8n.monitrax.com.au/rest/oauth2-credential/callback`, JavaScript origins empty). Consent screen: External, app name `Monitrax`, publishing **Testing**, test users `admin@monitrax.com.au` + `reza@try-monitrax.com`. Single client serves both Gmail credentials. **Self-hosted n8n requires a BYO OAuth client** (n8n Cloud has a shared one) — ~15 min extra first-time setup. |
 | **Apollo.io** | Lead data | Build + enrich the broker prospect list | Basic | US$49/mo | ~$75/mo | 🟡 Planned | Step 2.2. Use for DATA ONLY — do not send cold mail through Apollo sequences (shared sending infra hurts deliverability). |
-| **Airtable** | CRM | Contacts / Companies / Deals / Reviews / Activities pipeline; n8n reads/writes natively | Free | $0 | $0 | 🟡 Planned | Step 1.2. Free tier sufficient at this stage. Upgrade (~US$20/seat) only if record limits hit. Alternative: HubSpot free. |
+| **Airtable** | CRM | Contacts / Companies / Deals / Reviews / Activities pipeline; n8n reads/writes natively. **First production consumer: Founder Daily Digest CRM ACTIVITY section.** | Free | $0 | $0 | 🟢 Active 2026-05-15 | Step 1.2 DONE 2026-05-15. Workspace `Monitrax`, base `Monitrax CRM` (`appEDHNU0mtbWznHp`), owner `admin@monitrax.com.au`. 7 tables built (Leads / Contacts / Companies / Brokerages & Employer Orgs / Deals / Reviews / Activities — one extra beyond v1 spec, see GTM_EXECUTION_PLAN Step 1.2). PAT `n8n-monitrax-crm` (least-privilege: 3 scopes, base-restricted) wired into n8n as credential `Airtable - Monitrax CRM`. Free tier limit 1,200 records/base — sufficient until first 1k leads imported. Upgrade (~US$20/seat) only if hit. Alternative: HubSpot free. |
 | **Cal.com** | Booking | Discovery-call + Review-walkthrough scheduling; booking events → n8n | Free / Pro | $0–US$15/mo | $0–$23/mo | 🟡 Planned | Step 2.6. Free tier likely enough initially. Open-source; Calendly is the hosted alternative. |
 | **Loops.so** | Lifecycle email | Product/lifecycle + nurture sequences (NOT cold — that's Smartlead); triggered by app events | Free | $0 | $0 | 🟡 Planned | Step 1.4 / 3.6. Free tier covers low volume. Paid (~US$49/mo) when contact count grows. Alternative: MailerLite. |
 | **Stripe** | Payments | Review payment links now; broker subscriptions + invoicing later | Standard | Per-transaction | ~1.75% + A$0.30 domestic / 2.9% + A$0.30 intl | 🟢 Active | Already in use for the app (live-mode flip pending — see IMPLEMENTATION_PLAN Phase 0). No fixed monthly fee. |

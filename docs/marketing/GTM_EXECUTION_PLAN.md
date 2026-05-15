@@ -75,12 +75,42 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Done when:** ✅ `https://n8n.monitrax.com.au` loads cleanly (TLS green, no Chrome warning), owner account works, all 3 containers Up.
 - **Gotcha:** raw VPS IP intentionally NOT in repo — DNS hostname is the canonical reference. SSH key-only access (no password login). CDR posture confirmed: n8n is GTM-ops only — never pulls CDR data, so the German server location is compliant (CLAUDE.md §13.6 boundary preserved). The VPS will also host Documenso (Step 4.3) and any other small GTM services later — 4 GB RAM + 80 GB SSD has headroom for that.
 
-### Step 1.2 — Set up Airtable CRM
+### Step 1.2 — Set up Airtable CRM ✅ DONE (2026-05-15)
 - **Goal:** A single Airtable base ("Monitrax CRM") with the schema all later workflows will read/write.
-- **Time:** 1 hour.
-- **Action:** Create tables: `Leads` (Apollo source data), `Contacts` (deduped), `Companies` (brokerages), `Deals` (pipeline stages: New / Engaged / Call Booked / Pilot Verbal / Pilot Signed / Active / Lost), `Reviews` (paid review tracking: Booked / In Progress / Delivered / Refund), `Activities` (every touch logged). Get the Airtable API key.
-- **Done when:** Schema exists, API key copied to n8n credentials.
-- **Gotcha:** Don't over-engineer. Five columns per table > fifty. You can always add fields.
+- **Time:** 1 hour target — actual ~1 hour including PAT setup + n8n credential + Chat-Claude wiring of the digest's Activities branch.
+- **What was done (2026-05-15):**
+  - **Airtable account** created on Free plan, workspace `Monitrax`, owner `admin@monitrax.com.au`
+  - **Base** `Monitrax CRM` at `airtable.com/appEDHNU0mtbWznHp`
+  - **7 tables** built per spec (one extra beyond spec — see note below):
+    - `Leads` — raw imports (Apollo / manual), unverified humans
+    - `Contacts` — verified humans, promoted from Leads
+    - `Companies` — generic company table
+    - `Brokerages & Employer Orgs` — extra table added beyond v1 spec (intent: separate B2B targets from D2C employer orgs; non-blocking — both tables coexist, Leads' Company field links to `Companies`)
+    - `Deals` — pipeline (Kanban-ready, 8 stages: New → Engaged → Call Booked → Pilot Verbal → Pilot Signed → Active → Won → Lost)
+    - `Reviews` — paid Financial Health Reviews (default price AU$197 per Q-GTM-1)
+    - `Activities` — every touch logged (the table the digest queries)
+  - **Linked records:** Leads → Companies, Contacts → Companies, Deals → Companies + Contacts, Reviews → Contacts, Activities → Contacts + Companies + Deals. All single-link except Activities (multi-link allowed for meeting-style entries with several attendees).
+  - **Default views:** custom view `🆕 New — needs enrichment` on Leads (filter: Status = New); Grid views on other tables. Activities "Last 24h" view is what the digest queries via filter formula.
+  - **Personal Access Token** `n8n-monitrax-crm` created at `airtable.com/create/tokens`, scoped to `data.records:read` + `data.records:write` + `schema.bases:read`, restricted to the `Monitrax CRM` base only (least-privilege).
+  - **n8n credential** `Airtable - Monitrax CRM` (type: Airtable Personal Access Token API) wired into n8n.
+  - **Digest workflow updated (via Chat-Claude / n8n MCP):**
+    - `[STUB] Airtable Activities` HTTP node replaced with real Airtable node `Airtable - Activities last 24h`
+    - Operation: Search records; filter formula `IS_AFTER({Created}, DATEADD(NOW(), -1, 'days'))`; returns all matching records
+    - Connected: Schedule Trigger → Airtable node → Sync Active Sources (Merge); Merge `numberInputs` bumped 2 → 3
+    - `Compose Digest Context` extended with `airtable_activities_json` field (stringified, projected to `{name, type, direction, source, body_preview, created}`)
+    - Claude system prompt extended with a new 6th section **CRM ACTIVITY** placed between WORKFLOW HEALTH and AWAITING DATA — groups by Direction (Inbound first), orders by Created desc, caps at 8 items with "+N more in CRM" overflow, skips pure Status Change entries unless they advance a deal stage. "Airtable Activities (Step 1.2 - CRM)" removed from the AWAITING DATA pending-sources list.
+  - **End-to-end test execution successful** — Sonnet 4.6, 1,232 input / 411 output tokens (~AU$0.005), email landed in `admin@monitrax.com.au`. CRM ACTIVITY section correctly rendered "No CRM activity in the last 24h" — the one real Activity record present was a pure Status Change, correctly filtered by the prompt rule. Empty-state path works.
+- **Done when:** ✅ Schema exists, PAT in n8n credentials, digest reads real Activities and renders the CRM ACTIVITY section. ALL MET.
+- **Out of scope (for later):**
+  - Populate Activities with real records — currently only contains 1 test entry. Will fill organically once Smartlead replies wire (Step 1.6 stub) + Stripe webhook wire + manual operator entries
+  - Reconcile `Companies` vs `Brokerages & Employer Orgs` — one is empty as of now; decision deferred until first real broker contact is logged (then the right choice becomes obvious)
+  - Field-level filtering on the digest Airtable query (currently pulls all fields then projects in Compose Context — wasteful at scale but invisible at single-digit records/day; revisit at 100+ records/day)
+- **Gotcha (the ones we hit):**
+  - **Airtable renamed "bases" to "apps"** in the UI — same concept, new word. Use **"Build an app on your own"** to create a new blank base.
+  - **Default Linked Record allows multiple records.** For most join fields (Leads.Company, Contacts.Company, Deals.Company, Reviews.Contact) you want SINGLE link — flip the "Allow linking to multiple records" toggle OFF. Multi-link only makes sense for `Activities.Contact` (a meeting touches multiple attendees).
+  - **Personal Access Tokens replaced API keys** in Airtable. Old API-key URLs throw 404. Use `airtable.com/create/tokens`. Scope to ONE base, never "all current and future bases".
+  - **Airtable-side AI augmentation fields** (`Summary (AI)`, `Next Suggested Action (AI)`, `Sentiment (AI)`) shouldn't be added to Activities until there's real Body content flowing in — they throw `emptyDependency` errors when their dependency field is empty. Removed in this session.
+- **Don't over-engineer.** Five columns per table > fifty. You can always add fields. (The 7th table — `Brokerages & Employer Orgs` — already strains the spec; if it doesn't fill with real records in the next 30 days, merge it back into `Companies` using the Industry field to distinguish.)
 
 ### Step 1.3 — Set up the separate sending domain + mailbox ✅ DONE (2026-05-12) — warmup running, 2–3 wk timer ticking
 - **Decision (Q-GTM-2, Reza 2026-05-11/12):** dedicated outbound domain **`try-monitrax.com`** (purchased on GoDaddy 2026-05-12, "Keep Separate" from main domain). Mailbox = **Google Workspace Business Starter** on that domain → `reza@try-monitrax.com` (real-name sender). **Smartlead** ($39/mo) does the sequencing + warmup, connecting the Workspace mailbox via OAuth — it does NOT provide the mailbox. (Smartlead's own "Fresh/Pre-Warmed Mailboxes" DFY flow was rejected — it registers a *new Smartlead-owned domain* and sells mailboxes in 10/20/50/100 packs; wrong tool when we already own `try-monitrax.com`. See `GTM_TOOL_STACK.md` Decision Log 2026-05-12.) Never use `monitrax.com.au` for the automated sequences.
