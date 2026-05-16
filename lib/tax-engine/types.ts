@@ -191,6 +191,53 @@ export interface TaxYearConfig {
   div296TsbThreshold: number;
   /** Div 296 additional rate on earnings attributable to TSB above threshold. */
   div296Rate: number;
+
+  // -------------------------------------------------------------------------
+  // Phase 41E reform 2026-27 — per-measure commencement flags (CLAUDE.md §12.14).
+  //
+  // Each flag follows the proven Div 296 pattern: when `false`, the
+  // corresponding division module returns 0 / NOOP and surfaces an
+  // `UC-*-PENDING-*` flag. When the Bill assents, this flag flips to
+  // `true` and the rule activates with zero further code change.
+  //
+  // **Never flip any of these to true** without:
+  //   (a) Royal Assent of the relevant Bill confirmed by Reza, AND
+  //   (b) the corresponding division module's rule-mechanic populated
+  //       (not just the skeleton), AND
+  //   (c) the matching knowledge-pack entry in
+  //       `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` updated to
+  //       `status: 'assented'` with the actual Act + section reference.
+  //
+  // See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10 for per-measure
+  // detail; CLAUDE.md §12.14 for the project-level governance rule.
+  // -------------------------------------------------------------------------
+
+  /** Measure 1 — negative gearing → new builds only (1 Jul 2027 / FY 2027-28). */
+  negativeGearingReformCommencementVerified: boolean;
+  /** Measure 2 — CGT cost-base indexation regime (1 Jul 2027 / FY 2027-28). */
+  cgtIndexationCommencementVerified: boolean;
+  /** Measure 2 — CGT 30% minimum effective tax rate floor (1 Jul 2027). */
+  cgtMinRateCommencementVerified: boolean;
+  /** Measure 3 — 30% min tax on discretionary-trust taxable income (1 Jul 2028 / FY 2028-29). */
+  trustMinTaxCommencementVerified: boolean;
+  /** Measure 4 — foreign-resident CGT (Div 855 TARP + 365-day PAT). Exposure draft published 10 Apr 2026; TBC Royal Assent. */
+  foreignResidentCgtCommencementVerified: boolean;
+  /** Measure 5 — loss refundability (company carry-back, current FY 2026-27). */
+  lossCarryBackCommencementVerified: boolean;
+  /** Measure 8 — Electric-car FBT phase 2 (1 Apr 2027). */
+  evFbtPhase2CommencementVerified: boolean;
+  /** Measure 9 — Dynamic PAYG (monthly opt-in for SMEs, 1 Jul 2027). */
+  dynamicPaygCommencementVerified: boolean;
+
+  /**
+   * Phase 41E Measure 2 — CPI All-Groups Quarterly index for the cost-base
+   * indexation regime. Map keyed by quarter (e.g. "2027-Q3"); value = the
+   * published CPI for that quarter. Populated from ATO's published CPI
+   * table in Stage 2 when the indexation mechanic ships. Empty record for
+   * Stage 1 — the indexation module returns UC-CGT-INDEXATION-PENDING-EXPOSURE-DRAFT
+   * regardless.
+   */
+  cpiQuarterlyIndex: Record<string, number>;
 }
 
 export interface BringForwardThresholds {

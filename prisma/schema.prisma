@@ -32,6 +32,23 @@ enum PropertyType {
   RENTAL // User is renting this property (not owned)
 }
 
+// Phase 41E reform 2026-27 — Measure 1 (negative gearing → new builds only).
+// Audits the `Property.isNewBuild` claim so a future review can verify the
+// regime classification. See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2.
+// Treasury fact sheet definitions:
+//   NEVER_SOLD                  — property has never been disposed of since construction
+//   BUILDER_FIRST_OWNER_UNDER_12M — first owner = builder + property unoccupied < 12 months
+//   VACANT_LAND_BUILD            — built on vacant land (no pre-existing dwelling)
+//   OFF_THE_PLAN                  — purchased off-the-plan from developer
+//   DEMO_REBUILD_NET_ADD          — demolition + rebuild that creates net-additional dwellings
+enum NewBuildEvidence {
+  NEVER_SOLD
+  BUILDER_FIRST_OWNER_UNDER_12M
+  VACANT_LAND_BUILD
+  OFF_THE_PLAN
+  DEMO_REBUILD_NET_ADD
+}
+
 enum LoanType {
   HOME
   INVESTMENT
@@ -419,6 +436,29 @@ enum LegalEntityRole {
   PERSONAL // Natural person ownership (default for every existing user)
 }
 
+// Phase 41E reform 2026-27 — Measure 3 dispatch input.
+// Only `DISCRETIONARY` trusts are subject to the 30% minimum tax on trust
+// taxable income from FY 2028-29 onwards. Fixed/unit/widely-held/complying-super/
+// charitable/deceased-estate/special-disability/fixed-testamentary trusts are
+// explicitly excluded per Treasury fact sheet. See
+// `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10.3.
+//
+// Backfill: every existing `LegalEntity.type === 'DISCRETIONARY_TRUST'` gets
+// `trustType := 'DISCRETIONARY'` (unambiguous — Phase 41a's LegalEntityType
+// already names it explicitly). Other trust subtypes need user confirmation
+// in the entity-detail UI; until set, engine treats as `OTHER` + surfaces
+// `UC-TRUST-TYPE-UNKNOWN`.
+enum TrustType {
+  DISCRETIONARY // Family discretionary trust — subject to Measure 3
+  FIXED // Fixed trust — excluded
+  UNIT // Unit trust — excluded
+  TESTAMENTARY_FIXED // Fixed testamentary trust — excluded
+  CHARITABLE // Charitable trust — excluded
+  DECEASED_ESTATE // Deceased estate — excluded
+  SPECIAL_DISABILITY // Special disability trust — excluded
+  OTHER // Catch-all; UC-TRUST-TYPE-UNKNOWN until user confirms
+}
+
 // `LegalEntity` — the foundational ownership object for the Phase 41 entity
 // layer. Every Property / Loan / Account / InvestmentAccount / Asset / Income /
 // Expense will hang off a `LegalEntity` via `ownerEntityId` (instead of the
@@ -451,6 +491,14 @@ model LegalEntity {
   tradingName     String? // Optional trading-as name distinct from legal name
   establishedDate DateTime? // Date the entity was formed (incorporation / trust deed execution / SMSF establishment)
   parentEntityId  String? // Self-FK for trustee → trust relationships (e.g. corporate trustee Pty Ltd is parent of the Family Trust)
+
+  // Phase 41E reform 2026-27 inputs (CLAUDE.md §12.14). Nullable + additive.
+  // `trustType` drives Measure 3 dispatch (only DISCRETIONARY is affected).
+  // `isForeignResident` drives Measure 4 (Div 855 TARP + 365-day PAT).
+  // See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10.3 + §10.4.
+  trustType         TrustType? // Set only when `type === DISCRETIONARY_TRUST | UNIT_TRUST | ...`
+  isForeignResident Boolean? // Drives Measure 4 dispatch; null = treated as resident (UC-FR-STATUS-UNKNOWN if entity has TARP-relevant assets)
+
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
@@ -474,10 +522,45 @@ model LegalEntity {
   accountingSnapshots       EntityAccountingSnapshot[]
   trustDeedExtractedRules   TrustDeedExtractedRules[]
 
+  // Phase 41E reform 2026-27 — Measure 5 (loss refundability — carry-back).
+  // Companies with turnover < $1B can elect to carry back losses against
+  // prior 2 years' tax paid. See PHASE_41E_REFORM_2026_27.md §10.5.
+  companyTaxHistory CompanyTaxHistory[]
+
   @@index([userId])
   @@index([type])
   @@index([parentEntityId])
+  @@index([trustType]) // Phase 41E — Measure 3 dispatch reads DISCRETIONARY trusts
   @@map("legal_entities")
+}
+
+// =============================================================================
+// COMPANY TAX HISTORY (Phase 41E reform 2026-27 — Measure 5)
+// =============================================================================
+
+// Per-entity, per-FY tax position record for COMPANY entities. Read by
+// `lib/tax-engine/divisions/lossRefundability.ts` to compute carry-back
+// eligibility — a company with a loss in FY 2026-27 can carry it back
+// against tax paid in FY 2024-25 + FY 2025-26 (subject to the franking
+// account balance cap).
+//
+// See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10.5.
+model CompanyTaxHistory {
+  id                     String   @id @default(uuid())
+  legalEntityId          String
+  financialYear          String // "2024-25" / "2025-26" / "2026-27"
+  taxablePosition        Float // Negative = loss; Positive = profit
+  taxPaid                Float    @default(0) // Tax actually paid for the FY (relevant for carry-back refund cap)
+  frankingAccountBalance Float    @default(0) // Closing franking-account balance for the FY (caps refund per Measure 5 design)
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([legalEntityId, financialYear])
+  @@index([legalEntityId])
+  @@map("company_tax_history")
 }
 
 // =============================================================================
@@ -775,6 +858,19 @@ model Property {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  // Phase 41E reform 2026-27 — grandfathering inputs (CLAUDE.md §12.14).
+  // The load-bearing column is `acquisitionContractDate` — the CGT-event-A1
+  // date per s109-5 ITAA 1997 (NOT settlement, NOT registration). Distinct
+  // from the existing `purchaseDate` (ambiguous — could be either). The
+  // reform cut-over (7:30pm AEST 12 May 2026 = `2026-05-12T09:30:00Z` UTC,
+  // stored as `REFORM_CUT_OVER_UTC` in `lib/tax-engine/config/reformConstants.ts`)
+  // is contract-based. See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10.
+  acquisitionContractDate   DateTime? // Contract date (CGT event A1) — the grandfathering test reads this
+  acquisitionSettlementDate DateTime? // Settlement date — for clarity + edge cases (off-the-plan)
+  isNewBuild                Boolean? // User-confirmed; UNCOMPUTED on post-cut-over acquisitions if unset (Measure 1)
+  newBuildEvidence          NewBuildEvidence? // Audits the isNewBuild claim
+  isRenewablesInfrastructure Boolean? // For Measure 4 — 50% concession on qualifying renewables until 30 Jun 2030
+
   // Location data (Google Maps integration)
   latitude      Float? // Latitude coordinate
   longitude     Float? // Longitude coordinate
@@ -793,6 +889,7 @@ model Property {
 
   @@index([userId])
   @@index([ownerEntityId])
+  @@index([acquisitionContractDate]) // Phase 41E — grandfathering test reads this on every snapshot
   @@map("properties")
 }
 
