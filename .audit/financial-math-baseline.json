@@ -5,7 +5,7 @@
   "entries": [
     {
       "file": "app/dashboard/cfo/page.tsx",
-      "line": 886,
+      "line": 899,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "extraRepaymentImpact.timeReduced / 12"
     },

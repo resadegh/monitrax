@@ -89,6 +89,8 @@ interface UpdateEntityRequestBody {
   tradingName?: unknown;
   establishedDate?: unknown;
   parentEntityId?: unknown; // null disconnects, undefined leaves untouched
+  trustType?: unknown;      // Phase 41E.3 — Measure 3 dispatch input
+  isForeignResident?: unknown; // Phase 41E.3 — Measure 4 dispatch input
 }
 
 export const PUT = withPermission<RouteContext>(
@@ -159,6 +161,38 @@ export const PUT = withPermission<RouteContext>(
         }
       }
 
+      // Phase 41E.3 — validate trustType against the closed enum.
+      if (body.trustType !== undefined && body.trustType !== null && body.trustType !== '') {
+        const VALID_TRUST_TYPES = [
+          'DISCRETIONARY',
+          'FIXED',
+          'UNIT',
+          'TESTAMENTARY_FIXED',
+          'CHARITABLE',
+          'DECEASED_ESTATE',
+          'SPECIAL_DISABILITY',
+          'OTHER',
+        ];
+        if (typeof body.trustType !== 'string' || !VALID_TRUST_TYPES.includes(body.trustType)) {
+          return NextResponse.json(
+            {
+              error: `trustType must be one of: ${VALID_TRUST_TYPES.join(', ')}`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
+      // Phase 41E.3 — validate isForeignResident is a boolean (or null).
+      if (body.isForeignResident !== undefined && body.isForeignResident !== null) {
+        if (typeof body.isForeignResident !== 'boolean') {
+          return NextResponse.json(
+            { error: 'isForeignResident must be a boolean or null.' },
+            { status: 400 },
+          );
+        }
+      }
+
       // Build the partial-update input (preserve undefined for "leave alone").
       const updated = await updateEntity(auth.userId, id, {
         ...(body.name !== undefined && { name: body.name as string }),
@@ -190,6 +224,26 @@ export const PUT = withPermission<RouteContext>(
             body.parentEntityId === null || body.parentEntityId === ''
               ? null
               : (body.parentEntityId as string),
+        }),
+        // Phase 41E.3 — Measure 3 + 4 inputs. Validate against the
+        // closed enums; reject anything else with 400.
+        ...(body.trustType !== undefined && {
+          trustType:
+            body.trustType === null || body.trustType === ''
+              ? null
+              : (body.trustType as
+                  | 'DISCRETIONARY'
+                  | 'FIXED'
+                  | 'UNIT'
+                  | 'TESTAMENTARY_FIXED'
+                  | 'CHARITABLE'
+                  | 'DECEASED_ESTATE'
+                  | 'SPECIAL_DISABILITY'
+                  | 'OTHER'),
+        }),
+        ...(body.isForeignResident !== undefined && {
+          isForeignResident:
+            body.isForeignResident === null ? null : Boolean(body.isForeignResident),
         }),
       });
 

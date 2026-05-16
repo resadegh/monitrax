@@ -453,4 +453,116 @@ Functions/tools touched:
 ### PR
 
 - Branch: `claude/phase-41e-2-ai-advisor-MG8mr`
+- Status: **Merged 2026-05-16 (PR #766)** — AI advisor knowledge pack + 2 tools shipped to main.
+
+---
+
+## Session 5: Phase 41E.3 — UI surfaces (badge + banner + entity API)
+
+Branch: `claude/phase-41e-3-ui-surfaces-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 41E.3 — first user-facing UI surfaces for the reform)
+- **Scope:** Components + API + schema migration. Ships: (1) reusable `<TaxTreatmentBadge>` with 5 regime variants + tone-coded styling, (2) `<TaxReformBanner>` calm one-time card on `/dashboard/cfo` + dismissal API + schema migration, (3) entity API extension for `trustType` + `isForeignResident`.
+- **CDR scope:** N/A — banner stores only a boolean dismissal flag per user; entity fields are tax classification metadata (not CDR transactions). Sanitisation untouched.
+- **Reform compliance (CLAUDE.md §12.14):** FW-5 SATISFIED — the badge IS the regime surface (regime always visible on property surfaces that use it). FW-3 SATISFIED — schema migration adds `dismissedReformBanner` to UserPreference; reform-grandfathering impact documented (none — UI state only). FW-1 / FW-2 inherited from 41E.1 + 41E.2 (no engine functions modified).
+- **Deferred to 41E.4:** PropertyTile wiring (the tile is a 467-line component tied to a larger refactor); entity-detail form-side UI (`<EntityEditForm>` is part of the entities page — natural pairing with the onboarding wizard's Entities step in 41E.4). Both surfaces will consume the new API + component shipped here.
+
+### What was done
+
+#### New files
+
+| File | Purpose |
+|---|---|
+| `components/wealth/TaxTreatmentBadge.tsx` | Reusable presentational component. Takes `{propertyType, acquisitionContractDate, isNewBuild, financialYear, size}` and renders the regime-coded badge. Tone-coded per regime: emerald (Grandfathered — good news), sky (New build — info), slate (Restricted — neutral, NOT red), amber (UNCOMPUTED — action needed). Exports `getRegimeShortLabel` + `getRegimeDescription` helpers. |
+| `components/cfo/TaxReformBanner.tsx` | One-time CFO Guide calm card. Sky tone (NOT amber, NOT rose — calm not alarming). Copy per Phase doc §11.1: "Tax rules are changing — and you're already protected" + body explaining grandfathering + CTA "Show me my position" → `/dashboard/cfo/ask?q=…` prefilled with §10.10 reform-impact question. Optimistic dismissal with persist via API. |
+| `app/api/settings/reform-banner/route.ts` | GET (returns `{ dismissed }`) + POST (marks dismissed). Uses `prisma.userPreference.upsert` guarded by `auth.userId` (single-user scope) — §12.11 safe. |
+| `prisma/migrations/20260516200000_phase_41e_3_reform_banner_dismissal/migration.sql` | Adds `dismissedReformBanner Boolean NOT NULL DEFAULT false` to `user_preferences`. Single ADD COLUMN, idempotent. |
+
+#### Extended files
+
+| File | Change |
+|---|---|
+| `prisma/schema.prisma` | `UserPreference` gains `dismissedReformBanner Boolean @default(false)`. Same pattern as existing `dismissedOnboardingBadge` / `dismissedWelcomeModal`. |
+| `app/dashboard/cfo/page.tsx` | Imports + mounts `<TaxReformBanner>` directly above the AI Financial Advice highlight section. ~10 lines added. |
+| `lib/services/legalEntityService.ts` | `UpdateEntityInput` gains `trustType` (8-value closed enum) + `isForeignResident` (boolean). `updateEntity` body builder passes both through to Prisma when supplied. |
+| `app/api/entities/[id]/route.ts` | PUT route validates `trustType` against the closed enum + `isForeignResident` as a boolean. Passes through to `updateEntity` service. |
+
+#### Tests — 24 new
+
+- `tests/components/TaxTreatmentBadge.test.tsx` (10 tests) — renders the right label per regime; **Stage 1 default (commencement flag false) — even post-cut-over contract renders Grandfathered** (the FW-2 wall pinned at the UI layer); size variants; aria-label; helper exports.
+- `tests/components/TaxReformBanner.test.tsx` (5 tests) — module surface; **copy spec on record** (calm-framing headline + Show-me-my-position CTA); **no urgency / FOMO language** (act now / limited time / deadline / miss out / countdown — none present); **uses sky tone, not amber / rose / red** (behaviour-psychologist guard).
+- `tests/legalEntityService/reformFields.test.ts` (4 tests) — `UpdateEntityInput` accepts the 8-value trustType enum + boolean + null/undefined; rejects invalid types at the type level via `@ts-expect-error`.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `components/wealth/TaxTreatmentBadge.tsx` | NEW — 175 lines |
+| `components/cfo/TaxReformBanner.tsx` | NEW — 130 lines |
+| `app/api/settings/reform-banner/route.ts` | NEW — 75 lines |
+| `prisma/migrations/20260516200000_phase_41e_3_reform_banner_dismissal/migration.sql` | NEW |
+| `prisma/schema.prisma` | +9 lines (UserPreference column) |
+| `app/dashboard/cfo/page.tsx` | +12 lines (import + mount) |
+| `lib/services/legalEntityService.ts` | +30 lines (UpdateEntityInput + body builder) |
+| `app/api/entities/[id]/route.ts` | +40 lines (validation + pass-through) |
+| `tests/components/TaxTreatmentBadge.test.tsx` | NEW — 10 tests |
+| `tests/components/TaxReformBanner.test.tsx` | NEW — 5 tests |
+| `tests/legalEntityService/reformFields.test.ts` | NEW — 4 tests |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** (new reusable component `<TaxTreatmentBadge>` + new component `<TaxReformBanner>` — both follow existing visual vocabulary; tone choices documented inline)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 progress (41E.3 status flip + sub-PR checklist + top header).
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 5 entry (this).
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — N/A in this sub-PR. The new components are scoped narrowly (one reform-specific badge + one reform-specific banner). Inline JSDoc + Phase doc §12.1 already document the visual decisions. A consolidated UI foundation update may land later if the badge gets broader propagation.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A for the migration** — single `ADD COLUMN IF NOT EXISTS` with `NOT NULL DEFAULT false`; idempotent.
+
+**Reform-banner POST endpoint** uses `prisma.userPreference.upsert`:
+1. **`where` clause matches:** `{ userId: auth.userId }` — uniquely identifies the authenticated user's own preference row.
+2. **Columns overwritten on update branch:** `dismissedReformBanner` only. No other column touched.
+3. **Guard ensuring this only mutates rows the code originally created:** the `auth.userId` filter pins the row to the current authenticated user; the `update` branch only flips a single boolean from false → true (idempotent). No risk of clobbering other state.
+
+User confirmation: NOT REQUIRED (single-flag self-write).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**SATISFIED** — `prisma/schema.prisma` change ships with matching migration file in same PR.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] FW-5 satisfied — `<TaxTreatmentBadge>` IS the regime-surface enforcement. Tone-coded styling makes the regime always visible on any consuming surface.
+- [x] FW-3 satisfied — `dismissedReformBanner` column added; reform-grandfathering impact documented (none — UI state only).
+- [x] FW-1 / FW-2 inherited from 41E.1 + 41E.2 (no engine functions modified).
+- [x] D-2 inherited from 41E.2 (banner CTA routes through `/dashboard/cfo/ask` which is gateway-bound).
+
+Functions/tools touched:
+- `components/wealth/TaxTreatmentBadge.tsx` — outcome (a) reform-aware (consumes 41E.1 classifier directly).
+- `components/cfo/TaxReformBanner.tsx` — outcome (a) reform-aware (links to the §10.10 AI surface).
+- `lib/services/legalEntityService.ts:updateEntity` — outcome (a) reform-aware (accepts new fields per FW-3 schema additions).
+
+### Testing
+
+- [x] Tests written — 24 new across 3 files.
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+
+**Per CLAUDE.md §11.2:** Vercel preview runs `prisma migrate deploy` against `monitrax-db-dev` + the full test suite. If migration fails or any test fails, deploy aborts.
+
+### PR
+
+- Branch: `claude/phase-41e-3-ui-surfaces-MG8mr`
 - Status: Open

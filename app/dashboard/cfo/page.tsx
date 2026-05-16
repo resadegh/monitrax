@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
+import { TaxReformBanner } from '@/components/cfo/TaxReformBanner';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -670,6 +671,18 @@ export default function CFODashboardPage() {
           </Button>
         }
       />
+
+      {/*
+       * Phase 41E.3 — "Tax rules are changing" one-time calm banner.
+       * Mounted ABOVE the AI Advice section so it's the first thing the
+       * user sees on their first CFO Guide visit after the 12 May 2026
+       * Budget reform. Self-hides once dismissed (state on
+       * UserPreference.dismissedReformBanner). See
+       * `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §11.1 + §12.1.
+       */}
+      <div className="mt-4 mb-6">
+        <TaxReformBanner />
+      </div>
 
       {/*
        * Phase 40 — AI Financial Advice (highlight surface).
