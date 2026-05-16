@@ -361,4 +361,96 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-41e-1-engine-skeletons-MG8mr`
+- Status: **Merged 2026-05-16 (PR #765)** — engine skeletons shipped to main.
+
+---
+
+## Session 4: Phase 41E.2 — AI advisor (knowledge pack + 2 new tools)
+
+Branch: `claude/phase-41e-2-ai-advisor-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 41E.2 — AI advisor knowledge pack + 2 new tools wiring the engine skeletons from 41E.1 into the user-facing CFO Guide narrative)
+- **Scope:** AI advisor — new knowledge pack + 2 new tools registered with the tool registry. Implements §10.10 of the Phase doc (Reza directive 2026-05-16).
+- **CDR scope:** N/A — tools work on aggregated metadata (regime codes, counts, dates) only. No CDR transactions exposed to the LLM. Tool inputs are caller-assembled summaries; the LLM never sees raw balances or transactions.
+- **Reform compliance (CLAUDE.md §12.14):** FW-4 SATISFIED — both new tools cite the knowledge pack via stable citation IDs; the pack carries `status: 'announced' | 'exposure-draft' | 'bill' | 'assented'` per measure with `lastReviewed` dates. FW-1/FW-2 inherited from 41E.1 modules (regime classifier handles commencement gating). D-2 SATISFIED — both tools are `FACT_LOOKUP` and `SCENARIO_RUN`; the test suite explicitly asserts no recommendation verbs in the narrator output.
+
+### What was done
+
+#### New files
+
+| File | What |
+|---|---|
+| `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` | NEW (305 lines) — versioned knowledge pack. Closed `ReformStatus` discriminant. Per-measure entries with `title` + `summary` + `commencementText` + `grandfatheringText` + `userImpactText` + ATO/Treasury `citations` + `lastReviewed`. M1-M3 + M5 + M7-M9 status=`announced`; M4 status=`exposure-draft` (Treasury published 10 Apr 2026); M6 status=`assented` (already law). Helpers: `getReformKnowledgeEntry`, `getAllReformKnowledgeEntries`, `getStatusLabel`. |
+| `lib/ai/tax-advisor/tools/getReformedTaxRegimeStatus.ts` | NEW — `FACT_LOOKUP` tool. Per-property regime classification. Composes 41E.1's `deriveNegativeGearingRegime` + the knowledge pack. Returns 2 `numericFields` (regime code + cut-over epoch ms) + 2 citations + plain-English narrative for each of the 5 regime variants. |
+| `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts` | NEW — `SCENARIO_RUN` tool — the §10.10 cross-measure surface. Takes `{userId, financialYear, properties[], entities[], companies[]}`. Returns 11 `numericFields` (per-regime property counts + discretionary-trust count + unknown-trust-type count + foreign-resident entity count + carry-back eligible company count + cut-over moment) + 9 citations (one per measure) + a calm-framing narrative that opens with "you're already protected" when grandfathering applies + routes to Ask-a-Pro at the close. D-2 enforced via narrative-text test (no "you should" / "transfer to" / "salary sacrifice" verbs). |
+
+#### Extended files
+
+| File | Change |
+|---|---|
+| `lib/ai/tax-advisor/index.ts` | +5 lines — register 2 new tools. Registry size 11 → 13 (FACT_LOOKUP × 8 + SCENARIO_RUN × 5). Updated JSDoc to document Phase 41E.2 additions. New tools added to the named re-export block. |
+
+#### Tests — 30 new across 2 files
+
+- `tests/ai/tax-advisor/knowledge/reform-2026-27.test.ts` (16 tests) — knowledge pack shape (every measure has an entry; every entry has all required fields; status enum coverage); initial regulatory status at PR #765 ship time (M1-M3 + M5 + M7-M9 = announced, M4 = exposure-draft, M6 = assented); grandfathering coverage (M1 + M2 + M8 describe it; M3 + M5 + M6 + M7 + M9 explicitly empty); helper functions.
+- `tests/ai/tax-advisor/tools/reformTools.test.ts` (14 tests) — `getReformedTaxRegimeStatus` ToolResult shape conformance + pre-cut-over → grandfathered + Stage 1 default (flag false) wall + citation stability + FACT_LOOKUP kind + D-2 description; `getReformImpactSummaryForUser` ToolResult shape + all-grandfathered narrative + per-regime counting + discretionary-trust counting + UC-TRUST-TYPE-UNKNOWN flagging + foreign-resident counting + carry-back-eligible counting + SCENARIO_RUN kind + D-2 narrative wall (no "you should" / "transfer to" / "salary sacrifice"; must route to Ask-a-Pro) + HR-1/HR-2/D-2 named in description + cut-over moment epoch ms in numeric fields.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` | NEW — 305 lines (knowledge pack + helpers) |
+| `lib/ai/tax-advisor/tools/getReformedTaxRegimeStatus.ts` | NEW — 178 lines (FACT_LOOKUP per-property) |
+| `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts` | NEW — 330 lines (SCENARIO_RUN §10.10 surface) |
+| `lib/ai/tax-advisor/index.ts` | +5 lines — register 2 new tools + JSDoc update |
+| `tests/ai/tax-advisor/knowledge/reform-2026-27.test.ts` | NEW — 16 tests |
+| `tests/ai/tax-advisor/tools/reformTools.test.ts` | NEW — 14 tests |
+| `docs/IMPLEMENTATION_PLAN.md` | Workstream §7 sub-PR checklist — 41E.2 status flip + top header refresh |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | This Session 4 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure (new failure mode / diagnostic / lesson)
+- [ ] strategic decision
+
+AI-advisor-only sub-PR. No §16.2 surface from the canonical matrix changed (no UI, no schema, no config). The Phase 41E doc §10.10 is the canonical home for this surface.
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 progress (41E.2 status flip + sub-PR checklist).
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 4 entry (this).
+
+### Testing
+
+- [x] Tests written — 30 new across 2 files.
+- [ ] `npm test` — N/A in this sandbox.
+- [ ] `npm run build` — N/A.
+- [ ] `npm run lint` — N/A.
+
+**Per CLAUDE.md §11.2:** Vercel preview build runs the full test suite + TypeScript on PR push.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions/tools added — `getReformedTaxRegimeStatus` (FACT_LOOKUP) + `getReformImpactSummaryForUser` (SCENARIO_RUN) + knowledge-pack helpers (`getReformKnowledgeEntry`, `getAllReformKnowledgeEntries`, `getStatusLabel`).
+- [x] FW-4 satisfied — both new tools tag their citations with the knowledge-pack `status` field (announced / exposure-draft / bill / assented). The knowledge pack is the source of truth for the AI advisor's narration of reform status.
+- [x] FW-1 + FW-2 inherited from 41E.1 — the regime classifier still gates on `commencementVerified` (false in every FY config) so even with the new tools, the AI returns regime classifications + UNCOMPUTED for measures whose mechanics aren't yet live.
+- [x] D-2 enforced — both tools are `FACT_LOOKUP` / `SCENARIO_RUN` (closed `ToolKind` discriminant prevents `RECOMMENDATION`). Tests explicitly assert the narrator output contains no recommendation verbs and routes to Ask-a-Pro.
+- [x] No existing tax-engine test regressed (no engine modules touched).
+
+Functions/tools touched:
+- `lib/ai/tax-advisor/tools/getReformedTaxRegimeStatus.ts:getReformedTaxRegimeStatusTool` — outcome (a) reform-aware (takes regime via 41E.1's classifier).
+- `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts:getReformImpactSummaryForUserTool` — outcome (a) reform-aware (composes 41E.1's classifier per property + knowledge pack).
+- Knowledge-pack entry for each measure tagged with status flag (FW-4): M1-M3 + M5 + M7-M9 = `announced`; M4 = `exposure-draft`; M6 = `assented`.
+
+### PR
+
+- Branch: `claude/phase-41e-2-ai-advisor-MG8mr`
 - Status: Open
