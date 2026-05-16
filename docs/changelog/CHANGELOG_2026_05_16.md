@@ -111,6 +111,37 @@ After Reza's directive — *"go through the tax engine documents and design and 
 - **CLAUDE.md §12.13** pre-write checklist gains the new Phase 41E reform-awareness gate (alongside the existing §12.11 destructive-write + §12.12 schema-migration gates).
 - **`docs/IMPLEMENTATION_PLAN.md`** — Q-AI-PROVIDER closed (Reza decision 2026-05-16: keep Gemini default; provider-agnostic architecture preserved so a future flip is still a one-file change); workstream §7 status updated to spec-complete; decision-points checklist replaced with the 5-point summary delivered in chat.
 
+### Follow-up directive (same session, same PR)
+
+**Reza directive 2026-05-16 (after the 5-point confirmation):** *"The AI advisor should also provide a summary of the law changes and the impact on each individual users, and should provide a realistic suggestions based on the same. Add this to the plan as well."*
+
+Added a new **§10.10 — AI advisor "Reform impact for me" summary surface** to `PHASE_41E_REFORM_2026_27.md`. Operationalises the directive within the existing D-2 AFSL boundary (the structural reason the AI *cannot* recommend sell/restructure/transfer no matter which LLM backs it). The surface answers a single user ask — *"How do the new tax laws affect me?"* — with three parts:
+
+1. **Summary of the law changes** — knowledge-pack-driven narrative of the eight measures + commencement + grandfathering, with `status: announced | exposure-draft | bill | assented` per claim (HR-2 enforced).
+2. **Personalised impact** — engine-driven; per-property regime classification + per-trust 30%-min projection + per-company carry-back eligibility + per-EV FBT phase + foreign-resident exposure. UNCOMPUTED narration for measures whose mechanics aren't yet live (HR-1 enforced — never invent numbers).
+3. **Realistic suggestions (within AFSL boundary)** — SCENARIOS via existing scenario tools + TIMING FACTS (e.g., "the 3-year trust rollover-relief window runs 1 Jul 2027 – 30 Jun 2030") + ASK-A-PRO routing for any personal decision. **Never** recommends sell/hold/restructure — validator chain catches recommendation verbs and routes to `BLOCKED_RECOMMENDATION` → Ask-a-Pro card.
+
+New AI tool: `getReformImpactSummaryForUser` (SCENARIO_RUN — composes the other reform tools). Wired into the CFO Guide "Tax rules are changing" card CTA + `/dashboard/cfo/ask` prefilled prompt + per-asset detail dialog "What does this mean for me?" link.
+
+Stage gating: Stage 1 ships the summary + per-asset regime + Measure 5 carry-back (live). Stage 2 follow-ups populate the dollar projections for M1/M2/M3 as each Bill exposure-draft + Royal Assent lands.
+
+Updates:
+- `PHASE_41E_REFORM_2026_27.md` §10.10 NEW (~75 lines) + extended §12.1 row for the new AI surface + extended §13.1 audit row + §12.3 Stage 1 entry mentions the new tool.
+- `IMPLEMENTATION_PLAN.md` workstream §7 — new sub-deliverable bullet in Stage 1 PR shape + status line updated ("STARTED" — Stage 1 underway on `claude/phase-41e-0-foundation-MG8mr` branch).
+- `CHANGELOG_2026_05_16.md` — this entry.
+
+### Stage 1 implementation kicked off (same session)
+
+After Reza's 5-point confirmation, started Stage 1 sub-PR sequence. **Branch:** `claude/phase-41e-0-foundation-MG8mr` (branched off the design branch — when #763 merges this rebases onto main). **First commit:** `dc3e74c — feat(tax-engine): reformConstants.ts — canonical cut-over + per-measure commencement` shipping `lib/tax-engine/config/reformConstants.ts` (198 lines):
+- `REFORM_CUT_OVER_UTC = 2026-05-12T09:30:00Z` (single canonical cut-over moment; no other file may hard-code it per CLAUDE.md §12.14).
+- `ReformMeasure` closed discriminant for the 9 measures.
+- `MEASURE_COMMENCEMENT` per-measure activation date map.
+- `classifyAcquisitionGrandfathering(contractDate) → GRANDFATHERED | POST_REFORM | UNKNOWN` (pure function; cut-over moment itself is inclusive of grandfathering per Treasury fact sheet).
+- `isPostCommencementFy(fy, measure)` FY-string comparison.
+- `MEASURE_LABEL` human-readable labels for UNCOMPUTED rationales + audit messages.
+
+Queued for next commits on the same branch: tests for `reformConstants.ts` + schema migration (additive columns + new enums) + `taxYearConfig.ts` 8-flag extension + `TAX_YEAR_2027_28` skeleton. **Stage 1 sub-PR breakdown (41E.0 through 41E.5)** documented in chat — each ~1 day, matches Phase 41h / 41i.6 sub-PR pattern.
+
 ### Final files touched (across all 3 commits)
 
 | File | Change |
