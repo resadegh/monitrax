@@ -127,7 +127,7 @@ function deriveCurrentFy(now: Date = new Date()): string {
   return `${leadingYear}-${trailingYear}`;
 }
 
-export function TaxTreatmentBadge(props: TaxTreatmentBadgeProps): JSX.Element {
+export function TaxTreatmentBadge(props: TaxTreatmentBadgeProps) {
   const fy = props.financialYear ?? deriveCurrentFy();
   const config = getTaxYearConfig(fy);
 

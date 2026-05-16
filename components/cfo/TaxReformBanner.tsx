@@ -49,7 +49,7 @@ interface ReformBannerState {
 const PREFILLED_QUESTION = 'How do the new tax laws affect me?';
 const ASK_URL = `/dashboard/cfo/ask?q=${encodeURIComponent(PREFILLED_QUESTION)}`;
 
-export function TaxReformBanner(): JSX.Element | null {
+export function TaxReformBanner() {
   const [state, setState] = useState<ReformBannerState>({ status: 'loading' });
 
   // Fetch dismissal state once on mount.
