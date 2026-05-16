@@ -115,6 +115,18 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   div296CommencementVerified: false, // pending Royal Assent
   div296TsbThreshold: 3000000, // proposed $3M
   div296Rate: 0.15, // additional 15% per the proposed Bill
+
+  // Phase 41E reform 2026-27 — all flags false until each Bill assents.
+  // See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10 + CLAUDE.md §12.14.
+  negativeGearingReformCommencementVerified: false,
+  cgtIndexationCommencementVerified: false,
+  cgtMinRateCommencementVerified: false,
+  trustMinTaxCommencementVerified: false,
+  foreignResidentCgtCommencementVerified: false,
+  lossCarryBackCommencementVerified: false,
+  evFbtPhase2CommencementVerified: false,
+  dynamicPaygCommencementVerified: false,
+  cpiQuarterlyIndex: {}, // populated in Stage 2 from ATO's CPI table
 };
 
 // =============================================================================
@@ -177,6 +189,21 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
   div296CommencementVerified: false, // verify status before each FY
   div296TsbThreshold: 3000000,
   div296Rate: 0.15,
+
+  // Phase 41E reform 2026-27 — all flags false until each Bill assents.
+  // None of the reform measures commence in FY25-26 (M5 is FY26-27 onwards,
+  // M1+M2+M7+M9 are FY27-28, M3 is FY28-29). These flags exist on every
+  // FY config for type-system completeness + so the engine can dispatch
+  // regime-aware logic uniformly. See PHASE_41E_REFORM_2026_27.md §10.
+  negativeGearingReformCommencementVerified: false,
+  cgtIndexationCommencementVerified: false,
+  cgtMinRateCommencementVerified: false,
+  trustMinTaxCommencementVerified: false,
+  foreignResidentCgtCommencementVerified: false,
+  lossCarryBackCommencementVerified: false,
+  evFbtPhase2CommencementVerified: false,
+  dynamicPaygCommencementVerified: false,
+  cpiQuarterlyIndex: {},
 };
 
 // =============================================================================
@@ -258,6 +285,19 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   div296CommencementVerified: false, // not yet enacted in FY23-24
   div296TsbThreshold: 3000000,
   div296Rate: 0.15,
+
+  // Phase 41E reform 2026-27 — historical FY, all flags false (the
+  // reform measures were announced 12 May 2026, well after FY23-24
+  // closed). Fields exist for type-system uniformity across FY configs.
+  negativeGearingReformCommencementVerified: false,
+  cgtIndexationCommencementVerified: false,
+  cgtMinRateCommencementVerified: false,
+  trustMinTaxCommencementVerified: false,
+  foreignResidentCgtCommencementVerified: false,
+  lossCarryBackCommencementVerified: false,
+  evFbtPhase2CommencementVerified: false,
+  dynamicPaygCommencementVerified: false,
+  cpiQuarterlyIndex: {},
 };
 
 // =============================================================================

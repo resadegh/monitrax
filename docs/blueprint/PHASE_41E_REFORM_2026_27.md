@@ -580,6 +580,60 @@ export function deriveNegativeGearingRegime(input: {
 
 **Stage 1 — what ships:** Config flag + a `Dynamic PAYG opt-in` toggle on the business-entity Settings (surfaced as an option, never auto-applied per CLAUDE.md §14 warm-words).
 
+### 10.10 AI advisor — "Reform impact for me" summary surface (cross-measure)
+
+> **Reza directive 2026-05-16:** *"The AI advisor should also provide a summary of the law changes and the impact on each individual users, and should provide a realistic suggestions based on the same."* This sub-section operationalises that directive within the existing D-2 AFSL boundary (no recommendations — only facts, scenarios, and Ask-a-Pro routing).
+
+**What the user gets:** A single ask — *"How do the new tax laws affect me?"* — produces a structured AI response with three parts, all driven by the deterministic engine + the knowledge pack, never by LLM memory:
+
+1. **Summary of the law changes** (HR-2 — knowledge-pack-driven, fact-only). The AI narrates the eight measures + their commencement dates + their grandfathering cut-over, citing Treasury / ATO sources. Every claim carries the knowledge-pack `status` field — *announced / exposure-draft / bill / assented* — so the user sees the rule's maturity.
+2. **Personalised impact** (HR-1 — numbers from the engine). For *this* user, the AI calls the engine to enumerate which measures affect them and by how much: per-property regime classification (`getReformedTaxRegimeStatus`), per-discretionary-trust 30%-min projection (`getTrustReformImpact`), per-company carry-back eligibility (`getCarryBackEligibility`), per-EV FBT-phase impact (`getEvFbtRegime`), foreign-resident exposure (`getForeignResidentTarpExposure`). Where a measure's mechanic isn't yet live (Stage 1 ships M4 + M5 mechanics; M1/M2/M3 are skeleton-only), the surface returns the regime classification + an explicit `UNCOMPUTED — Monitrax will compute your projected impact once the exposure draft + Royal Assent are confirmed`.
+3. **Realistic suggestions** (D-2 — within the AFSL boundary). The AI surfaces SCENARIOS via existing scenario tools ("if you sold Brunswick on 15 Jun 2027 at $X, projected after-tax proceeds = $A under the current 50% discount; on 15 Aug 2027 = $B under indexation + 30% floor; delta = $C"), TIMING FACTS ("the 3-year discretionary-trust rollover-relief window runs 1 Jul 2027 – 30 Jun 2030"), and ASK-A-PRO routing ("the decision of whether to sell or restructure is personal advice — here's a TPB-registered tax agent who can help"). **NEVER recommends** sell/hold/restructure/transfer/timing — the validator chain catches recommendation verbs and routes to `BLOCKED_RECOMMENDATION` → Ask-a-Pro card.
+
+**New AI tool — `getReformImpactSummaryForUser`** (SCENARIO_RUN — composes the other reform tools):
+
+```ts
+// lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts (Stage 1)
+export const getReformImpactSummaryForUserTool: TaxAdvisorTool<{ userId: string }> = {
+  name: 'getReformImpactSummaryForUser',
+  kind: 'SCENARIO_RUN',
+  description:
+    'Returns the per-measure reform impact for the requesting user, ' +
+    'composed from per-asset / per-entity regime status + scenario deltas ' +
+    'where each measure\'s mechanic is live. Returns UNCOMPUTED for ' +
+    'measures whose mechanics are not yet enabled (commencementVerified=false). ' +
+    'Output is FACT — never a recommendation. The narrative surface uses ' +
+    'this tool to answer "how do the new tax laws affect me?" without the ' +
+    'LLM inventing numbers (HR-1) or claims about AU law (HR-2).',
+  // ... input schema + executor that calls the per-measure tools + aggregates
+};
+```
+
+**Where the user encounters this surface:**
+- **CFO Guide "Tax rules are changing" card** — the calm one-time card (per the 5-point confirmation 2026-05-16) is the entry point. The CTA on the card is *"Show me my position"* — opens `/dashboard/cfo/ask` with the prefilled question *"How do the 2026-27 tax reforms affect me?"*.
+- **`/dashboard/cfo/ask` direct prompt** — user can ask the question at any time. The new tool composes the answer.
+- **Per-asset detail dialog** — the existing tax-treatment badge gets a *"What does this mean for me?"* link that opens the same surface scoped to that single asset.
+
+**Stage gating for this surface:**
+
+| Stage | What the user-asked summary returns |
+|---|---|
+| **Stage 1** (this PR family) | Summary of the eight measures (full narrative from knowledge pack) + per-property regime classification + per-entity trust-type display + per-vehicle EV-FBT phase + per-company carry-back eligibility (Measure 5 — current FY, mechanic is live). For M1/M2/M3 measures with skeleton-only modules: regime classification + "Monitrax will compute your projected impact once Treasury publishes the exposure draft" UNCOMPUTED narration. **No dollar projections yet for the post-reform CGT or restricted-loss math.** |
+| **Stage 2** (per-measure follow-ups) | Each Stage-2 PR populates its measure's dollar projections + scenario tool. By the time M1+M2 mechanics land, the surface answers fully — "your property contracted 13 May 2026 (post-cut-over) will lose negative-gearing offset against other income from 1 Jul 2027; projected impact on your FY 2027-28 cashflow = $X based on the current loss of $Y/month, all else equal." Each Stage-2 PR adds a UI fixture pinning the surface's per-measure output. |
+| **Stage 3** (Royal Assent flip) | Knowledge-pack status flips `bill` → `assented`; the surface narration upgrades from *"announced — final law TBC"* to *"in force from \[date\]"*. No code change for this transition — just the flag flip in `taxYearConfig.ts` (the `commencementVerified` boolean) + the knowledge pack's `status` field. |
+
+**What this surface deliberately does NOT do** (load-bearing — protects the AFSL boundary):
+- ❌ Never says *"you should sell"* / *"you should restructure"* / *"consider transferring to a trust"* — the validator chain rejects these verbs and auto-routes to Ask-a-Pro.
+- ❌ Never projects numbers for a measure whose mechanic is not live — returns UNCOMPUTED, never a guess.
+- ❌ Never quotes AU law text that's not in the knowledge pack — HR-2 enforcement.
+- ❌ Never sends CDR data verbatim to the LLM — the tool result aggregates the user's position; transactions/balances stay in the engine.
+- ❌ Never sets up *manufactured urgency* — the 3-year rollover window is a fact ("runs 1 Jul 2027 – 30 Jun 2030"), not a *"act now before…"* push. Behavioural-psychologist guard (per §11.2 dissent ruling).
+
+**How this surface earns its place** (alignment with TRAIL + CLAUDE.md §14):
+- TRAIL Stage 5 (Live) — once the user has Track / Reduce / Anchor / Invest in hand, the reform-impact surface helps them stay calm + informed about how the rules around their position are changing. It belongs under "My Guide" alongside the existing AI advisor (already in Stage 5).
+- Warm-words framing — *"How do the new tax laws affect me?"* not *"Calculate your tax-reform exposure"*; *"Things to ask a professional about"* not *"Recommended actions"*.
+- One Clear Action — every measure that affects the user surfaces ONE concrete next step: either *"Confirm the contract date for X"* (data gap), or *"Run the sell-on-vs-sell-after scenario"* (scenario CTA), or *"Ask a tax agent about Y"* (Ask-a-Pro). Never multiple equal CTAs.
+
 ---
 
 ## 11. Risks + dissent + decision points
@@ -643,6 +697,7 @@ The architect-mode synthesis had one genuine pull. The **Growth & Marketing Stra
 | **Document Intelligence / OCR** | `lib/ai/gemini.ts` document extraction | **F** extractor learns to find `acquisitionContractDate` in contract-of-sale uploads | — | **F** trust-deed extractor (Phase 41f.4) already pulls beneficiary types → feeds Measure-3 credit dispatch | — | — |
 | **AI advisor knowledge pack** | `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` *(new)* | **F** versioned entry per measure (status + commencement + citation) | (same) | (same) | (same) | (same) |
 | **AI advisor tools** | `lib/ai/tax-advisor/tools/*` | **F** `getReformedTaxRegimeStatus` (Stage 1) | **F** `runReformedCgtScenario`, `runStructuringScenario` (Stage 2) | **F** `getTrustReformImpact` (Stage 2) | **F** `getForeignResidentTarpExposure` (Stage 2) | **F** `getCarryBackEligibility` (Stage 2) |
+| **AI advisor "Reform impact for me" surface** (§10.10) | `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts` + `/dashboard/cfo/ask` prefilled prompt + CFO Guide card CTA | **V** composes per-property regime status into narrative | **V** composes scenarios + regime status; Stage-2 fills in dollar projections | **V** composes trust-type impact; Stage-2 fills in projections | **V** composes foreign-resident exposure | **V** composes carry-back eligibility |
 | **Compliance archive** (Phase 32C 7-yr) | `lib/services/conversationService.ts` | **F** rule-status snapshot per message — citations frozen at the time of advice | (same) | (same) | (same) | (same) |
 | **Adviser drill-in canonical client view** (Phase 32B PR3) | `app/portal/clients/[id]/view/page.tsx` | **R** per-property tax-treatment badge visible to adviser | **R** per-asset CGT regime visible | **R** trust-tax impact visible | **R** foreign-resident exposure visible | **R** carry-back opportunity visible |
 
@@ -666,7 +721,7 @@ Not every surface needs to land in Stage 1. Three buckets:
 
 | Stage | Surfaces (from §12.1 + §12.2) |
 |---|---|
-| **Stage 1 (the foundation PR)** | `getMasterFinancialSnapshot` schema extension; the 5 module skeletons; `taxYearConfig.ts` flags; knowledge pack scaffold; `getReformedTaxRegimeStatus` (1 AI tool); Property detail tax-treatment badge; Entity detail trust-type field; Vehicle detail EV-FBT-phase badge (config-only); Onboarding wizard new fields; CFO Guide one-time card. **No reports, no projections, no scenarios, no practice-portal lens** — those depend on Stage 2 mechanics being live. |
+| **Stage 1 (the foundation PR)** | `getMasterFinancialSnapshot` schema extension; the 5 module skeletons; `taxYearConfig.ts` flags; knowledge pack scaffold; `getReformedTaxRegimeStatus` (1 AI tool); **`getReformImpactSummaryForUser` AI tool (§10.10)** — Stage 1 version returns summary + per-asset regime + Measure 5 carry-back; UNCOMPUTED narration for M1/M2/M3 dollar projections; Property detail tax-treatment badge; Entity detail trust-type field; Vehicle detail EV-FBT-phase badge (config-only); Onboarding wizard new fields; CFO Guide one-time card. **No reports, no projections for M1/M2/M3, no scenarios, no practice-portal lens** — those depend on Stage 2 mechanics being live. |
 | **Stage 2 (per-measure rule mechanic PRs)** | Each measure's full engine mechanic + the AI scenario tools for that measure + the report sections + the practice-portal alerts + the entity-tree / Sankey adjustments. Lands as each exposure draft / Bill ships. |
 | **Stage 3 (Royal Assent flip PRs)** | Knowledge-pack status bumps to `assented`; UI copy strips the "announced — final law TBC" caveats; CFO Guide "law just changed — here's what it means for *your* book" notification card; compliance archive citation refresh. |
 
@@ -695,6 +750,7 @@ Not every surface needs to land in Stage 1. Three buckets:
 | `lib/cfo/*` | health-score components | Audit whether any score factors CGT exposure or negative-gearing reliance. If so, document the reform-induced re-weighting plan (Stage 2). |
 | `lib/portal/alerts/alertEngine.ts` | `computeAlerts` | Stage 1 no-op. Stage 2 adds the 4 new reform-aware triggers per §12.1. |
 | `lib/ai/tax-advisor/tools/*` (all 11 existing tools) | each tool's executor | Audit each tool for whether its facts can change under the reform. If yes, the tool's citations must include the reform-status flag (Stage 2). |
+| `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts` *(new — §10.10)* | tool executor | Stage 1: composes `getReformedTaxRegimeStatus` per asset + Measure 5 carry-back + summary narration from the knowledge pack. Returns UNCOMPUTED for M1/M2/M3 dollar projections until Stage 2 lands. Output schema MUST pass the same HR-1 (numeric-fields trace to tool results) + HR-2 (citations trace to knowledge pack) + D-2 (no recommendation verbs) validator chain. |
 
 ### 13.2 Test fixtures — the regression wall
 
