@@ -666,6 +666,9 @@ function PropertiesPageContent() {
                   expenseCount: property.expenses?.length || 0,
                   depreciationCount: property.depreciationSchedules?.length || 0,
                   totalRentExpense,
+                  // Phase 41E.4 — reform-aware fields for the tax-treatment badge.
+                  acquisitionContractDate: (property as { acquisitionContractDate?: string | null }).acquisitionContractDate ?? null,
+                  isNewBuild: (property as { isNewBuild?: boolean | null }).isNewBuild ?? null,
                 }}
                 metrics={{
                   equity,

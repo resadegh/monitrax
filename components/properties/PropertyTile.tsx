@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { PropertyGlyph } from '@/components/wealth/wealthGlyphs';
+import { TaxTreatmentBadge } from '@/components/wealth/TaxTreatmentBadge';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { HelpTooltip } from '@/components/help/HelpTooltip';
 
@@ -47,6 +48,13 @@ export interface PropertyTileData {
   expenseCount: number;
   depreciationCount: number;
   totalRentExpense?: number; // RENTAL only — annualised
+  // Phase 41E.4 — reform-aware fields for the tax-treatment badge.
+  // All nullable + back-compat: when omitted, the badge falls back to
+  // the conservative regime classification (PRE_REFORM_GRANDFATHERED
+  // for missing contract date when Stage 1 commencement flag is off,
+  // which is the current Stage 1 default).
+  acquisitionContractDate?: string | null;
+  isNewBuild?: boolean | null;
 }
 
 export interface PropertyTileMetrics {
@@ -247,11 +255,20 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
               {property.name}
             </h3>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{property.address || '—'}</p>
-            <span
-              className={`mt-2 inline-flex items-center rounded-full bg-gradient-to-r ${meta.accent} bg-clip-text px-0 text-[10px] font-bold uppercase tracking-[0.14em] text-transparent`}
-            >
-              {meta.label}
-            </span>
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              <span
+                className={`inline-flex items-center rounded-full bg-gradient-to-r ${meta.accent} bg-clip-text px-0 text-[10px] font-bold uppercase tracking-[0.14em] text-transparent`}
+              >
+                {meta.label}
+              </span>
+              {/* Phase 41E.4 — tax-treatment badge (Phase 41E Measures 1 + 2). */}
+              <TaxTreatmentBadge
+                propertyType={property.type}
+                acquisitionContractDate={property.acquisitionContractDate ?? null}
+                isNewBuild={property.isNewBuild ?? null}
+                size="sm"
+              />
+            </div>
           </div>
 
           {/* Hover-reveal action cluster */}
