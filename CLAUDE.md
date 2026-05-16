@@ -1047,6 +1047,104 @@ git diff main --name-only | grep -E "^prisma/(schema\.prisma|migrations/)"
 If `schema.prisma` appears without a new folder under `prisma/migrations/`,
 **STOP and generate the migration before opening the PR**.
 
+### 12.14 Phase 41E reform-awareness (NON-NEGOTIABLE)
+
+> **This section was added 2026-05-16 in response to the eight tax-law
+> changes announced in the 12 May 2026 Federal Budget. The reform
+> changes how every financial calculation in the app behaves for
+> assets acquired after 7:30pm AEST on 12 May 2026 (UTC:
+> `2026-05-12T09:30:00Z`). A function that ignores this is
+> producing wrong numbers — silently — for a growing fraction
+> of users. The discipline below ensures that any future session
+> automatically respects the reform's regime + grandfathering logic.**
+
+**Canonical doc:** `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10–§14.
+
+**Trigger to read it before writing code:** any of the following
+makes the Phase 41E doc a required read.
+
+1. Touching any file under `lib/tax-engine/`
+2. Adding any financial calculation involving CGT, negative gearing,
+   trust distribution, FBT, PAYG, company losses, foreign-resident
+   tax, or CGT cost-base indexation
+3. Adding a column to `Property`, `Investment`, `InvestmentHolding`,
+   `PurchaseLot`, or `LegalEntity`
+4. Adding a new tool to `lib/ai/tax-advisor/tools/`
+5. Adding a new UI surface that displays a per-property,
+   per-investment, or per-entity tax position
+
+#### The five forward-looking rules
+
+| # | Rule | Enforcement |
+|---|---|---|
+| **FW-1** | **Regime is a first-class input.** Any new function taking `Property` / `Investment` / `PurchaseLot` / trust `LegalEntity` and computing a tax-relevant output MUST accept a regime parameter (or derive it from the entity's metadata at function entry). Default `'PRE_REFORM_GRANDFATHERED'` for back-compat. | Reviewer rejects if missing. |
+| **FW-2** | **No silent post-reform numbers.** Any function producing a different number under the reform (CGT, neg gear, trust min tax, FBT, PAYG, carry-back) MUST gate the post-reform branch behind the relevant `commencementVerified` flag in `taxYearConfig.ts` OR return an UNCOMPUTED flag. **Never apply post-reform math before Royal Assent is verified.** | Reviewer rejects if missing. |
+| **FW-3** | **Schema additions consider regime impact.** Every PR adding a column to `Property` / `Investment` / `LegalEntity` MUST answer in the PR body: "does this field interact with the reform's grandfathering logic?" If unsure, ask before merging. | Reviewer rejects if missing. |
+| **FW-4** | **AI advisor tools declare reform-status awareness.** Every new tool in `lib/ai/tax-advisor/tools/` MUST tag its citations with `status: 'announced' | 'exposure-draft' | 'bill' | 'assented'` when the tool's facts could be reform-affected. The knowledge pack `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` is the source of truth. | Reviewer rejects if missing. |
+| **FW-5** | **UI surfaces displaying a per-asset tax position MUST surface the regime.** A property/investment/entity tax-position screen without a regime badge ("Grandfathered" / "Post-reform — new build" / "Post-reform — restricted") is lying by omission. | Reviewer rejects if missing. |
+
+#### PR-template addition
+
+Every PR matching any trigger above MUST include in the PR body:
+
+```markdown
+## Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [ ] Functions/tools added or modified in this PR are listed below.
+- [ ] Each is one of: (a) reform-aware (takes regime/derives from entity),
+      (b) explicitly defaults to PRE_REFORM_GRANDFATHERED with a comment,
+      OR (c) gated behind `commencementVerified` returning UNCOMPUTED.
+- [ ] No existing tax-engine test regressed.
+- [ ] If any new field was added to `Property` / `Investment` /
+      `LegalEntity`, the reform-grandfathering impact is documented.
+
+Functions/tools touched:
+- `path/to/file.ts:functionName` — outcome (a/b/c) — reason: _________
+
+Reform-status awareness (if AI tool added/modified):
+- Tool: ___ — knowledge-pack entry: ___ — status flag: ___
+```
+
+#### Reviewer enforcement
+
+A reviewer (human or Claude in a follow-up session) MUST reject any PR
+that:
+1. Modifies any function listed in `PHASE_41E_REFORM_2026_27.md` §13.1
+   without confirming the FW-1 / FW-2 outcome in the PR template above.
+2. Adds a column to `Property` / `Investment` / `LegalEntity` without
+   the reform-grandfathering impact documented (FW-3).
+3. Adds a new AI tool whose facts could be reform-affected without
+   tagging the knowledge-pack status (FW-4).
+4. Adds a UI surface displaying a per-asset tax position without
+   surfacing the regime badge (FW-5).
+
+#### The cut-over moment (single canonical timestamp)
+
+All grandfathering tests in the engine use exactly one timestamp:
+
+```
+2026-05-12T09:30:00Z  (= 7:30pm AEST on 12 May 2026)
+```
+
+Stored as `REFORM_CUT_OVER_UTC` in
+`lib/tax-engine/config/reformConstants.ts`. AEST is UTC+10
+(daylight-saving ended first Sunday of April — AEDT does not
+apply on 12 May).
+
+#### The eight measures (one-line reminders — full detail in §10 of the Phase 41E doc)
+
+| # | Measure | Commencement | Grandfathering test |
+|---|---|---|---|
+| 1 | Negative gearing → new builds only | 1 Jul 2027 | `Property.acquisitionContractDate > cutOver && !isNewBuild` |
+| 2 | CGT 50% discount → indexation + 30% floor | 1 Jul 2027 | Per-asset `acquisitionContractDate > cutOver` AND disposal FY ≥ 2027-28 |
+| 3 | 30% min tax on discretionary trusts | 1 Jul 2028 | Per-trust `trustType === 'DISCRETIONARY'` (no asset-level grandfathering) |
+| 4 | Foreign-resident CGT (Div 855 + 365-day PAT) | TBC Royal Assent | Per-entity `isForeignResident` + retrospective TARP from 12 Dec 2006 |
+| 5 | Loss refundability (carry-back FY 26-27 onwards) | Current FY | Per-company turnover < $1B + loss this FY + prior 2y tax paid |
+| 6 | Foreign-purchase ban extension | Already law | Foreign resident + established (non-new-build) residential dwelling |
+| 7 | VC incentive caps lifted | 1 Jul 2027 | All VCLP / ESVCLP funds (no grandfathering) |
+| 8 | EV FBT phased transition | 1 Apr 2027 → 1 Apr 2029 | Per-vehicle `firstNovatedDate` retains Phase-1 treatment for life |
+| 9 | Dynamic PAYG (opt-in monthly) | 1 Jul 2027 | Opt-in per business entity (no grandfathering) |
+
 ### 12.13 Before Every Session — Code Quality Checklist
 
 Before writing code, ask yourself:
@@ -1065,6 +1163,7 @@ Before writing code, ask yourself:
 - [ ] Does CDR data access verify active consent? (§13.2)
 - [ ] **Does this PR contain any destructive Prisma write? If yes, did I fill in the §12.11 checklist?**
 - [ ] **If this PR modifies `prisma/schema.prisma`, is there a matching migration file in `prisma/migrations/`? (§12.12)**
+- [ ] **Phase 41E reform-awareness — does this PR match any §12.14 trigger (touching `lib/tax-engine/*`, financial calc, schema column on `Property`/`Investment`/`LegalEntity`, new AI tool, new per-asset tax UI)? If yes, have I read `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10-§14 and included the §12.14 PR-template block?**
 - [ ] **Does this PR change a surface from §16.2 (design / config / infra / identity / deployment / security / runbook / strategic decision)? If yes, is the matching doc in §16.3 updated in the same PR?**
 
 ---

@@ -610,3 +610,159 @@ The architect-mode synthesis had one genuine pull. The **Growth & Marketing Stra
 ---
 
 *If Reza signs off on the staging + the backfill recommendation, the Stage 1 PR opens immediately. The remaining decisions in §11.3 (1-3) can be confirmed at PR review.*
+
+---
+
+## 12. Cross-cutting surface impact matrix — every surface × every measure
+
+> **Why this section exists:** the primary surface per measure is well-covered in §10, but each measure ripples through *secondary* surfaces that consume the engine's output. This matrix is the definitive checklist — every cell is either *unchanged*, a new field, a regime-aware variant, or a brand-new section. An engineer (or a future session) can verify reform completeness by walking the matrix.
+>
+> Cell legend: `—` = no change; **F** = new field/column; **S** = new section/component; **R** = existing surface gains a regime-aware branch (pre/post-reform); **N** = nudge / warning surface; **V** = new view.
+
+### 12.1 Tier 1 measures (touches the calc)
+
+| Surface | File / route | M1 NegGear | M2 CGT | M3 Trust | M4 FR-CGT | M5 LossRefund |
+|---|---|---|---|---|---|---|
+| **`getMasterFinancialSnapshot()`** — the canonical SSOT | `lib/services/masterFinancialService.ts` | **F** per-property regime + aggregate `restrictedLossThisFy` | **F** per-asset regime + `cgtRegime` aggregate | **F** per-trust `trustMinTaxImpact` | **F** per-entity `isForeignResident` + TARP exposure | **F** per-company `carryBackEligible` |
+| **Cashflow forecast** | `lib/calculations/cashflowOrchestrator.ts` | **R** restricted-property after-tax rental yield drops | **R** CGT realisation outflow timing | **R** trust top-up tax outflow FY 2028-29+ | — | **R** carry-back refund inflow timing |
+| **Wealth projection (long-term)** | `lib/services/wealthProjectionService.ts` *(if exists; new if not)* | **R** projection beyond 1 Jul 2027 must apply restricted-loss treatment | **R** projected CGT under indexation regime | **R** trust projections post FY 2028-29 | — | — |
+| **Tax report** | `app/dashboard/reports/tax/page.tsx` | **S** "Negative-gearing regime" grouping | **S** "CGT regime" grouping + grandfathering footnote | **S** "Trust minimum tax" line | **S** "Foreign-resident CGT" line | **S** "Loss carry-back" line |
+| **CGT report** (Phase 23) | `app/dashboard/reports/capital-gains/page.tsx` *(may need creation)* | — | **R** per-disposal regime + indexed-vs-discount comparison | — | **R** TARP-vs-non-TARP split | — |
+| **Property detail dialog** | `components/dashboard/PropertyDetailDialog.tsx` | **S** Tax-treatment badge | **S** CGT regime badge | — | — | — |
+| **Investment detail dialog** | `components/dashboard/InvestmentDetailDialog.tsx` *(or holdings drill-in)* | — | **S** CGT regime badge per `PurchaseLot` | — | — | — |
+| **Entity detail dialog** | `app/dashboard/entities/[id]/page.tsx` | — | — | **S** "Trust minimum tax impact" card + rollover-window timer | **F** Foreign-resident toggle + warning | **S** "Loss carry-back" affordance for COMPANY entities |
+| **Vehicle detail dialog** | (Phase 21 asset detail) | — | — | — | — | — |
+| **Onboarding wizard** | `components/onboarding/wizard/*` | **F** `acquisitionContractDate` + `isNewBuild` for post-cut-over property step | — | **F** `trustType` selector on Entities step (already partial — extends Phase 41b) | **F** `isForeignResident` on Entities step | — |
+| **CFO Guide** | `app/dashboard/cfo/page.tsx` | **S** one-time "Tax rules are changing" calm-tone card | (same card) | (same card) | (same card) | (same card) |
+| **CFO Guide scenarios** | `app/dashboard/cfo/scenarios/*` | **V** "What changes for me under the 2026-27 reforms?" | (same) | (same) | (same) | (same) |
+| **Practice portal / adviser overlay** | `app/portal/dashboard` + `app/portal/clients/[id]/view` | **V** "Affected clients" lens — clients with post-cut-over restricted properties | **V** Same lens — clients with material post-cut-over CGT exposure | **V** Same lens — clients with discretionary trusts | **V** Same lens — foreign-resident clients | **V** Same lens — companies with carry-back eligibility |
+| **Practice portal alerts** | `lib/portal/alerts/alertEngine.ts` | **R** new trigger `REFORM_RESTRICTED_LOSS_DETECTED` (informational only — never recommendation) | **R** new trigger `REFORM_CGT_ROLLOVER_WINDOW_OPEN` | **R** new trigger `TRUST_REFORM_ROLLOVER_WINDOW_OPEN` (1 Jul 2027 – 30 Jun 2030) | — | **R** new trigger `CARRY_BACK_OPPORTUNITY` |
+| **Money Flow Sankey** | `components/wealth/MoneyFlowSankey.tsx` | — | — | **R** trust → beneficiary node flow recomputed post FY 2028-29 (top-up tax becomes a sibling outflow) | — | **R** carry-back creates a new "Tax refund" inflow node for affected companies |
+| **Entity Tree** | `components/wealth/EntityTree.tsx` | — | — | **N** affected discretionary-trust nodes carry a subtle indicator + tooltip | **N** foreign-resident entity nodes carry an indicator | — |
+| **Health Score** | `lib/health/*` | **R** if "negative-gearing reliance" is a component → re-weight for restricted properties | **R** if "CGT exposure" is a component → re-weight under indexation regime | **R** trust-structure score (if exists) re-weights for FY 2028-29+ | — | — |
+| **Document Intelligence / OCR** | `lib/ai/gemini.ts` document extraction | **F** extractor learns to find `acquisitionContractDate` in contract-of-sale uploads | — | **F** trust-deed extractor (Phase 41f.4) already pulls beneficiary types → feeds Measure-3 credit dispatch | — | — |
+| **AI advisor knowledge pack** | `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` *(new)* | **F** versioned entry per measure (status + commencement + citation) | (same) | (same) | (same) | (same) |
+| **AI advisor tools** | `lib/ai/tax-advisor/tools/*` | **F** `getReformedTaxRegimeStatus` (Stage 1) | **F** `runReformedCgtScenario`, `runStructuringScenario` (Stage 2) | **F** `getTrustReformImpact` (Stage 2) | **F** `getForeignResidentTarpExposure` (Stage 2) | **F** `getCarryBackEligibility` (Stage 2) |
+| **Compliance archive** (Phase 32C 7-yr) | `lib/services/conversationService.ts` | **F** rule-status snapshot per message — citations frozen at the time of advice | (same) | (same) | (same) | (same) |
+| **Adviser drill-in canonical client view** (Phase 32B PR3) | `app/portal/clients/[id]/view/page.tsx` | **R** per-property tax-treatment badge visible to adviser | **R** per-asset CGT regime visible | **R** trust-tax impact visible | **R** foreign-resident exposure visible | **R** carry-back opportunity visible |
+
+### 12.2 Tier 2 + Tier 3 measures (advisor + config, no calc engine)
+
+| Surface | File / route | M6 ForeignBan | M7 VC caps | M8 EV FBT | M9 PAYG |
+|---|---|---|---|---|---|
+| **Property purchase wizard** | onboarding + add-property modal | **N** foreign-resident + established dwelling → warning, no-block | — | — | — |
+| **Investment dialog** | investment add/edit | — | **N** VC fund tagged → updated cap awareness in tooltip | — | — |
+| **Vehicle detail dialog** | asset detail | — | — | **S** per-FY FBT phase badge + the `firstNovatedDate` field for the "novated in Phase 1 → retains Phase 1 treatment" rule | — |
+| **FBT calc / report** | `lib/tax-engine/fbt/*` *(if shipped)* | — | — | **R** per-FY exemption tier table dispatch | — |
+| **Cashflow forecast** | `lib/calculations/cashflowOrchestrator.ts` | — | — | **R** salary-sacrificed-EV per-FY cash impact | **R** PAYG cadence option (monthly vs quarterly) |
+| **Business entity settings** | entity-detail settings | — | — | — | **F** `paygCadence` toggle (per CLAUDE.md §14 — surface as option, never auto-apply) |
+| **AI advisor knowledge pack** | `lib/ai/tax-advisor/knowledge/reform-2026-27.ts` | **F** entry | **F** entry | **F** entry | **F** entry |
+| **AI advisor tools** | `lib/ai/tax-advisor/tools/*` | **F** `getForeignPurchaseEligibility` | **F** `getVcCapStatus` (low priority) | **F** `getEvFbtRegime(vehicleId, fy)` | **F** `getPaygCadenceProjection` (low priority) |
+| **Tax year config** | `lib/tax-engine/config/taxYearConfig.ts` | — | **F** `vclpInvesteeAssetCap`, `esvclpInvesteeAssetCap`, `esvclpTotalCap` per FY | **F** EV-FBT phase tiers per FY | **F** `paygCadence` per FY |
+
+### 12.3 Stage gating per surface
+
+Not every surface needs to land in Stage 1. Three buckets:
+
+| Stage | Surfaces (from §12.1 + §12.2) |
+|---|---|
+| **Stage 1 (the foundation PR)** | `getMasterFinancialSnapshot` schema extension; the 5 module skeletons; `taxYearConfig.ts` flags; knowledge pack scaffold; `getReformedTaxRegimeStatus` (1 AI tool); Property detail tax-treatment badge; Entity detail trust-type field; Vehicle detail EV-FBT-phase badge (config-only); Onboarding wizard new fields; CFO Guide one-time card. **No reports, no projections, no scenarios, no practice-portal lens** — those depend on Stage 2 mechanics being live. |
+| **Stage 2 (per-measure rule mechanic PRs)** | Each measure's full engine mechanic + the AI scenario tools for that measure + the report sections + the practice-portal alerts + the entity-tree / Sankey adjustments. Lands as each exposure draft / Bill ships. |
+| **Stage 3 (Royal Assent flip PRs)** | Knowledge-pack status bumps to `assented`; UI copy strips the "announced — final law TBC" caveats; CFO Guide "law just changed — here's what it means for *your* book" notification card; compliance archive citation refresh. |
+
+---
+
+## 13. Stage 1 self-check — the discipline (audit existing functions for reform-awareness)
+
+> **Before opening the Stage 1 PR, walk every function in this list and confirm one of three outcomes: (a) the function is reform-aware (takes regime as input), or (b) the function defaults to PRE_REFORM_GRANDFATHERED behaviour with a code comment naming the regime assumption, or (c) the function is gated behind a `commencementVerified` flag in `taxYearConfig.ts` so it returns UNCOMPUTED until reform activates.**
+>
+> The rule: **no function that touches a CGT calculation, a negative-gearing calculation, a trust-distribution calculation, a company-loss calculation, an FBT calculation, or a PAYG-instalment calculation can stay silent on the reform.** Either it's regime-aware, or it explicitly defaults to grandfathered with a comment.
+
+### 13.1 Functions to audit (Stage 1 reviewer checklist)
+
+| File | Function | Required outcome |
+|---|---|---|
+| `lib/tax-engine/divisions/negativeGearing.ts` | `applyNegativeGearing` | Add `regime: NegativeGearingRegime` parameter. Default `PRE_REFORM_GRANDFATHERED` for back-compat. |
+| `lib/tax-engine/divisions/cgtDiscount.ts` | `calculateCgtDiscount` + `getCgtDiscountRate` | Add regime guard at function top: when `cgtIndexationCommencementVerified && acquisitionContractDate > cutOver && disposalFy >= '2027-28'` → return `{ discountRate: 0, reason: 'POST_REFORM' }` and route caller through `cgtIndexation` + `cgtMinimumRate`. |
+| `lib/tax-engine/divisions/negativeGearing.ts` | `entityCanOffsetLossesCurrentFy` | Add overload that takes regime; existing call sites without regime get back-compat behaviour. |
+| `lib/tax-engine/divisions/capitalLossNetting.ts` | `applyCapitalLossNetting` | Audit whether loss netting order changes under indexation regime (§3 M2 Q5 open). Until exposure draft, surface UNCOMPUTED for post-reform disposals. |
+| `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` | all functions | Audit interaction with indexation regime (§3 M2 Q6 open). Default: SBC stacks atop the new regime; flag UNCOMPUTED until confirmed. |
+| `lib/tax-engine/divisions/trustDistribution.ts` | all functions | Audit for Measure-3 dispatch path. Stage 1 reads `LegalEntity.trustType`; post FY 2028-29 triggers the `trustMinimumTax` consumer. |
+| `lib/tax-engine/divisions/companyLossRules.ts` | all functions | Audit for Measure-5 carry-back integration. Stage 1: no change; Stage 2: carry-back module reads from here. |
+| `lib/tax-engine/orchestrator/masterTaxPosition.ts` | `computeMasterTaxPosition` | Confirm dispatch picks up new modules (`cgtIndexation`, `cgtMinimumRate`, `trustMinimumTax`, `foreignResidentCgt`, `lossRefundability`) without orchestrator-shape change. New `regime` per asset flows through aggregator. |
+| `lib/calculations/cashflowOrchestrator.ts` | `calculateCashflow` + sub-functions | Stage 1 no-op (Stage 2 wires carry-back refund timing + PAYG cadence). Add a comment noting "Phase 41E reform measures may alter cashflow post-2027 — see PHASE_41E_REFORM_2026_27.md §12.1." |
+| `lib/services/masterFinancialService.ts` | `getMasterFinancialSnapshot` | Extend the per-property + per-entity snapshot shape with regime fields. Existing consumers see no behaviour change (regime is additive). |
+| `lib/cfo/*` | health-score components | Audit whether any score factors CGT exposure or negative-gearing reliance. If so, document the reform-induced re-weighting plan (Stage 2). |
+| `lib/portal/alerts/alertEngine.ts` | `computeAlerts` | Stage 1 no-op. Stage 2 adds the 4 new reform-aware triggers per §12.1. |
+| `lib/ai/tax-advisor/tools/*` (all 11 existing tools) | each tool's executor | Audit each tool for whether its facts can change under the reform. If yes, the tool's citations must include the reform-status flag (Stage 2). |
+
+### 13.2 Test fixtures — the regression wall
+
+The single most-important Stage 1 acceptance criterion: **every existing tax-engine test stays green.** The reform adds capability; it does not change today's behaviour. If a Phase 41e fixture flips from PASS to FAIL during the Stage 1 PR, the change is wrong. Hard rule:
+
+```bash
+# Stage 1 PR cannot merge until:
+npm test -- lib/tax-engine
+# returns: 0 failed, ≥ existing-count passed
+```
+
+In addition, the Stage 1 PR adds a **new test suite** `lib/tax-engine/__tests__/reform-2026-27/` with:
+- Per-measure regime-derivation tests (the boundary day — 12 May 2026 contract date — must classify correctly to the second).
+- Per-module UNCOMPUTED-flag tests (each new module returns the expected `UC-*-PENDING-*` until its `commencementVerified` flag flips).
+- A round-trip test that flips each flag → confirms the module activates → flips it back → confirms it deactivates. The activation pathway must be reversible.
+
+---
+
+## 14. Forward-looking discipline — every future build must inherit reform-awareness
+
+> **This section exists because future sessions may not read this Phase doc.** The discipline below ensures that any future engineer (or future Claude session) building on the tax engine, the financial snapshot, the AI advisor, or the entity layer automatically respects the reform's regime + grandfathering logic — not because they remember to, but because the architecture forces them to.
+
+### 14.1 The five forward-looking rules
+
+**FW-1 — Regime is a first-class input.** Any new function that takes a `Property`, an `Investment`, a `PurchaseLot`, or a `LegalEntity` (where the entity is a trust) and computes a tax-relevant output MUST accept a regime parameter (or derive it from the entity's metadata at function entry). Default value, where applicable: `'PRE_REFORM_GRANDFATHERED'` — back-compat preserved.
+
+**FW-2 — No silent post-reform numbers.** Any function that could produce a *different* number under the reform (CGT, negative gearing, trust minimum tax, FBT, PAYG, carry-back) MUST either gate the post-reform branch behind the relevant `commencementVerified` flag in `taxYearConfig.ts` OR return an UNCOMPUTED flag. **Never silently apply post-reform math before Royal Assent is verified.**
+
+**FW-3 — Schema additions to `Property` / `Investment` / `LegalEntity` consider regime impact.** Every PR that adds a column to these models MUST answer: "does this field interact with the reform's grandfathering logic?" If yes, the PR description must list the answer. If unsure, ask before merging.
+
+**FW-4 — AI advisor tools declare their reform-status awareness.** Every new tool in `lib/ai/tax-advisor/tools/` MUST tag its citations with the relevant reform `status: 'announced' | 'exposure-draft' | 'bill' | 'assented'` field when the tool's facts could be affected by the reform. The knowledge pack is the source of truth.
+
+**FW-5 — UI surfaces that display a property / investment / entity tax position MUST surface the regime.** A property detail screen that shows a CGT estimate without naming the regime ("Grandfathered" / "Post-reform — new build" / "Post-reform — restricted") is a CLAUDE.md §16 doc-sync failure: the surface is lying by omission about which rules its numbers are computed under.
+
+### 14.2 PR-template addition (every PR that touches the tax engine, financial snapshot, AI advisor, or entity layer)
+
+```markdown
+## Phase 41E reform compliance (CLAUDE.md §12.14 / PHASE_41E_REFORM_2026_27.md §14)
+
+- [ ] Functions/tools added or modified in this PR are listed below.
+- [ ] Each is one of: (a) reform-aware (takes regime/derives from entity), (b) explicitly defaults to PRE_REFORM_GRANDFATHERED with a comment, or (c) gated behind `commencementVerified` returning UNCOMPUTED.
+- [ ] No existing tax-engine test regressed.
+- [ ] If any new field was added to `Property` / `Investment` / `LegalEntity`, the reform-grandfathering impact is documented in the PR body.
+
+Functions/tools touched:
+- `path/to/file.ts:functionName` — outcome (a/b/c) — reason: ___________
+
+Reform-status awareness (if AI tool added/modified):
+- Tool: ___________ — knowledge-pack entry: ___________ — status flag: ___________
+```
+
+### 14.3 Reviewer enforcement
+
+A reviewer (human or Claude in a follow-up session) MUST reject any PR that:
+1. Modifies any function in §13.1 above without confirming the §14.2 PR template.
+2. Adds a column to `Property` / `Investment` / `LegalEntity` without the reform-grandfathering impact documented.
+3. Adds a new AI tool whose facts could be reform-affected without tagging the knowledge-pack status.
+4. Adds a UI surface that displays a per-property / per-asset tax position without surfacing the regime badge.
+
+### 14.4 Pointer for future Claude sessions
+
+If you are a future Claude session reading the codebase and you are about to:
+- Touch any file under `lib/tax-engine/`, OR
+- Add a financial calculation that involves CGT, negative gearing, trust distribution, FBT, PAYG, or company losses, OR
+- Add a column to `Property` / `Investment` / `LegalEntity`, OR
+- Add a new AI advisor tool, OR
+- Build a new property/investment/entity-detail UI surface,
+
+…**STOP and read** `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §10-§14 before writing code. The reform changes how every financial calculation in the app behaves for assets acquired after 7:30pm AEST on 12 May 2026 (UTC: `2026-05-12T09:30:00Z`). A function that ignores this is producing wrong numbers — silently — for a growing fraction of users.
+
+CLAUDE.md §12.14 (added by this PR) enforces this at the project level so it survives across sessions.
