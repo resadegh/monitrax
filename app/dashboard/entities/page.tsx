@@ -132,7 +132,38 @@ interface Entity {
   parentEntityId: string | null;
   parentEntityName: string | null;
   ownedObjectsCount: OwnedObjectsCount;
+  // Phase 41E.4 — reform-aware fields (Measure 3 + Measure 4 inputs).
+  trustType?: TrustTypeValue | null;
+  isForeignResident?: boolean | null;
 }
+
+// Phase 41E.4 — closed enum mirrors Prisma's `TrustType`.
+type TrustTypeValue =
+  | 'DISCRETIONARY'
+  | 'FIXED'
+  | 'UNIT'
+  | 'TESTAMENTARY_FIXED'
+  | 'CHARITABLE'
+  | 'DECEASED_ESTATE'
+  | 'SPECIAL_DISABILITY'
+  | 'OTHER';
+
+const TRUST_TYPE_OPTIONS: ReadonlyArray<{ value: TrustTypeValue; label: string }> = [
+  { value: 'DISCRETIONARY', label: 'Discretionary trust (family trust)' },
+  { value: 'FIXED', label: 'Fixed trust' },
+  { value: 'UNIT', label: 'Unit trust' },
+  { value: 'TESTAMENTARY_FIXED', label: 'Testamentary fixed trust' },
+  { value: 'CHARITABLE', label: 'Charitable trust' },
+  { value: 'DECEASED_ESTATE', label: 'Deceased estate' },
+  { value: 'SPECIAL_DISABILITY', label: 'Special disability trust' },
+  { value: 'OTHER', label: 'Other / unsure' },
+];
+
+// Trust subtype only relevant when entity.type is one of these.
+const TRUST_ENTITY_TYPES: ReadonlyArray<LegalEntityType> = [
+  'DISCRETIONARY_TRUST',
+  'UNIT_TRUST',
+];
 
 interface FormState {
   name: string;
@@ -146,6 +177,9 @@ interface FormState {
   collectsTfn: boolean;
   tfn: string;
   tfnTouched: boolean;   // true once user has typed in the TFN field on edit (otherwise PUT keeps the existing value)
+  // Phase 41E.4 — Measure 3 + Measure 4 inputs.
+  trustType: TrustTypeValue | '';  // '' = unset
+  isForeignResident: boolean;
 }
 
 const TYPES: LegalEntityType[] = [
@@ -214,6 +248,11 @@ function emptyForm(): FormState {
     collectsTfn: false,
     tfn: '',
     tfnTouched: false,
+    // Phase 41E.4 — pre-select DISCRETIONARY for new discretionary
+    // trusts (the default `type` above) so the form is opinionated
+    // about the most common case. User can change it.
+    trustType: 'DISCRETIONARY',
+    isForeignResident: false,
   };
 }
 
@@ -230,6 +269,10 @@ function formFromEntity(e: Entity): FormState {
     collectsTfn: e.hasTfn,
     tfn: '',
     tfnTouched: false,
+    // Phase 41E.4 — reform fields. Default OTHER for trusts without a
+    // confirmed subtype, false for foreign-resident when unset.
+    trustType: e.trustType ?? (TRUST_ENTITY_TYPES.includes(e.type) ? 'OTHER' : ''),
+    isForeignResident: e.isForeignResident ?? false,
   };
 }
 
@@ -466,7 +509,13 @@ export default function EntitiesPage() {
         establishedDate: string | null;
         parentEntityId: string | null;
         tfn?: string | null;
+        // Phase 41E.4 — reform-aware fields. Always sent (so the user
+        // can also CLEAR the trustType by selecting the empty option,
+        // which sends null per the PUT route).
+        trustType: TrustTypeValue | null;
+        isForeignResident: boolean;
       };
+      const isTrustEntity = TRUST_ENTITY_TYPES.includes(form.type);
       const payload: Payload = {
         name: form.name.trim(),
         type: form.type,
@@ -476,6 +525,10 @@ export default function EntitiesPage() {
         tradingName: form.tradingName.trim() || null,
         establishedDate: form.establishedDate || null,
         parentEntityId: form.parentEntityId || null,
+        // Only send trustType when the entity type is a trust. For
+        // non-trust types we send null to clear any stale value.
+        trustType: isTrustEntity && form.trustType ? form.trustType : null,
+        isForeignResident: form.isForeignResident,
       };
       if (isEdit) {
         if (form.tfnTouched) {
@@ -858,6 +911,58 @@ export default function EntitiesPage() {
                 )}
               </div>
             )}
+
+            {/*
+             * Phase 41E.4 — Measure 3 input. Only relevant for trust entities.
+             * For non-trust types, payload sends null (clears any stale value).
+             */}
+            {TRUST_ENTITY_TYPES.includes(form.type) && (
+              <div>
+                <Label htmlFor="page-entity-trust-type">Trust subtype</Label>
+                <Select
+                  value={form.trustType || 'OTHER'}
+                  onValueChange={(v) => setForm({ ...form, trustType: v as TrustTypeValue })}
+                >
+                  <SelectTrigger id="page-entity-trust-type">
+                    <SelectValue placeholder="Select trust subtype" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TRUST_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {form.trustType === 'DISCRETIONARY' && (
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    Phase 41E Measure 3 — discretionary trusts will pay a 30% minimum tax on trust taxable income from FY 2028-29.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/*
+             * Phase 41E.4 — Measure 4 input. Always available; default false.
+             * Drives Div 855 TARP + 365-day Principal Asset Test when on.
+             */}
+            <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700/50 dark:bg-slate-900/60">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <Label htmlFor="page-entity-foreign-resident" className="block">
+                    Foreign-resident entity
+                  </Label>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    Drives Phase 41E Measure 4 (Div 855 expansion) when on.
+                  </p>
+                </div>
+                <Switch
+                  id="page-entity-foreign-resident"
+                  checked={form.isForeignResident}
+                  onCheckedChange={(checked) => setForm({ ...form, isForeignResident: checked })}
+                />
+              </div>
+            </div>
 
             {applicable.tfn && (
               <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-3 dark:border-slate-700/50 dark:bg-slate-900/60">

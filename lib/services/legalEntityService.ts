@@ -17,7 +17,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { Prisma, PrismaClient, LegalEntityType, LegalEntityRole } from '@prisma/client';
+import type { Prisma, PrismaClient, LegalEntityType, LegalEntityRole, TrustType } from '@prisma/client';
 import { encryptTfn } from '@/lib/security/tfnEncryption';
 
 type PrismaTxOrClient = PrismaClient | Prisma.TransactionClient;
@@ -219,6 +219,11 @@ export interface LegalEntitySummary {
   establishedDate: Date | null;
   parentEntityId: string | null;
   parentEntityName: string | null;
+  // Phase 41E.4 — reform-aware fields. Both nullable; the entity
+  // edit UI reads these to pre-populate the trustType selector +
+  // foreign-resident toggle.
+  trustType: TrustType | null;
+  isForeignResident: boolean | null;
   createdAt: Date;
   updatedAt: Date;
   ownedObjectsCount: {
@@ -258,6 +263,10 @@ export async function listEntitiesForUser(
       establishedDate: true,
       parentEntityId: true,
       parentEntity: { select: { name: true } },
+      // Phase 41E.4 — surface reform-aware fields so the entity edit
+      // form can show the user's current trustType + isForeignResident.
+      trustType: true,
+      isForeignResident: true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -287,6 +296,9 @@ export async function listEntitiesForUser(
     establishedDate: e.establishedDate,
     parentEntityId: e.parentEntityId,
     parentEntityName: e.parentEntity?.name ?? null,
+    // Phase 41E.4 — surface reform fields on the summary.
+    trustType: e.trustType,
+    isForeignResident: e.isForeignResident,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     ownedObjectsCount: {

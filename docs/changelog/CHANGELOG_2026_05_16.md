@@ -565,4 +565,96 @@ Functions/tools touched:
 ### PR
 
 - Branch: `claude/phase-41e-3-ui-surfaces-MG8mr`
+- Status: **Merged 2026-05-16 (PR #767)** — UI surfaces shipped to main.
+
+---
+
+## Session 6: Phase 41E.4 — Entity form UI + PropertyTile badge wiring
+
+Branch: `claude/phase-41e-4-onboarding-entity-ui-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 41E.4 — consume 41E.3's surfaces in the existing entity edit form + properties page).
+- **Scope:** UI plumbing. Extends `PropertyTile` with reform-aware fields + renders the badge inline; extends entity edit form with trust-subtype selector + foreign-resident toggle; extends `LegalEntitySummary` so the form receives the persisted values.
+- **CDR scope:** N/A — UI plumbing only. Reform fields are tax classification metadata (not CDR transactions).
+- **Reform compliance (CLAUDE.md §12.14):** FW-5 reinforced — every property tile now surfaces its regime via `<TaxTreatmentBadge>`. FW-3 inherited from 41E.0 (no new schema). FW-1 / FW-2 / D-2 inherited from earlier sub-PRs (form just persists what the user enters).
+- **Re-scoped:** Wizard step extensions (`PropertiesStep` + `EntitiesStep`) moved to 41E.5 alongside docs consolidation. Cleaner separation — UI form-work in this PR, wizard + docs in the final 41E.5.
+
+### What was done
+
+#### Extended files
+
+| File | Change |
+|---|---|
+| `components/properties/PropertyTile.tsx` | `PropertyTileData` gains `acquisitionContractDate?: string \| null` + `isNewBuild?: boolean \| null` (both optional + back-compat). Renders `<TaxTreatmentBadge size="sm">` inline next to the property-type chip. New import for `TaxTreatmentBadge`. |
+| `app/dashboard/properties/page.tsx` | Passes the new fields through from the Prisma response. No API change — `findMany` with `include` already returns all `Property` columns. Cast through optional type guard for the loose response type. |
+| `app/dashboard/entities/page.tsx` | New `TrustTypeValue` closed enum (mirrors Prisma's `TrustType`) + `TRUST_TYPE_OPTIONS` constant (8 labelled options) + `TRUST_ENTITY_TYPES` constant. `Entity` interface gains `trustType?` + `isForeignResident?`. `FormState` gains `trustType: TrustTypeValue \| ''` + `isForeignResident: boolean`. Form pre-populates from `LegalEntitySummary`; `emptyForm()` defaults to `'DISCRETIONARY'` (matches the default `type` of `DISCRETIONARY_TRUST`). New form UI: trust-subtype `<Select>` (conditional on `type === DISCRETIONARY_TRUST \| UNIT_TRUST`) + foreign-resident `<Switch>` (always available). Payload always sends `trustType` (null when not a trust type or unset) + `isForeignResident` (boolean). |
+| `lib/services/legalEntityService.ts` | `LegalEntitySummary` gains `trustType: TrustType \| null` + `isForeignResident: boolean \| null`. `listEntitiesForUser` `select` includes the two new columns. Mapper passes them through. New `TrustType` import from `@prisma/client`. |
+
+#### Tests
+
+No new tests in this sub-PR. The new UI is a thin form + presentational layer over already-tested primitives:
+- `<TaxTreatmentBadge>` itself is covered by `tests/components/TaxTreatmentBadge.test.tsx` (41E.3, 10 tests including FW-2 wall at the UI layer).
+- The entity API contract (`trustType` + `isForeignResident` on the PUT payload) is covered by `tests/legalEntityService/reformFields.test.ts` (41E.3, 4 type-level tests).
+
+Page-level wiring + form integration is verifiable by Vercel preview manual smoke + the existing tests transitively pass via the back-compat defaults.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `components/properties/PropertyTile.tsx` | +13 lines — `PropertyTileData` extension + import + inline render |
+| `app/dashboard/properties/page.tsx` | +3 lines — field pass-through |
+| `app/dashboard/entities/page.tsx` | +105 lines — `TrustTypeValue` enum + form state + UI inputs + payload extension |
+| `lib/services/legalEntityService.ts` | +14 lines — `LegalEntitySummary` extension + `select` + mapping + `TrustType` import |
+| `docs/IMPLEMENTATION_PLAN.md` | Workstream §7 sub-PR checklist — 41E.4 status flip + scope re-explanation; top header refresh |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | This Session 6 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — `PropertyTile` extended with the badge render. Same `<TaxTreatmentBadge>` primitive from 41E.3 (no new visual primitive — re-use of the canonical one).
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 + top header refresh + scope re-explanation.
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 6 entry (this).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No Prisma writes, no schema change, no migration. Confirmed via:
+
+```bash
+git diff origin/main...HEAD --unified=0 | grep -E "prisma\.[a-zA-Z]+\.(update|upsert|delete|updateMany|deleteMany)\(|\\\$executeRaw"
+# (no matches)
+```
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] FW-5 reinforced — every property tile on `/dashboard/properties` now surfaces its regime via `<TaxTreatmentBadge>`. Stage 1 default (commencement flag false everywhere) renders "Grandfathered" for every property — FW-2 wall preserved at the UI layer through the badge's pure composition of `deriveNegativeGearingRegime`.
+- [x] FW-3 inherited (no new schema columns).
+- [x] FW-1 / FW-2 / D-2 inherited from earlier sub-PRs (no new engine functions, no new AI tools, no recommendation surfaces).
+
+Functions/tools touched:
+- `components/properties/PropertyTile.tsx:PropertyTile` — outcome (a) reform-aware (consumes 41E.3's `<TaxTreatmentBadge>` which itself consumes 41E.1's classifier).
+- `app/dashboard/entities/page.tsx:EntitiesPage` form — outcome (a) reform-aware (collects + persists the Measure 3 + Measure 4 inputs).
+- `lib/services/legalEntityService.ts:listEntitiesForUser` — outcome (a) reform-aware (surfaces the new fields on the summary).
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+- [x] No new tests required — all new code is form/presentational composition over already-tested primitives.
+
+**Per CLAUDE.md §11.2:** Vercel preview build runs TypeScript + the full test suite on PR push.
+
+### PR
+
+- Branch: `claude/phase-41e-4-onboarding-entity-ui-MG8mr`
 - Status: Open
