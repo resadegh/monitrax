@@ -93,6 +93,35 @@ New `41E reform 2026-27` row in the Planned/Design table — 🟡 Design status,
   - `lib/tax-engine/super/highIncomeSuperTax.ts` — `div296CommencementVerified` pattern verified ✅
   - `lib/tax-engine/divisions/cgtDiscount.ts` — Subdiv 115-D UNCOMPUTED flag verified (no `foreignCgtWithholding.ts` exists — corrected in the doc) ✅
 
+### Follow-up commits in same PR
+
+After Reza's directive — *"go through the tax engine documents and design and create a new phase to update the laws and engine and the app according to the new laws and regulations where needed. Consider the timing as well"* + *"are they factored in all relevant areas of the app?"* + *"add instructions for yourself to double check all functions ... any future builds should reflect the same"* — two follow-up commits deepened the Phase 41E doc and added matching project-level governance:
+
+**Commit f2b7bd6 — `docs(phase-41e): deepen with §10 per-measure timing logic + §11 risks`**
+- §4.2 schema section tightened: explicit canonical UTC cut-over timestamp (`2026-05-12T09:30:00Z`) stored in new `lib/tax-engine/config/reformConstants.ts`; `acquisitionContractDate` separated from existing `Property.purchaseDate`; one-time backfill rules with safe boundary (write only when `purchaseDate < cutOver`).
+- **§10 NEW (~290 lines)** — per-measure implementation spec with timing logic. One subsection per measure (10.1–10.9). Each pins: commencement date + grandfathering test + asset/entity scope + the actual mechanic + the code path (with TypeScript signature for the `deriveNegativeGearingRegime` helper) + the schema fields needed + the UNCOMPUTED flag code + Stage 1 vs Stage 2 split + test fixtures.
+- **§11 NEW** — risks (7 load-bearing risks named with per-lens mitigation) + load-bearing dissent (architect overruled growth-marketing's urgency framing) + extended decision points.
+- Grounded in deep reads of: `lib/tax-engine/divisions/negativeGearing.ts`, `cgtDiscount.ts`, `config/taxYearConfig.ts`, `super/highIncomeSuperTax.ts` (the canonical `commencementVerified` pattern), `prisma/schema.prisma` Property/LegalEntity/InvestmentHolding/PurchaseLot models. Confirmed `purchaseDate` is the existing column → `acquisitionContractDate` adds separately. Confirmed `commencementVerified` boolean-flag pattern is proven in 41e.3 Div 296.
+
+**Commit af7de68 — `docs(phase-41e): §12 cross-cutting matrix + §13 audit + §14 forward discipline + CLAUDE.md §12.14`**
+- **§12 NEW** — Cross-cutting surface impact matrix. Two tables (§12.1 Tier 1 engine-touching, §12.2 Tier 2/3 advisor + config). 20 surfaces × 9 measures, cell-coded (F = new field, S = new section, R = regime-aware variant, N = nudge/warning, V = new view, — = no change). Closes the gap Reza spotted: §10 covered primary surfaces but not secondary consumers (reports, cashflow forecast, wealth projection, practice portal, Money Flow Sankey, Entity Tree, Health Score, Document Intelligence OCR, knowledge pack, compliance archive). §12.3 stages each surface (Stage 1 / 2 / 3).
+- **§13 NEW** — Stage 1 self-check. Audit table of 12 existing tax-engine functions every Stage 1 reviewer must walk before merging, with required outcome per function (regime-aware / back-compat default / UNCOMPUTED gate). Plus the regression wall: every existing tax-engine test must stay green.
+- **§14 NEW** — Forward-looking discipline. Five FW rules (FW-1 to FW-5) every future build inherits: regime is a first-class input / no silent post-reform numbers / schema additions consider regime impact / AI tools declare reform-status awareness / UI surfaces displaying per-asset tax position surface the regime. Plus a PR-template addition + reviewer-enforcement clause + explicit pointer for future Claude sessions.
+- **CLAUDE.md §12.14 NEW (NON-NEGOTIABLE)** — same five FW rules at the project level so the discipline survives across sessions even when a future engineer doesn't read the Phase 41E doc directly. Includes the canonical UTC cut-over timestamp + per-measure one-line reminder table + the trigger list ("if you're about to do X, read Phase 41E first") + the matching PR-template block + reviewer enforcement.
+- **CLAUDE.md §12.13** pre-write checklist gains the new Phase 41E reform-awareness gate (alongside the existing §12.11 destructive-write + §12.12 schema-migration gates).
+- **`docs/IMPLEMENTATION_PLAN.md`** — Q-AI-PROVIDER closed (Reza decision 2026-05-16: keep Gemini default; provider-agnostic architecture preserved so a future flip is still a one-file change); workstream §7 status updated to spec-complete; decision-points checklist replaced with the 5-point summary delivered in chat.
+
+### Final files touched (across all 3 commits)
+
+| File | Change |
+|---|---|
+| `docs/blueprint/PHASE_41E_REFORM_2026_27.md` | NEW — 14 sections, 768 lines (design + per-measure spec + risks + cross-cutting matrix + audit + forward discipline) |
+| `docs/architecture/AI_PROVIDER_STRATEGY.md` | NEW — 8 sections, ~196 lines (Gemini-vs-Claude analysis) |
+| `CLAUDE.md` | +99 lines — new §12.14 (NON-NEGOTIABLE) Phase 41E reform-awareness rule + §12.13 checklist gate |
+| `docs/IMPLEMENTATION_PLAN.md` | +61 lines — new workstream §7 + Q-AI-PROVIDER closure + top header refresh + 5-point summary |
+| `docs/blueprint/MASTER_BLUEPRINT.md` | +1 line — new `41E reform 2026-27` row in §4 Planned table |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | NEW — this file |
+
 ### Doc-sync (CLAUDE.md §16)
 
 Surfaces changed in this PR:
@@ -103,14 +132,15 @@ Surfaces changed in this PR:
 - [ ] deployment / build
 - [ ] security / CDR posture
 - [ ] operational procedure (new failure mode / diagnostic / lesson)
-- [x] **strategic decision** (Open Question added: Q-AI-PROVIDER; new Phase 41E workstream added)
+- [x] **strategic decision** (Q-AI-PROVIDER opened then closed same-day; new Phase 41E reform workstream added; new CLAUDE.md §12.14 NON-NEGOTIABLE governance rule added for forward enforcement)
 
 Docs updated in this PR:
-- `docs/blueprint/PHASE_41E_REFORM_2026_27.md` — NEW design doc for the eight tax-law reforms
-- `docs/architecture/AI_PROVIDER_STRATEGY.md` — NEW provider-strategy doc
-- `docs/IMPLEMENTATION_PLAN.md` — new Active Workstream §7 + new Q-AI-PROVIDER + new Recently Completed entry + top header refresh
-- `docs/blueprint/MASTER_BLUEPRINT.md` — new `41E reform 2026-27` row in Planned table
-- `docs/changelog/CHANGELOG_2026_05_16.md` — this file
+- `docs/blueprint/PHASE_41E_REFORM_2026_27.md` — NEW 14-section design doc (§1-§14) for the eight tax-law reforms incl. per-measure timing logic, cross-cutting matrix, Stage 1 audit, forward discipline
+- `docs/architecture/AI_PROVIDER_STRATEGY.md` — NEW provider-strategy doc (Gemini-vs-Claude analysis grounded in actual provider architecture)
+- `CLAUDE.md` — NEW §12.14 (NON-NEGOTIABLE) Phase 41E reform-awareness rule (FW-1 to FW-5) + §12.13 pre-write checklist gate
+- `docs/IMPLEMENTATION_PLAN.md` — new Active Workstream §7 + Q-AI-PROVIDER opened then closed same-session (Reza decision: keep Gemini) + new Recently Completed entry + top header refresh + decision-points 5-point summary
+- `docs/blueprint/MASTER_BLUEPRINT.md` — new `41E reform 2026-27` row in §4 Planned table
+- `docs/changelog/CHANGELOG_2026_05_16.md` — this file (covers all 3 commits)
 
 ### PR
 
