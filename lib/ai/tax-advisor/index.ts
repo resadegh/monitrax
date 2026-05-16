@@ -29,6 +29,8 @@ import { runCgtScenarioTool } from './tools/runCgtScenario';
 import { runLandTaxScenarioTool } from './tools/runLandTaxScenario';
 import { runDiv7aRefinanceScenarioTool } from './tools/runDiv7aRefinanceScenario';
 import { getTrustDeedRulesTool } from './tools/getTrustDeedRules';
+import { getReformedTaxRegimeStatusTool } from './tools/getReformedTaxRegimeStatus';
+import { getReformImpactSummaryForUserTool } from './tools/getReformImpactSummaryForUser';
 
 import type { TaxAdvisorTool } from './types';
 
@@ -42,6 +44,10 @@ import type { TaxAdvisorTool } from './types';
  * Phase 41f.4-extension expands to 11 (FACT_LOOKUP × 7 + SCENARIO_RUN × 4)
  *   — adds `getTrustDeedRules` so the advisor can narrate trust-deed
  *   structure for trust entities with a CONFIRMED deed on file.
+ * Phase 41E.2 expands to 13 (FACT_LOOKUP × 8 + SCENARIO_RUN × 5) — adds
+ *   `getReformedTaxRegimeStatus` (per-property regime under the 12 May
+ *   2026 Budget reform) + `getReformImpactSummaryForUser` (the cross-
+ *   measure summary surface per Phase 41E doc §10.10).
  */
 const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   getContributionCapHeadroomTool,
@@ -58,6 +64,9 @@ const CANONICAL_TOOLS: ReadonlyArray<TaxAdvisorTool<any>> = [
   runDiv7aRefinanceScenarioTool,
   // 41f.4-extension addition:
   getTrustDeedRulesTool,
+  // 41E.2 additions (reform-aware tools per Phase 41E doc §10.10):
+  getReformedTaxRegimeStatusTool,
+  getReformImpactSummaryForUserTool,
 ];
 
 /**
@@ -91,6 +100,8 @@ export {
   runLandTaxScenarioTool,
   runDiv7aRefinanceScenarioTool,
   getTrustDeedRulesTool,
+  getReformedTaxRegimeStatusTool,
+  getReformImpactSummaryForUserTool,
 };
 export * from './types';
 
