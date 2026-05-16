@@ -89,6 +89,8 @@ interface UpdateEntityRequestBody {
   tradingName?: unknown;
   establishedDate?: unknown;
   parentEntityId?: unknown; // null disconnects, undefined leaves untouched
+  trustType?: unknown;      // Phase 41E.3 — Measure 3 dispatch input
+  isForeignResident?: unknown; // Phase 41E.3 — Measure 4 dispatch input
 }
 
 export const PUT = withPermission<RouteContext>(
