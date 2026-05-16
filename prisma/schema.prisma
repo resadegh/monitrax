@@ -798,6 +798,12 @@ model UserPreference {
   dismissedOnboardingBadge Boolean @default(false)
   dismissedWelcomeModal    Boolean @default(false)
 
+  // Phase 41E.3 — "Tax rules are changing" one-time CFO Guide card.
+  // Calm-framing reform announcement banner. Per Reza confirmation
+  // 2026-05-16: one-time, dismissable, accessible later via CFO Guide.
+  // Default false (banner shows until user dismisses).
+  dismissedReformBanner Boolean @default(false)
+
   // User preference settings
   preferredCurrency   String  @default("AUD")
   preferredDateFormat String  @default("DD/MM/YYYY")

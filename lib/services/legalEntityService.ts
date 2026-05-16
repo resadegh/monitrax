@@ -386,6 +386,27 @@ export interface UpdateEntityInput {
   tradingName?: string | null;
   establishedDate?: Date | string | null;
   parentEntityId?: string | null;
+  /**
+   * Phase 41E.3 — Measure 3 dispatch input. Only DISCRETIONARY trusts
+   * are subject to the 30% min tax from FY 2028-29. Pass null to clear,
+   * undefined to leave untouched. See PHASE_41E_REFORM_2026_27.md §4.2 + §10.3.
+   */
+  trustType?:
+    | 'DISCRETIONARY'
+    | 'FIXED'
+    | 'UNIT'
+    | 'TESTAMENTARY_FIXED'
+    | 'CHARITABLE'
+    | 'DECEASED_ESTATE'
+    | 'SPECIAL_DISABILITY'
+    | 'OTHER'
+    | null;
+  /**
+   * Phase 41E.3 — Measure 4 dispatch input. Drives Div 855 TARP + 365-day
+   * PAT applicability. Pass null to clear, undefined to leave untouched.
+   * See PHASE_41E_REFORM_2026_27.md §4.2 + §10.4.
+   */
+  isForeignResident?: boolean | null;
 }
 
 /**
@@ -440,6 +461,15 @@ export async function updateEntity(
   }
   if (input.tfn !== undefined) {
     data.tfnEncrypted = encryptTfn(input.tfn);
+  }
+  // Phase 41E.3 — Measure 3 + Measure 4 inputs. Nullable + additive;
+  // safe to update through this path because the columns are owned by
+  // the user-confirmation flow (not the engine).
+  if (input.trustType !== undefined) {
+    data.trustType = input.trustType;
+  }
+  if (input.isForeignResident !== undefined) {
+    data.isForeignResident = input.isForeignResident;
   }
 
   await client.legalEntity.update({
