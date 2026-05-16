@@ -176,4 +176,89 @@ Docs updated in this PR:
 ### PR
 
 - Branch: `claude/phase-41e-reform-2026-27-MG8mr`
+- Status: **Merged 2026-05-16 (PR #763)** — design + governance shipped to main.
+
+---
+
+## Session 2: Phase 41E.0 — Stage 1 foundation (first code sub-PR)
+
+Branch: `claude/phase-41e-0-foundation-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 41E.0 foundation — schema + config + tests; no engine behaviour change)
+- **Scope:** Tax engine — additive schema columns + new enums + per-measure commencement flags on `TaxYearConfig` + canonical cut-over helpers. **Engine consumers (the 5 division-module skeletons that read these inputs) ship in 41E.1.**
+- **CDR scope:** N/A — schema columns hold tax-classification metadata (contract dates, regime flags), not CDR transactions.
+- **Reform compliance (CLAUDE.md §12.14):** This PR establishes the foundation that future PRs depend on. FW-3 triggers (schema column additions on `Property` + `LegalEntity` documented in PR body); FW-1/FW-2 don't trigger here (no engine functions modified — those ship in 41E.1); FW-4/FW-5 don't trigger (no AI tool added; no UI surface).
+
+### What was done
+
+#### Commits on this branch
+
+| Commit | What |
+|---|---|
+| `829960d` | `lib/tax-engine/config/reformConstants.ts` NEW — canonical `REFORM_CUT_OVER_UTC` + `MEASURE_COMMENCEMENT` + `classifyAcquisitionGrandfathering` + `isPostCommencementFy` + `MEASURE_LABEL` (198 lines). No other file may hard-code the cut-over timestamp per CLAUDE.md §12.14. |
+| `7ac5831` | §10.10 doc carry-forward — the *"AI advisor reform-impact summary surface"* commit was made on the design branch AFTER #763 merged (timing miss). Cherry-picked onto 41E.0 so it isn't lost. Updates Phase doc §10.10 + §12.1 + §12.3 + §13.1 + IMPLEMENTATION_PLAN workstream §7 + Session 1 of this changelog. |
+| `b84904a` | Schema migration `20260516100000_phase_41e_reform_foundation` (additive only) + Prisma schema changes + `TaxYearConfig` interface extension (8 commencement flags + `cpiQuarterlyIndex` placeholder) + flag fields on 3 existing FY configs (all `false`) + 17 tests in `tests/tax-engine/config/reformConstants.test.ts`. |
+
+#### Schema migration detail (`20260516100000_phase_41e_reform_foundation`)
+
+- 2 new Postgres enums: `NewBuildEvidence` (5 values for Measure 1 audit) + `TrustType` (8 values for Measure 3 dispatch).
+- `Property` +5 nullable cols: `acquisitionContractDate` (indexed — runs on every snapshot), `acquisitionSettlementDate`, `isNewBuild`, `newBuildEvidence`, `isRenewablesInfrastructure`.
+- `LegalEntity` +2 nullable cols: `trustType` (indexed), `isForeignResident`.
+- New `CompanyTaxHistory` model — Measure 5 carry-back input, keyed per entity per FY (unique constraint), cascade on entity delete.
+- One-time safe backfills (idempotent):
+  - `acquisitionContractDate := purchaseDate` where `purchaseDate < cutOver` (unambiguously grandfathered). Post-cut-over rows left NULL for user confirmation.
+  - `trustType := 'DISCRETIONARY'` where `type === 'DISCRETIONARY_TRUST'`.
+
+**§12.11 destructive-write checklist:** N/A by structural argument — backfills only write rows the migration just created columns for; WHERE clauses fail-closed (idempotent on re-run). No `DROP`, no `ALTER ... DROP`, no `TRUNCATE`, no `ADD COLUMN NOT NULL` without default backfill.
+
+**§12.12 schema-migration requirement:** SATISFIED — `prisma/schema.prisma` change ships with matching migration file in same PR. Vercel preview runs `prisma migrate deploy` against `monitrax-db-dev` before build; if migration fails, deploy aborts.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `lib/tax-engine/config/reformConstants.ts` | NEW — 198 lines |
+| `prisma/schema.prisma` | +97 lines (Property + LegalEntity + CompanyTaxHistory + 2 enums + indexes) |
+| `prisma/migrations/20260516100000_phase_41e_reform_foundation/migration.sql` | NEW — additive migration with safe backfills |
+| `lib/tax-engine/types.ts` | +47 lines — TaxYearConfig interface extension |
+| `lib/tax-engine/config/taxYearConfig.ts` | +40 lines — 9 new fields on 3 existing FY configs |
+| `tests/tax-engine/config/reformConstants.test.ts` | NEW — 17 tests |
+| `docs/blueprint/PHASE_41E_REFORM_2026_27.md` | +90 lines (§10.10 cherry-pick from design branch) |
+| `docs/IMPLEMENTATION_PLAN.md` | +2 lines (§10.10 surface mention) |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | This Session 2 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure (new failure mode / diagnostic / lesson)
+- [ ] strategic decision
+
+This is a foundation-only PR (schema + config + tests) — most §16.3 rows don't apply.
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_REFORM_2026_27.md` — §10.10 cherry-pick (would have shipped in #763 but was committed post-merge).
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 sub-bullet for §10.10 surface; status update to come in 41E.0 PR description.
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 2 entry (this).
+- `docs/architecture/03_DATA_MODEL.md` — N/A in this sub-PR. The additive `Property` + `LegalEntity` + new `CompanyTaxHistory` schema is documented in `PHASE_41E_REFORM_2026_27.md` §4.2 (canonical for this phase). A consolidated `03_DATA_MODEL.md` update queued for 41E.5 (final sub-PR) once all Stage 1 schema additions are in.
+
+### Testing
+
+- [x] Tests written — 17 new in `tests/tax-engine/config/reformConstants.test.ts`
+- [ ] `npm test` — N/A in this sandbox (no `node_modules`).
+- [ ] `npm run build` — N/A in this sandbox.
+- [ ] `npm run lint` — N/A in this sandbox.
+
+**Per CLAUDE.md §11.2:** Vercel preview build is the canonical pre-merge gate. The preview runs `prisma migrate deploy` against `monitrax-db-dev` before building — if the migration fails, preview fails, deploy aborts.
+
+### PR
+
+- Branch: `claude/phase-41e-0-foundation-MG8mr`
 - Status: Open
