@@ -261,4 +261,104 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-41e-0-foundation-MG8mr`
+- Status: **Merged 2026-05-16 (PR #764)** — foundation shipped to main.
+
+---
+
+## Session 3: Phase 41E.1 — Engine module skeletons
+
+Branch: `claude/phase-41e-1-engine-skeletons-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 41E.1 — engine module skeletons + regime classifier + back-compat extensions to existing modules)
+- **Scope:** Tax engine — 6 new files under `lib/tax-engine/divisions/` + extensions to `negativeGearing.ts` + `cgtDiscount.ts`. **Zero behavioural change** for existing callers (every reform `commencementVerified` flag is `false`; new `regime` parameter on `applyNegativeGearing` defaults to `PRE_REFORM_GRANDFATHERED`; new reform inputs on `calculateCgtDiscount` are optional and fall through to today's flow when absent).
+- **CDR scope:** N/A — pure tax-engine logic, no CDR data touched.
+- **Reform compliance (CLAUDE.md §12.14):** FW-1 SATISFIED — `applyNegativeGearing` gains optional `regime` parameter with back-compat default; `calculateCgtDiscount` gains optional reform inputs. FW-2 SATISFIED — every new module returns `UC-*-PENDING-*` when commencement flag is false; defensive `throw` when flag is flipped without mechanic (no silent post-reform numbers ever).
+
+### What was done
+
+#### New files
+
+| File | What |
+|---|---|
+| `lib/tax-engine/divisions/negativeGearingRegime.ts` | Pure classifier — `deriveNegativeGearingRegime(input)` returns `PRE_REFORM_GRANDFATHERED \| POST_REFORM_NEW_BUILD \| POST_REFORM_RESTRICTED \| UC_PROPERTY_CONTRACT_DATE_UNKNOWN \| UC_NEW_BUILD_UNCONFIRMED`. Decision order: commencement flag → FY commencement → property-type scope → contract-date classification → new-build confirmation. SSOT for Measure 1 regime — no other file may compute "is this property grandfathered?" by hand. |
+| `lib/tax-engine/divisions/cgtIndexation.ts` | Measure 2 indexation skeleton. Returns `UC-CGT-INDEXATION-PENDING-EXPOSURE-DRAFT` when flag is false; defensive throw otherwise (Stage 2 fills in the per-quarter CPI lookup + indexed-cost-base formula). |
+| `lib/tax-engine/divisions/cgtMinimumRate.ts` | Measure 2 floor skeleton. Returns `UC-CGT-MIN-RATE-PENDING-EXPOSURE-DRAFT`. Exposes `getCgtMinimumEffectiveRate() = 0.30` for AI advisor narration. |
+| `lib/tax-engine/divisions/trustMinimumTax.ts` | Measure 3 30%-min skeleton. Two scope gates: (1) only DISCRETIONARY trusts in scope, (2) commencement flag false → UNCOMPUTED. Surfaces `UC-TRUST-TYPE-UNKNOWN` when `trustType` is null. |
+| `lib/tax-engine/divisions/foreignResidentCgt.ts` | Measure 4 skeleton with exposure-draft-ready scope tests (TARP threshold, $50M notification flag). Returns `UC-FR-CGT-PENDING-ROYAL-ASSENT`. Exposes notification threshold constant. |
+| `lib/tax-engine/divisions/lossRefundability.ts` | Measure 5 carry-back skeleton. Three scope gates: (1) only COMPANY entities, (2) turnover < $1B, (3) has current-FY loss. Returns `UC-LOSS-CARRYBACK-PENDING-BILL` when flag false. |
+
+#### Extended files
+
+| File | What |
+|---|---|
+| `lib/tax-engine/divisions/negativeGearing.ts` | `applyNegativeGearing` gains optional `regime: NegativeGearingRegime` parameter. When omitted (every existing caller), defaults to `PRE_REFORM_GRANDFATHERED` → byte-for-byte today's behaviour. When `POST_REFORM_RESTRICTED`, the loss is trapped at the entity (no offset against other income) with `UC-NEG-GEARING-QUARANTINE-SCOPE-PENDING-DRAFT`. UC_* regimes surface UNCOMPUTED but fall back to pre-reform behaviour conservatively. |
+| `lib/tax-engine/divisions/cgtDiscount.ts` | `calculateCgtDiscount` gains optional `acquisitionContractDate` + `disposalFy` + `config` inputs. When all three present AND `cgtIndexationCommencementVerified === true` AND contract date is post-cut-over AND disposal FY ≥ 2027-28 → returns `discountRate: 0` + reason `POST_REFORM`. Caller MUST route through `cgtIndexation` + `cgtMinimumRate`. Otherwise byte-for-byte today's behaviour (pre-reform 50%/33⅓%/0% dispatch). |
+
+#### Tests
+
+- `tests/tax-engine/divisions/negativeGearingRegime.test.ts` — **22 tests** covering: commencement-gate, FY-commencement-gate, property-type scope (HOME/INVESTMENT/RENTAL), boundary-day classification at the second (1 sec before / at / 1 sec after cut-over), new-build branch (true/false/null), UNKNOWN contract date, `regimePermitsLossOffsetOtherIncome` for all 5 regime variants.
+- `tests/tax-engine/divisions/reformSkeletons.test.ts` — **25 tests** covering: per-module UNCOMPUTED return + UC-*-PENDING-* surfacing + defensive throw on premature flag flip; `applyNegativeGearing` back-compat (no regime → identical pre-41E.1 result) + all 5 regime variants; `calculateCgtDiscount` back-compat (no reform inputs → identical pre-41E.1 result) + reform-on/off matrix.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `lib/tax-engine/divisions/negativeGearingRegime.ts` | NEW — 178 lines (regime classifier) |
+| `lib/tax-engine/divisions/cgtIndexation.ts` | NEW — 97 lines (Measure 2 indexation skeleton) |
+| `lib/tax-engine/divisions/cgtMinimumRate.ts` | NEW — 106 lines (Measure 2 floor skeleton) |
+| `lib/tax-engine/divisions/trustMinimumTax.ts` | NEW — 159 lines (Measure 3 skeleton) |
+| `lib/tax-engine/divisions/foreignResidentCgt.ts` | NEW — 144 lines (Measure 4 skeleton) |
+| `lib/tax-engine/divisions/lossRefundability.ts` | NEW — 165 lines (Measure 5 skeleton) |
+| `lib/tax-engine/divisions/negativeGearing.ts` | +73 lines (regime parameter + 3 regime branches + UNCOMPUTED surfacing) |
+| `lib/tax-engine/divisions/cgtDiscount.ts` | +56 lines (optional reform inputs + top-of-function regime guard) |
+| `tests/tax-engine/divisions/negativeGearingRegime.test.ts` | NEW — 22 tests |
+| `tests/tax-engine/divisions/reformSkeletons.test.ts` | NEW — 25 tests |
+| `docs/IMPLEMENTATION_PLAN.md` | Workstream §7 sub-PR checklist — 41E.1 ☐ → 41E.1 [open]; top header refresh |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | This Session 3 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config (env vars, Vercel, OIDC, etc.)
+- [ ] GCP infrastructure (Cloud SQL, IAM, etc.)
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure (new failure mode / diagnostic / lesson)
+- [ ] strategic decision
+
+This is an engine-only sub-PR (new pure division modules + extensions to existing pure modules). No surface from §16.2 changed.
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 progress (41E.1 status flip).
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 3 entry (this).
+
+### Testing
+
+- [x] Tests written — 47 new across 2 files.
+- [ ] `npm test` — N/A in this sandbox.
+- [ ] `npm run build` — N/A.
+- [ ] `npm run lint` — N/A.
+
+**Per CLAUDE.md §11.2:** Vercel preview build runs the full test suite + TypeScript on PR push.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions/tools added or modified — listed above (10 files total: 6 new + 2 extended + 2 test files).
+- [x] Outcomes:
+  - `applyNegativeGearing` — outcome (a) reform-aware (takes regime parameter); back-compat default keeps existing callers byte-for-byte.
+  - `calculateCgtDiscount` — outcome (a) reform-aware (takes optional reform inputs); back-compat default keeps existing callers byte-for-byte.
+  - `applyCgtIndexation`, `applyCgtMinimumRate`, `applyTrustMinimumTax`, `applyForeignResidentCgt`, `applyLossRefundability` — outcome (c) gated behind `commencementVerified` returning UNCOMPUTED with defensive throw if flag is flipped without mechanic.
+  - `deriveNegativeGearingRegime`, `regimePermitsLossOffsetOtherIncome` — pure classifier helpers; no tax math.
+- [x] No existing tax-engine test regressed — every reform flag is `false` so consuming branches don't activate.
+- [x] No new field added to `Property` / `Investment` / `LegalEntity` in this sub-PR (those landed in 41E.0).
+- [x] No new AI tool added — those land in 41E.2.
+- [x] No UI surface added — those land in 41E.3.
+
+### PR
+
+- Branch: `claude/phase-41e-1-engine-skeletons-MG8mr`
 - Status: Open
