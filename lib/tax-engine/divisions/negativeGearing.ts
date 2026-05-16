@@ -11,6 +11,24 @@
  *     41e.15 sub-PR
  *   - ITAA 1936 Sch 2F — trust loss tests — flagged for 41e.15 sub-PR
  *
+ * **Phase 41E reform 2026-27 — Measure 1 extension (41E.1):**
+ *   - `applyNegativeGearing` now takes an optional `regime` parameter
+ *     (defaults `'PRE_REFORM_GRANDFATHERED'` so every existing caller
+ *     is byte-for-byte unchanged — back-compat preserved per CLAUDE.md §12.14 FW-1).
+ *   - When `regime === 'POST_REFORM_RESTRICTED'`, the function flips
+ *     the entity's loss-offset behaviour from offsetting other income
+ *     to carrying forward against future property income only. Loss
+ *     is quarantined at the entity (the exposure draft will pin
+ *     whether quarantining is per-property or per-entity; v1 reports
+ *     the carry-forward, surfaces UC-NEG-GEARING-QUARANTINE-SCOPE-PENDING-DRAFT
+ *     for the precise scope until then).
+ *   - For UC_* regimes (contract date unknown / new build unconfirmed),
+ *     the function falls back to the pre-reform behaviour AND surfaces
+ *     the UNCOMPUTED — conservative default (per CLAUDE.md §13.3 + HR-3).
+ *
+ * Caller derives the regime via `deriveNegativeGearingRegime()` in
+ * `./negativeGearingRegime.ts`. Single canonical SSOT.
+ *
  * **Core principle:** the AU treatment of net rental/business losses
  * differs sharply by entity type:
  *   - **PERSONAL_NAME / SOLE_TRADER** — losses offset other income
@@ -36,6 +54,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import type { NegativeGearingRegime } from './negativeGearingRegime';
 
 export type LossTreatmentEntity =
   | 'PERSONAL_NAME'
@@ -64,6 +83,21 @@ export interface NegativeGearingInput {
    * determine if losses can be absorbed in the current year.
    */
   otherIncome: number;
+  /**
+   * Phase 41E.1 — Measure 1 regime (per CLAUDE.md §12.14 FW-1).
+   *
+   * Defaults to `'PRE_REFORM_GRANDFATHERED'` when omitted — every
+   * existing call site (Phase 41e and earlier) is byte-for-byte
+   * unchanged. Callers in 41E.2+ derive the regime via
+   * `deriveNegativeGearingRegime()` and pass it explicitly per
+   * property.
+   *
+   * Only relevant when the loss is property-related (residential
+   * rental). For business losses on non-property activity the
+   * caller passes `'PRE_REFORM_GRANDFATHERED'` regardless — Measure 1
+   * is scoped to residential property only.
+   */
+  regime?: NegativeGearingRegime;
 }
 
 export type LossTreatment =
@@ -118,6 +152,10 @@ export function applyNegativeGearing(
   input: NegativeGearingInput,
 ): NegativeGearingResult {
   const { entityType, grossIncome, deductibleExpenses, otherIncome } = input;
+  // Phase 41E.1 — back-compat default. Existing callers omit `regime`
+  // and get pre-reform behaviour byte-for-byte.
+  const regime: NegativeGearingRegime =
+    input.regime ?? 'PRE_REFORM_GRANDFATHERED';
 
   const netResult = grossIncome - deductibleExpenses;
   const citations = [...BASE_CITATIONS];
@@ -139,6 +177,62 @@ export function applyNegativeGearing(
 
   // Net loss — entity-aware treatment.
   const lossAmount = Math.abs(netResult);
+
+  // Phase 41E.1 — Measure 1 regime guard.
+  // When the regime restricts offset (POST_REFORM_RESTRICTED), the
+  // loss CANNOT offset other income — quarantined at the entity
+  // regardless of entity type. The exposure draft will pin whether
+  // the carry-forward is per-property or per-entity; v1 surfaces
+  // UNCOMPUTED for that precise scope until the draft lands.
+  if (regime === 'POST_REFORM_RESTRICTED') {
+    uncomputed.push({
+      id: 'UC-NEG-GEARING-QUARANTINE-SCOPE-PENDING-DRAFT',
+      rationale:
+        'Phase 41E Measure 1 — residential property contracted after 7:30pm AEST 12 May 2026 + not a new build → loss does not offset other income from FY 2027-28 (negative-gearing reform). The precise scope of the loss quarantine (per-property vs per-entity) awaits the Treasury exposure draft. v1 reports the full carry-forward at the entity level conservatively.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 (proposed Phase 41E Measure 1 amendments)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+    return {
+      netResult,
+      lossTreatment: 'TRAPPED_AT_ENTITY',
+      lossAbsorbedThisFy: 0,
+      lossCarriedForward: lossAmount,
+      taxableIncomeAtEntity: otherIncome,
+      reason: `Negative gearing — restricted by Phase 41E Measure 1 (property contracted after 12 May 2026 7:30pm AEST, not a new build). $${Math.round(lossAmount).toLocaleString()} cannot offset other income from FY 2027-28; carries forward against future property income.`,
+      citations,
+      uncomputed,
+    };
+  }
+
+  // Phase 41E.1 — surface UNCOMPUTED flags for the UC_* regimes
+  // (contract date unknown / new build unconfirmed) but fall back
+  // to the conservative pre-reform behaviour for the calc.
+  if (regime === 'UC_PROPERTY_CONTRACT_DATE_UNKNOWN') {
+    uncomputed.push({
+      id: 'UC-PROPERTY-CONTRACT-DATE-UNKNOWN',
+      rationale:
+        'Property is residential and the target FY is post-1 Jul 2027, but `acquisitionContractDate` is missing. Cannot determine if grandfathered or post-reform. Treating as pre-reform (conservative — gives the user the benefit) until contract date is confirmed.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 + s109-5 (CGT event A1 / contract date)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+  } else if (regime === 'UC_NEW_BUILD_UNCONFIRMED') {
+    uncomputed.push({
+      id: 'UC-NEW-BUILD-UNCONFIRMED',
+      rationale:
+        'Property contracted after 12 May 2026 7:30pm AEST cut-over. Whether it qualifies as a new build (negative gearing still permitted) or restricted (negative gearing denied) needs user confirmation via `Property.isNewBuild` + `Property.newBuildEvidence`. Treating as pre-reform (conservative) until confirmed.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 (proposed Phase 41E Measure 1 — new build definition)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+  }
 
   if (ENTITY_OFFSETS_OWN_INCOME[entityType]) {
     // Individual / sole trader / partnership / SMSF — offset other income.

@@ -27,8 +27,10 @@
 
 import type {
   AuthorityCitation,
+  TaxYearConfig,
   UncomputedFlag,
 } from '../types';
+import { classifyAcquisitionGrandfathering } from '../config/reformConstants';
 
 export type CgtEligibleEntityType =
   | 'PERSONAL_NAME'
@@ -66,6 +68,31 @@ export interface CgtDiscountInput {
    * UNCOMPUTED flag rather than computing the proportional rule.
    */
   isForeignResident?: boolean;
+
+  /**
+   * Phase 41E.1 — Measure 2 regime guard inputs (per CLAUDE.md §12.14 FW-1).
+   *
+   * `acquisitionContractDate` is the CGT event A1 date per s109-5
+   * ITAA 1997 (NOT settlement, NOT registration). Read from the
+   * caller's `Property.acquisitionContractDate` or `PurchaseLot.purchaseDate`.
+   * Null → grandfathering UNKNOWN → caller decides whether to
+   * surface UNCOMPUTED.
+   *
+   * `disposalFy` is the FY string of the disposal event A1 (e.g.
+   * `"2027-28"`). Pre-FY-2027-28 disposals always use the existing
+   * 50% discount flow regardless of contract date.
+   *
+   * `config` is the resolved `TaxYearConfig` for `disposalFy`. The
+   * reform flags (`cgtIndexationCommencementVerified` +
+   * `cgtMinRateCommencementVerified`) live here.
+   *
+   * **All three are optional.** When omitted (every existing caller),
+   * the function defaults to pre-reform behaviour byte-for-byte.
+   * 41E.2+ callers pass them explicitly.
+   */
+  acquisitionContractDate?: Date | null;
+  disposalFy?: string;
+  config?: TaxYearConfig;
 }
 
 export interface CgtDiscountResult {
@@ -146,6 +173,56 @@ export function calculateCgtDiscount(input: CgtDiscountInput): CgtDiscountResult
 
   const uncomputed: UncomputedFlag[] = [];
   const citations: AuthorityCitation[] = [...COMMON_CITATIONS];
+
+  // Phase 41E.1 — Measure 2 regime guard (CLAUDE.md §12.14 FW-1 + FW-2).
+  //
+  // When ALL THREE conditions hold, the post-reform indexation regime
+  // applies INSTEAD OF the 50% discount:
+  //   (a) `cgtIndexationCommencementVerified === true` (Royal Assent
+  //       of the implementing Bill confirmed),
+  //   (b) `acquisitionContractDate > REFORM_CUT_OVER_UTC` (asset
+  //       contracted after 7:30pm AEST 12 May 2026 — post-reform),
+  //   (c) `disposalFy` resolves to FY 2027-28 or later (commencement
+  //       date of the regime).
+  //
+  // When commencementVerified is `false` (Stage 1 default for every
+  // FY), this guard is a NO-OP — the function falls through to the
+  // existing 50%/33⅓%/0% dispatch. Byte-for-byte today's behaviour.
+  //
+  // When commencementVerified flips to `true` AND the conditions hold,
+  // this function returns `{ discountRate: 0, reason: 'POST_REFORM — see
+  // cgtIndexation + cgtMinimumRate' }` + UNCOMPUTED-on-the-side. The
+  // caller (Phase 41E.2 — the consumer wiring) MUST route the
+  // disposal through `cgtIndexation` + `cgtMinimumRate` for the new
+  // tax calculation.
+  if (
+    input.config?.cgtIndexationCommencementVerified === true &&
+    input.acquisitionContractDate &&
+    input.disposalFy
+  ) {
+    const grandfathering = classifyAcquisitionGrandfathering(input.acquisitionContractDate);
+    const isPostReformDisposal = /^20\d{2}-\d{2}$/.test(input.disposalFy)
+      && Number(input.disposalFy.slice(0, 4)) >= 2027;
+    if (grandfathering === 'POST_REFORM' && isPostReformDisposal) {
+      return {
+        discountRate: 0,
+        discountAmount: 0,
+        discountedGain: nominalGain,
+        metHoldingPeriod: monthsHeld >= MIN_HOLDING_MONTHS,
+        reason:
+          'POST_REFORM — Phase 41E Measure 2 regime. The 50% CGT discount does not apply. Route this disposal through `cgtIndexation` + `cgtMinimumRate` for the indexed-cost-base + 30%-floor calculation.',
+        citations: [
+          ...citations,
+          {
+            kind: 'ITAA_1997',
+            reference: 'Div 114 + s115-100 (Phase 41E Measure 2 amendments)',
+            lastReviewed: '2026-05-16',
+          },
+        ],
+        uncomputed: [],
+      };
+    }
+  }
 
   // Holding-period gate (s115-25). Applies regardless of entity type.
   if (monthsHeld < MIN_HOLDING_MONTHS) {
