@@ -814,3 +814,185 @@ N/A — `prisma/schema.prisma` not touched.
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 7: Phase 12 Track E — Super + Assets topics (chat chain extended to 6 topics)
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (continuation — PR #775 merged into main, branch recreated from main).
+
+### Scope
+
+- **Type:** Feature build — fifth + sixth chat topics in one PR.
+- **Scope:** Adds **Super** + **Assets** to chat-mode. Chat now flows Household → Properties → Debts → Accounts → **Super → Assets** → form-mode handoff at currentStep=6 (investments — the first step the chat doesn't cover).
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF — zero behavioural change pre-flip.
+
+### Trigger
+
+Reza directive: *"Continue"* after #775 merged. Following the recommendation to pair Super + Assets — both are simpler than Properties/Investments, similar shape, consecutive in form-wizard order (steps 7 + 8).
+
+### Changes Made
+
+#### 1. Schema additions
+
+`lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`:
+
+**Super:**
+- `superDeltaSchema`: `{ fundName (required), currentBalance? (0..50M AUD) }`
+- `superFieldsSchema`: `{ hasSuper?, superAccounts? (max 10) }`
+- `superStateDeltaSchema` joined into the discriminated union
+- `SUPER_TOOL_INPUT_SCHEMA` (hand-crafted JSON Schema mirror)
+
+**Assets:**
+- `assetTypeEnum` (VEHICLE / ELECTRONICS / FURNITURE / EQUIPMENT / COLLECTIBLE / OTHER)
+- `assetDeltaSchema`: `{ name (required), type?, currentValue? (1..10M AUD) }`
+- `assetsFieldsSchema`: `{ hasAssets?, assets? (max 15) }`
+- `assetsStateDeltaSchema` joined into the discriminated union
+- `ASSETS_TOOL_INPUT_SCHEMA` (hand-crafted JSON Schema mirror)
+
+Exports: `SuperDelta`, `SuperFields`, `AssetDelta`, `AssetsFields` types.
+
+#### 2. System prompts + tool specs
+
+`lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts`:
+
+**`SUPER_SYSTEM_PROMPT`** (~40 lines):
+- Hard rules: tool-call only / numbers from user / positional merge.
+- AU fund vocabulary: AustralianSuper, Hostplus, REST, HESTA, ART (Australian Retirement Trust), UniSuper, Cbus, ESSSuper, SMSF (preserves user's preferred name).
+- `hasSuper: false` sentinel for "no super yet".
+- Forbidden: fund-comparison / fee or return commentary / switch suggestions.
+
+**`ASSETS_SYSTEM_PROMPT`** (~50 lines):
+- Hard rules + positional merge.
+- Type mapping: car/ute/motorbike/boat → VEHICLE; laptop/phone/TV → ELECTRONICS; sofa/table → FURNITURE; tools/instruments → EQUIPMENT; watch/art/jewellery → COLLECTIBLE; fallback → OTHER.
+- Explicit scope-boundary instruction: assets here means PERSONAL items only — NOT property (Properties topic), NOT bank accounts (Accounts), NOT super (Super), NOT listed investments (Investments — future topic).
+- `hasAssets: false` sentinel for "nothing notable".
+- Forbidden: commentary on value / insurance / depreciation / sell-or-upgrade suggestions.
+
+**Tool specs:**
+- `superExtractTool` + `assetsExtractTool` registered (closed-discriminant — one tool name, now six input schemas total).
+- `ExtractToolDefinition.input_schema` union widened.
+
+#### 3. Gateway routing
+
+`lib/ai/onboarding-agent/gateway.ts`:
+- `SupportedTopic` expanded to 6 values.
+- `TopicStateSubset` union widened.
+- `SUPPORTED_TOPICS` array constant updated.
+- `resolveTopicTools()` switch grows 2 new branches.
+- New `formatStagedSuperState()` + `formatStagedAssetsState()` helpers + 2 new branches in `formatStagedSubset()`.
+
+#### 4. API route topic validation
+
+- `extract` + `topic-confirmed` routes accept all 6 topics.
+
+#### 5. State machines
+
+**`components/onboarding/wizard-chat/superScript.ts` (NEW, ~205 lines):**
+- Steps: INTRO → ASKING_OWNERSHIP → ASKING_BALANCE per incomplete fund → ASKING_MORE → RECAP / CHANGING.
+- Note: only ONE field besides `fundName` (currentBalance), so no separate TYPE step.
+- 2-retry loop-break. Recap: `formatSuperBalance()` (AUD), `summariseSingleSuper()` (e.g. "AustralianSuper — $80,000").
+
+**`components/onboarding/wizard-chat/assetsScript.ts` (NEW, ~250 lines):**
+- Steps: INTRO → ASKING_OWNERSHIP → per-incomplete ASSET_TYPE → ASSET_VALUE → ASKING_MORE → RECAP / CHANGING.
+- Same shape as Properties/Debts/Accounts state machines.
+- ASSET_TYPE_LABEL map (Vehicle / Electronics / Furniture / Equipment / Collectible / Other) for human-readable recap.
+
+#### 6. Orchestrator extended to 6 topics
+
+`components/onboarding/wizard-chat/ConversationalSetup.tsx`:
+- `chatTopic` union expanded to 6 values.
+- `TOPIC_CHAIN` array extended: `['household', 'properties', 'debts', 'accounts', 'super', 'assets']`.
+- 2 new state slots: `superScript` + `assetsScript`.
+- 6-way switches in every per-topic helper:
+  - `currentStateSubset` lookup (handleSubmit)
+  - `handleSubmit` extract-result dispatch
+  - `handleChange` prompt selection
+  - `handleConfirm` per-topic merge + bootstrap dispatch + setter dispatch
+  - `recapRows` / `recapHeader` / `showRecap`
+  - `currentStepFor()` helper (1/3/4/5/7/8)
+  - `headerForTopic()` helper
+- `AFTER_ACCOUNTS_FORM_STEP_INDEX` (= 6) renamed to `AFTER_CHAT_FORM_STEP_INDEX` (same value; semantically clearer — it's the post-chat redirect target, not specific to Accounts).
+- **Field defaults on confirm:**
+  - **Super:** `name = fundName` (WizardData requires both, chat captures only fundName; user can rename in form).
+  - **Assets:** `purchasePrice = currentValue` (WizardData requires both; form can correct).
+
+### Scope decisions documented
+
+- **Super captures `fundName` only**, not a separate `name` nickname. The wizard's form mode keeps both; chat handoff defaults `name = fundName` so the wizard shows a sensible value. Users who want a separate nickname can rename in form mode.
+- **Assets is for PERSONAL assets only.** Property → Properties topic. Cash → Accounts. Super → Super. Listed investments → Investments (future). The system prompt redirects user mentions of those to their canonical topics.
+- **Chat skips Investments + Income/Expenses.** After Assets.confirm, redirect to currentStep=6 (investments). User fills Investments + Income/Expenses in form mode. PR #7 and #8 will add chat coverage.
+- **No vehicle-specific fields in chat.** AssetInput's `vehicleMake` / `vehicleModel` / `vehicleYear` fields stay form-only — too easy to mishear; the form has them as a nested sub-form.
+
+### Files Created / Modified
+
+- **NEW (2):**
+  - `components/onboarding/wizard-chat/superScript.ts`
+  - `components/onboarding/wizard-chat/assetsScript.ts`
+- **EDITED (6):**
+  - `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`
+  - `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts`
+  - `lib/ai/onboarding-agent/gateway.ts`
+  - `app/api/onboarding/chat/extract/route.ts`
+  - `app/api/onboarding/chat/topic-confirmed/route.ts`
+  - `components/onboarding/wizard-chat/ConversationalSetup.tsx`
+- **DOC-SYNC (3):**
+  - `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` (Status + rev 7 changelog)
+  - `docs/IMPLEMENTATION_PLAN.md` (header + row 53)
+  - `docs/changelog/CHANGELOG_2026_05_17.md` (this entry)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern — no new primitives (`PresenceOrb` + motion tokens reused unchanged; 6 topics now sharing the same visual language)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture — minimal: Super + Assets gateway prompts include staged values in user-message (for positional-merge correctness). All staged values originated from the user this session. Audit metadata stays sanitised. New `SUPER_SYSTEM_PROMPT` adds AFSL-adjacent prohibition (no fund-comparison / switch suggestions); `ASSETS_SYSTEM_PROMPT` forbids value / insurance / depreciation commentary.
+- [ ] operational procedure
+- [x] strategic decision — chat chain extended from 4 → 6 topics; `TOPIC_CHAIN` array centralised; 2 remaining topics queued (investments / income-expenses)
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A. Zero destructive Prisma operations. Zero raw SQL. Zero schema changes. Zero migrations. Verified.
+
+### Schema-migration check (CLAUDE.md §12.12)
+
+N/A — `prisma/schema.prisma` not touched.
+
+### Build Status
+
+- [x] `tsc --noEmit` clean (only pre-existing `baseUrl` deprecation warning)
+- [ ] `npm run lint` — N/A in sandbox; Vercel preview will run it
+- [ ] Tests — none added; state machines bounded.
+
+### Validation
+
+- [x] Super enum rejected — no enum (just free-text fundName), Zod min(1).max(120)
+- [x] Assets enum strictly enforced (VEHICLE / ELECTRONICS / FURNITURE / EQUIPMENT / COLLECTIBLE / OTHER)
+- [x] Position-merge correctness on both new topics
+- [x] No-data sentinels (`hasSuper:false` / `hasAssets:false`) short-circuit to recap
+- [x] Agent never writes to Prisma — grep verified
+- [x] AFSL boundary structural — no advice tool; both system prompts explicitly forbid commentary / switching / sell-suggestions
+
+### What's NOT in this PR (queued)
+
+- **E.2b.2** — first-encounter persistence + optional sound + mic-level → orb-ripple sync
+- **PR #7** — Investments topic (complex: nested holdings per account, multiple account types, Phase 41-aware)
+- **PR #8** — Income / Expenses topic (most narrative — frequency rules, recurring vs one-off, categorisation)
+- **Topic-registry full refactor** — orchestrator's 6-way switches are starting to feel repetitive; justified after PR #8 lands the final topic
+
+### Why this matters (4-lens synthesis)
+
+- **Architect lens:** the orchestrator's pattern is now battle-tested at 6 topics. Adding the remaining 2 (investments + income-expenses) is sublinear — ~80 lines orchestrator wiring per topic. The post-PR-#8 registry refactor will reduce that further but isn't blocking.
+- **Behavioural-psychologist lens:** Super is high-anxiety for AU users (most don't know their balance off the top of their head). Chat reduces this to "AustralianSuper, roughly?" instead of a precise number entry. Assets is the lowest-stakes topic — the warm "anything else worth noting?" framing makes it easy to skip without feeling wrong.
+- **Financial-adviser lens:** zero advice surface preserved. AU vocabulary mapping covers the big-five super funds + common SMSF naming patterns. Asset type mapping handles colloquial AU phrasing ("ute" → VEHICLE).
+- **Security / compliance lens:** AFSL boundary structural across all 6 topics now. No new vendors. No new CDR egress. The pattern of "scope-boundary instructions in system prompt" is established and replicates cleanly to remaining topics.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #775 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo

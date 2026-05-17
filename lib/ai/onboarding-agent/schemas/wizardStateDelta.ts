@@ -217,16 +217,104 @@ export const accountsStateDeltaSchema = z.object({
 });
 
 // ============================================================================
+// SUPER topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per super account:
+//   - fundName       — e.g. "AustralianSuper", "Hostplus", "REST"
+//   - currentBalance — integer AUD
+//
+// Deferred to form mode:
+//   - investment option / risk profile
+//   - employer contributions, salary sacrifice, member contributions
+//   - SMSF-specific fields (member list, trust deed, fund ABN)
+//
+// On chat handoff to WizardData: `name = fundName` (user can rename
+// the nickname in form mode if they want a separate display name).
+
+export const superDeltaSchema = z.object({
+  fundName: z.string().trim().min(1).max(120),
+  currentBalance: z.number().int().min(0).max(50_000_000).optional(),
+});
+
+export const superFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user has no super to add
+   *  here (rare in AU but allowed; form mode also makes Super
+   *  optional). */
+  hasSuper: z.boolean().optional(),
+  superAccounts: z.array(superDeltaSchema).max(10).optional(),
+});
+
+export const superStateDeltaSchema = z.object({
+  topic: z.literal('super'),
+  fields: superFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
+// ASSETS topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per asset:
+//   - name           — free text (e.g. "car", "iPhone", "guitar")
+//   - type           — VEHICLE / ELECTRONICS / FURNITURE / EQUIPMENT /
+//                      COLLECTIBLE / OTHER
+//   - currentValue   — integer AUD
+//
+// Deferred to form mode:
+//   - purchasePrice (defaults to currentValue on bulk-create)
+//   - purchaseDate, description
+//   - expenses (defaults to [])
+//   - vehicle-specific fields (make, model, year — VEHICLE only)
+//
+// "Assets" here means PERSONAL assets (vehicles, electronics,
+// collectibles, etc.) — NOT property (Properties topic) and NOT
+// investment holdings (Investments topic).
+
+export const assetTypeEnum = z.enum([
+  'VEHICLE',
+  'ELECTRONICS',
+  'FURNITURE',
+  'EQUIPMENT',
+  'COLLECTIBLE',
+  'OTHER',
+]);
+
+export const assetDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: assetTypeEnum.optional(),
+  currentValue: z.number().int().min(1).max(10_000_000).optional(),
+});
+
+export const assetsFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user opts out of listing
+   *  personal assets here. Very common — most users don't track
+   *  furniture / electronics in this step. */
+  hasAssets: z.boolean().optional(),
+  assets: z.array(assetDeltaSchema).max(15).optional(),
+});
+
+export const assetsStateDeltaSchema = z.object({
+  topic: z.literal('assets'),
+  fields: assetsFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
 // Top-level WizardStateDelta (discriminated by `topic`)
 // ============================================================================
 
-// As more topics ship (investments, super, …), add them as discriminated
-// members of this union.
+// As more topics ship (investments, income-expenses), add them as
+// discriminated members of this union.
 export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   householdStateDeltaSchema,
   propertiesStateDeltaSchema,
   debtsStateDeltaSchema,
   accountsStateDeltaSchema,
+  superStateDeltaSchema,
+  assetsStateDeltaSchema,
 ]);
 
 export type WizardStateDelta = z.infer<typeof wizardStateDeltaSchema>;
@@ -239,6 +327,10 @@ export type DebtDelta = z.infer<typeof debtDeltaSchema>;
 export type DebtsFields = z.infer<typeof debtsFieldsSchema>;
 export type AccountDelta = z.infer<typeof accountDeltaSchema>;
 export type AccountsFields = z.infer<typeof accountsFieldsSchema>;
+export type SuperDelta = z.infer<typeof superDeltaSchema>;
+export type SuperFields = z.infer<typeof superFieldsSchema>;
+export type AssetDelta = z.infer<typeof assetDeltaSchema>;
+export type AssetsFields = z.infer<typeof assetsFieldsSchema>;
 
 // ============================================================================
 // JSON Schema (hand-crafted to mirror the Zod schema above)
@@ -394,6 +486,74 @@ export const ACCOUNTS_TOOL_INPUT_SCHEMA = {
                 enum: ['OFFSET', 'SAVINGS', 'TRANSACTIONAL', 'CREDIT_CARD'],
               },
               currentBalance: { type: 'integer', minimum: -1000000, maximum: 50000000 },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const SUPER_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['super'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasSuper: { type: 'boolean' },
+        superAccounts: {
+          type: 'array',
+          maxItems: 10,
+          items: {
+            type: 'object',
+            required: ['fundName'],
+            properties: {
+              fundName: { type: 'string', minLength: 1, maxLength: 120 },
+              currentBalance: { type: 'integer', minimum: 0, maximum: 50000000 },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const ASSETS_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['assets'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasAssets: { type: 'boolean' },
+        assets: {
+          type: 'array',
+          maxItems: 15,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: {
+                type: 'string',
+                enum: ['VEHICLE', 'ELECTRONICS', 'FURNITURE', 'EQUIPMENT', 'COLLECTIBLE', 'OTHER'],
+              },
+              currentValue: { type: 'integer', minimum: 1, maximum: 10000000 },
             },
           },
         },
