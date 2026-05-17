@@ -29,6 +29,12 @@ const FLAGS: FlagSeed[] = [
     description:
       'Master switch for Basiq Open Banking surfaces. When OFF (default), all "Connect bank account" buttons, the Basiq onboarding tile, the consumer balances Basiq panel, and the bank-connections settings section are HIDDEN from end-user UI. The /api/basiq/* routes ALSO refuse with 503 BASIQ_DISABLED (defense in depth). Flip ON only after Basiq accreditation is complete and live keys are configured.',
   },
+  {
+    key: 'CONVERSATIONAL_ONBOARDING',
+    name: 'Conversational Onboarding (Phase 12 Track E)',
+    description:
+      'Master switch for the conversational + voice input mode on /onboarding. When OFF (default), the form-based wizard (Track B) is the only path — byte-for-byte the existing experience. When ON, a "Chat with Monitrax" toggle appears next to "Fill in a form" on /onboarding, routing users to a parallel chat surface that stages the same OnboardingState and converges on the same ReviewStep + /api/onboarding/bulk-create. See docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md.',
+  },
 ];
 
 export async function runFeatureFlagSeed(): Promise<void> {

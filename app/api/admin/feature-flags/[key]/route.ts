@@ -17,6 +17,10 @@ import {
   BASIQ_FLAG_KEY,
   invalidateBasiqGateCache,
 } from '@/lib/featureFlags/basiqGate';
+import {
+  CONVERSATIONAL_ONBOARDING_FLAG_KEY,
+  invalidateConversationalOnboardingGateCache,
+} from '@/lib/featureFlags/conversationalOnboardingGate';
 import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
@@ -161,10 +165,14 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     });
 
     // Production Readiness — flush the in-process cache for any flag
-    // with a side-channel reader. Currently only BASIQ_INTEGRATION,
-    // but the pattern extends as more flags get cached helpers.
+    // with a side-channel reader. Each cached-reader flag needs its
+    // own invalidation hook here so admin flips propagate immediately
+    // on THIS instance + ≤30s on warm peers via the TTL.
     if (updatedFlag.key === BASIQ_FLAG_KEY) {
       invalidateBasiqGateCache();
+    }
+    if (updatedFlag.key === CONVERSATIONAL_ONBOARDING_FLAG_KEY) {
+      invalidateConversationalOnboardingGateCache();
     }
 
     return NextResponse.json(updatedFlag);

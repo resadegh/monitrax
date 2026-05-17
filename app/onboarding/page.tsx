@@ -18,14 +18,26 @@
  */
 
 import { useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { WizardContainer } from '@/components/onboarding';
 import type { WizardData } from '@/components/onboarding';
+import { ConversationalModeToggle } from '@/components/onboarding/ConversationalModeToggle';
+import { ConversationalSetup } from '@/components/onboarding/wizard-chat/ConversationalSetup';
+import { useConversationalOnboardingEnabled } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const chatFlagEnabled = useConversationalOnboardingEnabled();
+  // Phase 12 Track E.0 — read ?mode=chat. Only honoured when the
+  // CONVERSATIONAL_ONBOARDING flag is ON; otherwise the toggle is
+  // hidden and form-mode is the only path (byte-for-byte unchanged
+  // behaviour pre-flag).
+  const requestedMode = searchParams?.get('mode');
+  const mode: 'form' | 'chat' =
+    chatFlagEnabled && requestedMode === 'chat' ? 'chat' : 'form';
   const { user, token, isLoading: authLoading } = useAuth();
   const {
     state: onboardingState,
@@ -138,14 +150,21 @@ export default function OnboardingPage() {
   }
 
   return (
-    <WizardContainer
-      isOpen={true}
-      mode="page"
-      onClose={handleClose}
-      onComplete={handleComplete}
-      initialData={hydratedDraft}
-      initialStepIndex={hydratedStepIndex}
-      onAutoSave={handleAutoSave}
-    />
+    <>
+      <ConversationalModeToggle />
+      {mode === 'chat' ? (
+        <ConversationalSetup />
+      ) : (
+        <WizardContainer
+          isOpen={true}
+          mode="page"
+          onClose={handleClose}
+          onComplete={handleComplete}
+          initialData={hydratedDraft}
+          initialStepIndex={hydratedStepIndex}
+          onAutoSave={handleAutoSave}
+        />
+      )}
+    </>
   );
 }
