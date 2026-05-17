@@ -18,6 +18,13 @@ dashboard-as-onboarding, pivoted 2026-04-15)
   assessment) and §10 (Guided Setup TRAIL alignment)
 - `docs/blueprint/PHASE_12_ONBOARDING_TOUR.md` (v2.2 tour spec —
   historical reference only)
+- `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` —
+  **Track E (queued):** parallel conversational + voice input modality
+  over THIS doc's data contract. Form-mode (Track B) is unchanged;
+  chat-mode is a sibling front door that converges on the same
+  `ReviewStep` and `/api/onboarding/bulk-create`. Read that doc when
+  working on the chat surface; this doc remains the SSOT for the form
+  surface + data contract.
 - `docs/blueprint/PHASE_27_GEMINI_AI_MIGRATION.md` (existing Gemini client)
 - `docs/blueprint/PHASE_28_AI_INTEGRATION.md` (existing Gemini use case)
 - `CLAUDE.md` (binding build rules)
