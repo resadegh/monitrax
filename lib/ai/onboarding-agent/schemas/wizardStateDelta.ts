@@ -349,10 +349,97 @@ export const investmentsStateDeltaSchema = z.object({
 });
 
 // ============================================================================
+// INCOME-EXPENSES topic — v1 (FINAL chat topic)
+// ============================================================================
+//
+// Two collections in one topic: incomes + expenses. The orchestrator
+// drives a two-phase conversation (incomes first → expenses → recap)
+// but the schema accepts both in one delta so the LLM can extract
+// either when the user volunteers both in a single message.
+//
+// What chat captures per income:
+//   - name        — free text (e.g. "salary", "rental from Carlton")
+//   - type        — SALARY / RENT / RENTAL / INVESTMENT / OTHER
+//   - amount      — integer AUD (per frequency unit)
+//   - frequency   — WEEKLY / FORTNIGHTLY / MONTHLY / QUARTERLY / ANNUAL
+//   - salaryType  — GROSS / NET (for SALARY type; LLM extracts when
+//                   user says "after tax" / "take-home" → NET, else
+//                   defaults to GROSS on handoff)
+//
+// What chat captures per expense:
+//   - name        — free text (e.g. "rent", "groceries", "gym")
+//   - category    — one of 19 ExpenseCategory enum values
+//   - amount      — integer AUD (per frequency unit)
+//   - frequency   — same enum as income
+//
+// Deferred to form mode:
+//   - isEssential / isTaxDeductible flags (form flips)
+//   - per-property linked expenses (Property step owns these)
+
+export const incomeTypeEnum = z.enum(['SALARY', 'RENT', 'RENTAL', 'INVESTMENT', 'OTHER']);
+export const salaryTypeEnum = z.enum(['GROSS', 'NET']);
+export const frequencyEnum = z.enum(['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL']);
+
+export const expenseCategoryEnum = z.enum([
+  'HOUSING',
+  'RENT',
+  'RATES',
+  'INSURANCE',
+  'MAINTENANCE',
+  'PERSONAL',
+  'UTILITIES',
+  'FOOD',
+  'GROCERIES',
+  'TRANSPORT',
+  'ENTERTAINMENT',
+  'SUBSCRIPTION',
+  'STRATA',
+  'LAND_TAX',
+  'LOAN_INTEREST',
+  'REGISTRATION',
+  'MODIFICATIONS',
+  'HEALTH',
+  'EDUCATION',
+  'OTHER',
+]);
+
+export const incomeDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: incomeTypeEnum.optional(),
+  amount: z.number().int().min(1).max(10_000_000).optional(),
+  frequency: frequencyEnum.optional(),
+  salaryType: salaryTypeEnum.optional(),
+});
+
+export const expenseDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  category: expenseCategoryEnum.optional(),
+  amount: z.number().int().min(1).max(1_000_000).optional(),
+  frequency: frequencyEnum.optional(),
+});
+
+export const incomeExpensesFieldsSchema = z.object({
+  /** Sentinel for the incomes sub-collection. */
+  hasIncome: z.boolean().optional(),
+  incomes: z.array(incomeDeltaSchema).max(15).optional(),
+  /** Sentinel for the expenses sub-collection. */
+  hasExpenses: z.boolean().optional(),
+  expenses: z.array(expenseDeltaSchema).max(30).optional(),
+});
+
+export const incomeExpensesStateDeltaSchema = z.object({
+  topic: z.literal('income-expenses'),
+  fields: incomeExpensesFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
 // Top-level WizardStateDelta (discriminated by `topic`)
 // ============================================================================
 
-// Remaining topic to ship: income-expenses (PR #8).
+// All 8 chat topics now in the union. Track E topic coverage complete
+// with PR #8.
 export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   householdStateDeltaSchema,
   propertiesStateDeltaSchema,
@@ -361,6 +448,7 @@ export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   superStateDeltaSchema,
   assetsStateDeltaSchema,
   investmentsStateDeltaSchema,
+  incomeExpensesStateDeltaSchema,
 ]);
 
 export type WizardStateDelta = z.infer<typeof wizardStateDeltaSchema>;
@@ -379,6 +467,9 @@ export type AssetDelta = z.infer<typeof assetDeltaSchema>;
 export type AssetsFields = z.infer<typeof assetsFieldsSchema>;
 export type InvestmentDelta = z.infer<typeof investmentDeltaSchema>;
 export type InvestmentsFields = z.infer<typeof investmentsFieldsSchema>;
+export type IncomeDelta = z.infer<typeof incomeDeltaSchema>;
+export type ExpenseDelta = z.infer<typeof expenseDeltaSchema>;
+export type IncomeExpensesFields = z.infer<typeof incomeExpensesFieldsSchema>;
 
 // ============================================================================
 // JSON Schema (hand-crafted to mirror the Zod schema above)
@@ -635,6 +726,86 @@ export const INVESTMENTS_TOOL_INPUT_SCHEMA = {
               name: { type: 'string', minLength: 1, maxLength: 120 },
               type: { type: 'string', enum: ['BROKERAGE', 'FUND', 'TRUST', 'ETF_CRYPTO'] },
               totalValue: { type: 'integer', minimum: 1, maximum: 100000000 },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const INCOME_EXPENSES_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['income-expenses'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasIncome: { type: 'boolean' },
+        incomes: {
+          type: 'array',
+          maxItems: 15,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: { type: 'string', enum: ['SALARY', 'RENT', 'RENTAL', 'INVESTMENT', 'OTHER'] },
+              amount: { type: 'integer', minimum: 1, maximum: 10000000 },
+              frequency: {
+                type: 'string',
+                enum: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'],
+              },
+              salaryType: { type: 'string', enum: ['GROSS', 'NET'] },
+            },
+          },
+        },
+        hasExpenses: { type: 'boolean' },
+        expenses: {
+          type: 'array',
+          maxItems: 30,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              category: {
+                type: 'string',
+                enum: [
+                  'HOUSING',
+                  'RENT',
+                  'RATES',
+                  'INSURANCE',
+                  'MAINTENANCE',
+                  'PERSONAL',
+                  'UTILITIES',
+                  'FOOD',
+                  'GROCERIES',
+                  'TRANSPORT',
+                  'ENTERTAINMENT',
+                  'SUBSCRIPTION',
+                  'STRATA',
+                  'LAND_TAX',
+                  'LOAN_INTEREST',
+                  'REGISTRATION',
+                  'MODIFICATIONS',
+                  'HEALTH',
+                  'EDUCATION',
+                  'OTHER',
+                ],
+              },
+              amount: { type: 'integer', minimum: 1, maximum: 1000000 },
+              frequency: {
+                type: 'string',
+                enum: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'],
+              },
             },
           },
         },

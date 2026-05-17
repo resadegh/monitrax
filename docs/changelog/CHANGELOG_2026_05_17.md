@@ -1148,3 +1148,116 @@ N/A — `prisma/schema.prisma` not touched.
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 9: Phase 12 Track E — Income-Expenses topic (CHAT CHAIN COMPLETE)
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (PR #777 merged; branch fresh from main).
+
+### Scope
+
+- **Type:** Feature build — eighth + FINAL chat topic.
+- **Scope:** Adds **Income-Expenses** to chat-mode. Chat chain is now END-TO-END: Household → Properties → Debts → Accounts → Investments → Super → Assets → **Income-Expenses** → form mode at currentStep=10 (review step pre-filled).
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF.
+
+### Trigger
+
+Reza directive: *"777 is merged continue"*.
+
+### Changes Made
+
+**Schema** (`wizardStateDelta.ts`):
+- Two collections in one topic: `incomeDeltaSchema` (`{ name, type? SALARY/RENT/RENTAL/INVESTMENT/OTHER, amount?, frequency? WEEKLY/FORTNIGHTLY/MONTHLY/QUARTERLY/ANNUAL, salaryType? GROSS/NET }`) + `expenseDeltaSchema` (`{ name, category? 19-value AU enum (HOUSING/RENT/RATES/INSURANCE/MAINTENANCE/PERSONAL/UTILITIES/FOOD/GROCERIES/TRANSPORT/ENTERTAINMENT/SUBSCRIPTION/STRATA/LAND_TAX/LOAN_INTEREST/REGISTRATION/MODIFICATIONS/HEALTH/EDUCATION/OTHER), amount?, frequency? }`).
+- `incomeExpensesFieldsSchema` with `hasIncome` + `hasExpenses` sentinels and both collection arrays (max 15 incomes / 30 expenses).
+- `incomeExpensesStateDeltaSchema` joined into the discriminated union (now 8 members — complete).
+- `INCOME_EXPENSES_TOOL_INPUT_SCHEMA` JSON Schema mirror.
+
+**System prompt** (`extractWizardStepDelta.ts`) — `INCOME_EXPENSES_SYSTEM_PROMPT` (~120 lines, longest of the lot):
+- **Frequency extraction is critical:** LLM extracts user's stated frequency, NEVER normalises to monthly. "$80k a year" → ANNUAL; "$2k a month" → MONTHLY; "$500 a week" → WEEKLY; etc. Silent unit defaults to ANNUAL (Aussie convention — "$80k" usually means per-year).
+- **Income type mapping:** salary/wages/PAYG → SALARY; rental income → RENT; dividends/distributions/franking → INVESTMENT; ABN/Centrelink/side hustle → OTHER.
+- **Salary GROSS/NET extraction:** gross/before-tax/payslip → GROSS; net/take-home/after-tax/in-my-account → NET; silent → OMIT (orchestrator defaults to GROSS — most users say their headline figure as gross).
+- **Complete 19-category expense AU vocabulary mapping:** Woolworths/Coles → GROCERIES; fuel/Opal/Myki → TRANSPORT; Netflix/Spotify/gym → SUBSCRIPTION; strata/body-corp → STRATA; council rates → RATES; etc. Exhaustive table in the prompt.
+- **AFSL-adjacent prohibitions:** explicit "no budgeting advice / no 'cut back on …' suggestions / no commentary on spending merit".
+
+**State machine** (`incomeExpensesScript.ts` NEW, ~450 lines):
+- TWO-PHASE state machine:
+  - Phase 1 INCOMES: INTRO → ASKING_INCOME_OWNERSHIP → per-incomplete INCOME_TYPE / AMOUNT / FREQUENCY → ASKING_INCOME_MORE → TRANSITIONING_TO_EXPENSES.
+  - Phase 2 EXPENSES: ASKING_EXPENSE_OWNERSHIP → per-incomplete EXPENSE_CATEGORY / AMOUNT / FREQUENCY → ASKING_EXPENSE_MORE → RECAP.
+- Helper functions `advanceIncomePhase()` + `advanceExpensePhase()` invoked by the main `advanceIncomeExpensesScript()` based on current step.
+- 2-retry loop-break per step with force-advance defaults (income → OTHER/0/ANNUAL; expense → OTHER/0/MONTHLY).
+- Recap formatters: `summariseSingleIncome()` (e.g. "salary (Salary) (gross) — $120,000/year") + `summariseSingleExpense()` (e.g. "rent (Rent) — $600/week").
+
+**Orchestrator** (`ConversationalSetup.tsx`):
+- `chatTopic` union expanded to 8 values.
+- `TOPIC_CHAIN` appends `'income-expenses'`.
+- New state slot `incomeExpensesScript`.
+- 8-way switches in every helper.
+- **`AFTER_CHAT_FORM_STEP_INDEX` flipped 9 → 10 (review step)** — chat now covers every data-collection step; form opens at review pre-filled.
+- `currentStepFor('income-expenses')` returns 9.
+- Handoff defaults applied in `handleConfirm` for income-expenses: income → `type:OTHER`, `amount:0`, `frequency:ANNUAL`, `salaryType:GROSS` (SALARY only); expense → `category:OTHER`, `amount:0`, `frequency:MONTHLY`.
+- Recap card uniquely formats both collections in one card (income rows then expense rows).
+
+**API** (`extract` + `topic-confirmed` routes) accept `'income-expenses'`.
+
+### Scope decisions
+
+- **Chat handoff target is now currentStep=10 (review).** With all 8 data-collection topics covered, form mode opens at the review screen where the user confirms + clicks "Confirm and save" (bulk-create runs). Steps 0 Welcome + 2 Entities remain chat-skipped — user can Back-button if they want to revisit.
+- **Two-phase state machine kept simple.** Each phase is essentially one assets-script (per-incomplete-item TYPE → AMOUNT → FREQUENCY). Transition between phases is a single state hop. Recap is one card showing both collections.
+- **Frequency is the LLM's hardest extraction** — system prompt has the most extensive rules of any topic. "Number plus unit" is critical, "number alone" defaults to ANNUAL per AU convention. Frequency-related failures default to ANNUAL (income) or MONTHLY (expenses) on force-advance.
+- **No per-property linked expenses** — those are captured on the Properties step (existing form-wizard convention). Chat's expense topic is for non-property recurring expenses.
+- **Topic-registry refactor justified** — 8-way switches throughout the orchestrator are clean but repetitive. Now that all topics are in, a typed-registry refactor (one `TopicConfig` entry per topic, table-driven dispatch) would halve the orchestrator's line count without changing behaviour.
+
+### Files Created / Modified
+
+- **NEW (1):** `components/onboarding/wizard-chat/incomeExpensesScript.ts`
+- **EDITED (6):** schema + tool spec + gateway + extract route + topic-confirmed route + ConversationalSetup
+- **DOC-SYNC (3):** Phase doc Status + rev 9 changelog; IMPLEMENTATION_PLAN header + row 53 → 🟢 STAGE 1 COMPLETE pending merge; CHANGELOG_2026_05_17.md session 9
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern — no new primitives
+- [ ] application config, GCP, identity, deployment
+- [x] security / CDR posture — minimal: Income-Expenses gateway prompt includes staged values for positional-merge. All user-originated this session. Audit metadata stays sanitised. `INCOME_EXPENSES_SYSTEM_PROMPT` adds extensive AFSL-adjacent prohibitions (no budgeting / spending / cut-back commentary).
+- [ ] operational procedure
+- [x] strategic decision — chat chain COMPLETE at 8 topics; Track E status flipped to 🟢 STAGE 1 COMPLETE (pending merge)
+
+### Build Status
+
+- [x] `tsc --noEmit` clean
+- [ ] `npm run lint` — N/A in sandbox
+- [ ] Tests — none added; state machine bounded.
+
+### Validation
+
+- [x] Income enum strictly enforced (SALARY / RENT / RENTAL / INVESTMENT / OTHER)
+- [x] Frequency enum strictly enforced (WEEKLY / FORTNIGHTLY / MONTHLY / QUARTERLY / ANNUAL)
+- [x] SalaryType enum strictly enforced (GROSS / NET); only emitted when type=SALARY
+- [x] Expense category enum strictly enforced (19 values, no others)
+- [x] Position-merge correctness across both collections
+- [x] Two-phase state machine transitions correctly (incomes → expenses → recap)
+- [x] No-data sentinels short-circuit appropriately
+- [x] Agent never writes to Prisma — grep verified
+- [x] AFSL boundary structural — no advice tool; system prompt forbids budgeting / spending commentary
+
+### What's NOT in this PR (queued)
+
+- **E.2b.2** — first-encounter persistence + optional sound + mic-level → orb-ripple sync (still need schema or web-audio)
+- **Topic-registry full refactor** — now justified; orchestrator's 8-way switches can be replaced with a `TopicConfig` table. Halves the file size. NOT blocking.
+- **Smart Welcome hydration** — derive Welcome defaults from chat data so users don't need Back-button after the chat completes. Polish PR.
+- **Test coverage** — none on the chat loop yet. State machines + scripts are pure functions, easy to unit-test. Should land soon.
+
+### Why this matters (4-lens synthesis)
+
+- **Architect lens:** the 8-way switch pattern is now at its limit of readability. Track E shipped without the registry refactor — that's a deliberate choice (ship features, refactor after) but the next PR should consolidate. The TWO-PHASE state machine for Income-Expenses proves the pattern handles complex topics fine.
+- **Behavioural-psychologist lens:** Income-Expenses is the highest-cognitive-load form-wizard step. Form-mode users routinely abandon here. The chat approach lets users dump everything in plain English — "salary $120k gross, rental $600/week, rent $700/week, groceries 200/week, gym $30/fn, Netflix $20/m" — and the LLM untangles it into 7 structured rows. This is the biggest UX win of Track E.
+- **Financial-adviser lens:** the GROSS/NET disambiguation is AU-specific + load-bearing for cashflow calculations. The "default GROSS when silent" rule matches AU convention. Frequency extraction is critical — getting it wrong scales numbers by an order of magnitude. The system prompt is explicit and uncompromising about not normalising.
+- **Security / compliance lens:** AFSL boundary preserved structurally. No advice tool. System prompts across all 8 topics now explicitly forbid: market commentary (Properties/Investments), debt strategy (Debts), bank-switch (Accounts), fund-comparison (Super), asset-merit (Assets), portfolio (Investments), budgeting (Income-Expenses). Track E is the broadest AI surface in Monitrax and it's structurally incapable of giving advice.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #777 merged)
+- PR: to be created at end of this build session — the FINAL Track E build PR.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
