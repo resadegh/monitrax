@@ -37,6 +37,7 @@ import {
   type SuperFields,
   type AssetsFields,
   type InvestmentsFields,
+  type IncomeExpensesFields,
 } from './schemas/wizardStateDelta';
 import {
   EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
@@ -47,6 +48,7 @@ import {
   SUPER_SYSTEM_PROMPT,
   ASSETS_SYSTEM_PROMPT,
   INVESTMENTS_SYSTEM_PROMPT,
+  INCOME_EXPENSES_SYSTEM_PROMPT,
   householdExtractTool,
   propertiesExtractTool,
   debtsExtractTool,
@@ -54,6 +56,7 @@ import {
   superExtractTool,
   assetsExtractTool,
   investmentsExtractTool,
+  incomeExpensesExtractTool,
 } from './tools/extractWizardStepDelta';
 
 export type SupportedTopic =
@@ -63,7 +66,8 @@ export type SupportedTopic =
   | 'accounts'
   | 'super'
   | 'assets'
-  | 'investments';
+  | 'investments'
+  | 'income-expenses';
 
 export type TopicStateSubset =
   | HouseholdFields
@@ -72,7 +76,8 @@ export type TopicStateSubset =
   | AccountsFields
   | SuperFields
   | AssetsFields
-  | InvestmentsFields;
+  | InvestmentsFields
+  | IncomeExpensesFields;
 
 const SUPPORTED_TOPICS: ReadonlyArray<SupportedTopic> = [
   'household',
@@ -82,6 +87,7 @@ const SUPPORTED_TOPICS: ReadonlyArray<SupportedTopic> = [
   'super',
   'assets',
   'investments',
+  'income-expenses',
 ];
 
 export interface ExtractRequest {
@@ -222,7 +228,8 @@ function resolveTopicTools(topic: SupportedTopic): {
     | typeof accountsExtractTool
     | typeof superExtractTool
     | typeof assetsExtractTool
-    | typeof investmentsExtractTool;
+    | typeof investmentsExtractTool
+    | typeof incomeExpensesExtractTool;
 } {
   switch (topic) {
     case 'household':
@@ -239,6 +246,11 @@ function resolveTopicTools(topic: SupportedTopic): {
       return { systemPrompt: ASSETS_SYSTEM_PROMPT, toolSpec: assetsExtractTool };
     case 'investments':
       return { systemPrompt: INVESTMENTS_SYSTEM_PROMPT, toolSpec: investmentsExtractTool };
+    case 'income-expenses':
+      return {
+        systemPrompt: INCOME_EXPENSES_SYSTEM_PROMPT,
+        toolSpec: incomeExpensesExtractTool,
+      };
   }
 }
 
@@ -288,6 +300,8 @@ function formatStagedSubset(
       return formatStagedAssetsState(subset as AssetsFields);
     case 'investments':
       return formatStagedInvestmentsState(subset as InvestmentsFields);
+    case 'income-expenses':
+      return formatStagedIncomeExpensesState(subset as IncomeExpensesFields);
   }
 }
 
@@ -408,6 +422,42 @@ function formatStagedInvestmentsState(subset: InvestmentsFields): string {
       const bits: string[] = [`name=${JSON.stringify(inv.name)}`];
       if (inv.type !== undefined) bits.push(`type=${inv.type}`);
       if (inv.totalValue !== undefined) bits.push(`totalValue=${inv.totalValue}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  return parts.join('\n');
+}
+
+function formatStagedIncomeExpensesState(subset: IncomeExpensesFields): string {
+  const parts: string[] = [];
+  if (typeof subset.hasIncome === 'boolean') {
+    parts.push(`hasIncome: ${subset.hasIncome}`);
+  }
+  if (!subset.incomes || subset.incomes.length === 0) {
+    parts.push('incomes: []');
+  } else {
+    parts.push('incomes:');
+    subset.incomes.forEach((inc, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(inc.name)}`];
+      if (inc.type !== undefined) bits.push(`type=${inc.type}`);
+      if (inc.amount !== undefined) bits.push(`amount=${inc.amount}`);
+      if (inc.frequency !== undefined) bits.push(`frequency=${inc.frequency}`);
+      if (inc.salaryType !== undefined) bits.push(`salaryType=${inc.salaryType}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  if (typeof subset.hasExpenses === 'boolean') {
+    parts.push(`hasExpenses: ${subset.hasExpenses}`);
+  }
+  if (!subset.expenses || subset.expenses.length === 0) {
+    parts.push('expenses: []');
+  } else {
+    parts.push('expenses:');
+    subset.expenses.forEach((exp, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(exp.name)}`];
+      if (exp.category !== undefined) bits.push(`category=${exp.category}`);
+      if (exp.amount !== undefined) bits.push(`amount=${exp.amount}`);
+      if (exp.frequency !== undefined) bits.push(`frequency=${exp.frequency}`);
       parts.push(`  [${idx}] ${bits.join(', ')}`);
     });
   }

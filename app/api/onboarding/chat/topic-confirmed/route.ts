@@ -26,6 +26,7 @@ const SUPPORTED_TOPICS = new Set([
   'super',
   'assets',
   'investments',
+  'income-expenses',
 ]);
 
 export const POST = withPermission('settings.write', async (request, auth) => {
@@ -64,7 +65,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         error: {
           code: 'VALIDATION_ERROR',
           message:
-            'topic must be one of: household, properties, debts, accounts, super, assets, investments',
+            'topic must be one of: household, properties, debts, accounts, super, assets, investments, income-expenses',
           details: null,
         },
       });

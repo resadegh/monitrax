@@ -99,6 +99,15 @@ import {
   type InvestmentsScriptState,
   INVESTMENTS_AGENT_COPY,
 } from './investmentsScript';
+import {
+  advanceIncomeExpensesScript,
+  bootstrapIncomeExpensesConversation,
+  initialIncomeExpensesScriptState,
+  summariseSingleIncome,
+  summariseSingleExpense,
+  type IncomeExpensesScriptState,
+  INCOME_EXPENSES_AGENT_COPY,
+} from './incomeExpensesScript';
 import type { ChatMessage } from './types';
 import type {
   HouseholdFields,
@@ -108,17 +117,18 @@ import type {
   SuperFields,
   AssetsFields,
   InvestmentsFields,
+  IncomeExpensesFields,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
 import { jitteredThinkingPauseMs } from './design/motionTokens';
 
-// After the chat chain ends, redirect to form mode at `income-expenses`
-// (currentStep = 9) — the first step the chat doesn't cover. The form
-// wizard hydrates the draft and the user continues there. Steps the
-// chat covered (1 household / 3 properties / 4 debts / 5 accounts /
-// 6 investments / 7 super / 8 assets) render pre-filled; the user
-// advances quickly. Steps the chat skipped (0 welcome / 2 entities /
-// 9 income-expenses / 10 review) collect remaining data in form mode.
-const AFTER_CHAT_FORM_STEP_INDEX = 9;
+// After the chat chain ends, redirect to form mode at `review`
+// (currentStep = 10) — the final wizard step. Chat now covers every
+// data-collection step (1 household / 3 properties / 4 debts /
+// 5 accounts / 6 investments / 7 super / 8 assets / 9 income-expenses)
+// pre-filled; the user reviews + completes in form mode. Steps still
+// skipped by chat (0 welcome / 2 entities) get sensible defaults and
+// the user can hit Back to revisit them.
+const AFTER_CHAT_FORM_STEP_INDEX = 10;
 
 type ChatTopic =
   | 'household'
@@ -127,11 +137,11 @@ type ChatTopic =
   | 'accounts'
   | 'investments'
   | 'super'
-  | 'assets';
+  | 'assets'
+  | 'income-expenses';
 
-// Order matches the form-wizard step order: investments is step 6
-// (between accounts=5 and super=7). Keeping chat in form-wizard order
-// preserves user mental model on partial-resume back to form mode.
+// Order matches the form-wizard step order. Keeping chat in form-wizard
+// order preserves user mental model on partial-resume back to form mode.
 const TOPIC_CHAIN: ChatTopic[] = [
   'household',
   'properties',
@@ -140,6 +150,7 @@ const TOPIC_CHAIN: ChatTopic[] = [
   'investments',
   'super',
   'assets',
+  'income-expenses',
 ];
 
 function nextTopicAfter(t: ChatTopic): ChatTopic | null {
@@ -164,7 +175,8 @@ interface ExtractApiResponse {
       | { topic: 'accounts'; fields: AccountsFields; unresolved: string[]; rationale?: string }
       | { topic: 'super'; fields: SuperFields; unresolved: string[]; rationale?: string }
       | { topic: 'assets'; fields: AssetsFields; unresolved: string[]; rationale?: string }
-      | { topic: 'investments'; fields: InvestmentsFields; unresolved: string[]; rationale?: string };
+      | { topic: 'investments'; fields: InvestmentsFields; unresolved: string[]; rationale?: string }
+      | { topic: 'income-expenses'; fields: IncomeExpensesFields; unresolved: string[]; rationale?: string };
   };
   error?: { code: string; message: string } | null;
 }
@@ -202,6 +214,9 @@ export function ConversationalSetup() {
   const [assetsScript, setAssetsScript] = useState<AssetsScriptState>(initialAssetsScriptState);
   const [investmentsScript, setInvestmentsScript] = useState<InvestmentsScriptState>(
     initialInvestmentsScriptState,
+  );
+  const [incomeExpensesScript, setIncomeExpensesScript] = useState<IncomeExpensesScriptState>(
+    initialIncomeExpensesScriptState,
   );
 
   const bootstrappedRef = useRef(false);
@@ -320,6 +335,31 @@ export function ConversationalSetup() {
     }));
   }, [investmentsScript.staged]);
 
+  const incomeExpensesRecapRows = useMemo<RecapRow[]>(() => {
+    const f = incomeExpensesScript.staged;
+    const rows: RecapRow[] = [];
+    const incomes = f.incomes ?? [];
+    const expenses = f.expenses ?? [];
+    if (f.hasIncome === false || incomes.length === 0) {
+      rows.push({ label: 'Income', value: f.hasIncome === false ? 'None' : '(none listed)' });
+    } else {
+      incomes.forEach((i, idx) =>
+        rows.push({ label: `Income ${idx + 1}`, value: summariseSingleIncome(i) }),
+      );
+    }
+    if (f.hasExpenses === false || expenses.length === 0) {
+      rows.push({
+        label: 'Expenses',
+        value: f.hasExpenses === false ? 'None' : '(none listed)',
+      });
+    } else {
+      expenses.forEach((e, idx) =>
+        rows.push({ label: `Expense ${idx + 1}`, value: summariseSingleExpense(e) }),
+      );
+    }
+    return rows;
+  }, [incomeExpensesScript.staged]);
+
   const recapRows: RecapRow[] = (() => {
     switch (chatTopic) {
       case 'household':
@@ -336,6 +376,8 @@ export function ConversationalSetup() {
         return superRecapRows;
       case 'assets':
         return assetsRecapRows;
+      case 'income-expenses':
+        return incomeExpensesRecapRows;
     }
   })();
 
@@ -355,6 +397,8 @@ export function ConversationalSetup() {
         return SUPER_AGENT_COPY.recapHeader;
       case 'assets':
         return ASSETS_AGENT_COPY.recapHeader;
+      case 'income-expenses':
+        return INCOME_EXPENSES_AGENT_COPY.recapHeader;
     }
   })();
 
@@ -374,6 +418,8 @@ export function ConversationalSetup() {
         return superScript.step === 'RECAP';
       case 'assets':
         return assetsScript.step === 'RECAP';
+      case 'income-expenses':
+        return incomeExpensesScript.step === 'RECAP';
     }
   })();
 
@@ -405,6 +451,8 @@ export function ConversationalSetup() {
             return superScript.staged;
           case 'assets':
             return assetsScript.staged;
+          case 'income-expenses':
+            return incomeExpensesScript.staged;
         }
       })();
 
@@ -609,6 +657,31 @@ export function ConversationalSetup() {
             }
             break;
           }
+          case 'income-expenses': {
+            const f = delta.fields;
+            const llmCouldNotExtract =
+              delta.unresolved.includes('general') &&
+              f.hasIncome === undefined &&
+              f.incomes === undefined &&
+              f.hasExpenses === undefined &&
+              f.expenses === undefined;
+            const stepBefore = incomeExpensesScript.step;
+            const next = advanceIncomeExpensesScript({
+              state: changingMode
+                ? { ...incomeExpensesScript, step: 'CHANGING' }
+                : incomeExpensesScript,
+              newFields: f,
+              llmCouldNotExtract,
+            });
+            setIncomeExpensesScript(next.state);
+            if (next.agentNextMessage) appendAgent(next.agentNextMessage);
+            if (next.showRecap && stepBefore !== 'RECAP') {
+              appendAgent(
+                INCOME_EXPENSES_AGENT_COPY.recapHeader + ' — does this look right?',
+              );
+            }
+            break;
+          }
         }
 
         if (changingMode) setChangingMode(false);
@@ -632,6 +705,7 @@ export function ConversationalSetup() {
       superScript,
       assetsScript,
       investmentsScript,
+      incomeExpensesScript,
       recentTranscriptForApi,
       changingMode,
       appendAgent,
@@ -661,6 +735,8 @@ export function ConversationalSetup() {
           return SUPER_AGENT_COPY.changingPrompt;
         case 'assets':
           return ASSETS_AGENT_COPY.changingPrompt;
+        case 'income-expenses':
+          return INCOME_EXPENSES_AGENT_COPY.changingPrompt;
       }
     })();
     appendAgent(prompt);
@@ -801,6 +877,31 @@ export function ConversationalSetup() {
             holdings: [],
           })),
         };
+      } else if (chatTopic === 'income-expenses') {
+        const stagedIncomes = incomeExpensesScript.staged.incomes ?? [];
+        const stagedExpenses = incomeExpensesScript.staged.expenses ?? [];
+        mergedDraft = {
+          ...baseDraft,
+          income: stagedIncomes.map((inc, idx) => ({
+            id: `chat-income-${idx}-${Date.now()}`,
+            name: inc.name,
+            type: inc.type ?? 'OTHER',
+            amount: inc.amount ?? 0,
+            frequency: inc.frequency ?? 'ANNUAL',
+            // Default GROSS for SALARY when chat didn't capture it —
+            // most users state their headline figure as gross.
+            ...(inc.type === 'SALARY'
+              ? { salaryType: inc.salaryType ?? 'GROSS' as const }
+              : {}),
+          })),
+          expenses: stagedExpenses.map((exp, idx) => ({
+            id: `chat-exp-${idx}-${Date.now()}`,
+            name: exp.name,
+            category: exp.category ?? 'OTHER',
+            amount: exp.amount ?? 0,
+            frequency: exp.frequency ?? 'MONTHLY',
+          })),
+        };
       }
 
       // The currentStep we save under depends on whether we're pivoting
@@ -834,7 +935,9 @@ export function ConversationalSetup() {
                       ? investmentsScript.staged
                       : chatTopic === 'super'
                         ? superScript.staged
-                        : assetsScript.staged,
+                        : chatTopic === 'assets'
+                          ? assetsScript.staged
+                          : incomeExpensesScript.staged,
           ),
         }),
       }).catch(() => {
@@ -862,6 +965,8 @@ export function ConversationalSetup() {
             return bootstrapSuperConversation();
           case 'assets':
             return bootstrapAssetsConversation();
+          case 'income-expenses':
+            return bootstrapIncomeExpensesConversation();
           case 'household':
             // Defensive — household is never a pivot target.
             return bootstrapHouseholdConversation();
@@ -887,6 +992,9 @@ export function ConversationalSetup() {
         case 'assets':
           setAssetsScript(bootstrap.nextState as AssetsScriptState);
           break;
+        case 'income-expenses':
+          setIncomeExpensesScript(bootstrap.nextState as IncomeExpensesScriptState);
+          break;
       }
       setChatTopic(next);
       setConfirming(false);
@@ -906,6 +1014,7 @@ export function ConversationalSetup() {
     investmentsScript.staged,
     superScript.staged,
     assetsScript.staged,
+    incomeExpensesScript.staged,
     saveDraft,
     token,
     appendAgent,
@@ -999,6 +1108,8 @@ function currentStepFor(topic: ChatTopic): number {
       return 7;
     case 'assets':
       return 8;
+    case 'income-expenses':
+      return 9;
   }
 }
 
@@ -1018,6 +1129,8 @@ function headerForTopic(t: ChatTopic): string {
       return SUPER_AGENT_COPY.recapHeader;
     case 'assets':
       return ASSETS_AGENT_COPY.recapHeader;
+    case 'income-expenses':
+      return INCOME_EXPENSES_AGENT_COPY.recapHeader;
   }
 }
 
