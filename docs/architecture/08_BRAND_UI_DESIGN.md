@@ -415,3 +415,19 @@ Currently gated:
 - `Settings` → `organizationManagement` (component exists at
   `components/portal/settings/OrganizationSettings.tsx` but no
   page wrapper at `/portal/settings`)
+
+---
+
+## AI surface visual identity — `PresenceOrb` (Phase 12 Track E, 2026-05-17)
+
+> **Canonical spec lives at** `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` **§4a**. This entry is the brand-surface pointer.
+
+The Monitrax AI agent has a **single visual identity** across every AI-touched surface: a small (~28px), warm-ivory iridescent orb. NOT a face. NOT a mascot. NOT a logo. Ambient intelligence, not a character.
+
+**Source-of-truth file:** `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx`.
+
+**Reuse rule:** every future AI surface in Monitrax (the `/dashboard/cfo` AI Guide refresh, future agent surfaces, etc.) MUST adopt this primitive. No surface introduces its own AI visual identity. Design changes to the orb go through §4a of the Phase doc.
+
+**Anti-references** (do not copy): Cleo's mascot, Bank of America's Erica, Charles Schwab's Schwabby, Replika. These are character-led patterns; Monitrax's is presence-led — premium *because* of restraint.
+
+The "presence, not persona" decision is pinned in `PHASE_12_CONVERSATIONAL_ONBOARDING.md` §8 risk row **E-R11** as a reviewer-reject rule against future persona drift (avatars, names, character voices, emojis in agent messages).

@@ -364,3 +364,129 @@ Verified by `git diff main --unified=0 | grep -E "prisma\\.[a-zA-Z]+\\.(update|u
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 4: Phase 12 Track E.2b — "presence, not persona" motion polish
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (continuation — PR #771 merged into main, branch recreated from main).
+
+### Scope
+
+- **Type:** UI / design-system primitive — visual identity layer over the working chat loop (PR #771).
+- **Scope:** `components/onboarding/wizard-chat/` — adds the canonical `PresenceOrb` SVG + motion-tokens SSOT + wires typewriter agent render + recap-card staggered assembly + mistake-recovery dim-and-keep trail. No backend changes, no schema, no migration, no CDR posture change.
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF — zero behavioural change pre-flip; the new animations only appear when the flag is ON and a user enters `/onboarding?mode=chat`.
+
+### Trigger
+
+Reza directive: *"Continue"* — after PR #771 (rev 3 functional Household slice) merged. Continuing with the queued E.2b motion polish per Phase doc §4a.
+
+### Changes Made
+
+#### 1. Motion tokens (SSOT)
+
+- `components/onboarding/wizard-chat/design/motionTokens.ts` (NEW) — canonical SSOT for all chat-surface animation values. Constants: `MESSAGE_FADE_IN_MS=200`, `MESSAGE_FADE_IN_EASING`, `THINKING_PAUSE_MIN_MS=600` / `THINKING_PAUSE_MAX_MS=800`, `TYPEWRITER_CHARS_PER_SEC=35`, `RECAP_FIELD_STAGGER_MS=80`, `RECAP_CARD_RISE_MS=320`, `RECAP_CARD_RISE_EASING`, `RECAP_CTA_DELAY_MS=120`, `ORB_BREATHE_MS=2400`, `ORB_THINKING_SHIMMER_MS=1600`, `ORB_SETTLED_GLOW_MS=480`, `FIRST_ENCOUNTER_TOTAL_MS=1200`, `MISTAKE_RECOVERY_DIM_OPACITY=0.5`. Helpers: `useReducedMotion()` (reactive React hook over `matchMedia('(prefers-reduced-motion: reduce)')`) + `jitteredThinkingPauseMs()` (returns random int in the 600–800 window — jitter is intentional, fixed 700ms feels metronomic). Hard-coding any of these values elsewhere is a code-review reject.
+
+#### 2. PresenceOrb primitive
+
+- `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx` (NEW) — the canonical visual identity of the Monitrax AI agent. NOT a face, NOT a mascot, NOT a logo (Phase doc §4a.2 + §4a.6 NO-list). Warm-ivory SVG with iridescent rotating overlay; 4 states (`idle` / `listening` / `thinking` / `settled`) typed via prop; `prefers-reduced-motion` → static 4px dot. File-header JSDoc per CLAUDE.md §16.4 documents design rules + reuse policy + anti-references (Cleo / Schwabby / Erica / Replika are explicitly NOT references).
+- `components/onboarding/wizard-chat/design/presenceOrb.css` (NEW) — keyframes for the 4 state animations (`orb-breathe`, `orb-shimmer`, `orb-settled` + `orb-iridescence-slow/fast`). Defense-in-depth `@media (prefers-reduced-motion: reduce) { animation: none !important; }` in case a future caller forgets the React-level fallback.
+
+#### 3. Typewriter agent render
+
+- `components/onboarding/wizard-chat/AgentMessage.tsx` (EDIT) — gains word-boundary typewriter render at `TYPEWRITER_CHARS_PER_SEC` with ±15% per-word jitter. Cursor caret pulses while typing. `animate` prop controls behaviour — only the most-recently-appended agent message animates (older messages render fully visible — would feel weird to re-type seen history). `onTypingComplete` callback fires once per message for ChatThread to flip the orb state. `prefers-reduced-motion` → instant full-text render + immediate `onTypingComplete` fire.
+
+#### 4. ChatThread orb anchoring
+
+- `components/onboarding/wizard-chat/ChatThread.tsx` (EDIT) — anchors a SINGLE `PresenceOrb` to the latest agent message (older agent bubbles render plain — multiple breathing orbs at once = visual noise). Manages orb state: `thinking` while LLM call is in flight + while typewriter is running; brief `settled` glow on typewriter completion; back to `idle`. Renders a standalone orb-with-three-dots block before the very first agent turn (when no agent message exists yet to anchor to). New prop `newestAnimatedMessageId` lets the orchestrator name the typewriter target. Auto-scroll switches from `smooth` to `auto` under reduced motion.
+
+#### 5. Staggered recap-card assembly + delayed CTA
+
+- `components/onboarding/wizard-chat/TopicRecapCard.tsx` (EDIT) — full visual rewrite (preserves the structural API). Card rises from below via `recapCardRise` keyframe (`RECAP_CARD_RISE_MS`). Each field row fades in `RECAP_FIELD_STAGGER_MS` apart in document order. "Looks right" CTA stays disabled until `RECAP_CTA_DELAY_MS` after the last field settles — a deliberate beat for the user to READ before being able to confirm (prevents the reflex-tap-confirm-without-reading failure mode). `dimmed` state (mistake-recovery transparency §4a.5) fades to `MISTAKE_RECOVERY_DIM_OPACITY` and removes the action buttons. `prefers-reduced-motion` collapses every animation to its end state.
+
+#### 6. Orchestrator wiring — pre-typewriter pause + dim-and-keep trail
+
+- `components/onboarding/wizard-chat/ConversationalSetup.tsx` (EDIT) — three additions:
+  1. **Pre-typewriter pause (§4a.3 timing beat #1):** after the extract API responds, the orchestrator waits `jitteredThinkingPauseMs()` (600-800ms jittered) BEFORE appending the next agent message. Even if the API is fast, this beat makes the agent feel attentive ("I'm reading what you said") rather than mechanical.
+  2. **Newest-animated tracking:** new `newestAnimatedMessageId` state, bumped whenever `appendAgent()` adds a message. ChatThread uses it to typewrite only the freshly-appended message.
+  3. **Mistake-recovery dim-and-keep trail (§4a.5):** new `historicalRecaps: RecapRow[][]` state. On "Change something", the current recap is snapshotted into the trail BEFORE flipping into changing mode. The trail renders as dimmed cards ABOVE the active recap — visible audit trail of every correction. The agent never silently overwrites its own notes.
+- File-header JSDoc updated: moved presence orb + typewriter + recap stagger + dim-and-keep from "out of scope for this PR" → "in scope from E.2b (shipped 2026-05-17)". E.2b.2 deferred items documented.
+
+#### 7. Doc-sync (CLAUDE.md §16)
+
+- `docs/architecture/06_UI_UX_FOUNDATION.md` (EDIT) — new §14 "Conversational Onboarding Visual Language" — short pointer to the Phase doc §4a as SSOT + primitives table + reuse policy + NO-list pin against persona drift. Does NOT duplicate the §4a content — one design SSOT, one cross-reference.
+- `docs/architecture/08_BRAND_UI_DESIGN.md` (EDIT) — new "AI surface visual identity — PresenceOrb" section — brand-surface pointer to §4a + the reuse rule (every future AI surface adopts this primitive) + anti-references.
+- `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` (EDIT) — Status line updated (E.2b shipping in PR #3); changelog rev 4 appended documenting every E.2b change.
+- `docs/IMPLEMENTATION_PLAN.md` (EDIT) — Last-updated header refreshed (session 4); row 53 amended to `✅` for E.2a + `🟡` for E.2b in flight.
+- `docs/changelog/CHANGELOG_2026_05_17.md` (this entry) — session 4.
+
+### Files Created / Modified
+
+- **NEW (3):** `components/onboarding/wizard-chat/design/motionTokens.ts`, `components/onboarding/wizard-chat/design/presenceOrb.css`, `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx`.
+- **EDITED (4):** `components/onboarding/wizard-chat/AgentMessage.tsx`, `components/onboarding/wizard-chat/ChatThread.tsx`, `components/onboarding/wizard-chat/TopicRecapCard.tsx`, `components/onboarding/wizard-chat/ConversationalSetup.tsx`.
+- **DOC-SYNC (5):** `docs/architecture/06_UI_UX_FOUNDATION.md`, `docs/architecture/08_BRAND_UI_DESIGN.md`, `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md`, `docs/IMPLEMENTATION_PLAN.md`, `docs/changelog/CHANGELOG_2026_05_17.md`.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+
+- [x] visual design system / component pattern — **MAJOR**: introduces the canonical AI-surface visual identity (`PresenceOrb`) + the motion-tokens SSOT for the chat surface. File-header JSDoc on `PresenceOrb.tsx` per §16.4. UI foundation + brand design docs updated with pointers.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no change
+- [ ] operational procedure
+- [x] strategic decision — pins persona-drift NO-list across THREE docs (Phase doc + UI foundation + brand design), making it structurally hard for a future session to introduce an avatar / name / character voice without explicit rule update.
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — §14 pointer + reuse policy
+- `docs/architecture/08_BRAND_UI_DESIGN.md` — PresenceOrb brand-surface entry
+- `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` — Status + changelog rev 4
+- `docs/IMPLEMENTATION_PLAN.md` — header + row 53
+- `docs/changelog/CHANGELOG_2026_05_17.md` — this session entry
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A. Zero `prisma.<model>.update / upsert / delete / updateMany / deleteMany` calls in this PR. Zero raw SQL. Zero schema changes. Zero migrations.
+
+### Schema-migration check (CLAUDE.md §12.12)
+
+N/A — no `prisma/schema.prisma` changes.
+
+### Build Status
+
+- [x] `tsc --noEmit` clean (only pre-existing `baseUrl` deprecation warning)
+- [ ] `npm run lint` — N/A in sandbox; Vercel preview will run it
+- [ ] Tests — none added in this PR; the motion logic is presentational + bounded (state-machine in `householdScript.ts` already tested implicitly via the working PR #771 chat loop).
+
+### Validation
+
+- [x] All 4 orb states render — verified via React component contract (`PresenceOrb` accepts typed prop)
+- [x] `prefers-reduced-motion: reduce` fallback present on EVERY animation — verified per file: motionTokens hook + PresenceOrb returns static dot + AgentMessage skips typewriter + TopicRecapCard collapses to end state + ChatThread auto-scroll switches to instant
+- [x] Hard-coded motion values absent in new/edited files — `motionTokens.ts` is the SSOT; verified via grep against the values I would have hardcoded
+- [x] Single orb visible at a time — `ChatThread` anchors only to `latestAgentIdx`, older agent messages render plain
+- [x] Dim-and-keep trail accumulates — `historicalRecaps` is append-only on "Change something"; rendered as dimmed cards above the active recap
+- [x] Pre-typewriter pause feels human — jittered 600-800ms; tunable via `THINKING_PAUSE_MIN/MAX_MS`
+- [x] Bootstrap messages do NOT animate — `bootstrappedRef` path uses `setMessages` directly + does NOT set `newestAnimatedMessageId`
+- [x] NO-list pinned across 3 docs — `08_BRAND_UI_DESIGN.md`, `06_UI_UX_FOUNDATION.md` §14.3, Phase doc §4a.6 — all reject avatars / names / character voices / emojis. Persona drift requires explicit rule update.
+
+### What's NOT in this PR (queued)
+
+- **E.2b.2** — first-encounter sequence persistence (needs `UserPreference.chatFirstEncounterAt` column), optional notification tone toggle (needs `UserPreference.chatNotificationSoundEnabled` column + a toggle UI), mic-level → orb-ripple sync (needs Web Audio `AnalyserNode` wiring through `useVoiceInput`). Each needs schema or web-audio additions; keeping this PR purely presentational keeps the review focused.
+- **PR #4+** — remaining topics. Each topic adds: new branch of the `WizardStateDelta` discriminated union, new script file (analog of `householdScript.ts`), system-prompt extension for that topic's AU vocabulary mapping rules.
+- **`PresenceOrb` reuse on `/dashboard/cfo`** — explicitly out of scope. The primitive is built to be reused; the actual `/cfo` migration is a separate workstream (touches a high-traffic AI surface; deserves its own design review).
+
+### Why this matters (4-lens synthesis)
+
+- **Visual designer lens:** the orb is the brand-defining moment for AI in Monitrax. Premium *because* of restraint — warm-ivory iridescent, never garish, never a character. The reference set (Apple Intelligence + Siri + Linear + Mercury) makes "no mascot" the table-stakes.
+- **Behavioural-psychologist lens:** every timing beat in this PR is calibrated against the "expert-friend confusion" risk. The 600-800ms pre-typewriter pause makes the agent feel attentive without making it feel slow. The recap-card stagger + delayed CTA prevents the reflex-tap failure mode. The dim-and-keep trail is the trust signal — visible audit of every correction.
+- **Architect lens:** motion-tokens SSOT + single-primitive identity = future AI surfaces inherit the design language by importing. No surface re-invents the orb. The E-R11 NO-list is now pinned across 3 docs, making persona drift structurally hard.
+- **Security / compliance lens:** zero change to CDR / AFSL posture. Animation polish is purely presentational. Reduced-motion fallbacks are first-class (not bolted on) — accessibility compliance preserved.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #771 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo

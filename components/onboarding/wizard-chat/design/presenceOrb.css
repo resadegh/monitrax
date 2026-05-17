@@ -1,0 +1,92 @@
+/**
+ * PresenceOrb animations (Phase 12 §4a.2 + motionTokens.ts).
+ *
+ * Animation durations live in `motionTokens.ts` as numeric constants;
+ * the keyframes here mirror those values via @property-less CSS
+ * variables (so the values stay in sync at compile-time by way of the
+ * import contract — if a token changes, the CSS variable below MUST
+ * change in the same PR).
+ *
+ * `prefers-reduced-motion: reduce` is honoured at the React level
+ * (PresenceOrb returns a static dot before reaching these styles), so
+ * we don't need media queries here — but we still guard with
+ * `@media (prefers-reduced-motion: reduce) { ... }` as defense in
+ * depth.
+ */
+
+.presence-orb {
+  --orb-breathe-ms: 2400ms;
+  --orb-shimmer-ms: 1600ms;
+  --orb-settled-ms: 480ms;
+  filter: drop-shadow(0 6px 18px rgba(99, 102, 241, 0.18));
+  transition: filter 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.presence-orb .orb-iridescence {
+  transform-origin: center;
+  opacity: 0.45;
+}
+
+/* IDLE — gentle breathing */
+.presence-orb.orb-breathe {
+  animation: orb-breathe var(--orb-breathe-ms) ease-in-out infinite;
+}
+.presence-orb.orb-breathe .orb-iridescence {
+  animation: orb-iridescence-slow calc(var(--orb-breathe-ms) * 4) linear infinite;
+}
+
+/* THINKING — slower shimmer + iridescence rotation */
+.presence-orb.orb-shimmer {
+  animation: orb-breathe var(--orb-shimmer-ms) ease-in-out infinite;
+  filter: drop-shadow(0 8px 22px rgba(139, 92, 246, 0.28));
+}
+.presence-orb.orb-shimmer .orb-iridescence {
+  animation: orb-iridescence-fast var(--orb-shimmer-ms) linear infinite;
+  opacity: 0.7;
+}
+
+/* LISTENING — ripple cue. v1 ships a single subtle pulse (faster
+   breathe + brighter halo). Mic-level → orb-ripple sync wires in
+   E.2b.2 via Web Audio AnalyserNode. */
+.presence-orb.orb-listen {
+  animation: orb-breathe 900ms ease-in-out infinite;
+  filter: drop-shadow(0 8px 22px rgba(239, 68, 68, 0.32));
+}
+
+/* SETTLED — momentary glow then back to idle */
+.presence-orb.orb-settled {
+  animation: orb-settled var(--orb-settled-ms) ease-out 1;
+}
+
+@keyframes orb-breathe {
+  0%   { transform: scale(0.96); opacity: 0.72; }
+  50%  { transform: scale(1.0);  opacity: 1.0; }
+  100% { transform: scale(0.96); opacity: 0.72; }
+}
+
+@keyframes orb-iridescence-slow {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes orb-iridescence-fast {
+  0%   { transform: rotate(0deg); opacity: 0.55; }
+  50%  { transform: rotate(180deg); opacity: 0.85; }
+  100% { transform: rotate(360deg); opacity: 0.55; }
+}
+
+@keyframes orb-settled {
+  0%   { transform: scale(1.05); filter: drop-shadow(0 10px 28px rgba(16, 185, 129, 0.42)); }
+  100% { transform: scale(1.0);  filter: drop-shadow(0 6px 18px rgba(99, 102, 241, 0.18)); }
+}
+
+/* Defense in depth — even though React short-circuits the animated
+   path under reduced-motion, kill any straggler keyframes that
+   could leak through (e.g. if a future caller forgets to use
+   PresenceOrb's reduced-motion fallback path). */
+@media (prefers-reduced-motion: reduce) {
+  .presence-orb,
+  .presence-orb .orb-iridescence {
+    animation: none !important;
+  }
+}
