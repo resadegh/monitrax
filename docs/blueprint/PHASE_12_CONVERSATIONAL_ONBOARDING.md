@@ -8,7 +8,7 @@
 > wizard is NOT changed or replaced.
 
 **Owner:** Claude (engineer) | **Reviewer:** Reza
-**Status:** 📋 Plan locked 2026-05-17 — build NOT started. Sibling track to existing Phase 12 Tracks A–D.
+**Status:** 🟡 IN FLIGHT 2026-05-17 — Track E.0 + E.1 + E.2a-Household + E.3-Household + E.4 + E.5 shipping in PR #2 (functional Household-topic vertical slice behind the `CONVERSATIONAL_ONBOARDING` feature flag). E.2b motion polish + remaining topics queued.
 **Parent doc:** `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md` (Twin-Track Plan — Track B "/onboarding new wizard" defines the canonical data contract this track reuses)
 **Related:**
 - `CLAUDE.md` §0 (advisory mindset), §6.1–§6.4 (architecture enforcement), §12.2 (SSOT), §12.5 (secure by design), §12.11 (destructive write checklist), §13 (CDR compliance), §14 (TRAIL)
@@ -133,7 +133,7 @@ The E.2 split is deliberate (per 2026-05-17 design pass). E.2a is the absolute m
   - Dark mode parity from day one — same tokens as the form wizard.
 - Text-first by default. Mic button is opt-in per turn (tap to speak, tap to stop). Mic permission requested only when the user taps the mic — never on page load.
 - TTS (agent reply spoken aloud) is OFF by default. Optional user-controlled toggle to enable Web Speech Synthesis. Text bubbles remain the canonical channel even when TTS is on.
-- Conversation state lives in client component state + a thin server-side mirror in `OnboardingState.chatTranscript` (so a refresh resumes mid-flow — same pattern Track B uses for `onboardingDraft`).
+- Conversation state lives in client component state. **Architectural correction (2026-05-17, build session):** the original plan referenced `OnboardingState.chatTranscript` as a server-side mirror — but `OnboardingState` is a hook return type (`hooks/useOnboardingState.ts`), NOT a Prisma model. The canonical server-side store for in-progress onboarding is `UserPreference.onboardingDraft` (Json). v1 keeps chat transcript in client state only (lost on hard reload — accepted trade-off for a 5–10 turn flow); the staged WizardData delta is persisted via the existing `saveDraft()` → `UserPreference.onboardingDraft` path so form-mode picks up seamlessly. Resume-after-reload of mid-conversation chat is a follow-up if/when usage shows it matters.
 
 **Acceptance gate**: a fictitious user can complete the Household topic via chat → recap → ReviewStep without any animation polish. The data loop is what's being validated.
 
@@ -312,7 +312,7 @@ First time chat-mode opens, the orb is small + centered + alone in an empty surf
 4. T+700ms: first agent message types out next to the orb.
 5. T+1200ms: ready for user input.
 
-Stored as "seen" in `OnboardingState.firstChatEncounterAt` (ISO timestamp). Never replayed. Subsequent visits skip directly to the working chat surface.
+Stored as "seen" in `UserPreference.chatFirstEncounterAt` (Json field on `onboardingDraft`, or a dedicated column if storage frequency makes it worth it). Never replayed. Subsequent visits skip directly to the working chat surface. (E.2b deliverable — v1 ships without first-encounter sequence, see Status.)
 
 ### 4a.5 Mistake-recovery transparency
 
@@ -395,7 +395,7 @@ type WizardStateDelta = {
 
 The agent's tool can ONLY return this shape. Free-form replies are rejected at the gateway boundary. The Zod schema for `WizardStateDelta` is the single source of truth — the LLM provider's schema (Anthropic `input_schema` / Gemini `function_declarations`) is derived from the Zod schema.
 
-### 5.2 `OnboardingState.chatTranscript` (server mirror)
+### 5.2 Transcript + staged-state persistence (corrected 2026-05-17 build session)
 
 Append-only JSON array stored on the existing `OnboardingState` row:
 
@@ -462,7 +462,7 @@ This section is the security-and-compliance lens on Track E. Every other section
 | Audit row leaks CDR values | CDR §13.3 violation | Every Track E audit row uses `sanitizeCdrMetadata()` and contains field NAMES only, never values. Test pinned. |
 | Cost spike from a runaway session | Operational + economic risk | Daily turn cap per user enforced at the gateway (default 200/day). LLM token usage logged. Admin tile surfaces aggregate cost (E.5). |
 | LLM provider outage breaks onboarding | New external dependency | Toggle defaults to form-mode. When the gateway returns an unrecoverable error, the chat surfaces a calm message — *"Our chat assistant is having a moment. Let's switch to the form for now."* — and switches the user to form-mode with their staged state intact. |
-| Schema change required | CLAUDE.md §12.11 / §12.12 violation risk | Schema additions for Track E are additive only: `OnboardingState.chatTranscript Json @default("[]")` (nullable, defaults to empty array — backfill-safe, §12.11 N/A by structural argument). Migration file present in the same PR as the schema change (§12.12). |
+| Schema change required | CLAUDE.md §12.11 / §12.12 violation risk | Schema additions for Track E are additive only. v1 PR adds 3 enum values to `AuditAction` (`ONBOARDING_AGENT_EXTRACTION`, `ONBOARDING_AGENT_TOPIC_CONFIRMED`, `ONBOARDING_AGENT_MODE_SWITCHED`) via `ALTER TYPE ... ADD VALUE IF NOT EXISTS` — idempotent, no destructive ops, §12.11 N/A. Migration file ships in the same PR (§12.12). The chat transcript itself lives in client state only (correction: original plan named a non-existent `OnboardingState` Prisma model). |
 
 ## 8. Risk register
 
@@ -473,7 +473,7 @@ This section is the security-and-compliance lens on Track E. Every other section
 | E-R3 | Web Speech API quality varies (Safari iOS) | High | Low (text fallback) | Text-first by default; mic is opt-in per turn; the chat works without voice. |
 | E-R4 | LLM cost per session is higher than expected | Medium | Low–medium | Extraction-only tool calls produce small outputs (~200–500 tokens/turn); daily cap per user (200 turns/day) sets a ceiling; prompt-caching on the static step context reduces input tokens; admin tile surfaces aggregate cost (E.5). |
 | E-R5 | LLM provider sees PII in the user's reply | Medium (inherent to the design) | Low (existing providers, established posture) | Anthropic + Google API tiers exclude training on API content; transcripts not shared beyond the provider; same posture as existing `lib/ai/tax-advisor/*` surfaces. |
-| E-R6 | User abandons mid-conversation | Medium | Low | `OnboardingState.chatTranscript` persists server-side; resume on next visit (same behaviour as form-mode); user can also switch to form-mode and pick up where chat-mode left off. |
+| E-R6 | User abandons mid-conversation | Medium | Low | The staged WizardData fields persist via the existing `saveDraft()` → `UserPreference.onboardingDraft` path, so form-mode picks up where chat left off. The chat transcript itself is client-only in v1 — a hard reload restarts the chat (but the data already saved is preserved). Server-side transcript persistence is a follow-up if usage signals the loss matters. |
 | E-R7 | "AI advisor" scope creep into the onboarding agent | Medium (tempting) | High (AFSL boundary risk) | Two separate gateways: `lib/ai/onboarding-agent/gateway.ts` (extractive only, one tool) vs `lib/ai/tax-advisor/gateway.ts` (FACT_LOOKUP / SCENARIO_RUN, AFSL-bounded). Never blend. Code-review enforcement. |
 | E-R8 | Chat transcript contains sensitive PII at rest | Low | Medium | Encrypted at rest (CMEK when enabled); deleted via CDR data-lifecycle sweep; never logged. |
 | E-R9 | Provider outage degrades UX | Low | Low (text fallback to form) | Toggle defaults to form-mode; calm fallback message on gateway error; form-mode is always available. |
@@ -528,7 +528,7 @@ Same as Track B validation (parent doc §12.3) plus the Track-E-specific items:
 | File | Edit |
 |---|---|
 | `app/onboarding/page.tsx` | Add mode toggle when `CONVERSATIONAL_ONBOARDING` flag is ON. Form-mode is the default. |
-| `prisma/schema.prisma` | Additive: `OnboardingState.chatTranscript Json @default("[]")` (E.0) + `OnboardingState.firstChatEncounterAt DateTime?` (E.2b — pins the once-per-user first-encounter animation, see §4a.4) + `UserPreference.chatNotificationSoundEnabled Boolean @default(false)` (E.2b — persists optional notification-tone toggle, off by default) + 3 new `AuditAction` enum values (E.5). |
+| `prisma/schema.prisma` | Additive in v1 PR: 3 new `AuditAction` enum values (`ONBOARDING_AGENT_EXTRACTION`, `ONBOARDING_AGENT_TOPIC_CONFIRMED`, `ONBOARDING_AGENT_MODE_SWITCHED`). Migration `20260517100000_phase_12_track_e_audit_actions/migration.sql` uses `ALTER TYPE ... ADD VALUE IF NOT EXISTS` — idempotent on dev, additive on prod. **Architectural correction**: original plan named `OnboardingState.chatTranscript` / `OnboardingState.firstChatEncounterAt` — but `OnboardingState` is not a Prisma model. v1 persists nothing transcript-related (client-only). E.2b may add `UserPreference.chatNotificationSoundEnabled` + a transcript-resume column if usage motivates it. |
 | `lib/security/cdrAuditCompliance.ts` | Confirm `sanitizeCdrMetadata()` handles the new audit-action metadata shapes (no actual code change expected — additive metadata fields with sanitised values). |
 | `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md` | Add "Related" line pointing to this doc. |
 | `docs/IMPLEMENTATION_PLAN.md` | Add Up Next entry + Open Question `Q-CONV-1`. |
@@ -567,3 +567,4 @@ Same as Track B validation (parent doc §12.3) plus the Track-E-specific items:
 
 - **2026-05-17** — Doc created (rev 1). Plan locked. Build NOT started. Reza directive 2026-05-17: explore feasibility for a parallel conversational onboarding mode alongside the existing form wizard; no code changes; draft the plan first. Architect-mode synthesis converged on the "two front doors, one house" model: same data contract, same review screen, same write endpoint; chat-mode is a parallel input modality, not a parallel wizard.
 - **2026-05-17 (rev 2)** — Design pass. Reza directive: *"make a very good animation, interactive, maybe engaging design… user sees the AI agent as sort of, like, a person… make your judgment."* Architect-mode synthesis (4-lens: financial / behavioural / architect / visual) concluded **presence, not persona**: lift the chat surface with rich micro-motion + warmth + rhythm, but do NOT anthropomorphise (no avatar, no name, no character voice). Rationale documented in §4a. Concrete additions to this doc: (a) new §4a "Visual & motion design" with seven sub-sections — why-this-answer, motion tokens (SSOT, ~17 tokens), `PresenceOrb` primitive (4 states + reduced-motion fallback), conversation rhythm (the three timing beats), first-encounter sequence (~1.2s, plays once per user), mistake-recovery transparency rule, NO-list (load-bearing dissent pinned), reference benchmarks, orb-as-canonical-AI-surface for future reuse; (b) E.2 split into **E.2a (static chat shell, validates the data loop)** + **E.2b (motion + presence orb, layered on once the loop works)** — phase order is now E.0 → E.1 → E.2a → E.3 → E.4 → E.2b → E.5 → E.6; (c) new risk row **E-R11 (Persona drift)** — pinned reviewer-reject rule for any future PR that tries to add avatar/name/character-voice/emojis to the agent; (d) §11.2 schema row gains `OnboardingState.firstChatEncounterAt` (pins the once-per-user first-encounter animation) + `UserPreference.chatNotificationSoundEnabled` (off by default; persists user's optional notification-tone preference); (e) §11.3 files-new table adds `PresenceOrb.tsx`, `motionTokens.ts`, `audioTokens.ts` under E.2b. References: Apple Intelligence + Siri waveform + Linear command palette + Mercury onboarding + Notion AI + Stripe sequential focus — explicitly NOT Cleo / Schwabby / Erica / Replika.
+- **2026-05-17 (rev 3 — build session 1 of Track E)** — Status flipped 📋 → 🟡 IN FLIGHT. Reza directive: *"770 is merged let's go and start"* + *"no live users so you can go full steam"*. PR #2 ships the functional **Household-topic vertical slice** end-to-end behind the `CONVERSATIONAL_ONBOARDING` feature flag: E.0 (flag infrastructure mirroring `basiqGate`), E.1 (Anthropic gateway + `extractWizardStepDelta` tool with Zod-validated `WizardStateDelta` schema), E.2a-Household (static chat shell — `ConversationalSetup`, `ChatThread`, `AgentMessage`, `UserMessage`, `ChatComposer`, `TopicRecapCard` + `useVoiceInput` Web Speech API hook), E.3-Household (state-machine-driven scripted asks + recap card), E.4 (handoff to form-mode at step 1 with the staged Household data merged into `UserPreference.onboardingDraft`), E.5 (audit actions + sanitised metadata). E.2b motion polish + remaining topics queued for follow-up PRs. **Architectural correction** captured in §5.2 + §8 + §11.2: the rev-1 plan named a non-existent `OnboardingState` Prisma model as the chat persistence target; v1 corrects to keep transcript in client state only and persist staged WizardData via the existing `saveDraft()` → `UserPreference.onboardingDraft` path. v1 ship list: 3 feature-flag files + 1 admin-route + 1 layout edit + 1 toggle component + 1 voice hook + 3 onboarding-agent files (gateway + schema + tool) + 2 API endpoints (extract + topic-confirmed) + 7 chat-UI components + 1 page edit + 1 schema migration (3 additive `AuditAction` enum values).

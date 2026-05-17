@@ -17,15 +17,51 @@
  *      docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useCallback, useEffect, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { WizardContainer } from '@/components/onboarding';
 import type { WizardData } from '@/components/onboarding';
+import { ConversationalModeToggle } from '@/components/onboarding/ConversationalModeToggle';
+import { ConversationalSetup } from '@/components/onboarding/wizard-chat/ConversationalSetup';
+import { useConversationalOnboardingEnabled } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
+function OnboardingLoadingFallback() {
+  return (
+    <section className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent motion-reduce:animate-none" />
+    </section>
+  );
+}
+
+/**
+ * Next.js 15 requires `useSearchParams()` to be wrapped in a Suspense
+ * boundary during static prerendering. Phase 12 Track E.0 added a
+ * `?mode=chat` query-param read here + in `<ConversationalModeToggle>`.
+ * Both are descendants of this `<Suspense>` boundary, so the page
+ * still prerenders cleanly and the search-param read happens client-side
+ * after hydration.
+ */
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingLoadingFallback />}>
+      <OnboardingPageInner />
+    </Suspense>
+  );
+}
+
+function OnboardingPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const chatFlagEnabled = useConversationalOnboardingEnabled();
+  // Phase 12 Track E.0 — read ?mode=chat. Only honoured when the
+  // CONVERSATIONAL_ONBOARDING flag is ON; otherwise the toggle is
+  // hidden and form-mode is the only path (byte-for-byte unchanged
+  // behaviour pre-flag).
+  const requestedMode = searchParams?.get('mode');
+  const mode: 'form' | 'chat' =
+    chatFlagEnabled && requestedMode === 'chat' ? 'chat' : 'form';
   const { user, token, isLoading: authLoading } = useAuth();
   const {
     state: onboardingState,
@@ -138,14 +174,21 @@ export default function OnboardingPage() {
   }
 
   return (
-    <WizardContainer
-      isOpen={true}
-      mode="page"
-      onClose={handleClose}
-      onComplete={handleComplete}
-      initialData={hydratedDraft}
-      initialStepIndex={hydratedStepIndex}
-      onAutoSave={handleAutoSave}
-    />
+    <>
+      <ConversationalModeToggle />
+      {mode === 'chat' ? (
+        <ConversationalSetup />
+      ) : (
+        <WizardContainer
+          isOpen={true}
+          mode="page"
+          onClose={handleClose}
+          onComplete={handleComplete}
+          initialData={hydratedDraft}
+          initialStepIndex={hydratedStepIndex}
+          onAutoSave={handleAutoSave}
+        />
+      )}
+    </>
   );
 }

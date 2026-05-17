@@ -339,6 +339,17 @@ enum AuditAction {
   // Trusted-contact audit trail. Adding / changing a trusted contact
   // is a high-trust operation surfaced to the user on their next login.
   TRUSTED_CONTACT_UPDATED
+
+  // Phase 12 Track E (Conversational onboarding). Per-event audit trail
+  // for the chat-mode wizard surface. CLAUDE.md §13.3 sanitisation —
+  // metadata carries field NAMES + counts + token usage only, NEVER
+  // values. ONBOARDING_AGENT_EXTRACTION fires on every successful LLM
+  // tool call; ONBOARDING_AGENT_TOPIC_CONFIRMED fires when the user
+  // taps "Looks right" on a per-topic recap card; ONBOARDING_AGENT_MODE_SWITCHED
+  // fires when the user toggles between form-mode and chat-mode mid-flow.
+  ONBOARDING_AGENT_EXTRACTION
+  ONBOARDING_AGENT_TOPIC_CONFIRMED
+  ONBOARDING_AGENT_MODE_SWITCHED
 }
 
 enum AuditStatus {
