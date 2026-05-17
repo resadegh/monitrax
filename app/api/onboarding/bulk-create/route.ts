@@ -93,6 +93,17 @@ interface PropertyInput {
   loan?: PropertyLoanInput;
   income?: PropertyIncomeInput;
   expenses: PropertyExpenseInput[];
+  // Phase 41E.5 — reform-aware fields. Wizard captures these only for
+  // post-cut-over purchases; pre-cut-over uses purchaseDate as the
+  // contract date (auto-backfill). See PHASE_41E_REFORM_2026_27.md §10.1.
+  acquisitionContractDate?: string;
+  isNewBuild?: boolean;
+  newBuildEvidence?:
+    | 'NEVER_SOLD'
+    | 'BUILDER_FIRST_OWNER_UNDER_12M'
+    | 'VACANT_LAND_BUILD'
+    | 'OFF_THE_PLAN'
+    | 'DEMO_REBUILD_NET_ADD';
 }
 
 // Phase 12 PR 3b: data source tier for an account entered in the wizard.
@@ -255,6 +266,18 @@ interface EntityInput {
   tradingName?: string;
   establishedDate?: string;
   parentEntityTempId?: string;       // wizard-local pointer to another EntityInput.id
+  // Phase 41E.5 — reform-aware fields (Measure 3 + Measure 4).
+  // See PHASE_41E_REFORM_2026_27.md §10.3 + §10.4.
+  trustType?:
+    | 'DISCRETIONARY'
+    | 'FIXED'
+    | 'UNIT'
+    | 'TESTAMENTARY_FIXED'
+    | 'CHARITABLE'
+    | 'DECEASED_ESTATE'
+    | 'SPECIAL_DISABILITY'
+    | 'OTHER';
+  isForeignResident?: boolean;
 }
 
 interface WizardData {
