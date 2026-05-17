@@ -120,14 +120,16 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       topic !== 'debts' &&
       topic !== 'accounts' &&
       topic !== 'super' &&
-      topic !== 'assets'
+      topic !== 'assets' &&
+      topic !== 'investments'
     ) {
       return envelope(400, {
         success: false,
         data: null,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'topic must be one of: household, properties, debts, accounts, super, assets',
+          message:
+            'topic must be one of: household, properties, debts, accounts, super, assets, investments',
           details: null,
         },
       });

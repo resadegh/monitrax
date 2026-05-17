@@ -303,11 +303,56 @@ export const assetsStateDeltaSchema = z.object({
 });
 
 // ============================================================================
+// INVESTMENTS topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per investment account:
+//   - name           — free text (e.g. "CommSec", "Vanguard ETF account")
+//   - type           — BROKERAGE / FUND / TRUST / ETF_CRYPTO
+//                      (SUPERS deliberately EXCLUDED — covered by the
+//                      Super topic; system prompt redirects)
+//   - totalValue     — single integer AUD. On handoff to WizardData,
+//                      stored as `cashBalance` with empty `holdings[]`.
+//                      Per-holding detail is form-mode work (users
+//                      need their broker statement to recall it).
+//
+// Deferred to form mode:
+//   - platform (separate from name in WizardData; chat just uses one name)
+//   - holdings (ticker, units, averagePrice, type per holding)
+//   - per-holding acquisitionDate (Phase 41E CGT context)
+
+export const investmentAccountTypeEnum = z.enum([
+  'BROKERAGE',
+  'FUND',
+  'TRUST',
+  'ETF_CRYPTO',
+]);
+
+export const investmentDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: investmentAccountTypeEnum.optional(),
+  totalValue: z.number().int().min(1).max(100_000_000).optional(),
+});
+
+export const investmentsFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user has no investments
+   *  (apart from super which lives on its own topic). */
+  hasInvestments: z.boolean().optional(),
+  investments: z.array(investmentDeltaSchema).max(10).optional(),
+});
+
+export const investmentsStateDeltaSchema = z.object({
+  topic: z.literal('investments'),
+  fields: investmentsFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
 // Top-level WizardStateDelta (discriminated by `topic`)
 // ============================================================================
 
-// As more topics ship (investments, income-expenses), add them as
-// discriminated members of this union.
+// Remaining topic to ship: income-expenses (PR #8).
 export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   householdStateDeltaSchema,
   propertiesStateDeltaSchema,
@@ -315,6 +360,7 @@ export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   accountsStateDeltaSchema,
   superStateDeltaSchema,
   assetsStateDeltaSchema,
+  investmentsStateDeltaSchema,
 ]);
 
 export type WizardStateDelta = z.infer<typeof wizardStateDeltaSchema>;
@@ -331,6 +377,8 @@ export type SuperDelta = z.infer<typeof superDeltaSchema>;
 export type SuperFields = z.infer<typeof superFieldsSchema>;
 export type AssetDelta = z.infer<typeof assetDeltaSchema>;
 export type AssetsFields = z.infer<typeof assetsFieldsSchema>;
+export type InvestmentDelta = z.infer<typeof investmentDeltaSchema>;
+export type InvestmentsFields = z.infer<typeof investmentsFieldsSchema>;
 
 // ============================================================================
 // JSON Schema (hand-crafted to mirror the Zod schema above)
@@ -554,6 +602,39 @@ export const ASSETS_TOOL_INPUT_SCHEMA = {
                 enum: ['VEHICLE', 'ELECTRONICS', 'FURNITURE', 'EQUIPMENT', 'COLLECTIBLE', 'OTHER'],
               },
               currentValue: { type: 'integer', minimum: 1, maximum: 10000000 },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const INVESTMENTS_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['investments'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasInvestments: { type: 'boolean' },
+        investments: {
+          type: 'array',
+          maxItems: 10,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: { type: 'string', enum: ['BROKERAGE', 'FUND', 'TRUST', 'ETF_CRYPTO'] },
+              totalValue: { type: 'integer', minimum: 1, maximum: 100000000 },
             },
           },
         },

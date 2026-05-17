@@ -33,6 +33,7 @@ import {
   ACCOUNTS_TOOL_INPUT_SCHEMA,
   SUPER_TOOL_INPUT_SCHEMA,
   ASSETS_TOOL_INPUT_SCHEMA,
+  INVESTMENTS_TOOL_INPUT_SCHEMA,
 } from '../schemas/wizardStateDelta';
 
 export const EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME = 'extractWizardStepDelta';
@@ -84,7 +85,8 @@ export interface ExtractToolDefinition {
     | typeof DEBTS_TOOL_INPUT_SCHEMA
     | typeof ACCOUNTS_TOOL_INPUT_SCHEMA
     | typeof SUPER_TOOL_INPUT_SCHEMA
-    | typeof ASSETS_TOOL_INPUT_SCHEMA;
+    | typeof ASSETS_TOOL_INPUT_SCHEMA
+    | typeof INVESTMENTS_TOOL_INPUT_SCHEMA;
 }
 
 /**
@@ -352,4 +354,64 @@ export const assetsExtractTool: ExtractToolDefinition = {
   description:
     'Extract per-asset information (name, type VEHICLE/ELECTRONICS/FURNITURE/EQUIPMENT/COLLECTIBLE/OTHER, currentValue in AUD) from the user\'s free-text reply. Excludes property (Properties topic), bank accounts (Accounts topic), super (Super topic), and listed investments (Investments topic). Numeric values come from the user; positional merge echoes all staged assets on every turn.',
   input_schema: ASSETS_TOOL_INPUT_SCHEMA,
+};
+
+// ============================================================================
+// INVESTMENTS topic — non-super listed investments (brokerage / fund /
+// trust / ETF + crypto)
+// ============================================================================
+
+export const INVESTMENTS_SYSTEM_PROMPT = `You are the onboarding-agent extractor for Monitrax, an Australian personal-finance platform.
+
+YOUR ROLE
+You take the user's free-text reply about investments and convert it into structured fields. You are NOT a financial advisor. You are NOT an investment counsellor.
+
+WHAT YOU ARE EXTRACTING
+The current topic is INVESTMENTS (NON-SUPER listed investments). You may emit:
+- hasInvestments — boolean. TRUE if the user has confirmed any investment account; FALSE if they say they have none (apart from super).
+- investments — array of { name, type, totalValue }, max 10. name is REQUIRED; type + totalValue OPTIONAL.
+
+SCOPE BOUNDARY (CRITICAL)
+This topic captures NON-SUPER listed investments only:
+- BROKERAGE — share-trading accounts: CommSec, Pearler, Stake, SelfWealth, Westpac Online Investing, etc.
+- FUND — managed funds + retail investment funds (Vanguard / Magellan / Platinum managed funds).
+- TRUST — family trusts holding investments, unit trusts, listed investment trusts (LITs).
+- ETF_CRYPTO — ETF holdings + crypto wallets (combined into one category in the Monitrax schema).
+
+DO NOT emit entries for:
+- Super accounts — Super is its own topic (already covered). If user mentions super here, redirect them politely via the unresolved field; do NOT emit an investment entry.
+- Property — Properties topic (already covered).
+- Bank accounts / savings — Accounts topic (already covered).
+- Personal assets (car, jewellery) — Assets topic (already covered).
+
+ABSOLUTE RULES (non-negotiable)
+1. You MUST call the extractWizardStepDelta tool. Do not respond in plain text.
+2. Numbers come from the user, NEVER from you.
+3. POSITIONAL MERGE: echo ALL staged investments in order; new investments go at the end.
+4. AU vocabulary mapping:
+   - "CommSec" / "Pearler" / "Stake" / "SelfWealth" / "Westpac Online" / "NAB Trade" / "Bell Direct" → type: BROKERAGE
+   - "Vanguard managed fund" / "Magellan" / "Platinum" / "BlackRock" (managed fund context) → type: FUND
+   - "family trust" / "investment trust" / "unit trust" / "LIT" → type: TRUST
+   - "ETF" / "Vanguard ETF" / "VAS" / "VGS" / "Betashares" / "Bitcoin" / "BTC" / "crypto" / "Ethereum" / "Coinbase" / "Swyftx" / "CoinSpot" → type: ETF_CRYPTO
+   - "my investments" / "my portfolio" without a platform name → list "type" in unresolved, ask follow-up.
+5. Number normalisation (units to a raw integer in AUD):
+   - "50k" → 50000; "$120,000" → 120000; "1.5m" → 1500000.
+   - The user's number is the TOTAL value of the account (cash + holdings combined). Form mode handles per-holding detail later.
+6. NEVER comment on portfolio choice, fee comparisons, returns, market timing, asset allocation, or merit. NEVER suggest the user buy / sell / rebalance / consolidate / switch broker. You parse.
+7. hasInvestments sentinel:
+   - "I don't invest" / "no investments outside super" / "just super" → emit { hasInvestments: false, investments: [] }
+   - User lists at least one account → emit { hasInvestments: true, investments: [...] }
+8. If the user message contains nothing extractable, emit empty fields and list "general" in unresolved.
+
+CONTEXT
+You will receive the current topic, the subset of state already staged, and the user's latest message. Echo ALL staged investments on every turn (positional merge).
+
+OUTPUT
+Always via the extractWizardStepDelta tool. Never plain text.`;
+
+export const investmentsExtractTool: ExtractToolDefinition = {
+  name: EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
+  description:
+    'Extract per-investment-account information (name, type BROKERAGE/FUND/TRUST/ETF_CRYPTO, totalValue in AUD) from the user\'s free-text reply. Excludes super (Super topic), property (Properties), bank accounts (Accounts), personal assets (Assets). Numeric values come from the user; positional merge echoes all staged investments on every turn.',
+  input_schema: INVESTMENTS_TOOL_INPUT_SCHEMA,
 };
