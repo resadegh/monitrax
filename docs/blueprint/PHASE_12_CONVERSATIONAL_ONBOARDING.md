@@ -24,7 +24,8 @@
 1. Why this exists
 2. Hard rules (non-negotiable)
 3. What this is NOT
-4. Track E — Phase breakdown (E.0 → E.6)
+4. Track E — Phase breakdown (E.0 → E.6, with E.2 split into E.2a + E.2b)
+4a. Visual & motion design — "presence, not persona"
 5. Data contract
 6. Voice I/O strategy (v1)
 7. Security, CDR, and AFSL boundary
@@ -71,9 +72,13 @@ These are the load-bearing constraints. Every implementation decision must respe
 - ❌ A reason to expand CDR data egress. `§13.3` "never log CDR data" still applies — to LLM logs as well as application logs.
 - ❌ A surface for personal financial advice. The agent asks and extracts; it does not recommend. AFSL/TPB boundary is preserved structurally — there is no advice-recommendation tool registered.
 
-## 4. Track E — Phase breakdown (E.0 → E.6)
+## 4. Track E — Phase breakdown (E.0 → E.6, with E.2 split into E.2a + E.2b)
 
 Track E sits alongside Tracks A–D from the parent doc. It depends only on Track B's data contract (`OnboardingState` shape + `/api/onboarding/bulk-create` endpoint + `ReviewStep` component), which already exists in production.
+
+**Phase order:** E.0 → E.1 → **E.2a (static chat shell, validates the data loop)** → E.3 → E.4 → **E.2b (motion + presence orb, layered on once the loop works)** → E.5 → E.6.
+
+The E.2 split is deliberate (per 2026-05-17 design pass). E.2a is the absolute minimum visual layer needed to prove the data loop end-to-end — bubbles, recap cards, ReviewStep handoff, but no animation polish, no presence orb, no typewriter. Once E.2a + E.3 + E.4 ship and a fictitious user can complete a topic via chat without polish, E.2b lifts the whole surface from "competent chatbot" to "premium fintech assistant with presence" using the design rules in §4a. Two reasons for the split: (a) reduces risk of polishing something that doesn't function; (b) the design lift is a substantial design-review surface — better as its own PR with focused acceptance criteria.
 
 ### E.0 — Feature flag + route toggle
 
@@ -109,26 +114,51 @@ Track E sits alongside Tracks A–D from the parent doc. It depends only on Trac
 
 **Acceptance gate**: gateway rejects every malformed tool output. The model cannot return a number in a string field. The model cannot return a field outside the current topic.
 
-### E.2 — Conversational shell component
+### E.2a — Conversational shell (text-only, static)
 
 **Scope**: 1 new component tree under `components/onboarding/wizard-chat/`.
 
 **Depends on**: E.1.
 
+**Goal**: prove the data loop works end-to-end with the absolute minimum visual layer. Static bubbles, no presence orb, no typewriter, no audio. Once this ships and a fictitious user can complete a Household topic via chat → recap → ReviewStep, layer §E.2b on top.
+
 **Deliverables**:
 - New file `components/onboarding/wizard-chat/ConversationalSetup.tsx` — top-level orchestrator.
-- New sub-components: `ChatThread.tsx` (renders the message stream), `AgentMessage.tsx` (agent reply bubble), `UserMessage.tsx` (user reply bubble), `ChatComposer.tsx` (text input + opt-in mic button), `TopicRecapCard.tsx` (the per-topic confirmation card, see §4 E.3).
-- Visual design — premium fintech voice, NOT iMessage pastiche:
+- New sub-components: `ChatThread.tsx` (renders the message stream), `AgentMessage.tsx` (agent reply bubble — static, no presence orb yet), `UserMessage.tsx` (user reply bubble), `ChatComposer.tsx` (text input + opt-in mic button), `TopicRecapCard.tsx` (the per-topic confirmation card, see §4 E.3).
+- Structural visual design:
   - Single column, max-w-[640px] centered (one notch wider than the form wizard's 520px to accommodate the recap cards).
   - One agent message + one user reply per turn. No multi-paragraph agent monologues.
-  - Restrained motion: 200ms fade-in on new messages, no bounce, no typing-indicator gimmick.
+  - Restrained motion: 200ms fade-in on new messages, no bounce, no typing-indicator gimmick. Static end-state — no typewriter, no orb. **All motion polish lands in E.2b**, deliberately separate.
   - Typography matches the form wizard's `TYPE_SCALE` tokens (do NOT introduce a new scale).
   - Dark mode parity from day one — same tokens as the form wizard.
 - Text-first by default. Mic button is opt-in per turn (tap to speak, tap to stop). Mic permission requested only when the user taps the mic — never on page load.
 - TTS (agent reply spoken aloud) is OFF by default. Optional user-controlled toggle to enable Web Speech Synthesis. Text bubbles remain the canonical channel even when TTS is on.
 - Conversation state lives in client component state + a thin server-side mirror in `OnboardingState.chatTranscript` (so a refresh resumes mid-flow — same pattern Track B uses for `onboardingDraft`).
 
-**Acceptance gate**: D.0 design-quality pass per parent doc §7 — must clear every §7.2 criterion (premium look, dark-mode parity, prefers-reduced-motion honoured, mobile responsive, no clutter).
+**Acceptance gate**: a fictitious user can complete the Household topic via chat → recap → ReviewStep without any animation polish. The data loop is what's being validated.
+
+### E.2b — Motion, presence, and the "alive" layer
+
+**Scope**: 1 new tokens module + 1 new primitive + motion wiring across E.2a's components.
+
+**Depends on**: E.2a (must be shipped + green).
+
+**Goal**: lift the chat surface from "competent chatbot" to "premium fintech assistant with presence." This is where the design-lens recommendations from §4a land in code. Built as a deliberate second pass so we don't polish something that doesn't function.
+
+**Deliverables**:
+- New file `components/onboarding/wizard-chat/design/motionTokens.ts` — canonical SSOT for every animation duration / easing / stagger in the chat surface (see §4a.1 below for the token list).
+- New file `components/onboarding/wizard-chat/design/audioTokens.ts` — canonical SSOT for the notification tone path + Web Audio API analyser config (mic ripple sync). Used by `useVoiceInput.ts` and the optional notification cue.
+- New primitive `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx` — the SVG presence element rendered next to the agent's messages. Four states: `idle`, `listening`, `thinking`, `settled`. `prefers-reduced-motion` collapses to a static dot. See §4a.2 for the full spec.
+- Motion wiring across E.2a's components:
+  - `AgentMessage` gains the typewriter render (35 chars/sec, ease-out per word boundary).
+  - `ChatThread` gains the 600–800ms "thinking" pause before the typewriter starts.
+  - `TopicRecapCard` gains the staggered field-assembly animation (fields fade in 80ms apart; the "Looks right" button activates only after the last field has settled).
+  - `ConversationalSetup` gains the first-encounter sequence (~1.2s, played once per user, never replayed).
+  - "Change something" → previous recap dims to 0.5 opacity, stays visible above the new recap (the visible-trail trust signal from §4a.5).
+- Optional notification tone implemented (off by default; user-controlled toggle; preference persists on `UserPreference`).
+- `prefers-reduced-motion: reduce` static fallback for EVERY animation — not bolted on, tested as a peer of the animated path.
+
+**Acceptance gate**: D.0 design-quality pass per parent doc §7 — must clear every §7.2 criterion (premium look, dark-mode parity, prefers-reduced-motion honoured, mobile responsive, no clutter) PLUS the §4a-specific criteria (orb states transition smoothly, typewriter respects word boundaries, recap-card assembly delays the CTA correctly, first-encounter sequence plays exactly once, "Change something" preserves the prior recap visibly).
 
 ### E.3 — Per-topic confirmation cards
 
@@ -200,6 +230,131 @@ Track E sits alongside Tracks A–D from the parent doc. It depends only on Trac
 - When E.0 ships, flip this doc's Status header to "🟡 In flight". Move the Up Next entry to Active Workstreams.
 - When E.4 ships, flip Status to "✅ Complete" and add to Recently Completed.
 - Per CLAUDE.md §16.5, every PR that touches a Track E surface includes the doc-sync block.
+
+## 4a. Visual & motion design — "presence, not persona"
+
+> **The load-bearing design decision for Track E was made 2026-05-17 (Reza + Claude architect-mode session).** The user-facing question — *"can it feel like a person?"* — is answered structurally: **presence, not persona.** The agent has no avatar, no name, no character voice. It has *presence* — through motion, rhythm, warmth, and attentive micro-interactions. This section is the canonical spec for that presence.
+
+### Why this answer (the four lenses, compressed)
+
+- **Financial-adviser lens:** finance demands gravitas. Mercury, Stripe, Apple Cash, XPLAN — zero mascots. A cartoon mascot undermines telling someone *"I'm adding $850,000 to your asset profile."*
+- **Behavioural-psychologist lens:** anthropomorphism creates the **expert-friend confusion** — users transfer trust meant for licensed advice onto a "friend" who is structurally an extractor. Presence-without-persona keeps the role honest: the agent is a smart notebook taking down what the user said, not a person making suggestions.
+- **Architect lens:** persona = character logic (voice, copy, fallbacks, name moderation, brand reviews) — surface area that bloats. Presence = bounded component-level work (motion primitives, micro-interactions).
+- **Growth/marketing lens (dissent surfaced):** a persona would be more meme-able. Real, but not load-bearing for the B2B-led wedge (brokers + advisers want premium, not viral). Revisit only as a marketing decision post-Basiq, not as a chat-avatar decision.
+
+If Phase 6 (consumer scale, post-Basiq) ever shows that viral differentiation requires a persona, that's a marketing copy + tone decision — not a re-architecting of the chat surface. The architecture below does not preclude a future persona; it just refuses to bake one in early before validation.
+
+### 4a.1 Motion tokens (canonical, SSOT — implemented in E.2b)
+
+These are the only motion values the chat surface uses. Every animation must read from `motionTokens.ts`. Hard-coding durations or easings is a code-review reject.
+
+| Token | Value | Used by |
+|---|---|---|
+| `MESSAGE_FADE_IN_MS` | 200 | Bubble fade-in on new message |
+| `MESSAGE_FADE_IN_EASING` | `cubic-bezier(0.22, 1, 0.36, 1)` | Bubble fade-in |
+| `THINKING_PAUSE_MIN_MS` | 600 | Pause between user message and agent typewriter start |
+| `THINKING_PAUSE_MAX_MS` | 800 | Upper bound (jitter inside the window to feel natural, not metronomic) |
+| `TYPEWRITER_CHARS_PER_SEC` | 35 | Agent message typewriter speed |
+| `TYPEWRITER_WORD_BOUNDARY_EASING` | `ease-out` per-word | Word-by-word reveal feels human; char-by-char feels mechanical |
+| `RECAP_FIELD_STAGGER_MS` | 80 | Gap between successive field reveals in `TopicRecapCard` |
+| `RECAP_CARD_RISE_MS` | 320 | Card glides up from below the agent's bubble |
+| `RECAP_CARD_RISE_EASING` | `cubic-bezier(0.22, 1, 0.36, 1)` | Same as the form wizard's progress bar — visual continuity |
+| `RECAP_CTA_DELAY_MS` | 120 | "Looks right" button activates this long after the last field settles |
+| `ORB_BREATHE_MS` | 2400 | Idle pulse cycle (sinusoidal scale 0.96→1.0, opacity 0.7→1.0) |
+| `ORB_LISTEN_RIPPLE_SYNC` | live | Ripples sync to Web Audio `AnalyserNode` audio level — see §6 |
+| `ORB_THINKING_SHIMMER_MS` | 1600 | Slower shimmer + hue drift while LLM call is in flight |
+| `ORB_SETTLED_GLOW_MS` | 480 | Momentary glow on message complete, then back to breathing |
+| `FIRST_ENCOUNTER_TOTAL_MS` | 1200 | Total runtime of the first-time-open sequence |
+| `MISTAKE_RECOVERY_DIM_OPACITY` | 0.5 | Previous recap card dims (stays visible) when user taps "Change something" |
+| `REDUCED_MOTION_STATIC_FALLBACK` | true | If `prefers-reduced-motion: reduce`, every motion above collapses to its static end-state. Mandatory. |
+
+### 4a.2 PresenceOrb primitive — the canonical SVG (E.2b)
+
+**File**: `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx`.
+
+**What it is**: a small circular SVG element rendered next to the agent's messages. NOT a face. NOT a robot. NOT a logo. Think Apple Intelligence's iridescent glow or Siri's circular waveform — ambient intelligence, not a character.
+
+**Visual baseline**:
+- Circular, 28px diameter on desktop, 24px on mobile.
+- Base fill: warm-ivory (same as the form wizard's primary background).
+- Iridescent overlay: a slow rotating linear gradient `from-blue-400/20 via-violet-400/20 to-blue-400/20` — subtle, never garish.
+- Soft outer shadow at rest: `shadow-[0_8px_24px_-12px_rgba(99,102,241,0.25)]`.
+- Dark-mode parity from day one — base flips to a slightly cooler ivory; iridescence stays.
+
+**Four states** (typed via a `state` prop, never inferred):
+
+| State | When | Animation |
+|---|---|---|
+| `idle` | Agent has spoken, waiting for user reply | Breathing — sinusoidal scale 0.96 → 1.0, opacity 0.7 → 1.0, cycle `ORB_BREATHE_MS` |
+| `listening` | User is holding-to-speak via mic | Concentric ripples sync to Web Audio `AnalyserNode` audio level; max 3 ripple rings; ripple opacity 0.0 → 0.4 → 0.0 over 800ms each |
+| `thinking` | LLM call in flight | Iridescent overlay rotates `ORB_THINKING_SHIMMER_MS`; base hue drifts 0° → 15° → 0° on the same cycle |
+| `settled` | Agent just finished typing a message | Momentary glow `ORB_SETTLED_GLOW_MS`, then back to `idle` |
+
+**`prefers-reduced-motion` fallback**: collapses to a static 4px circle (no animation, no iridescence, no ripples). Tested as a peer of the animated path — not bolted on.
+
+**File-header JSDoc** (per CLAUDE.md §16.4): documents the four states, the `prefers-reduced-motion` fallback rule, the "no face / no character" design constraint, the references (Apple Intelligence + Siri waveform), and links to this §4a section.
+
+### 4a.3 Conversation rhythm — the magic moment
+
+The three timing beats that make the chat feel attentive instead of mechanical:
+
+1. **Pre-typewriter pause** — when the user sends a message, the agent waits 600–800ms (jittered) BEFORE the typewriter starts, even if the LLM has already replied. This is the "I'm reading what you said" beat. Tiny, load-bearing. Without it the agent feels like a robot finishing the user's sentence; with it the agent feels like a person taking the message in.
+2. **Typewriter cadence** — 35 chars/sec, eased per word boundary. Fast enough to not feel sluggish, slow enough to feel alive. Char-by-char looks mechanical; word-by-word reads natural.
+3. **Recap-card assembly** — when a topic ends, the card glides up from below the agent's last bubble (`RECAP_CARD_RISE_MS`); fields fade in `RECAP_FIELD_STAGGER_MS` apart in document order; the "Looks right" button activates `RECAP_CTA_DELAY_MS` after the last field settles. The user watches the agent's notes come together. **This is the trust-building moment** — the visual proof that the agent has organised what was said before asking for confirmation.
+
+### 4a.4 First-encounter sequence (plays exactly once per user)
+
+First time chat-mode opens, the orb is small + centered + alone in an empty surface. Sequence:
+
+1. T+0: orb visible at 50% size, idle breathing.
+2. T+300ms: orb expands to working size, settled-glow fires.
+3. T+500ms: surface chrome (composer, header) fades in around the orb.
+4. T+700ms: first agent message types out next to the orb.
+5. T+1200ms: ready for user input.
+
+Stored as "seen" in `OnboardingState.firstChatEncounterAt` (ISO timestamp). Never replayed. Subsequent visits skip directly to the working chat surface.
+
+### 4a.5 Mistake-recovery transparency
+
+When the user taps "Change something" on a recap card, the previous card **dims to `MISTAKE_RECOVERY_DIM_OPACITY` and stays visible** above the new card. The agent NEVER silently overwrites its own notes.
+
+Why: the visible trail is the trust signal. Users can see what the agent thought before, what they corrected, and what the agent thinks now. Hiding the prior version is the same anti-pattern as silently editing a chat message — it erodes the user's belief that the agent is keeping honest notes.
+
+### 4a.6 What we say NO to (load-bearing dissent surfaced)
+
+These are explicit pins so a future PR can't drift in by accident:
+
+- ❌ **Avatar / face / robot / mascot.** The orb is a presence cue, not a character.
+- ❌ **Name** (e.g. "Monty", "Tracksy", "Monnie"). Sub-brand drift + persona-confusion + AFSL-boundary fuzz.
+- ❌ **Character voice** different from the Monitrax product voice. The agent speaks in the warm-words register from CLAUDE.md §14, not a stylised "AI personality."
+- ❌ **Emojis in agent messages.** Already against the warm-words rule.
+- ❌ **Three-dot typing indicator.** The orb's `thinking` state replaces it. Three dots are a chatbot tell.
+- ❌ **Fake typing slowness** that's slower than the actual LLM reply. Patronising.
+- ❌ **Sound on by default.** User may be in a meeting or on transit. Off by default; persist preference if enabled.
+- ❌ **Cleo-style snark, Replika-style warmth, Schwabby-style cartoon.** Wrong audience tone.
+
+If a future session is tempted to break any of these, the §8 risk register entry **E-R11 (Persona drift)** is the reviewer's reject reason.
+
+### 4a.7 Reference benchmarks (cite for grounding, do not copy)
+
+- **Apple Intelligence (iOS 18.x)** — iridescent glow on Siri; rainbow border on summon; response composes field-by-field. The closest analogue to what we're building.
+- **Siri's circular waveform** — the canonical pattern for "I'm listening, this is what I'm hearing."
+- **Linear's command palette** — ambient warmth + restraint; static text feels alive without animation gimmickry.
+- **Mercury's account-open flow** — deliberate pacing, warm typography, calm — proof that "premium fintech" reads as restraint not richness.
+- **Notion AI** — typewriter cadence + rolling block of generated content; reference for the agent's message render.
+- **Stripe onboarding modals** — sequential focus chain; reference for the recap-card field assembly.
+- **NOT** Cleo, NOT Schwabby, NOT Erica, NOT Replika. Wrong tone for Monitrax.
+
+### 4a.8 Reusability — the orb is the brand surface for AI
+
+Once `PresenceOrb` ships, it becomes the canonical AI-presence element for ALL future AI surfaces in Monitrax:
+
+- `/dashboard/cfo` (the existing AI Guide surface) — orb replaces today's static icon (separate workstream, not in Track E).
+- Future agent surfaces (e.g. Phase 32C marketplace introduction agent, if it ever exists) — same orb, same four states.
+
+Changing the orb later is expensive because it becomes a brand surface. Worth a 30-min design review with Reza on the actual SVG before E.2b ships.
+
+---
 
 ## 5. Data contract
 
@@ -323,6 +478,7 @@ This section is the security-and-compliance lens on Track E. Every other section
 | E-R8 | Chat transcript contains sensitive PII at rest | Low | Medium | Encrypted at rest (CMEK when enabled); deleted via CDR data-lifecycle sweep; never logged. |
 | E-R9 | Provider outage degrades UX | Low | Low (text fallback to form) | Toggle defaults to form-mode; calm fallback message on gateway error; form-mode is always available. |
 | E-R10 | Schema-migration drift (chatTranscript column) | Low | High (R12-class incident) | §12.12 enforced — schema change + migration file in the same PR; additive column with default; rollback-safe. |
+| E-R11 | **Persona drift** — a future PR adds an avatar, a name, a character voice, or emojis to the agent, eroding the "presence, not persona" design rule from §4a | Medium (tempting; persona is more meme-able) | High (AFSL-boundary fuzz + sub-brand drift + trust erosion if persona-claimed advice gets a number wrong) | §4a.6 explicit NO-list pinned in this doc; reviewer rejects any PR that adds avatar/name/character voice/emojis to the agent without an explicit Reza decision flipping the rule in §4a; the architecture below (PresenceOrb primitive, motion tokens, no name field anywhere in the schema or copy) makes persona-addition a deliberate architectural change rather than an incidental drift. Revisit only as a Phase 6 (consumer scale, post-Basiq) marketing-tone decision, never as a chat-avatar decision. |
 
 ## 9. Open questions for Reza
 
@@ -372,7 +528,7 @@ Same as Track B validation (parent doc §12.3) plus the Track-E-specific items:
 | File | Edit |
 |---|---|
 | `app/onboarding/page.tsx` | Add mode toggle when `CONVERSATIONAL_ONBOARDING` flag is ON. Form-mode is the default. |
-| `prisma/schema.prisma` | Additive: `OnboardingState.chatTranscript Json @default("[]")` (E.0) + 3 new `AuditAction` enum values (E.5). |
+| `prisma/schema.prisma` | Additive: `OnboardingState.chatTranscript Json @default("[]")` (E.0) + `OnboardingState.firstChatEncounterAt DateTime?` (E.2b — pins the once-per-user first-encounter animation, see §4a.4) + `UserPreference.chatNotificationSoundEnabled Boolean @default(false)` (E.2b — persists optional notification-tone toggle, off by default) + 3 new `AuditAction` enum values (E.5). |
 | `lib/security/cdrAuditCompliance.ts` | Confirm `sanitizeCdrMetadata()` handles the new audit-action metadata shapes (no actual code change expected — additive metadata fields with sanitised values). |
 | `docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md` | Add "Related" line pointing to this doc. |
 | `docs/IMPLEMENTATION_PLAN.md` | Add Up Next entry + Open Question `Q-CONV-1`. |
@@ -386,14 +542,17 @@ Same as Track B validation (parent doc §12.3) plus the Track-E-specific items:
 | `lib/ai/onboarding-agent/gateway.ts` | E.1 | Closed-discriminant gateway with the single `extractWizardStepDelta` tool. |
 | `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts` | E.1 | Tool implementation: system prompt, schema, Anthropic + Gemini bindings. |
 | `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts` | E.1 | Zod schema for `WizardStateDelta` — single source of truth for the tool's output shape. |
-| `components/onboarding/wizard-chat/ConversationalSetup.tsx` | E.2 | Top-level chat orchestrator. |
-| `components/onboarding/wizard-chat/ChatThread.tsx` | E.2 | Message stream renderer. |
-| `components/onboarding/wizard-chat/AgentMessage.tsx` | E.2 | Agent reply bubble. |
-| `components/onboarding/wizard-chat/UserMessage.tsx` | E.2 | User reply bubble. |
-| `components/onboarding/wizard-chat/ChatComposer.tsx` | E.2 | Text input + opt-in mic button. |
-| `components/onboarding/wizard-chat/TopicRecapCard.tsx` | E.3 | Per-topic confirmation card. |
-| `hooks/useVoiceInput.ts` | E.2 | Web Speech API STT wrapper with text-only fallback. |
-| `hooks/useVoiceOutput.ts` | E.2 | Web Speech Synthesis TTS wrapper (optional). |
+| `components/onboarding/wizard-chat/ConversationalSetup.tsx` | E.2a | Top-level chat orchestrator (static in E.2a, gains first-encounter sequence in E.2b). |
+| `components/onboarding/wizard-chat/ChatThread.tsx` | E.2a | Message stream renderer (gains thinking-pause + typewriter wiring in E.2b). |
+| `components/onboarding/wizard-chat/AgentMessage.tsx` | E.2a | Agent reply bubble (static in E.2a, gains typewriter + adjacent `PresenceOrb` in E.2b). |
+| `components/onboarding/wizard-chat/UserMessage.tsx` | E.2a | User reply bubble. |
+| `components/onboarding/wizard-chat/ChatComposer.tsx` | E.2a | Text input + opt-in mic button (gains mic-level → orb-ripple sync in E.2b). |
+| `components/onboarding/wizard-chat/TopicRecapCard.tsx` | E.3 | Per-topic confirmation card (gains staggered field-assembly + dim-on-recovery in E.2b). |
+| `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx` | E.2b | Canonical SVG presence element. Four states (idle / listening / thinking / settled). `prefers-reduced-motion` collapses to a static dot. File-header JSDoc per §16.4. Reusable across future AI surfaces (e.g. `/dashboard/cfo`). |
+| `components/onboarding/wizard-chat/design/motionTokens.ts` | E.2b | Canonical SSOT for every animation duration/easing/stagger used in the chat surface (see §4a.1). Hard-coding values elsewhere is a code-review reject. |
+| `components/onboarding/wizard-chat/design/audioTokens.ts` | E.2b | Canonical SSOT for the optional notification tone + Web Audio `AnalyserNode` config used by mic ripples. |
+| `hooks/useVoiceInput.ts` | E.2a | Web Speech API STT wrapper with text-only fallback (audio-level analyser wiring added in E.2b). |
+| `hooks/useVoiceOutput.ts` | E.2a | Web Speech Synthesis TTS wrapper (optional). |
 | `prisma/migrations/<timestamp>_phase_12_track_e_chat_transcript/migration.sql` | E.0 | Additive: `chatTranscript Json @default("[]")` on `OnboardingState`. §12.12 enforced. |
 | `prisma/migrations/<timestamp>_phase_12_track_e_audit_actions/migration.sql` | E.5 | Additive: 3 new `AuditAction` enum values. §12.12 enforced. |
 
@@ -406,4 +565,5 @@ Same as Track B validation (parent doc §12.3) plus the Track-E-specific items:
 
 ## 12. Changelog
 
-- **2026-05-17** — Doc created (this revision). Plan locked. Build NOT started. Reza directive 2026-05-17: explore feasibility for a parallel conversational onboarding mode alongside the existing form wizard; no code changes; draft the plan first. Architect-mode synthesis converged on the "two front doors, one house" model: same data contract, same review screen, same write endpoint; chat-mode is a parallel input modality, not a parallel wizard.
+- **2026-05-17** — Doc created (rev 1). Plan locked. Build NOT started. Reza directive 2026-05-17: explore feasibility for a parallel conversational onboarding mode alongside the existing form wizard; no code changes; draft the plan first. Architect-mode synthesis converged on the "two front doors, one house" model: same data contract, same review screen, same write endpoint; chat-mode is a parallel input modality, not a parallel wizard.
+- **2026-05-17 (rev 2)** — Design pass. Reza directive: *"make a very good animation, interactive, maybe engaging design… user sees the AI agent as sort of, like, a person… make your judgment."* Architect-mode synthesis (4-lens: financial / behavioural / architect / visual) concluded **presence, not persona**: lift the chat surface with rich micro-motion + warmth + rhythm, but do NOT anthropomorphise (no avatar, no name, no character voice). Rationale documented in §4a. Concrete additions to this doc: (a) new §4a "Visual & motion design" with seven sub-sections — why-this-answer, motion tokens (SSOT, ~17 tokens), `PresenceOrb` primitive (4 states + reduced-motion fallback), conversation rhythm (the three timing beats), first-encounter sequence (~1.2s, plays once per user), mistake-recovery transparency rule, NO-list (load-bearing dissent pinned), reference benchmarks, orb-as-canonical-AI-surface for future reuse; (b) E.2 split into **E.2a (static chat shell, validates the data loop)** + **E.2b (motion + presence orb, layered on once the loop works)** — phase order is now E.0 → E.1 → E.2a → E.3 → E.4 → E.2b → E.5 → E.6; (c) new risk row **E-R11 (Persona drift)** — pinned reviewer-reject rule for any future PR that tries to add avatar/name/character-voice/emojis to the agent; (d) §11.2 schema row gains `OnboardingState.firstChatEncounterAt` (pins the once-per-user first-encounter animation) + `UserPreference.chatNotificationSoundEnabled` (off by default; persists user's optional notification-tone preference); (e) §11.3 files-new table adds `PresenceOrb.tsx`, `motionTokens.ts`, `audioTokens.ts` under E.2b. References: Apple Intelligence + Siri waveform + Linear command palette + Mercury onboarding + Notion AI + Stripe sequential focus — explicitly NOT Cleo / Schwabby / Erica / Replika.
