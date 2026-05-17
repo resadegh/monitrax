@@ -26,14 +26,24 @@
  *     step (currentStep = 1) so they see the data pre-filled and
  *     can continue / correct.
  *
- * Out of scope for this PR (E.2b — animation polish):
- *   - Presence orb SVG
- *   - Typewriter agent message render
- *   - First-encounter sequence
- *   - Optional notification tone
- *   - Mic-level → orb-ripple sync
+ * In scope from E.2b (this PR shipped 2026-05-17):
+ *   - PresenceOrb visual identity (4 states — idle / thinking /
+ *     listening / settled) anchored to the latest agent message
+ *   - Typewriter agent message render (35 chars/sec, word-boundary)
+ *   - Pre-typewriter "I'm reading what you said" pause (600-800ms
+ *     jittered) — feels attentive, not mechanical
+ *   - Recap card staggered field reveal + delayed CTA enable —
+ *     so the user reads before confirming
+ *   - Mistake-recovery dim-and-keep — prior recaps stay visible
+ *     above the new one as a trust signal
+ *   - prefers-reduced-motion fallbacks on every animation
  *
- * Those land in PR #2.
+ * Deferred to E.2b.2 (needs schema additions or web-audio wiring):
+ *   - First-encounter sequence persistence (needs
+ *     UserPreference.chatFirstEncounterAt)
+ *   - Optional notification tone toggle (needs
+ *     UserPreference.chatNotificationSoundEnabled)
+ *   - Mic-level → orb-ripple sync (needs Web Audio AnalyserNode)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -59,6 +69,7 @@ import {
 } from './householdScript';
 import type { ChatMessage } from './types';
 import type { HouseholdFields } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import { jitteredThinkingPauseMs } from './design/motionTokens';
 
 const HOUSEHOLD_STEP_INDEX = 1; // matches WIZARD_STEPS — household is index 1.
 const TOPIC = 'household' as const;
@@ -99,6 +110,15 @@ export function ConversationalSetup() {
   const [changingMode, setChangingMode] = useState(false);
   // Last-error banner (recoverable — user can retype or switch to form)
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
+  // Phase 12 §4a — the id of the most recently appended agent message
+  // that should typewriter-animate. Older messages render fully visible
+  // (would feel weird to re-type old history).
+  const [newestAnimatedMessageId, setNewestAnimatedMessageId] = useState<string | null>(null);
+  // Phase 12 §4a.5 — dim-and-keep transparency trail. Each "Change
+  // something" tap snapshots the current recap into this array; they
+  // render as dimmed cards ABOVE the current (undimmed) recap, so the
+  // user sees what the agent had before each correction.
+  const [historicalRecaps, setHistoricalRecaps] = useState<RecapRow[][]>([]);
 
   const bootstrappedRef = useRef(false);
   const recentTranscriptForApi = useMemo(
@@ -122,11 +142,12 @@ export function ConversationalSetup() {
     setScript(nextState);
   }, []);
 
-  const appendAgent = useCallback((text: string) => {
-    setMessages((prev) => [
-      ...prev,
-      { id: nextId(), role: 'agent', text, ts: Date.now() },
-    ]);
+  const appendAgent = useCallback((text: string, opts?: { animate?: boolean }) => {
+    const id = nextId();
+    setMessages((prev) => [...prev, { id, role: 'agent', text, ts: Date.now() }]);
+    if (opts?.animate !== false) {
+      setNewestAnimatedMessageId(id);
+    }
   }, []);
 
   const appendUser = useCallback((text: string) => {
@@ -159,6 +180,13 @@ export function ConversationalSetup() {
         });
 
         const json = (await res.json().catch(() => null)) as ExtractApiResponse | null;
+
+        // Phase 12 §4a.3 — pre-typewriter pause. Even if the API
+        // responded fast, wait the jittered "I'm reading what you
+        // said" beat before appending the next agent message. The
+        // beat is what makes the agent feel attentive instead of
+        // mechanical (~600-800ms jittered).
+        await new Promise((resolve) => setTimeout(resolve, jitteredThinkingPauseMs()));
 
         if (!res.ok || !json?.success || !json.data?.delta) {
           const msg =
@@ -219,9 +247,19 @@ export function ConversationalSetup() {
 
   const handleChange = useCallback(() => {
     if (confirming) return;
+    // Phase 12 §4a.5 — snapshot the current recap into the history
+    // trail BEFORE flipping into changing mode. The snapshot renders
+    // as a dimmed card above the new recap, so the user sees the
+    // visible audit trail of what they corrected.
+    const snapshot: RecapRow[] = [
+      { label: 'Household', value: summariseMembers(script.staged.householdMembers) },
+      { label: 'Pets', value: summarisePets(script.staged.householdPets) },
+      { label: 'Cars', value: summariseCars(script.staged.carsCount) },
+    ];
+    setHistoricalRecaps((prev) => [...prev, snapshot]);
     setChangingMode(true);
     appendAgent(AGENT_COPY.changingPrompt);
-  }, [confirming, appendAgent]);
+  }, [confirming, appendAgent, script.staged]);
 
   const handleConfirm = useCallback(async () => {
     if (confirming) return;
@@ -324,17 +362,29 @@ export function ConversationalSetup() {
         <ChatThread
           messages={messages}
           thinking={thinking}
+          newestAnimatedMessageId={newestAnimatedMessageId}
           trailingContent={
-            showRecap ? (
-              <TopicRecapCard
-                title={AGENT_COPY.recapHeader}
-                rows={recapRows}
-                dimmed={changingMode}
-                onConfirm={handleConfirm}
-                onChange={handleChange}
-                busy={confirming}
-              />
-            ) : null
+            <>
+              {historicalRecaps.map((snapshot, idx) => (
+                <TopicRecapCard
+                  key={`recap-history-${idx}`}
+                  title={AGENT_COPY.recapHeader}
+                  rows={snapshot}
+                  dimmed
+                  onConfirm={() => {}}
+                  onChange={() => {}}
+                />
+              ))}
+              {showRecap ? (
+                <TopicRecapCard
+                  title={AGENT_COPY.recapHeader}
+                  rows={recapRows}
+                  onConfirm={handleConfirm}
+                  onChange={handleChange}
+                  busy={confirming}
+                />
+              ) : null}
+            </>
           }
         />
       </div>

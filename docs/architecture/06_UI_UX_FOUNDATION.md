@@ -1083,3 +1083,42 @@ permanently deleted by clicking Export — it's a read, not a write.
    work but doesn't. Mock UI in production damages trust faster than
    missing UI. If the feature isn't ready, ship an honest
    "Coming with Phase X" placeholder, not a fake.
+
+---
+
+# **14. Conversational Onboarding Visual Language (Phase 12 Track E, 2026-05-17)**
+
+> **Canonical spec lives at** `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` **§4a**.
+> This section is a pointer + the cross-surface reuse rules. Do not
+> duplicate the §4a content here — keep one SSOT for the design
+> language.
+
+## 14.1 Primitives
+
+| Primitive | File | Role |
+|---|---|---|
+| `PresenceOrb` | `components/onboarding/wizard-chat/primitives/PresenceOrb.tsx` | Canonical visual identity of the Monitrax AI agent. 4 states: `idle` / `listening` / `thinking` / `settled`. Warm-ivory iridescent SVG. `prefers-reduced-motion` collapses to a static dot. **NOT** a face / mascot / robot / logo — ambient intelligence, not a character. |
+| `motionTokens.ts` | `components/onboarding/wizard-chat/design/motionTokens.ts` | SSOT for every animation duration / easing / stagger in the chat surface. Hard-coding values elsewhere = code-review reject. Includes `useReducedMotion()` hook + `jitteredThinkingPauseMs()` helper. |
+| `presenceOrb.css` | `components/onboarding/wizard-chat/design/presenceOrb.css` | Keyframes for the orb's 4 state animations. Defense-in-depth `@media (prefers-reduced-motion: reduce)` kills any straggler animations. |
+
+## 14.2 Reuse policy
+
+The `PresenceOrb` primitive is the **canonical AI-presence element for ALL future AI surfaces in Monitrax** — not Track E only:
+
+- `/dashboard/cfo` (the AI Guide surface) — reserved for a future workstream that wires `PresenceOrb` in. Same orb, same 4 states.
+- Any future agent surface (Phase 32C marketplace introduction agent, if it ever exists; future tax-advisor chat refresh, etc.) — same orb, same states.
+
+Changing the orb's design later is expensive once it becomes a brand surface across multiple AI features. Any change to its SVG, states, or animation timings goes through §4a of the Phase doc as the source-of-truth review.
+
+## 14.3 What we say NO to (load-bearing dissent — pinned 2026-05-17)
+
+This list exists to prevent persona drift. Adding any of these requires an explicit CLAUDE.md / Phase doc update + Reza sign-off:
+
+- ❌ Avatar / face / robot / mascot
+- ❌ Naming the agent (e.g. "Monty", "Tracksy")
+- ❌ Character voice different from Monitrax's product voice
+- ❌ Emojis in agent messages
+- ❌ Three-dot typing indicator without an orb (the orb's `thinking` state replaces the chatbot tell)
+- ❌ Cleo-style snark, Replika-style warmth, Schwabby-style cartoon
+
+See `PHASE_12_CONVERSATIONAL_ONBOARDING.md` §4a.6 + §8 risk row **E-R11 (Persona drift)** for the reviewer-reject rule.
