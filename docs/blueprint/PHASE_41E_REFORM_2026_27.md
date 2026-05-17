@@ -4,12 +4,12 @@
 >
 > **What this is not:** legislation, advice, or final spec. This is a Budget *announcement* — the exposure drafts + Bills are forthcoming. The plan is intentionally staged so we ship the *safe* pieces (data scaffolding, advisory copy, AI knowledge pack) now, and the rule-mechanics modules when the exposure-draft text is final.
 
-**Status:** 🟡 Design — Stage 1 (scaffolding + module skeletons) ready to spec; rule-mechanic implementation per measure follows the §9 versioning protocol (modules ship now, rules return `UNCOMPUTED` until Royal Assent of the relevant Bill is confirmed).
+**Status:** 🟢 **Stage 1 COMPLETE (2026-05-16)** — all 6 sub-PRs shipped: #763 design + governance · #764 41E.0 foundation · #765 41E.1 engine skeletons · #766 41E.2 AI advisor · #767 41E.3 UI surfaces · #768 41E.4 form UI · #769 41E.5 wizard + docs consolidation. Stage 2 per-measure rule-mechanic implementation queued (each measure's `commencementVerified` flag flips when Treasury exposure draft + Royal Assent confirm). Stage 3 = Royal-Assent flip per measure.
 **Owner:** Reza (regulatory sign-off) + Claude (architecture).
 **Anchors:** `docs/blueprint/PHASE_41_REGULATORY_ARCHITECTURE.md` §5 (D-2 — structural AFSL boundary), §9 (versioning protocol), §10 (UNCOMPUTED register), §11.1 (Phase 41h tool registry); `PHASE_41E_AUDIT_AND_MIGRATION_PLAN.md` §10 (tax-engine SSOT); `PHASE_41F_BOOKKEEPING_INTEGRATION.md` (trust-deed extracted rules — intersects with Measure 3); `docs/architecture/AI_PROVIDER_STRATEGY.md` (sibling doc — LLM choice for the advisor); CLAUDE.md §0 (advisory mindset), §12.2 (SSOT), §12.12 (migrations), §13.3 (CDR sanitisation), §14 (TRAIL).
 **Precedent decisions this doc honours (do not re-litigate):** **D-1** (full regulatory scope ships in demo cut — no demo/PROD split; reform measures ship like everything else); **D-2** (structural AFSL/TPB/NCCP boundary via the AI advisor tool registry, not prompt disclaimers); **HR-1** (numbers come from the app, never from the AI); **HR-2** (claims come from Australian law, never AI memory); **HR-3** (user-visible calc errors unacceptable — silent admin-side via Phase 41i.6 surface audit).
 **Relationship to existing phases:** Phase 41e is **COMPLETE** (41e.0 through 41e.17, all 18 sub-PRs shipped). Phase 41h is **COMPLETE** (41h.0 through 41h.7). Phase 41f (Xero bookkeeping integration, in flight) intersects with Measure 3 — the discretionary-trust reform changes the case for distributions, and `TrustDeedExtractedRules` (Phase 41f.4) is the canonical input for Phase 41e.4 (Div 6E) and 41e.5 (s100A zone). Phase 41E reform 2026-27 layers atop a complete engine; it does not refactor it.
-**Last updated:** 2026-05-16.
+**Last updated:** 2026-05-16 (Stage 1 closed).
 
 ---
 

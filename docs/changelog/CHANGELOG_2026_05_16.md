@@ -657,4 +657,106 @@ Functions/tools touched:
 ### PR
 
 - Branch: `claude/phase-41e-4-onboarding-entity-ui-MG8mr`
+- Status: **Merged 2026-05-16 (PR #768)** — form UI shipped to main.
+
+---
+
+## Session 7: Phase 41E.5 — Wizard + docs + UNCOMPUTED register (Stage 1 CLOSED)
+
+Branch: `claude/phase-41e-5-wizard-docs-MG8mr`
+
+### Scope
+
+- **Type:** Feature (final Stage 1 sub-PR — closes Phase 41E Stage 1).
+- **Scope:** Wizard step extensions (`PropertiesStep` + `EntitiesStep`) + bulk-create API plumbing + round-trip activation tests + `docs/architecture/03_DATA_MODEL.md` §O consolidation + new `docs/operational/UNCOMPUTED_REGISTER.md` + Phase doc status flips.
+- **CDR scope:** N/A — UI capture + persistence + tests.
+- **Reform compliance (CLAUDE.md §12.14):** All five FW rules covered across the full Stage 1: FW-1 (regime is a first-class input — 41E.1) + FW-2 (no silent post-reform numbers — 41E.1 commencement gating, reinforced by Session 7's round-trip tests) + FW-3 (schema additions documented — 41E.0 + Session 7 §O consolidation) + FW-4 (AI tools declare reform-status — 41E.2 knowledge pack) + FW-5 (UI surfaces show regime — 41E.3 badge + 41E.4 wiring).
+
+### What was done
+
+#### New files
+
+| File | Purpose |
+|---|---|
+| `tests/tax-engine/divisions/reformActivationRoundTrip.test.ts` | 15 tests proving the FW-2 wall: every reform module returns UNCOMPUTED when its flag is `false`; throws when the flag is `true` (defensive — Stage 2 mechanic not yet implemented); flipping false → true → false → UNCOMPUTED again is reversible; per-measure flag independence (flipping M2 indexation flag does NOT activate M3 trust or M5 carry-back). |
+| `docs/operational/UNCOMPUTED_REGISTER.md` | Operator playbook for the 10 UC-* codes. Per-code: emitter file:function, trigger condition, UI surface where the user sees it, planned removal trigger. Plus surface-pairing table + operator playbook. |
+
+#### Extended files
+
+| File | Change |
+|---|---|
+| `components/onboarding/wizard/types.ts` | `EntityInput` gains `trustType` (8-value closed enum) + `isForeignResident` (boolean). `PropertyInput` gains `acquisitionContractDate` + `isNewBuild` + `newBuildEvidence`. All optional + back-compat. |
+| `components/onboarding/wizard/steps/PropertiesStep.tsx` | New conditional reform-fields panel — only renders when `purchaseDate > 2026-05-12T09:30:00Z` (the cut-over). Pre-cut-over properties stay simple (the auto-backfill rule applies server-side). Captures `acquisitionContractDate` + `isNewBuild` with helper copy. Sky-toned panel — informational, not alarming. |
+| `components/onboarding/wizard/steps/EntitiesStep.tsx` | Trust-subtype `<select>` (conditional on `type === DISCRETIONARY_TRUST \| UNIT_TRUST`, 8 labelled options, pre-fills DISCRETIONARY for family trusts) + foreign-resident `<checkbox>` (always available, default false). `handleSave` extends payload with both fields, gated on entity type. |
+| `app/api/onboarding/bulk-create/route.ts` | `legalEntity.create` writes `trustType` (only when entity type is a trust type) + `isForeignResident` (default false). `property.create` writes `acquisitionContractDate` (auto-fills from `purchaseDate` for pre-cut-over; null for post-cut-over without confirmation) + `isNewBuild` + `newBuildEvidence` (only for post-cut-over). |
+| `docs/architecture/03_DATA_MODEL.md` | New §O Phase 41E reform 2026-27 — consolidated reference. §O.1 cut-over moment, §O.2 Property cols, §O.3 LegalEntity cols, §O.4 CompanyTaxHistory model, §O.5 new Prisma enums, §O.6 UserPreference banner col, §O.7 TaxYearConfig per-FY commencement flags. Self-contained — future engineers reach this from the architecture docs without needing to read the Phase doc. |
+| `docs/blueprint/PHASE_41E_REFORM_2026_27.md` | Header status flipped 🟡 Design → 🟢 **Stage 1 COMPLETE (2026-05-16)**. Lists all 6 sub-PRs (#763 → #769). Notes Stage 2 + Stage 3 are queued, no calendar pressure. `Last updated` bumped to "2026-05-16 (Stage 1 closed)". |
+| `docs/IMPLEMENTATION_PLAN.md` | Workstream §7 status flipped 🟢 + sub-PR checklist all ticked + top header refresh covering the full session. |
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `components/onboarding/wizard/types.ts` | +24 lines (EntityInput + PropertyInput extensions) |
+| `components/onboarding/wizard/steps/PropertiesStep.tsx` | +75 lines (conditional reform-fields panel) |
+| `components/onboarding/wizard/steps/EntitiesStep.tsx` | +60 lines (trust subtype + foreign resident) |
+| `app/api/onboarding/bulk-create/route.ts` | +35 lines (LegalEntity + Property write extension) |
+| `tests/tax-engine/divisions/reformActivationRoundTrip.test.ts` | NEW — 15 tests |
+| `docs/architecture/03_DATA_MODEL.md` | +120 lines (§O consolidated reference) |
+| `docs/operational/UNCOMPUTED_REGISTER.md` | NEW — operator playbook |
+| `docs/blueprint/PHASE_41E_REFORM_2026_27.md` | Header status + last-updated |
+| `docs/IMPLEMENTATION_PLAN.md` | Workstream §7 + top header |
+| `docs/changelog/CHANGELOG_2026_05_16.md` | This Session 7 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern (reuse of existing wizard primitives + reuse of badge from 41E.3)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] **strategic decision** (Phase 41E Stage 1 marked COMPLETE — workstream §7 flipped; Phase doc status flipped 🟡 → 🟢)
+
+Docs updated:
+- `docs/blueprint/PHASE_41E_REFORM_2026_27.md` — status flipped 🟢 STAGE 1 COMPLETE.
+- `docs/architecture/03_DATA_MODEL.md` — new §O consolidated reference.
+- `docs/operational/UNCOMPUTED_REGISTER.md` — NEW operator playbook.
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §7 status flipped + sub-PR checklist all ticked + top header.
+- `docs/changelog/CHANGELOG_2026_05_16.md` — Session 7 entry (this).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No new Prisma writes (existing bulk-create writes extended additively); no schema migration in this sub-PR (schema was already added in 41E.0).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No `prisma/schema.prisma` change in this sub-PR. (41E.0 / PR #764 + 41E.3 / PR #767 added the columns and the banner dismissal flag.)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**All five FW rules satisfied across the full Stage 1** — this sub-PR caps the run:
+- **FW-1** — `applyNegativeGearing` + `calculateCgtDiscount` accept regime input (41E.1 / PR #765); back-compat defaults preserve existing callers.
+- **FW-2** — Every reform module gates on `commencementVerified` (41E.1 / PR #765); Session 7's round-trip tests prove the wall is symmetric and per-measure-independent.
+- **FW-3** — All schema additions to `Property` / `Investment` / `LegalEntity` + new `CompanyTaxHistory` documented in §O of `03_DATA_MODEL.md` (this PR) + the original 41E.0 doc.
+- **FW-4** — AI advisor tools declare reform-status via the versioned knowledge pack (41E.2 / PR #766).
+- **FW-5** — UI surfaces (PropertyTile, entity edit form, CFO Guide banner) surface the regime via `<TaxTreatmentBadge>` (41E.3-4 / PRs #767-#768).
+
+Functions/tools touched in this sub-PR:
+- `components/onboarding/wizard/steps/PropertiesStep.tsx` — outcome (a) reform-aware (collects M1/M2 inputs when applicable).
+- `components/onboarding/wizard/steps/EntitiesStep.tsx` — outcome (a) reform-aware (collects M3/M4 inputs).
+- `app/api/onboarding/bulk-create/route.ts` — outcome (a) reform-aware (persists all reform fields with safe defaults).
+
+### Testing
+
+- [x] Tests written — 15 new in `reformActivationRoundTrip.test.ts`. Total Phase 41E test count across Stage 1: 17 (41E.0) + 47 (41E.1) + 30 (41E.2) + 24 (41E.3) + 15 (41E.5) = **133 tests**.
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+
+**Per CLAUDE.md §11.2:** Vercel preview build runs TypeScript + the full test suite on PR push.
+
+### PR
+
+- Branch: `claude/phase-41e-5-wizard-docs-MG8mr`
 - Status: Open
