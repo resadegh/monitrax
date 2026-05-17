@@ -1364,3 +1364,54 @@ Docs updated in this PR:
 User asked: *"if you can seed the file do it rather than me creating the flag. possible?"* — diagnosed that the `+Create flag` button in the admin UI is currently a stub (`setShowModal(true)` wired but no modal component rendered), so even a manual operator path wasn't viable. Auto-seed via the build pipeline is the structural fix that also prevents the same gap recurring for every future flag.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session: vercel-build hang diagnosed + fixed (PR #781) + end-of-day park
+
+### Changes Made
+
+- **Type**: Fix / build pipeline unblock
+- **Scope**: `prisma/seed-feature-flags.ts` exit handling
+- **Root Cause**: After PR #780 merged, the prod deploy hung indefinitely in `vercel-build`. Build log showed the seed printed `✅ Seed complete` at 20:40:39, then `next build` never started — sat there for 19+ minutes before being cancelled. Retried with cache; hung again. Diagnosed via the timing in the log: ts-node held the Node event loop open after `prisma.$disconnect()` because Prisma + Cloud SQL keep background keepalive timers / sockets alive after disconnect. The seed code relied on the loop draining naturally; locally and in preview it did; in prod (different Cloud SQL keepalive timing) it didn't. The shell `&&` operator waited indefinitely for ts-node to exit.
+- **Solution**: Force `process.exit(0)` after `$disconnect()` resolves on the success path; `process.exit(1)` on failure. Standard pattern for seed scripts chained in CI. No schema change. No semantic change to what the seed writes — the previous code did write the flag rows successfully (both BASIQ_INTEGRATION + CONVERSATIONAL_ONBOARDING were already in prod DB from the hung calls).
+
+### Files Modified
+
+- **EDITED (1):** `prisma/seed-feature-flags.ts` — replaced `.catch(...).finally(...)` pattern with explicit `.then(disconnect+exit-0).catch(disconnect+exit-1)`.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design / component pattern / config / GCP / identity / deployment / security / operational / strategic decision
+
+No covered §16 surface — this is a one-line behavioural fix to a build-chain script. No new build step. No infra change. Just making the existing seed exit properly.
+
+### What was already in prod DB despite the hangs
+
+Both flag rows were written successfully to `GlobalFeatureFlag` during the hung deploys (the seed step itself completed; it was the ts-node process that didn't exit). Visible in admin UI immediately. The chat-mode UI components are what's waiting for this PR to deploy.
+
+### Anthropic budget cap — DONE (also this session)
+
+Up Next #20 closed: `ANTHROPIC_API_KEY` is in Vercel Production env vars (key `reza-onboarding-api-key` — covers both consumers, Phase 33g.2 + Phase 12 Track E). Spend limits set at `console.anthropic.com`. **One pending verification:** confirm the $50/mo cap is on the SAME workspace as the key (Default workspace, where the key lives). Anthropic spend caps are per-workspace; if the cap was set under a different workspace name it doesn't apply to this key. Optional cosmetic rename of the key from `reza-onboarding-api-key` → `monitrax-prod` to remove the misleading single-purpose name.
+
+### New tech debt logged
+
+- **Tech Debt #19** — `app/admin/feature-flags/page.tsx` `+Create Flag` button is a stub: `useState(false)` + `setShowModal(true)` wired without a rendered `<CreateFlagModal>` component. Not blocking — canonical flag-creation path is now the seed file + auto-deploy. Fix when a real ad-hoc flag use case emerges OR bundle as a 30-second polish to hide the broken button.
+
+### What's pending overnight
+
+- PR #781 merge + deploy completion (~3-5 min build expected once seed exits cleanly).
+- Then `/admin/feature-flags` will let Reza toggle `CONVERSATIONAL_ONBOARDING` ON and test live chat-mode walk-through.
+
+### What's pending for next session
+
+- **Cloud SQL TLS handshake** at runtime (admin login) — separate from the build-time DB connection which now works fine. Needs WIF runbook (`04_WIF_TROUBLESHOOTING.md` §3.G) Step 1 (`CLOUD_SQL_CONNECTION_NAME` env var matches `monitrax-479700:australia-southeast1:monitrax-db-prod`) and Step 3 (project-level IAM `roles/cloudsql.instanceUser` on the SA) verification.
+- Verify Anthropic workspace match for the $50/mo cap.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV`
+- PR: [#781](https://github.com/resadegh/monitrax/pull/781) — open, awaiting merge.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
