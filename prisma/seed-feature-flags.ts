@@ -73,11 +73,17 @@ export async function runFeatureFlagSeed(): Promise<void> {
 
 if (require.main === module) {
   runFeatureFlagSeed()
-    .catch((err) => {
-      console.error('❌ Seed failed:', err);
-      process.exit(1);
-    })
-    .finally(async () => {
+    .then(async () => {
       await prisma.$disconnect();
+      // Force exit so the `&&` chain in `vercel-build` proceeds.
+      // Prisma + Cloud SQL keep background timers alive after
+      // $disconnect() that would otherwise keep the Node event
+      // loop running indefinitely — blocking the next build step.
+      process.exit(0);
+    })
+    .catch(async (err) => {
+      console.error('❌ Seed failed:', err);
+      await prisma.$disconnect().catch(() => {});
+      process.exit(1);
     });
 }
