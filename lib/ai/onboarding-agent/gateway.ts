@@ -36,6 +36,7 @@ import {
   type AccountsFields,
   type SuperFields,
   type AssetsFields,
+  type InvestmentsFields,
 } from './schemas/wizardStateDelta';
 import {
   EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
@@ -45,12 +46,14 @@ import {
   ACCOUNTS_SYSTEM_PROMPT,
   SUPER_SYSTEM_PROMPT,
   ASSETS_SYSTEM_PROMPT,
+  INVESTMENTS_SYSTEM_PROMPT,
   householdExtractTool,
   propertiesExtractTool,
   debtsExtractTool,
   accountsExtractTool,
   superExtractTool,
   assetsExtractTool,
+  investmentsExtractTool,
 } from './tools/extractWizardStepDelta';
 
 export type SupportedTopic =
@@ -59,7 +62,8 @@ export type SupportedTopic =
   | 'debts'
   | 'accounts'
   | 'super'
-  | 'assets';
+  | 'assets'
+  | 'investments';
 
 export type TopicStateSubset =
   | HouseholdFields
@@ -67,7 +71,8 @@ export type TopicStateSubset =
   | DebtsFields
   | AccountsFields
   | SuperFields
-  | AssetsFields;
+  | AssetsFields
+  | InvestmentsFields;
 
 const SUPPORTED_TOPICS: ReadonlyArray<SupportedTopic> = [
   'household',
@@ -76,6 +81,7 @@ const SUPPORTED_TOPICS: ReadonlyArray<SupportedTopic> = [
   'accounts',
   'super',
   'assets',
+  'investments',
 ];
 
 export interface ExtractRequest {
@@ -215,7 +221,8 @@ function resolveTopicTools(topic: SupportedTopic): {
     | typeof debtsExtractTool
     | typeof accountsExtractTool
     | typeof superExtractTool
-    | typeof assetsExtractTool;
+    | typeof assetsExtractTool
+    | typeof investmentsExtractTool;
 } {
   switch (topic) {
     case 'household':
@@ -230,6 +237,8 @@ function resolveTopicTools(topic: SupportedTopic): {
       return { systemPrompt: SUPER_SYSTEM_PROMPT, toolSpec: superExtractTool };
     case 'assets':
       return { systemPrompt: ASSETS_SYSTEM_PROMPT, toolSpec: assetsExtractTool };
+    case 'investments':
+      return { systemPrompt: INVESTMENTS_SYSTEM_PROMPT, toolSpec: investmentsExtractTool };
   }
 }
 
@@ -277,6 +286,8 @@ function formatStagedSubset(
       return formatStagedSuperState(subset as SuperFields);
     case 'assets':
       return formatStagedAssetsState(subset as AssetsFields);
+    case 'investments':
+      return formatStagedInvestmentsState(subset as InvestmentsFields);
   }
 }
 
@@ -378,6 +389,25 @@ function formatStagedAssetsState(subset: AssetsFields): string {
       const bits: string[] = [`name=${JSON.stringify(a.name)}`];
       if (a.type !== undefined) bits.push(`type=${a.type}`);
       if (a.currentValue !== undefined) bits.push(`currentValue=${a.currentValue}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  return parts.join('\n');
+}
+
+function formatStagedInvestmentsState(subset: InvestmentsFields): string {
+  const parts: string[] = [];
+  if (typeof subset.hasInvestments === 'boolean') {
+    parts.push(`hasInvestments: ${subset.hasInvestments}`);
+  }
+  if (!subset.investments || subset.investments.length === 0) {
+    parts.push('investments: []');
+  } else {
+    parts.push('investments:');
+    subset.investments.forEach((inv, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(inv.name)}`];
+      if (inv.type !== undefined) bits.push(`type=${inv.type}`);
+      if (inv.totalValue !== undefined) bits.push(`totalValue=${inv.totalValue}`);
       parts.push(`  [${idx}] ${bits.join(', ')}`);
     });
   }

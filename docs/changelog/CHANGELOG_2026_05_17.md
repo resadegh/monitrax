@@ -996,3 +996,155 @@ N/A — `prisma/schema.prisma` not touched.
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 8: Phase 12 Track E — Investments topic (chat chain extended to 7 topics)
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (continuation — PR #776 merged into main, branch recreated from main).
+
+### Scope
+
+- **Type:** Feature build — seventh chat topic.
+- **Scope:** Adds **Investments** (non-super listed investments) to chat-mode. Chat now flows Household → Properties → Debts → Accounts → **Investments** → Super → Assets → form-mode handoff at currentStep=9 (income-expenses — the final chat-skipped step).
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF — zero behavioural change pre-flip.
+
+### Trigger
+
+Reza directive: *"776 merged continue"*.
+
+### Changes Made
+
+#### 1. Schema additions
+
+`lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`:
+- `investmentAccountTypeEnum` (BROKERAGE / FUND / TRUST / ETF_CRYPTO — **SUPERS deliberately excluded**, owned by Super topic).
+- `investmentDeltaSchema`: `{ name (required), type?, totalValue? (1..100M AUD) }`.
+- `investmentsFieldsSchema`: `{ hasInvestments?, investments? (max 10) }`.
+- `investmentsStateDeltaSchema` joined into the discriminated union.
+- `INVESTMENTS_TOOL_INPUT_SCHEMA` (JSON Schema mirror).
+- Exports: `InvestmentDelta`, `InvestmentsFields` types.
+
+#### 2. System prompt
+
+`INVESTMENTS_SYSTEM_PROMPT` (~70 lines):
+- Extensive AU broker/platform vocabulary mapping:
+  - **BROKERAGE:** CommSec, Pearler, Stake, SelfWealth, Westpac Online Investing, NAB Trade, Bell Direct
+  - **FUND:** Vanguard managed funds, Magellan, Platinum, BlackRock managed
+  - **TRUST:** family trusts, unit trusts, investment trusts, LITs (listed investment trusts)
+  - **ETF_CRYPTO:** Vanguard ETFs (VAS/VGS), Betashares, crypto (BTC/ETH/Coinbase/Swyftx/CoinSpot)
+- **Scope-boundary instruction (CRITICAL):** super → Super topic; property → Properties; cash → Accounts; personal assets → Assets. Mentions of those get redirected via unresolved.
+- AFSL-adjacent prohibitions: no portfolio commentary / asset allocation / market timing / broker-switch / consolidation suggestions.
+
+#### 3. Tool spec
+
+`investmentsExtractTool` registered (closed-discriminant — one tool name, now 7 input schemas).
+
+#### 4. Gateway routing
+
+- `SupportedTopic` expanded to 7 values.
+- `TopicStateSubset` union widened.
+- `SUPPORTED_TOPICS` array updated.
+- `resolveTopicTools()` grows 1 new branch (investments → INVESTMENTS_SYSTEM_PROMPT + investmentsExtractTool).
+- New `formatStagedInvestmentsState()` helper + 1 new branch in `formatStagedSubset()`.
+
+#### 5. API route topic validation
+
+- `extract` + `topic-confirmed` routes accept all 7 topics.
+
+#### 6. State machine
+
+`components/onboarding/wizard-chat/investmentsScript.ts` (NEW, ~250 lines):
+- Steps: INTRO → ASKING_OWNERSHIP → ASKING_INVESTMENT_TYPE → ASKING_INVESTMENT_VALUE (per incomplete investment) → ASKING_MORE → RECAP / CHANGING.
+- Same shape as `assetsScript.ts` (per-item TYPE + VALUE; 2-retry loop-break; positional-merge).
+- Recap formatters: `formatInvestmentValue()` (AUD), `summariseSingleInvestment()` (e.g. "CommSec (Brokerage) — $50,000").
+
+#### 7. Orchestrator extended to 7 topics
+
+`components/onboarding/wizard-chat/ConversationalSetup.tsx`:
+- `chatTopic` union expanded to 7 values.
+- `TOPIC_CHAIN` extended: `['household', 'properties', 'debts', 'accounts', 'investments', 'super', 'assets']` — investments inserted **between accounts and super** to match form-wizard step order (so partial-resume back to form mode preserves user mental model).
+- New `investmentsScript` state slot.
+- 7-way switches in every per-topic helper (handleSubmit / handleConfirm / recapRows / recapHeader / showRecap / handleChange / currentStepFor / headerForTopic / bootstrap dispatch / setter dispatch).
+- **`AFTER_CHAT_FORM_STEP_INDEX` flipped 6 → 9** — with investments now in chat, the first chat-skipped step is income-expenses (step 9).
+- `currentStepFor('investments')` returns 6.
+- **Field defaults on confirm:** chat's `totalValue` → WizardData `cashBalance` + empty `holdings[]` array (form mode handles per-holding drill-in — users need their broker statement to recall ticker/units/averagePrice).
+
+### Scope decisions documented
+
+- **Investments excludes SUPERS** — the Super topic owns those. System prompt instructs the LLM to redirect super mentions via the unresolved field rather than emit an investment entry.
+- **Holdings stay form-only** — chat captures a single `totalValue` per account, NOT per-ticker holdings. Realistically users can't recall ticker/units/averagePrice without their statement; form mode has the precision affordances (number inputs, ticker autocomplete).
+- **AFTER_CHAT_FORM_STEP_INDEX semantics renamed** — was named for "after Accounts" in PR #775, then "after the chat ends" in PR #776 with same numeric value 6. Now bumped to 9 (income-expenses). The constant moves with the chain's tail.
+- **Topic order matches form-wizard order** — investments inserted between accounts and super (matching wizard steps 5 → 6 → 7), NOT appended at the end. Partial-resume back to form mode lands on a logically next step.
+
+### Files Created / Modified
+
+- **NEW (1):** `components/onboarding/wizard-chat/investmentsScript.ts`
+- **EDITED (6):**
+  - `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`
+  - `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts`
+  - `lib/ai/onboarding-agent/gateway.ts`
+  - `app/api/onboarding/chat/extract/route.ts`
+  - `app/api/onboarding/chat/topic-confirmed/route.ts`
+  - `components/onboarding/wizard-chat/ConversationalSetup.tsx`
+- **DOC-SYNC (3):**
+  - `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` (Status + rev 8 changelog)
+  - `docs/IMPLEMENTATION_PLAN.md` (header + row 53)
+  - `docs/changelog/CHANGELOG_2026_05_17.md` (this entry)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern — no new primitives
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture — minimal: Investments gateway prompt includes staged values for positional merge; all values originated from user this session. Audit metadata stays sanitised. INVESTMENTS_SYSTEM_PROMPT adds extensive AFSL-adjacent prohibitions (no portfolio commentary / asset allocation / market timing / broker switch / consolidation suggestions).
+- [ ] operational procedure
+- [x] strategic decision — chat chain extended from 6 → 7 topics; only income-expenses remains
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A. Zero destructive Prisma operations. Zero raw SQL. Zero schema changes. Zero migrations.
+
+### Schema-migration check (CLAUDE.md §12.12)
+
+N/A — `prisma/schema.prisma` not touched.
+
+### Build Status
+
+- [x] `tsc --noEmit` clean
+- [ ] `npm run lint` — N/A in sandbox
+- [ ] Tests — none added; state machine bounded.
+
+### Validation
+
+- [x] Investments enum strictly enforced (BROKERAGE / FUND / TRUST / ETF_CRYPTO — no SUPERS)
+- [x] Position-merge correctness
+- [x] No-data sentinel (`hasInvestments:false`) short-circuits to recap
+- [x] Agent never writes to Prisma — grep verified
+- [x] AFSL boundary structural — explicit prohibition on portfolio / asset-allocation / market-timing commentary
+- [x] Scope boundary preserves super/property/cash/assets separation
+
+### What's NOT in this PR (queued)
+
+- **PR #8** — Income / Expenses (final topic; most narrative — frequency rules, recurring vs one-off, categorisation)
+- **E.2b.2** — first-encounter persistence + optional sound + mic-level → orb-ripple sync
+- **Topic-registry full refactor** — current 7-way switches will become 8-way after PR #8. The cumulative weight justifies a typed-registry refactor; deliberately deferred to keep this PR's diff focused.
+- **Smart Welcome hydration** — when chat chain completes, redirect to currentStep=9 with Welcome/Entities un-filled. Future polish PR derives defaults from chat data.
+- **Per-holding investment capture in chat** — out of scope by design; form mode handles it. If usage signals users want holdings in chat, revisit.
+
+### Why this matters (4-lens synthesis)
+
+- **Architect lens:** the pattern is now battle-tested at 7 topics. Adding the final one (income-expenses) is bounded — same 7-way → 8-way switch pattern. Post-PR-#8 the registry refactor halves the orchestrator's line count.
+- **Behavioural-psychologist lens:** Investments is psychologically loaded for AU users (asymmetric — they remember winners, forget losers). The conversational approach + "ballpark is fine" framing reduces the precision anxiety that paralyses form-based investment entry. The hard-rule "no portfolio commentary" prevents the agent from accidentally triggering regret.
+- **Financial-adviser lens:** AU vocabulary mapping covers the entire mainstream broker landscape + the major crypto platforms. The "user gives total value, not per-holding" decision is realistic — most retail investors don't track averagePrice without prompting.
+- **Security / compliance lens:** AFSL boundary preserved structurally — INVESTMENTS_SYSTEM_PROMPT explicitly forbids asset-allocation / market-timing / consolidation suggestions, which are the AFSL-adjacent surface for investments. No vendor expansion. No CDR egress beyond existing session.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #776 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
