@@ -75,24 +75,52 @@ import {
   type AccountsScriptState,
   ACCOUNTS_AGENT_COPY,
 } from './accountsScript';
+import {
+  advanceSuperScript,
+  bootstrapSuperConversation,
+  initialSuperScriptState,
+  summariseSingleSuper,
+  type SuperScriptState,
+  SUPER_AGENT_COPY,
+} from './superScript';
+import {
+  advanceAssetsScript,
+  bootstrapAssetsConversation,
+  initialAssetsScriptState,
+  summariseSingleAsset,
+  type AssetsScriptState,
+  ASSETS_AGENT_COPY,
+} from './assetsScript';
 import type { ChatMessage } from './types';
 import type {
   HouseholdFields,
   PropertiesFields,
   DebtsFields,
   AccountsFields,
+  SuperFields,
+  AssetsFields,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
 import { jitteredThinkingPauseMs } from './design/motionTokens';
 
-// After all four chat topics are confirmed, redirect to form mode at
-// `investments` (currentStep = 6). The form wizard hydrates the draft
-// and the user continues there. Welcome (step 0) + Entities (step 2)
-// stay empty unless the user navigates Back.
-const AFTER_ACCOUNTS_FORM_STEP_INDEX = 6;
+// After the chat chain ends, redirect to form mode at `investments`
+// (currentStep = 6) — the first step the chat doesn't cover. The form
+// wizard hydrates the draft and the user continues there. Steps the
+// chat covered (1 household / 3 properties / 4 debts / 5 accounts /
+// 7 super / 8 assets) render pre-filled; the user advances quickly.
+// Steps the chat skipped (0 welcome / 2 entities / 6 investments /
+// 9 income-expenses / 10 review) collect remaining data in form mode.
+const AFTER_CHAT_FORM_STEP_INDEX = 6;
 
-type ChatTopic = 'household' | 'properties' | 'debts' | 'accounts';
+type ChatTopic = 'household' | 'properties' | 'debts' | 'accounts' | 'super' | 'assets';
 
-const TOPIC_CHAIN: ChatTopic[] = ['household', 'properties', 'debts', 'accounts'];
+const TOPIC_CHAIN: ChatTopic[] = [
+  'household',
+  'properties',
+  'debts',
+  'accounts',
+  'super',
+  'assets',
+];
 
 function nextTopicAfter(t: ChatTopic): ChatTopic | null {
   const idx = TOPIC_CHAIN.indexOf(t);
@@ -113,7 +141,9 @@ interface ExtractApiResponse {
       | { topic: 'household'; fields: HouseholdFields; unresolved: string[]; rationale?: string }
       | { topic: 'properties'; fields: PropertiesFields; unresolved: string[]; rationale?: string }
       | { topic: 'debts'; fields: DebtsFields; unresolved: string[]; rationale?: string }
-      | { topic: 'accounts'; fields: AccountsFields; unresolved: string[]; rationale?: string };
+      | { topic: 'accounts'; fields: AccountsFields; unresolved: string[]; rationale?: string }
+      | { topic: 'super'; fields: SuperFields; unresolved: string[]; rationale?: string }
+      | { topic: 'assets'; fields: AssetsFields; unresolved: string[]; rationale?: string };
   };
   error?: { code: string; message: string } | null;
 }
@@ -147,6 +177,8 @@ export function ConversationalSetup() {
   const [accountsScript, setAccountsScript] = useState<AccountsScriptState>(
     initialAccountsScriptState,
   );
+  const [superScript, setSuperScript] = useState<SuperScriptState>(initialSuperScriptState);
+  const [assetsScript, setAssetsScript] = useState<AssetsScriptState>(initialAssetsScriptState);
 
   const bootstrappedRef = useRef(false);
   const recentTranscriptForApi = useMemo(
@@ -230,6 +262,28 @@ export function ConversationalSetup() {
     }));
   }, [accountsScript.staged]);
 
+  const superRecapRows = useMemo<RecapRow[]>(() => {
+    const f = superScript.staged;
+    if (f.hasSuper === false) return [{ label: 'Super', value: 'None' }];
+    const list = f.superAccounts ?? [];
+    if (list.length === 0) return [{ label: 'Super', value: '(none listed)' }];
+    return list.map((s, idx) => ({
+      label: `Super ${idx + 1}`,
+      value: summariseSingleSuper(s),
+    }));
+  }, [superScript.staged]);
+
+  const assetsRecapRows = useMemo<RecapRow[]>(() => {
+    const f = assetsScript.staged;
+    if (f.hasAssets === false) return [{ label: 'Assets', value: 'None' }];
+    const list = f.assets ?? [];
+    if (list.length === 0) return [{ label: 'Assets', value: '(none listed)' }];
+    return list.map((a, idx) => ({
+      label: `Asset ${idx + 1}`,
+      value: summariseSingleAsset(a),
+    }));
+  }, [assetsScript.staged]);
+
   const recapRows: RecapRow[] = (() => {
     switch (chatTopic) {
       case 'household':
@@ -240,6 +294,10 @@ export function ConversationalSetup() {
         return debtsRecapRows;
       case 'accounts':
         return accountsRecapRows;
+      case 'super':
+        return superRecapRows;
+      case 'assets':
+        return assetsRecapRows;
     }
   })();
 
@@ -253,6 +311,10 @@ export function ConversationalSetup() {
         return DEBTS_AGENT_COPY.recapHeader;
       case 'accounts':
         return ACCOUNTS_AGENT_COPY.recapHeader;
+      case 'super':
+        return SUPER_AGENT_COPY.recapHeader;
+      case 'assets':
+        return ASSETS_AGENT_COPY.recapHeader;
     }
   })();
 
@@ -266,6 +328,10 @@ export function ConversationalSetup() {
         return debtsScript.step === 'RECAP';
       case 'accounts':
         return accountsScript.step === 'RECAP';
+      case 'super':
+        return superScript.step === 'RECAP';
+      case 'assets':
+        return assetsScript.step === 'RECAP';
     }
   })();
 
@@ -291,6 +357,10 @@ export function ConversationalSetup() {
             return debtsScript.staged;
           case 'accounts':
             return accountsScript.staged;
+          case 'super':
+            return superScript.staged;
+          case 'assets':
+            return assetsScript.staged;
         }
       })();
 
@@ -421,6 +491,54 @@ export function ConversationalSetup() {
             }
             break;
           }
+          case 'super': {
+            const f = delta.fields;
+            const llmCouldNotExtract =
+              delta.unresolved.includes('general') &&
+              f.hasSuper === undefined &&
+              f.superAccounts === undefined;
+            const stepBefore = superScript.step;
+            const next = advanceSuperScript({
+              state: changingMode ? { ...superScript, step: 'CHANGING' } : superScript,
+              newFields: f,
+              llmCouldNotExtract,
+            });
+            setSuperScript(next.state);
+            if (next.agentNextMessage) appendAgent(next.agentNextMessage);
+            if (next.showRecap && stepBefore !== 'RECAP') {
+              const isNone = next.state.staged.hasSuper === false;
+              appendAgent(
+                isNone
+                  ? SUPER_AGENT_COPY.recapNoSuper
+                  : SUPER_AGENT_COPY.recapHeader + ' — does this look right?',
+              );
+            }
+            break;
+          }
+          case 'assets': {
+            const f = delta.fields;
+            const llmCouldNotExtract =
+              delta.unresolved.includes('general') &&
+              f.hasAssets === undefined &&
+              f.assets === undefined;
+            const stepBefore = assetsScript.step;
+            const next = advanceAssetsScript({
+              state: changingMode ? { ...assetsScript, step: 'CHANGING' } : assetsScript,
+              newFields: f,
+              llmCouldNotExtract,
+            });
+            setAssetsScript(next.state);
+            if (next.agentNextMessage) appendAgent(next.agentNextMessage);
+            if (next.showRecap && stepBefore !== 'RECAP') {
+              const isNone = next.state.staged.hasAssets === false;
+              appendAgent(
+                isNone
+                  ? ASSETS_AGENT_COPY.recapNoAssets
+                  : ASSETS_AGENT_COPY.recapHeader + ' — does this look right?',
+              );
+            }
+            break;
+          }
         }
 
         if (changingMode) setChangingMode(false);
@@ -441,6 +559,8 @@ export function ConversationalSetup() {
       propertiesScript,
       debtsScript,
       accountsScript,
+      superScript,
+      assetsScript,
       recentTranscriptForApi,
       changingMode,
       appendAgent,
@@ -464,6 +584,10 @@ export function ConversationalSetup() {
           return DEBTS_AGENT_COPY.changingPrompt;
         case 'accounts':
           return ACCOUNTS_AGENT_COPY.changingPrompt;
+        case 'super':
+          return SUPER_AGENT_COPY.changingPrompt;
+        case 'assets':
+          return ASSETS_AGENT_COPY.changingPrompt;
       }
     })();
     appendAgent(prompt);
@@ -556,6 +680,37 @@ export function ConversationalSetup() {
             source: 'MANUAL' as const,
           })),
         };
+      } else if (chatTopic === 'super') {
+        const stagedSuper = superScript.staged.superAccounts ?? [];
+        mergedDraft = {
+          ...baseDraft,
+          superAccounts: stagedSuper.map((s, idx) => ({
+            id: `chat-super-${idx}-${Date.now()}`,
+            // SuperAccountInput requires both `name` + `fundName`.
+            // Chat only captures the fund name; we use it for both so
+            // the wizard's display has a sensible value (user can
+            // rename in form mode if they want a separate nickname).
+            name: s.fundName,
+            fundName: s.fundName,
+            currentBalance: s.currentBalance ?? 0,
+          })),
+        };
+      } else if (chatTopic === 'assets') {
+        const stagedAssets = assetsScript.staged.assets ?? [];
+        mergedDraft = {
+          ...baseDraft,
+          assets: stagedAssets.map((a, idx) => ({
+            id: `chat-asset-${idx}-${Date.now()}`,
+            name: a.name,
+            type: a.type ?? 'OTHER',
+            // AssetInput requires `purchasePrice` + `currentValue`.
+            // Chat only captures `currentValue`; default purchasePrice
+            // to the same value (sensible — user can correct in form).
+            purchasePrice: a.currentValue ?? 0,
+            currentValue: a.currentValue ?? 0,
+            expenses: [],
+          })),
+        };
       }
 
       // The currentStep we save under depends on whether we're pivoting
@@ -563,7 +718,7 @@ export function ConversationalSetup() {
       // up (save at the post-chat redirect step).
       const next = nextTopicAfter(chatTopic);
       const stepIndexToSave =
-        next === null ? AFTER_ACCOUNTS_FORM_STEP_INDEX : currentStepFor(chatTopic);
+        next === null ? AFTER_CHAT_FORM_STEP_INDEX : currentStepFor(chatTopic);
 
       await saveDraft(mergedDraft, stepIndexToSave);
 
@@ -583,7 +738,11 @@ export function ConversationalSetup() {
                 ? propertiesScript.staged
                 : chatTopic === 'debts'
                   ? debtsScript.staged
-                  : accountsScript.staged,
+                  : chatTopic === 'accounts'
+                    ? accountsScript.staged
+                    : chatTopic === 'super'
+                      ? superScript.staged
+                      : assetsScript.staged,
           ),
         }),
       }).catch(() => {
@@ -605,9 +764,12 @@ export function ConversationalSetup() {
             return bootstrapDebtsConversation();
           case 'accounts':
             return bootstrapAccountsConversation();
+          case 'super':
+            return bootstrapSuperConversation();
+          case 'assets':
+            return bootstrapAssetsConversation();
           case 'household':
-            // Defensive — household is never a pivot target. If we
-            // somehow ended up here, drop into household state (safe).
+            // Defensive — household is never a pivot target.
             return bootstrapHouseholdConversation();
         }
       })();
@@ -621,6 +783,12 @@ export function ConversationalSetup() {
           break;
         case 'accounts':
           setAccountsScript(bootstrap.nextState as AccountsScriptState);
+          break;
+        case 'super':
+          setSuperScript(bootstrap.nextState as SuperScriptState);
+          break;
+        case 'assets':
+          setAssetsScript(bootstrap.nextState as AssetsScriptState);
           break;
       }
       setChatTopic(next);
@@ -638,6 +806,8 @@ export function ConversationalSetup() {
     propertiesScript.staged,
     debtsScript.staged,
     accountsScript.staged,
+    superScript.staged,
+    assetsScript.staged,
     saveDraft,
     token,
     appendAgent,
@@ -725,6 +895,10 @@ function currentStepFor(topic: ChatTopic): number {
       return 4;
     case 'accounts':
       return 5;
+    case 'super':
+      return 7;
+    case 'assets':
+      return 8;
   }
 }
 
@@ -738,6 +912,10 @@ function headerForTopic(t: ChatTopic): string {
       return DEBTS_AGENT_COPY.recapHeader;
     case 'accounts':
       return ACCOUNTS_AGENT_COPY.recapHeader;
+    case 'super':
+      return SUPER_AGENT_COPY.recapHeader;
+    case 'assets':
+      return ASSETS_AGENT_COPY.recapHeader;
   }
 }
 
