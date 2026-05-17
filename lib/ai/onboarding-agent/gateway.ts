@@ -31,20 +31,26 @@ import {
   wizardStateDeltaSchema,
   type WizardStateDelta,
   type HouseholdFields,
+  type PropertiesFields,
 } from './schemas/wizardStateDelta';
 import {
   EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
   HOUSEHOLD_SYSTEM_PROMPT,
+  PROPERTIES_SYSTEM_PROMPT,
   householdExtractTool,
+  propertiesExtractTool,
 } from './tools/extractWizardStepDelta';
 
-export type SupportedTopic = 'household';
+export type SupportedTopic = 'household' | 'properties';
+
+export type TopicStateSubset = HouseholdFields | PropertiesFields;
 
 export interface ExtractRequest {
   topic: SupportedTopic;
   userMessage: string;
-  /** State already staged for this topic — so the LLM doesn't duplicate. */
-  currentStateSubset: HouseholdFields;
+  /** State already staged for this topic — so the LLM doesn't duplicate
+   *  and can position-merge (for topics with arrays like Properties). */
+  currentStateSubset: TopicStateSubset;
   /** Last ~4 turns for disambiguation. Format: "agent: …" or "user: …". */
   recentTranscript: Array<{ role: 'agent' | 'user'; text: string }>;
 }
@@ -86,18 +92,27 @@ export async function extractWizardStepDelta(
     return { ok: false, reason: 'ANTHROPIC_NOT_CONFIGURED' };
   }
 
-  if (req.topic !== 'household') {
-    // v1 supports the household topic only. Future topics expand here.
+  if (req.topic !== 'household' && req.topic !== 'properties') {
+    // Future topics (debts, accounts, …) expand the union here.
     return { ok: false, reason: 'INVALID_TOPIC', detail: `topic=${req.topic}` };
   }
 
   const client = getAnthropicClient();
   const model = ANTHROPIC_MODELS.HAIKU;
 
+  // Pick the right system prompt + tool spec per topic. Both tools
+  // share the same tool NAME (the closed-discriminant pattern from
+  // CLAUDE.md §12.4) — they differ only in input_schema. The system
+  // prompt switches based on topic so the LLM sees the right
+  // vocabulary mapping rules.
+  const systemPrompt =
+    req.topic === 'household' ? HOUSEHOLD_SYSTEM_PROMPT : PROPERTIES_SYSTEM_PROMPT;
+  const toolSpec =
+    req.topic === 'household' ? householdExtractTool : propertiesExtractTool;
+
   // Compose the user-side message. The prompt body is a structured
   // brief — current staged subset + recent transcript + the latest
-  // user message. The system prompt lives in the system parameter
-  // (Anthropic API convention).
+  // user message.
   const userPrompt = buildUserPrompt(req);
 
   try {
@@ -108,9 +123,9 @@ export async function extractWizardStepDelta(
     // API for tool use.
     const response = await client.messages.create({
       model,
-      max_tokens: 600,
-      system: HOUSEHOLD_SYSTEM_PROMPT,
-      tools: [householdExtractTool] as never,
+      max_tokens: 800,
+      system: systemPrompt,
+      tools: [toolSpec] as never,
       tool_choice: {
         type: 'tool',
         name: EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
@@ -162,27 +177,55 @@ function buildUserPrompt(req: ExtractRequest): string {
     .map((t) => `${t.role}: ${t.text}`)
     .join('\n');
 
-  // We pass field NAMES of what's already staged (not values). The
-  // LLM uses this to avoid re-emitting fields the user has already
-  // confirmed; we don't need to ship balances or other CDR-shaped
-  // content into the prompt for the household topic, but the
-  // discipline applies uniformly: only metadata, never values.
-  const stagedFieldNames = Object.entries(req.currentStateSubset)
-    .filter(([, v]) => v !== undefined && v !== null)
-    .map(([k, v]) => {
-      if (Array.isArray(v)) return `${k}(count=${v.length})`;
-      return k;
-    })
-    .join(', ');
+  // For HOUSEHOLD: we pass field NAMES of what's already staged so the
+  // LLM avoids duplicating fields the user has already given.
+  // For PROPERTIES: we pass the FULL staged properties array (including
+  // numeric values the user already gave) — the LLM needs the full
+  // state to do the positional-merge correctly. This is sensitive in
+  // principle (chat data echoes back), but every value in
+  // PropertiesFields came from the user this session — no CDR egress
+  // expansion beyond what was already in the conversation.
+  const stagedBlock =
+    req.topic === 'household'
+      ? formatStagedFieldNames(req.currentStateSubset)
+      : formatStagedPropertiesState(req.currentStateSubset as PropertiesFields);
 
   return [
-    `Topic: household`,
-    `Already staged for this topic: ${stagedFieldNames || '(nothing yet)'}`,
+    `Topic: ${req.topic}`,
+    `Already staged for this topic:\n${stagedBlock}`,
     transcriptLines.length > 0 ? `Recent transcript:\n${transcriptLines}` : '',
     `User's latest message: ${req.userMessage}`,
     ``,
-    `Extract what the user said into the tool's structured shape. Numbers from the user only; if the user did not state a value, list the field name in "unresolved".`,
+    `Extract what the user said into the tool's structured shape. Numbers from the user only; if the user did not state a value, list the field name in "unresolved". For properties, echo ALL staged properties (with new fields merged into existing entries by position) and append any new ones at the end.`,
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+function formatStagedFieldNames(subset: TopicStateSubset): string {
+  const names = Object.entries(subset)
+    .filter(([, v]) => v !== undefined && v !== null)
+    .map(([k, v]) => (Array.isArray(v) ? `${k}(count=${v.length})` : k))
+    .join(', ');
+  return names || '(nothing yet)';
+}
+
+function formatStagedPropertiesState(subset: PropertiesFields): string {
+  const parts: string[] = [];
+  if (typeof subset.ownsProperty === 'boolean') {
+    parts.push(`ownsProperty: ${subset.ownsProperty}`);
+  }
+  if (!subset.properties || subset.properties.length === 0) {
+    parts.push('properties: []');
+  } else {
+    parts.push('properties:');
+    subset.properties.forEach((p, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(p.name)}`];
+      if (p.type !== undefined) bits.push(`type=${p.type}`);
+      if (p.currentValue !== undefined) bits.push(`currentValue=${p.currentValue}`);
+      if (p.hasLoan !== undefined) bits.push(`hasLoan=${p.hasLoan}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  return parts.join('\n');
 }

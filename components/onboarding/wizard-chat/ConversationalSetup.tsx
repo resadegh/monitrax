@@ -2,48 +2,37 @@
 
 /**
  * ConversationalSetup — top-level orchestrator for chat-mode onboarding
- * (Phase 12 Track E.0 + E.1 + E.2a + E.3 + E.4 + E.5).
+ * (Phase 12 Track E).
  *
- * v1 scope: HOUSEHOLD topic only. The chat collects household
- * composition (members, pets, cars), emits a recap card, and on
- * "Looks right" persists the staged data into the existing
- * `UserPreference.onboardingDraft` JSON (the same draft the form
- * wizard reads on hydrate) + redirects the user to form-mode at
- * the Household step (now pre-filled). Remaining topics (entities,
- * properties, debts, accounts, …) are collected via the existing
- * form wizard.
+ * Topic flow (left to right):
+ *   Household → Properties → form mode (debts step pre-filled handoff)
  *
- * Hard rules enforced here (Phase 12 §2):
- *   - The agent never writes to a Prisma model directly.
- *   - Every numeric extraction must come from the user (the LLM is
- *     extraction-only; if it didn't extract a number, the field stays
- *     un-staged + the chat asks again).
- *   - Per-topic confirmation BEFORE any persistence — staged delta
- *     is purely client-side state until the user taps "Looks right".
- *   - On "Looks right", the staged data is merged into the existing
- *     WizardData draft (the form wizard's SSOT for in-progress
- *     onboarding) + the user lands on form-mode at the Household
- *     step (currentStep = 1) so they see the data pre-filled and
- *     can continue / correct.
+ * Each topic is its own self-contained state machine + script (see
+ * `householdScript.ts` and `propertiesScript.ts`). The orchestrator
+ * owns:
+ *   - the chat thread (shared across topics)
+ *   - the current-topic state (household script | properties script)
+ *   - the LLM extract call (routes to the right tool/prompt per topic)
+ *   - the recap-card-confirm → save-draft → next-topic-or-redirect
+ *     transition
  *
- * In scope from E.2b (this PR shipped 2026-05-17):
- *   - PresenceOrb visual identity (4 states — idle / thinking /
- *     listening / settled) anchored to the latest agent message
- *   - Typewriter agent message render (35 chars/sec, word-boundary)
- *   - Pre-typewriter "I'm reading what you said" pause (600-800ms
- *     jittered) — feels attentive, not mechanical
- *   - Recap card staggered field reveal + delayed CTA enable —
- *     so the user reads before confirming
- *   - Mistake-recovery dim-and-keep — prior recaps stay visible
- *     above the new one as a trust signal
- *   - prefers-reduced-motion fallbacks on every animation
+ * Hard rules (Phase 12 §2 — verified in PR #4):
+ *   - Agent NEVER writes to a Prisma model directly.
+ *   - Every numeric extraction must come from the user.
+ *   - Per-topic confirmation gates persistence (no DB write until
+ *     "Looks right" on a recap card).
+ *   - Form mode is the only write boundary to the bulk-create
+ *     endpoint — chat saves to draft only.
  *
- * Deferred to E.2b.2 (needs schema additions or web-audio wiring):
- *   - First-encounter sequence persistence (needs
- *     UserPreference.chatFirstEncounterAt)
- *   - Optional notification tone toggle (needs
- *     UserPreference.chatNotificationSoundEnabled)
- *   - Mic-level → orb-ripple sync (needs Web Audio AnalyserNode)
+ * E.2b motion polish (PR #773): PresenceOrb + typewriter + recap
+ * stagger + dim-and-keep mistake recovery trail. Reused across both
+ * topics in this PR — no changes needed.
+ *
+ * Deferred (E.2b.2 + later PRs):
+ *   - First-encounter sequence persistence
+ *   - Optional notification tone toggle
+ *   - Mic-level → orb-ripple sync
+ *   - Remaining topics (debts, accounts, super, investments, …)
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -58,21 +47,38 @@ import { ChatThread } from './ChatThread';
 import { ChatComposer } from './ChatComposer';
 import { TopicRecapCard, type RecapRow } from './TopicRecapCard';
 import {
-  advanceScript,
+  advanceScript as advanceHouseholdScript,
   bootstrapHouseholdConversation,
   initialHouseholdScriptState,
   summariseCars,
   summariseMembers,
   summarisePets,
   type HouseholdScriptState,
-  AGENT_COPY,
+  AGENT_COPY as HOUSEHOLD_AGENT_COPY,
 } from './householdScript';
+import {
+  advancePropertiesScript,
+  bootstrapPropertiesConversation,
+  initialPropertiesScriptState,
+  summariseSingleProperty,
+  formatPropertyValue,
+  type PropertiesScriptState,
+  PROPERTIES_AGENT_COPY,
+} from './propertiesScript';
 import type { ChatMessage } from './types';
-import type { HouseholdFields } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type {
+  HouseholdFields,
+  PropertiesFields,
+} from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
 import { jitteredThinkingPauseMs } from './design/motionTokens';
 
-const HOUSEHOLD_STEP_INDEX = 1; // matches WIZARD_STEPS — household is index 1.
-const TOPIC = 'household' as const;
+// After both chat topics are confirmed, redirect to form mode at
+// `debts` (currentStep = 4). The form wizard hydrates the draft and
+// the user continues there. Welcome (step 0) + Entities (step 2)
+// stay empty — user can hit Back to fill them.
+const AFTER_PROPERTIES_FORM_STEP_INDEX = 4;
+
+type ChatTopic = 'household' | 'properties';
 
 let messageIdCounter = 0;
 function nextId(): string {
@@ -83,12 +89,19 @@ function nextId(): string {
 interface ExtractApiResponse {
   success: boolean;
   data?: {
-    delta?: {
-      topic: 'household';
-      fields: HouseholdFields;
-      unresolved: string[];
-      rationale?: string;
-    };
+    delta?:
+      | {
+          topic: 'household';
+          fields: HouseholdFields;
+          unresolved: string[];
+          rationale?: string;
+        }
+      | {
+          topic: 'properties';
+          fields: PropertiesFields;
+          unresolved: string[];
+          rationale?: string;
+        };
   };
   error?: { code: string; message: string } | null;
 }
@@ -100,25 +113,34 @@ export function ConversationalSetup() {
 
   // Chat thread
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  // Script state machine
-  const [script, setScript] = useState<HouseholdScriptState>(initialHouseholdScriptState);
-  // True while the extract API is in flight
+  // Per-topic script states. Household is always initialised; Properties
+  // is initialised when the user transitions to it (mostly so the
+  // initial debug snapshot of state isn't misleading).
+  const [householdScript, setHouseholdScript] = useState<HouseholdScriptState>(
+    initialHouseholdScriptState,
+  );
+  const [propertiesScript, setPropertiesScript] = useState<PropertiesScriptState>(
+    initialPropertiesScriptState,
+  );
+  // Which topic we're currently in.
+  const [chatTopic, setChatTopic] = useState<ChatTopic>('household');
+  // True while the extract API is in flight.
   const [thinking, setThinking] = useState(false);
-  // True after the user taps "Looks right" — locks the surface during save+redirect
+  // True after the user taps "Looks right" — locks the surface during
+  // save + transition.
   const [confirming, setConfirming] = useState(false);
-  // True after the user taps "Change something" — dims the prior recap, opens diff composer
+  // True after the user taps "Change something" — dims the prior recap
+  // and opens the diff composer.
   const [changingMode, setChangingMode] = useState(false);
-  // Last-error banner (recoverable — user can retype or switch to form)
+  // Last-error banner (recoverable — user can retype or switch to form).
   const [errorBanner, setErrorBanner] = useState<string | null>(null);
-  // Phase 12 §4a — the id of the most recently appended agent message
-  // that should typewriter-animate. Older messages render fully visible
-  // (would feel weird to re-type old history).
+  // Which message animates next (typewriter target).
   const [newestAnimatedMessageId, setNewestAnimatedMessageId] = useState<string | null>(null);
-  // Phase 12 §4a.5 — dim-and-keep transparency trail. Each "Change
-  // something" tap snapshots the current recap into this array; they
-  // render as dimmed cards ABOVE the current (undimmed) recap, so the
-  // user sees what the agent had before each correction.
-  const [historicalRecaps, setHistoricalRecaps] = useState<RecapRow[][]>([]);
+  // Dim-and-keep transparency trail. Each entry is keyed by which topic
+  // it was emitted from so the recap header reads correctly.
+  const [historicalRecaps, setHistoricalRecaps] = useState<
+    Array<{ topic: ChatTopic; rows: RecapRow[] }>
+  >([]);
 
   const bootstrappedRef = useRef(false);
   const recentTranscriptForApi = useMemo(
@@ -139,7 +161,7 @@ export function ConversationalSetup() {
         ts: Date.now(),
       })),
     );
-    setScript(nextState);
+    setHouseholdScript(nextState);
   }, []);
 
   const appendAgent = useCallback((text: string, opts?: { animate?: boolean }) => {
@@ -157,12 +179,55 @@ export function ConversationalSetup() {
     ]);
   }, []);
 
+  // Compute the current-topic's recap rows. Same shape regardless of
+  // topic so TopicRecapCard stays generic.
+  const householdRecapRows = useMemo<RecapRow[]>(
+    () => [
+      { label: 'Household', value: summariseMembers(householdScript.staged.householdMembers) },
+      { label: 'Pets', value: summarisePets(householdScript.staged.householdPets) },
+      { label: 'Cars', value: summariseCars(householdScript.staged.carsCount) },
+    ],
+    [householdScript.staged],
+  );
+
+  const propertiesRecapRows = useMemo<RecapRow[]>(() => {
+    const f = propertiesScript.staged;
+    if (f.ownsProperty === false) {
+      return [{ label: 'Property', value: 'None' }];
+    }
+    const list = f.properties ?? [];
+    if (list.length === 0) {
+      return [{ label: 'Property', value: '(none listed)' }];
+    }
+    return list.map((p, idx) => ({
+      label: `Property ${idx + 1}`,
+      value: summariseSingleProperty(p),
+    }));
+  }, [propertiesScript.staged]);
+
+  const recapRows = chatTopic === 'household' ? householdRecapRows : propertiesRecapRows;
+  const recapHeader =
+    chatTopic === 'household'
+      ? HOUSEHOLD_AGENT_COPY.recapHeader
+      : PROPERTIES_AGENT_COPY.recapHeader;
+
+  const showRecap =
+    (chatTopic === 'household' && householdScript.step === 'RECAP') ||
+    (chatTopic === 'properties' && propertiesScript.step === 'RECAP');
+
+  // ===========================================================================
+  // handleSubmit — routes the user's reply through the current topic's
+  // state machine.
+  // ===========================================================================
   const handleSubmit = useCallback(
     async (userMessage: string) => {
       if (thinking || confirming) return;
       appendUser(userMessage);
       setThinking(true);
       setErrorBanner(null);
+
+      const currentStateSubset =
+        chatTopic === 'household' ? householdScript.staged : propertiesScript.staged;
 
       try {
         const res = await fetch('/api/onboarding/chat/extract', {
@@ -172,20 +237,17 @@ export function ConversationalSetup() {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           body: JSON.stringify({
-            topic: TOPIC,
+            topic: chatTopic,
             userMessage,
-            currentStateSubset: script.staged,
+            currentStateSubset,
             recentTranscript: recentTranscriptForApi,
           }),
         });
 
         const json = (await res.json().catch(() => null)) as ExtractApiResponse | null;
 
-        // Phase 12 §4a.3 — pre-typewriter pause. Even if the API
-        // responded fast, wait the jittered "I'm reading what you
-        // said" beat before appending the next agent message. The
-        // beat is what makes the agent feel attentive instead of
-        // mechanical (~600-800ms jittered).
+        // §4a.3 pre-typewriter pause — the "I'm reading what you said"
+        // beat, regardless of how fast the API responded.
         await new Promise((resolve) => setTimeout(resolve, jitteredThinkingPauseMs()));
 
         if (!res.ok || !json?.success || !json.data?.delta) {
@@ -193,36 +255,67 @@ export function ConversationalSetup() {
             json?.error?.message ??
             'Chat-mode hit an issue. Try again or switch back to the form.';
           setErrorBanner(msg);
-          // Stay on the same script step — let the user retype.
           return;
         }
 
         const delta = json.data.delta;
-        const llmCouldNotExtract =
-          delta.unresolved.includes('general') &&
-          delta.fields.householdMembers === undefined &&
-          delta.fields.householdPets === undefined &&
-          delta.fields.carsCount === undefined;
-
-        const stepBefore = script.step;
-        const next = advanceScript({
-          state: changingMode ? { ...script, step: 'CHANGING' } : script,
-          newFields: delta.fields,
-          llmCouldNotExtract,
-        });
-
-        setScript(next.state);
-        if (next.agentNextMessage) {
-          appendAgent(next.agentNextMessage);
+        if (delta.topic !== chatTopic) {
+          // Server returned a different topic than we asked for —
+          // shouldn't happen, but fail closed.
+          setErrorBanner('Chat-mode got a confusing response. Try again or switch back to the form.');
+          return;
         }
-        // If the script advanced INTO RECAP from a regular question
-        // step (i.e. we were ASKING_CARS and now we have a recap),
-        // also leave a brief acknowledgement line so the recap card
-        // doesn't appear suddenly without context.
-        if (next.showRecap && stepBefore !== 'RECAP') {
-          appendAgent(AGENT_COPY.recapHeader + ' — does this look right?');
+
+        if (chatTopic === 'household') {
+          const householdDelta = delta.fields as HouseholdFields;
+          const llmCouldNotExtract =
+            delta.unresolved.includes('general') &&
+            householdDelta.householdMembers === undefined &&
+            householdDelta.householdPets === undefined &&
+            householdDelta.carsCount === undefined;
+
+          const stepBefore = householdScript.step;
+          const next = advanceHouseholdScript({
+            state: changingMode ? { ...householdScript, step: 'CHANGING' } : householdScript,
+            newFields: householdDelta,
+            llmCouldNotExtract,
+          });
+
+          setHouseholdScript(next.state);
+          if (next.agentNextMessage) {
+            appendAgent(next.agentNextMessage);
+          }
+          if (next.showRecap && stepBefore !== 'RECAP') {
+            appendAgent(HOUSEHOLD_AGENT_COPY.recapHeader + ' — does this look right?');
+          }
+        } else {
+          const propsDelta = delta.fields as PropertiesFields;
+          const llmCouldNotExtract =
+            delta.unresolved.includes('general') &&
+            propsDelta.ownsProperty === undefined &&
+            propsDelta.properties === undefined;
+
+          const stepBefore = propertiesScript.step;
+          const next = advancePropertiesScript({
+            state: changingMode ? { ...propertiesScript, step: 'CHANGING' } : propertiesScript,
+            newFields: propsDelta,
+            llmCouldNotExtract,
+          });
+
+          setPropertiesScript(next.state);
+          if (next.agentNextMessage) {
+            appendAgent(next.agentNextMessage);
+          }
+          if (next.showRecap && stepBefore !== 'RECAP') {
+            const isNoProperty = next.state.staged.ownsProperty === false;
+            appendAgent(
+              isNoProperty
+                ? PROPERTIES_AGENT_COPY.recapNoProperty
+                : PROPERTIES_AGENT_COPY.recapHeader + ' — does this look right?',
+            );
+          }
         }
-        // Reset changingMode once we've absorbed the diff.
+
         if (changingMode) {
           setChangingMode(false);
         }
@@ -238,72 +331,123 @@ export function ConversationalSetup() {
       confirming,
       appendUser,
       token,
-      script,
+      chatTopic,
+      householdScript,
+      propertiesScript,
       recentTranscriptForApi,
       changingMode,
       appendAgent,
     ],
   );
 
+  // ===========================================================================
+  // handleChange — snapshot the current recap into the history trail
+  // (mistake-recovery transparency §4a.5).
+  // ===========================================================================
   const handleChange = useCallback(() => {
     if (confirming) return;
-    // Phase 12 §4a.5 — snapshot the current recap into the history
-    // trail BEFORE flipping into changing mode. The snapshot renders
-    // as a dimmed card above the new recap, so the user sees the
-    // visible audit trail of what they corrected.
-    const snapshot: RecapRow[] = [
-      { label: 'Household', value: summariseMembers(script.staged.householdMembers) },
-      { label: 'Pets', value: summarisePets(script.staged.householdPets) },
-      { label: 'Cars', value: summariseCars(script.staged.carsCount) },
-    ];
-    setHistoricalRecaps((prev) => [...prev, snapshot]);
+    setHistoricalRecaps((prev) => [
+      ...prev,
+      { topic: chatTopic, rows: recapRows },
+    ]);
     setChangingMode(true);
-    appendAgent(AGENT_COPY.changingPrompt);
-  }, [confirming, appendAgent, script.staged]);
+    appendAgent(
+      chatTopic === 'household'
+        ? HOUSEHOLD_AGENT_COPY.changingPrompt
+        : PROPERTIES_AGENT_COPY.changingPrompt,
+    );
+  }, [confirming, appendAgent, chatTopic, recapRows]);
 
+  // ===========================================================================
+  // handleConfirm — topic-aware. Household-confirm pivots into
+  // Properties; Properties-confirm saves + redirects to form mode.
+  // ===========================================================================
   const handleConfirm = useCallback(async () => {
     if (confirming) return;
     setConfirming(true);
     setErrorBanner(null);
 
     try {
-      // 1. Merge staged household fields into the existing WizardData draft.
       const existingDraft = (onboardingState?.draft as Partial<WizardData> | null) ?? null;
       const baseDraft: WizardData = {
         ...INITIAL_WIZARD_DATA,
         ...(existingDraft ?? {}),
       };
 
-      const stagedMembers = script.staged.householdMembers;
-      const stagedPets = script.staged.householdPets;
-      const stagedCars = script.staged.carsCount;
+      if (chatTopic === 'household') {
+        // Merge household-staged fields into the existing wizard draft
+        // and pivot to Properties topic — NOT redirect to form mode.
+        const stagedMembers = householdScript.staged.householdMembers;
+        const stagedPets = householdScript.staged.householdPets;
+        const stagedCars = householdScript.staged.carsCount;
 
+        const mergedDraft: WizardData = {
+          ...baseDraft,
+          householdMembers:
+            stagedMembers !== undefined
+              ? stagedMembers.map((m, idx) => ({
+                  id: `chat-${idx}-${Date.now()}`,
+                  name: m.name,
+                  relationship: m.relationship,
+                  isIncomeEarner: m.isIncomeEarner,
+                }))
+              : baseDraft.householdMembers,
+          householdPets:
+            stagedPets !== undefined
+              ? stagedPets.map((p, idx) => ({
+                  id: `chat-pet-${idx}-${Date.now()}`,
+                  name: p.name,
+                  type: p.type,
+                }))
+              : baseDraft.householdPets,
+          carsCount: stagedCars !== undefined ? stagedCars : baseDraft.carsCount,
+        };
+
+        await saveDraft(mergedDraft, 1);
+
+        void fetch('/api/onboarding/chat/topic-confirmed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            topic: 'household',
+            deltaFieldNames: Object.keys(householdScript.staged),
+          }),
+        }).catch(() => {
+          // Audit failure is non-blocking — the data is saved.
+        });
+
+        // Pivot to Properties — bootstrap the new topic.
+        const { agentMessages, nextState } = bootstrapPropertiesConversation();
+        for (const text of agentMessages) {
+          appendAgent(text);
+        }
+        setPropertiesScript(nextState);
+        setChatTopic('properties');
+        setConfirming(false);
+        return;
+      }
+
+      // chatTopic === 'properties' — final chat topic. Save + redirect.
+      const stagedProps = propertiesScript.staged.properties ?? [];
       const mergedDraft: WizardData = {
         ...baseDraft,
-        householdMembers:
-          stagedMembers !== undefined
-            ? stagedMembers.map((m, idx) => ({
-                id: `chat-${idx}-${Date.now()}`,
-                name: m.name,
-                relationship: m.relationship,
-                isIncomeEarner: m.isIncomeEarner,
-              }))
-            : baseDraft.householdMembers,
-        householdPets:
-          stagedPets !== undefined
-            ? stagedPets.map((p, idx) => ({
-                id: `chat-pet-${idx}-${Date.now()}`,
-                name: p.name,
-                type: p.type,
-              }))
-            : baseDraft.householdPets,
-        carsCount: stagedCars !== undefined ? stagedCars : baseDraft.carsCount,
+        properties: stagedProps.map((p, idx) => ({
+          id: `chat-prop-${idx}-${Date.now()}`,
+          name: p.name,
+          address: '',
+          type: p.type ?? 'HOME',
+          purchasePrice: p.currentValue ?? 0,
+          currentValue: p.currentValue ?? 0,
+          hasLoan: p.hasLoan ?? false,
+          expenses: [],
+        })),
       };
 
-      // 2. Persist draft via the existing saveDraft path.
-      await saveDraft(mergedDraft, HOUSEHOLD_STEP_INDEX);
+      await saveDraft(mergedDraft, AFTER_PROPERTIES_FORM_STEP_INDEX);
 
-      // 3. Fire-and-forget topic-confirmed audit row.
       void fetch('/api/onboarding/chat/topic-confirmed', {
         method: 'POST',
         headers: {
@@ -311,34 +455,30 @@ export function ConversationalSetup() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          topic: TOPIC,
-          deltaFieldNames: Object.keys(script.staged),
+          topic: 'properties',
+          deltaFieldNames: Object.keys(propertiesScript.staged),
         }),
       }).catch(() => {
-        // Audit failure is non-blocking — the data is saved.
+        // non-blocking
       });
 
-      // 4. Redirect to form-mode. Form-mode hydrates the draft +
-      //    opens at the Household step (currentStep=1) so the user
-      //    sees the chat-staged data pre-filled and can continue.
       router.push('/onboarding');
     } catch (err) {
       console.error('chat confirm failed:', err);
       setErrorBanner('Could not save your answers. Try again, or switch to the form.');
       setConfirming(false);
     }
-  }, [confirming, onboardingState?.draft, script.staged, saveDraft, token, router]);
-
-  const showRecap = script.step === 'RECAP';
-
-  const recapRows = useMemo<RecapRow[]>(
-    () => [
-      { label: 'Household', value: summariseMembers(script.staged.householdMembers) },
-      { label: 'Pets', value: summarisePets(script.staged.householdPets) },
-      { label: 'Cars', value: summariseCars(script.staged.carsCount) },
-    ],
-    [script.staged],
-  );
+  }, [
+    confirming,
+    chatTopic,
+    onboardingState?.draft,
+    householdScript.staged,
+    propertiesScript.staged,
+    saveDraft,
+    token,
+    appendAgent,
+    router,
+  ]);
 
   const composerDisabled = thinking || confirming;
   const composerPlaceholder = changingMode
@@ -368,8 +508,12 @@ export function ConversationalSetup() {
               {historicalRecaps.map((snapshot, idx) => (
                 <TopicRecapCard
                   key={`recap-history-${idx}`}
-                  title={AGENT_COPY.recapHeader}
-                  rows={snapshot}
+                  title={
+                    snapshot.topic === 'household'
+                      ? HOUSEHOLD_AGENT_COPY.recapHeader
+                      : PROPERTIES_AGENT_COPY.recapHeader
+                  }
+                  rows={snapshot.rows}
                   dimmed
                   onConfirm={() => {}}
                   onChange={() => {}}
@@ -377,7 +521,7 @@ export function ConversationalSetup() {
               ))}
               {showRecap ? (
                 <TopicRecapCard
-                  title={AGENT_COPY.recapHeader}
+                  title={recapHeader}
                   rows={recapRows}
                   onConfirm={handleConfirm}
                   onChange={handleChange}
@@ -397,3 +541,7 @@ export function ConversationalSetup() {
     </section>
   );
 }
+
+// Used by ConversationalSetup's recap when rendering properties currency.
+// Re-exported so tests / story setups can import the same formatter.
+export { formatPropertyValue };

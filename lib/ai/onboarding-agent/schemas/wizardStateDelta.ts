@@ -78,17 +78,76 @@ export const householdStateDeltaSchema = z.object({
   rationale: z.string().trim().max(280).optional(),
 });
 
-// As more topics ship (properties, debts, accounts, ...), add them as
-// discriminated members of this union. v1 supports household only.
+// ============================================================================
+// PROPERTIES topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per property (the bare minimum to make a useful
+// wizard handoff):
+//   - name           — free text (e.g. "home", "Carlton apartment")
+//   - type           — HOME (PPOR/principal place of residence) or INVESTMENT
+//   - currentValue   — approximate value in AUD
+//   - hasLoan        — boolean flag only; loan details (principal, rate,
+//                      term) stay in form mode where it's easier to type
+//                      precise numbers
+//
+// What chat does NOT capture (deferred to form mode):
+//   - address (form mode validates AU address format)
+//   - purchasePrice (defaults to currentValue on bulk-create)
+//   - purchaseDate / acquisitionContractDate (Phase 41E reform context —
+//     too easy to mishear; better as a date picker)
+//   - isNewBuild + newBuildEvidence (compliance-sensitive; form mode
+//     gates on acquisitionContractDate post-cut-over)
+//   - loan details / rental income / expenses (separate steps in form)
+//
+// Partial properties: the LLM may emit a property with just `name` if the
+// user hasn't given a value yet. The orchestrator state machine asks
+// follow-up questions until every staged property has all 4 fields. The
+// LLM must echo ALL currently-staged properties in the same order on
+// every turn (system prompt makes this explicit) — so "filling in"
+// happens via positional merge.
+
+export const propertyTypeEnum = z.enum(['HOME', 'INVESTMENT']);
+
+export const propertyDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: propertyTypeEnum.optional(),
+  currentValue: z.number().int().min(1).max(50_000_000).optional(),
+  hasLoan: z.boolean().optional(),
+});
+
+export const propertiesFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user owns no property; the
+   *  recap shows "No property" and the chat hands off to form mode. */
+  ownsProperty: z.boolean().optional(),
+  properties: z.array(propertyDeltaSchema).max(10).optional(),
+});
+
+export const propertiesStateDeltaSchema = z.object({
+  topic: z.literal('properties'),
+  fields: propertiesFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
+// Top-level WizardStateDelta (discriminated by `topic`)
+// ============================================================================
+
+// As more topics ship (debts, accounts, ...), add them as discriminated
+// members of this union. v1 supported household only; PR #4 adds
+// properties.
 export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   householdStateDeltaSchema,
-  // Future: propertiesStateDeltaSchema, debtsStateDeltaSchema, ...
+  propertiesStateDeltaSchema,
 ]);
 
 export type WizardStateDelta = z.infer<typeof wizardStateDeltaSchema>;
 export type HouseholdMemberDelta = z.infer<typeof householdMemberDeltaSchema>;
 export type HouseholdPetDelta = z.infer<typeof householdPetDeltaSchema>;
 export type HouseholdFields = z.infer<typeof householdFieldsSchema>;
+export type PropertyDelta = z.infer<typeof propertyDeltaSchema>;
+export type PropertiesFields = z.infer<typeof propertiesFieldsSchema>;
 
 // ============================================================================
 // JSON Schema (hand-crafted to mirror the Zod schema above)
@@ -140,6 +199,40 @@ export const HOUSEHOLD_TOOL_INPUT_SCHEMA = {
           },
         },
         carsCount: { type: 'integer', minimum: 0, maximum: 50 },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const PROPERTIES_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['properties'] },
+    fields: {
+      type: 'object',
+      properties: {
+        ownsProperty: { type: 'boolean' },
+        properties: {
+          type: 'array',
+          maxItems: 10,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: { type: 'string', enum: ['HOME', 'INVESTMENT'] },
+              currentValue: { type: 'integer', minimum: 1, maximum: 50000000 },
+              hasLoan: { type: 'boolean' },
+            },
+          },
+        },
       },
     },
     unresolved: {

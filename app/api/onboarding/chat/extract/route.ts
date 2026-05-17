@@ -114,13 +114,13 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       recentTranscript,
     } = body as Partial<ExtractRequest>;
 
-    if (topic !== 'household') {
+    if (topic !== 'household' && topic !== 'properties') {
       return envelope(400, {
         success: false,
         data: null,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'topic must be "household" (v1 supports household only)',
+          message: 'topic must be one of: household, properties',
           details: null,
         },
       });
@@ -168,7 +168,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         : {};
 
     const result = await extractWizardStepDelta({
-      topic: 'household',
+      topic,
       userMessage: userMessage.trim(),
       currentStateSubset: subset,
       recentTranscript: transcript,
@@ -182,7 +182,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         action: 'ONBOARDING_AGENT_EXTRACTION',
         status: 'FAILURE',
         metadata: sanitizeCdrMetadata({
-          topic: 'household',
+          topic,
           reason: result.reason,
         }),
       });
