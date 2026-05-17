@@ -189,6 +189,20 @@ export interface EntityInput {
   tradingName?: string;
   establishedDate?: string;     // ISO date string
   parentEntityTempId?: string;  // wizard-local pointer to another EntityInput.id (trustee → trust)
+  // Phase 41E.5 — reform-aware inputs (Measure 3 + Measure 4).
+  // `trustType` only relevant when `type === DISCRETIONARY_TRUST | UNIT_TRUST`;
+  // wizard pre-fills DISCRETIONARY for new family-trust entries. Foreign-
+  // resident defaults false. See PHASE_41E_REFORM_2026_27.md §10.3 + §10.4.
+  trustType?:
+    | 'DISCRETIONARY'
+    | 'FIXED'
+    | 'UNIT'
+    | 'TESTAMENTARY_FIXED'
+    | 'CHARITABLE'
+    | 'DECEASED_ESTATE'
+    | 'SPECIAL_DISABILITY'
+    | 'OTHER';
+  isForeignResident?: boolean;
 }
 
 // =============================================================================
@@ -251,6 +265,20 @@ export interface PropertyInput {
   loan?: PropertyLoanInput;
   income?: PropertyIncomeInput;
   expenses: PropertyExpenseInput[];
+  // Phase 41E.5 — reform-aware inputs (Measure 1 + Measure 2).
+  // Conditional capture: only prompted when `purchaseDate` is on or
+  // after `2026-05-12T09:30:00Z` (the cut-over moment). For pre-
+  // cut-over properties the bulk-create writer auto-fills
+  // `acquisitionContractDate := purchaseDate` (same backfill rule
+  // as the 41E.0 schema migration). See PHASE_41E_REFORM_2026_27.md §10.1.
+  acquisitionContractDate?: string; // ISO date — overrides the auto-fill above
+  isNewBuild?: boolean;             // only relevant for post-cut-over residential property
+  newBuildEvidence?:
+    | 'NEVER_SOLD'
+    | 'BUILDER_FIRST_OWNER_UNDER_12M'
+    | 'VACANT_LAND_BUILD'
+    | 'OFF_THE_PLAN'
+    | 'DEMO_REBUILD_NET_ADD';
 }
 
 // =============================================================================

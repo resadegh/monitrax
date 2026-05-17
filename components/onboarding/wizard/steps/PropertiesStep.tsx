@@ -327,6 +327,80 @@ function PropertyCard({
             />
           </div>
 
+          {/*
+           * Phase 41E.5 — reform fields, conditional on post-cut-over purchase.
+           * Cut-over = 7:30pm AEST 12 May 2026 = 2026-05-12T09:30:00Z UTC.
+           * For pre-cut-over properties the bulk-create writer auto-fills
+           * acquisitionContractDate := purchaseDate (unambiguously grandfathered).
+           * For post-cut-over we prompt for the contract date + new-build status,
+           * because they drive the reform regime classification.
+           */}
+          {(() => {
+            const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
+            const purchaseDateMs = property.purchaseDate
+              ? new Date(property.purchaseDate).getTime()
+              : null;
+            if (purchaseDateMs === null || purchaseDateMs <= REFORM_CUT_OVER_UTC_MS) {
+              return null;
+            }
+            return (
+              <div className="rounded-lg border border-sky-200/70 bg-sky-50/60 p-3 dark:border-sky-800/50 dark:bg-sky-950/30">
+                <div className="mb-2">
+                  <p className="text-xs font-medium text-sky-900 dark:text-sky-100">
+                    Tax-reform fields (Phase 41E)
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-sky-700/80 dark:text-sky-300/70">
+                    Properties contracted after 12 May 2026 7:30pm AEST follow the new
+                    negative-gearing + CGT rules from FY 2027-28. We capture the contract
+                    date + new-build status now so the engine can classify the regime later.
+                  </p>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <WizardField
+                    label="Contract date (if different from purchase)"
+                    type="date"
+                    max={new Date().toISOString().slice(0, 10)}
+                    value={property.acquisitionContractDate || ''}
+                    onChange={(e) => onUpdate({ acquisitionContractDate: e.target.value || undefined })}
+                    helper="The contract / CGT event A1 date (s109-5). Leave blank to use the purchase date above."
+                  />
+                  <div>
+                    <label
+                      htmlFor={`property-newbuild-${property.id}`}
+                      className="block text-xs font-medium text-slate-700 dark:text-slate-300"
+                    >
+                      Is this a new build?
+                    </label>
+                    <select
+                      id={`property-newbuild-${property.id}`}
+                      value={
+                        property.isNewBuild === undefined
+                          ? ''
+                          : property.isNewBuild
+                            ? 'true'
+                            : 'false'
+                      }
+                      onChange={(e) =>
+                        onUpdate({
+                          isNewBuild: e.target.value === '' ? undefined : e.target.value === 'true',
+                        })
+                      }
+                      className="mt-1.5 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+                    >
+                      <option value="">Select…</option>
+                      <option value="true">Yes — qualifies as a new build</option>
+                      <option value="false">No — established dwelling</option>
+                    </select>
+                    <p className="mt-1.5 text-[11px] text-slate-500">
+                      New builds retain negative gearing from FY 2027-28; established
+                      dwellings do not.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Advanced disclosure: purchase price (date moved out — required) */}
           <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
             <button

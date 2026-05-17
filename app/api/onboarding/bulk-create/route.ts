@@ -380,6 +380,15 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
                 establishedDate: entity.establishedDate
                   ? new Date(entity.establishedDate)
                   : null,
+                // Phase 41E.5 — reform-aware inputs from the wizard.
+                // Only persist trustType when the entity is a trust type
+                // (mirrors the entity edit form's payload logic).
+                trustType:
+                  entity.trustType &&
+                  (entity.type === 'DISCRETIONARY_TRUST' || entity.type === 'UNIT_TRUST')
+                    ? entity.trustType
+                    : null,
+                isForeignResident: entity.isForeignResident ?? false,
                 // parentEntityId set in pass 2 below
               },
               select: { id: true },
@@ -553,6 +562,19 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           if (Number.isNaN(purchaseDate.getTime())) {
             throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" has an invalid purchase date.`);
           }
+          // Phase 41E.5 — reform-aware fields.
+          // Same backfill rule as the 41E.0 schema migration: if the
+          // wizard didn't ask for the contract date (pre-cut-over
+          // purchaseDate), default acquisitionContractDate := purchaseDate
+          // (unambiguously grandfathered). For post-cut-over the wizard
+          // prompts for both fields explicitly.
+          const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0); // 2026-05-12T09:30:00Z
+          const isPostCutOverPurchase = purchaseDate.getTime() > REFORM_CUT_OVER_UTC_MS;
+          const acquisitionContractDate = prop.acquisitionContractDate
+            ? new Date(prop.acquisitionContractDate)
+            : isPostCutOverPurchase
+              ? null // user didn't confirm; engine surfaces UC-PROPERTY-CONTRACT-DATE-UNKNOWN
+              : purchaseDate; // auto-backfill for pre-cut-over (grandfathered)
           // Create property
           const property = await tx.property.create({
             data: {
@@ -565,6 +587,10 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               purchaseDate,
               currentValue: prop.currentValue,
               valuationDate: now,
+              // Phase 41E.5 — reform fields from wizard.
+              acquisitionContractDate,
+              isNewBuild: isPostCutOverPurchase ? (prop.isNewBuild ?? null) : null,
+              newBuildEvidence: isPostCutOverPurchase ? (prop.newBuildEvidence ?? null) : null,
             },
           });
           createdProperties.push(property);

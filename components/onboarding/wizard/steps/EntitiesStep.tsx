@@ -261,6 +261,7 @@ function EntityDialog({
 
   const handleSave = () => {
     if (!canSave) return;
+    const isTrustType = form.type === 'DISCRETIONARY_TRUST' || form.type === 'UNIT_TRUST';
     const cleaned: EntityInput = {
       ...form,
       name: form.name.trim(),
@@ -270,6 +271,10 @@ function EntityDialog({
       tfn: collectsTfn && form.tfn ? form.tfn.trim() : undefined,
       establishedDate: form.establishedDate || undefined,
       parentEntityTempId: form.parentEntityTempId || undefined,
+      // Phase 41E.5 — reform fields. trustType only kept when the
+      // entity type is a trust type. isForeignResident defaults false.
+      trustType: isTrustType ? (form.trustType ?? 'OTHER') : undefined,
+      isForeignResident: form.isForeignResident ?? false,
     };
     onSave(cleaned);
     onOpenChange(false);
@@ -387,6 +392,57 @@ function EntityDialog({
               )}
             </div>
           )}
+
+          {/* Phase 41E.5 — Measure 3 trust-subtype selector (conditional). */}
+          {(form.type === 'DISCRETIONARY_TRUST' || form.type === 'UNIT_TRUST') && (
+            <div>
+              <Label htmlFor="entity-trust-type">Trust subtype</Label>
+              <select
+                id="entity-trust-type"
+                value={form.trustType ?? 'OTHER'}
+                onChange={(e) =>
+                  setForm({ ...form, trustType: e.target.value as NonNullable<EntityInput['trustType']> })
+                }
+                className="mt-1.5 w-full rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm focus:border-sky-500 focus:outline-none focus:ring-1 focus:ring-sky-500"
+              >
+                <option value="DISCRETIONARY">Discretionary trust (family trust)</option>
+                <option value="FIXED">Fixed trust</option>
+                <option value="UNIT">Unit trust</option>
+                <option value="TESTAMENTARY_FIXED">Testamentary fixed trust</option>
+                <option value="CHARITABLE">Charitable trust</option>
+                <option value="DECEASED_ESTATE">Deceased estate</option>
+                <option value="SPECIAL_DISABILITY">Special disability trust</option>
+                <option value="OTHER">Other / unsure</option>
+              </select>
+              {(form.trustType === 'DISCRETIONARY' || (form.type === 'DISCRETIONARY_TRUST' && !form.trustType)) && (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Phase 41E Measure 3 — discretionary trusts will pay a 30% minimum tax on
+                  trust taxable income from FY 2028-29.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Phase 41E.5 — Measure 4 foreign-resident toggle. */}
+          <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/60 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <Label htmlFor="entity-foreign-resident" className="block">
+                  Foreign-resident entity
+                </Label>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  Drives Phase 41E Measure 4 (Div 855 expansion) when on.
+                </p>
+              </div>
+              <input
+                id="entity-foreign-resident"
+                type="checkbox"
+                checked={form.isForeignResident ?? false}
+                onChange={(e) => setForm({ ...form, isForeignResident: e.target.checked })}
+                className="h-5 w-5 rounded border-slate-300 dark:border-slate-600 text-sky-600 focus:ring-sky-500"
+              />
+            </div>
+          </div>
 
           {applicable.tfn && (
             <div className="rounded-xl border border-slate-200/70 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/60 p-3">
