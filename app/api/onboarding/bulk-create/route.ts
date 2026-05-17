@@ -93,6 +93,17 @@ interface PropertyInput {
   loan?: PropertyLoanInput;
   income?: PropertyIncomeInput;
   expenses: PropertyExpenseInput[];
+  // Phase 41E.5 — reform-aware fields. Wizard captures these only for
+  // post-cut-over purchases; pre-cut-over uses purchaseDate as the
+  // contract date (auto-backfill). See PHASE_41E_REFORM_2026_27.md §10.1.
+  acquisitionContractDate?: string;
+  isNewBuild?: boolean;
+  newBuildEvidence?:
+    | 'NEVER_SOLD'
+    | 'BUILDER_FIRST_OWNER_UNDER_12M'
+    | 'VACANT_LAND_BUILD'
+    | 'OFF_THE_PLAN'
+    | 'DEMO_REBUILD_NET_ADD';
 }
 
 // Phase 12 PR 3b: data source tier for an account entered in the wizard.
@@ -255,6 +266,18 @@ interface EntityInput {
   tradingName?: string;
   establishedDate?: string;
   parentEntityTempId?: string;       // wizard-local pointer to another EntityInput.id
+  // Phase 41E.5 — reform-aware fields (Measure 3 + Measure 4).
+  // See PHASE_41E_REFORM_2026_27.md §10.3 + §10.4.
+  trustType?:
+    | 'DISCRETIONARY'
+    | 'FIXED'
+    | 'UNIT'
+    | 'TESTAMENTARY_FIXED'
+    | 'CHARITABLE'
+    | 'DECEASED_ESTATE'
+    | 'SPECIAL_DISABILITY'
+    | 'OTHER';
+  isForeignResident?: boolean;
 }
 
 interface WizardData {
@@ -380,6 +403,15 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
                 establishedDate: entity.establishedDate
                   ? new Date(entity.establishedDate)
                   : null,
+                // Phase 41E.5 — reform-aware inputs from the wizard.
+                // Only persist trustType when the entity is a trust type
+                // (mirrors the entity edit form's payload logic).
+                trustType:
+                  entity.trustType &&
+                  (entity.type === 'DISCRETIONARY_TRUST' || entity.type === 'UNIT_TRUST')
+                    ? entity.trustType
+                    : null,
+                isForeignResident: entity.isForeignResident ?? false,
                 // parentEntityId set in pass 2 below
               },
               select: { id: true },
@@ -553,6 +585,19 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           if (Number.isNaN(purchaseDate.getTime())) {
             throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" has an invalid purchase date.`);
           }
+          // Phase 41E.5 — reform-aware fields.
+          // Same backfill rule as the 41E.0 schema migration: if the
+          // wizard didn't ask for the contract date (pre-cut-over
+          // purchaseDate), default acquisitionContractDate := purchaseDate
+          // (unambiguously grandfathered). For post-cut-over the wizard
+          // prompts for both fields explicitly.
+          const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0); // 2026-05-12T09:30:00Z
+          const isPostCutOverPurchase = purchaseDate.getTime() > REFORM_CUT_OVER_UTC_MS;
+          const acquisitionContractDate = prop.acquisitionContractDate
+            ? new Date(prop.acquisitionContractDate)
+            : isPostCutOverPurchase
+              ? null // user didn't confirm; engine surfaces UC-PROPERTY-CONTRACT-DATE-UNKNOWN
+              : purchaseDate; // auto-backfill for pre-cut-over (grandfathered)
           // Create property
           const property = await tx.property.create({
             data: {
@@ -565,6 +610,10 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               purchaseDate,
               currentValue: prop.currentValue,
               valuationDate: now,
+              // Phase 41E.5 — reform fields from wizard.
+              acquisitionContractDate,
+              isNewBuild: isPostCutOverPurchase ? (prop.isNewBuild ?? null) : null,
+              newBuildEvidence: isPostCutOverPurchase ? (prop.newBuildEvidence ?? null) : null,
             },
           });
           createdProperties.push(property);

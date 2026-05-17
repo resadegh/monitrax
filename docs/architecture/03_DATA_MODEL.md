@@ -3735,3 +3735,154 @@ Five additive values for the new account-lifecycle audit trail:
 
 CDR-safe metadata only via `sanitizeCdrMetadata()` patterns — no
 balances / transactions / payee names in the metadata blobs.
+
+---
+
+## **O. Phase 41E reform 2026-27 — schema additions**
+
+Consolidated reference for the schema columns + new enums + new
+model added across Phase 41E sub-PRs #764 → #768. **Every column
+listed here is nullable + additive — zero behavioural change for
+existing rows.** Single source of truth is the Phase doc at
+`docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10; this section
+is the consolidated data-model entry that future engineers reach
+from the architecture docs.
+
+### O.1 The cut-over moment (one canonical timestamp)
+
+```
+REFORM_CUT_OVER_UTC = 2026-05-12T09:30:00Z
+                    = 7:30pm AEST 12 May 2026
+```
+
+Stored as a constant in `lib/tax-engine/config/reformConstants.ts`.
+No other file may hard-code this value (CLAUDE.md §12.14). Every
+grandfathering test in the engine reads from here.
+
+### O.2 `Property` extensions (Measures 1 + 2 + 4)
+
+```
+Property {
+  ...existing fields...
+  acquisitionContractDate    DateTime?            // load-bearing — CGT event A1 date per s109-5
+  acquisitionSettlementDate  DateTime?            // edge cases (off-the-plan)
+  isNewBuild                 Boolean?             // Measure 1 dispatch input
+  newBuildEvidence           NewBuildEvidence?    // audits the isNewBuild claim
+  isRenewablesInfrastructure Boolean?             // Measure 4 (50% concession to 30 Jun 2030)
+}
+
+@@index([acquisitionContractDate])  // runs on every snapshot
+```
+
+**Backfill rule (one-time, idempotent):**
+- `acquisitionContractDate := purchaseDate` where
+  `purchaseDate < REFORM_CUT_OVER_UTC` (unambiguously grandfathered).
+- Post-cut-over rows left NULL — onboarding wizard / property edit
+  form prompts the user to confirm the actual contract date.
+
+### O.3 `LegalEntity` extensions (Measures 3 + 4)
+
+```
+LegalEntity {
+  ...existing fields...
+  trustType         TrustType?    // Measure 3 dispatch (only DISCRETIONARY in scope)
+  isForeignResident Boolean?      // Measure 4 dispatch (Div 855 TARP + 365-day PAT)
+}
+
+@@index([trustType])  // Measure 3 dispatch reads DISCRETIONARY trusts
+```
+
+**Backfill rule (one-time, idempotent):**
+- `trustType := 'DISCRETIONARY'` where `type === 'DISCRETIONARY_TRUST'`
+  (unambiguous mapping from Phase 41a's `LegalEntityType`).
+- Other trust subtypes (UNIT, CHARITABLE, etc.) need user confirmation
+  in the entity edit UI; until set, engine treats as OTHER + surfaces
+  `UC-TRUST-TYPE-UNKNOWN`.
+
+### O.4 `CompanyTaxHistory` (new model — Measure 5)
+
+```
+CompanyTaxHistory {
+  id                     String   @id @default(uuid())
+  legalEntityId          String   // FK to LegalEntity, ON DELETE CASCADE
+  financialYear          String   // "2024-25" / "2025-26" / "2026-27"
+  taxablePosition        Float    // negative = loss; positive = profit
+  taxPaid                Float    @default(0)
+  frankingAccountBalance Float    @default(0)
+  notes                  String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([legalEntityId, financialYear])
+  @@index([legalEntityId])
+}
+```
+
+Read by `lib/tax-engine/divisions/lossRefundability.ts` to compute
+carry-back eligibility. A company with a loss in FY 2026-27 can carry
+it back against tax paid in FY 2024-25 + FY 2025-26 (capped at the
+franking-account balance).
+
+### O.5 New Prisma enums
+
+```
+enum TrustType {
+  DISCRETIONARY        // subject to Measure 3 (30% min from FY 2028-29)
+  FIXED                // excluded
+  UNIT                 // excluded
+  TESTAMENTARY_FIXED   // excluded
+  CHARITABLE           // excluded
+  DECEASED_ESTATE      // excluded
+  SPECIAL_DISABILITY   // excluded
+  OTHER                // catch-all — UC-TRUST-TYPE-UNKNOWN until user confirms
+}
+
+enum NewBuildEvidence {
+  NEVER_SOLD                       // property never disposed since construction
+  BUILDER_FIRST_OWNER_UNDER_12M    // first owner = builder + unoccupied < 12 months
+  VACANT_LAND_BUILD                // built on vacant land
+  OFF_THE_PLAN                     // purchased off-the-plan from developer
+  DEMO_REBUILD_NET_ADD             // demolition + rebuild creating net-additional dwellings
+}
+```
+
+### O.6 `UserPreference` extension (Phase 41E.3 banner dismissal)
+
+```
+UserPreference {
+  ...existing fields...
+  dismissedReformBanner Boolean @default(false)
+}
+```
+
+Drives the one-time "Tax rules are changing — and you're already
+protected" calm banner on `/dashboard/cfo`. Persisted via GET / POST
+on `/api/settings/reform-banner`.
+
+### O.7 `TaxYearConfig` extensions (per-FY commencement flags)
+
+Not a Prisma table — these are TypeScript interface fields on
+`lib/tax-engine/types.ts` `TaxYearConfig`, surfaced per-FY on
+`lib/tax-engine/config/taxYearConfig.ts`:
+
+```
+TaxYearConfig {
+  ...existing fields...
+  negativeGearingReformCommencementVerified: boolean   // Measure 1 (1 Jul 2027)
+  cgtIndexationCommencementVerified:         boolean   // Measure 2 indexation (1 Jul 2027)
+  cgtMinRateCommencementVerified:            boolean   // Measure 2 30% floor (1 Jul 2027)
+  trustMinTaxCommencementVerified:           boolean   // Measure 3 (1 Jul 2028)
+  foreignResidentCgtCommencementVerified:    boolean   // Measure 4 (TBC Royal Assent)
+  lossCarryBackCommencementVerified:         boolean   // Measure 5 (current FY 2026-27)
+  evFbtPhase2CommencementVerified:           boolean   // Measure 8 (1 Apr 2027)
+  dynamicPaygCommencementVerified:           boolean   // Measure 9 (1 Jul 2027)
+  cpiQuarterlyIndex:                         Record<string, number>  // Measure 2 indexation table
+}
+```
+
+**All flags default `false` at Phase 41E.5 ship time.** Engine
+modules consuming them return `UC-*-PENDING-*` UNCOMPUTED until the
+flag flips. Flag flip happens at Stage 3 (Royal Assent) ONLY AFTER
+the Stage 2 mechanic is shipped — same PR. The defensive `throw`
+in each module catches premature flips (covered by
+`tests/tax-engine/divisions/reformActivationRoundTrip.test.ts`).
