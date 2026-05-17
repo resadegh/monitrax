@@ -58,9 +58,11 @@ When Vercel receives a push, it runs:
 
 ```
 npm install
-prisma migrate deploy  # Applies pending migrations to the scoped DATABASE_URL
-prisma generate        # Generates Prisma Client from schema.prisma
-next build             # Compiles Next.js app (pages, API routes, static assets)
+npm run lint:financial-surfaces  # Static-analysis pass — fails build on new violations
+prisma migrate deploy            # Applies pending migrations to the scoped DATABASE_URL
+prisma generate                  # Generates Prisma Client from schema.prisma
+npm run seed:feature-flags       # Idempotent upsert of canonical platform flag rows
+next build                       # Compiles Next.js app (pages, API routes, static assets)
 ```
 
 This is encoded as the `vercel-build` script in `package.json`.
@@ -83,7 +85,8 @@ automatically and uses it instead of the default `build` script
 3. **`prisma generate`** reads `prisma/schema.prisma` and generates
    the typed Prisma Client into `node_modules/.prisma/client`.
    This never touches the database.
-4. **`next build`** compiles the Next.js application.
+4. **`npm run seed:feature-flags`** (added 2026-05-17) runs `prisma/seed-feature-flags.ts`, an idempotent `upsert` keyed on `GlobalFeatureFlag.key`. Adding a new flag row to the seed file makes it appear in the admin UI on the next deploy without any operator step. The seed **NEVER overwrites the `enabled` column** — that stays under operator control via `/admin/feature-flags`. Only `name` + `description` are refreshed on re-seed. If seeding fails (e.g. DB unreachable), the build aborts and prod keeps running on the old code — same safety guarantee as `prisma migrate deploy`. This is NOT the banned generic `prisma db seed` command (see "BANNED" list below) — it's a targeted, narrow-scope upsert against a single config table.
+5. **`next build`** compiles the Next.js application.
 
 ### Why this is safe (R12 remediation)
 
@@ -105,13 +108,18 @@ fails, and prod keeps running on the old stable state.
   tables. BANNED.
 - `prisma migrate reset` — drops and recreates the database.
   BANNED from any shared environment.
-- `prisma db seed` — may overwrite data. Not permitted in
-  production builds.
+- `prisma db seed` (the generic Prisma seed command) — broad
+  scope, may overwrite arbitrary user data. NOT permitted in
+  production builds. The targeted `npm run seed:feature-flags`
+  in the pipeline is intentionally different: single-table,
+  idempotent upsert, never touches operator-controlled columns
+  (see step 4 above).
 
-The only safe write command in the build is `prisma migrate deploy`,
-which is forward-only and never drops unmanaged tables. See
-`03_DATABASE_MIGRATIONS.md` and CLAUDE.md §12.12 for the full
-protocol.
+The safe write commands in the build are `prisma migrate deploy`
+(forward-only, never drops unmanaged tables) and narrow-scope
+idempotent seed scripts that never overwrite operator-controlled
+data. See `03_DATABASE_MIGRATIONS.md` and CLAUDE.md §12.12 for the
+full protocol.
 
 ---
 
