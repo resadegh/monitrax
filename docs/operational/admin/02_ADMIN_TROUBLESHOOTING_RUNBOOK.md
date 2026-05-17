@@ -183,6 +183,43 @@ Expected response:
 
 ---
 
+## Chat-Mode Issues (Phase 12 Track E Conversational Onboarding)
+
+> Full operator runbook at `docs/operational/runbooks/07_CONVERSATIONAL_ONBOARDING_TOGGLE.md`. The notes below are the most common admin-portal-side troubleshooting paths.
+
+### Issue: User doesn't see the "Chat with Monitrax" toggle on /onboarding
+
+**Cause:** `CONVERSATIONAL_ONBOARDING` feature flag is OFF (the production default).
+
+**Fix:**
+1. Navigate to `/admin/feature-flags`.
+2. Find `CONVERSATIONAL_ONBOARDING` → toggle "Enabled" ON.
+3. Change propagates instantly on the toggling Vercel instance; warm peers pick it up within ≤30s via the in-process TTL.
+4. Verify: open `/onboarding` in an incognito window — pill toggle should appear at the top.
+
+If the flag row is missing entirely, run `npm run seed:feature-flags` once (idempotent — adds at `enabled: false` if missing).
+
+### Issue: User sees "Chat-mode is temporarily unavailable" error banner
+
+**Cause:** `ANTHROPIC_API_KEY` not loaded in the deployed Vercel function. Env vars apply to the **next** deployment, not the running one.
+
+**Fix:**
+1. Vercel → Project → Settings → Environment Variables → Production → confirm `ANTHROPIC_API_KEY` is present.
+2. **Trigger a redeploy** — push a commit to `main` OR click "Redeploy" on the latest production deployment.
+3. Verify via the audit log — look for `ONBOARDING_AGENT_EXTRACTION` with `status: FAILURE` + `metadata.reason: ANTHROPIC_NOT_CONFIGURED` (confirms key missing) vs `status: SUCCESS` (confirms key loaded).
+
+### Issue: User hits 429 "Daily chat limit reached"
+
+**Cause:** Per-user 200-extractions/day cap enforced by `/api/onboarding/chat/extract` via audit-log count over rolling 24h. By design — not a bug.
+
+**Fix:** User switches to form-mode for the rest of the day. Cap resets automatically at 24h. Operationally not expected — a full chat walkthrough is ~30-60 turns.
+
+### Issue: Audit log shows ONBOARDING_AGENT_EXTRACTION with status: FAILURE + reason: SCHEMA_VIOLATION
+
+**Cause:** The LLM returned a tool call but the input failed Zod validation — usually a numeric field came back as a string, or an enum value outside the canonical set.
+
+**Fix:** Note the topic + the user's message + open a follow-up ticket. The system prompts have AU-specific normalisation rules; if a pattern keeps tripping, the prompt in `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts` needs hardening. The chat client treats this as "could not understand the answer; please rephrase" — user retypes.
+
 ## CDR Compliance Issues
 
 ### Issue: Consent expiry job not running

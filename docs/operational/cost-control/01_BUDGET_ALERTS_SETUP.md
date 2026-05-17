@@ -76,7 +76,14 @@ These need migrating to the Resend SDK before the first email-out feature lands.
 
 ---
 
-## §4. Anthropic Claude API — when Phase 33g.2 lands
+## §4. Anthropic Claude API — when Phase 33g.2 lands (extended 2026-05-17 for Phase 12 Track E)
+
+> **The $50/mo cap covers TWO consumers sharing this key + workspace:**
+> Phase 33g.2 (feedback chat triage) AND Phase 12 Track E (conversational
+> onboarding 8-topic extraction chain). One key, one budget, one alert
+> chain. Both gracefully degrade when the key is absent — feedback
+> drawer falls back to form-only; onboarding chat returns 503 with a
+> calm "switch to form" banner.
 
 **Set this BEFORE the code that calls it ships.**
 
