@@ -17,7 +17,7 @@
  *      docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { Suspense, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
@@ -27,7 +27,31 @@ import { ConversationalModeToggle } from '@/components/onboarding/Conversational
 import { ConversationalSetup } from '@/components/onboarding/wizard-chat/ConversationalSetup';
 import { useConversationalOnboardingEnabled } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
+function OnboardingLoadingFallback() {
+  return (
+    <section className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent motion-reduce:animate-none" />
+    </section>
+  );
+}
+
+/**
+ * Next.js 15 requires `useSearchParams()` to be wrapped in a Suspense
+ * boundary during static prerendering. Phase 12 Track E.0 added a
+ * `?mode=chat` query-param read here + in `<ConversationalModeToggle>`.
+ * Both are descendants of this `<Suspense>` boundary, so the page
+ * still prerenders cleanly and the search-param read happens client-side
+ * after hydration.
+ */
 export default function OnboardingPage() {
+  return (
+    <Suspense fallback={<OnboardingLoadingFallback />}>
+      <OnboardingPageInner />
+    </Suspense>
+  );
+}
+
+function OnboardingPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatFlagEnabled = useConversationalOnboardingEnabled();
