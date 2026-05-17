@@ -490,3 +490,139 @@ N/A — no `prisma/schema.prisma` changes.
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 5: Phase 12 Track E — Properties topic (Household → Properties chat chain)
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (continuation — PR #773 merged into main, branch recreated from main).
+
+### Scope
+
+- **Type:** Feature build — second chat topic + multi-topic orchestration refactor.
+- **Scope:** Adds **Properties** to chat-mode. Chat now flows Household → Properties → form-mode handoff at the debts step (currentStep=4). Each chat-mode topic completes fully before the next; no parallel flows.
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF — zero behavioural change pre-flip.
+
+### Trigger
+
+Reza directive: *"continue"* — after PR #773 (E.2b motion polish) merged. I recommended Properties as the next topic (highest-value: most onboarding wizards lose AU users on property terminology like LVR / offset / equity).
+
+### Changes Made
+
+#### 1. Schema additions (Zod + JSON Schema mirror)
+
+- `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts` (EDIT):
+  - New `propertyTypeEnum` (HOME / INVESTMENT) + `propertyDeltaSchema` (`{ name, type?, currentValue?, hasLoan? }` — all fields except name are OPTIONAL so the LLM can emit partial properties and the state machine drives follow-up questions).
+  - New `propertiesFieldsSchema` (`{ ownsProperty?, properties? }` — `ownsProperty: false` sentinel for the "no property" path).
+  - New `propertiesStateDeltaSchema` joined into the `wizardStateDeltaSchema` discriminated union.
+  - New `PROPERTIES_TOOL_INPUT_SCHEMA` (hand-crafted JSON Schema mirror for Anthropic's `input_schema`).
+  - Exports: `PropertyDelta`, `PropertiesFields` types.
+
+#### 2. System prompt + tool spec
+
+- `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts` (EDIT):
+  - New `PROPERTIES_SYSTEM_PROMPT` (~70 lines). Hard rules: tool-call only / numbers from user only / positional-merge (echo all staged properties on every turn) / AU vocabulary mapping (HOME for PPOR, INVESTMENT for IP/rental, normalise 850k/1.2m/$850,000 → integer AUD) / name extraction rules / hasLoan vocabulary / ownsProperty sentinel / NO commentary on market or valuations.
+  - New `propertiesExtractTool` spec.
+  - `ExtractToolDefinition.input_schema` relaxed from `typeof HOUSEHOLD_TOOL_INPUT_SCHEMA` to a union of household + properties schemas.
+
+#### 3. State machine
+
+- `components/onboarding/wizard-chat/propertiesScript.ts` (NEW, ~280 lines):
+  - Steps: `INTRO` → `ASKING_OWNERSHIP` → `ASKING_PROPERTY_TYPE` / `ASKING_PROPERTY_VALUE` / `ASKING_PROPERTY_LOAN` (per incomplete property, in this order) → `ASKING_MORE` → `RECAP` / `CHANGING`.
+  - Loop-break protection: `MAX_RETRIES_PER_STEP = 2` — if the LLM can't extract anything from the user's reply twice in a row, the script force-advances and leaves the field unstaged (recap shows what's missing; user fixes in form mode).
+  - Positional merge: `mergeStaged()` trusts the LLM's echoed `properties` array (capped at 10) as the new state, since the system prompt instructs the LLM to echo all staged + new on every turn.
+  - `formatPropertyValue()` / `summariseSingleProperty()` / `summariseProperties()` — recap formatters (AU currency formatting).
+  - `bootstrapPropertiesConversation()` — first agent message when transitioning from Household → Properties.
+
+#### 4. Gateway routing
+
+- `lib/ai/onboarding-agent/gateway.ts` (EDIT):
+  - `SupportedTopic` expanded to `'household' | 'properties'`.
+  - `TopicStateSubset` union type.
+  - `extractWizardStepDelta()` accepts both topics; routes to the right system prompt + tool spec per topic.
+  - `max_tokens` bumped 600 → 800 (properties prompt is bigger because of positional-merge instructions; tool output may be larger when echoing all staged properties).
+  - `buildUserPrompt()` formats household state as field-names-only (CDR-disciplined); properties state as the full staged array (each value here came from the user this turn — no CDR egress expansion).
+
+#### 5. API routes accept both topics
+
+- `app/api/onboarding/chat/extract/route.ts` (EDIT) — topic validation expanded; audit metadata uses the dynamic `topic` field.
+- `app/api/onboarding/chat/topic-confirmed/route.ts` (EDIT) — `SUPPORTED_TOPICS` set expanded.
+
+#### 6. Orchestrator multi-topic refactor
+
+- `components/onboarding/wizard-chat/ConversationalSetup.tsx` (REWRITE):
+  - New state: `chatTopic`, `propertiesScript`, `householdScript` (renamed from `script`).
+  - New constant: `AFTER_PROPERTIES_FORM_STEP_INDEX = 4` (debts step — where the user lands in form mode after Properties confirms).
+  - `handleSubmit` is topic-aware: routes to the right script's `advanceScript` + uses the right script's staged state for `currentStateSubset`.
+  - `handleConfirm`:
+    - **Household-confirm** now PIVOTS to Properties (instead of redirecting to form mode). Saves household to `UserPreference.onboardingDraft`, audits via `ONBOARDING_AGENT_TOPIC_CONFIRMED`, then bootstraps the Properties conversation in the same chat thread.
+    - **Properties-confirm** saves merged WizardData (including Properties → form-mode `PropertyInput[]` with placeholder address/expenses), audits, redirects to `/onboarding` at `currentStep=4` (debts).
+  - `handleChange` snapshots the current topic's recap into `historicalRecaps` (now keyed by topic so the dimmed cards label correctly).
+  - `recapRows` is topic-aware via memoised per-topic computation.
+
+### Files Created / Modified
+
+- **NEW (1):** `components/onboarding/wizard-chat/propertiesScript.ts`
+- **EDITED (5):**
+  - `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`
+  - `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts`
+  - `lib/ai/onboarding-agent/gateway.ts`
+  - `app/api/onboarding/chat/extract/route.ts`
+  - `app/api/onboarding/chat/topic-confirmed/route.ts`
+  - `components/onboarding/wizard-chat/ConversationalSetup.tsx` (substantial refactor for topic-awareness)
+- **DOC-SYNC (3):** Phase doc rev 5 + IMPLEMENTATION_PLAN.md + this changelog entry
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern — no new primitives (`PresenceOrb` + motion tokens reused unchanged across both topics; this is what the SSOT bought us)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture — minimal: the Properties gateway prompt includes staged property values in the user-message (so the LLM can positional-merge); these values originated from the user in the current session and are still ephemeral / not CDR-flagged. Audit metadata stays sanitised (`sanitizeCdrMetadata()` field-names-only).
+- [ ] operational procedure
+- [x] strategic decision — second chat topic shipped, multi-topic orchestrator pattern established for the remaining topics
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A. Zero `prisma.<model>.update / upsert / delete / updateMany / deleteMany` calls. Zero raw SQL. Zero schema changes. Zero migrations.
+
+### Schema-migration check (CLAUDE.md §12.12)
+
+N/A — `prisma/schema.prisma` not touched.
+
+### Build Status
+
+- [x] `tsc --noEmit` clean (only pre-existing `baseUrl` deprecation warning)
+- [ ] `npm run lint` — N/A in sandbox; Vercel preview will run it
+- [ ] Tests — none added; the Properties state machine is bounded + each transition is structurally enforced. Integration tests across the chat loop queued for a follow-up PR.
+
+### Validation
+
+- [x] Properties topic only accepts known enum values (HOME / INVESTMENT) — Zod rejects anything else
+- [x] Numeric extraction from user only (Zod `int().min(1)` on `currentValue`; system prompt explicitly forbids invented numbers)
+- [x] Per-property positional merge correctness — LLM echoes all staged on every turn; capped at 10
+- [x] `ownsProperty: false` short-circuits to recap with "No property" — verified via state machine transitions
+- [x] Hard rules preserved across topics: agent never writes to Prisma; per-topic recap confirmation gates persistence
+- [x] AFSL boundary structural — no advice tool registered; system prompt explicitly forbids market commentary
+
+### What's NOT in this PR (queued)
+
+- **E.2b.2** — first-encounter persistence + optional sound + mic-level → orb-ripple sync (need schema or web-audio additions)
+- **PR #5+** — remaining topics (debts / accounts / investments / super / assets / income-expenses). Each adds: new branch of `WizardStateDelta` union + new script file + system prompt extension. The orchestrator's topic-aware refactor (this PR) is what makes adding them cheap going forward.
+- **Smart hydration of Welcome step from chat data** — when Properties is confirmed, the user lands on form mode at currentStep=4 (debts) with Welcome (currentStep=0) + Entities (currentStep=2) empty. They can hit Back. A future PR can derive sensible Welcome defaults from chat data (profileType: 'HOMEOWNER' if HOME property exists, etc.) so they don't need to revisit Welcome.
+
+### Why this matters (4-lens synthesis)
+
+- **Architect lens:** the topic-aware orchestrator pattern is the multiplier — each subsequent topic adds a Zod branch + a script file + a system-prompt section, with no orchestrator surgery. The cost of adding a topic drops sharply.
+- **Behavioural-psychologist lens:** Properties is the highest-anxiety topic for AU users entering finance apps (PPOR vs investment, mortgage stigma, value uncertainty). Conversational mode + warm copy + the agent's no-judgement extraction directly addresses the "expert-friend confusion" risk on the most sensitive topic.
+- **Financial-adviser lens:** strict numbers-from-user rule preserved + Phase 41E reform-sensitive fields (acquisitionContractDate, isNewBuild, newBuildEvidence) deliberately stay in form mode where dates can be picked precisely, not misheard.
+- **Security / compliance lens:** AFSL boundary preserved structurally — system prompt explicitly forbids advice / opinions / market commentary, tool registry has only the extractive tool, audit metadata is field-names-only. No vendor expansion. No new CDR egress beyond what Household already did.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #773 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
