@@ -1261,3 +1261,64 @@ Surfaces changed:
 - PR: to be created at end of this build session — the FINAL Track E build PR.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 10: Smart Welcome hydration polish
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (PR #778 merged; branch fresh from main).
+
+### Scope
+
+- **Type:** UX polish — derives sensible Welcome (step 0) defaults from chat-collected data, so the form-mode review screen pre-fills end-to-end.
+- **Trigger:** Reza directive 2026-05-17 *"778 merged, continue also flip the flag so I can test and check"* — testing context revealed that even after chat completes, the user lands on form-mode review with Welcome fields still empty (profileType / housing / debtCategories / hasInvestments), requiring a Back-button to fix. This polish eliminates that step.
+
+### Hydration rules (all CONSERVATIVE — only fills nulls)
+
+- **profileType** — HOME property + investments → MIXED; investments only → INVESTOR; HOME only → HOMEOWNER; otherwise → STARTER
+- **housing** — HOME property + RENT expense → BOTH; HOME → OWN; RENT expense only → RENT; otherwise keep null
+- **country** — defaults to 'AU' (Monitrax is AU-only)
+- **taxYear** — defaults to current calendar year
+- **hasInvestments** — YES if investments[] or superAccounts[] non-empty; NO otherwise
+- **debtCategories** — derived from staged debts' types (CAR / STUDENT / PERSONAL / BUSINESS only), de-duplicated; merges with any existing categories
+
+### Implementation
+
+- New helper `applyWelcomeHydration(draft: WizardData): WizardData` in `components/onboarding/wizard-chat/ConversationalSetup.tsx` (~50 lines).
+- Invoked once in the `income-expenses` branch of `handleConfirm`, after the income/expenses merge but before `saveDraft()`.
+- Pure function — no side effects, no React state reads. Easy to unit-test if needed later.
+
+### Files Modified
+
+- **EDITED (1):** `components/onboarding/wizard-chat/ConversationalSetup.tsx`
+- **DOC-SYNC (3):** Phase doc rev 10 + IMPLEMENTATION_PLAN.md header + this changelog
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design / component pattern / config / GCP / identity / deployment / security / operational
+- [x] strategic decision — minor UX polish; closes the "user has to Back-button to fill Welcome" gap
+
+### Validation
+
+- [x] `tsc --noEmit` clean
+- [x] Hydration is purely additive — never overwrites a non-null field
+- [x] Country defaults to 'AU' (canonical Monitrax assumption)
+- [x] taxYear uses runtime `new Date().getFullYear().toString()` — auto-updates each year
+- [x] debtCategories merges with existing array via Set — no duplicates
+
+### Notes for Reza's live testing
+
+To flip the flag for testing:
+1. Ensure `CONVERSATIONAL_ONBOARDING` row exists: `npm run seed:feature-flags` (idempotent — seeds at `enabled: false` if missing).
+2. Navigate to `/admin/feature-flags` (SUPER_ADMIN required).
+3. Find `CONVERSATIONAL_ONBOARDING` → toggle ON. Propagates instantly on the toggling Vercel instance; ≤30s on warm peers (TTL).
+4. Ensure `ANTHROPIC_API_KEY` is set in Vercel Production env vars (registered in `docs/operational/cost-control/00_VENDOR_INVENTORY.md` Tier 2; per IMPL_PLAN `⏸ deferred` line — needs to be flipped to active for live chat).
+5. Visit `/onboarding`. "Chat with Monitrax" pill toggle should appear. Click it. Walk through all 8 topics. Confirm Welcome fields are pre-filled on the form-mode review screen.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #778 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo

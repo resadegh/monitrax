@@ -880,7 +880,7 @@ export function ConversationalSetup() {
       } else if (chatTopic === 'income-expenses') {
         const stagedIncomes = incomeExpensesScript.staged.incomes ?? [];
         const stagedExpenses = incomeExpensesScript.staged.expenses ?? [];
-        mergedDraft = {
+        const ieMerged: WizardData = {
           ...baseDraft,
           income: stagedIncomes.map((inc, idx) => ({
             id: `chat-income-${idx}-${Date.now()}`,
@@ -902,6 +902,14 @@ export function ConversationalSetup() {
             frequency: exp.frequency ?? 'MONTHLY',
           })),
         };
+        // Smart Welcome hydration — only on the FINAL chat topic.
+        // Chat skips Welcome (step 0) + Entities (step 2); without
+        // this, the form-mode review screen has empty profile /
+        // housing / debtCategories / hasInvestments fields. Derive
+        // sensible defaults from the data already collected so the
+        // review pre-fills end-to-end. User can Back-button to
+        // change anything they disagree with.
+        mergedDraft = applyWelcomeHydration(ieMerged);
       }
 
       // The currentStep we save under depends on whether we're pivoting
@@ -1092,6 +1100,90 @@ export function ConversationalSetup() {
  *   0 welcome / 1 household / 2 entities / 3 properties / 4 debts /
  *   5 accounts / 6 investments / 7 super / 8 assets / 9 income-expenses
  */
+/**
+ * Smart Welcome hydration — derive Welcome-step defaults from the data
+ * the chat already collected, so the form-mode review screen pre-fills
+ * end-to-end (instead of showing empty Welcome fields the user would
+ * have to Back-button to fill).
+ *
+ * Called ONLY when the final chat topic (income-expenses) confirms.
+ * The baseDraft at that point already contains everything previously
+ * confirmed by chat (properties, debts, accounts, investments, super,
+ * assets) + the income/expenses just confirmed in this call.
+ *
+ * Rules:
+ *   profileType:
+ *     HOME property + (INVESTMENT property OR investments)  → MIXED
+ *     INVESTMENT property OR investments                    → INVESTOR
+ *     HOME property                                          → HOMEOWNER
+ *     otherwise                                              → STARTER
+ *
+ *   housing:
+ *     HOME property + RENT expense  → BOTH
+ *     HOME property                  → OWN
+ *     RENT expense, no HOME          → RENT
+ *     otherwise                      → keep existing (or OWN default)
+ *
+ *   country / taxYear: AU + current calendar year (Monitrax is AU-only;
+ *     user can override in form-mode Welcome).
+ *
+ *   hasInvestments:
+ *     investments[] non-empty OR superAccounts[] non-empty → YES
+ *     otherwise                                              → NO
+ *
+ *   debtCategories: derived from staged debts' types (CAR / STUDENT /
+ *     PERSONAL / BUSINESS). De-duplicated.
+ *
+ * Conservative — never overwrites a non-null Welcome field the user
+ * may have set elsewhere; only fills the nulls.
+ */
+function applyWelcomeHydration(draft: WizardData): WizardData {
+  const hasHome = draft.properties.some((p) => p.type === 'HOME');
+  const hasInvProp = draft.properties.some((p) => p.type === 'INVESTMENT');
+  const hasInvAccount = draft.investments.length > 0;
+  const hasSuper = draft.superAccounts.length > 0;
+  const paysRent = draft.expenses.some((e) => e.category === 'RENT');
+
+  let profileType = draft.profileType;
+  if (profileType === null) {
+    if (hasHome && (hasInvProp || hasInvAccount)) profileType = 'MIXED';
+    else if (hasInvProp || hasInvAccount) profileType = 'INVESTOR';
+    else if (hasHome) profileType = 'HOMEOWNER';
+    else profileType = 'STARTER';
+  }
+
+  let housing = draft.housing;
+  if (housing === null) {
+    if (hasHome && paysRent) housing = 'BOTH';
+    else if (hasHome) housing = 'OWN';
+    else if (paysRent) housing = 'RENT';
+    // else: keep null — user can pick on the Welcome step
+  }
+
+  const hasInvestments: typeof draft.hasInvestments =
+    draft.hasInvestments ?? ((hasInvAccount || hasSuper) ? 'YES' : 'NO');
+
+  // De-duplicate debt categories from staged debts. Only the four
+  // canonical categories are valid (matches DebtCategory enum).
+  const validCategories = new Set(['CAR', 'STUDENT', 'PERSONAL', 'BUSINESS'] as const);
+  const debtCategorySet = new Set<typeof draft.debtCategories[number]>(draft.debtCategories);
+  for (const d of draft.debts) {
+    if (validCategories.has(d.type as 'CAR' | 'STUDENT' | 'PERSONAL' | 'BUSINESS')) {
+      debtCategorySet.add(d.type as 'CAR' | 'STUDENT' | 'PERSONAL' | 'BUSINESS');
+    }
+  }
+
+  return {
+    ...draft,
+    profileType,
+    country: draft.country || 'AU',
+    taxYear: draft.taxYear || new Date().getFullYear().toString(),
+    housing,
+    hasInvestments,
+    debtCategories: Array.from(debtCategorySet),
+  };
+}
+
 function currentStepFor(topic: ChatTopic): number {
   switch (topic) {
     case 'household':
