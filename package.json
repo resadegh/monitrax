@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "vercel-build": "npm run lint:financial-surfaces && prisma migrate deploy && prisma generate && next build",
+    "vercel-build": "npm run lint:financial-surfaces && prisma migrate deploy && prisma generate && npm run seed:feature-flags && next build",
     "start": "next start",
     "lint": "next lint",
     "lint:financial-surfaces": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/lint-financial-surfaces.ts",
@@ -21,7 +21,7 @@
     "seed:admin": "npx ts-node prisma/seed-admin.ts",
     "seed:lighthouse": "npx ts-node prisma/seed-lighthouse.ts",
     "seed:portal-access": "npx ts-node prisma/seed-portal-test-access.ts",
-    "seed:feature-flags": "npx ts-node prisma/seed-feature-flags.ts",
+    "seed:feature-flags": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' prisma/seed-feature-flags.ts",
     "validate": "npm run seed:validation && npm run test && npm run generate:report",
     "generate:report": "npx ts-node tests/validation/generate-report.ts"
   },

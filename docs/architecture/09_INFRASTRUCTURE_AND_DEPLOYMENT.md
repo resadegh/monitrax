@@ -402,8 +402,10 @@ module load time. The Proxy caches the resulting `PrismaClient` on
 1. Push code to `main` branch
 2. **Vercel** detects changes and triggers a build (Render is no longer in the loop — see migration doc).
 3. Build command executes (`vercel-build` script in `package.json`):
+   - `npm run lint:financial-surfaces` (static-analysis gate; fails build on new violations)
    - `prisma migrate deploy` (applies any new migration; aborts the deploy on failure — see CLAUDE.md §12.12)
    - `prisma generate`
+   - `npm run seed:feature-flags` (idempotent upsert of canonical `GlobalFeatureFlag` rows from `prisma/seed-feature-flags.ts`; never overwrites the operator-controlled `enabled` column; added 2026-05-17 so new flag rows auto-appear in `/admin/feature-flags` on next deploy)
    - `next build`
 4. New deployment is promoted only if the build succeeds.
 

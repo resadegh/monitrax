@@ -1322,3 +1322,45 @@ To flip the flag for testing:
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session: feature-flag seed auto-runs on every Vercel deploy
+
+### Changes Made
+
+- **Type**: Chore / deploy-pipeline hardening
+- **Scope**: `vercel-build` script (build pipeline)
+- **Root Cause (recurring gap)**: Adding a row to `prisma/seed-feature-flags.ts` required an operator to run `npm run seed:feature-flags` manually against prod before the new flag row would appear in `/admin/feature-flags`. The seed was never run for `CONVERSATIONAL_ONBOARDING`, so the toggle was invisible in the admin UI today and blocked live chat-mode testing. Same class of "seed step never ran" gap also caused user confusion in earlier sessions.
+- **Solution**: Wire `npm run seed:feature-flags` into the `vercel-build` script between `prisma generate` and `next build`. The seed is idempotent (`upsert` keyed on `key`), narrow-scope (single table — `GlobalFeatureFlag`), and **never overwrites the operator-controlled `enabled` column**. New flag rows added to `prisma/seed-feature-flags.ts` now auto-appear in the admin UI on the next deploy — zero operator intervention. If the seed fails (e.g. DB unreachable), the build aborts and prod keeps running on the old code (same safety guarantee as `prisma migrate deploy`).
+
+### Files Modified
+
+- **EDITED (3):**
+  - `package.json` — `vercel-build` script: inject `npm run seed:feature-flags` between `prisma generate` and `next build`.
+  - `docs/operational/deployment/02_VERCEL_DEPLOYMENT.md` — Build Process pipeline diagram + step 4 narrative + BANNED list (clarifies why narrow-scope idempotent seed is NOT the same as banned generic `prisma db seed`).
+  - `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §6.1 — pipeline bullet list updated.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [x] deployment / build pipeline change
+- [ ] visual design / component pattern / config / GCP / identity / security / operational / strategic decision
+
+Docs updated in this PR:
+- `docs/operational/deployment/02_VERCEL_DEPLOYMENT.md` — Build Process + BANNED list
+- `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` §6.1 — pipeline bullets
+- `docs/changelog/CHANGELOG_2026_05_17.md` (this entry)
+
+### Validation
+
+- [x] Seed script is idempotent (`upsert` keyed on `key`) — re-running on every deploy is a no-op for existing rows, creates rows for any newly added flag.
+- [x] Seed never overwrites `enabled` — operator stays in control via `/admin/feature-flags`.
+- [x] Build aborts on seed failure — same fail-closed posture as `prisma migrate deploy`.
+- [x] Reviewed alongside CLAUDE.md §12.12 (schema-deploy protocol) — this is config data, not schema, so no migration file needed.
+
+### Why this PR exists
+
+User asked: *"if you can seed the file do it rather than me creating the flag. possible?"* — diagnosed that the `+Create flag` button in the admin UI is currently a stub (`setShowModal(true)` wired but no modal component rendered), so even a manual operator path wasn't viable. Auto-seed via the build pipeline is the structural fix that also prevents the same gap recurring for every future flag.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
