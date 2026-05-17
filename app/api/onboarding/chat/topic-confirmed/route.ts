@@ -18,7 +18,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 
-const SUPPORTED_TOPICS = new Set(['household', 'properties']);
+const SUPPORTED_TOPICS = new Set(['household', 'properties', 'debts', 'accounts']);
 
 export const POST = withPermission('settings.write', async (request, auth) => {
   const startedAt = Date.now();
@@ -55,7 +55,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         data: null,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'topic must be one of: household, properties',
+          message: 'topic must be one of: household, properties, debts, accounts',
           details: null,
         },
       });

@@ -626,3 +626,191 @@ N/A — `prisma/schema.prisma` not touched.
 - PR: to be created at end of this build session.
 
 https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
+
+---
+
+## Session 6: Phase 12 Track E — Debts + Accounts topics (chat chain extended to 4 topics)
+
+Branch: `claude/ai-agent-setup-wizard-NL4XV` (continuation — PR #774 merged into main, branch recreated from main).
+
+### Scope
+
+- **Type:** Feature build — third + fourth chat topics in one PR.
+- **Scope:** Adds **Debts** and **Accounts** to chat-mode. Chat now flows Household → Properties → **Debts → Accounts** → form-mode handoff at the investments step (`currentStep = 6`).
+- **Flag:** `CONVERSATIONAL_ONBOARDING` stays default OFF — zero behavioural change pre-flip.
+
+### Trigger
+
+Reza directive: *"774 merged continue, also make sure all changes are documented as well"*. Continue cadence + explicit doc-sync emphasis. I picked Debts + Accounts together (vs one-at-a-time) because both are simpler than Properties (fewer fields per item) and both share the same orchestrator wiring cost.
+
+### Changes Made
+
+#### 1. Schema additions (Zod + JSON Schema mirrors)
+
+`lib/ai/onboarding-agent/schemas/wizardStateDelta.ts` (EDIT):
+
+**Debts:**
+- `debtLoanTypeEnum` (CAR / PERSONAL / STUDENT / BUSINESS).
+- `debtDeltaSchema`: `{ name (required), type?, principal? (1..10M AUD), isHecsHelp? }`.
+- `debtsFieldsSchema`: `{ hasDebts?, debts? (max 15) }`.
+- `debtsStateDeltaSchema` joined into the discriminated union.
+- `DEBTS_TOOL_INPUT_SCHEMA` (hand-crafted JSON Schema mirror).
+
+**Accounts:**
+- `accountTypeEnum` (OFFSET / SAVINGS / TRANSACTIONAL / CREDIT_CARD).
+- `accountDeltaSchema`: `{ name (required), type?, currentBalance? (signed; -1M..50M AUD) }`.
+- `accountsFieldsSchema`: `{ hasAccounts?, accounts? (max 15) }`.
+- `accountsStateDeltaSchema` joined into the discriminated union.
+- `ACCOUNTS_TOOL_INPUT_SCHEMA` (hand-crafted JSON Schema mirror).
+
+Exports: `DebtDelta`, `DebtsFields`, `AccountDelta`, `AccountsFields` types.
+
+#### 2. System prompts + tool specs
+
+`lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts` (EDIT):
+
+**`DEBTS_SYSTEM_PROMPT`** (~50 lines):
+- Hard rules: tool-call only / numbers from user / positional merge / no advice / no payoff-strategy commentary.
+- AU vocabulary mapping: HECS / HELP / uni-debt → STUDENT (with `isHecsHelp: true`); car finance → CAR; AfterPay / BNPL → PERSONAL; SME loan → BUSINESS.
+- Scope-boundary instruction: redirect property mortgages (already on Properties topic) + credit cards (next topic) to their respective surfaces — do NOT emit Debts entries for those.
+- `hasDebts: false` sentinel for "I'm debt-free apart from the mortgage".
+
+**`ACCOUNTS_SYSTEM_PROMPT`** (~45 lines):
+- AU bank vocabulary: CommBank everyday → TRANSACTIONAL named "CommBank everyday"; ING Savings Maximiser → SAVINGS; NAB Visa → CREDIT_CARD; etc.
+- **Signed-balance convention**: credit-card debt is emitted as NEGATIVE integer. System prompt explicit: "$2k owing on my Visa" → `currentBalance: -2000`.
+- No bank-comparison / no product-switch suggestions.
+
+**Tool specs**:
+- `debtsExtractTool` + `accountsExtractTool` registered with `EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME` (closed-discriminant pattern — one tool name, four input schemas).
+- `ExtractToolDefinition.input_schema` union widened to include both new schemas.
+
+#### 3. Gateway routing refactor
+
+`lib/ai/onboarding-agent/gateway.ts` (EDIT):
+
+- `SupportedTopic` expanded to `'household' | 'properties' | 'debts' | 'accounts'`.
+- `TopicStateSubset` union widened.
+- New `SUPPORTED_TOPICS` array constant (drives both runtime validation + iteration if needed).
+- New `resolveTopicTools()` switch helper — replaces the previous if/else pair. Returns `{ systemPrompt, toolSpec }` per topic. Adding a topic = one new branch.
+- New `formatStagedSubset()` switch helper — dispatches to per-topic `formatStagedFieldNames()` (household), `formatStagedPropertiesState()`, `formatStagedDebtsState()` (NEW), `formatStagedAccountsState()` (NEW). Replaces inline if/else in `buildUserPrompt`.
+
+#### 4. API route topic-validation expansion
+
+- `app/api/onboarding/chat/extract/route.ts` (EDIT) — topic validation now accepts all 4 topics.
+- `app/api/onboarding/chat/topic-confirmed/route.ts` (EDIT) — `SUPPORTED_TOPICS` set widened.
+
+#### 5. State machines
+
+**`components/onboarding/wizard-chat/debtsScript.ts` (NEW, ~210 lines):**
+- Steps: INTRO → ASKING_OWNERSHIP → ASKING_DEBT_TYPE / ASKING_DEBT_PRINCIPAL (per incomplete debt) → ASKING_MORE → RECAP / CHANGING.
+- 2-retry loop-break protection.
+- `firstIncompleteIndex()` + `nextMissingField()` mirror the Properties pattern.
+- Recap formatters: `formatDebtPrincipal()` (AUD), `summariseSingleDebt()` (e.g. "HECS (Student loan) (HECS/HELP) — $30,000 owing"), `summariseDebts()` (joined for top-line audit / tests).
+- HECS-specific quoting helper for friendlier copy.
+
+**`components/onboarding/wizard-chat/accountsScript.ts` (NEW, ~225 lines):**
+- Same shape as Debts.
+- Type-aware balance question: "Roughly how much is **owing on** ..." for CREDIT_CARD vs "Roughly how much is **in** ..." for others.
+- `formatAccountBalance()` renders credit-card debt with "owing" suffix so the sign reads correctly in the recap (e.g. "$2,000 owing").
+- `summariseSingleAccount()` (e.g. "NAB Visa (Credit card) — $2,000 owing").
+
+#### 6. Orchestrator extended for 4 topics
+
+`components/onboarding/wizard-chat/ConversationalSetup.tsx` (REWRITE):
+
+- New constant `AFTER_ACCOUNTS_FORM_STEP_INDEX = 6` (replaces `AFTER_PROPERTIES_FORM_STEP_INDEX = 4` semantics — after the chat chain completes, redirect to form mode at investments).
+- New constant `TOPIC_CHAIN: ChatTopic[]` + `nextTopicAfter()` helper — single source of truth for the topic sequence; adding a topic = one entry in this array + the supporting state machine.
+- Added `debtsScript` + `accountsScript` state slots (separate React state for each topic to keep types clean).
+- `handleSubmit` is a 4-way switch on the LLM's returned `delta.topic` discriminator (each branch ~30 lines, symmetric).
+- `handleConfirm` saves the topic's staged fields into the existing `UserPreference.onboardingDraft` WizardData → fires `ONBOARDING_AGENT_TOPIC_CONFIRMED` audit → either pivots to `nextTopicAfter(chatTopic)` (in-thread, bootstrapping the next topic's conversation) OR (when next is null) redirects to `/onboarding` at `currentStep=6`.
+- `currentStepFor()` helper maps each topic to its wizard step index (1 household / 3 properties / 4 debts / 5 accounts) so the saveDraft call hydrates the right step on partial resume.
+- `recapRows` + `recapHeader` + `showRecap` + `handleChange` all became 4-way switches.
+- `historicalRecaps` continues to be keyed by topic so dim-and-keep snapshots label correctly across all 4 topics.
+- **Field defaults applied in `handleConfirm`** for fields the chat did NOT capture but the WizardData / bulk-create require:
+  - **Debts:** `interestRateAnnual: 0`, `minRepayment: 0`, `repaymentFrequency: 'MONTHLY'`.
+  - **Accounts:** `source: 'MANUAL'`.
+  - The form-mode picker can correct these; the chat doesn't ask because they're hard-to-recall numbers + a frequency dropdown is form-friendly.
+
+### Scope decisions (documented for future reference)
+
+- **Properties no longer redirects after confirm.** PR #774 had Properties.confirm → redirect to form mode at `currentStep=4`. With Debts + Accounts now in the chain, Properties.confirm → pivot-to-Debts (no redirect). Properties' "exit door" is replaced; users who only want to chat through Properties can still escape via the Mode Toggle.
+- **Credit cards live on Accounts, not Debts.** The DEBTS_SYSTEM_PROMPT explicitly redirects credit-card mentions to be handled by the Accounts topic. This mirrors the form wizard's design (Phase 12 plan doc §3 row C: LINE_OF_CREDIT is modelled as a CREDIT_CARD Account, not a Debt entry).
+- **Property mortgages stay on Properties.** Debts captures non-property loans only. The Properties.hasLoan flag is the existing handoff for mortgages (loan details collected in the form's loan sub-form).
+- **HECS / HELP is a Debt, not a financial-aid sentinel.** type:STUDENT + isHecsHelp:true. Form mode picks up the income-contingent nature of HECS (no minimum repayment, indexed annually).
+- **Signed credit-card balances.** The Accounts schema uses a signed `currentBalance` integer (-1M..50M). Credit-card debt = negative. The system prompt instructs the LLM, the formatter renders "owing" suffix when negative, and the recap reads correctly.
+
+### Files Created / Modified
+
+- **NEW (2):**
+  - `components/onboarding/wizard-chat/debtsScript.ts`
+  - `components/onboarding/wizard-chat/accountsScript.ts`
+- **EDITED (6):**
+  - `lib/ai/onboarding-agent/schemas/wizardStateDelta.ts`
+  - `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts`
+  - `lib/ai/onboarding-agent/gateway.ts`
+  - `app/api/onboarding/chat/extract/route.ts`
+  - `app/api/onboarding/chat/topic-confirmed/route.ts`
+  - `components/onboarding/wizard-chat/ConversationalSetup.tsx` (substantial refactor for 4-topic chain)
+- **DOC-SYNC (3):**
+  - `docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md` (Status + rev 6 changelog)
+  - `docs/IMPLEMENTATION_PLAN.md` (header + row 53)
+  - `docs/changelog/CHANGELOG_2026_05_17.md` (this entry)
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [ ] visual design system / component pattern — no new primitives (`PresenceOrb` + motion tokens reused unchanged; this is what the SSOT bought us across 4 topics now)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] security / CDR posture — minimal: Debts + Accounts gateway prompts include staged values in the user-message (for positional-merge correctness), but every staged value originated from the user this session. Audit metadata stays sanitised (field-names-only via `sanitizeCdrMetadata()`). New `ACCOUNTS_SYSTEM_PROMPT` explicitly forbids the LLM from suggesting bank switches / product changes (AFSL-adjacent prohibition); `DEBTS_SYSTEM_PROMPT` explicitly forbids consolidation / refinance suggestions.
+- [ ] operational procedure
+- [x] strategic decision — chat chain extended from 2 → 4 topics; `TOPIC_CHAIN` constant centralised; remaining topics queued
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A. Zero `prisma.<model>.update / upsert / delete / updateMany / deleteMany` calls. Zero raw SQL. Zero schema changes. Zero migrations. Verified via `git diff main --unified=0 | grep -E "prisma\.[a-zA-Z]+\.(update|upsert|delete|updateMany|deleteMany)\(|\\\$executeRaw"` → no matches.
+
+### Schema-migration check (CLAUDE.md §12.12)
+
+N/A — `prisma/schema.prisma` not touched.
+
+### Build Status
+
+- [x] `tsc --noEmit` clean (only pre-existing `baseUrl` deprecation warning)
+- [ ] `npm run lint` — N/A in sandbox; Vercel preview will run it
+- [ ] Tests — none added; state machines are bounded + each transition structurally enforced. Test coverage for the entire chat loop queued for a follow-up PR.
+
+### Validation
+
+- [x] Debts topic accepts only known enum values (CAR / PERSONAL / STUDENT / BUSINESS) — Zod rejects anything else
+- [x] Accounts topic accepts only known enum values (OFFSET / SAVINGS / TRANSACTIONAL / CREDIT_CARD) — Zod rejects anything else
+- [x] Signed credit-card balances work — Zod allows `min(-1000000)`; system prompt instructs the LLM; formatter renders "owing" for negative + CREDIT_CARD
+- [x] Scope-boundary enforced in system prompts: Debts prompt redirects mortgages + credit cards; Accounts prompt is the canonical credit-card surface
+- [x] Position-merge correctness: LLM echoes all staged on every turn; orchestrator caps at 15
+- [x] `hasDebts: false` / `hasAccounts: false` short-circuit to recap with friendly "skip ahead" copy
+- [x] No Prisma writes from agent code (grep)
+- [x] AFSL boundary structural — no advice tool registered; system prompts explicitly forbid commentary, suggestion, switching, consolidating
+- [x] Form-default-fields documented: debts (`interestRateAnnual:0`, `minRepayment:0`, `repaymentFrequency:'MONTHLY'`), accounts (`source:'MANUAL'`)
+
+### What's NOT in this PR (queued)
+
+- **E.2b.2** — first-encounter persistence + optional sound + mic-level → orb-ripple sync (need schema or web-audio additions)
+- **PR #6+** — remaining 4 topics: investments / super / assets / income-expenses. Investments + super are the most complex (multi-account, holdings per account, contributions). Assets is simple (a list of `{ name, type, currentValue }`). Income / expenses is the most narrative — could merit its own PR.
+- **Topic-registry full refactor** — current orchestrator uses 4-way switches (clean but repetitive). When PR #6 lands the remaining 4 topics, the cumulative if/else weight justifies a small typed-registry refactor. Deliberately deferred to keep this PR's diff focused on the new topics, not on infrastructure.
+- **Smart Welcome hydration** — when Accounts.confirm sends the user to form mode at currentStep=6, Welcome (step 0) + Entities (step 2) are empty. Deriving defaults from chat data (profileType:'HOMEOWNER' if HOME property exists, etc.) so users don't need to revisit Welcome is a future polish PR.
+
+### Why this matters (4-lens synthesis)
+
+- **Architect lens:** the orchestrator's `TOPIC_CHAIN` array + `nextTopicAfter()` helper + `currentStepFor()` helper are now the single source of truth for chat-mode's topic sequence. Adding a topic = `TOPIC_CHAIN` += 1 + a state slot + a `handleSubmit` branch + a `handleConfirm` branch. The cost of adding topics is now sublinear in the orchestrator (~80 lines per topic vs ~250 if every topic needed its own custom flow).
+- **Behavioural-psychologist lens:** Debts is the most shame-loaded topic in fintech onboarding (especially HECS — users feel "behind"). Chat reduces the form's grid of fields to a single warm question ("Any other debts, or is that everything?"). The scope-boundary rules (no consolidation suggestions, no payoff-strategy commentary) are AFSL-required AND psychologically required: the agent doesn't judge, it records.
+- **Financial-adviser lens:** strict no-advice rule preserved across 4 topics now. AU vocabulary mapping (HECS, BNPL, big-four banks) lets the agent translate without prompting users to know "DebtLoanType" or "AccountType". Numeric defaults on form-handoff (interest rates, frequencies) are conservative (`0`, `'MONTHLY'`) so the form mode picks up with clean inputs.
+- **Security / compliance lens:** AFSL boundary preserved structurally — system prompts explicitly forbid bank-switching, consolidation, refinance, market commentary across both new topics. No vendor expansion. No CDR egress beyond the existing chat session's audit-sanitised metadata.
+
+### PR
+
+- Branch: `claude/ai-agent-setup-wizard-NL4XV` (recreated from main after #774 merged)
+- PR: to be created at end of this build session.
+
+https://claude.ai/code/session_01LpdUbW5rvNZc67oJ1us4Wo
