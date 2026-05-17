@@ -131,15 +131,102 @@ export const propertiesStateDeltaSchema = z.object({
 });
 
 // ============================================================================
+// DEBTS topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per debt (the bare minimum for a useful handoff):
+//   - name      — free text (e.g. "car loan", "HECS", "credit card")
+//   - type      — CAR / PERSONAL / STUDENT / BUSINESS (matches DebtLoanType)
+//   - principal — outstanding balance owed in AUD (integer)
+//   - isHecsHelp — boolean. Auto-derive in the script: TRUE when
+//                  type === STUDENT, FALSE otherwise. The LLM may emit
+//                  it explicitly when the user says "HECS" / "HELP".
+//
+// Deferred to form mode:
+//   - interestRateAnnual, minRepayment, repaymentFrequency — most
+//     users don't know these without checking their statement; the
+//     form has the precision (number input + frequency picker).
+//   - lender (institution name) — easier in form.
+//   - termMonthsRemaining — date math is form-friendly.
+//   - linkedAssetId — for CAR loans, the form handles the link to the
+//     Assets step.
+
+export const debtLoanTypeEnum = z.enum(['CAR', 'PERSONAL', 'STUDENT', 'BUSINESS']);
+
+export const debtDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: debtLoanTypeEnum.optional(),
+  principal: z.number().int().min(1).max(10_000_000).optional(),
+  isHecsHelp: z.boolean().optional(),
+});
+
+export const debtsFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user has no debts to enter;
+   *  the recap shows "No debts" and the chat advances. */
+  hasDebts: z.boolean().optional(),
+  debts: z.array(debtDeltaSchema).max(15).optional(),
+});
+
+export const debtsStateDeltaSchema = z.object({
+  topic: z.literal('debts'),
+  fields: debtsFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
+// ACCOUNTS topic — v1 minimum capture
+// ============================================================================
+//
+// What chat captures per account:
+//   - name           — free text (e.g. "everyday", "ING savings")
+//   - type           — OFFSET / SAVINGS / TRANSACTIONAL / CREDIT_CARD
+//   - currentBalance — integer AUD; can be negative for credit card debt
+//
+// Deferred to form mode:
+//   - institution, interestRate, linkedLoanId (offset wiring),
+//     source (defaults to MANUAL for chat-entered accounts), and any
+//     Basiq / import metadata.
+//
+// Credit card sign convention: we keep currentBalance as signed
+// (negative = balance owed). The LLM is instructed to emit credit card
+// balances as NEGATIVE when the user describes them as "owing $2k on
+// my Visa" / "$2,000 owing on my Mastercard".
+
+export const accountTypeEnum = z.enum(['OFFSET', 'SAVINGS', 'TRANSACTIONAL', 'CREDIT_CARD']);
+
+export const accountDeltaSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  type: accountTypeEnum.optional(),
+  currentBalance: z.number().int().min(-1_000_000).max(50_000_000).optional(),
+});
+
+export const accountsFieldsSchema = z.object({
+  /** Sentinel — when explicitly false, the user does not want to add
+   *  any bank accounts here. Edge case but accepted (forms have the
+   *  same affordance via the optional Accounts step). */
+  hasAccounts: z.boolean().optional(),
+  accounts: z.array(accountDeltaSchema).max(15).optional(),
+});
+
+export const accountsStateDeltaSchema = z.object({
+  topic: z.literal('accounts'),
+  fields: accountsFieldsSchema,
+  unresolved: z.array(z.string().trim().min(1).max(80)).max(10),
+  rationale: z.string().trim().max(280).optional(),
+});
+
+// ============================================================================
 // Top-level WizardStateDelta (discriminated by `topic`)
 // ============================================================================
 
-// As more topics ship (debts, accounts, ...), add them as discriminated
-// members of this union. v1 supported household only; PR #4 adds
-// properties.
+// As more topics ship (investments, super, …), add them as discriminated
+// members of this union.
 export const wizardStateDeltaSchema = z.discriminatedUnion('topic', [
   householdStateDeltaSchema,
   propertiesStateDeltaSchema,
+  debtsStateDeltaSchema,
+  accountsStateDeltaSchema,
 ]);
 
 export type WizardStateDelta = z.infer<typeof wizardStateDeltaSchema>;
@@ -148,6 +235,10 @@ export type HouseholdPetDelta = z.infer<typeof householdPetDeltaSchema>;
 export type HouseholdFields = z.infer<typeof householdFieldsSchema>;
 export type PropertyDelta = z.infer<typeof propertyDeltaSchema>;
 export type PropertiesFields = z.infer<typeof propertiesFieldsSchema>;
+export type DebtDelta = z.infer<typeof debtDeltaSchema>;
+export type DebtsFields = z.infer<typeof debtsFieldsSchema>;
+export type AccountDelta = z.infer<typeof accountDeltaSchema>;
+export type AccountsFields = z.infer<typeof accountsFieldsSchema>;
 
 // ============================================================================
 // JSON Schema (hand-crafted to mirror the Zod schema above)
@@ -230,6 +321,79 @@ export const PROPERTIES_TOOL_INPUT_SCHEMA = {
               type: { type: 'string', enum: ['HOME', 'INVESTMENT'] },
               currentValue: { type: 'integer', minimum: 1, maximum: 50000000 },
               hasLoan: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const DEBTS_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['debts'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasDebts: { type: 'boolean' },
+        debts: {
+          type: 'array',
+          maxItems: 15,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: {
+                type: 'string',
+                enum: ['CAR', 'PERSONAL', 'STUDENT', 'BUSINESS'],
+              },
+              principal: { type: 'integer', minimum: 1, maximum: 10000000 },
+              isHecsHelp: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    unresolved: {
+      type: 'array',
+      maxItems: 10,
+      items: { type: 'string', minLength: 1, maxLength: 80 },
+    },
+    rationale: { type: 'string', maxLength: 280 },
+  },
+} as const;
+
+export const ACCOUNTS_TOOL_INPUT_SCHEMA = {
+  type: 'object',
+  required: ['topic', 'fields', 'unresolved'],
+  properties: {
+    topic: { type: 'string', enum: ['accounts'] },
+    fields: {
+      type: 'object',
+      properties: {
+        hasAccounts: { type: 'boolean' },
+        accounts: {
+          type: 'array',
+          maxItems: 15,
+          items: {
+            type: 'object',
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 120 },
+              type: {
+                type: 'string',
+                enum: ['OFFSET', 'SAVINGS', 'TRANSACTIONAL', 'CREDIT_CARD'],
+              },
+              currentBalance: { type: 'integer', minimum: -1000000, maximum: 50000000 },
             },
           },
         },

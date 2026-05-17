@@ -32,18 +32,35 @@ import {
   type WizardStateDelta,
   type HouseholdFields,
   type PropertiesFields,
+  type DebtsFields,
+  type AccountsFields,
 } from './schemas/wizardStateDelta';
 import {
   EXTRACT_WIZARD_STEP_DELTA_TOOL_NAME,
   HOUSEHOLD_SYSTEM_PROMPT,
   PROPERTIES_SYSTEM_PROMPT,
+  DEBTS_SYSTEM_PROMPT,
+  ACCOUNTS_SYSTEM_PROMPT,
   householdExtractTool,
   propertiesExtractTool,
+  debtsExtractTool,
+  accountsExtractTool,
 } from './tools/extractWizardStepDelta';
 
-export type SupportedTopic = 'household' | 'properties';
+export type SupportedTopic = 'household' | 'properties' | 'debts' | 'accounts';
 
-export type TopicStateSubset = HouseholdFields | PropertiesFields;
+export type TopicStateSubset =
+  | HouseholdFields
+  | PropertiesFields
+  | DebtsFields
+  | AccountsFields;
+
+const SUPPORTED_TOPICS: ReadonlyArray<SupportedTopic> = [
+  'household',
+  'properties',
+  'debts',
+  'accounts',
+];
 
 export interface ExtractRequest {
   topic: SupportedTopic;
@@ -92,23 +109,20 @@ export async function extractWizardStepDelta(
     return { ok: false, reason: 'ANTHROPIC_NOT_CONFIGURED' };
   }
 
-  if (req.topic !== 'household' && req.topic !== 'properties') {
-    // Future topics (debts, accounts, …) expand the union here.
+  if (!SUPPORTED_TOPICS.includes(req.topic)) {
+    // Future topics (investments, super, …) expand SUPPORTED_TOPICS.
     return { ok: false, reason: 'INVALID_TOPIC', detail: `topic=${req.topic}` };
   }
 
   const client = getAnthropicClient();
   const model = ANTHROPIC_MODELS.HAIKU;
 
-  // Pick the right system prompt + tool spec per topic. Both tools
+  // Pick the right system prompt + tool spec per topic. All tools
   // share the same tool NAME (the closed-discriminant pattern from
   // CLAUDE.md §12.4) — they differ only in input_schema. The system
   // prompt switches based on topic so the LLM sees the right
   // vocabulary mapping rules.
-  const systemPrompt =
-    req.topic === 'household' ? HOUSEHOLD_SYSTEM_PROMPT : PROPERTIES_SYSTEM_PROMPT;
-  const toolSpec =
-    req.topic === 'household' ? householdExtractTool : propertiesExtractTool;
+  const { systemPrompt, toolSpec } = resolveTopicTools(req.topic);
 
   // Compose the user-side message. The prompt body is a structured
   // brief — current staged subset + recent transcript + the latest
@@ -171,6 +185,32 @@ export async function extractWizardStepDelta(
   }
 }
 
+/**
+ * Per-topic system-prompt + tool-spec lookup. Centralised so adding a
+ * topic = adding one branch here + one branch in `formatStagedSubset`
+ * below + one Zod-union entry. Keeps the dispatch table inspectable
+ * in one place.
+ */
+function resolveTopicTools(topic: SupportedTopic): {
+  systemPrompt: string;
+  toolSpec:
+    | typeof householdExtractTool
+    | typeof propertiesExtractTool
+    | typeof debtsExtractTool
+    | typeof accountsExtractTool;
+} {
+  switch (topic) {
+    case 'household':
+      return { systemPrompt: HOUSEHOLD_SYSTEM_PROMPT, toolSpec: householdExtractTool };
+    case 'properties':
+      return { systemPrompt: PROPERTIES_SYSTEM_PROMPT, toolSpec: propertiesExtractTool };
+    case 'debts':
+      return { systemPrompt: DEBTS_SYSTEM_PROMPT, toolSpec: debtsExtractTool };
+    case 'accounts':
+      return { systemPrompt: ACCOUNTS_SYSTEM_PROMPT, toolSpec: accountsExtractTool };
+  }
+}
+
 function buildUserPrompt(req: ExtractRequest): string {
   const transcriptLines = req.recentTranscript
     .slice(-4)
@@ -179,16 +219,12 @@ function buildUserPrompt(req: ExtractRequest): string {
 
   // For HOUSEHOLD: we pass field NAMES of what's already staged so the
   // LLM avoids duplicating fields the user has already given.
-  // For PROPERTIES: we pass the FULL staged properties array (including
-  // numeric values the user already gave) — the LLM needs the full
-  // state to do the positional-merge correctly. This is sensitive in
-  // principle (chat data echoes back), but every value in
-  // PropertiesFields came from the user this session — no CDR egress
-  // expansion beyond what was already in the conversation.
-  const stagedBlock =
-    req.topic === 'household'
-      ? formatStagedFieldNames(req.currentStateSubset)
-      : formatStagedPropertiesState(req.currentStateSubset as PropertiesFields);
+  // For PROPERTIES / DEBTS / ACCOUNTS: we pass the FULL staged array
+  // (with values) — the LLM needs the full state to do positional-merge
+  // correctly. Every staged value originated from the user in this
+  // session — no CDR egress expansion beyond what's already in the
+  // conversation.
+  const stagedBlock = formatStagedSubset(req.topic, req.currentStateSubset);
 
   return [
     `Topic: ${req.topic}`,
@@ -200,6 +236,22 @@ function buildUserPrompt(req: ExtractRequest): string {
   ]
     .filter(Boolean)
     .join('\n\n');
+}
+
+function formatStagedSubset(
+  topic: SupportedTopic,
+  subset: TopicStateSubset,
+): string {
+  switch (topic) {
+    case 'household':
+      return formatStagedFieldNames(subset);
+    case 'properties':
+      return formatStagedPropertiesState(subset as PropertiesFields);
+    case 'debts':
+      return formatStagedDebtsState(subset as DebtsFields);
+    case 'accounts':
+      return formatStagedAccountsState(subset as AccountsFields);
+  }
 }
 
 function formatStagedFieldNames(subset: TopicStateSubset): string {
@@ -224,6 +276,45 @@ function formatStagedPropertiesState(subset: PropertiesFields): string {
       if (p.type !== undefined) bits.push(`type=${p.type}`);
       if (p.currentValue !== undefined) bits.push(`currentValue=${p.currentValue}`);
       if (p.hasLoan !== undefined) bits.push(`hasLoan=${p.hasLoan}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  return parts.join('\n');
+}
+
+function formatStagedDebtsState(subset: DebtsFields): string {
+  const parts: string[] = [];
+  if (typeof subset.hasDebts === 'boolean') {
+    parts.push(`hasDebts: ${subset.hasDebts}`);
+  }
+  if (!subset.debts || subset.debts.length === 0) {
+    parts.push('debts: []');
+  } else {
+    parts.push('debts:');
+    subset.debts.forEach((d, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(d.name)}`];
+      if (d.type !== undefined) bits.push(`type=${d.type}`);
+      if (d.principal !== undefined) bits.push(`principal=${d.principal}`);
+      if (d.isHecsHelp !== undefined) bits.push(`isHecsHelp=${d.isHecsHelp}`);
+      parts.push(`  [${idx}] ${bits.join(', ')}`);
+    });
+  }
+  return parts.join('\n');
+}
+
+function formatStagedAccountsState(subset: AccountsFields): string {
+  const parts: string[] = [];
+  if (typeof subset.hasAccounts === 'boolean') {
+    parts.push(`hasAccounts: ${subset.hasAccounts}`);
+  }
+  if (!subset.accounts || subset.accounts.length === 0) {
+    parts.push('accounts: []');
+  } else {
+    parts.push('accounts:');
+    subset.accounts.forEach((a, idx) => {
+      const bits: string[] = [`name=${JSON.stringify(a.name)}`];
+      if (a.type !== undefined) bits.push(`type=${a.type}`);
+      if (a.currentBalance !== undefined) bits.push(`currentBalance=${a.currentBalance}`);
       parts.push(`  [${idx}] ${bits.join(', ')}`);
     });
   }

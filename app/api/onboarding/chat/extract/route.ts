@@ -114,13 +114,13 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       recentTranscript,
     } = body as Partial<ExtractRequest>;
 
-    if (topic !== 'household' && topic !== 'properties') {
+    if (topic !== 'household' && topic !== 'properties' && topic !== 'debts' && topic !== 'accounts') {
       return envelope(400, {
         success: false,
         data: null,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'topic must be one of: household, properties',
+          message: 'topic must be one of: household, properties, debts, accounts',
           details: null,
         },
       });
