@@ -155,4 +155,82 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-42-ui-plumbing-MG8mr`
+- Status: **Merged 2026-05-18 (PR #784)** — anomaly narrative shipped.
+
+---
+
+## Session 3: PR B2 — Phase 42 PR 5.6 Vendor card drawer + Tax Pack export
+
+Branch: `claude/phase-42-pr-5-6-vendor-drawer-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 42 PR 5.6 — vendor card drawer + Tax Pack export button).
+- **Scope:** Two new components + lookup-by-merchant query extension on existing vendor list endpoint + entry-point wiring in TransactionLinkDialog. Reuses Phase 42 PR6 `<CancelSubscriptionLink>` primitive — no new cancel logic.
+- **CDR scope:** N/A — UI on top of existing CDR-safe `getVendorAnnualTotals` aggregator + existing Tax Pack export endpoint.
+
+### What was done
+
+#### New files
+
+- **`components/bookkeeping/VendorCardDrawer.tsx`** (~270 lines) — right-edge slide-in / bottom-sheet on mobile. Accepts `vendorId` OR `merchantStandardised`. Resolves merchant → vendor via `GET /api/bookkeeping/vendors?merchantStandardised=` (new query support) → then fetches full card via `GET /api/bookkeeping/vendors/[id]`. Empty state when no vendor row exists yet ("Vendor profiles are created automatically when a transaction is categorised"). Renders 12-month totals (spent / received / transactions / accounts) + last-seen date + cancel link (reusing existing `<CancelSubscriptionLink>`) + linked properties + contract document + MCC if known. ESC closes.
+- **`components/bookkeeping/TaxPackExportButton.tsx`** (~140 lines) — card on `/dashboard/reports` with FY picker (current FY + 3 prior, computed from current AU FY boundary) + format picker (csv / xlsx / json) + download via fetch-blob-anchor pattern (surfaces server errors instead of silent navigation).
+
+#### Extended files
+
+- **`app/api/bookkeeping/vendors/route.ts`** — `GET /api/bookkeeping/vendors` now accepts `?merchantStandardised=X` query. When present, returns the single matched vendor (lookup via `normaliseVendorName` — case-insensitive + alphanumeric-collapsed, same shape as the resolve flow uses). Existing unqualified list call behaviour unchanged.
+- **`components/transactions/TransactionLinkDialog.tsx`** — adds "View vendor card →" link inside the transaction-info block (only renders when `transaction.merchantStandardised` is non-null) + `<VendorCardDrawer>` mount + showVendorDrawer state.
+- **`app/dashboard/reports/page.tsx`** — mounts `<TaxPackExportButton>` at the top of the page content (above the existing Report Type selection).
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `components/bookkeeping/VendorCardDrawer.tsx` | NEW — 270 lines |
+| `components/bookkeeping/TaxPackExportButton.tsx` | NEW — 140 lines |
+| `app/api/bookkeeping/vendors/route.ts` | +24 lines (lookup-by-merchant) |
+| `components/transactions/TransactionLinkDialog.tsx` | +18 lines (link + state + import + mount) |
+| `app/dashboard/reports/page.tsx` | +3 lines (mount) |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next row 48 closed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | Session 3 entry (this) |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — two new bookkeeping components (`<VendorCardDrawer>` + `<TaxPackExportButton>`) following existing component patterns; reuse of existing `<CancelSubscriptionLink>` primitive — no new visual primitive.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 48 marked ✅ SHIPPED.
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 3 entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No new Prisma writes. The drawer + Tax Pack button read from existing endpoints (`/api/bookkeeping/vendors`, `/api/bookkeeping/vendors/[id]`, `/api/bookkeeping/tax-pack/export`).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Vendor card + Tax Pack export — not a tax-engine surface.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+- [ ] Manual verification queued for Vercel preview:
+  - Open transaction dialog → "View vendor card →" link only shows when `merchantStandardised` is present → opens drawer → resolves vendor → shows totals / linked properties / cancel link / contract.
+  - Open `/dashboard/reports` → Tax Pack card shows at top → FY + format pickers work → download triggers + filename matches `monitrax-tax-pack-FY2025-26.csv` pattern.
+  - When merchant has no vendor row → drawer shows the empty-state message ("Vendor profiles are created automatically when a transaction is categorised").
+
+### PR
+
+- Branch: `claude/phase-42-pr-5-6-vendor-drawer-MG8mr`
 - Status: Open
