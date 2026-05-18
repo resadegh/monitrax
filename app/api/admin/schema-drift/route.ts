@@ -153,12 +153,17 @@ export async function GET(request: Request) {
   const actualEnumValuesByEnum = new Map<string, Set<string>>();
   try {
     const tableRows = await prisma.$queryRawUnsafe<{ table_name: string }[]>(
-      `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+      // 2026-05-19 — `information_schema.tables.table_name` is the Postgres
+      // `name` type, which Prisma's `$queryRawUnsafe` can't deserialize.
+      // Cast to `text` so the driver returns a plain string.
+      `SELECT table_name::text AS table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
     );
     actualTables = new Set(tableRows.map((r) => r.table_name));
 
     const colRows = await prisma.$queryRawUnsafe<{ table_name: string; column_name: string }[]>(
-      `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public'`,
+      // Both columns are the Postgres `name` type; cast to `text` (same
+      // reason as above).
+      `SELECT table_name::text AS table_name, column_name::text AS column_name FROM information_schema.columns WHERE table_schema = 'public'`,
     );
     for (const r of colRows) {
       if (!actualColumnsByTable.has(r.table_name)) actualColumnsByTable.set(r.table_name, new Set());
@@ -166,7 +171,10 @@ export async function GET(request: Request) {
     }
 
     const enumRows = await prisma.$queryRawUnsafe<{ enum_name: string; enum_value: string }[]>(
-      `SELECT t.typname AS enum_name, e.enumlabel AS enum_value
+      // `pg_type.typname` + `pg_enum.enumlabel` + `pg_namespace.nspname` are
+      // all the Postgres `name` type. Cast to `text` so Prisma can return
+      // them as plain strings.
+      `SELECT t.typname::text AS enum_name, e.enumlabel::text AS enum_value
        FROM pg_type t
        JOIN pg_enum e ON e.enumtypid = t.oid
        JOIN pg_namespace n ON n.oid = t.typnamespace
