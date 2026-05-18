@@ -198,4 +198,110 @@ Pure docs.
 ### PR
 
 - Branch: `claude/tech-debt-4-april-changelog-consolidation-MG8mr`
+- Status: **Merged 2026-05-19 (PR #804)** — Tech Debt #4 closed.
+
+---
+
+## Session 3: Tech Debt #5 + #6 — audit-style closures (doc-only)
+
+Branch: `claude/tech-debt-5-and-6-audit-closure-MG8mr`
+
+### Scope
+
+- **Type:** Documentation. No code change, no schema change. Two tech debt rows closed via audit.
+
+### Tech Debt #5 — Unused `_links` / `_meta` GRDCS fields
+
+**Original concern (2026-04-10):** "GRDCS wraps every entity by default; some surfaces never use them" — e.g. expense + income items.
+
+**Re-audit finding (2026-05-19):**
+
+7 routes wrap entities with `wrapWithGRDCS`:
+- `/api/loans`
+- `/api/expenses`
+- `/api/properties`
+- `/api/income`
+- `/api/accounts`
+- `/api/investments/holdings`
+- `/api/investments/accounts`
+
+8 consumer surfaces read `_links` / `_meta`:
+- `/dashboard/expenses` (page)
+- `/dashboard/income` (page)
+- `/dashboard/investments/accounts` (page)
+- `/dashboard/investments/holdings` (page)
+- `/dashboard/investments/transactions` (page)
+- `/dashboard/properties` (page)
+- `<AccountDetailDialog>` (used on `/dashboard/balances`)
+- `<LoanDetailDialog>` (used on `/dashboard/balances`)
+
+**Conclusion:** every wrapped entity has at least one consumer surface that renders `_links` / `_meta`. The 2026-04-10 premise was stale — Phase 37 (My Budget IA simplification) + Phase 38 (My Vault) closed the gap by wiring the expense/income detail dialogs that didn't exist when the tech debt was filed.
+
+**Closed.** No code change needed.
+
+### Tech Debt #6 — `DIRECT_URL` env var
+
+**Original concern (filed during WIF planning):** "If we never run migrations from Vercel runtime, only locally / via `vercel-build`, this might be unused".
+
+**Re-audit finding (2026-05-19):**
+
+```bash
+grep -rnE "DIRECT_URL\b" --include="*.ts" --include="*.tsx" --include="*.json" --include="*.prisma" --include="*.md" --include="*.sh"
+```
+
+Returns **ZERO references** in source / config / scripts (the only hit is the tech debt row itself in `IMPLEMENTATION_PLAN.md`).
+
+The Prisma datasource block:
+```prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+```
+References only `DATABASE_URL` (no `directUrl = env("DIRECT_URL")` line).
+
+`vercel-build` runs `prisma migrate deploy` using `DATABASE_URL` only.
+
+**Conclusion:** `DIRECT_URL` is genuinely unused. If Vercel has it set as an env var, no code reads it.
+
+**Closed** with a Reza-side action: new console row #22 added — "Delete `DIRECT_URL` env var from Vercel (if present)" — 30 seconds in Vercel Project Settings → Environment Variables (all 3 scopes: Production / Preview / Development).
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `docs/IMPLEMENTATION_PLAN.md` | Tech Debt #5 + #6 rows marker rolled to closed; Phase 0 Reza-side console row #22 added (delete `DIRECT_URL`); Recently Completed 2026-05-19 entry |
+| `docs/changelog/CHANGELOG_2026_05_19.md` | This Session 3 entry |
+
+### Doc-sync (CLAUDE.md §16) — full block
+
+Surfaces changed in this PR:
+- [ ] visual design system
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] **operational procedure** — 2 tech debt audits closed; 1 console row added
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` (Tech Debt #5 + #6 closed + console row #22 added + Recently Completed entry)
+- `docs/changelog/CHANGELOG_2026_05_19.md` (this Session 3 entry)
+
+### §12.11 / §12.12 / §12.14 — N/A
+
+Pure docs.
+
+### Day's tally — Day 2 (2026-05-19) — 3 PRs
+
+| PR | Title | Closed |
+|---|---|---|
+| #803 | §6A.1 #3 — Confidence indicators | §6A.1 6/6 ✅ |
+| #804 | Tech Debt #4 — April changelog consolidation | Tech Debt #4 |
+| (this) | Tech Debt #5 + #6 audit closures | Tech Debt #5 + #6 |
+
+### PR
+
+- Branch: `claude/tech-debt-5-and-6-audit-closure-MG8mr`
 - Status: Open
