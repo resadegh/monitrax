@@ -73,6 +73,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { DataSourceChip } from '@/components/accounts/DataSourceChip';
+import { UpgradeAccountButton } from '@/components/accounts/UpgradeAccountButton';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { formatCurrency } from '@/lib/utils/formatters';
 // SSOT (CLAUDE.md §12.2): use the existing canonical primitive in
@@ -113,6 +115,14 @@ export interface AccountDetail {
   institution?: string | null;
   currentBalance: number;
   interestRate?: number | null;
+  /**
+   * Phase 12 PR 3c.2 (visibility + upgrade path) — `BalanceSource` enum
+   * value: 'MANUAL' | 'IMPORT' | 'BASIQ' | 'USER_VERIFIED'. Surfaces a
+   * chip in the Overview tab + gates the upgrade-button rendering.
+   */
+  balanceSource?: string | null;
+  /** ISO timestamp of the last time the balance was refreshed (any source). */
+  balanceLastUpdatedAt?: string | null;
   transactions?: AccountDetailTransaction[];
   linkedLoan?: AccountDetailLinkedLoan | null;
   _links?: {
@@ -334,6 +344,31 @@ export function AccountDetailDialog({
                       {account.transactions?.length || 0}
                     </span>
                   </div>
+                  {/* Phase 12 PR 3c.2 — Data source row. Renders the
+                      same chip the account-list view uses. When the
+                      source is MANUAL or USER_VERIFIED, the upgrade
+                      button below offers the two faster tiers. */}
+                  {account.balanceSource && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Data source</span>
+                      <DataSourceChip
+                        balanceSource={account.balanceSource}
+                        balanceLastUpdatedAt={account.balanceLastUpdatedAt}
+                      />
+                    </div>
+                  )}
+                  {(account.balanceSource === 'MANUAL' ||
+                    account.balanceSource === 'USER_VERIFIED') && (
+                    <div className="pt-2 border-t border-border/40 space-y-2">
+                      <p className="text-xs text-muted-foreground">
+                        Keep this balance fresh — connect a feed or upload a statement.
+                      </p>
+                      <UpgradeAccountButton
+                        balanceSource={account.balanceSource}
+                        onBeforeNavigate={() => onOpenChange(false)}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
