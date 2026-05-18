@@ -21,6 +21,7 @@ import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useOrganization } from '@/lib/portal';
+import { useAuth } from '@/lib/context/AuthContext';
 import { PracticeGlassCard } from '@/components/portal/practice';
 
 interface RequestDetail {
@@ -67,6 +68,12 @@ export default function PortalRequestDetailPage({ params }: { params: Promise<{ 
   const { id } = use(params);
   const router = useRouter();
   const { currentOrg } = useOrganization();
+  const { token } = useAuth();
+  // 2026-05-18 — auth header required; without it the 401 trips
+  // SessionExpiryHandler → logout. See Tech Debt #20.
+  const authHeaders: HeadersInit | undefined = token
+    ? { Authorization: `Bearer ${token}` }
+    : undefined;
 
   const [data, setData] = useState<RequestDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -89,6 +96,7 @@ export default function PortalRequestDetailPage({ params }: { params: Promise<{ 
       params.set('organizationId', orgId);
       const res = await fetch(`/api/portal/professional-requests/${id}?${params.toString()}`, {
         cache: 'no-store',
+        headers: authHeaders,
       });
       if (!res.ok) {
         const json = await res.json().catch(() => null);
@@ -101,7 +109,7 @@ export default function PortalRequestDetailPage({ params }: { params: Promise<{ 
     } finally {
       setIsLoading(false);
     }
-  }, [id, orgId]);
+  }, [id, orgId, authHeaders]);
 
   useEffect(() => {
     void load();
@@ -115,7 +123,10 @@ export default function PortalRequestDetailPage({ params }: { params: Promise<{ 
       try {
         const res = await fetch(`/api/portal/professional-requests/${id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           body: JSON.stringify({
             action,
             organizationId: orgId,

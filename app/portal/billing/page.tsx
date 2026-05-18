@@ -18,6 +18,7 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useAuth } from '@/lib/context/AuthContext';
 import { useOrganization } from '@/lib/portal';
 import { PracticeGlassCard } from '@/components/portal/practice';
 import { PortalPageHero } from '@/components/shell';
@@ -109,6 +110,14 @@ function BillingContent() {
   const checkoutCancelled = searchParams.get('cancelled') === 'true';
 
   const { currentOrg } = useOrganization();
+  const { token } = useAuth();
+  // 2026-05-18 — Authorization header on every /api/portal/billing/* fetch.
+  // Without it, the 401 trips `SessionExpiryHandler` (app/layout.tsx) which
+  // interprets "no auth header on 401" as session-gone → logs the user out.
+  const authHeaders = (extra?: Record<string, string>): Record<string, string> => ({
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(extra ?? {}),
+  });
   const [status, setStatus] = useState<BillingStatus | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,7 +140,7 @@ function BillingContent() {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/portal/billing?organizationId=${orgId}`, { cache: 'no-store' });
+      const res = await fetch(`/api/portal/billing?organizationId=${orgId}`, { cache: 'no-store', headers: authHeaders() });
       if (!res.ok) {
         const json = await res.json().catch(() => null);
         throw new Error(json?.error?.message ?? 'Failed to load billing status');
@@ -156,7 +165,7 @@ function BillingContent() {
     try {
       const res = await fetch('/api/portal/billing/subscribe', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ organizationId: orgId, planTier: tier }),
       });
       const json = await res.json();
@@ -177,7 +186,7 @@ function BillingContent() {
     try {
       const res = await fetch('/api/portal/billing/cancel', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ organizationId: orgId }),
       });
       const json = await res.json();
@@ -197,7 +206,7 @@ function BillingContent() {
     try {
       const res = await fetch('/api/portal/billing/resume', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify({ organizationId: orgId }),
       });
       const json = await res.json();
@@ -423,6 +432,7 @@ const LEAD_FEE_STATUS_PILL: Record<string, { label: string; classes: string }> =
 };
 
 function LeadFeeInvoiceHistory({ orgId }: { orgId: string | null }) {
+  const { token } = useAuth();
   const [items, setItems] = useState<LeadFeeInvoiceRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -432,6 +442,7 @@ function LeadFeeInvoiceHistory({ orgId }: { orgId: string | null }) {
       try {
         const res = await fetch(`/api/portal/billing/invoices?organizationId=${orgId}`, {
           cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
         if (!res.ok) return;
         const json = await res.json();
@@ -441,7 +452,7 @@ function LeadFeeInvoiceHistory({ orgId }: { orgId: string | null }) {
       }
     };
     void load();
-  }, [orgId]);
+  }, [orgId, token]);
 
   return (
     <PracticeGlassCard padding="md">
