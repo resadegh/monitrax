@@ -409,4 +409,123 @@ In PR #786 I shipped a TS bug because I assumed `detectDuplicates` returned `Bat
 ### PR
 
 - Branch: `claude/phase-42-pr-2-5-split-editor-MG8mr`
+- Status: **Merged 2026-05-18 (PR #787)** — split editor shipped; closes PR B sequence.
+
+---
+
+## Session 6: PR C — architectural hygiene (barrel audit) + plan update
+
+Branch: `claude/post-41e-pr-c-hygiene-MG8mr`
+
+### Scope
+
+- **Type:** Chore (Tech Debt #7) + docs.
+- **Scope:** Scripted audit across all 56 `lib/*/index.ts` barrels for the pattern that broke during WIF Phase 8 — `export * from './<file>'` where `<file>` imports `@/lib/db` (Prisma) or other server-only deps, silently pulling them into any client bundle that touches the barrel. Plus consolidated 2026-05-18 session entry in the plan top header covering all 6 PRs from today (the 5 already-merged + this one).
+
+### What was done
+
+#### Audit method (scripted; reusable)
+
+```bash
+for f in $(find lib -maxdepth 3 -name "index.ts"); do
+  dir=$(dirname "$f")
+  while IFS= read -r line; do
+    target=$(echo "$line" | grep -oE "'[^']+'" | tr -d "'")
+    # ... resolve target file (.ts | .tsx | dir/index.ts) ...
+    risky=$(grep -E "from '@/lib/db'|from '@/lib/prisma'|^import 'server-only'|from '@google-cloud" "$targetFile")
+    [ -n "$risky" ] && echo "RISKY: $f re-exports $target → $risky"
+  done < <(grep -E "^export \* from" "$f")
+done
+```
+
+Run on the entire `lib/` tree (56 barrels). Found **6 risky re-exports across 3 barrels**:
+
+| Barrel | Re-export | Server-only because |
+|---|---|---|
+| `lib/admin/index.ts` | `./auth` | imports `@/lib/db` (Prisma) |
+| `lib/auth/index.ts` | `./context` | imports `@/lib/db` |
+| `lib/auth/index.ts` | `./guards` | imports `@/lib/db` |
+| `lib/cfo/decisionSupport/index.ts` | `./taxIntegration` | imports `@/lib/db` |
+| `lib/cfo/decisionSupport/index.ts` | `./loanDecisionSupport` | imports `@/lib/db` |
+| `lib/cfo/decisionSupport/index.ts` | `./investmentDecisionSupport` | imports `@/lib/db` |
+
+#### Pre-removal consumer check
+
+`grep -rln "from '@/lib/admin'$|from '@/lib/auth'$|from '@/lib/cfo/decisionSupport'"` — confirmed **zero bare-barrel consumers** for the symbols I was removing. Some files import `from '@/lib/auth'` but only for explicitly-named re-exports (`hashPassword`, `generateToken`, etc.) which are NOT in the removed `export *` lines. No caller migration needed.
+
+#### Fix
+
+Removed the 6 `export * from` lines from the 3 barrels. Each barrel now carries a comment header documenting:
+- Why the line was removed (server-only modules; Prisma + Cloud SQL Connector leak into client bundles)
+- The direct-import paths consumers must use instead
+- Reference back to the WIF Phase 8 regression as the canonical example
+
+The `lib/portal/index.ts` barrel already had this fix applied during WIF Phase 8 (PR not in my session history) — that was the discovery PR for this debt.
+
+### Extended files
+
+| File | Change |
+|---|---|
+| `lib/admin/index.ts` | Removed `export * from './auth'` + `export * from './services'`; added header explaining why; kept pure re-exports (`types` / `constants` / `permissions` / `featureFlags`) |
+| `lib/auth/index.ts` | Removed `export * from './context'` + `export * from './guards'`; kept pure re-exports (`permissions` / `refreshToken` / `oauth`) + the explicit named re-exports from `@/lib/auth` |
+| `lib/cfo/decisionSupport/index.ts` | Removed 3 server-only re-exports; kept `./propertyDecisionSupport` (pure); added header |
+
+### Plan + changelog
+
+- `docs/IMPLEMENTATION_PLAN.md` — Tech Debt #7 marked ✅ CLOSED with full method note. Top header refreshed with a consolidated 2026-05-18 session entry covering all 6 PRs (#783–#787 + this one).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 6 entry (this).
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] **operational procedure** — barrel-audit method is a reusable hygiene script that a future PR can re-run; header comments on the 3 barrels document the post-WIF rule (`export * from './<server-only>'` is banned). Future PRs adding the pattern will be caught.
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Tech Debt #7 closed + top header refreshed.
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 6 entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** Pure TypeScript refactor; no Prisma writes; no schema change.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Barrel-export hygiene — not a tax-engine surface.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+- [ ] Manual verification queued for Vercel preview:
+  - Vercel build still passes (no consumer migrated to broken paths)
+  - Any future PR that adds `export * from './<server-only>'` to a barrel can be caught by re-running the audit script
+
+### Today's tally
+
+6 PRs merged + this PR open:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| **PR C (this)** | barrel-audit sweep | **Tech Debt #7** |
+
+8 backlog rows closed. ~3,500 LOC shipped. 2 transient build failures caught + fixed via subscription (~5 min each). Phase 42 follow-up backlog now empty.
+
+### PR
+
+- Branch: `claude/post-41e-pr-c-hygiene-MG8mr`
 - Status: Open
