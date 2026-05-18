@@ -15,6 +15,7 @@ import { AdminButton, IconButton } from '@/components/admin/ui/AdminButton';
 import { AdminBadge } from '@/components/admin/ui/AdminBadge';
 import { Input, Select } from '@/components/admin/ui/AdminForm';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
+import { CreateFlagModal } from '@/components/admin/feature-flags/CreateFlagModal';
 
 interface FeatureFlag {
   id: string;
@@ -278,6 +279,19 @@ export default function FeatureFlagsPage() {
           </div>
         </div>
       </AdminCard>
+
+      {/*
+       * Tech Debt #19 — modal that the `+Create Flag` button has been
+       * toggling (`showModal` state) since Phase 33 shipped. Filled in
+       * 2026-05-17. Canonical path for new flags remains the seed
+       * (`prisma/seed-feature-flags.ts` auto-runs on every `vercel-build`);
+       * this modal is the escape hatch for ad-hoc one-offs.
+       */}
+      <CreateFlagModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        onCreated={fetchFlags}
+      />
     </AdminFeatureGate>
   );
 }
