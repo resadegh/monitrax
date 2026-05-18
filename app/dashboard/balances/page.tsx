@@ -57,8 +57,9 @@ import {
 import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
 import { HiddenWealthLens } from '@/components/balances/HiddenWealthLens';
-import { DataSourceChip } from '@/components/accounts/DataSourceChip';
+import { DataSourceChip, isBalanceStale } from '@/components/accounts/DataSourceChip';
 import { StaleBalanceNudge } from '@/components/dashboard/StaleBalanceNudge';
+import { ConfidenceIndicator } from '@/components/dashboard/ConfidenceIndicator';
 import type { HiddenWealthResponse } from '@/app/api/dashboard/hidden-wealth/route';
 import { useBasiqConnect } from '@/hooks/useBasiqConnect';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
@@ -798,7 +799,40 @@ function BalancesPageContent() {
             <Skeleton className="h-24 w-full max-w-md mt-4" />
           ) : (
             <div className="mt-6 anim-rise">
-              <div className="text-sm text-muted-foreground mb-1">Net position</div>
+              <div className="text-sm text-muted-foreground mb-1 flex items-center gap-2">
+                <span>Net position</span>
+                {/* Phase 12 PR 3c.2e — confidence indicator. Renders only
+                    when ≥1 MANUAL account is stale. Derived inline
+                    using the same `isBalanceStale` SSOT the chip and
+                    nudge use. Links to Settings > Data Health. */}
+                {(() => {
+                  const stale = accounts.filter((a) => isBalanceStale(a.balanceSource, a.balanceLastUpdatedAt));
+                  if (stale.length === 0) return null;
+                  let oldest: number | null = null;
+                  const NOW = Date.now();
+                  const DAY_MS = 86_400_000;
+                  for (const a of stale) {
+                    if (!a.balanceLastUpdatedAt) continue;
+                    const d = Math.floor((NOW - new Date(a.balanceLastUpdatedAt).getTime()) / DAY_MS);
+                    if (oldest === null || d > oldest) oldest = d;
+                  }
+                  const summary =
+                    oldest === null
+                      ? `${stale.length} manual ${stale.length === 1 ? 'balance has' : 'balances have'} no last-updated date.`
+                      : `${stale.length} manual ${stale.length === 1 ? 'balance' : 'balances'} last updated ${oldest === 1 ? '1 day' : `${oldest} days`} ago.`;
+                  return (
+                    <ConfidenceIndicator
+                      staleness={{
+                        anyStale: true,
+                        summary,
+                        staleManualCount: stale.length,
+                        oldestManualAgeDays: oldest,
+                      }}
+                      size="compact"
+                    />
+                  );
+                })()}
+              </div>
               <div
                 className={`text-5xl sm:text-6xl font-semibold tracking-tight tabular-nums ${
                   totals.net >= 0 ? 'text-foreground' : 'text-rose-600'

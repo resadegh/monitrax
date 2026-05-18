@@ -226,6 +226,45 @@ export interface HealthScoreMetrics {
  * Complete Master Financial Snapshot
  * This is the canonical data structure for all financial data
  */
+/**
+ * Phase 12 PR 3c.2e — Staleness metadata for derived metrics.
+ *
+ * Every metric in this snapshot that depends on `Account.currentBalance`
+ * (net worth, liquid cash, emergency fund, cashflow forecast — almost
+ * everything in `quickMetrics`) inherits the freshness of the underlying
+ * balances. This block exposes the aggregate freshness signal so
+ * consumer surfaces can render a `<ConfidenceIndicator>` tooltip when
+ * the underlying balances are stale.
+ *
+ * The staleness rule is the SSOT from PR F (`isBalanceStale` in
+ * `components/accounts/DataSourceChip.tsx`): a MANUAL account whose
+ * `balanceLastUpdatedAt` is null OR ≥ `MANUAL_STALE_THRESHOLD_DAYS`
+ * (14d) old. BASIQ / IMPORT / USER_VERIFIED accounts are never stale
+ * by this definition because they're either live-fed or recently
+ * re-affirmed.
+ *
+ * Per CLAUDE.md §12.2 SSOT — this block is derived from the same
+ * accounts array the rest of the snapshot reads; never re-fetched.
+ */
+export interface StalenessMetadata {
+  /** Number of accounts with a MANUAL balance that hasn't been refreshed in ≥14 days. */
+  staleManualCount: number;
+  /** Total MANUAL accounts (stale + fresh). */
+  totalManualCount: number;
+  /** Oldest `balanceLastUpdatedAt` age (in days) across MANUAL accounts; null if no MANUAL accounts. */
+  oldestManualAgeDays: number | null;
+  /**
+   * `true` when at least 1 MANUAL account is stale. Derived metrics
+   * should render a confidence indicator when this is `true`.
+   */
+  anyStale: boolean;
+  /**
+   * Human-readable summary, e.g. "3 manual balances last updated 47 days ago".
+   * Null when nothing is stale. Surface this verbatim in tooltip copy.
+   */
+  summary: string | null;
+}
+
 export interface MasterFinancialSnapshot {
   // Metadata
   userId: string;
@@ -305,6 +344,14 @@ export interface MasterFinancialSnapshot {
     keptMargin: number;               // *Phase 43 — keptAfterEssentials / monthlyGrossIncome × 100 (%, 0 when no income)
     freeCashDays: number;             // *Phase 43 — liquidCash ÷ daily expense burn ("Free today" expressed in days; 0 when expenses are 0)
   };
+
+  /**
+   * Phase 12 PR 3c.2e — Confidence signal for derived metrics.
+   * Always present (even when zero MANUAL accounts; `anyStale = false`,
+   * `summary = null`). Consumer UI gates the confidence indicator on
+   * `anyStale === true`.
+   */
+  staleness: StalenessMetadata;
 
   // Phase 32B PR3 — viewer context (only present when fetched through the
   // professional drill-in path). Allows the UI to render scope badges and
@@ -394,6 +441,11 @@ interface RawAccount {
   name: string;
   type: string;
   currentBalance: number;
+  // Phase 12 PR 3c.2e — staleness inputs for derived-metric confidence.
+  // The select clause in `gatherUserData` includes these; consumers
+  // outside the staleness path can ignore them.
+  balanceSource?: string | null;
+  balanceLastUpdatedAt?: Date | null;
 }
 
 interface RawLoan {
@@ -525,6 +577,15 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         name: true,
         type: true,
         currentBalance: true,
+        // Phase 12 PR 3c.2e (confidence indicators on derived metrics)
+        // — every metric that reads from `currentBalance` (net worth,
+        // liquid cash, emergency fund, cashflow forecast — almost
+        // everything) inherits the freshness of these inputs. Exposed
+        // as a `staleness` block on the snapshot output so consumer
+        // surfaces (`<ConfidenceIndicator>`) can render a small
+        // tooltip when underlying balances are stale.
+        balanceSource: true,
+        balanceLastUpdatedAt: true,
       },
     }),
     prisma.loan.findMany({
@@ -1652,6 +1713,46 @@ async function computeMasterFinancialSnapshot(
     .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
     .reduce((sum, a) => sum + a.currentBalance, 0);
 
+  // Phase 12 PR 3c.2e — derive the staleness metadata from the same
+  // accounts array. SSOT: the rule lives in
+  // `components/accounts/DataSourceChip.tsx` (`isBalanceStale` +
+  // `MANUAL_STALE_THRESHOLD_DAYS = 14`) — kept in lockstep here.
+  // Service-side replication is intentional: this file must not import
+  // from `components/*` (would bundle React into the service layer).
+  const STALENESS_THRESHOLD_DAYS = 14;
+  const NOW = Date.now();
+  const DAY_MS = 86_400_000;
+  const manualAccounts = data.accounts.filter((a) => a.balanceSource === 'MANUAL');
+  let staleManualCount = 0;
+  let oldestStaleAgeDays: number | null = null;
+  for (const a of manualAccounts) {
+    let ageDays: number;
+    if (!a.balanceLastUpdatedAt) {
+      // No timestamp at all → treat as stale by definition (same as `isBalanceStale`).
+      ageDays = Number.POSITIVE_INFINITY;
+    } else {
+      ageDays = Math.floor((NOW - new Date(a.balanceLastUpdatedAt).getTime()) / DAY_MS);
+    }
+    if (ageDays >= STALENESS_THRESHOLD_DAYS) {
+      staleManualCount++;
+      if (oldestStaleAgeDays === null || ageDays > oldestStaleAgeDays) {
+        oldestStaleAgeDays = Number.isFinite(ageDays) ? ageDays : null;
+      }
+    }
+  }
+  const anyStale = staleManualCount > 0;
+  const staleness: StalenessMetadata = {
+    staleManualCount,
+    totalManualCount: manualAccounts.length,
+    oldestManualAgeDays: oldestStaleAgeDays,
+    anyStale,
+    summary: !anyStale
+      ? null
+      : oldestStaleAgeDays === null
+        ? `${staleManualCount} manual ${staleManualCount === 1 ? 'balance has' : 'balances have'} no last-updated date.`
+        : `${staleManualCount} manual ${staleManualCount === 1 ? 'balance' : 'balances'} last updated ${oldestStaleAgeDays === 1 ? '1 day' : `${oldestStaleAgeDays} days`} ago.`,
+  };
+
   // Build emergency fund metrics
   const emergencyFund = buildEmergencyFundMetrics(
     liquidCash,
@@ -1739,6 +1840,11 @@ async function computeMasterFinancialSnapshot(
           ? liquidCash / (monthlyExpenses.all.total / 30)
           : 0,
     },
+
+    // Phase 12 PR 3c.2e — confidence signal for every derived metric
+    // above that reads from `Account.currentBalance`. UI surfaces gate
+    // `<ConfidenceIndicator>` rendering on `staleness.anyStale`.
+    staleness,
   };
 }
 

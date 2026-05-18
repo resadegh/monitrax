@@ -1141,7 +1141,9 @@ See `PHASE_12_CONVERSATIONAL_ONBOARDING.md` §4a.6 + §8 risk row **E-R11 (Perso
 | `StaleBalanceNudge` | `components/dashboard/StaleBalanceNudge.tsx` | Top-of-page banner on `/dashboard/balances`. Fires when ≥1 MANUAL account ≥14 days. Session-only dismiss via sessionStorage. Basiq CTA gated on `useBasiqEnabled()`. |
 | `UpgradeAccountButton` | `components/accounts/UpgradeAccountButton.tsx` | 2-CTA row: Connect via Basiq (gated) + Upload statement. Renders nothing for BASIQ/IMPORT. `compact` size strips icons + shortens labels. Optional `onBeforeNavigate` for caller-side close hooks. |
 | `BalanceUpgradeNudgeModal` | `components/onboarding/BalanceUpgradeNudgeModal.tsx` | First-visit modal. 3-CTA stack (Connect via Basiq + Upload statement + Keep manual). Any CTA flips server flag forward via `POST /api/settings/balance-upgrade-nudge`. ESC + click-outside also flip the flag (no escape hatch). |
+| `ConfidenceIndicator` (PR 3c.2e, 2026-05-19) | `components/dashboard/ConfidenceIndicator.tsx` | Small amber "may be stale" chip rendered next to any derived metric (Net Position hero today; portable to other tiles in follow-up). Renders nothing when `staleness.anyStale === false`. Links to Settings > Data Health. Amber not red — informational, not alarming. |
 | `balanceWriteFields` | `lib/utils/accountBalance.ts` | NOT a UI primitive but the **load-bearing data-write companion**. Every `prisma.account.{create, update, upsert}` that writes `currentBalance` MUST spread `...balanceWriteFields(source)`. Reviewer-reject rule documented in file JSDoc. |
+| `StalenessMetadata` (PR 3c.2e, 2026-05-19) | `lib/services/masterFinancialService.ts` | Service-layer companion. Block on every `MasterFinancialSnapshot`: `{ staleManualCount, totalManualCount, oldestManualAgeDays, anyStale, summary }`. Consumer surfaces pass it to `<ConfidenceIndicator>` unchanged. |
 
 ## 15.2 Reuse policy
 
