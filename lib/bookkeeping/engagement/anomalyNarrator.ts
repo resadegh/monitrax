@@ -29,7 +29,6 @@ import prisma from '@/lib/db';
 import {
   generateAnthropicCompletion,
   isAnthropicConfigured,
-  ANTHROPIC_MODELS,
 } from '@/lib/ai/anthropic';
 
 /**
@@ -152,9 +151,9 @@ async function callAnthropicForNarration(
   ].join('\n');
 
   const result = await generateAnthropicCompletion({
-    model: ANTHROPIC_MODELS.HAIKU,
+    model: 'HAIKU',
     messages: [{ role: 'user', content: userMessage }],
-    systemPrompt: SYSTEM_PROMPT,
+    system: SYSTEM_PROMPT,
     maxTokens: 100,
   });
 
