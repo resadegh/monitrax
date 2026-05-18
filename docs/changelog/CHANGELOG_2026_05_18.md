@@ -233,4 +233,94 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-42-pr-5-6-vendor-drawer-MG8mr`
+- Status: **Merged 2026-05-18 (PR #785)**.
+
+---
+
+## Session 4: PR B3 — Phase 42 PR 4.5 Import Wizard dry-run preview
+
+Branch: `claude/phase-42-pr-4-5-import-dryrun-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 42 PR 4.5 — Import Wizard dry-run preview).
+- **Scope:** Add a `dryRun` form-data field to `/api/bank/import` that early-returns after duplicate detection with statistics + sample. New `dryrun` step in `ImportWizard.tsx` renders the preview + policy picker between `settings` → `importing`.
+- **CDR scope:** N/A — dedup happens server-side against rows the user already owns; sample dropped to UI shows only descriptions + amounts + dates (no account ids).
+
+### What was done
+
+#### Extended file: `app/api/bank/import/route.ts`
+
+- Accepts `dryRun=true` form-data field.
+- When set, early-returns right after `detectDuplicates()` (before `applyDuplicatePolicy`, categorisation, or any DB write).
+- Response shape:
+  ```ts
+  { success: true, data: {
+    dryRun: true,
+    total: number,
+    statistics: { total, new, exactDuplicates, fuzzyDuplicates, potentialMerges },
+    sampleDuplicates: [ { status, similarityScore, candidate, existing } ]  // up to 10 trimmed
+  }}
+  ```
+- No new endpoint — minimum-touch extension of the existing route.
+
+#### Extended file: `components/bank/ImportWizard.tsx`
+
+- `WizardStep` union extended: `'upload' | 'preview' | 'settings' | 'dryrun' | 'importing' | 'complete'`.
+- New state: `dryRunResult` + `dryRunLoading`.
+- New handler: `handleDryRun()` — calls `/api/bank/import` with `dryRun=true`, populates state, advances step.
+- Settings-step "Import" button → "Preview N Transactions" → calls `handleDryRun`.
+- New `dryrun` step UI: 4 stat tiles (emerald/slate/amber/sky) + sample list (max 48px-tall scrollable, max 10 entries) + duplicate-policy radio picker (REJECT / OVERWRITE / IMPORT) + commit button shows per-policy count.
+- Existing `handleImport` unchanged; just gated behind the dry-run step.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `app/api/bank/import/route.ts` | +47 lines (dry-run formData + early-return block) |
+| `components/bank/ImportWizard.tsx` | +160 lines (DryRunResult type + state + handler + dryrun step UI + repointed Settings button) |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next row 46 closed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | Session 4 entry (this) |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Wizard step + backend flag — no §16.2 surface materially changed. The wizard's UX is unchanged for the happy path (file → preview → settings → import); the dry-run step is one extra screen showing the dedup picture before commit.
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 46 closed.
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 4 entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** The dry-run path explicitly *avoids* all writes (it's the whole point). The existing import write path is unchanged.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Import Wizard — not a tax-engine surface.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+- [ ] Manual verification queued for Vercel preview:
+  - Upload a CSV → preview → settings → click "Preview N Transactions" → see dedup tiles + sample + policy picker → choose policy → click "Import" → write proceeds.
+  - Re-upload the same CSV → exact-duplicates count > 0 in dry-run.
+  - Choose OVERWRITE policy → button label updates to total count (not just new).
+
+### PR
+
+- Branch: `claude/phase-42-pr-4-5-import-dryrun-MG8mr`
 - Status: Open

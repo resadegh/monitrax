@@ -152,7 +152,26 @@ interface ImportWizardProps {
   onAccountCreated?: (account: Account) => void;
 }
 
-type WizardStep = 'upload' | 'preview' | 'settings' | 'importing' | 'complete';
+type WizardStep = 'upload' | 'preview' | 'settings' | 'dryrun' | 'importing' | 'complete';
+
+// Phase 42 PR 4.5 — dry-run preview shape (matches /api/bank/import
+// dry-run early-return contract).
+interface DryRunResult {
+  total: number;
+  statistics: {
+    total: number;
+    new: number;
+    exactDuplicates: number;
+    fuzzyDuplicates: number;
+    potentialMerges: number;
+  };
+  sampleDuplicates: Array<{
+    status: 'EXACT_DUPLICATE' | 'FUZZY_DUPLICATE' | 'POTENTIAL_MERGE';
+    similarityScore: number;
+    candidate: { date: string; amount: number; description: string };
+    existing: { date: string; amount: number; description: string } | null;
+  }>;
+}
 
 export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }: ImportWizardProps) {
   const { token } = useAuth();
@@ -161,6 +180,11 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
   const [preview, setPreview] = useState<PreviewData | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
   const [duplicatePolicy, setDuplicatePolicy] = useState<string>('REJECT');
+  // Phase 42 PR 4.5 — dry-run preview state (rendered between
+  // settings → importing). Surfaces N of M duplicates so user can
+  // adjust duplicatePolicy before commit.
+  const [dryRunResult, setDryRunResult] = useState<DryRunResult | null>(null);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
   const [updateAccountBalance, setUpdateAccountBalance] = useState<boolean>(false);
   const [autoLinkRecurring, setAutoLinkRecurring] = useState<boolean>(true);
   const [importing, setImporting] = useState(false);
@@ -289,6 +313,44 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
       setError(err instanceof Error ? err.message : 'Failed to preview file');
     }
   }, []);
+
+  // Phase 42 PR 4.5 — dry-run preview. Runs the same parse +
+  // duplicate detection as the real import, but returns counts +
+  // a small sample instead of writing rows. User picks their
+  // duplicatePolicy from this preview before committing.
+  const handleDryRun = async () => {
+    if (!file) return;
+    setDryRunLoading(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('dryRun', 'true');
+      if (selectedAccount) formData.append('accountId', selectedAccount);
+      if (preview?.suggestedMappings) {
+        formData.append('mappings', JSON.stringify(preview.suggestedMappings));
+      }
+      const res = await fetch('/api/bank/import', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.data) {
+        throw new Error(data?.error || 'Dry-run preview failed.');
+      }
+      setDryRunResult({
+        total: data.data.total,
+        statistics: data.data.statistics,
+        sampleDuplicates: data.data.sampleDuplicates ?? [],
+      });
+      setStep('dryrun');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Dry-run preview failed.');
+    } finally {
+      setDryRunLoading(false);
+    }
+  };
 
   // Handle import
   const handleImport = async () => {
@@ -793,18 +855,149 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
                 Back
               </Button>
               <Button
-                onClick={handleImport}
+                onClick={handleDryRun}
                 disabled={
                   preview.statistics.validTransactions === 0 ||
-                  !selectedAccount
+                  !selectedAccount ||
+                  dryRunLoading
                 }
                 title={
                   !selectedAccount
                     ? 'Select or create an account first'
-                    : undefined
+                    : 'Preview duplicates before commit'
                 }
               >
-                {preview.alreadyImported ? 'Re-import' : 'Import'} {preview.statistics.validTransactions} Transactions
+                {dryRunLoading
+                  ? 'Checking duplicates…'
+                  : `Preview ${preview.statistics.validTransactions} Transactions`}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 42 PR 4.5 — Dry-run preview step. Shows the dedup
+            picture BEFORE writing rows. User picks duplicatePolicy
+            from this screen, then clicks "Import these N transactions"
+            to commit. */}
+        {step === 'dryrun' && dryRunResult && (
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold mb-2">Duplicate check</h3>
+              <p className="text-sm text-muted-foreground">
+                {dryRunResult.statistics.exactDuplicates +
+                  dryRunResult.statistics.fuzzyDuplicates +
+                  dryRunResult.statistics.potentialMerges}{' '}
+                of {dryRunResult.total} transactions match something already in this account.
+              </p>
+            </div>
+
+            {/* Statistics tiles */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 p-2.5">
+                <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">New</p>
+                <p className="text-xl font-semibold text-emerald-900 dark:text-emerald-100 tabular-nums">
+                  {dryRunResult.statistics.new}
+                </p>
+              </div>
+              <div className="rounded-md border border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50 p-2.5">
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium">Exact duplicates</p>
+                <p className="text-xl font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                  {dryRunResult.statistics.exactDuplicates}
+                </p>
+              </div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-2.5">
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium">Fuzzy duplicates</p>
+                <p className="text-xl font-semibold text-amber-900 dark:text-amber-100 tabular-nums">
+                  {dryRunResult.statistics.fuzzyDuplicates}
+                </p>
+              </div>
+              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30 p-2.5">
+                <p className="text-xs text-sky-700 dark:text-sky-300 font-medium">Possible merges</p>
+                <p className="text-xl font-semibold text-sky-900 dark:text-sky-100 tabular-nums">
+                  {dryRunResult.statistics.potentialMerges}
+                </p>
+              </div>
+            </div>
+
+            {/* Sample duplicates */}
+            {dryRunResult.sampleDuplicates.length > 0 && (
+              <div>
+                <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
+                  Examples (showing up to {dryRunResult.sampleDuplicates.length} of{' '}
+                  {dryRunResult.statistics.exactDuplicates +
+                    dryRunResult.statistics.fuzzyDuplicates +
+                    dryRunResult.statistics.potentialMerges})
+                </p>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2">
+                  {dryRunResult.sampleDuplicates.map((d, i) => (
+                    <div key={i} className="text-xs flex items-start gap-2 py-1 border-b last:border-b-0 border-slate-100 dark:border-slate-800">
+                      <Badge variant="outline" className="shrink-0 text-[10px]">
+                        {d.status === 'EXACT_DUPLICATE'
+                          ? 'Exact'
+                          : d.status === 'FUZZY_DUPLICATE'
+                            ? 'Fuzzy'
+                            : 'Maybe'}
+                      </Badge>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-slate-700 dark:text-slate-300">
+                          {d.candidate.description} · ${Math.abs(d.candidate.amount).toFixed(2)}
+                        </p>
+                        {d.existing && (
+                          <p className="truncate text-slate-500 dark:text-slate-400 text-[11px]">
+                            matches: {d.existing.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Policy picker */}
+            <div>
+              <Label className="text-xs font-medium">How should duplicates be handled?</Label>
+              <div className="mt-1.5 space-y-1.5">
+                {[
+                  { value: 'REJECT', label: 'Skip duplicates (recommended)', desc: 'Only import new transactions.' },
+                  { value: 'OVERWRITE', label: 'Overwrite duplicates', desc: 'Replace existing rows with the imported ones.' },
+                  { value: 'IMPORT', label: 'Import everything as new', desc: 'Allow duplicate rows in the ledger.' },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={`flex items-start gap-2 rounded-md border p-2 cursor-pointer transition-colors ${
+                      duplicatePolicy === opt.value
+                        ? 'border-sky-500 bg-sky-50 dark:bg-sky-950/30'
+                        : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="dryrun-duplicate-policy"
+                      value={opt.value}
+                      checked={duplicatePolicy === opt.value}
+                      onChange={(e) => setDuplicatePolicy(e.target.value)}
+                      className="mt-0.5"
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex justify-between gap-2">
+              <Button variant="outline" onClick={() => setStep('settings')}>
+                Back
+              </Button>
+              <Button onClick={handleImport}>
+                Import{' '}
+                {duplicatePolicy === 'REJECT'
+                  ? dryRunResult.statistics.new
+                  : dryRunResult.total}{' '}
+                Transactions
               </Button>
             </div>
           </div>

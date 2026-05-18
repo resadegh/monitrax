@@ -36,6 +36,11 @@ export const POST = withPermission('account.write', async (request, auth) => {
       const updateAccountBalance = formData.get('updateAccountBalance') === 'true';
       const transactionLinksStr = formData.get('transactionLinks') as string | null;
       const autoLinkRecurring = formData.get('autoLinkRecurring') === 'true';
+      // Phase 42 PR 4.5 — when set, parse + detect duplicates + return
+      // the dedup preview WITHOUT writing rows. The Import Wizard calls
+      // this before the real commit so the user sees "N of M match
+      // existing — merge / overwrite / skip?" up front.
+      const dryRun = formData.get('dryRun') === 'true';
 
       // Parse transaction links: { [transactionIndex]: { type: 'income'|'expense', id: string } }
       interface TransactionLink {
@@ -296,6 +301,44 @@ export const POST = withPermission('account.write', async (request, auth) => {
           normalisationResult.transactions,
           existingNormalised
         );
+
+        // Phase 42 PR 4.5 — dry-run early return. Surfaces the dedup
+        // preview shape to the wizard without writing any rows /
+        // categorisation / linked-recurring side-effects. The user picks
+        // merge / overwrite / skip from this preview, then re-submits
+        // without `dryRun=true`.
+        if (dryRun) {
+          return NextResponse.json({
+            success: true,
+            data: {
+              dryRun: true,
+              total: parsedFile.transactions.length,
+              statistics: duplicateResult.statistics,
+              // Trimmed sample of up to 10 duplicates so the user can
+              // verify the matches without flooding the UI.
+              sampleDuplicates: [
+                ...duplicateResult.exactDuplicates.slice(0, 5),
+                ...duplicateResult.fuzzyDuplicates.slice(0, 3),
+                ...duplicateResult.potentialMerges.slice(0, 2),
+              ].map((d) => ({
+                status: d.status,
+                similarityScore: d.similarityScore,
+                candidate: {
+                  date: d.transaction.date.toISOString(),
+                  amount: d.transaction.amount,
+                  description: d.transaction.description,
+                },
+                existing: d.existingTransaction
+                  ? {
+                      date: d.existingTransaction.date.toISOString(),
+                      amount: d.existingTransaction.amount,
+                      description: d.existingTransaction.description,
+                    }
+                  : null,
+              })),
+            },
+          });
+        }
 
         // Apply duplicate policy
         const transactionsToImport = applyDuplicatePolicy(duplicateResult, duplicatePolicy);
