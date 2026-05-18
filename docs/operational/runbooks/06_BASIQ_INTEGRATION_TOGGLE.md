@@ -48,6 +48,11 @@ Defaults to `enabled=false`.
 | `/onboarding` wizard accounts step | "Tier 1 — Connect your bank" tile + the "or" divider hidden; only Import + Manual remain |
 | `/dashboard/settings/connections` page | Replaced with "Bank connections aren't available yet" notice |
 | `/dashboard/settings` sidebar nav | "Bank connections" entry hidden under "My money data" |
+| `<DataSourceChip>` (every account row, every dialog) — Phase 12 PR F | Still renders: when an account's `balanceSource` IS `BASIQ` (legacy data from when flag was ON), the chip truthfully shows the source. The chip describes existing state, never advertises Basiq. **Not gated**, by design. |
+| `<StaleBalanceNudge>` banner — Phase 12 PR F | "Connect via Basiq" CTA hidden; "Upload a statement" CTA remains. Audited + fixed 2026-05-18. |
+| `<UpgradeAccountButton>` (AccountDetailDialog Overview tab + heat-map page rows) — Phase 12 PR H | "Connect via Basiq" button hidden; "Upload statement" button remains. Gated from day one. |
+| `/dashboard/settings/data-health` heat-map footer copy — Phase 12 PR J | When flag OFF, footer drops the Basiq sentence; reads "Imported statements refresh per upload. Manual balances stay frozen until you update them." |
+| `<BalanceUpgradeNudgeModal>` first-visit modal — Phase 12 PR K | "Connect via Basiq" CTA hidden; the 3-button stack renders as 2 (Upload + Keep manual). Gated from day one. |
 | `POST /api/basiq/connect` | 503 `BASIQ_DISABLED` |
 | `GET /api/basiq/connections` | 503 `BASIQ_DISABLED` |
 | `GET /api/basiq/connections/[id]` | 503 `BASIQ_DISABLED` |

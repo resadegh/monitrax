@@ -1122,3 +1122,40 @@ This list exists to prevent persona drift. Adding any of these requires an expli
 - ❌ Cleo-style snark, Replika-style warmth, Schwabby-style cartoon
 
 See `PHASE_12_CONVERSATIONAL_ONBOARDING.md` §4a.6 + §8 risk row **E-R11 (Persona drift)** for the reviewer-reject rule.
+
+---
+
+# **15. Data Source Hygiene Primitives (Phase 12 PR 3c.1–3c.2d, 2026-05-18)**
+
+> **Canonical spec lives at** `docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md` **§6A**.
+> **Canonical BAU support doc lives at** `docs/operational/runbooks/10_DATA_SOURCE_HYGIENE.md`.
+> This section is a pointer + the cross-surface reuse rules.
+
+## 15.1 Primitives
+
+| Primitive | File | Role |
+|---|---|---|
+| `DataSourceChip` | `components/accounts/DataSourceChip.tsx` | The **one** UI element that turns `(balanceSource, balanceLastUpdatedAt)` into a user label. 5 visual states keyed by `(source, age)`: BASIQ=emerald / IMPORT=sky / USER_VERIFIED=indigo / MANUAL-fresh=slate / MANUAL-stale-≥14d=amber. Renders nothing when source is null. Default + `compact` size variants. |
+| `isBalanceStale` | exported from `DataSourceChip.tsx` | Pure predicate; SSOT for "is this balance stale?". Imported by `<StaleBalanceNudge>` + Settings > Data Health. Don't reimplement this rule anywhere else. |
+| `MANUAL_STALE_THRESHOLD_DAYS` | exported from `DataSourceChip.tsx` | Single number, single import. Currently `14`. |
+| `StaleBalanceNudge` | `components/dashboard/StaleBalanceNudge.tsx` | Top-of-page banner on `/dashboard/balances`. Fires when ≥1 MANUAL account ≥14 days. Session-only dismiss via sessionStorage. Basiq CTA gated on `useBasiqEnabled()`. |
+| `UpgradeAccountButton` | `components/accounts/UpgradeAccountButton.tsx` | 2-CTA row: Connect via Basiq (gated) + Upload statement. Renders nothing for BASIQ/IMPORT. `compact` size strips icons + shortens labels. Optional `onBeforeNavigate` for caller-side close hooks. |
+| `BalanceUpgradeNudgeModal` | `components/onboarding/BalanceUpgradeNudgeModal.tsx` | First-visit modal. 3-CTA stack (Connect via Basiq + Upload statement + Keep manual). Any CTA flips server flag forward via `POST /api/settings/balance-upgrade-nudge`. ESC + click-outside also flip the flag (no escape hatch). |
+| `balanceWriteFields` | `lib/utils/accountBalance.ts` | NOT a UI primitive but the **load-bearing data-write companion**. Every `prisma.account.{create, update, upsert}` that writes `currentBalance` MUST spread `...balanceWriteFields(source)`. Reviewer-reject rule documented in file JSDoc. |
+
+## 15.2 Reuse policy
+
+The `<DataSourceChip>` primitive is the **canonical balance-source label** anywhere an `Account.currentBalance` is rendered. Future surfaces:
+
+- Anywhere a balance appears (cashflow widgets, net-worth tiles, portfolio reports) → consider whether the staleness signal would help the user, and if yes, render the chip alongside the number. Don't reimplement the 5-state mapping inline.
+- Any new "is this stale?" check → import `isBalanceStale()`; don't write your own threshold. To change the threshold globally, edit `MANUAL_STALE_THRESHOLD_DAYS`.
+
+The `<UpgradeAccountButton>` primitive is the **canonical upgrade-CTA pair** for moving an account from MANUAL/USER_VERIFIED to BASIQ/IMPORT. Future surfaces that want to offer the upgrade journey use this — not inline `<Link>` to `?action=…`.
+
+## 15.3 Basiq feature-flag gating — the rule for all data-source-hygiene primitives
+
+Every Basiq CTA in this family of primitives MUST be gated by `useBasiqEnabled()` (client) and protected by `basiqRouteGuard()` (server). When the `BASIQ_INTEGRATION` flag is OFF, the Basiq button hides; the Upload + Keep-manual paths remain visible.
+
+The chip itself is **not** gated — when an account's `balanceSource` IS `BASIQ` (legacy data from when flag was ON), the chip truthfully renders "Synced X ago". The chip describes existing state; it never advertises Basiq.
+
+See `docs/operational/runbooks/06_BASIQ_INTEGRATION_TOGGLE.md` §2 for the exhaustive gating reference + `docs/operational/runbooks/10_DATA_SOURCE_HYGIENE.md` §4 for surface-by-surface gating notes.
