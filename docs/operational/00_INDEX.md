@@ -103,6 +103,7 @@ Step-by-step procedures for incident response and common support scenarios.
 | 08 | [Observability — SLOs & Alert Policies](runbooks/08_OBSERVABILITY_SLOS.md) | Application-level SLOs (availability 99.5%; p95/p99 latency + 5xx error-rate targets per route group) + Cloud Monitoring alert-policy specs A1–A9 (each with a runbook link) + synthetic-canary plan + Service Health dashboard tiles + review cadence + a "live vs spec-only" status table. Complements (does not duplicate) the DB-level monitoring in `database/03_MONITORING_AND_ALERTS.md`. |
 | 09 | [GTM Founder Daily Digest](runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md) | n8n workflow operator reference for the daily 07:00 Sydney founder digest email — credentials, cron, prompt, common failure modes. |
 | 10 | [Data Source Hygiene](runbooks/10_DATA_SOURCE_HYGIENE.md) | Support reference for the 5 user-facing surfaces shipped 2026-05-18 (Phase 12 PR 3c.1–3c.2d): `<DataSourceChip>`, `<StaleBalanceNudge>` banner, `<UpgradeAccountButton>`, Settings > Data Health heat-map, `<BalanceUpgradeNudgeModal>` first-visit modal. Includes the shared SSOTs (`balanceWriteFields` / `isBalanceStale` / `MANUAL_STALE_THRESHOLD_DAYS`), exhaustive Basiq-flag gating list, support cheat-sheet for common user questions, and engineering invariants for future PRs. |
+| 11 | [Email Notifications Audit](runbooks/11_EMAIL_NOTIFICATIONS_AUDIT.md) | Audit of every email-out code path (2026-05-18). Maps the 5 live paths (verification / MFA / conversation / calc-audit / Firebase password-reset) + the 4 UI-promised-but-not-wired toggles on `/dashboard/settings/notifications` (Weekly Digest / Monthly Report / Important Alerts / Product Updates). Documents recommended sequencing (Resend SSOT helper → Important Alerts → Monthly Report → Weekly Digest → Product Updates broadcast), CDR/§13.3 constraints, throttling + unsubscribe-link requirements, 4 Open Questions for Reza. Closes Up Next #62. |
 
 ### Feedback (Phase 33g)
 
@@ -133,7 +134,7 @@ Vendor inventory + spend caps. SSOT for "what does Monitrax pay for?"
 | Deployment (01-03) | 3 | Current |
 | Database (01-04) | 4 | Current |
 | Security (01-04) | 4 | Current |
-| Runbooks (01-10) | 10 | Current |
+| Runbooks (01-11) | 11 | Current |
 | Feedback (00-01) | 2 | Current |
 
 ---
@@ -150,4 +151,4 @@ Vendor inventory + spend caps. SSOT for "what does Monitrax pay for?"
 
 ---
 
-Last Updated: 2026-05-18 — added runbook 10 (Data Source Hygiene) covering the 5 user-facing balance-freshness surfaces shipped 2026-05-18 (Phase 12 PR 3c.1–3c.2d). Earlier 2026-05-10: runbooks 06 (Backup & Restore Drill), 07 (IRP Tabletop Exercise Script), 08 (Observability — SLOs & Alert Policies) for the Phase 0 operational-readiness chunk.
+Last Updated: 2026-05-18 — added runbook 11 (Email Notifications Audit — closes Up Next #62; maps every email-out path + the 4 UI-promised-but-unwired toggles) and runbook 10 (Data Source Hygiene — Phase 12 PR 3c.1–3c.2d). Earlier 2026-05-10: runbooks 06 (Backup & Restore Drill), 07 (IRP Tabletop Exercise Script), 08 (Observability — SLOs & Alert Policies) for the Phase 0 operational-readiness chunk.
