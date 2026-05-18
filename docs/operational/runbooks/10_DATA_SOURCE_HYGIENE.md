@@ -15,7 +15,7 @@
 
 User trust in Monitrax depends on **every number on every screen being accurate**. Every metric on the dashboard, the CFO advisor, the budget engine, the net-worth tile — all of it is downstream of `Account.currentBalance` rows. If a user enters a balance manually in February and never updates it, by July the dashboard is showing a 5-month-old snapshot — but until 2026-05-18 the app didn't tell them that.
 
-The data-source-hygiene story closes that gap with **five coherent surfaces**, each tuned to a different moment in the user's workflow:
+The data-source-hygiene story closes that gap with **six coherent surfaces**, each tuned to a different moment in the user's workflow:
 
 | Surface | When it fires | What it tells the user |
 |---|---|---|
@@ -24,8 +24,9 @@ The data-source-hygiene story closes that gap with **five coherent surfaces**, e
 | `<UpgradeAccountButton>` | Inside each MANUAL/USER_VERIFIED account's detail dialog | "Switch this account to live Basiq sync or file import" |
 | Settings > Data Health heat-map | Whenever the user navigates there | Whole-portfolio bucketing — Fresh / Aging / Stale / Untracked |
 | `<BalanceUpgradeNudgeModal>` | Once per user, on first dashboard visit after the PR landed, gated on having ≥1 MANUAL account | "We can keep your balances fresh — pick how" |
+| `<ConfidenceIndicator>` | Next to any DERIVED metric (Net Position hero today; portable to other tiles) when the underlying balances are stale | "This number reads from stale inputs — click to review" |
 
-All five surfaces share **one staleness rule** and **one upgrade path** — they tell the same story.
+All six surfaces share **one staleness rule** and **one upgrade path** — they tell the same story. **§6A.1 now 6/6 ✅** (PR 3c.2e shipped 2026-05-19).
 
 ---
 
@@ -37,8 +38,9 @@ Per CLAUDE.md §12.2 — every staleness check + every Basiq/Import deep-link in
 |---|---|---|
 | `BalanceSource` enum | `prisma/schema.prisma` line 85 | 4 values: `MANUAL`, `IMPORT`, `BASIQ`, `USER_VERIFIED`. Every write site must pick one. |
 | `balanceWriteFields(source)` | `lib/utils/accountBalance.ts` | Returns `{ balanceSource, balanceLastUpdatedAt: new Date() }`. Spread into every `prisma.account.{create,update,upsert}` `data` payload that touches `currentBalance`. |
-| `isBalanceStale(source, lastUpdatedAt)` | `components/accounts/DataSourceChip.tsx` (named export) | Pure predicate: `true` when source is `MANUAL` AND last-updated is null OR ≥14 days ago. Used by chip's amber threshold + the dashboard nudge banner + the heat-map page. |
-| `MANUAL_STALE_THRESHOLD_DAYS = 14` | `components/accounts/DataSourceChip.tsx` (named export) | One place to tune the threshold. |
+| `isBalanceStale(source, lastUpdatedAt)` | `components/accounts/DataSourceChip.tsx` (named export) | Pure predicate: `true` when source is `MANUAL` AND last-updated is null OR ≥14 days ago. Used by chip's amber threshold + the dashboard nudge banner + the heat-map page + the Net-Position confidence indicator. |
+| `MANUAL_STALE_THRESHOLD_DAYS = 14` | `components/accounts/DataSourceChip.tsx` (named export) | One place to tune the threshold. **Note:** the server-side replica in `lib/services/masterFinancialService.ts` (`STALENESS_THRESHOLD_DAYS`) MUST be kept in lockstep — that file can't import from `components/*` (would bundle React into the service layer). |
+| `MasterFinancialSnapshot.staleness` (PR 3c.2e, 2026-05-19) | `lib/services/masterFinancialService.ts` (`StalenessMetadata` interface) | Block returned on every snapshot: `{ staleManualCount, totalManualCount, oldestManualAgeDays, anyStale, summary }`. Consumer surfaces that render derived metrics (Net Position, Money Story, Hidden Wealth lens, every metric tile) gate `<ConfidenceIndicator>` rendering on `anyStale === true` and surface `summary` verbatim in the tooltip. |
 | `?action=connect-basiq` / `?action=import` | `app/dashboard/balances/page.tsx` `useEffect` deep-link handler | The two existing upgrade paths every CTA in the hygiene story links to. **No parallel flows.** |
 
 **Reviewer-reject rule (CLAUDE.md §12.2):** any new `prisma.account.{create, update, upsert}` that writes `currentBalance` MUST spread `...balanceWriteFields(source)`. The helper's file-header JSDoc documents this rule in plain English; reviewers cite the file in code review.
@@ -166,6 +168,30 @@ Both conditions OR-fail → modal never opens.
 
 **Persistence column:** `UserPreference.dismissedBalanceUpgradeNudge Boolean @default(false)`. Added in migration `20260518100000_phase_12_pr_3c_2b_balance_upgrade_nudge`.
 
+### 3.6 `<ConfidenceIndicator>` — derived-metric staleness signal (PR 3c.2e, 2026-05-19)
+
+**File:** `components/dashboard/ConfidenceIndicator.tsx`
+
+**Where it renders today:** `/dashboard/balances` next to the "Net position" hero label. Self-hides when `staleness.anyStale === false` (no stale MANUAL accounts).
+
+**Future surfaces to wire in (each ~10-line addition):**
+- `<MoneyStoryHero>` on `/dashboard` (the home page TRAIL hero) — currently doesn't read staleness; future PR can fetch the snapshot's `staleness` block and pass it in.
+- `<HiddenWealthLens>` on `/dashboard/balances` — same story, different metric.
+- Any `<StatCard>` or `<MetricTile>` that renders a derived figure (cashflow forecast, emergency fund months covered, free-cash days, net-worth tile).
+
+**Tone choice (CLAUDE.md §0 behaviour-psychologist lens):**
+- amber (not red) — informational, not alarming
+- copy says **"may be stale"**, not "is wrong" or "is incorrect"
+- the user keeps trusting the number; the indicator just lets them know the provenance
+
+**Privacy posture (§13.3):** no balance amounts in the tooltip — only count of stale accounts + oldest age in days. Aggregate-only.
+
+**Self-hide contract:** every consumer can pass the `staleness` prop unconditionally; the primitive renders nothing when `!anyStale`. No surface needs to gate on the parent.
+
+**Staleness data source:** consumers have two paths to the metadata —
+1. **Direct** (e.g. `/dashboard/balances` page today): the page already has the accounts array → compute inline using `isBalanceStale()` from `DataSourceChip.tsx`.
+2. **Via the snapshot** (e.g. anywhere downstream of `/api/master-snapshot`): read `snapshot.staleness` — the service computes the same signal server-side using the equivalent rule. Both paths are kept in lockstep (see SSOT note in §2).
+
 ---
 
 ## 4. Basiq feature-flag gating — exhaustive list
@@ -240,4 +266,4 @@ Per CLAUDE.md §12.2 SSOT — never break these:
 
 ---
 
-Last updated: 2026-05-18 — initial runbook covering Phase 12 PR 3c.1–3c.2d data-source hygiene story (5 user-facing surfaces, 1 SSOT helper, 1 API endpoint, 1 schema migration).
+Last updated: 2026-05-19 — added §3.6 (`<ConfidenceIndicator>`) covering PR 3c.2e (derived-metric staleness signal). The §6A.1 backlog is now 6/6 ✅. Earlier 2026-05-18 — initial runbook covering Phase 12 PR 3c.1–3c.2d data-source hygiene story (5 user-facing surfaces, 1 SSOT helper, 1 API endpoint, 1 schema migration).
