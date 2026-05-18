@@ -1055,4 +1055,117 @@ No risk of clobbering user-entered data — `expenseId` + `matchedDocumentId` ar
 ### PR
 
 - Branch: `claude/phase-42-pr-3-5-receipt-picker-MG8mr`
+- Status: **Merged 2026-05-18 (PR #792)** — forward picker shipped; PR3.5.2 reshelved.
+
+---
+
+## Session 11: PR H — Phase 12 PR 3c.2a ("Upgrade this account" button)
+
+Branch: `claude/phase-12-pr-3c-2a-upgrade-button-MG8mr`
+
+### Scope
+
+- **Type:** Feature (new UI primitive; new dialog row; no schema; no API change; no CDR posture change).
+- **Closes:** `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A.1 item #4 (Settings > Accounts "Upgrade this account" button).
+- **Why this chunk first of PR 3c.2** — it's the smallest, most contained §6A.1 item left after PR F. Single button per row in an existing dialog. No new endpoints. No new flows (deep-links to existing handlers). No schema friction. Closes the visibility→action loop kicked off by PR F's chip + nudge: PR F made staleness *visible*; PR H gives the user the *one-tap fix path*.
+
+### What was done
+
+#### `components/accounts/UpgradeAccountButton.tsx` (new — ~80 LOC)
+
+Shared primitive that renders nothing for accounts whose `balanceSource ∈ {BASIQ, IMPORT}` (already on a fresher tier — the chip already tells the user how recent their balance is). For `balanceSource ∈ {MANUAL, USER_VERIFIED}` it renders two CTAs:
+
+| Button | Tone | Deep link | Gated on |
+|---|---|---|---|
+| Connect via Basiq | emerald solid | `/dashboard/balances?action=connect-basiq` | `useBasiqEnabled()` — hides cleanly when the feature flag is off |
+| Upload statement | slate outline | `/dashboard/balances?action=import` | always visible |
+
+Both are `<Link>` deep-links to the **existing** `?action=` handlers on `/dashboard/balances` (Phase 36 PR 2b/2c — `connect-basiq` calls `connectBank()`; `import` opens the `TransactionImportDialog`). **No parallel flows, no new endpoints.**
+
+Optional `onBeforeNavigate` prop — most callers fire it so the containing dialog closes before the navigation; when omitted, the link still works (dialog just stays open until manually closed).
+
+CLAUDE.md §0 lens reads:
+- **Architect** — no parallel routes; reuses existing deep-link handlers; one upgrade primitive in the codebase
+- **Financial adviser** — neutral framing (no shaming of manual entry); emerald accent reserved for the freshest tier (Basiq)
+- **Behaviour psychologist** — soft suggestion, not a forcing function. Users with cash / crypto / foreign accounts who legitimately need MANUAL can ignore the buttons. No nag pattern.
+- **Designer** — restraint. A small row inside the existing Account Details card, not a banner or modal.
+
+#### `components/accounts/AccountDetailDialog.tsx` (edited)
+
+- `AccountDetail` type extended with `balanceSource?: string | null` + `balanceLastUpdatedAt?: string | null` — both columns already exist on the Prisma `Account` row + already pass through to `app/dashboard/balances/page.tsx` via the `AccountRow` state, so the cast `account as AccountDetail` is now type-honest (it was already runtime-correct).
+- Overview tab → Account Details card gains a new "Data source" row rendering the canonical `<DataSourceChip>` (the same chip the account-list view shows; CLAUDE.md §12.2 — one chip primitive).
+- When `balanceSource ∈ {MANUAL, USER_VERIFIED}`, a divider + a calm one-line label ("Keep this balance fresh — connect a feed or upload a statement.") + the `<UpgradeAccountButton>` render below. `onBeforeNavigate` closes the dialog before the navigation fires.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `components/accounts/UpgradeAccountButton.tsx` | NEW — shared upgrade-CTA primitive |
+| `components/accounts/AccountDetailDialog.tsx` | `AccountDetail` extended; "Data source" row + upgrade buttons added to Overview tab |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #7 PR 3c.2 row updated (item #4 ✅ shipped; 4 items remaining); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 11 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — `<UpgradeAccountButton>` is a new shared primitive. Pattern (BASIQ-gated emerald primary + always-visible slate outline secondary; renders-nothing for already-fresh sources) reusable on future surfaces (e.g. Settings > Data Health heat-map tiles).
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — deep-links to existing handlers only; no new data path; no balance amounts surface in copy.
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #7 PR 3c.2 row updated; Recently Completed 2026-05-18 entry; top header refreshed (session 23 / 11 PRs / ~5,150 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 11 entry (this).
+
+`PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A **not** flipped — the doc treats §6A.1 as one chunk; flip happens when all five items ship. Per-item status lives in IMPLEMENTATION_PLAN.md (operational doc) per CLAUDE.md §15.6.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No Prisma writes anywhere in this PR (deep-links navigate to existing handlers; no new mutation path).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change. `Account.balanceSource` + `Account.balanceLastUpdatedAt` already exist (consumed by PR F).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** UI primitive on account-balance source rendering — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - Open an account whose `balanceSource = BASIQ` → the Account Details card shows the green chip but **no** upgrade buttons
+  - Open an account whose `balanceSource = MANUAL` (stale or fresh) → Account Details card shows the slate/amber chip + "Keep this balance fresh" label + Connect via Basiq + Upload statement buttons
+  - Click "Connect via Basiq" → dialog closes, page navigates to `/dashboard/balances?action=connect-basiq`, existing handler fires `connectBank()`
+  - Click "Upload statement" → dialog closes, page navigates to `/dashboard/balances?action=import`, existing handler opens `TransactionImportDialog`
+  - With Basiq feature flag off → Connect via Basiq button hides; Upload statement still renders
+
+### Today's tally (updated)
+
+11 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — data-source hygiene visibility slice | Up Next #7 (3c.1 ✅) |
+| #792 | PR G — receipt picker | Up Next #45 (PR3.5.1 ✅) |
+| **PR H (this)** | Phase 12 PR 3c.2a upgrade button | **§6A.1 item #4 ✅** |
+
+13 backlog rows closed. ~5,150 LOC shipped.
+
+### PR
+
+- Branch: `claude/phase-12-pr-3c-2a-upgrade-button-MG8mr`
 - Status: Open
