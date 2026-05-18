@@ -1327,4 +1327,127 @@ The 4 fix sites each contain a `prisma.account.{create, update}` — none are de
 ### PR
 
 - Branch: `claude/phase-12-pr-3c-2c-balance-write-audit-MG8mr`
+- Status: **Merged 2026-05-18 (PR #794)** — chip/nudge/upgrade invariant now structural.
+
+---
+
+## Session 13: PR J — Phase 12 PR 3c.2d (Settings > Data Health heat-map)
+
+Branch: `claude/phase-12-pr-3c-2d-data-health-heatmap-MG8mr`
+
+### Scope
+
+- **Type:** Feature (new route + new tile; no schema; no API contract change).
+- **Closes:** `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A.1 item #7 (balance-age heat-map in Settings > Data Health).
+- **Why this chunk:** the chip (PR F), nudge (PR F), upgrade button (PR H), and write-site audit (PR I) gave the user visibility + action + correctness — but those surfaces fire **per account, in context**. A user who wants the **whole-portfolio view** ("how am I doing across all my accounts?") had no dedicated surface. This PR is that view. Closes the data-source-hygiene story end-to-end.
+
+### What was done
+
+#### `app/dashboard/settings/data-health/page.tsx` (new — ~245 LOC)
+
+The "single source of truth for staleness" surface that the chip + nudge link to. Pure read surface; no Prisma writes; no new endpoint.
+
+**Page composition** (CLAUDE.md §12.2 SSOT — all three surfaces tell the same story):
+- Hero card with two-line stat ("X% of your N accounts are fresh — Y manual balances are due for a refresh")
+- Per-bucket sections (empty buckets self-hide):
+  - **Fresh** (<14 days, emerald) — Updated in the last 2 weeks
+  - **Aging** (14–60 days, amber) — 2 weeks to 2 months old
+  - **Stale** (≥60 days, rose) — Over 2 months old
+  - **Untracked** (no `balanceLastUpdatedAt`, slate) — pre-PR-I rows; PR I's audit prevents new ones
+- Each account row: name + institution + `<DataSourceChip size="compact">` + (for MANUAL/USER_VERIFIED) `<UpgradeAccountButton size="compact">`
+- Footer guidance line ("Basiq syncs automatically. Imported statements refresh per upload. Manual balances stay frozen until you update them.")
+- Breadcrumb back to `/dashboard/settings`
+
+**Behavioural-psychologist lens (CLAUDE.md §0):** the hero stat leads with **what's working** (fresh %), not what's broken (stale count). Bandura self-efficacy applied — framing the same data as "72% fresh" reads better than "28% stale". When everything is fresh, the sub-stat reads "You're in great shape — every balance is up to date" (celebration, not silence).
+
+**Designer lens:** restraint. No charts, no animations, no progress bars — a simple coloured-border bucket-list. The tonal coding (emerald / amber / rose / slate) does the visual work; type and spacing do the hierarchy.
+
+**Financial-adviser lens:** neutral framing. No shaming of MANUAL accounts; the bucket labels are descriptive ("Fresh / Aging / Stale / Untracked"), not evaluative ("Good / Bad / Failing"). The footer guidance explains the system mechanics without dictating user behaviour.
+
+**Architect lens:** pure read; reads `/api/accounts` directly (same fetch path `/dashboard/balances` uses; the response already includes `balanceSource` + `balanceLastUpdatedAt` by virtue of `findMany` returning every column). No new endpoint. No schema. Composes existing primitives (`<DataSourceChip>` / `isBalanceStale()` / `<UpgradeAccountButton>`) — zero duplicate staleness logic.
+
+#### `app/dashboard/settings/page.tsx` (edited — small)
+
+- New "Data Health" card added below "Profile" in the main settings list — emerald `<Activity>` icon, description "See which balances are fresh, aging, or stale". Standard settings-page `<Link>` + flex-row pattern (matches every other card on the page byte-for-byte).
+- `Activity` icon added to the `lucide-react` import list.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `app/dashboard/settings/data-health/page.tsx` | NEW — heat-map page |
+| `app/dashboard/settings/page.tsx` | New "Data Health" card + `Activity` icon import |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #7 PR 3c.2 row updated (item #7 ✅); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 13 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — new four-bucket coloured-border list pattern (Fresh emerald / Aging amber / Stale rose / Untracked slate). Reusable for any future surface that wants to render an entity collection bucketed by health (e.g. document freshness, policy renewal dates).
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no balance amounts in copy; aggregate counts only. §13.3 N/A.
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #7 PR 3c.2 row updated (item #7 ✅; 2 items remaining: confidence indicators + migration modal). Recently Completed 2026-05-18 entry. Top header refreshed (session 25 / 13 PRs / ~5,500 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 13 entry (this).
+
+`PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A **not** flipped — treats §6A.1 as one chunk; flip happens when all 5 items ship. Per-item status in `IMPLEMENTATION_PLAN.md` per CLAUDE.md §15.6.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** Pure read surface; no Prisma writes anywhere in this PR.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Settings sub-route for account-balance health — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - `/dashboard/settings` shows the new "Data Health" card with emerald Activity icon
+  - Clicking the card navigates to `/dashboard/settings/data-health`
+  - Hero stat reads "X% of your N accounts are fresh" with correct N and X
+  - When all accounts are fresh, sub-line says "You're in great shape — every balance is up to date"
+  - When some MANUAL accounts are stale, sub-line gives count and "due for a refresh"
+  - Per-bucket sections render in order; empty buckets self-hide
+  - Each row renders `<DataSourceChip size="compact">` + (for MANUAL/USER_VERIFIED) `<UpgradeAccountButton size="compact">`
+  - Empty state when user has zero accounts shows the "Add an account" hint with deep-link to `/dashboard/balances`
+  - Loading state renders for ~200ms then resolves
+  - Network error → rose error card with retry hint
+
+### Today's tally (updated)
+
+13 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — data-source hygiene visibility slice | Up Next #7 (3c.1 ✅) |
+| #792 | PR G — receipt picker | Up Next #45 (PR3.5.1 ✅) |
+| #793 | PR H — upgrade-account button | §6A.1 item #4 ✅ |
+| #794 | PR I — balance-write audit | §6A.1 item #6 ✅ |
+| **PR J (this)** | Phase 12 PR 3c.2d heat-map | **§6A.1 item #7 ✅** |
+
+15 backlog rows closed. ~5,500 LOC shipped. **Data-source-hygiene story end-to-end shipped**: visibility (PR F) → action (PR H) → correctness (PR I) → overview (PR J).
+
+### PR
+
+- Branch: `claude/phase-12-pr-3c-2d-data-health-heatmap-MG8mr`
 - Status: Open

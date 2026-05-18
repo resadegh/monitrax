@@ -20,6 +20,7 @@ import {
   CheckCircle,
   AlertCircle,
   Settings,
+  Activity,
 } from 'lucide-react';
 
 interface SettingsStatus {
@@ -232,6 +233,24 @@ export default function GeneralSettingsPage() {
                   <div className="font-medium">Profile</div>
                   <p className="text-sm text-muted-foreground">
                     Update your personal information
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
+            </div>
+          </Link>
+
+          {/* Phase 12 PR 3c.2d — Data Health (balance-age heat-map). */}
+          <Link href="/dashboard/settings/data-health">
+            <div className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className="flex items-center gap-4">
+                <div className="h-10 w-10 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                  <Activity className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                </div>
+                <div>
+                  <div className="font-medium">Data Health</div>
+                  <p className="text-sm text-muted-foreground">
+                    See which balances are fresh, aging, or stale
                   </p>
                 </div>
               </div>
