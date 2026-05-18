@@ -784,4 +784,136 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-42-pr-5-5-pdf-zip-MG8mr`
+- Status: **Merged 2026-05-18 (PR #790)** — Phase 42 follow-up backlog now empty.
+
+---
+
+## Session 9: PR F — Phase 12 PR 3c.1 (data-source hygiene visibility slice)
+
+Branch: `claude/onboarding-pr-3c-data-source-hygiene-MG8mr`
+
+### Scope
+
+- **Type:** Feature (UI polish; no schema; no API change; no CDR posture change).
+- **Closes:** `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A.1 items #1 (staleness indicators) + #2 (dashboard staleness nudge). The remaining §6A.1 items (#3 confidence indicators on derived metrics / #4 "Upgrade this account" button / #5 first-visit migration modal / #6 app-wide `balanceLastUpdatedAt` write-site audit / #7 balance-age heat-map sub-route) reshelve as **PR 3c.2** — they're independent and can ship sequentially.
+- **Up Next row closed:** #7 (rewritten as the §6A.1 follow-up split: PR 3c.1 ✅ this PR / PR 3c.2 📋 remaining items).
+
+### Why this slice first
+
+The visibility slice is the highest-leverage chunk — it's the **foundation** every other §6A.1 item builds on (confidence indicators read from the same staleness rule the chip uses; the upgrade button + migration modal both need the user to *see* there's a problem before they'll act). Shipping it standalone also lets the rest of §6A be independent PRs rather than one large one.
+
+### What was done
+
+#### `components/accounts/DataSourceChip.tsx` (new — ~140 LOC)
+
+The **one** UI primitive that turns `(balanceSource, balanceLastUpdatedAt)` into a user label. Renders a small inline chip with five visual states keyed by the `(source, age)` pair:
+
+| Source | Tone | Icon | Label |
+|---|---|---|---|
+| `BASIQ` | emerald (`bg-emerald-50`/`text-emerald-700`) | Zap | "Synced 2m ago" |
+| `IMPORT` | sky | Upload | "Imported 3d ago" |
+| `USER_VERIFIED` | indigo | ShieldCheck | "Verified 1d ago" |
+| `MANUAL` (age < 14d) | slate | Hand | "Manual · 4d ago" |
+| `MANUAL` (age ≥ 14d) | amber | AlertTriangle | "Manual · 32d ago" |
+| (no source) | — | — | renders nothing |
+
+Tone choices follow CLAUDE.md §0 behaviour-psychologist lens — **slate (not red)** for stale-manual (this is a hygiene nudge, not an alarm); emerald reserved for live Open-Banking sync (the strongest trust state).
+
+Two exports:
+- `<DataSourceChip>` — the chip component itself
+- `isBalanceStale(balanceSource, balanceLastUpdatedAt) → boolean` — pure helper; treats `MANUAL` + no-timestamp as stale (user has never refreshed it); used by the chip's amber threshold AND by `<StaleBalanceNudge>` to compute the count
+
+Private helper `formatBalanceAge` (minute → hour → day → month → year granularity) — kept inline pending a second consumer; file header notes the §16.4 promotion path to `lib/utils/formatters.ts`. Mirrors the `TrailStagePill` precedent from yesterday's PR D.
+
+#### `components/dashboard/StaleBalanceNudge.tsx` (new — ~95 LOC)
+
+Top-of-page banner. Renders nothing when:
+- `accounts.filter(isBalanceStale).length === 0` (no stale MANUAL accounts), OR
+- user dismissed for this session via the `×` button (`sessionStorage.monitrax:staleBalanceNudge:dismissed === '1'`)
+
+Calm framing (CLAUDE.md §0 behaviour-psychologist lens):
+- Heading: `"N accounts haven't been refreshed in over 2 weeks"` (observational, not accusatory)
+- Body: `"Your dashboard reads from these balances — keeping them fresh keeps every number it shows you accurate."` (links the maintenance task to the value the user already gets)
+- CTAs: deep-link to the canonical `/dashboard/balances?action=connect-basiq` and `?action=import` — **no parallel routes**; the existing toolbar actions on that page already handle these `action=` query params
+
+Session-only dismiss (vs. permanent) is intentional: a hygiene nudge should reappear next visit if the condition still holds — not a one-and-done modal. SSR-safe: starts with `dismissed === null`, hydrates from `sessionStorage` in `useEffect`, and only renders post-hydration to avoid the SSR/CSR mismatch.
+
+#### `app/dashboard/balances/page.tsx` (edited)
+
+- Imported `<DataSourceChip>` + `<StaleBalanceNudge>` from the new modules.
+- Replaced the inline `isBasiq && <Badge variant="outline">...Zap...Basiq</Badge>` (which only handled BASIQ) with `<DataSourceChip balanceSource={...} balanceLastUpdatedAt={...} />` — now covers all 4 sources, surfacing IMPORT / USER_VERIFIED / MANUAL states that were previously invisible to the user (§12.2 SSOT — one chip, not 4 inline cases).
+- Mounted `<StaleBalanceNudge accounts={accounts} />` between the page hero (`</header>`) and the Hidden Wealth lens — first thing the user sees scrolling down if a refresh is overdue.
+- **Dead imports cleaned** (CLAUDE.md §12.1): removed `Zap` (the inline icon) and `Badge` (the inline pill primitive) — no remaining consumers after the chip replacement.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `components/accounts/DataSourceChip.tsx` | NEW — shared chip + `isBalanceStale` helper |
+| `components/dashboard/StaleBalanceNudge.tsx` | NEW — dashboard banner |
+| `app/dashboard/balances/page.tsx` | Wired chip + nudge; removed dead `Zap` + `Badge` imports |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #7 split (3c.1 ✅ closed / 3c.2 reshelved); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 9 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — `<DataSourceChip>` is the first canonical UI primitive that turns `(balanceSource, balanceLastUpdatedAt)` into a user label; previously the only consumer (the inline `isBasiq` badge on `/dashboard/balances`) hard-coded a single-source case. Future surfaces that render an Account balance should import this — file header documents the rule + the §16.4 promotion path for the inline time-ago helper.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no balance amounts in the nudge copy (only the count of accounts); §13.3 N/A (this surface doesn't render CDR data, only metadata).
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #7 split into #7 (PR 3c.2 — remaining §6A.1 items) + ~~#7~~ (✅ PR 3c.1 — this PR). Recently Completed 2026-05-18 entry. Top header refreshed (session 21 / 9 PRs / ~4,700 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 9 entry (this).
+
+The `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A doc was **not** updated in this PR — that section is the active spec (lives at `Status: 🟡 PR 3c pending`); a partial-completion edit risks miscommunicating the remaining work. PR 3c.2 will flip the doc's status line and mark items #3–#7 individually as they ship.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No Prisma writes anywhere in this PR (pure read path — chip + nudge consume data already in component state).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change. The `Account.balanceSource` + `Account.balanceLastUpdatedAt` columns this PR consumes already exist (Phase 13 §417 hierarchy + existing write-site coverage in `app/api/bank/import`, `app/api/accounts/[id]/balance`, `app/api/onboarding/bulk-create`, `app/api/unified-transactions/cash`, `lib/bank/basiqSync`).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** UI polish on account-balance rendering — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - On `/dashboard/balances`, every account row renders a chip matching its `(balanceSource, balanceLastUpdatedAt)` pair
+  - A BASIQ-sourced account renders the green "Synced X ago" chip — visual parity with the old `<Badge>` it replaced
+  - A MANUAL account with `balanceLastUpdatedAt` >14d shows the amber "Manual · Xd ago" variant
+  - When ≥1 stale MANUAL account exists, the banner renders above the Hidden Wealth lens; dismissing it removes it for the session
+  - Connect-via-Basiq + Upload-statement CTAs in the banner deep-link to the existing `/dashboard/balances?action=…` handlers
+
+### Today's tally (updated)
+
+9 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| **PR F (this)** | Phase 12 PR 3c.1 visibility slice | **Up Next #7 (split) — 3c.1 ✅ shipped; 3c.2 reshelved** |
+
+11 backlog rows closed. ~4,700 LOC shipped.
+
+### PR
+
+- Branch: `claude/onboarding-pr-3c-data-source-hygiene-MG8mr`
 - Status: Open

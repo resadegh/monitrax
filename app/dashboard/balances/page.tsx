@@ -19,7 +19,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Wallet,
   CreditCard,
@@ -30,7 +29,6 @@ import {
   ArrowUpRight,
   Link2,
   Building,
-  Zap,
   ChevronRight,
   Upload,
   Pencil,
@@ -59,6 +57,8 @@ import {
 import { AddSourcePicker } from '@/components/ui/AddSourcePicker';
 import { TransactionImportDialog } from '@/components/bank/TransactionImportDialog';
 import { HiddenWealthLens } from '@/components/balances/HiddenWealthLens';
+import { DataSourceChip } from '@/components/accounts/DataSourceChip';
+import { StaleBalanceNudge } from '@/components/dashboard/StaleBalanceNudge';
 import type { HiddenWealthResponse } from '@/app/api/dashboard/hidden-wealth/route';
 import { useBasiqConnect } from '@/hooks/useBasiqConnect';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
@@ -840,6 +840,15 @@ function BalancesPageContent() {
           )}
         </header>
 
+        {/* Phase 12 PR 3c.1 — Stale balance hygiene nudge. Self-hides
+            when zero MANUAL accounts have aged past the staleness
+            threshold (or the user has dismissed for the session). */}
+        {accounts.length > 0 && (
+          <div className="mb-6">
+            <StaleBalanceNudge accounts={accounts} />
+          </div>
+        )}
+
         {/* Phase 43.1 — Hidden Wealth lens. Bridge between the Net
             Position hero (single number) and the Cash/Credit/Debt
             sections (detail). Splits total assets by accessibility
@@ -1213,7 +1222,6 @@ function AccountRowView({
 }) {
   const meta = ACCOUNT_TYPE_META[account.type];
   const Icon = meta.icon;
-  const isBasiq = account.balanceSource === 'BASIQ';
 
   return (
     <button
@@ -1228,11 +1236,10 @@ function AccountRowView({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <div className="font-medium truncate">{account.name}</div>
-          {isBasiq && (
-            <Badge variant="outline" className="text-[10px] font-medium border-emerald-200 text-emerald-700 bg-emerald-50 px-1.5 py-0">
-              <Zap className="w-2.5 h-2.5 mr-0.5" /> Basiq
-            </Badge>
-          )}
+          <DataSourceChip
+            balanceSource={account.balanceSource}
+            balanceLastUpdatedAt={account.balanceLastUpdatedAt}
+          />
         </div>
         <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
           <span>{meta.label}</span>
