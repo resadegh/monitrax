@@ -373,7 +373,7 @@ export const mobileMoreItems: NavItem[] = [
  * | **R — Reduce** | Amber | Action, energy, decisive movement. The user is *fixing leaks* — amber says "do this now" without the alarm of red. |
  * | **A — Anchor** | Indigo | Depth, stability, anchored security. The user is *building safety* — deep blue evokes anchored waters, foundational depth. |
  * | **I — Invest** | Emerald | Growth, prosperity, abundance. The user is *building wealth* — green is the universal "money + nature + growing" colour. |
- * | **L — Live** | Violet | Aspiration, freedom, transcendence. The user is *living on their terms* — violet evokes royalty, accomplishment, freedom. |
+ * | **L — Live** | Fuchsia (was Violet pre-2026-05-18) | Aspiration, freedom, transcendence. The user is *living on their terms* — fuchsia evokes celebration, accomplishment, freedom AND reads with the same visual punch as the other four tones at dark-mode 30% opacity. Aligns with `<TrailStagePill>` + `<DataSourceChip>` family. |
  *
  * Each tone exposes:
  *   - `activeText` — full-saturation text/icon colour for active state.
@@ -427,9 +427,15 @@ export const TRAIL_STAGE_TONES: Record<
     bgTint: 'bg-emerald-50/70 dark:bg-emerald-950/30',
   },
   L: {
-    activeText: 'text-violet-600 dark:text-violet-400',
-    inactiveIcon: 'text-violet-500/55 dark:text-violet-400/55',
-    accent: 'bg-violet-500 dark:bg-violet-400',
-    bgTint: 'bg-violet-50/70 dark:bg-violet-950/30',
+    // 2026-05-18 — violet→fuchsia. At dark-mode 30% opacity, violet read
+    // visually flatter than the other four tones (sky/amber/indigo/emerald
+    // all sit in the eye's high-contrast bands; violet sits lower). Fuchsia
+    // matches the punch of the other 4 AND aligns with the existing portal
+    // `<TrailStagePill>` (PR #789 client-book table) + `<DataSourceChip>`
+    // family — single colour vocabulary for LIVE across the codebase.
+    activeText: 'text-fuchsia-600 dark:text-fuchsia-400',
+    inactiveIcon: 'text-fuchsia-500/55 dark:text-fuchsia-400/55',
+    accent: 'bg-fuchsia-500 dark:bg-fuchsia-400',
+    bgTint: 'bg-fuchsia-50/70 dark:bg-fuchsia-950/30',
   },
 };
