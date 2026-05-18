@@ -36,6 +36,11 @@ export const POST = withPermission('account.write', async (request, auth) => {
       const updateAccountBalance = formData.get('updateAccountBalance') === 'true';
       const transactionLinksStr = formData.get('transactionLinks') as string | null;
       const autoLinkRecurring = formData.get('autoLinkRecurring') === 'true';
+      // Phase 42 PR 4.5 — when set, parse + detect duplicates + return
+      // the dedup preview WITHOUT writing rows. The Import Wizard calls
+      // this before the real commit so the user sees "N of M match
+      // existing — merge / overwrite / skip?" up front.
+      const dryRun = formData.get('dryRun') === 'true';
 
       // Parse transaction links: { [transactionIndex]: { type: 'income'|'expense', id: string } }
       interface TransactionLink {
@@ -296,6 +301,51 @@ export const POST = withPermission('account.write', async (request, auth) => {
           normalisationResult.transactions,
           existingNormalised
         );
+
+        // Phase 42 PR 4.5 — dry-run early return. Surfaces the dedup
+        // preview shape to the wizard without writing any rows /
+        // categorisation / linked-recurring side-effects. The user picks
+        // merge / overwrite / skip from this preview, then re-submits
+        // without `dryRun=true`.
+        //
+        // `detectDuplicates` (from `lib/bank/duplicateDetection.ts`)
+        // returns `DuplicateDetectionResult` which has a single
+        // `duplicates: DuplicateCheckResult[]` array and a 3-field
+        // `statistics: { total, unique, duplicates }`. The
+        // exact-vs-fuzzy split lives on `DuplicateCheckResult.similarityScore`
+        // (1.0 = exact; < 1.0 = fuzzy). We derive the UI split from that.
+        if (dryRun) {
+          const exactDuplicateCount = duplicateResult.duplicates.filter(
+            (d) => (d.similarityScore ?? 1) >= 0.99,
+          ).length;
+          const fuzzyDuplicateCount = duplicateResult.duplicates.length - exactDuplicateCount;
+
+          return NextResponse.json({
+            success: true,
+            data: {
+              dryRun: true,
+              total: duplicateResult.statistics.total,
+              statistics: {
+                total: duplicateResult.statistics.total,
+                new: duplicateResult.statistics.unique,
+                duplicates: duplicateResult.statistics.duplicates,
+                exactDuplicates: exactDuplicateCount,
+                fuzzyDuplicates: fuzzyDuplicateCount,
+              },
+              // Trimmed sample of up to 10 duplicate candidates.
+              sampleDuplicates: duplicateResult.duplicates.slice(0, 10).map((d) => ({
+                isExact: (d.similarityScore ?? 1) >= 0.99,
+                similarityScore: d.similarityScore ?? null,
+                reason: d.reason ?? null,
+                candidate: {
+                  date: d.transaction.date.toISOString(),
+                  amount: d.transaction.amount,
+                  description: d.transaction.description,
+                },
+              })),
+            },
+          });
+        }
 
         // Apply duplicate policy
         const transactionsToImport = applyDuplicatePolicy(duplicateResult, duplicatePolicy);
