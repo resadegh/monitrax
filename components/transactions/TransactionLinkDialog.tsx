@@ -37,6 +37,7 @@ import {
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
 import { VendorCardDrawer } from '@/components/bookkeeping/VendorCardDrawer';
+import { TransactionSplitEditor } from '@/components/transactions/TransactionSplitEditor';
 import { FormDocumentUpload, type FieldMapping } from '@/components/documents/FormDocumentUpload';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -787,12 +788,13 @@ export function TransactionLinkDialog({
           </div>
         ) : (
           <Tabs defaultValue="match" className="mt-2">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="match">
                 Suggested ({suggestedMatches.length})
               </TabsTrigger>
               <TabsTrigger value="all">All Entries</TabsTrigger>
               <TabsTrigger value="create">Create New</TabsTrigger>
+              <TabsTrigger value="split">Split</TabsTrigger>
             </TabsList>
 
             {/* Suggested Matches */}
@@ -1576,6 +1578,25 @@ export function TransactionLinkDialog({
                   </Button>
                 </>
               )}
+            </TabsContent>
+
+            {/* Phase 42 PR 2.5 — Inline split editor. Splits a single
+                transaction across N rows (e.g. Bunnings $850 → $600
+                investment + $250 personal). Backend at PUT
+                /api/unified-transactions/[id]/splits validates the
+                sum (epsilon 0.01) + ownership. */}
+            <TabsContent value="split" className="max-h-[26rem] overflow-y-auto">
+              <TransactionSplitEditor
+                transactionId={transaction.id}
+                parentAmount={transaction.direction === 'OUT' ? -Math.abs(transaction.amount) : Math.abs(transaction.amount)}
+                direction={transaction.direction}
+                properties={properties}
+                loans={availableLoans.map((l) => ({ id: l.id, name: l.name }))}
+                onSaved={() => {
+                  setSuccess('Split saved.');
+                  if (onLinked) void onLinked();
+                }}
+              />
             </TabsContent>
           </Tabs>
         )}

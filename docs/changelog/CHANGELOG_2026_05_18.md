@@ -323,4 +323,90 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-42-pr-4-5-import-dryrun-MG8mr`
+- Status: **Merged 2026-05-18 (PR #786)** — dry-run preview shipped.
+
+---
+
+## Session 5: PR B4 — Phase 42 PR 2.5 Inline split editor
+
+Branch: `claude/phase-42-pr-2-5-split-editor-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 42 PR 2.5 — split editor UI).
+- **Scope:** One new component + 4th tab in `TransactionLinkDialog`. Backend (`PUT /api/unified-transactions/[id]/splits`) shipped in PR #698; this PR wires the UI.
+- **CDR scope:** N/A — UI over an existing CDR-safe service that already enforces `withPermission('transaction.write')` + period-editability + ownership.
+
+### What was done
+
+#### New file: `components/transactions/TransactionSplitEditor.tsx` (~370 lines)
+
+- Hydrates existing splits via `GET /api/unified-transactions/[id]/splits` on mount.
+- Defaults to one row pre-filled with the parent transaction amount.
+- 2-N rows (cap 10); per row: amount (number input), CategorySelect (lazy-seeded via level1/2/sub triple — no client-side registry lookup), optional Property picker, optional Loan picker, tax-deductible checkbox, free-text note.
+- **Live sum readout** with target + delta tile (amber when unallocated > 0.01 or over).
+- Save disabled until `|sum − parent| < 0.01 AND every row has a category`.
+- PUTs full row set to existing `/api/unified-transactions/[id]/splits` (PR2 backend handles sum validation server-side as defence-in-depth).
+- Behaviour-psychologist lens: never blocks the user mid-edit; rows freely addable/removable; only blocks Save. Calm tone — no red errors unless the sum is wrong AND the user has tried.
+
+#### Extended file: `components/transactions/TransactionLinkDialog.tsx`
+
+- `TabsList` grid: `grid-cols-3` → `grid-cols-4`. New "Split" trigger.
+- New `<TabsContent value="split">` mounting the editor with: `transaction.id`, sign-corrected `parentAmount`, `direction`, `properties[]`, `availableLoans[]` (mapped to `{id, name}`). On save, sets success message + calls existing `onLinked` callback.
+- Import added.
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `components/transactions/TransactionSplitEditor.tsx` | NEW — 370 lines |
+| `components/transactions/TransactionLinkDialog.tsx` | +20 lines (4th tab + content + import) |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next row 44 closed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | Session 5 entry (this) |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — new transaction component following existing pattern; reuses CategorySelect + Checkbox + Select primitives (no new visual primitive).
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 44 closed.
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 5 entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No new Prisma writes added by this PR. The editor PUTs to existing `/api/unified-transactions/[id]/splits` which uses `replaceSplits` (PR #698 service) — sum-validated, ownership-guarded, period-editability gated.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Transaction split editor — not a tax-engine surface.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+- [ ] Manual verification queued for Vercel preview:
+  - Open transaction → Split tab → existing splits hydrate (or empty editor with one pre-filled row)
+  - Add row → second row pre-fills with remaining unallocated amount
+  - Edit amounts → sum readout updates live → delta tile shows when unbalanced
+  - Save with unbalanced sum → button disabled
+  - Save with balanced sum + all categories → success → dialog refreshes via onLinked
+
+### Lessons from PR #786
+
+In PR #786 I shipped a TS bug because I assumed `detectDuplicates` returned `BatchDuplicateResult` when it actually returned `DuplicateDetectionResult` (two functions same name in `lib/bank/`). For this PR I traced the import chain explicitly: `replaceSplits` from `lib/bookkeeping/splits.ts` (single definition, no namespace clash), `SplitInput` shape verified against the route's `PutSplitInput` shape (which accepts both `categoryId` and `categoryLevel1/2/sub` triple — I used the latter to avoid client-side registry lookups).
+
+### PR
+
+- Branch: `claude/phase-42-pr-2-5-split-editor-MG8mr`
 - Status: Open
