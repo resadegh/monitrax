@@ -1627,4 +1627,255 @@ API upsert:
 ### PR
 
 - Branch: `claude/phase-12-pr-3c-2b-migration-modal-MG8mr`
-- Status: Open
+- Status: **Merged 2026-05-18 (PR #796)** — §6A.1 now 5/5 shipped.
+- **Note:** This PR introduced a production sign-out bug (the modal's POST dismissal fetch lacked an `Authorization` header → 401 → `SessionExpiryHandler` interpreted as session-gone → logout). Hotfix shipped 90 min later as PR #798 (Session 16 below).
+
+---
+
+## Session 15: PR L — Basiq-gate audit + BAU runbook + canonical doc sync
+
+Branch: `claude/post-data-hygiene-basiq-gate-audit-MG8mr`
+
+### Scope
+
+- **Type:** Bug fix (1 Basiq-gate gap) + doc-only canonical sync.
+- **Reza directive 2026-05-18:** *"for BASIQ connect — the toggle is currently off and all BASIQ relevant views should be hidden unless the toggle is shifted to on, apart from that I will start checking the app. While here document everything, all support, BAU operational, etc."*
+
+### What was done
+
+**Basiq-gate audit** of every component shipped in today's 14 PRs against `useBasiqEnabled()`:
+
+| Component | Basiq CTA? | Status |
+|---|---|---|
+| `<DataSourceChip>` | NO (label only) | ✅ N/A — chip describes existing BASIQ data, doesn't advertise |
+| `<UpgradeAccountButton>` | YES | ✅ Already gated |
+| `<StaleBalanceNudge>` | YES | 🔴 **GAP — fixed in this PR** |
+| `<BalanceUpgradeNudgeModal>` | YES | ✅ Already gated |
+| `<ReceiptCandidatePicker>` | NO | ✅ N/A |
+| Settings > Data Health footer copy | mentions | 🟡 **Polished here** to be flag-aware |
+
+**Code changes (2 surfaces):**
+- `components/dashboard/StaleBalanceNudge.tsx` — imported `useBasiqEnabled()`; wrapped the "Connect via Basiq" Link in `{basiqEnabled && (...)}`.
+- `app/dashboard/settings/data-health/page.tsx` — footer guidance copy drops the Basiq sentence when flag is OFF.
+
+**Doc sync (new file + 4 doc updates):**
+- `docs/operational/runbooks/10_DATA_SOURCE_HYGIENE.md` (NEW — ~250 lines) — 7-section BAU support runbook covering all 5 data-source-hygiene surfaces, shared SSOTs, Basiq-flag gating, support cheat-sheet, engineering invariants.
+- `docs/operational/runbooks/06_BASIQ_INTEGRATION_TOGGLE.md` — §2 surface table extended with the 5 new data-source-hygiene surfaces.
+- `docs/operational/00_INDEX.md` — runbook 10 entry; count 8→10; Last Updated footer.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new §15 Data Source Hygiene Primitives pointer doc.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 12 wizard row updated (5/5 §6A.1 status).
+
+### PR
+
+- Branch: `claude/post-data-hygiene-basiq-gate-audit-MG8mr`
+- Status: **Merged 2026-05-18 (PR #797)** — data-source-hygiene story fully documented end-to-end.
+
+---
+
+## Session 16: 🚨 HOTFIX — 6 fetches missing Authorization header
+
+Branch: `claude/hotfix-balance-upgrade-nudge-auth-header-MG8mr`
+
+### Scope
+
+- **Type:** Production hotfix. Spurious sign-out bug.
+- **Reported by Reza 2026-05-18 18:50 AEST:** balance-upgrade modal auto-opens on dashboard mount, user closes it → app immediately signs them out. Screenshot console showed `POST /api/settings/balance-upgrade-nudge 401`.
+
+### Root cause
+
+`components/auth/SessionExpiryHandler.tsx:140-164` wraps `window.fetch`. The relevant branch:
+
+```ts
+if (response.status !== 401) return response;
+if (!isOurApiUrl(input)) return response;
+if (isAuthFlowEndpoint(input)) return response;
+
+if (hasAuthorizationHeader(init)) {
+  const fresh = await refreshOnce();
+  // ... retry with refreshed token
+}
+
+// → straight to logout + redirect to /signin
+if (!isPublicPath(...)) { logout(); router.push('/signin?...'); }
+```
+
+If a fetch to a protected `/api/...` endpoint:
+1. Returns 401, AND
+2. Did NOT have an Authorization header
+
+then **SessionExpiryHandler skips the retry branch** ("no token was the issue") and goes **straight to logout**.
+
+### Scope — 7 broken fetches
+
+**6 from today's PRs:**
+
+| Component | PR | Trigger |
+|---|---|---|
+| `BalanceUpgradeNudgeModal` POST | K (#796) | **Auto-fires on dashboard mount** — critical |
+| `ReceiptCandidatePicker` POST | G (#792) | User picks a candidate |
+| `TaxPackExportButton` GET | E (#790) | User clicks Export |
+| `VendorCardDrawer` GET ×2 | B2 (#785) | User opens vendor drawer |
+| `TransactionSplitEditor` GET+PUT | B4 (#787) | User opens Split tab + saves |
+
+**1 pre-existing same-pattern bug** in `<TaxReformBanner>` (Phase 41E.3) — fixed in same hotfix.
+
+### Fix
+
+Each component now:
+1. Imports `useAuth()` from `@/lib/context/AuthContext`
+2. Reads `{ token }` from the hook
+3. Passes `Authorization: Bearer ${token}` on every fetch to `/api/...`
+
+`useEffect` dependency arrays updated to include `token`.
+
+### Tech Debt #20 logged
+
+Broader codebase audit recommended as follow-up; tracked in `IMPLEMENTATION_PLAN.md` Tech Debt #20.
+
+### PR
+
+- Branch: `claude/hotfix-balance-upgrade-nudge-auth-header-MG8mr`
+- Status: **Merged 2026-05-18 (PR #798)**.
+
+---
+
+## Session 17: TRAIL L tone fuchsia + Phase 15 / web push / email audit plan rows
+
+Branch: `claude/trail-L-fuchsia-tone-plus-phase-15-plan-row-MG8mr`
+
+### Scope
+
+Two small concerns from Reza, one PR.
+
+### 1. TRAIL sidebar "L" letter — visual asymmetry fixed
+
+**Reported:** L chip reads visually flatter than T R A I in dark mode.
+
+**Root cause:** violet at `bg-violet-950/30` (30% opacity) sits in a lower-contrast band of the eye's response curve than the other four tones. Code is structurally identical across all 5; asymmetry is purely perceptual.
+
+**Fix:** L violet → fuchsia. Fuchsia matches the punch of the brighter four AND aligns with the existing `<TrailStagePill>` (PR #789) + `<DataSourceChip>` family (PR #791) — single colour vocabulary for LIVE across the codebase.
+
+### 2. Plan: 3 new Up Next rows for the notification roadmap
+
+Push + email notifications were extensively blueprinted but not in the live plan's Up Next. Made traceable:
+
+| # | Row | Trigger |
+|---|---|---|
+| 60 | Phase 15 — Mobile Companion App (React Native + Expo) push notifications | After first 5-10 paying users + Basiq accreditation. ~8-10 weeks. |
+| 61 | Web push for the desktop app — Service Worker + VAPID | Could ship standalone (~1 week) BEFORE mobile if desired. |
+| 62 | Email notifications backend audit | ~2-3 hrs audit (this row closed in Session 19). |
+
+### Doc sync
+
+- `lib/navigation/trailNav.tsx` — `TRAIL_STAGE_TONES.L` definition + in-file docblock table updated
+- `docs/IMPLEMENTATION_PLAN.md` — 3 new Up Next rows; top header refreshed
+
+### PR
+
+- Branch: `claude/trail-L-fuchsia-tone-plus-phase-15-plan-row-MG8mr`
+- Status: **Merged 2026-05-18 (PR #799)**.
+
+---
+
+## Session 18: Tech Debt #20 — codebase-wide auth-header sweep
+
+Branch: `claude/auth-header-codebase-audit-MG8mr`
+
+### Scope
+
+Follow-up to PR #798 hotfix. **Closes Tech Debt #20** (codebase-wide audit of every `fetch('/api/...')` for missing Authorization headers).
+
+### Audit method + results
+
+Grepped 335 client-side `/api/` fetches. Triaged:
+
+| Category | Count | Status |
+|---|---|---|
+| Admin pages (`/api/admin/*`) | 13 | ✅ SAFE — admin layout's `window.fetch` interceptor auto-injects auth (`app/admin/AdminLayoutClient.tsx:55-80`) |
+| False positives (had auth in outer scope) | 8 | ✅ Already correct (FeedbackChatDrawer × 6, portal feedback page × 2) |
+| Public endpoints by design | 3 | ✅ N/A (invite validate is public; invite accept has dual-path auth handling) |
+| **Real bugs fixed in this PR** | **10** | 🔴 → ✅ |
+
+### The 10 real fixes — 3 portal pages
+
+- **`app/portal/billing/page.tsx`** (5 fetches) — GET billing, POST subscribe, POST cancel, POST resume, GET invoices. Every Stripe-tier action would have logged the user out.
+- **`app/portal/dashboard/page.tsx`** (3 fetches) — refetchAlerts, refetchClientSummary, handleDismissAlert.
+- **`app/portal/requests/[id]/page.tsx`** (2 fetches) — GET load() + POST action().
+
+**Combined with PR #798 (7 fixes): spurious-logout class eliminated codebase-wide.**
+
+### PR
+
+- Branch: `claude/auth-header-codebase-audit-MG8mr`
+- Status: **Merged 2026-05-18 (PR #800)** — Tech Debt #20 closed.
+
+---
+
+## Session 19: Email notifications backend audit (doc-only)
+
+Branch: `claude/email-notifications-backend-audit-MG8mr`
+
+### Scope
+
+Pure documentation PR. **Closes Up Next #62** (email notifications backend audit).
+
+### Findings — the gap
+
+The settings page promises 4 email toggles. **The backend wires 0 of them.**
+
+| UI toggle | DB column | Read by send-side code? |
+|---|---|---|
+| Weekly digest | `emailWeeklyDigest` | ❌ No code path |
+| Monthly report | `emailMonthlyReport` | ❌ No code path |
+| Important alerts | `emailAlerts` | ❌ No code path |
+| Product updates | `emailProductUpdates` | ❌ No code path |
+
+**5 live email-out paths exist** today (verification / MFA-stub / conversation / calc-audit / Firebase password-reset) — all transactional, all bypass user preferences (correct for transactional).
+
+### New runbook
+
+`docs/operational/runbooks/11_EMAIL_NOTIFICATIONS_AUDIT.md` (~250 lines) — 9 sections covering: 5 live paths inventory / 4 toggles current wiring / stubbed `notifyAdviserOfReply()` / recommended 5-PR sequence (Resend SSOT helper → Important Alerts → Monthly Report → Weekly Digest → Product Updates broadcast) / CDR §13.3 constraints / 4 Open Questions for Reza (order / throttling / unsubscribe / FROM_EMAIL domain) / related docs.
+
+### Plan updates
+
+- Up Next #62 → ✅ CLOSED
+- Up Next #65 NEW — Email notifications WIRING follow-up
+- Tech Debt #21 NEW — UI promises emails the backend doesn't send (two options: wire or demote-to-coming-soon)
+- Tech Debt #20 → ✅ marker rolled into the row (PR #800 closed it)
+
+### PR
+
+- Branch: `claude/email-notifications-backend-audit-MG8mr`
+- Status: **Merged 2026-05-18 (PR #801)**.
+
+---
+
+## End-of-day tally — 19 PRs
+
+| PR | Title | Closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — anomaly narrative | Up Next 51 |
+| #785 | PR B2 — vendor + Tax Pack | Up Next 48 |
+| #786 | PR B3 — import dry-run | Up Next 46 |
+| #787 | PR B4 — split editor | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — chip + nudge | §6A.1 #1 + #2 |
+| #792 | PR G — receipt picker | Up Next #45 (PR3.5.1) |
+| #793 | PR H — upgrade-account button | §6A.1 #4 |
+| #794 | PR I — balance-write audit | §6A.1 #6 |
+| #795 | PR J — heat-map page | §6A.1 #7 |
+| #796 | PR K — first-visit modal | §6A.1 #5 |
+| #797 | PR L — Basiq-gate audit + BAU runbook | (doc sync) |
+| #798 | 🚨 HOTFIX — 6 auth headers | (production fix) |
+| #799 | TRAIL L fuchsia + Phase 15 plan rows | (cosmetic + plan) |
+| #800 | Tech Debt #20 — auth-header sweep | Tech Debt #20 |
+| #801 | Email audit | Up Next #62 |
+
+**~6,200 LOC · 19 backlog rows closed · 3 transient build failures caught + autofixed · 1 production hotfix · zero failed PRs left open.**
+
+### Doc-sync compliance (this entry written 2026-05-18 backfilling sessions 15-19)
+
+Per Reza directive 2026-05-18 ("make sure you always keep all documents up to date with each PR, I don't want you to run blind"): the IMPLEMENTATION_PLAN top header + Up Next rows + Recently Completed entries were kept current within each PR. The per-session CHANGELOG entries were partly stale (sessions 14 status not updated; sessions 15-19 missing); this backfill closes the gap. Going forward, every PR description will include the §16.5 doc-sync block and a session-specific CHANGELOG entry as part of the PR, not after-the-fact.
