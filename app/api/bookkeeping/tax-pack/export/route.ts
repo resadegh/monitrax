@@ -1,12 +1,13 @@
 /**
- * Phase 42 PR5 — Tax Pack export API.
+ * Phase 42 PR5 + PR5.5 — Tax Pack export API.
  *
- *   GET /api/bookkeeping/tax-pack/export?fy=FY2025-26&format=csv|xlsx|json
+ *   GET /api/bookkeeping/tax-pack/export?fy=FY2025-26&format=csv|xlsx|json|pdf|zip
  *
  * The LOAD-BEARING handoff endpoint. The accountant downloads from
  * here and imports straight into Xero (CSV) or opens the per-property
  * P&L workbook (XLSX) or consumes the structured JSON for further
- * automation.
+ * automation. End-of-FY, the user grabs the PDF summary + the receipt
+ * ZIP and forwards both to the accountant.
  *
  * Per CLAUDE.md §1 hard rule (Phase 42 spec):
  *   "Monitrax produces the personal tax pack. Xero stays the
@@ -14,13 +15,14 @@
  *
  * This endpoint is the production artefact of that contract.
  *
- * Format support at v1:
+ * Format support:
  *   - csv  — Xero bank-statement-import format (LOAD-BEARING)
  *   - xlsx — Per-property P&L workbook + ATO labels + summary
  *   - json — Full structured summary (programmatic consumers)
- *
- * Deferred to PR5.5: pdf (needs `pdfkit`), zip (receipt bundle —
- * needs `archiver`).
+ *   - pdf  — Human-readable printable summary (PR5.5 — `pdfkit`)
+ *   - zip  — Receipt bundle: every Document in the FY window with
+ *            category IN (RECEIPT, INVOICE, TAX), foldered by category
+ *            (PR5.5 — reuses already-installed `jszip`)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -38,10 +40,18 @@ import {
   buildTaxPackXlsx,
   suggestedXlsxFilename,
 } from '@/lib/bookkeeping/taxPack/xlsxExporter';
+import {
+  buildTaxPackPdf,
+  suggestedPdfFilename,
+} from '@/lib/bookkeeping/taxPack/pdfExporter';
+import {
+  buildReceiptZipBundle,
+  suggestedZipFilename,
+} from '@/lib/bookkeeping/taxPack/zipBundleBuilder';
 
-type Format = 'csv' | 'xlsx' | 'json';
+type Format = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
 
-const SUPPORTED: Format[] = ['csv', 'xlsx', 'json'];
+const SUPPORTED: Format[] = ['csv', 'xlsx', 'json', 'pdf', 'zip'];
 
 export const GET = withPermission('transaction.read', async (request: NextRequest, auth) => {
   const url = new URL(request.url);
@@ -92,7 +102,25 @@ export const GET = withPermission('transaction.read', async (request: NextReques
     });
   }
 
-  // Both XLSX + JSON need the full summary.
+  // ZIP path doesn't need the financial summary — just documents.
+  if (format === 'zip') {
+    const bundle = await buildReceiptZipBundle(auth.userId, window);
+    const ab = new ArrayBuffer(bundle.bytes.byteLength);
+    new Uint8Array(ab).set(bundle.bytes);
+    const blob = new Blob([ab], { type: 'application/zip' });
+    return new NextResponse(blob, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${suggestedZipFilename(window.label)}"`,
+        'X-Monitrax-FY': window.label,
+        'X-Monitrax-Doc-Count': String(bundle.documentCount),
+        'X-Monitrax-Doc-Missing': String(bundle.missingCount),
+      },
+    });
+  }
+
+  // XLSX + JSON + PDF all need the full summary.
   const summary = await buildTaxPackSummary(auth.userId, window);
 
   if (format === 'xlsx') {
@@ -110,6 +138,22 @@ export const GET = withPermission('transaction.read', async (request: NextReques
       status: 200,
       headers: {
         'Content-Disposition': `attachment; filename="${suggestedXlsxFilename(window.label)}"`,
+        'X-Monitrax-FY': window.label,
+        'X-Monitrax-Property-Count': String(summary.perProperty.length),
+      },
+    });
+  }
+
+  if (format === 'pdf') {
+    const buffer = await buildTaxPackPdf(summary);
+    const ab = new ArrayBuffer(buffer.byteLength);
+    new Uint8Array(ab).set(buffer);
+    const blob = new Blob([ab], { type: 'application/pdf' });
+    return new NextResponse(blob, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${suggestedPdfFilename(window.label)}"`,
         'X-Monitrax-FY': window.label,
         'X-Monitrax-Property-Count': String(summary.perProperty.length),
       },

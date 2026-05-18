@@ -105,6 +105,7 @@ Last reviewed: 2026-03-08
 | `jszip` | ^3.10.1 | ZIP file creation (bulk downloads) | MIT/GPLv3 (dual) | 2026-03-08 |
 | `qrcode` | ^1.5.4 | QR code generation (MFA setup) | MIT | 2026-03-08 |
 | `unpdf` | ^1.4.0 | PDF text extraction | MIT | 2026-03-08 |
+| `pdfkit` | ^0.15.0 | PDF generation (Phase 42 Tax Pack handoff for accountants — server-side) | MIT | 2026-05-18 |
 
 ### Communication
 
@@ -139,6 +140,7 @@ Last reviewed: 2026-03-08
 | `@types/bcryptjs` | ^2.4.6 | bcryptjs types | MIT | 2026-03-08 |
 | `@types/jsonwebtoken` | ^9.0.7 | JWT types | MIT | 2026-03-08 |
 | `@types/node` | ^20 | Node.js types | MIT | 2026-03-08 |
+| `@types/pdfkit` | ^0.13.4 | pdfkit types (Tax Pack PDF exporter) | MIT | 2026-05-18 |
 | `@types/qrcode` | ^1.5.6 | QR code types | MIT | 2026-03-08 |
 | `@types/react` | ^19 | React types | MIT | 2026-03-08 |
 | `@types/react-dom` | ^19 | React DOM types | MIT | 2026-03-08 |

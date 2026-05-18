@@ -1,26 +1,30 @@
 'use client';
 
 /**
- * Phase 42 PR 5.6 — Tax Pack export button.
+ * Phase 42 PR 5.6 + PR 5.5 — Tax Pack export button.
  *
- * Wraps `GET /api/bookkeeping/tax-pack/export?fy=…&format=…` (already
- * shipped Phase 42 PR5). Lives on `/dashboard/reports`. Lets the
- * user pick FY + format → triggers download.
+ * Wraps `GET /api/bookkeeping/tax-pack/export?fy=…&format=…` (route
+ * shipped Phase 42 PR5; PDF + ZIP added in PR5.5). Lives on
+ * `/dashboard/reports`. Lets the user pick FY + format → triggers
+ * download.
  *
- * Format support at v1:
+ * Format support:
  *   - csv  — Xero bank-statement-import format (load-bearing)
  *   - xlsx — Per-property P&L workbook + ATO labels + summary
  *   - json — Full structured summary
+ *   - pdf  — Printable human-readable summary (PR5.5)
+ *   - zip  — Receipt bundle for the FY: every Document with category
+ *            IN (RECEIPT, INVOICE, TAX), foldered (PR5.5)
  *
  * Per CLAUDE.md §0 architect lens: thin UI wrapper over the
  * existing service. No new export logic; consumes the canonical
- * `buildTaxPackSummary` aggregator via the API.
+ * `buildTaxPackSummary` aggregator + the Document bundle builder.
  */
 
 import { useState } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 
-type TaxPackFormat = 'csv' | 'xlsx' | 'json';
+type TaxPackFormat = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
 
 interface FormatOption {
   value: TaxPackFormat;
@@ -29,10 +33,28 @@ interface FormatOption {
 }
 
 const FORMAT_OPTIONS: ReadonlyArray<FormatOption> = [
-  { value: 'csv', label: 'CSV — Xero import', description: 'Bank-statement-import format' },
+  { value: 'pdf', label: 'PDF — printable summary', description: 'Human-readable handoff for your accountant' },
   { value: 'xlsx', label: 'XLSX — Per-property workbook', description: 'P&L per property + ATO labels + summary' },
+  { value: 'csv', label: 'CSV — Xero import', description: 'Bank-statement-import format' },
+  { value: 'zip', label: 'ZIP — receipt bundle', description: 'Receipts / invoices / tax docs for the FY' },
   { value: 'json', label: 'JSON — programmatic', description: 'Full structured summary' },
 ];
+
+const EXTENSION_BY_FORMAT: Record<TaxPackFormat, string> = {
+  csv: 'csv',
+  xlsx: 'xlsx',
+  json: 'json',
+  pdf: 'pdf',
+  zip: 'zip',
+};
+
+const DOWNLOAD_BASENAME_BY_FORMAT: Record<TaxPackFormat, string> = {
+  csv: 'monitrax-tax-pack',
+  xlsx: 'monitrax-tax-pack',
+  json: 'monitrax-tax-pack',
+  pdf: 'monitrax-tax-pack',
+  zip: 'monitrax-receipts',
+};
 
 /**
  * AU FY label helper — builds `FY2025-26` from a starting calendar
@@ -52,7 +74,7 @@ function buildFyOptions(): string[] {
 export function TaxPackExportButton() {
   const fyOptions = buildFyOptions();
   const [fy, setFy] = useState<string>(fyOptions[0]);
-  const [format, setFormat] = useState<TaxPackFormat>('csv');
+  const [format, setFormat] = useState<TaxPackFormat>('pdf');
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -70,8 +92,9 @@ export function TaxPackExportButton() {
         return;
       }
       const blob = await res.blob();
-      const ext = format === 'xlsx' ? 'xlsx' : format === 'json' ? 'json' : 'csv';
-      const filename = `monitrax-tax-pack-${fy}.${ext}`;
+      const ext = EXTENSION_BY_FORMAT[format];
+      const basename = DOWNLOAD_BASENAME_BY_FORMAT[format];
+      const filename = `${basename}-${fy.toLowerCase()}.${ext}`;
 
       const anchorUrl = URL.createObjectURL(blob);
       const a = document.createElement('a');
