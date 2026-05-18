@@ -631,4 +631,157 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-32b-pr3-client-book-table-MG8mr`
+- Status: **Merged 2026-05-18 (PR #789)** — §6b polish backlog now empty.
+
+---
+
+## Session 8: PR E — Phase 42 PR5.5 (PDF summary + receipt ZIP bundle)
+
+Branch: `claude/phase-42-pr-5-5-pdf-zip-MG8mr`
+
+### Scope
+
+- **Type:** Feature (new file formats; one new prod dep; no schema; no CDR posture change).
+- **Continuation:** Closes the last open Phase 42 follow-up row from this morning's PR B sequence. Today's PR B2 (PR #785) shipped the Tax Pack export button with CSV / XLSX / JSON formats — the accountant-facing trio. PR5.5 was the queued polish item to add the two human-facing formats: **PDF** (printable summary the user emails their accountant) and **ZIP** (every receipt / invoice / tax doc in the FY, foldered).
+- **Up Next row closed:** #47.
+
+### What was done
+
+#### `lib/bookkeeping/taxPack/pdfExporter.ts` (new — ~340 LOC)
+
+`buildTaxPackPdf(summary): Promise<Buffer>` — renders the canonical `TaxPackSummary` (built by the already-existing `buildTaxPackSummary()`) as a printable PDF. Designed for the consumer-to-accountant handoff: one artefact the user can email, attach to a portal, or print and hand over physically.
+
+Six sections, in reading order:
+1. **Cover** — title + AU FY label + generated date (en-AU long date)
+2. **Totals** — income (gross) / expenses / net cashflow / transaction count, currency-formatted as AUD
+3. **ATO labels** — table with label / schedule / line item / amount / tx count (sorted by label)
+4. **Per-property P&L** — one block per property: summary (income / expenses / net) + expense breakdown table sorted by total descending; page break inserted before each property if there's <180px of room left
+5. **Data sources** — per-source counts (sorted by count desc) + per-month coverage lines (BASIQ / Imported / Manual-only)
+6. **Footer disclaimer on every page** — applied via `doc.bufferedPageRange()` at end-of-stream so multi-page PDFs all carry the same legal footer
+
+Layout primitives (table headers, table rows, two-column rows, section headings, page breaks, rules) factored into helpers — no per-section copy-paste of layout code. Design tokens (font family, sizes, colours — slate-900 ink, slate-600 muted, emerald-700 accent, slate-300 rules) declared as `const`s at file top so a future visual refresh edits one place.
+
+Currency formatting uses `Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' })`; dates use `Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })` — matches the rest of the AU-facing app.
+
+#### `lib/bookkeeping/taxPack/zipBundleBuilder.ts` (new — ~155 LOC)
+
+`buildReceiptZipBundle(userId, window): Promise<ReceiptBundleResult>` — bundles every `Document` row where `category IN (RECEIPT, INVOICE, TAX)` AND `uploadedAt` falls within the AU FY window AND `deletedAt IS NULL`, into a single ZIP.
+
+Folder structure (single canonical layout — keeps the accountant from learning 3 structures, unlike `/api/documents/export` which exposes 3):
+
+```
+monitrax-receipts-fy<label>/
+  Receipts/<yyyy-MM-dd>_<originalFilename>
+  Invoices/<yyyy-MM-dd>_<originalFilename>
+  Tax_Documents/<yyyy-MM-dd>_<originalFilename>
+  MANIFEST.txt  ← FY + window dates + per-folder counts + missing count + disclaimer
+```
+
+Storage abstraction reused (`getStorageProvider(userId)` from `lib/documents/storage`) — both DB-stored bytes (`fileContent`) and cloud-stored bytes (`storagePath` → `storage.download()`) are handled. Documents whose content can't be fetched are silently skipped + counted into `missingCount` (the bundle still ships with the rest; the manifest reports the discrepancy). Filename collisions get a `_<counter>` suffix before the extension.
+
+Returns `{ bytes, documentCount, countByFolder, missingCount }` so the route handler can surface counts via response headers.
+
+#### `app/api/bookkeeping/tax-pack/export/route.ts` (extended)
+
+`SUPPORTED` widened from `['csv', 'xlsx', 'json']` to `['csv', 'xlsx', 'json', 'pdf', 'zip']`. Two new branches added:
+
+- `format === 'zip'` short-circuits the financial-summary aggregation (ZIP only needs the Document table) and returns `application/zip` with `X-Monitrax-Doc-Count` + `X-Monitrax-Doc-Missing` headers.
+- `format === 'pdf'` reuses the existing `buildTaxPackSummary()` call (shared with XLSX + JSON), feeds it into `buildTaxPackPdf()`, returns `application/pdf` with `X-Monitrax-Property-Count` header.
+
+Buffer→ArrayBuffer→Blob copy pattern matches the existing XLSX branch byte-for-byte.
+
+#### `components/bookkeeping/TaxPackExportButton.tsx` (extended)
+
+- `TaxPackFormat` type widened to `'csv' | 'xlsx' | 'json' | 'pdf' | 'zip'`
+- `FORMAT_OPTIONS` reordered: PDF first (set as default; the most natural user-to-accountant artefact), XLSX second, CSV third, ZIP fourth, JSON last
+- Default format changed from `'csv'` (accountant-format) to `'pdf'` (user-format) — matches the new primary use case
+- New `EXTENSION_BY_FORMAT` + `DOWNLOAD_BASENAME_BY_FORMAT` SSOT maps replace the inline ternary in `handleExport()` — adding a new format now means adding 2 map entries instead of editing logic
+- Filename basename switches between `monitrax-tax-pack-*` and `monitrax-receipts-*` per format (the ZIP isn't a "tax pack", it's the receipt bundle that goes alongside it)
+
+#### `docs/policy/APPROVED_DEPENDENCIES.md` (updated — §6.4 compliance)
+
+- `pdfkit ^0.15.0` added to Utilities table (MIT, reviewed 2026-05-18). Justification recorded inline: "Phase 42 Tax Pack handoff for accountants — server-side."
+- `@types/pdfkit ^0.13.4` added to Type Definitions (dev deps).
+
+### §12.7 dep-trade-off (recorded for posterity)
+
+The Up Next #47 row called for two new deps — `pdfkit` (PDF) + `archiver` (ZIP). The actual decision:
+
+- **PDF:** `pdfkit` added. GCP has no managed JSON-to-PDF service. Alternatives considered: `jsPDF` (works in node but designed for browser; bigger), `puppeteer` (overkill — needs headless Chrome at deploy time); HTML-render + browser-print (user has to manually save-as-PDF; fails the "downloadable artefact" requirement). `pdfkit` is the canonical Node PDF library, MIT, ~700KB function size impact, well-maintained.
+- **ZIP:** `archiver` **dropped**. The codebase already uses `jszip` for `/api/documents/export/route.ts` + `/api/share/[token]/download/route.ts` — adding `archiver` would create two ZIP libraries in one codebase, violating §12.3 SSOT. Reused `jszip` instead. The PR ships **one** new prod dep instead of two.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `lib/bookkeeping/taxPack/pdfExporter.ts` | NEW — pdfkit-based summary PDF |
+| `lib/bookkeeping/taxPack/zipBundleBuilder.ts` | NEW — jszip-based receipt bundle |
+| `app/api/bookkeeping/tax-pack/export/route.ts` | Extended — 2 new format branches |
+| `components/bookkeeping/TaxPackExportButton.tsx` | Extended — 2 new format options + PDF default + filename map |
+| `package.json` | Added `pdfkit ^0.15.0` + `@types/pdfkit ^0.13.4` |
+| `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` | PR5.5 row flipped to ✅ SHIPPED with dep-decision rationale |
+| `docs/policy/APPROVED_DEPENDENCIES.md` | pdfkit + @types/pdfkit added |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #47 closed; Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 8 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [x] **deployment / build** — new prod dep (`pdfkit`) + new dev dep (`@types/pdfkit`). Vercel-build picks them up via `npm install` automatically — no script changes needed. Approved-deps doc updated in the same PR (§6.4 compliance).
+- [ ] security / CDR posture — receipt bytes are user-uploaded artefacts (§13.3 doesn't apply to non-CDR bytes); the manifest exposes only FY label + counts.
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/blueprint/PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` — PR5.5 row flipped to ✅ SHIPPED with the §12.7 dep-decision rationale captured inline.
+- `docs/policy/APPROVED_DEPENDENCIES.md` — `pdfkit` (Utilities) + `@types/pdfkit` (Type Definitions) rows added, dated 2026-05-18.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #47 closed; Recently Completed 2026-05-18 entry added; top header refreshed (session 20 / 8 PRs / ~4,200 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 8 entry (this).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** Pure read path — exporters consume the existing read-only API. No Prisma writes anywhere in this PR.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Tax Pack PDF/ZIP exporters — they render whatever the underlying `TaxPackSummary` shape contains; no tax-engine surface touched; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - `npm install` succeeds with `pdfkit` + `@types/pdfkit` added
+  - `GET /api/bookkeeping/tax-pack/export?fy=FY2025-26&format=pdf` returns a valid PDF (file opens in standard PDF readers; 6 sections render; multi-page documents carry the disclaimer on every page)
+  - `GET /api/bookkeeping/tax-pack/export?fy=FY2025-26&format=zip` returns a valid ZIP with the documented folder structure + a populated `MANIFEST.txt` (even when zero documents match — empty bundle ships with just the manifest)
+  - `<TaxPackExportButton />` on `/dashboard/reports` exposes the 5 format options + defaults to PDF
+  - Filename basename switches correctly per format (`monitrax-tax-pack-fy2025-26.pdf` vs `monitrax-receipts-fy2025-26.zip`)
+
+### Today's tally (updated)
+
+8 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| **PR E (this)** | Phase 42 PR5.5 — PDF + ZIP | **Up Next #47 — Phase 42 follow-up backlog empty** |
+
+10 backlog rows closed. ~4,200 LOC shipped across the day.
+
+### PR
+
+- Branch: `claude/phase-42-pr-5-5-pdf-zip-MG8mr`
 - Status: Open
