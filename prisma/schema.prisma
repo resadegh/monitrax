@@ -815,6 +815,13 @@ model UserPreference {
   // Default false (banner shows until user dismisses).
   dismissedReformBanner Boolean @default(false)
 
+  // Phase 12 PR 3c.2b — "Connect your bank for fresh balances" first-
+  // visit migration modal. Shown once to existing users with ≥1 MANUAL
+  // account; once dismissed (any choice — Connect / Import / Keep
+  // manual) never shown again. Always reachable via Settings > Data
+  // Health (PR J) for users who want to revisit the choice.
+  dismissedBalanceUpgradeNudge Boolean @default(false)
+
   // User preference settings
   preferredCurrency   String  @default("AUD")
   preferredDateFormat String  @default("DD/MM/YYYY")

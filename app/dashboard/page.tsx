@@ -63,7 +63,9 @@ import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator'
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
 import { MoneyStoryHero } from '@/components/dashboard/MoneyStoryHero';
+import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 interface DashboardInsights {
   healthScore: {
@@ -347,16 +349,59 @@ type CashflowPeriod = 'monthly' | 'annual';
 
 export default function DashboardPage() {
   const { token } = useAuth();
+  const basiqEnabled = useBasiqEnabled();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
   const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
 
+  // Phase 12 PR 3c.2b — first-visit balance-upgrade nudge modal.
+  // Opens once on dashboard mount when (a) the user has ≥1 MANUAL
+  // account AND (b) they haven't dismissed it yet. Any of the three
+  // CTAs (or close) flips the server flag forward; modal never
+  // auto-shows again. Always reachable via Settings > Data Health.
+  const [nudgeOpen, setNudgeOpen] = useState(false);
+  const [nudgeManualCount, setNudgeManualCount] = useState(0);
+
   useEffect(() => {
     if (token) {
       loadDashboardData();
     }
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    (async () => {
+      try {
+        const [dismissRes, accountsRes] = await Promise.all([
+          fetch('/api/settings/balance-upgrade-nudge', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch('/api/accounts', {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+        if (!active) return;
+        const dismissBody = dismissRes.ok ? await dismissRes.json() : null;
+        if (dismissBody?.dismissed === true) return;
+        const accountsBody = accountsRes.ok ? await accountsRes.json() : null;
+        const rows = (accountsBody?.data ?? accountsBody?.accounts ?? []) as Array<{
+          balanceSource?: string | null;
+        }>;
+        const manualCount = rows.filter((a) => a.balanceSource === 'MANUAL').length;
+        if (manualCount === 0) return;
+        if (!active) return;
+        setNudgeManualCount(manualCount);
+        setNudgeOpen(true);
+      } catch (err) {
+        console.warn('[dashboard] balance-upgrade-nudge check failed:', err);
+      }
+    })();
+    return () => {
+      active = false;
+    };
   }, [token]);
 
   const loadDashboardData = async () => {
@@ -1705,6 +1750,18 @@ export default function DashboardPage() {
             </DialogContent>
           </Dialog>
         </div>
+      )}
+
+      {/* Phase 12 PR 3c.2b — first-visit balance-upgrade nudge.
+          Self-gates on (a) user has ≥1 MANUAL account, (b) user
+          has not dismissed yet. Any of the 3 CTAs flips the server
+          flag forward. */}
+      {nudgeOpen && (
+        <BalanceUpgradeNudgeModal
+          manualAccountCount={nudgeManualCount}
+          basiqEnabled={basiqEnabled}
+          onDismiss={() => setNudgeOpen(false)}
+        />
       )}
     </DashboardLayout>
   );
