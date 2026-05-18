@@ -52,16 +52,6 @@ export function BalanceUpgradeNudgeModal({
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
 
-  // ESC to close (treated as "Keep manual" — flips the flag).
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void handleKeepManual();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   /**
    * Single SSOT for flipping the dismissal flag. Every CTA calls it.
    * On failure, we still let the user proceed (dismiss the modal) —
@@ -96,6 +86,18 @@ export function BalanceUpgradeNudgeModal({
     await flipDismissedFlag();
     onDismiss();
   };
+
+  // ESC to close (treated as "Keep manual" — flips the flag).
+  // Declared AFTER the handlers so TypeScript doesn't flag a
+  // TS2448 "used before declaration" against `handleKeepManual`.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') void handleKeepManual();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div
