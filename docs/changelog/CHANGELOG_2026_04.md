@@ -1,0 +1,109 @@
+# Changelog — April 2026 (monthly summary)
+
+> **Consolidated summary of all April 2026 sessions.** Per Tech Debt #4 (consolidation 2026-05-19): each session's headline + key outputs documented here for scannability. Full session detail preserved in `docs/changelog/archive/CHANGELOG_2026_04_*.md`.
+
+**Period covered:** 2026-04-10 → 2026-04-30 (14 sessions across 21 days)
+**Headline:** CDR remediation + Admin Portal GCP-first migration + Phase 12 wizard overhaul + R12 incident recovery + Phase 36 accounts retirement + WIF Phase 8 (Cloud SQL Connector).
+
+---
+
+## Sessions index (oldest first)
+
+### 2026-04-10 — Documentation restructure + BAU framework
+**Session:** `review-monitrax-docs-WU3nf` · **Archive:** `archive/CHANGELOG_2026_04_10.md`
+
+Comprehensive doc restructure applying SSOT (Single Source of Truth) principles. Archived 8+ duplicate/obsolete documents; created the canonical folder structure used today (`docs/architecture/`, `docs/audits/`, `docs/compliance/`, `docs/guides/`, `docs/migration/`, `docs/changelog/`, `docs/bau-framework/`). New `docs/bau-framework/` (9 docs) became the canonical BAU operations reference. **Output:** the doc tree that the rest of the month built on.
+
+---
+
+### 2026-04-11 — CDR Code-Level Remediation (Phase L)
+**Session:** `claude/review-monitrax-compliance-ZOfAM` · **Archive:** `archive/CHANGELOG_2026_04_11_CDR_REMEDIATION.md`
+
+First batch of CDR compliance code-level remediations from the 2026-04-11 deep audit. 20 of 46 identified gaps fixed across Priority 0 / 1 / 2 categories: G35 (`/api/admin/dashboard` had no auth → added `verifyAdminAuth()`), G15 (`deleteCDRData` didn't call Basiq → added `deleteBasiqConnection`), G17 (`withMFARequired` only checked enrollment → now verifies Firebase `sign_in_second_factor` claim), plus 17 others (RBAC permissions, schema model fixes, audit-log sanitisation, consent lifecycle hardening).
+
+---
+
+### 2026-04-12 — Multi-PR landing day (7 sessions)
+
+All 7 sessions of 2026-04-12 belong to two parallel branches: `claude/review-monitrax-compliance-ZOfAM` (compliance + admin migration) and `claude/review-monitrax-docs-ty15A` (Phase 12 wizard redesign sequence).
+
+| Sub-session | Headline | Archive |
+|---|---|---|
+| **Phase M.1 — Admin Auth Migration to GCP Identity Platform** | Admin portal migrated from broken custom auth → Firebase Auth + GCP custom claims. New `verifyAdminGCPAuth()` replaced `verifyAdminAuth` across 22 admin API routes. Login page → `signInWithEmailAndPassword` + MFA. Google Sign-In via `signInWithPopup`. Logout fixed (was 404). AdminLayoutClient rebuilt around `onAuthStateChanged`. | `CHANGELOG_2026_04_12_ADMIN_GCP_MIGRATION.md` |
+| **Phase N — Consumer Consent UI + Route Migration + Basiq Webhook** | Consumer-facing CDR consent UI shipped + remaining route migrations to GCP auth + Basiq webhook hardening. | `CHANGELOG_2026_04_12_PHASE_N.md` |
+| **Admin Portal UI Modernization** | Admin UI repaint to match the GCP migration; navigation aligned to the new role/permission model. | `CHANGELOG_2026_04_12_UI_MODERNIZATION.md` |
+| **Phase 12 PR 1 — Onboarding Correctness** | Deep review of the onboarding wizard surfaced 11 correctness bugs (frequency double-conversion, silent input drops, wrong-column routing, etc.). PR 1 fixed every correctness bug without UX change. | `CHANGELOG_2026_04_12_ONBOARDING_CORRECTNESS.md` |
+| **Phase 12 PR 2 — Draft persistence + premium welcome modal** | Wizard draft persistence via `UserPreference.onboardingDraft Json?`, resume banner, premium welcome modal redesign, strict show-once contract. | `CHANGELOG_2026_04_12_ONBOARDING_DRAFT_PERSISTENCE.md` |
+| **Phase 12 PR 3a — Wizard Visual Overhaul + Simplification** | Full wizard visual overhaul: new primitives library, design tokens CSS, dedicated `/app/onboarding` route, all 8 steps redesigned, Welcome step profile auto-inference. | `CHANGELOG_2026_04_12_WIZARD_VISUAL_OVERHAUL.md` |
+| **Phase 12 PR 3b — Wizard Structural Additions** | 3-option housing/renter path, conditional Debts step for non-property loans with CAR→Asset linking, dedicated Super step routing real `SuperannuationAccount` rows, Household lifestyle fields for Phase 28 budget AI, 3-tier Accounts data source picker (Tier 1 Basiq / Tier 2 file import / Tier 3 manual). | `CHANGELOG_2026_04_12_WIZARD_STRUCTURAL_ADDITIONS.md` |
+
+**Cumulative impact:** Phase 12 wizard went from "8 correctness bugs" → "production-ready with draft persistence, premium UX, and structural completeness" in a single day. CDR + Admin portal compliance went from "46-gap audit" → "Phase L + M + N substantially closed".
+
+---
+
+### 2026-04-15 — R12 data-loss incident response
+**Session:** `claude/monitrax-wizard-redesign-6jVjX` · **Archive:** `archive/CHANGELOG_2026_04_15.md`
+
+**Production incident.** A Phase 12 A.0 Prisma schema change was merged + deployed to Vercel, but the matching `ALTER TABLE` migration never ran against either Cloud SQL instance. The Prisma client generated by the build expected columns that didn't exist in prod; every `SELECT *` crashed at the database layer; the dashboard went blank for every user. Earlier in the day, a `prisma.householdProfile.upsert(...)` shipped without user confirmation that overwrote existing data.
+
+**Recovery:**
+- Hot-fix migration applied to bring prod schema in line
+- `prisma migrate deploy` baked into `vercel-build` going forward — schema changes that lack a matching migration file now fail the build instead of silently breaking prod
+- CLAUDE.md §12.12 (Schema Change Deploy Protocol) added — every schema change MUST ship with its migration in the same PR
+- CLAUDE.md §12.11 (Destructive Write Checklist) added — every `prisma.<model>.{update, upsert, delete, updateMany, deleteMany}` requires answering 3 questions in the PR body, and reviewer-reject rules
+
+**Lesson:** these two protocols are now non-negotiable; future sessions are reviewed against them.
+
+---
+
+### 2026-04-17 → 2026-04-19 — TRAIL Framework complete integration
+**Session:** TRAIL Framework — complete integration across app, website, onboarding · **Archive:** `archive/CHANGELOG_2026_04_19.md`
+
+The TRAIL (Track / Reduce / Anchor / Invest / Live) framework wired end-to-end. Sidebar IA + journey navigation + per-stage hue tokens + TRAIL stage indicator on the home page + warm-naming convention enforced ("My Accounts" not "Portfolio", "Spending" not "Expenses", "Debt Freedom" not "Debt Planner"). CLAUDE.md Part 14 codified the framework as core identity. New `lib/cfo/trailStage.ts` SSOT for stage derivation. Onboarding wizard re-keyed to TRAIL stages. Public site (`monitrax.com.au`) repainted around the same framework.
+
+---
+
+### 2026-04-18 — Phase 36: My Accounts simplification (kick-off)
+**Session:** `NWVJk — Phase 36` · **Archive:** `archive/CHANGELOG_2026_04_18.md`
+
+Phase 36 kick-off — "My Accounts" → "Balances" consolidation. New `/dashboard/balances` route unifying Cash, Credit, and Debt sections behind a single Net Position hero. Phase 1 of the multi-PR retirement of the standalone `/dashboard/accounts` + `/dashboard/loans` pages.
+
+---
+
+### 2026-04-29 — Phase 36 Phase 1: inline AccountDetailDialog
+**Session:** `claude/balances-account-detail-dialog-2hNSa` · **Archive:** `archive/CHANGELOG_2026_04_29.md`
+
+Phase 36 Phase 1 of accounts-page retirement: inline `AccountDetailDialog` on `/dashboard/balances` mirroring all calculations from `/dashboard/accounts` (canonical SSOT via `calculateEffectivePrincipal`, `calculateLVR`, `toAnnual`). Multi-tab (Overview / Transactions / Offset / Linked) — every metric flows from the canonical service, never recomputed inline.
+
+---
+
+### 2026-04-30 — WIF Phase 8 (Cloud SQL Connector)
+**Session:** `claude/wif-cloud-sql-connector-2hNSa` · **Archive:** `archive/CHANGELOG_2026_04_30.md`
+
+**Foundational infrastructure:** Workload Identity Federation Phase 8 — migrate prod DB authentication from static `DATABASE_URL` password → IAM-database-auth via WIF + Cloud SQL Connector. Every Vercel function exchanges its per-request OIDC token via STS for an impersonated SA access token; opens TLS 1.3 tunnel via the Connector; uses the same access token as the per-connection Postgres password. **No long-lived credential anywhere in the runtime.** New `lib/db.ts` runtime branch (`buildConnectorPrisma` vs legacy `buildStandardPrisma`). Authorized network `0.0.0.0/0` retained as defence-in-depth pending Phase 12 (Vercel Static IP migration). Documented exhaustively in `04_WIF_TROUBLESHOOTING.md` + `CDR_WIF_AUTHENTICATION_EVIDENCE.md` (compliance evidence pack).
+
+This work concluded a multi-day arc started 2026-04-29 (Phases 1-7 spec/test/preview) — the cutover to 100% WIF traffic landed 2026-05-01.
+
+---
+
+## Month-end posture (2026-04-30)
+
+By end of April, Monitrax had moved from "early-stage feature work" to "compliance-grade infrastructure". Specifically:
+
+- **CDR compliance:** Phase L code-level remediation closed 20+ gaps; Phase M migrated Admin Portal to GCP Identity Platform; Phase N shipped consumer consent UI.
+- **Schema/deploy safety:** R12 incident produced CLAUDE.md §12.11 (destructive-write checklist) + §12.12 (schema migration protocol) — both still enforced today.
+- **Phase 12 onboarding wizard:** correctness + draft persistence + visual overhaul + structural additions all landed in 12 days.
+- **Phase 36 accounts page retirement:** Phase 1 inline dialog on Balances shipped; Phase 2 (full retirement) sequenced for early May.
+- **WIF Phase 8:** runtime DB auth via WIF + Cloud SQL Connector live; cutover to 100% traffic happened 2026-05-01.
+
+## Where May 2026 picked up
+
+The May changelogs (`CHANGELOG_2026_05_*.md`) cover Phase 36 Phase 2 (full accounts retirement), Phase 32B (B2B2C Practice surface), Phase 41E reform 2026-27 stage 1, the data-source hygiene story (Phase 12 §6A.1 — 6/6 by 2026-05-19), and the WIF Phase 9 (production cutover) → Phase 10 (auth-network restriction) sequence.
+
+---
+
+## How to find more detail
+
+Every paragraph above links to the matching archive file under `docs/changelog/archive/`. The archive files preserve the original per-session full detail including code snippets, file lists, doc-sync receipts, and test results. **Read the archive when you need forensic detail about a specific session; read this monthly summary when you need to scan the month.**
+
+Last updated: 2026-05-19 — Tech Debt #4 consolidation (this file is the canonical April 2026 changelog; archive folder preserves the dailies).

@@ -120,4 +120,82 @@ Docs updated in this PR:
 ### PR
 
 - Branch: `claude/phase-12-pr-3c-2e-confidence-indicators-MG8mr`
+- Status: **Merged 2026-05-19 (PR #803)** — closes §6A.1 6/6.
+
+---
+
+## Session 2: Tech Debt #4 — April changelog consolidation
+
+Branch: `claude/tech-debt-4-april-changelog-consolidation-MG8mr`
+
+### Scope
+
+- **Type:** Documentation housekeeping. No code change, no schema change, no UI change.
+- **Closes:** Tech Debt #4 — "Accumulated >5 daily files in April; harder to scan."
+
+### What was done
+
+**Consolidated 14 daily April 2026 changelog files** (~2,800 LOC total) into a **single monthly summary** at `docs/changelog/CHANGELOG_2026_04.md` (~190 lines). One paragraph per session covering: session ID, headline, key outputs. Cross-links to the archive for forensic detail.
+
+**Daily files moved to `docs/changelog/archive/`** — originals preserved verbatim. New `archive/README.md` documents the consolidation rule for future months.
+
+**Consolidation rule established** (recorded in `archive/README.md`):
+> When a month accumulates **>5 daily changelog files** AND **the month is in the past**, roll up into a `CHANGELOG_YYYY_MM.md` monthly summary, move dailies to `archive/`. Current month's dailies stay live in the top-level folder.
+
+### Why this is housekeeping (low risk)
+
+- No code touched
+- No schema touched
+- No CDR data touched
+- The historical record is **preserved 100%** — files are moved, not deleted
+- Top-level `docs/changelog/` becomes significantly more scannable (one canonical April file + active dailies)
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `docs/changelog/CHANGELOG_2026_04.md` | NEW — monthly summary, ~190 lines |
+| `docs/changelog/archive/README.md` | NEW — consolidation policy + current contents |
+| `docs/changelog/archive/CHANGELOG_2026_04_*.md` (×14) | MOVED from parent (git mv preserves history) |
+| `docs/IMPLEMENTATION_PLAN.md` | Tech Debt #4 row marker rolled to closed; Recently Completed 2026-05-19 entry; (top header unchanged — Day 2 entry already covers this) |
+| `docs/changelog/CHANGELOG_2026_05_19.md` | This Session 2 entry |
+
+### Doc-sync (CLAUDE.md §16) — full block
+
+Surfaces changed in this PR:
+- [ ] visual design system
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] **operational procedure** — new "archive past months when >5 dailies" rule recorded in `archive/README.md`
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_04.md` (NEW)
+- `docs/changelog/archive/README.md` (NEW)
+- `docs/changelog/archive/CHANGELOG_2026_04_*.md` (MOVED — git mv preserves history)
+- `docs/IMPLEMENTATION_PLAN.md` (Tech Debt #4 closed + Recently Completed entry)
+- `docs/changelog/CHANGELOG_2026_05_19.md` (this Session 2 entry)
+
+### §12.11 / §12.12 / §12.14 — N/A
+
+Pure docs.
+
+### Testing
+
+- [x] `npx tsc --noEmit` — N/A (no code change)
+- [ ] Vercel preview build passes (no behavioural change expected)
+
+### Day's tally — Day 2 (2026-05-19) — 2 PRs
+
+| PR | Title | Closed |
+|---|---|---|
+| #803 | §6A.1 #3 — Confidence indicators | §6A.1 6/6 ✅ |
+| (this) | Tech Debt #4 — April changelog consolidation | Tech Debt #4 |
+
+### PR
+
+- Branch: `claude/tech-debt-4-april-changelog-consolidation-MG8mr`
 - Status: Open
