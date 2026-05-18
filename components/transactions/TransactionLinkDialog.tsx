@@ -36,6 +36,7 @@ import {
   INCOME_TYPE_LABELS,
 } from '@/lib/categories/unified';
 import { CategorySelect } from '@/components/categories/CategorySelect';
+import { VendorCardDrawer } from '@/components/bookkeeping/VendorCardDrawer';
 import { FormDocumentUpload, type FieldMapping } from '@/components/documents/FormDocumentUpload';
 import { formatCurrency } from '@/lib/utils/formatters';
 
@@ -121,6 +122,8 @@ export function TransactionLinkDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Phase 42 PR 5.6 — Vendor card drawer state.
+  const [showVendorDrawer, setShowVendorDrawer] = useState(false);
 
   const [currentLink, setCurrentLink] = useState<CurrentLink | null>(null);
   const [suggestedMatches, setSuggestedMatches] = useState<MatchResult[]>([]);
@@ -657,6 +660,17 @@ export function TransactionLinkDialog({
                     Previously: {learnedCategory}
                   </Badge>
                 </div>
+              )}
+              {/* Phase 42 PR 5.6 — vendor card link. Only when we
+                  have a standardised merchant to resolve against. */}
+              {transaction.merchantStandardised && (
+                <button
+                  type="button"
+                  onClick={() => setShowVendorDrawer(true)}
+                  className="mt-1.5 inline-flex items-center gap-1 text-xs text-sky-700 dark:text-sky-300 hover:underline"
+                >
+                  View vendor card →
+                </button>
               )}
             </div>
             <div className="text-right">
@@ -1596,6 +1610,14 @@ export function TransactionLinkDialog({
           </div>
         )}
       </DialogContent>
+      {/* Phase 42 PR 5.6 — vendor card drawer. Self-contained;
+          opens from "View vendor card" link in the transaction info
+          block. Resolves merchant → vendor via API on open. */}
+      <VendorCardDrawer
+        open={showVendorDrawer}
+        onClose={() => setShowVendorDrawer(false)}
+        merchantStandardised={transaction.merchantStandardised ?? undefined}
+      />
     </Dialog>
   );
 }

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
+import { TaxPackExportButton } from '@/components/bookkeeping/TaxPackExportButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -171,6 +172,10 @@ export default function ReportsPage() {
       />
 
       <div className="space-y-6">
+        {/* Phase 42 PR 5.6 — Tax Pack export. Categorised P&L +
+            ATO labels + per-property breakdown. Hand to accountant. */}
+        <TaxPackExportButton />
+
         {/* Report Type Selection */}
         <div>
           <h2 className="text-lg font-semibold mb-4">Select Report Type</h2>
