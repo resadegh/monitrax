@@ -528,4 +528,107 @@ Docs updated:
 ### PR
 
 - Branch: `claude/post-41e-pr-c-hygiene-MG8mr`
+- Status: **Merged 2026-05-18 (PR #788)** — barrel hygiene shipped.
+
+---
+
+## Session 7: PR D — Phase 32B PR3 polish item ③ (richer client-book table)
+
+Branch: `claude/phase-32b-pr3-client-book-table-MG8mr`
+
+### Scope
+
+- **Type:** Feature (UI polish, no schema, no new endpoint).
+- **Scope:** Last queued item from `PHASE_32B_PR3_ALERT_ENGINE.md` §6b post-#9b polish backlog. Item ① (admin "run sweep now" button) shipped 2026-05-10 in PR #749. Item ② (hero KPI strip + dashboard real-data switch) shipped 2026-05-10 in PR #751. Item ③ (richer real-data **client-book table** on the `/portal/clients` list) was queued — the per-client aggregate array on `GET /api/portal/clients?organizationId=…` was already there to feed it. This PR consumes it.
+- **The product question** from #9b — *"how much per-client aggregate to surface on the practice landing vs. behind the per-client drill-in, given each drill-in writes a `ClientAccessLog` row but the landing aggregates don't"* — resolved by the architect lens: put the aggregate on `/portal/clients` (the proper client-book surface) rather than `/portal/dashboard` (which keeps the slim summary card from #9b). The dashboard stays a glance-surface; the `/portal/clients` page is where the human-dimension fields live, alongside the system fields.
+
+### What was done
+
+#### `components/portal/clients/ClientList.tsx`
+
+- New exported `ClientAggregateRow` interface — `{ trailStage: 'TRACK' | 'REDUCE' | 'ANCHOR' | 'INVEST' | 'LIVE' | null, healthScore: number | null, healthDelta: number | null, activeAlertCount: number }`. Mirrors the per-client array shape returned by `GET /api/portal/clients` (modulo the `STAGE_BY_LETTER` mapping the route applies — the route stores `lastTrailStage` as a one-letter code and translates back to the long enum on read).
+- New optional `aggregateMap?: Map<string, ClientAggregateRow>` prop on `ClientListProps`. Keyed by `PortalClient.id` (= `organizationClientId`).
+- `columns` refactored from a top-level `const` to a `useMemo(() => [...], [aggregateMap, onClientClick])` so the column set rebuilds when the aggregate map becomes available (post-fetch).
+- **Conditional column insertion** between Consent and Assigned To (only when `aggregateMap` is supplied):
+  - **TRAIL** — `<TrailStagePill stage={agg?.trailStage ?? null} />`. Warm-toned pill per stage: Track=sky / Reduce=amber / Anchor=emerald / Invest=indigo / Live=fuchsia. `—` (slate-400) when stage null.
+  - **Health** — `<HealthCell score={agg?.healthScore} delta={agg?.healthDelta} />`. Score colour-toned by band: emerald-700 ≥70, amber-700 40–69, rose-700 <40. Delta indicator alongside the score: `↑ +N` (emerald-600) / `↓ -N` (rose-600) / `stable` (slate-500, neutral) / nothing when delta is null (no prior sweep yet). `—` when score null.
+  - **Alerts** — count pill, rose-toned when >0 else slate. Same visual pattern as the existing `pendingTasks` column.
+- Helpers `TrailStagePill` + `HealthCell` + `TRAIL_STAGE_TONE` constant added at the bottom of the file (after the existing icon helpers). File header JSDoc extended with a paragraph documenting the new prop + the graceful-degradation behaviour.
+
+#### `app/portal/clients/page.tsx`
+
+- New `aggregateMap` state — `useState<Map<string, ClientAggregateRow> | undefined>(undefined)`.
+- New `useEffect` (dependency: `currentOrg`) — fetches `GET /api/portal/clients?organizationId=…` (same endpoint the dashboard hero strip reads). Builds the map from `data.data.clients[]` array. **Failures non-blocking** — `setAggregateMap(undefined)` on error → `ClientList` omits the new columns gracefully. Cleanup flag prevents stale state writes if the org changes mid-flight.
+- `<ClientList aggregateMap={aggregateMap} />` — passes the new prop through. Other props unchanged.
+
+### Behavioural-psychologist + designer lens read
+
+Without the aggregate columns, the `/portal/clients` page only showed *system* fields (status / consent / pending tasks / who's assigned). An adviser had to click each client to see if anything had changed since the last sweep. With the three new columns, the *human dimension* (where in the TRAIL journey they are, are they getting healthier, do they have alerts) reads alongside the system fields — the adviser can scan the book in one pass and know who needs them today. Warm-toned pills (sky / amber / emerald / indigo / fuchsia) frame each stage as a *position*, not a *deficit* — matching the §0 advisory mindset rule.
+
+### Privacy posture (CLAUDE.md §13.3)
+
+Aggregate-only. No balances, no transaction-level data, no CDR data passes through `aggregateMap` — just TRAIL stage label, integer health score, integer delta, integer alert count. Byte-for-byte the same data the dashboard hero strip already shows (#9b polish ②). The `payload` column of `ClientAlert` is **never** read in this code path; only the count of ACTIVE alerts per client.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `components/portal/clients/ClientList.tsx` | New `ClientAggregateRow` interface + `aggregateMap?` prop + `useMemo` columns with 3 conditional aggregate columns + `TrailStagePill` + `HealthCell` helpers + `TRAIL_STAGE_TONE` constant. Header JSDoc extended. |
+| `app/portal/clients/page.tsx` | New `aggregateMap` state + parallel fetch effect for `GET /api/portal/clients` + prop passed to `<ClientList>`. |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — `<TrailStagePill>` is the first canonical 5-stage TRAIL pill component anywhere in the portal codebase; the warm-tone mapping (sky / amber / emerald / indigo / fuchsia) matches the TRAIL framework's stage hues (CLAUDE.md §14). `<HealthCell>` is the first canonical health-score + delta-indicator presentation. Both live in `ClientList.tsx` for now (private to the portal); promote to a shared component if a second consumer appears.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — workstream §0b "Closes / opens" row updated (③ flipped from "still queued" → "✅ SHIPPED"); workstream §0 narrative bullet on the real-alert-engine summary line updated (③ flipped 📋 → ✅); Recently Completed 2026-05-18 entry added; top header refreshed to record session 19 (PR D).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 7 entry (this).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** Pure read path — UI consumes an existing read-only API. No Prisma writes anywhere in this PR.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Portal client-book UI — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` columns touched; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - With an org that has no swept clients → aggregate fetch returns `hasRealClients: false` + empty `clients[]` → map is built empty → `<ClientList>` receives a Map with no entries → the 3 columns render but show `—` for every row. Acceptable (the existing 5 columns still render normally).
+  - With an org that has swept clients → 3 columns populate with real data.
+  - With a network error mid-fetch → `setAggregateMap(undefined)` → 3 columns collapse out → granular table still renders.
+
+### Today's tally (updated)
+
+7 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| **PR D (this)** | Phase 32B PR3 polish ③ | **Phase 32B PR3 §6b backlog empty** |
+
+9 backlog rows closed. ~3,700 LOC shipped across the day.
+
+### PR
+
+- Branch: `claude/phase-32b-pr3-client-book-table-MG8mr`
 - Status: Open
