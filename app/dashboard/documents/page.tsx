@@ -59,6 +59,10 @@ import {
   DocumentFolderView,
 } from '@/components/documents';
 import { SendToAccountantDialog } from '@/components/documents/SendToAccountantDialog';
+import {
+  ReceiptCandidatePicker,
+  type ReceiptPickerCandidate,
+} from '@/components/bookkeeping/ReceiptCandidatePicker';
 import { DocumentCategory } from '@/lib/documents/types';
 
 // Phase 38 PR 1 — design tokens lifted from Home TRAIL banner v3 +
@@ -590,6 +594,16 @@ export default function DocumentsLibraryPage() {
     }
   };
 
+  // Phase 42 PR3.5 — Receipt picker state. Populated when the confirm
+  // response includes a `PICK_FROM` verdict (composite score 0.7–0.95
+  // — the matcher found 2–5 plausible transactions and needs the user
+  // to disambiguate). `null` means no picker is open.
+  const [pickerState, setPickerState] = useState<{
+    documentId: string;
+    expenseId: string;
+    candidates: ReceiptPickerCandidate[];
+  } | null>(null);
+
   // Phase 26: Handle confirm analysis action
   const handleConfirmAnalysis = async (
     analysisId: string,
@@ -608,6 +622,42 @@ export default function DocumentsLibraryPage() {
     });
 
     if (res.ok) {
+      // Phase 42 PR3.5 — open the receipt picker when the matcher
+      // returned a PICK_FROM verdict (CREATE_EXPENSE on a receipt with
+      // ambiguous candidates). AUTO_LINK + NO_MATCH require no user
+      // action — the server already did the right thing.
+      try {
+        const body = await res.clone().json();
+        const verdict = body?.receiptMatch;
+        if (
+          verdict?.kind === 'PICK_FROM' &&
+          Array.isArray(verdict.candidates) &&
+          verdict.candidates.length > 0 &&
+          body?.entity?.id &&
+          body?.entity?.type === 'EXPENSE'
+        ) {
+          // The route's `entity` is the freshly-created Expense. The
+          // matched documentId is the receipt's underlying Document.
+          // The analysis's documentId is the canonical link target —
+          // pull it from the `data` we sent in (it's the receipt's
+          // Document.id round-tripped through the analysis row).
+          // The list-level documents state already carries the
+          // analysis → document relationship; the picker just needs
+          // the document id. No extra fetch.
+          const docId = documents.find((d) => d.analysis?.id === analysisId)?.id;
+          if (docId) {
+            setPickerState({
+              documentId: docId,
+              expenseId: body.entity.id,
+              candidates: verdict.candidates as ReceiptPickerCandidate[],
+            });
+          }
+        }
+      } catch (err) {
+        // Response wasn't JSON or didn't carry the verdict — silent
+        // skip; the refresh below still fires.
+        console.warn('[documents] receiptMatch verdict parse failed:', err);
+      }
       // Refresh to get updated status
       setRefreshKey((k) => k + 1);
     }
@@ -1228,6 +1278,24 @@ export default function DocumentsLibraryPage() {
             : `${fy.label} documents`
         }
       />
+
+      {/* Phase 42 PR3.5 — Receipt candidate picker. Opens automatically
+          when the confirm response carries a PICK_FROM verdict. Picks
+          run through POST /api/bookkeeping/receipts/pick-match → shared
+          linkReceiptToTransaction() helper (SSOT with AUTO_LINK). */}
+      {pickerState && (
+        <ReceiptCandidatePicker
+          open
+          documentId={pickerState.documentId}
+          expenseId={pickerState.expenseId}
+          candidates={pickerState.candidates}
+          onClose={() => setPickerState(null)}
+          onLinked={() => {
+            setPickerState(null);
+            setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
