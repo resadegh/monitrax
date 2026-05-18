@@ -27,6 +27,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { RefreshCw, X, Zap, Upload } from 'lucide-react';
 import { isBalanceStale } from '@/components/accounts/DataSourceChip';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 const DISMISS_KEY = 'monitrax:staleBalanceNudge:dismissed';
 
@@ -42,6 +43,7 @@ interface StaleBalanceNudgeProps {
 }
 
 export function StaleBalanceNudge({ accounts, initiallyDismissed }: StaleBalanceNudgeProps) {
+  const basiqEnabled = useBasiqEnabled();
   // Start `null` to defer the render until the client check completes
   // (avoids SSR/CSR mismatch — `window` isn't available server-side).
   const [dismissed, setDismissed] = useState<boolean | null>(
@@ -86,13 +88,15 @@ export function StaleBalanceNudge({ accounts, initiallyDismissed }: StaleBalance
           Your dashboard reads from these balances — keeping them fresh keeps every number it shows you accurate.
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Link
-            href="/dashboard/balances?action=connect-basiq"
-            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white"
-          >
-            <Zap aria-hidden className="h-3 w-3" />
-            Connect via Basiq
-          </Link>
+          {basiqEnabled && (
+            <Link
+              href="/dashboard/balances?action=connect-basiq"
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1 text-xs font-medium text-white"
+            >
+              <Zap aria-hidden className="h-3 w-3" />
+              Connect via Basiq
+            </Link>
+          )}
           <Link
             href="/dashboard/balances?action=import"
             className="inline-flex items-center gap-1 rounded-md border border-amber-300 bg-white hover:bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-900"

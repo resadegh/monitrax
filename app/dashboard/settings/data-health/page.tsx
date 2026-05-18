@@ -35,6 +35,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import { ChevronLeft, RefreshCw, Sparkles } from 'lucide-react';
 import { DataSourceChip, isBalanceStale } from '@/components/accounts/DataSourceChip';
 import { UpgradeAccountButton } from '@/components/accounts/UpgradeAccountButton';
+import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
 interface AccountRow {
   id: string;
@@ -115,6 +116,7 @@ function daysSince(input: string): number {
 
 export default function DataHealthPage() {
   const { token } = useAuth();
+  const basiqEnabled = useBasiqEnabled();
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -275,12 +277,16 @@ export default function DataHealthPage() {
                 ))}
             </div>
 
-            {/* Footer guidance */}
+            {/* Footer guidance — copy adjusts when Basiq is gated off so
+                we don't advertise a service the user can't actually use. */}
             <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-xs text-slate-600 flex items-start gap-2">
               <RefreshCw aria-hidden className="h-3.5 w-3.5 mt-0.5 shrink-0 text-slate-400" />
               <p>
-                Basiq syncs balances automatically. Imported statements refresh per
-                upload. Manual balances stay frozen until you update them.
+                {basiqEnabled ? (
+                  <>Basiq syncs balances automatically. Imported statements refresh per upload. Manual balances stay frozen until you update them.</>
+                ) : (
+                  <>Imported statements refresh per upload. Manual balances stay frozen until you update them.</>
+                )}
               </p>
             </div>
           </>
