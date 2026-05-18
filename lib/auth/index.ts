@@ -13,14 +13,18 @@ export {
   type JWTPayload,
 } from '@/lib/auth';
 
-// Permission system
+// Permission system (pure — no Prisma)
 export * from './permissions';
 
-// Auth context
-export * from './context';
-
-// Route guards
-export * from './guards';
+// NOTE: `./context` and `./guards` import `@/lib/db` (Prisma) and so
+// pull Prisma + Cloud SQL Connector into any consuming bundle. Tech
+// Debt #7 (resolved 2026-05-18) — these MUST be imported via their
+// full path:
+//   - `@/lib/auth/context`  — getAuthContext / requireAuthContext
+//   - `@/lib/auth/guards`   — withAuth / withPermission / etc.
+// Removing the `export * from` lines forces direct imports; pre-WIF
+// the pattern bundled silently, post-WIF it breaks the build the
+// moment a client component touches the barrel.
 
 // Refresh token rotation (Phase 05)
 export * from './refreshToken';
