@@ -20,6 +20,7 @@ import {
   type BasiqTransaction,
 } from '@/lib/basiq';
 import { basiqRouteGuard } from '@/lib/featureFlags/basiqRouteGuard';
+import { balanceWriteFields } from '@/lib/utils/accountBalance';
 
 // CDR consent verification: syncing CDR data requires active consent (Phase 35 — Basiq §5.5)
 export const POST = withActiveConsent('account.write', async (request, auth) => {
@@ -161,6 +162,11 @@ async function syncAccount(
     accountNumber: basiqAccount.accountNo,
     basiqConnectionId: connection?.id,
     basiqLastSynced: new Date(),
+    // PR 3c.2c — Basiq sync is the freshest tier. Without these
+    // fields, every account synced via THIS route (the POST
+    // endpoint, distinct from the worker path in `lib/bank/basiqSync.ts`
+    // which already tags) appeared as MANUAL in the chip.
+    ...balanceWriteFields('BASIQ'),
   };
 
   if (existingAccount) {

@@ -1168,4 +1168,163 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-12-pr-3c-2a-upgrade-button-MG8mr`
+- Status: **Merged 2026-05-18 (PR #793)** — visibility→action loop closed.
+
+---
+
+## Session 12: PR I — Phase 12 PR 3c.2c (balance-write audit + canonical helper)
+
+Branch: `claude/phase-12-pr-3c-2c-balance-write-audit-MG8mr`
+
+### Scope
+
+- **Type:** Hygiene / defensive correctness (no new feature; no schema; no API contract change).
+- **Closes:** `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A.1 item #6 (app-wide `balanceLastUpdatedAt` write-site audit).
+- **Why this chunk:** the chip + nudge from PR F + the upgrade button from PR H are only honest if every code path that writes `Account.currentBalance` also writes `balanceSource` + `balanceLastUpdatedAt`. Without the audit, the §6A.1 promise reads "we'll surface staleness" but the implementation reads "we'll surface staleness most of the time, except when our own write paths drop the trio". This PR makes the invariant a structural property, not a discipline question.
+
+### Audit method (reusable)
+
+```bash
+grep -rnE "prisma\.account\.(update|upsert|create|updateMany)" \
+  --include="*.ts" --include="*.tsx" 2>/dev/null \
+  | grep -v node_modules
+```
+
+27 hits across 16 files. Classification:
+- 7 sites touch `currentBalance` AND set both fields → ✅ correct (left unchanged)
+- 4 sites touch `currentBalance` WITHOUT setting both fields → 🔴 gaps (fixed)
+- 13 sites touch other fields (basiqConnectionId clearing / soft-deletes / type re-tag / anonymisation) → ✓ no balance write, no fix needed
+- 3 sites are out-of-scope (seed scripts, test loader, tenant scaffold not in prod)
+
+### The 3 + 1 gaps closed
+
+| # | Path | Symptom |
+|---|---|---|
+| 1 | `app/api/accounts/route.ts` (POST `prisma.account.create`) | Manual-created accounts had no source tag + no timestamp. The chip rendered "Manual" with no age suffix; the staleness branch (≥14 days) never fired because the date check evaluated `null`. |
+| 2 | `app/api/accounts/[id]/route.ts` (PATCH `prisma.account.update`) | User edits balance via the form → `currentBalance` updated, `balanceLastUpdatedAt` UNCHANGED. A freshly-edited manual balance appeared as old as its row's creation date; the nudge would fire on accounts the user just updated. |
+| 3 | `app/api/basiq/sync/route.ts` (POST handler's local `syncAccount()`) | Basiq sync via this route updates `currentBalance` but never tagged `balanceSource: 'BASIQ'` → the chip rendered "Manual · Xmo ago" on accounts the Basiq sync touched yesterday. (Note: `lib/bank/basiqSync.ts` worker path was already correct — two Basiq sync paths in the codebase, one was clean.) |
+| 4 | `app/api/accounts/[id]/import/route.ts` (placeholder create with `currentBalance: 0`) | Placeholder row before import enrichment. Tagged as IMPORT for chip honesty from the moment the row exists. |
+
+### The fix — one helper, one rule
+
+#### `lib/utils/accountBalance.ts` (new — ~55 LOC)
+
+Exports `balanceWriteFields(source: BalanceSource, now?: Date)` → `{ balanceSource, balanceLastUpdatedAt }`. Caller spreads into the Prisma `data` payload:
+
+```ts
+await prisma.account.update({
+  where: { id },
+  data: {
+    currentBalance: 12345.67,
+    ...balanceWriteFields('USER_VERIFIED'),
+  },
+});
+```
+
+Optional `now` parameter for tests + the rare case where the caller has a canonical timestamp from upstream (e.g. an OFX statement's statement date).
+
+**Reviewer-reject rule** (documented in the file's JSDoc): every new `prisma.account.{create, update, upsert}` that writes `currentBalance` MUST spread `...balanceWriteFields(source)`. Reviewers cite this file when an audit-violating PR lands.
+
+#### Four call-site fixes
+
+- `app/api/accounts/route.ts:130-141` — `...balanceWriteFields('MANUAL')` (manual create)
+- `app/api/accounts/[id]/route.ts:44-60` — `...(balanceChanging ? balanceWriteFields('USER_VERIFIED') : {})` — **conditional** so a field-level partial update (rename / re-type / rate change) does NOT falsely refresh the timestamp; that would flip a stale-MANUAL chip green for the wrong reason
+- `app/api/basiq/sync/route.ts:156-170` — `...balanceWriteFields('BASIQ')` in the shared `accountData` object so both branches (existing-update + new-create) inherit it
+- `app/api/accounts/[id]/import/route.ts:123-137` — `...balanceWriteFields('IMPORT')` on the placeholder create
+
+### The 7 already-correct sites (left unchanged)
+
+| Path | Source tagged |
+|---|---|
+| `app/api/bank/import/route.ts:204` | IMPORT (new account at import) |
+| `app/api/bank/import/route.ts:524` | IMPORT (existing account balance refresh) |
+| `app/api/accounts/[id]/balance/route.ts:37` | USER_VERIFIED (dedicated balance re-affirm) |
+| `app/api/unified-transactions/cash/route.ts:176` | MANUAL (cash quick-add) |
+| `app/api/onboarding/bulk-create/route.ts:727` | MANUAL (onboarding wizard) |
+| `lib/bank/basiqSync.ts:157, 178` | BASIQ (worker path) |
+| `lib/bookkeeping/cashAccount.ts:67` | MANUAL (cash account create branch) |
+
+Refactoring these to also use the helper is consistency churn without behaviour change. Flagged as optional follow-up; not in this PR.
+
+### Out of scope (audited but skipped)
+
+- `prisma/seed-lighthouse.ts`, `prisma/seed-validation.ts` — test fixtures, not load-bearing for live users
+- `lib/testing/loader.ts` — test loader
+- `lib/db/tenant.ts` — multi-tenant scaffold not active in prod (would update if it activates)
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `lib/utils/accountBalance.ts` | NEW — SSOT helper + reviewer-reject rule documentation |
+| `app/api/accounts/route.ts` | Gap #1 fix |
+| `app/api/accounts/[id]/route.ts` | Gap #2 fix (conditional on `balanceChanging`) |
+| `app/api/basiq/sync/route.ts` | Gap #3 fix |
+| `app/api/accounts/[id]/import/route.ts` | Gap #4 fix (placeholder) |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #7 PR 3c.2 row updated (item #6 ✅); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 12 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — no copy / data-shape change
+- [x] **operational procedure** — new reviewer-reject rule for `prisma.account.{create, update, upsert}` calls writing `currentBalance`. Documented in `lib/utils/accountBalance.ts` JSDoc; reviewers cite the file when a future PR violates the invariant.
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #7 PR 3c.2 row updated (item #6 ✅; 3 items remaining: confidence indicators / migration modal / heat-map). Recently Completed 2026-05-18 entry. Top header refreshed (session 24 / 12 PRs / ~5,250 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 12 entry (this).
+
+`PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A **not** flipped (treats §6A.1 as one chunk; flip happens when all 5 items ship). Per-item status in `IMPLEMENTATION_PLAN.md` per CLAUDE.md §15.6.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+The 4 fix sites each contain a `prisma.account.{create, update}` — none are destructive in the §12.11 sense (no DELETE, no DROP, no `updateMany` with wide where-clauses). Each fix is **additive** (sets two new fields on a write that was already happening). The conditional `balanceChanging` guard on the PATCH route prevents a partial-update from falsely refreshing the timestamp — protective, not destructive. **User confirmation: NOT REQUIRED.**
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change. `Account.balanceSource` + `Account.balanceLastUpdatedAt` already exist (consumed by PR F + PR H).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Hygiene on account-balance write paths — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - Manual create via POST `/api/accounts` → new account renders chip "Manual · just now" (not "Manual" alone)
+  - Edit balance via PATCH → chip refreshes to "Verified just now"; rename via the same PATCH → chip stays at its previous tone (not falsely-fresh)
+  - Basiq sync via POST `/api/basiq/sync` → synced accounts render emerald "Synced just now" chip (was rendering slate "Manual" before this PR)
+  - Per-account import create → placeholder row shows blue "Imported just now" chip
+
+### Today's tally (updated)
+
+12 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — data-source hygiene visibility slice | Up Next #7 (3c.1 ✅) |
+| #792 | PR G — receipt picker | Up Next #45 (PR3.5.1 ✅) |
+| #793 | PR H — upgrade-account button | §6A.1 item #4 ✅ |
+| **PR I (this)** | Phase 12 PR 3c.2c balance-write audit | **§6A.1 item #6 ✅** |
+
+14 backlog rows closed. ~5,250 LOC shipped.
+
+### PR
+
+- Branch: `claude/phase-12-pr-3c-2c-balance-write-audit-MG8mr`
 - Status: Open

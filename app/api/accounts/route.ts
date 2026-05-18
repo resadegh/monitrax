@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { balanceWriteFields } from '@/lib/utils/accountBalance';
 
 export const GET = withPermission('account.read', async (request, auth) => {
     try {
@@ -135,6 +136,8 @@ export const POST = withPermission('account.write', async (request, auth) => {
           type,
           institution: institution || null,
           currentBalance: parseFloat(currentBalance),
+          // PR 3c.2c — manual create path; user is source of truth.
+          ...balanceWriteFields('MANUAL'),
         },
       });
 
