@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { ClientList, type ClientFilters } from '@/components/portal/clients';
+import type { ClientAggregateRow } from '@/components/portal/clients/ClientList';
 import { InviteModal, type InviteData } from '@/components/portal/team';
 import { PortalPageHero } from '@/components/shell';
 import { createClientsService } from '@/lib/portal/services/clients';
@@ -47,6 +48,11 @@ export default function ClientsPage() {
     pending: 0,
     invited: 0,
   });
+  // Phase 32B PR3 polish ③ — per-client aggregate data (TRAIL / Health
+  // / Alerts) for the table columns. Built from the same endpoint the
+  // dashboard hero strip reads. Null until the first fetch resolves;
+  // ClientList renders dash placeholders before then.
+  const [aggregateMap, setAggregateMap] = useState<Map<string, ClientAggregateRow> | undefined>(undefined);
 
   // Get current user's role in the organization
   const currentUserRole = useMemo<PortalUserRole>(() => {
@@ -104,6 +110,48 @@ export default function ClientsPage() {
       setLoading(false);
     }
   }, [orgLoading, currentOrg, clientsApi, loadClients]);
+
+  // Phase 32B PR3 polish ③ — fetch the aggregate (TRAIL / Health /
+  // Alerts) in parallel with the granular client list. Same endpoint
+  // the dashboard hero reads. Failures are non-blocking: the granular
+  // table still renders; the new columns just show dashes.
+  useEffect(() => {
+    if (!currentOrg) {
+      setAggregateMap(undefined);
+      return;
+    }
+    let active = true;
+    fetch(`/api/portal/clients?organizationId=${encodeURIComponent(currentOrg.id)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!active) return;
+        const rows = (data?.data?.clients ?? []) as Array<{
+          id: string;
+          trailStage: ClientAggregateRow['trailStage'];
+          healthScore: number | null;
+          healthDelta: number | null;
+          activeAlertCount: number;
+        }>;
+        const map = new Map<string, ClientAggregateRow>();
+        for (const r of rows) {
+          map.set(r.id, {
+            trailStage: r.trailStage,
+            healthScore: r.healthScore,
+            healthDelta: r.healthDelta,
+            activeAlertCount: r.activeAlertCount,
+          });
+        }
+        setAggregateMap(map);
+      })
+      .catch((err) => {
+        console.warn('[portal/clients] aggregate fetch failed:', err);
+        // Leave aggregateMap undefined → ClientList omits the extra columns.
+        if (active) setAggregateMap(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [currentOrg]);
 
   const handleFilterChange = (filters: ClientFilters) => {
     loadClients(filters, 1);
@@ -191,6 +239,7 @@ export default function ClientsPage() {
         onClientClick={handleClientClick}
         onInviteClick={canInviteClients ? () => setShowInviteModal(true) : undefined}
         onFilterChange={handleFilterChange}
+        aggregateMap={aggregateMap}
       />
 
       {showInviteModal && (
