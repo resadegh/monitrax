@@ -23,6 +23,7 @@
 
 import { useState } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 type TaxPackFormat = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
 
@@ -72,6 +73,7 @@ function buildFyOptions(): string[] {
 }
 
 export function TaxPackExportButton() {
+  const { token } = useAuth();
   const fyOptions = buildFyOptions();
   const [fy, setFy] = useState<string>(fyOptions[0]);
   const [format, setFormat] = useState<TaxPackFormat>('pdf');
@@ -85,7 +87,11 @@ export function TaxPackExportButton() {
       const url = `/api/bookkeeping/tax-pack/export?fy=${encodeURIComponent(fy)}&format=${format}`;
       // The endpoint streams a file. Trigger via fetch → blob → anchor click
       // so we can surface 4xx/5xx errors instead of silently navigating away.
-      const res = await fetch(url);
+      // Hotfix 2026-05-18: MUST pass Authorization header — otherwise
+      // 401 → SessionExpiryHandler logs the user out.
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
       if (!res.ok) {
         const text = await res.text().catch(() => '');
         setError(text || `Export failed (${res.status})`);

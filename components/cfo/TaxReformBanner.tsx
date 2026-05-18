@@ -41,6 +41,7 @@
 
 import { useEffect, useState } from 'react';
 import { Info, X, ArrowRight } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface ReformBannerState {
   status: 'loading' | 'visible' | 'dismissed';
@@ -50,12 +51,19 @@ const PREFILLED_QUESTION = 'How do the new tax laws affect me?';
 const ASK_URL = `/dashboard/cfo/ask?q=${encodeURIComponent(PREFILLED_QUESTION)}`;
 
 export function TaxReformBanner() {
+  const { token } = useAuth();
   const [state, setState] = useState<ReformBannerState>({ status: 'loading' });
 
   // Fetch dismissal state once on mount.
+  // Hotfix 2026-05-18: MUST pass Authorization header on every API
+  // call — otherwise 401 → SessionExpiryHandler logs the user out.
+  // (Pre-existing same-pattern bug as today's PR K modal; both fixed
+  // in the same hotfix PR for the same reason.)
   useEffect(() => {
     let active = true;
-    fetch('/api/settings/reform-banner')
+    fetch('/api/settings/reform-banner', {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
       .then((r) => (r.ok ? r.json() : { dismissed: false }))
       .then((data: { dismissed: boolean }) => {
         if (!active) return;
@@ -67,14 +75,17 @@ export function TaxReformBanner() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [token]);
 
   const handleDismiss = async (): Promise<void> => {
     // Optimistic — hide first, then persist. If persist fails the
     // banner re-appears on next refresh; not catastrophic.
     setState({ status: 'dismissed' });
     try {
-      await fetch('/api/settings/reform-banner', { method: 'POST' });
+      await fetch('/api/settings/reform-banner', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
     } catch {
       // Swallow — user already sees the banner dismissed; the next
       // refresh will re-fetch state and restore it if persist failed.

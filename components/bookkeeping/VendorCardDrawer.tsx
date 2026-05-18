@@ -31,6 +31,7 @@
 import { useEffect, useState } from 'react';
 import { X, Building2, Calendar, FileText, MapPin, AlertCircle } from 'lucide-react';
 import { CancelSubscriptionLink } from './CancelSubscriptionLink';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface VendorCardData {
   vendor: {
@@ -79,6 +80,7 @@ export function VendorCardDrawer({
   vendorId,
   merchantStandardised,
 }: VendorCardDrawerProps) {
+  const { token } = useAuth();
   const [state, setState] = useState<DrawerState>({ status: 'closed' });
 
   // Fetch on open + when the merchant/vendor changes.
@@ -90,6 +92,10 @@ export function VendorCardDrawer({
     let active = true;
     setState({ status: 'loading' });
 
+    // Hotfix 2026-05-18: MUST pass Authorization header on every API
+    // call — otherwise 401 → SessionExpiryHandler logs the user out.
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : undefined;
+
     const load = async (): Promise<void> => {
       try {
         // Step 1 — resolve to a vendor id.
@@ -97,6 +103,7 @@ export function VendorCardDrawer({
         if (!resolvedVendorId && merchantStandardised) {
           const res = await fetch(
             `/api/bookkeeping/vendors?merchantStandardised=${encodeURIComponent(merchantStandardised)}`,
+            { headers: authHeaders },
           );
           if (!res.ok) {
             if (active) setState({ status: 'error', message: `Lookup failed (${res.status})` });
@@ -117,7 +124,9 @@ export function VendorCardDrawer({
         }
 
         // Step 2 — fetch full card data.
-        const res = await fetch(`/api/bookkeeping/vendors/${resolvedVendorId}`);
+        const res = await fetch(`/api/bookkeeping/vendors/${resolvedVendorId}`, {
+          headers: authHeaders,
+        });
         if (!res.ok) {
           if (active) setState({ status: 'error', message: `Card fetch failed (${res.status})` });
           return;
@@ -137,7 +146,7 @@ export function VendorCardDrawer({
     return () => {
       active = false;
     };
-  }, [open, vendorId, merchantStandardised]);
+  }, [open, vendorId, merchantStandardised, token]);
 
   // ESC closes.
   useEffect(() => {
