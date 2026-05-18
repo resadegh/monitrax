@@ -10,6 +10,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { parseQIF, isValidQIF } from '@/lib/bank/parsers/qif';
 import { normaliseTransactions } from '@/lib/bank/normalisation';
 import { detectDuplicates, detectOverlap, getDuplicateSummaryMessage } from '@/lib/bank/smartDuplicateDetection';
+import { balanceWriteFields } from '@/lib/utils/accountBalance';
 import {
   categoriseWithLearning,
   classifyByConfidence,
@@ -128,6 +129,11 @@ export const POST = withPermission<RouteContext>('account.write', async (request
             type: (accountType as 'TRANSACTIONAL' | 'SAVINGS' | 'CREDIT_CARD' | 'OFFSET') || 'TRANSACTIONAL',
             institution: accountInstitution?.trim() || null,
             currentBalance: 0,
+            // PR 3c.2c — placeholder before the import job enriches
+            // the row. Tagging as IMPORT keeps the chip honest from
+            // the moment the row exists; the balance refresh below
+            // (post-tx ingestion) will overwrite the timestamp.
+            ...balanceWriteFields('IMPORT'),
           },
         });
 
