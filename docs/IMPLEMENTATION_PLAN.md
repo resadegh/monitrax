@@ -171,7 +171,7 @@
 | 19 | Stripe live-mode review | 🚧 | ~2 wk. When approved → ping Claude for the live-mode flip code PR (~3 days). |
 | 20 | Anthropic API key + budget cap | ✅ DONE 2026-05-17 | `ANTHROPIC_API_KEY` added to Vercel Production env vars (reza-onboarding-api-key, Default workspace). Spend limits set at `console.anthropic.com` per `cost-control/01_BUDGET_ALERTS_SETUP.md` §4. **Verification still needed:** confirm the $50/mo cap is on the SAME workspace as the key (Default, not a separate `monitrax-prod` workspace — Anthropic caps are per-workspace). Key name `reza-onboarding-api-key` is cosmetically misleading (it covers BOTH consumers: Phase 33g.2 feedback chat + Phase 12 Track E onboarding) — optional rename to `monitrax-prod`. |
 | 21 | WIF Phase 11 / Phase 12 | 🚧 | Trigger-gated (Phase 11 ≥ 2026-05-31; Phase 12 trigger-based). Claude does the code; Reza does the env/network bits. |
-| 22 | Delete `DIRECT_URL` env var from Vercel (if present) | ⬜ | Audit 2026-05-19 (Tech Debt #6 closure) confirmed zero references in codebase + Prisma `datasource` block only reads `DATABASE_URL`. Safe to delete in all 3 scopes (Production / Preview / Development). 30 seconds. |
+| 22 | Delete `DIRECT_URL` env var from Vercel (if present) | ✅ DONE 2026-05-19 | **Confirmed clean** — Reza checked Vercel Project Settings → Environment Variables; `DIRECT_URL` is not present in any scope (a "direc" search only matched `GOOGLE_REDIRECT_URI`, the OAuth callback URL — must stay). Either never set, or removed in an earlier cleanup. Tech Debt #6 fully closed at both code AND infra layer. |
 
 ### 0b. Phase 32B PR3 — post-#9b polish, part 2: hero KPI strip + client book on real data
 
