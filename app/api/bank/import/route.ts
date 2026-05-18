@@ -307,34 +307,41 @@ export const POST = withPermission('account.write', async (request, auth) => {
         // categorisation / linked-recurring side-effects. The user picks
         // merge / overwrite / skip from this preview, then re-submits
         // without `dryRun=true`.
+        //
+        // `detectDuplicates` (from `lib/bank/duplicateDetection.ts`)
+        // returns `DuplicateDetectionResult` which has a single
+        // `duplicates: DuplicateCheckResult[]` array and a 3-field
+        // `statistics: { total, unique, duplicates }`. The
+        // exact-vs-fuzzy split lives on `DuplicateCheckResult.similarityScore`
+        // (1.0 = exact; < 1.0 = fuzzy). We derive the UI split from that.
         if (dryRun) {
+          const exactDuplicateCount = duplicateResult.duplicates.filter(
+            (d) => (d.similarityScore ?? 1) >= 0.99,
+          ).length;
+          const fuzzyDuplicateCount = duplicateResult.duplicates.length - exactDuplicateCount;
+
           return NextResponse.json({
             success: true,
             data: {
               dryRun: true,
-              total: parsedFile.transactions.length,
-              statistics: duplicateResult.statistics,
-              // Trimmed sample of up to 10 duplicates so the user can
-              // verify the matches without flooding the UI.
-              sampleDuplicates: [
-                ...duplicateResult.exactDuplicates.slice(0, 5),
-                ...duplicateResult.fuzzyDuplicates.slice(0, 3),
-                ...duplicateResult.potentialMerges.slice(0, 2),
-              ].map((d) => ({
-                status: d.status,
-                similarityScore: d.similarityScore,
+              total: duplicateResult.statistics.total,
+              statistics: {
+                total: duplicateResult.statistics.total,
+                new: duplicateResult.statistics.unique,
+                duplicates: duplicateResult.statistics.duplicates,
+                exactDuplicates: exactDuplicateCount,
+                fuzzyDuplicates: fuzzyDuplicateCount,
+              },
+              // Trimmed sample of up to 10 duplicate candidates.
+              sampleDuplicates: duplicateResult.duplicates.slice(0, 10).map((d) => ({
+                isExact: (d.similarityScore ?? 1) >= 0.99,
+                similarityScore: d.similarityScore ?? null,
+                reason: d.reason ?? null,
                 candidate: {
                   date: d.transaction.date.toISOString(),
                   amount: d.transaction.amount,
                   description: d.transaction.description,
                 },
-                existing: d.existingTransaction
-                  ? {
-                      date: d.existingTransaction.date.toISOString(),
-                      amount: d.existingTransaction.amount,
-                      description: d.existingTransaction.description,
-                    }
-                  : null,
               })),
             },
           });

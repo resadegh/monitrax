@@ -155,21 +155,23 @@ interface ImportWizardProps {
 type WizardStep = 'upload' | 'preview' | 'settings' | 'dryrun' | 'importing' | 'complete';
 
 // Phase 42 PR 4.5 — dry-run preview shape (matches /api/bank/import
-// dry-run early-return contract).
+// dry-run early-return contract). Derived from DuplicateDetectionResult
+// in lib/bank/duplicateDetection.ts; the exact-vs-fuzzy split is
+// derived server-side from similarityScore (≥ 0.99 = exact).
 interface DryRunResult {
   total: number;
   statistics: {
     total: number;
     new: number;
+    duplicates: number;
     exactDuplicates: number;
     fuzzyDuplicates: number;
-    potentialMerges: number;
   };
   sampleDuplicates: Array<{
-    status: 'EXACT_DUPLICATE' | 'FUZZY_DUPLICATE' | 'POTENTIAL_MERGE';
-    similarityScore: number;
+    isExact: boolean;
+    similarityScore: number | null;
+    reason: string | null;
     candidate: { date: string; amount: number; description: string };
-    existing: { date: string; amount: number; description: string } | null;
   }>;
 }
 
@@ -884,15 +886,14 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
             <div>
               <h3 className="text-base font-semibold mb-2">Duplicate check</h3>
               <p className="text-sm text-muted-foreground">
-                {dryRunResult.statistics.exactDuplicates +
-                  dryRunResult.statistics.fuzzyDuplicates +
-                  dryRunResult.statistics.potentialMerges}{' '}
-                of {dryRunResult.total} transactions match something already in this account.
+                {dryRunResult.statistics.duplicates} of {dryRunResult.total} transactions match something already in this account.
               </p>
             </div>
 
-            {/* Statistics tiles */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {/* Statistics tiles — 3-tile layout (New / Exact / Fuzzy) since
+                the underlying engine doesn't surface a separate
+                "potential merge" bucket. */}
+            <div className="grid grid-cols-3 gap-2">
               <div className="rounded-md border border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30 p-2.5">
                 <p className="text-xs text-emerald-700 dark:text-emerald-300 font-medium">New</p>
                 <p className="text-xl font-semibold text-emerald-900 dark:text-emerald-100 tabular-nums">
@@ -911,40 +912,27 @@ export function ImportWizard({ accounts, onComplete, onClose, onAccountCreated }
                   {dryRunResult.statistics.fuzzyDuplicates}
                 </p>
               </div>
-              <div className="rounded-md border border-sky-200 bg-sky-50 dark:border-sky-800 dark:bg-sky-950/30 p-2.5">
-                <p className="text-xs text-sky-700 dark:text-sky-300 font-medium">Possible merges</p>
-                <p className="text-xl font-semibold text-sky-900 dark:text-sky-100 tabular-nums">
-                  {dryRunResult.statistics.potentialMerges}
-                </p>
-              </div>
             </div>
 
             {/* Sample duplicates */}
             {dryRunResult.sampleDuplicates.length > 0 && (
               <div>
                 <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">
-                  Examples (showing up to {dryRunResult.sampleDuplicates.length} of{' '}
-                  {dryRunResult.statistics.exactDuplicates +
-                    dryRunResult.statistics.fuzzyDuplicates +
-                    dryRunResult.statistics.potentialMerges})
+                  Examples (showing up to {dryRunResult.sampleDuplicates.length} of {dryRunResult.statistics.duplicates})
                 </p>
                 <div className="space-y-1.5 max-h-48 overflow-y-auto rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 p-2">
                   {dryRunResult.sampleDuplicates.map((d, i) => (
                     <div key={i} className="text-xs flex items-start gap-2 py-1 border-b last:border-b-0 border-slate-100 dark:border-slate-800">
                       <Badge variant="outline" className="shrink-0 text-[10px]">
-                        {d.status === 'EXACT_DUPLICATE'
-                          ? 'Exact'
-                          : d.status === 'FUZZY_DUPLICATE'
-                            ? 'Fuzzy'
-                            : 'Maybe'}
+                        {d.isExact ? 'Exact' : 'Fuzzy'}
                       </Badge>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-slate-700 dark:text-slate-300">
                           {d.candidate.description} · ${Math.abs(d.candidate.amount).toFixed(2)}
                         </p>
-                        {d.existing && (
+                        {d.reason && (
                           <p className="truncate text-slate-500 dark:text-slate-400 text-[11px]">
-                            matches: {d.existing.description}
+                            {d.reason}
                           </p>
                         )}
                       </div>
