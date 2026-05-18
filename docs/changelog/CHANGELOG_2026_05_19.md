@@ -400,4 +400,142 @@ Pure read-path bug fix; no Prisma writes; no schema change; no tax-engine surfac
 ### PR
 
 - Branch: `claude/fix-schema-drift-name-cast-MG8mr`
+- Status: **Merged 2026-05-19 (PR #806)** — unblocked the audit.
+
+---
+
+## Session 5: Tech Debt #18 — CDR tables corrective migration (closes pre-Basiq blocker)
+
+Branch: `claude/tech-debt-18-cdr-tables-corrective-migration-MG8mr`
+
+### Scope
+
+- **Type:** Corrective schema migration (fix-forward for pre-migration-era drift).
+- **Closes:** Tech Debt #18 (Pre-migration-era prod schema drift) + Phase 0 console row #11 (Prod schema-drift audit). **Pre-Basiq engineering blocker resolved.**
+
+### Audit findings (from Reza's `GET /api/admin/schema-drift` 2026-05-19)
+
+```json
+{
+  "summary": {
+    "modelsChecked": 114,
+    "enumsChecked": 113,
+    "missingTables": 3,
+    "missingEnums": 4,
+    "tablesWithMissingColumns": 0,
+    "tablesWithExtraColumns": 0,
+    "enumsWithMissingValues": 0,
+    "orphanTables": 0,
+    "hasDrift": true
+  },
+  "missingTables": [
+    { "model": "CDRConsent",    "table": "cdr_consents" },
+    { "model": "CDRComplaint",  "table": "cdr_complaints" },
+    { "model": "CDRDisclosure", "table": "cdr_disclosures" }
+  ],
+  "missingEnums": [
+    "CDRConsentStatus",
+    "CDRComplaintCategory",
+    "CDRComplaintStatus",
+    "CDRDisclosureType"
+  ]
+}
+```
+
+### Root cause
+
+Same as the 2026-05-12 `basiq_connections` drift: the Phase L CDR remediation (2026-04-11, Fix G18 + Fix G43) added these tables to `schema.prisma` and applied them to dev via the historical `prisma db push` workflow — but the migrations-file workflow wasn't yet in place, so prod never got the DDL.
+
+### Fix
+
+Corrective migration `prisma/migrations/20260519100000_fix_pre_migration_cdr_tables_drift/migration.sql`:
+
+| Operation | Count | Idempotency |
+|---|---|---|
+| `CREATE TYPE` (enums) | 4 | `DO $$ ... EXCEPTION WHEN duplicate_object THEN NULL ... END $$` |
+| `CREATE TABLE IF NOT EXISTS` (tables) | 3 | `IF NOT EXISTS` clause |
+| `ALTER TABLE ADD CONSTRAINT` (FKs) | 3 | `DO $$ ... EXCEPTION WHEN duplicate_object THEN NULL ... END $$` |
+| `CREATE INDEX IF NOT EXISTS` (indexes) | 7 | `IF NOT EXISTS` clause |
+
+**On dev** the migration is a complete no-op (every object already exists via the historical `db push`).
+**On prod** the missing objects get created in the same `prisma migrate deploy` pass the next deploy runs.
+
+### Schema changes
+
+NONE — `schema.prisma` already declares these models + enums (since 2026-04-11). This PR only adds the migration file to bring prod's `information_schema` + `pg_catalog` in line with what the schema has declared for 5+ weeks.
+
+### Why this is safe (CLAUDE.md §12.11 inline)
+
+- Operation set: CREATE TYPE × 4 + CREATE TABLE × 3 + CREATE INDEX × 7 + ALTER TABLE ADD CONSTRAINT × 3 — **all additive**
+- Columns overwritten: **NONE** (only new objects)
+- Row mutations: **ZERO** (no UPDATE / DELETE / INSERT)
+- Guard: every DDL is idempotent; running twice = same end state
+- → §12.11 N/A by structural argument. **User confirmation: NOT REQUIRED.**
+
+### Consumer code impact
+
+The 4 consumer routes that touch these tables (`app/api/admin/cdr/compliance/route.ts`, `app/api/admin/cdr/complaints/route.ts`, `app/api/admin/cdr/complaints/[id]/route.ts`, `app/api/admin/cdr/consent/route.ts`) all wrap their queries in `.catch(() => 0)` defensively — so they degraded gracefully when the tables were missing (returning 0 counts). Once this migration deploys to prod, they'll start returning the real counts (currently 0, since no records can exist yet — the tables didn't exist).
+
+No code change in this PR. The defensive `.catch(() => 0)` patterns can stay; they're cheap insurance against future migrations being slow to deploy.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `prisma/migrations/20260519100000_fix_pre_migration_cdr_tables_drift/migration.sql` | NEW — corrective migration |
+| `docs/IMPLEMENTATION_PLAN.md` | Tech Debt #18 closed; Phase 0 console row #11 marked ✅ DONE; Recently Completed 2026-05-19 entry |
+| `docs/changelog/CHANGELOG_2026_05_19.md` | This Session 5 entry |
+
+### Doc-sync (CLAUDE.md §16) — full block
+
+Surfaces changed in this PR:
+- [ ] visual design system
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [x] **deployment / build** — new migration file; runs via `prisma migrate deploy` at next Vercel deploy
+- [x] **security / CDR posture** — closes the pre-Basiq drift that could have surfaced during an accreditation assessor review
+- [ ] operational procedure
+- [x] **strategic decision** — Tech Debt #18 marked closed; Phase 0 console row #11 marked DONE
+
+Docs updated in this PR:
+- `prisma/schema.prisma` — UNCHANGED (already declared these models)
+- `prisma/migrations/20260519100000_fix_pre_migration_cdr_tables_drift/migration.sql` (NEW)
+- `docs/IMPLEMENTATION_PLAN.md` (Tech Debt #18 + console row #11 closed; Recently Completed 2026-05-19 entry)
+- `docs/changelog/CHANGELOG_2026_05_19.md` (Session 5 entry — this)
+
+### §12.12 — schema migration checklist
+
+- [x] `prisma/schema.prisma` unchanged (the schema has declared these models since 2026-04-11 — this is fix-forward for prod drift, not a new schema feature)
+- [x] Matching migration file present at `prisma/migrations/20260519100000_fix_pre_migration_cdr_tables_drift/migration.sql`
+- [x] Migration is idempotent (DO blocks for enums + IF NOT EXISTS for tables/indexes/constraints) — safe on dev where objects already exist
+- [x] No `DROP` / `ALTER ... DROP COLUMN` / `TRUNCATE` / non-default-backfilled `ADD COLUMN NOT NULL` (purely additive)
+- [x] Vercel `vercel-build` will run `prisma migrate deploy` against `monitrax-db-dev` on preview (no-op) and `monitrax-db-prod` on main (creates the missing objects)
+
+### §12.14 — Phase 41E reform compliance
+
+**N/A.** CDR consent / complaint / disclosure tables — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### What deploys mean for Reza
+
+1. Merge this PR → main triggers Vercel build
+2. `vercel-build` runs `prisma migrate deploy` before `next build`:
+   - On `monitrax-db-prod`: the missing tables + enums are created (~30 seconds)
+   - On `monitrax-db-dev`: idempotent no-op (objects already exist)
+3. After deploy, re-run the audit one-liner — `summary.hasDrift` should be `false`, all `missing*` arrays empty
+4. (Optional) Re-run for forensic confirmation: `/admin/cdr-compliance` dashboard will now show real CDR consent/complaint/disclosure counts instead of `.catch`-returned zeros
+
+### Day's tally — Day 2 (2026-05-19) — 5 PRs
+
+| PR | Title | Closed |
+|---|---|---|
+| #803 | §6A.1 #3 — Confidence indicators | §6A.1 6/6 ✅ |
+| #804 | Tech Debt #4 — April changelog consolidation | Tech Debt #4 |
+| #805 | Tech Debt #5 + #6 audit closures | Tech Debt #5 + #6 |
+| #806 | fix(admin): schema-drift `::text` casts | (unblocked Tech Debt #18 audit) |
+| (this) | Tech Debt #18 — CDR tables corrective migration | **Tech Debt #18 + Phase 0 #11** |
+
+### PR
+
+- Branch: `claude/tech-debt-18-cdr-tables-corrective-migration-MG8mr`
 - Status: Open
