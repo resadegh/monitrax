@@ -18,9 +18,9 @@ import { SuggestedActionType } from '@/lib/documents/intelligence';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import {
   findReceiptMatches,
+  linkReceiptToTransaction,
   type ReceiptMatchVerdict,
 } from '@/lib/bookkeeping/receiptMatcher';
-import { recordTransactionEdit, pickLinkFields } from '@/lib/bookkeeping/transactionEditAudit';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -230,21 +230,12 @@ async function applyReceiptMatch(
   });
 
   if (verdict.kind === 'AUTO_LINK') {
-    const matched = verdict.match.transaction;
-    const before = pickLinkFields(matched);
-    const updated = await prisma.unifiedTransaction.update({
-      where: { id: matched.id },
-      data: {
-        expenseId,
-        matchedDocumentId: documentId,
-      },
-    });
-    recordTransactionEdit({
-      transactionId: matched.id,
+    // PR3.5 — shared link executor (SSOT with /api/bookkeeping/receipts/pick-match).
+    await linkReceiptToTransaction({
       userId,
-      editType: 'RECEIPT_LINK',
-      before,
-      after: pickLinkFields(updated),
+      transactionId: verdict.match.transaction.id,
+      documentId,
+      expenseId,
       source: 'AI',
     });
     return verdict;

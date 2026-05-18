@@ -916,4 +916,143 @@ The `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A doc was **not** updated in this PR �
 ### PR
 
 - Branch: `claude/onboarding-pr-3c-data-source-hygiene-MG8mr`
+- Status: **Merged 2026-05-18 (PR #791)** — visibility slice live; PR 3c.2 reshelved for follow-up.
+
+---
+
+## Session 10: PR G — Phase 42 PR3.5.1 (forward-direction receipt picker UI)
+
+Branch: `claude/phase-42-pr-3-5-receipt-picker-MG8mr`
+
+### Scope
+
+- **Type:** Feature (new UI surface; new endpoint; SSOT refactor of existing AUTO_LINK branch).
+- **Closes:** Up Next #45's forward-direction half. The reverse-direction matcher ("new bank tx → unmatched RECEIPT row") reshelves as **PR3.5.2** — it's a different code path (bank-import) and the forward picker is a clean self-contained chunk.
+- **Found state:** the matcher engine (`lib/bookkeeping/receiptMatcher.ts`) has been shipping the `PICK_FROM` verdict since 2026-05-07 (Phase 42 PR3). The verdict was returned by `/api/documents/analyze/confirm` and **dropped by every UI** — the route's own file header explicitly noted "the user-picker endpoint will be a follow-up (PR3.5)". This PR is the follow-up.
+
+### What was done
+
+#### `lib/bookkeeping/receiptMatcher.ts` (extended)
+
+New exports:
+- `linkReceiptToTransaction({ userId, transactionId, documentId, expenseId, source: 'AI' | 'USER' })` — SSOT helper that wraps the link mutation. Verifies ownership + non-double-linking inside the function (so route handlers stay thin); writes the audit edit row (`RECEIPT_LINK` type) the AUTO_LINK branch was previously writing inline. Returns the updated transaction.
+- `ReceiptLinkError` — typed error class with `code: 'RECEIPT_LINK_NOT_FOUND' | 'RECEIPT_LINK_ALREADY_BOUND'` so route handlers can map to 4xx responses cleanly.
+
+Per CLAUDE.md §12.3 — **one** receipt link path in the codebase. Both the AUTO_LINK branch in `/api/documents/analyze/confirm` AND the new `/api/bookkeeping/receipts/pick-match` endpoint call this helper. Previously the link logic was duplicated inline in the confirm route only.
+
+#### `app/api/bookkeeping/receipts/pick-match/route.ts` (new)
+
+```
+POST /api/bookkeeping/receipts/pick-match
+  { documentId, expenseId, transactionId }
+  → 200 { success: true, data: { transactionId, documentId, expenseId } }
+  → 400 INVALID_JSON | INVALID_INPUT
+  → 404 RECEIPT_LINK_NOT_FOUND
+  → 409 RECEIPT_LINK_ALREADY_BOUND
+```
+
+Auth: `withPermission('transaction.write')` (same gate as any UnifiedTransaction-mutating path). Body validation: all three IDs must be strings. Errors mapped from typed `ReceiptLinkError` codes.
+
+#### `components/bookkeeping/ReceiptCandidatePicker.tsx` (new — ~210 LOC)
+
+Modal consuming the `PICK_FROM` verdict. UX choices (4-lens):
+- **Architect** — single endpoint, single helper; no parallel link path.
+- **Financial adviser** — date / merchant / amount per candidate (no advice-shaped wording; no recommendation hint beyond "Best match" badge on top candidate).
+- **Behaviour psychologist** — "Skip — none of these match" is a **first-class** option (closes without forcing a link; user lives with an orphan receipt row); confidence rendered as a **coloured dot, not a percentage** (numbers invite reverse-engineering / "is 78% good enough?" anxiety).
+- **Designer** — Apple-quiet: rounded card, slate ink, emerald accent for top candidate; bottom-sheet on mobile (`items-end sm:items-center`); hover-lift on rows; ESC + click-outside + X all close.
+
+Confidence-dot tone bands match the matcher's three thresholds: emerald ≥0.85 / sky 0.75–0.85 / amber 0.7–0.75 (floor is 0.7 — anything below would have been `NO_MATCH` and never reached the picker).
+
+#### `app/api/documents/analyze/confirm/route.ts` (refactored)
+
+- Replaced the inline `prisma.unifiedTransaction.update(...)` + `recordTransactionEdit(...)` block in the AUTO_LINK branch with one call to `linkReceiptToTransaction({ ..., source: 'AI' })`.
+- Dead imports cleaned (`recordTransactionEdit`, `pickLinkFields` — now consumed only inside the SSOT helper).
+- Net: **−16 LOC** in the confirm route. The shared helper is the new home for that logic.
+
+#### `app/dashboard/documents/page.tsx` (edited)
+
+- New state `pickerState: { documentId, expenseId, candidates } | null`.
+- `handleConfirmAnalysis` now reads the response `receiptMatch` field after a successful POST; when `kind === 'PICK_FROM'` and `entity.type === 'EXPENSE'`, it opens the picker (resolves `documentId` from the local `documents` array via the analysisId lookup — no extra fetch).
+- `<ReceiptCandidatePicker>` mounted at the bottom of the page (alongside other modals); `onLinked` fires `setRefreshKey` to re-pull the documents list.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `lib/bookkeeping/receiptMatcher.ts` | NEW exports `linkReceiptToTransaction` + `ReceiptLinkError` |
+| `app/api/bookkeeping/receipts/pick-match/route.ts` | NEW endpoint |
+| `components/bookkeeping/ReceiptCandidatePicker.tsx` | NEW picker modal |
+| `app/api/documents/analyze/confirm/route.ts` | Refactored — AUTO_LINK branch now uses the shared helper; dead imports cleaned |
+| `app/dashboard/documents/page.tsx` | `handleConfirmAnalysis` reads the verdict + opens the picker; picker mounted |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #45 split (PR3.5.1 ✅ / PR3.5.2 reshelved); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 10 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — `<ReceiptCandidatePicker>` is the first canonical bottom-sheet-on-mobile picker modal in the bookkeeping surface; pattern is documented in the file-header JSDoc for future reuse.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture — picker renders only the user's own UnifiedTransaction rows (data they're already entitled to see); no CDR data flows through the modal beyond what was already on the entity-list pages.
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #45 split (PR3.5.1 ✅ this PR / PR3.5.2 reshelved with the reverse-direction scope). Recently Completed 2026-05-18 entry. Top header refreshed (session 22 / 10 PRs / ~5,000 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 10 entry (this).
+
+`PHASE_42_CONSUMER_BOOKKEEPING_COMPLETION.md` was **not** flipped — that doc treats PR3.5 as one chunk; PR3.5.2 (reverse-direction matcher) ship will flip the status line.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+The new endpoint runs `prisma.unifiedTransaction.update(...)` — fills in the §12.11 block:
+
+| Operation | `where` clause matches | Columns overwritten | Guard |
+|---|---|---|---|
+| `prisma.unifiedTransaction.update` (inside `linkReceiptToTransaction`) | Single row by id — pre-fetched via `findFirst({ id, userId })` so wrong-user is impossible | `expenseId` (null → expenseId), `matchedDocumentId` (null → documentId) | `findFirst` returns null → throws `RECEIPT_LINK_NOT_FOUND`; `matchedDocumentId` already set to a DIFFERENT documentId → throws `RECEIPT_LINK_ALREADY_BOUND`. Re-linking to the SAME documentId is idempotent (no-op-equivalent overwrite). |
+
+No risk of clobbering user-entered data — `expenseId` + `matchedDocumentId` are system-set foreign keys, not user-entered fields. **User confirmation: NOT REQUIRED** (the link mutation was already shipped 2026-05-07 in the AUTO_LINK branch; this PR exposes the same mutation through a user-initiated picker for the previously-orphaned PICK_FROM cases).
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Receipt-picker UI — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool. (The receipt matcher itself is deterministic data-correlation logic, not an AI-generated tax position.)
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate).
+- [ ] Manual verification queued for Vercel preview:
+  - Smart Inbox confirm on a receipt with composite ≥0.95 candidate → AUTO_LINK runs server-side (unchanged behaviour); no picker opens
+  - Smart Inbox confirm on a receipt with 2–5 candidates at 0.7–0.95 → picker opens; picking the top candidate calls `/api/bookkeeping/receipts/pick-match` and succeeds
+  - "Skip — none of these match" closes the picker; the user's receipt stays orphan (no row created — that path is for NO_MATCH, server-side)
+  - Picking a transaction that's already linked → 409 with "Transaction is already linked to a different receipt" inline error
+  - ESC + click-outside + X all close the picker
+
+### Today's tally (updated)
+
+10 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — data-source hygiene visibility slice | Up Next #7 (3c.1 ✅; 3c.2 reshelved) |
+| **PR G (this)** | Phase 42 PR3.5.1 receipt picker | **Up Next #45 (PR3.5.1 ✅; PR3.5.2 reshelved)** |
+
+12 backlog rows closed. ~5,000 LOC shipped.
+
+### PR
+
+- Branch: `claude/phase-42-pr-3-5-receipt-picker-MG8mr`
 - Status: Open

@@ -295,3 +295,72 @@ export async function findReceiptMatches(
     .slice(0, 5);
   return { kind: 'PICK_FROM', candidates: pickFrom };
 }
+
+/**
+ * Phase 42 PR3.5 — Link a user-picked (or auto-link) UnifiedTransaction
+ * to an Expense + Document. Single SSOT for the post-verdict mutation
+ * — both `/api/documents/analyze/confirm` (AUTO_LINK branch) and
+ * `/api/bookkeeping/receipts/pick-match` (user picker) call this.
+ *
+ * Verifies ownership + non-double-linking inside the function so the
+ * route handlers stay thin. Records an audit edit row in the same
+ * shape both paths used previously.
+ *
+ * Returns the updated transaction, or throws a typed error the
+ * caller can map to a 4xx response:
+ *   - `RECEIPT_LINK_NOT_FOUND`   — transaction missing or wrong user
+ *   - `RECEIPT_LINK_ALREADY_BOUND` — tx already has matchedDocumentId
+ */
+export class ReceiptLinkError extends Error {
+  constructor(
+    public code: 'RECEIPT_LINK_NOT_FOUND' | 'RECEIPT_LINK_ALREADY_BOUND',
+    message: string
+  ) {
+    super(message);
+    this.name = 'ReceiptLinkError';
+  }
+}
+
+export async function linkReceiptToTransaction(args: {
+  userId: string;
+  transactionId: string;
+  documentId: string;
+  expenseId: string;
+  source: 'AI' | 'USER';
+}): Promise<UnifiedTransaction> {
+  const { recordTransactionEdit, pickLinkFields } = await import('./transactionEditAudit');
+
+  const existing = await prisma.unifiedTransaction.findFirst({
+    where: { id: args.transactionId, userId: args.userId },
+  });
+  if (!existing) {
+    throw new ReceiptLinkError(
+      'RECEIPT_LINK_NOT_FOUND',
+      'Transaction not found or not owned by this user'
+    );
+  }
+  if (existing.matchedDocumentId && existing.matchedDocumentId !== args.documentId) {
+    throw new ReceiptLinkError(
+      'RECEIPT_LINK_ALREADY_BOUND',
+      'Transaction is already linked to a different receipt'
+    );
+  }
+
+  const before = pickLinkFields(existing);
+  const updated = await prisma.unifiedTransaction.update({
+    where: { id: existing.id },
+    data: {
+      expenseId: args.expenseId,
+      matchedDocumentId: args.documentId,
+    },
+  });
+  recordTransactionEdit({
+    transactionId: existing.id,
+    userId: args.userId,
+    editType: 'RECEIPT_LINK',
+    before,
+    after: pickLinkFields(updated),
+    source: args.source,
+  });
+  return updated;
+}
