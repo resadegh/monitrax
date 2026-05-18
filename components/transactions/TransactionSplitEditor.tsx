@@ -36,6 +36,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   Select,
   SelectContent,
@@ -99,6 +100,7 @@ export function TransactionSplitEditor({
   loans = [],
   onSaved,
 }: TransactionSplitEditorProps) {
+  const { token } = useAuth();
   const [rows, setRows] = useState<SplitRow[]>(() => [
     emptyRow(parentAmount),
   ]);
@@ -107,10 +109,14 @@ export function TransactionSplitEditor({
   const [error, setError] = useState<string | null>(null);
 
   // Hydrate from existing splits on mount.
+  // Hotfix 2026-05-18: MUST pass Authorization header on every API
+  // call — otherwise 401 → SessionExpiryHandler logs the user out.
   useEffect(() => {
     let active = true;
     setLoading(true);
-    fetch(`/api/unified-transactions/${transactionId}/splits`)
+    fetch(`/api/unified-transactions/${transactionId}/splits`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    })
       .then((r) => (r.ok ? r.json() : { data: { splits: [] } }))
       .then((data) => {
         if (!active) return;
@@ -152,7 +158,7 @@ export function TransactionSplitEditor({
     return () => {
       active = false;
     };
-  }, [transactionId, parentAmount]);
+  }, [transactionId, parentAmount, token]);
 
   const sum = rows.reduce((a, r) => a + (Number.isFinite(r.amount) ? r.amount : 0), 0);
   const remaining = parentAmount - sum;
@@ -177,9 +183,11 @@ export function TransactionSplitEditor({
     setSaving(true);
     setError(null);
     try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
       const res = await fetch(`/api/unified-transactions/${transactionId}/splits`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           splits: rows.map((r) => ({
             amount: r.amount,

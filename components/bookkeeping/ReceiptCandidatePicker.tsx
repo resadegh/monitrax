@@ -31,6 +31,7 @@
 import { useState, useEffect } from 'react';
 import { X, Receipt, Check } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
 
 /**
  * Subset of `ReceiptMatchResult` from `lib/bookkeeping/receiptMatcher.ts`
@@ -77,6 +78,7 @@ export function ReceiptCandidatePicker({
   onClose,
   onLinked,
 }: ReceiptCandidatePickerProps) {
+  const { token } = useAuth();
   const [picking, setPicking] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -96,9 +98,14 @@ export function ReceiptCandidatePicker({
     setError(null);
     setPicking(transactionId);
     try {
+      // Hotfix 2026-05-18: MUST pass Authorization header. Without it,
+      // the endpoint returns 401, which `SessionExpiryHandler` treats
+      // as "session is gone" and logs the user out.
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers.Authorization = `Bearer ${token}`;
       const res = await fetch('/api/bookkeeping/receipts/pick-match', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ documentId, expenseId, transactionId }),
       });
       if (!res.ok) {

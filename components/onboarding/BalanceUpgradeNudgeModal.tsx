@@ -37,6 +37,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Zap, Upload, Hand } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface BalanceUpgradeNudgeModalProps {
   manualAccountCount: number;
@@ -50,6 +51,7 @@ export function BalanceUpgradeNudgeModal({
   onDismiss,
 }: BalanceUpgradeNudgeModalProps) {
   const router = useRouter();
+  const { token } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   /**
@@ -58,11 +60,19 @@ export function BalanceUpgradeNudgeModal({
    * a transient API hiccup shouldn't trap them in a modal forever;
    * the modal stays gone for the session because the parent removes
    * it, and will retry on next page load.
+   *
+   * MUST pass the Authorization header — without it, the endpoint
+   * returns 401, which `SessionExpiryHandler` (app/layout.tsx) treats
+   * as "session is gone" and logs the user out. Hotfix shipped
+   * 2026-05-18 after a production sign-out bug surfaced.
    */
   const flipDismissedFlag = async (): Promise<void> => {
     setSubmitting(true);
     try {
-      await fetch('/api/settings/balance-upgrade-nudge', { method: 'POST' });
+      await fetch('/api/settings/balance-upgrade-nudge', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+      });
     } catch (err) {
       console.warn('[BalanceUpgradeNudgeModal] dismiss flag flip failed:', err);
     } finally {
