@@ -304,4 +304,100 @@ Pure docs.
 ### PR
 
 - Branch: `claude/tech-debt-5-and-6-audit-closure-MG8mr`
+- Status: **Merged 2026-05-19 (PR #805)** — Tech Debt #5 + #6 closed.
+
+---
+
+## Session 4: fix(admin) — schema-drift endpoint deserialization bug
+
+Branch: `claude/fix-schema-drift-name-cast-MG8mr`
+
+### Scope
+
+- **Type:** Bug fix. The `GET /api/admin/schema-drift` endpoint (added in PR #743 as part of the Tech Debt #18 tooling sweep) had never been exercised against prod. Reza tried to run it today (the pre-Basiq audit blocker) and it returned HTTP 500.
+
+### Root cause
+
+3 raw SQL queries select columns of Postgres's internal `name` type — `information_schema.tables.table_name`, `information_schema.columns.{table_name, column_name}`, and (`pg_type.typname` + `pg_enum.enumlabel` + `pg_namespace.nspname` via the WHERE clause). The Prisma `$queryRawUnsafe` driver can't deserialize the Postgres `name` type — it fails with:
+
+```
+Failed to deserialize column of type 'name'. If you're using $queryRaw
+and this column is explicitly marked as `Unsupported` in your Prisma
+schema, try casting this column to any supported Prisma type such as
+`String`.
+```
+
+The error message itself describes the fix.
+
+### Fix
+
+Cast each `name`-typed column to `text` in the SELECT clause:
+
+```sql
+SELECT table_name::text AS table_name FROM information_schema.tables ...
+SELECT table_name::text AS table_name, column_name::text AS column_name FROM ...
+SELECT t.typname::text AS enum_name, e.enumlabel::text AS enum_value FROM pg_type t ...
+```
+
+Postgres returns `text` cleanly; Prisma deserializes it as a plain string. No type-handler change needed.
+
+Inline comments added next to each cast explaining the Postgres-`name`-type quirk so future maintainers don't strip them.
+
+### Why this wasn't caught at PR time
+
+The endpoint was added as a tool that Reza would run ad-hoc when needed. Vercel preview builds compile and serve the endpoint correctly; the deserialization failure only happens when the query actually runs against Postgres. No automated test exercised the path end-to-end (would have needed a Postgres test fixture). Tracked as a lesson — admin tooling endpoints should have at least one smoke test that hits them against a real DB before they're considered shippable. Recorded inline in the endpoint's doc-block.
+
+### Files changed
+
+| File | Change |
+|---|---|
+| `app/api/admin/schema-drift/route.ts` | 3 raw SQL queries gain `::text` casts on `name`-typed columns; inline comments document why |
+| `docs/IMPLEMENTATION_PLAN.md` | Recently Completed 2026-05-19 entry |
+| `docs/changelog/CHANGELOG_2026_05_19.md` | This Session 4 entry |
+
+### What Reza does next
+
+1. Wait for this PR to merge + Vercel deploy
+2. Re-run the one-liner in DevTools console:
+   ```js
+   fetch('/api/admin/schema-drift').then(r => r.json()).then(j => console.log(JSON.stringify(j, null, 2)))
+   ```
+3. Paste the JSON output back to the conversation
+
+If the output shows `summary.hasDrift: false` → Tech Debt #18 closes with no corrective migration needed.
+If the output shows drift → I ship the corrective migration in the next PR.
+
+### Doc-sync (CLAUDE.md §16) — full block
+
+Surfaces changed in this PR:
+- [ ] visual design system
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [x] **security / CDR posture** — only in the sense that the schema-drift audit is a Basiq accreditation prerequisite per Tech Debt #18; this fix unblocks the audit
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `app/api/admin/schema-drift/route.ts` (inline doc comments next to the casts)
+- `docs/IMPLEMENTATION_PLAN.md` (Recently Completed 2026-05-19 entry)
+- `docs/changelog/CHANGELOG_2026_05_19.md` (this Session 4 entry)
+
+### §12.11 / §12.12 / §12.14 — N/A
+
+Pure read-path bug fix; no Prisma writes; no schema change; no tax-engine surface.
+
+### Day's tally — Day 2 (2026-05-19) — 4 PRs
+
+| PR | Title | Closed |
+|---|---|---|
+| #803 | §6A.1 #3 — Confidence indicators | §6A.1 6/6 ✅ |
+| #804 | Tech Debt #4 — April changelog consolidation | Tech Debt #4 |
+| #805 | Tech Debt #5 + #6 audit closures | Tech Debt #5 + #6 |
+| (this) | fix(admin): schema-drift `::text` casts | (unblocks Tech Debt #18 audit) |
+
+### PR
+
+- Branch: `claude/fix-schema-drift-name-cast-MG8mr`
 - Status: Open
