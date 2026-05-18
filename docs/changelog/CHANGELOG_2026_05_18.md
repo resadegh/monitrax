@@ -1450,4 +1450,181 @@ Docs updated:
 ### PR
 
 - Branch: `claude/phase-12-pr-3c-2d-data-health-heatmap-MG8mr`
+- Status: **Merged 2026-05-18 (PR #795)** — data-source-hygiene 4-layer story live.
+
+---
+
+## Session 14: PR K — Phase 12 PR 3c.2b (first-visit balance-upgrade migration modal)
+
+Branch: `claude/phase-12-pr-3c-2b-migration-modal-MG8mr`
+
+### Scope
+
+- **Type:** Feature (additive schema column + new endpoint + new modal + dashboard-root wiring).
+- **Closes:** `PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A.1 item #5 (first-visit migration nudge).
+- **5/5 §6A.1 items now shipped.** Only #3 (confidence indicators on derived metrics — touches `masterFinancialService`) remains; that's an independent piece of work that touches the financial SSOT and is best done on a fresher day.
+
+### What was done
+
+#### `prisma/schema.prisma` — additive column
+
+```prisma
+// Phase 12 PR 3c.2b — first-visit migration modal dismissal flag.
+dismissedBalanceUpgradeNudge Boolean @default(false)
+```
+
+#### `prisma/migrations/20260518100000_phase_12_pr_3c_2b_balance_upgrade_nudge/migration.sql`
+
+```sql
+ALTER TABLE "user_preferences"
+  ADD COLUMN IF NOT EXISTS "dismissedBalanceUpgradeNudge" BOOLEAN NOT NULL DEFAULT false;
+```
+
+§12.11 N/A by structural argument — `ADD COLUMN` with `NOT NULL DEFAULT false`; Postgres fills the default for every existing row in the same statement (no race, no two-step migration needed). No columns overwritten; only new column written.
+
+§12.12 satisfied — schema change ships with matching migration file in the same PR.
+
+#### `app/api/settings/balance-upgrade-nudge/route.ts` (new — ~85 LOC)
+
+```
+GET  /api/settings/balance-upgrade-nudge → { dismissed: boolean }
+POST /api/settings/balance-upgrade-nudge → { dismissed: true } (idempotent)
+```
+
+**Mirrors the `reform-banner` route from Phase 41E.3 byte-for-byte** — same shape, same `getAuthContext` pattern, same upsert-on-userId, same §12.11 inline comment block. CLAUDE.md §12.2 SSOT win: the dismissal-flag pattern is identical across all `dismissed*` columns; reviewers + future PRs can copy-paste.
+
+#### `components/onboarding/BalanceUpgradeNudgeModal.tsx` (new — ~170 LOC)
+
+Apple-quiet 3-CTA card. Each CTA is a full-width stacked button with icon + title + description (no primary-by-default visual weight — 3 equal options).
+
+| CTA | Tone | Action |
+|---|---|---|
+| Connect via Basiq | emerald (`Zap` icon) | Flip flag → push to `/dashboard/balances?action=connect-basiq` (existing handler from Phase 36 PR 2b) |
+| Upload a statement | sky (`Upload` icon) | Flip flag → push to `/dashboard/balances?action=import` (existing handler from Phase 36 PR 2c) |
+| Keep entering balances manually | slate (`Hand` icon) | Flip flag → close modal (no navigation) |
+
+Basiq button gated on `useBasiqEnabled()` — hides cleanly when the feature flag is off (only 2 CTAs render in that case).
+
+ESC + click-outside both treated as "Keep manual" — they flip the flag forward via the same code path. **No escape hatch that doesn't flip the flag**: a user can't trap themselves into re-seeing the modal on every visit by closing it without choosing. The flag itself is the SSOT for "user has been asked once."
+
+`flipDismissedFlag()` is the single internal helper; all CTAs call it. Failure is logged but not surfaced — a transient API hiccup shouldn't trap the user in a modal forever; the modal closes locally and will retry on next page load if the flag write actually failed.
+
+Footer: *"You can revisit this choice anytime in Settings · Data Health."* — points users to the PR J surface for revisits.
+
+#### `app/dashboard/page.tsx` (edited)
+
+- Imported `<BalanceUpgradeNudgeModal>` + `useBasiqEnabled()`.
+- New state: `nudgeOpen: boolean` + `nudgeManualCount: number`.
+- New `useEffect` on `[token]` — runs once per dashboard mount; parallel-fetches `/api/settings/balance-upgrade-nudge` + `/api/accounts`; gates on **(a)** `!dismissed` AND **(b)** manual count ≥ 1. Either fails the gate → modal never opens.
+- Modal mounted at the end of the render tree (next to other dialogs), gated on `nudgeOpen`.
+
+### CLAUDE.md §0 lens reads
+
+- **Architect** — no parallel flows; CTAs deep-link to existing `?action=` handlers. §12.2 SSOT on the dismissal-flag pattern (mirrors `reform-banner` route).
+- **Financial adviser** — neutral framing; no shaming of MANUAL accounts; "Keep manual" is a first-class option, not a guilt-trip skip link. Users with cash / crypto / foreign accounts who legitimately need MANUAL can pick it without feeling lectured.
+- **Behaviour psychologist** — modal opens in a calm-state (slate scrim + emerald accent, not red alarm). Copy invites ("We can keep your balances fresh automatically — or you can keep entering them yourself") rather than demands. 3 buttons stacked equally — no option visually primary-by-default. ESC + click-outside both treated as a real choice (flip the flag), not "I'll deal with this later" — the latter would mean re-showing the modal forever, which is hostile UX.
+- **Designer** — restraint. Bottom-sheet on mobile, centred card on desktop. No animation beyond the standard modal scrim fade.
+
+### Privacy posture (CLAUDE.md §13.3)
+
+No balance amounts in copy. Only the count of MANUAL accounts surfaces ("You have N accounts with manually-entered balances"). Aggregate-only — same posture as the chip + nudge + heat-map.
+
+### Files added / changed
+
+| File | Change |
+|---|---|
+| `prisma/schema.prisma` | New column `dismissedBalanceUpgradeNudge Boolean @default(false)` on `UserPreference` |
+| `prisma/migrations/20260518100000_phase_12_pr_3c_2b_balance_upgrade_nudge/migration.sql` | NEW migration |
+| `app/api/settings/balance-upgrade-nudge/route.ts` | NEW endpoint (GET + POST) |
+| `components/onboarding/BalanceUpgradeNudgeModal.tsx` | NEW modal component |
+| `app/dashboard/page.tsx` | State + parallel-fetch effect + modal mount |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next #7 PR 3c.2 row updated (item #5 ✅; only item #3 remains); Recently Completed 2026-05-18 entry; top header refreshed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | This Session 14 entry |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — new 3-CTA bottom-sheet pattern for first-visit migration nudges. Reusable for any future "ask user to upgrade their data source" prompt.
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build — schema change ships in this PR with a matching migration file (§12.12 satisfied); `vercel-build` applies it to `monitrax-db-dev` on preview build, to `monitrax-db-prod` on main deploy.
+- [ ] security / CDR posture — aggregate-only copy; §13.3 N/A.
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next #7 PR 3c.2 row updated (item #5 ✅; only #3 remaining). Recently Completed 2026-05-18 entry. Top header refreshed (session 26 / 14 PRs / ~5,750 LOC).
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 14 entry (this).
+
+`PHASE_12_WIZARD_REDESIGN_PLAN.md` §6A — **not** flipped (treats §6A.1 as one chunk; flip happens when item #3 ships). Per-item status lives in `IMPLEMENTATION_PLAN.md` per CLAUDE.md §15.6.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Migration:
+- Operation: `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ... BOOLEAN NOT NULL DEFAULT false`
+- Where clause: N/A (DDL, not row-level)
+- Columns overwritten: NONE (new column only)
+- Guard: column is new; no prior data; default fills atomically.
+- → §12.11 N/A by structural argument. **User confirmation: NOT REQUIRED.**
+
+API upsert:
+- Operation: `prisma.userPreference.upsert({ where: { userId } })`
+- Where clause: `{ userId: auth.userId }` — uniquely identifies the authenticated user's own row.
+- Columns overwritten on update branch: `dismissedBalanceUpgradeNudge` only.
+- Guard: where + auth context ensure we only touch the authenticated user's row; flag only flips forward to `true` (never resets to `false` through this endpoint).
+- → §12.11 safe. **User confirmation: NOT REQUIRED.**
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+✅ `prisma/schema.prisma` modified.
+✅ Matching migration file present at `prisma/migrations/20260518100000_phase_12_pr_3c_2b_balance_upgrade_nudge/migration.sql`.
+✅ Migration uses `IF NOT EXISTS` — idempotent on dev where the column already exists via `db push`, adds it on prod.
+✅ `vercel-build` will apply via `prisma migrate deploy` before building (preview to `monitrax-db-dev`, prod to `monitrax-db-prod`).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** UI / pref hygiene — not a tax-engine surface; no `Property` / `Investment` / `LegalEntity` schema column added; no new AI tool.
+
+### Testing
+
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox (no `node_modules`; per CLAUDE.md §11.2 the Vercel preview is the canonical TS gate; the preview build also runs the migration against `monitrax-db-dev`).
+- [ ] Manual verification queued for Vercel preview:
+  - First dashboard visit for a user with ≥1 MANUAL account → modal opens
+  - Same user reloads dashboard → modal stays open (flag still false)
+  - User clicks "Keep entering balances manually" → modal closes; reload → modal does NOT re-open
+  - Another user with ≥1 MANUAL account → "Connect via Basiq" → modal closes, redirects to `/dashboard/balances?action=connect-basiq`, existing handler fires `connectBank()`
+  - User with zero MANUAL accounts → modal never opens
+  - User who already dismissed → modal never opens
+  - ESC + click-outside → modal closes; reload → does NOT re-open (treated as a real "Keep manual" choice)
+  - Basiq feature flag OFF → Connect via Basiq button hides; only Upload + Keep manual render
+
+### Today's tally (updated)
+
+14 PRs across the day:
+
+| PR | Title | Tech Debt / Up Next closed |
+|---|---|---|
+| #783 | PR A — quick wins | Tech Debt #2 + #10 + #19 |
+| #784 | PR B1 — Phase 42 PR 6.5d | Up Next 51 |
+| #785 | PR B2 — Phase 42 PR 5.6 | Up Next 48 |
+| #786 | PR B3 — Phase 42 PR 4.5 | Up Next 46 |
+| #787 | PR B4 — Phase 42 PR 2.5 | Up Next 44 |
+| #788 | PR C — barrel-audit sweep | Tech Debt #7 |
+| #789 | PR D — client-book table | Phase 32B PR3 §6b backlog |
+| #790 | PR E — Tax Pack PDF + ZIP | Up Next #47 |
+| #791 | PR F — data-source hygiene visibility slice | §6A.1 items #1 + #2 |
+| #792 | PR G — receipt picker | Up Next #45 (PR3.5.1 ✅) |
+| #793 | PR H — upgrade-account button | §6A.1 item #4 ✅ |
+| #794 | PR I — balance-write audit | §6A.1 item #6 ✅ |
+| #795 | PR J — heat-map page | §6A.1 item #7 ✅ |
+| **PR K (this)** | first-visit migration modal | **§6A.1 item #5 ✅** |
+
+16 backlog rows closed. ~5,750 LOC shipped.
+
+**Data-source hygiene §6A.1 now 5/5 shipped.** Only #3 (confidence indicators on derived metrics — touches `masterFinancialService` SSOT) remains; queued as an independent ship for a fresher day.
+
+### PR
+
+- Branch: `claude/phase-12-pr-3c-2b-migration-modal-MG8mr`
 - Status: Open
