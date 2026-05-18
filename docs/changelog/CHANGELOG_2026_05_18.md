@@ -78,4 +78,81 @@ Docs updated:
 ### PR
 
 - Branch: `claude/post-41e-quick-wins-MG8mr`
+- Status: **Merged 2026-05-18 (PR #783)**.
+
+---
+
+## Session 2: PR B1 — Phase 42 PR 6.5d Gemini anomaly narrative
+
+Branch: `claude/phase-42-ui-plumbing-MG8mr`
+
+### Scope
+
+- **Type:** Feature (Phase 42 PR 6.5d — deferred from PR6.5).
+- **Scope:** Replaces the hardcoded flag→English mapper in `dailyPulse.ts` with a Claude Haiku 4.5 narration via the existing Phase 33g.2 client. CDR-safe input shape. Falls back to the deterministic mapper when AI isn't configured or fails.
+- **CDR scope:** Reform-safe per CLAUDE.md §13.3 — only merchant name + flag code + amount + relative date label leave the engine. NO transaction descriptions, NO account ids, NO payee details.
+- **Decision re-scope:** Originally PR B was meant to cover 4 Phase 42 items (6.5d + 5.6 + 4.5 + 2.5) in one PR. Re-scoped mid-session to one focused PR per item — B1 ships 6.5d only, then B2/B3/B4 follow. Cleaner review, smaller blast radius per merge.
+
+### What was done
+
+#### New file
+
+- **`lib/bookkeeping/engagement/anomalyNarrator.ts`** — `buildAnomalyNarrative(userId)` is the new public entry. Fetches the top 5 most-recent flagged anomalies, builds a CDR-safe `AnomalyForNarration[]` (merchant + flag + amount + `formatRelativeDate(date)` — never ISO timestamp), passes to `generateAnthropicCompletion()` with a strict system prompt: ONE sentence, max 90 chars, no advice verbs, no manufactured urgency. Falls back to `renderDeterministicNarrative()` (exported for tests) when `isAnthropicConfigured()` returns false OR the LLM call throws. Surface is never empty.
+
+#### Extended file
+
+- **`lib/bookkeeping/engagement/dailyPulse.ts`** — calls `buildAnomalyNarrative` instead of the inline `buildSimpleAnomalyNarrative`. Legacy function deleted. JSDoc updated to reflect the LLM upgrade.
+
+#### New tests
+
+- **`tests/bookkeeping/anomalyNarrator.test.ts`** — 13 tests covering each of the 6 flag types in the deterministic fallback + a D-2 wall test (`it.each(flags)`) asserting no advice verbs / no manufactured urgency in any deterministic narrative. The LLM-narrated path is integration-tested via Vercel preview (cost-controlled).
+
+### Files modified
+
+| File | Change |
+|---|---|
+| `lib/bookkeeping/engagement/anomalyNarrator.ts` | NEW — 154 lines |
+| `lib/bookkeeping/engagement/dailyPulse.ts` | −40 lines (legacy fn removed) + 1 import + 3-line comment block |
+| `tests/bookkeeping/anomalyNarrator.test.ts` | NEW — 13 tests |
+| `docs/IMPLEMENTATION_PLAN.md` | Up Next row 51 (PR 6.5d) closed |
+| `docs/changelog/CHANGELOG_2026_05_18.md` | Session 2 entry (this) |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Engine-side narrator upgrade — no §16.2 surface changed. Anthropic dep already shipped in Phase 33g.2 (`lib/ai/anthropic.ts`); this PR adds a new consumer with the existing US$50/mo cap protecting cost.
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 51 closed.
+- `docs/changelog/CHANGELOG_2026_05_18.md` — Session 2 entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+**N/A.** No Prisma writes; module reads from `unifiedTransaction.findMany` only.
+
+### Schema migration checklist (CLAUDE.md §12.12)
+
+**N/A.** No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+**N/A.** Bookkeeping anomaly narrative — not a tax-engine surface.
+
+### Testing
+
+- [x] Tests written — 13 new in `tests/bookkeeping/anomalyNarrator.test.ts`.
+- [ ] `npm test` / `npm run build` / `npm run lint` — N/A in this sandbox.
+
+### PR
+
+- Branch: `claude/phase-42-ui-plumbing-MG8mr`
 - Status: Open
