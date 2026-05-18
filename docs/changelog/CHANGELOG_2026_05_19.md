@@ -539,3 +539,66 @@ Docs updated in this PR:
 
 - Branch: `claude/tech-debt-18-cdr-tables-corrective-migration-MG8mr`
 - Status: Open
+
+---
+
+## Session 6 — Reza-side quick-clicks: console hardening
+
+**Time:** ~14:00 AEST · **Type:** Reza-side operational (no code change)
+
+Walking through the 7 Reza-side pre-Basiq quick-click items one at a time. Each item is documented here so that if anything breaks in the next few days we have a single-step rollback reference.
+
+### Quick-Click #1 — Tech Debt #22 (delete `DIRECT_URL` env var)
+
+**Result:** ✅ **Confirmed clean — no action needed.**
+
+Reza checked Vercel Project Settings → Environment Variables; a "direc" search matched only `GOOGLE_REDIRECT_URI` (the Google OAuth callback URL — must stay). `DIRECT_URL` was never set in Vercel (or was removed in an earlier cleanup). Tech Debt #6 was already closed at code layer 2026-05-19 morning; now confirmed at infra layer too.
+
+**Rollback:** N/A (nothing changed).
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #22 → ✅ DONE.
+
+### Quick-Click #2 — Phase 0 console row #13 (restrict the Gemini API key)
+
+**Result:** ✅ **DONE.**
+
+Reza opened GCP Console → APIs & Services → Credentials → the Gemini API key in project `Monitrax` (organisation `monitrax.com.au`) and applied **two** restrictions:
+
+1. **Application restrictions** → HTTP referrers (web sites):
+   - `https://monitrax.com.au/*`
+   - `https://www.monitrax.com.au/*`
+   - `https://*.vercel.app/*` (covers preview deploys)
+2. **API restrictions** → Restrict key → ticked only **Gemini API** (the consumer Gemini API at `generativelanguage.googleapis.com`).
+
+**Two Gemini-named APIs were intentionally NOT selected** (different products, the app doesn't call them):
+- `Gemini Cloud Assist API` (GCP Console internal AI helper)
+- `Gemini for Google Cloud API` (Workspace / Cloud coding assistance)
+
+**Why this matters (CDR posture):** Before this change, anyone who got the key could spend against Reza's GCP billing from anywhere on earth. After this change, a leaked key is only usable by a caller impersonating `monitrax.com.au` or a Vercel preview URL.
+
+**Enabling step taken along the way:** the "Gemini API" did not initially appear in the Restrict key dropdown — Google rebranded "Generative Language API" → "Gemini API" but the underlying service is still `generativelanguage.googleapis.com`. Reza enabled it via APIs & Services → Library → "Gemini API" → Enable, then returned to the restrict-key page and refreshed.
+
+**Rollback (if Gemini 403s in Vercel logs after deploy):**
+
+1. GCP Console → APIs & Services → Credentials → click the Gemini key name
+2. **Most likely cause = HTTP referrer mismatch.** Add the missing domain to the referrers list and Save. (E.g. if you spin up a custom domain `app.monitrax.com.au`, add `https://app.monitrax.com.au/*`.)
+3. **Less likely cause = API restriction wrong.** Flip "API restrictions" back to "Don't restrict key", Save, investigate which API the code is actually calling.
+4. **The key value itself was NOT rotated** — every code path calling Gemini continues to use the same key value. So no env-var change in Vercel is needed.
+
+**Key identifying detail (for future operators):**
+
+- Project: `Monitrax` (organisation `monitrax.com.au`, project id `monitrax-479700`)
+- Key creation date: 12 December 2025
+- Direct link: `https://console.cloud.google.com/apis/credentials/key/cef87ecf-5452-4536-babe-b66d481e67f6?project=monitrax-479700`
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #13 → ✅ DONE; this changelog records the full rollback recipe.
+
+### Remaining quick-clicks (in order)
+
+| # | Item | Effort | Status |
+|---|---|---|---|
+| #3 | Cloud Scheduler `monitrax-conversation-retention-sweep` job | ~5 min | Up next |
+| #12 | Rotate `CRON_SECRET` | ~10 min | Queued |
+| #6 | Vercel → Cloud Logging log drain | ~15 min | Queued |
+| #16 | Security Command Center Premium | ~30 min | Queued |
+| #5 | A1 + A9 alert policies | ~1 hr | Queued |
