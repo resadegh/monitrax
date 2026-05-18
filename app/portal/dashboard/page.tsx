@@ -50,6 +50,7 @@ import {
   type DemoAlert,
 } from '@/lib/portal/practice';
 import { useOrganization } from '@/lib/portal';
+import { useAuth } from '@/lib/context/AuthContext';
 
 interface RealKpis {
   activeClients: number;
@@ -77,7 +78,14 @@ interface ClientSummaryResponse {
 export default function PortalDashboardPage() {
   const router = useRouter();
   const { currentOrg } = useOrganization();
+  const { token } = useAuth();
   const orgId = currentOrg?.id;
+  // 2026-05-18 — Authorization header on every /api/portal/* fetch.
+  // Without it, the 401 trips `SessionExpiryHandler` (app/layout.tsx)
+  // which interprets "no header on 401" as session-gone → logout.
+  const authHeaders: HeadersInit | undefined = token
+    ? { Authorization: `Bearer ${token}` }
+    : undefined;
 
   // Phase 32B PR3 #9b + post-#9b polish part 2 — the Practice dashboard
   // shows EITHER your real book OR the LIGHTHOUSE demo preview, never a
@@ -94,7 +102,7 @@ export default function PortalDashboardPage() {
   const refetchAlerts = useCallback(async () => {
     if (!orgId) return;
     try {
-      const res = await fetch(`/api/portal/alerts?organizationId=${encodeURIComponent(orgId)}`);
+      const res = await fetch(`/api/portal/alerts?organizationId=${encodeURIComponent(orgId)}`, { headers: authHeaders });
       if (!res.ok) return;
       const j = (await res.json()) as {
         success?: boolean;
@@ -106,19 +114,19 @@ export default function PortalDashboardPage() {
     } catch {
       // Silent — keeps whatever's there on a fetch failure.
     }
-  }, [orgId]);
+  }, [orgId, token]);
 
   const refetchClientSummary = useCallback(async () => {
     if (!orgId) return;
     try {
-      const res = await fetch(`/api/portal/clients?organizationId=${encodeURIComponent(orgId)}`);
+      const res = await fetch(`/api/portal/clients?organizationId=${encodeURIComponent(orgId)}`, { headers: authHeaders });
       if (!res.ok) return;
       const j = (await res.json()) as { success?: boolean; data?: ClientSummaryResponse };
       if (j?.success && j.data) setClientSummary(j.data);
     } catch {
       // Silent — keeps the fixture preview on a fetch failure.
     }
-  }, [orgId]);
+  }, [orgId, token]);
 
   useEffect(() => {
     void refetchClientSummary();
@@ -130,13 +138,13 @@ export default function PortalDashboardPage() {
       // Optimistic — drop the row immediately, then reconcile both.
       setRealAlerts((prev) => (prev ? prev.filter((a) => a.id !== alertId) : prev));
       try {
-        await fetch(`/api/portal/alerts/${encodeURIComponent(alertId)}/dismiss`, { method: 'POST' });
+        await fetch(`/api/portal/alerts/${encodeURIComponent(alertId)}/dismiss`, { method: 'POST', headers: authHeaders });
       } finally {
         void refetchAlerts();
         void refetchClientSummary();
       }
     },
-    [refetchAlerts, refetchClientSummary],
+    [refetchAlerts, refetchClientSummary, authHeaders],
   );
 
   const usingRealData = clientSummary?.hasRealClients === true;
