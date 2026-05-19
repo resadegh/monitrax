@@ -684,10 +684,35 @@ The previous `CRON_SECRET` had been pasted into chat during 2026-05-12 cron debu
 
 **Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #12 → ✅ DONE.
 
+### Quick-Click #6 — Phase 0 console row #6 (Vercel → Cloud Logging log drain)
+
+**Result:** ⏸ **DEFERRED — foundation work captured for a future PR.**
+
+Attempted the Vercel-native OIDC-federated log-drain path. Got most of the way through GCP setup (created `vercel-log-drain@monitrax-479700.iam.gserviceaccount.com`, granted `roles/logging.logWriter`, added the WIF binding `principalSet://iam.googleapis.com/projects/87218209262/locations/global/workloadIdentityPools/vercel-pool/attribute.project_id/prj_UYQF3GpGAkeFo4ZhMhch4Q0btCAU` with `roles/iam.workloadIdentityUser` — same pattern as WIF Phase 9).
+
+**Snag discovered:** Vercel's **OIDC Federation** (Project Settings → Security) and Vercel's **Log Drain feature** (Project Settings → Drains) are two different parts of Vercel that share the word "secure" but use different auth mechanisms. OIDC tokens are minted **for Vercel functions to call backend services** (this is what WIF Phase 9 Cloud SQL setup uses); **Log Drains use HMAC-signed POSTs with an `x-vercel-verify` header**, not OIDC bearer tokens. The WIF binding we created is technically correct but won't be presented by the log-drain pipeline → GCP would 401 every POST.
+
+**Decision (transparent re-framing):**
+
+- The architect lens — the right architecture is a tiny `vercel-log-receiver` Cloud Function that accepts the HMAC POST, verifies `x-vercel-verify`, and writes to Cloud Logging via the SA we already created. That's a ~2 hour code PR with tests, not a click-through.
+- The compliance lens — **this is NOT a Basiq blocker.** Basiq needs audit logs for sensitive data access retained 7 years; that's the `auditLog` Postgres table + retention sweep (verified working Quick-Click #4). Vercel function logs (`console.error`, request traces) are operational debug logs — useful but not a compliance artifact.
+- The behaviour-psychologist lens — pushing through this for another hour with no real outcome today vs banking 5/7 ✅ + sprinting through the remaining 2 high-value items (SCC + alert policies) is the optimal move.
+
+**What was preserved (not wasted):**
+
+- `vercel-log-drain` SA + `roles/logging.logWriter` role grant + WIF binding all remain in place
+- The future Cloud Function shim will impersonate this exact SA
+- We just made that future PR ~30 minutes smaller
+
+**Queued as `IMPLEMENTATION_PLAN.md` Up Next #15:** `vercel-log-receiver` Cloud Function shim. Trigger conditions documented in that row (first paying user / metric needing >7d log history / incident where Vercel logs disappeared mid-forensic).
+
+**Rollback (if we need to remove the dormant resources):** GCP Console → IAM & Admin → Service Accounts → `vercel-log-drain` → delete; GCP Console → IAM → revoke the principalSet from any SA bindings. Idempotent; safe; no production impact since nothing currently calls it.
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #6 → ⏸ DEFERRED with full backstory; Up Next #15 added with scope + trigger conditions.
+
 ### Remaining quick-clicks (in order)
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| #6 | Vercel → Cloud Logging log drain | ~15 min | **Up next** |
-| #16 | Security Command Center Premium | ~30 min | Queued |
+| #16 | Security Command Center Premium | ~30 min | **Up next** |
 | #5 | A1 + A9 alert policies | ~1 hr | Queued |
