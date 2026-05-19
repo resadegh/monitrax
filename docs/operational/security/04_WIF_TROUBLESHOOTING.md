@@ -142,6 +142,23 @@ code: 'ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE'
   4. The Cloud SQL instance was created **before** IAM authentication
      was supported and never had the flag toggled, OR was restored
      from a backup that lost the flag.
+  5. **The connector library's cached cert is stale** (transient,
+     usually intermittent). The Cloud SQL Connector caches the
+     ephemeral client cert it mints from SQL Admin for performance
+     across multiple queries on the same warm Vercel function
+     instance. Cloud SQL rotates the **instance** cert periodically
+     (every few hours, internal Google-side operation), which
+     invalidates the connector's cached cert at the TLS layer.
+     Other warm instances that minted fresh certs after the rotation
+     succeed; instances holding pre-rotation cached certs fail with
+     `bad_certificate` until they get recycled (~5-15 min idle).
+     **This is the failure mode the retry-once-with-cache-invalidate
+     wrapper in `lib/db.ts` is designed to handle automatically** —
+     so if you see TLS-42 errors in the wrapped form here, BOTH
+     attempts failed and Cause #5 is unlikely. If you're seeing
+     RAW (un-wrapped) `bad_certificate` errors in logs that
+     intermittently resolve on retry, that's the retry wrapper
+     successfully self-healing Cause #5 — operational, not actionable.
 
 - **Fix — verification commands** (run all of these; whichever fails or
   shows an unexpected value is your culprit):
@@ -227,10 +244,18 @@ code: 'ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE'
   `docs/changelog/CHANGELOG_2026_05_19.md` Session 6 + Quick-Click #4
   for the full diagnostic.
 
-  **Long-term hardening (queued):** add a retry-once-on-TLS-error
+  **Long-term hardening (✅ SHIPPED 2026-05-20):** retry-once-on-TLS-error
   wrapper around the Prisma proxy in `lib/db.ts` so that transient
-  handshake failures self-heal instead of bubbling up as 500s. Filed
-  in `IMPLEMENTATION_PLAN.md` as a follow-on workstream.
+  handshake failures self-heal instead of bubbling up as 500s. The
+  wrapper also **invalidates the cached Prisma client + pool** on TLS
+  error so the retry mints a fresh cert (not just retries the same
+  stale-cached one). Single-shot only — if the retry also fails, the
+  wrapped error surfaces and the cause is almost certainly #1-#4
+  above, not #5. Closes IMPLEMENTATION_PLAN.md §6b. Driven by Reza
+  observing intermittent TLS-42 errors on `/api/health` outside the
+  documented maintenance-window collision (the 2026-05-19 mitigation
+  only addressed cron-window collisions; this PR addresses any
+  cause #5 occurrence at any time).
 
 ### H. `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`
 

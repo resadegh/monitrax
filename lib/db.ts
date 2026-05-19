@@ -202,16 +202,71 @@ function isTlsHandshakeError(err: unknown): boolean {
 function wrapTlsHandshakeError(err: unknown, where: string): Error {
   const original = err instanceof Error ? err : new Error(String(err));
   const wrapped = new Error(
-    `Cloud SQL TLS handshake rejected during ${where}. The ephemeral client ` +
-      `cert was minted by SQL Admin but the instance refused it. ` +
-      `Most likely: (1) instance flag cloudsql.iam_authentication is OFF, ` +
-      `(2) SA is missing roles/cloudsql.instanceUser, or ` +
-      `(3) CLOUD_SQL_CONNECTION_NAME doesn't match the actual instance. ` +
-      `See docs/operational/security/04_WIF_TROUBLESHOOTING.md §3.G for ` +
-      `the verification commands. Original: ${original.message}`,
+    `Cloud SQL TLS handshake rejected during ${where} — and a single retry ` +
+      `with a freshly-minted cert ALSO failed. That rules out the most ` +
+      `common transient cause (Cause #5: stale cached cert from a Cloud SQL ` +
+      `instance cert rotation), so this is almost certainly a config error: ` +
+      `(1) instance flag cloudsql.iam_authentication is OFF, ` +
+      `(2) SA is missing roles/cloudsql.instanceUser, ` +
+      `(3) CLOUD_SQL_CONNECTION_NAME doesn't match the actual instance, or ` +
+      `(4) the instance pre-dates IAM-auth support and never had the flag ` +
+      `toggled on. See docs/operational/security/04_WIF_TROUBLESHOOTING.md ` +
+      `§3.G for the verification commands. Original: ${original.message}`,
   );
   (wrapped as Error & { cause?: unknown }).cause = original;
   return wrapped;
+}
+
+// Invalidates the cached Prisma client + init promise so the next call
+// re-runs `buildConnectorPrisma()` from scratch — fresh OIDC token, fresh
+// SA impersonation, fresh ephemeral cert from SQL Admin. Best-effort
+// disconnects the stale pool so its TCP/TLS sessions are released. Called
+// from the retry path in `callWithTlsRetry()` when the connector's cached
+// cert no longer satisfies the instance's current TLS configuration
+// (Cause #4 in `wrapTlsHandshakeError`).
+function invalidateConnectorCache(): void {
+  const stale = globalForPrisma.prisma;
+  globalForPrisma.prisma = undefined;
+  globalForPrisma.prismaInitPromise = undefined;
+  void stale?.$disconnect().catch(() => {
+    // The stale pool's connections are about to be GC'd anyway. We don't
+    // care if disconnect() also fails with TLS — the cache is already
+    // cleared, so the next call will mint a fresh client.
+  });
+}
+
+// Wraps a Prisma method invocation with single-shot retry on TLS handshake
+// errors. The first attempt may hit a warm function instance whose cached
+// connector cert was just invalidated by a Cloud SQL instance-cert rotation
+// (a periodic Google-side operation, ~hours). The instance refuses the
+// stale cert at the TLS layer with `bad_certificate` (alert 42). We clear
+// the cached client and retry exactly once — the second attempt mints a
+// fresh cert that the instance accepts. Safe to retry because TLS handshake
+// happens BEFORE any SQL is sent: no partial-write risk, regardless of
+// whether the underlying query is a read or a write.
+//
+// Why single-shot, not multi-shot: if the retry also fails with TLS, it's
+// almost certainly Cause #1/#2/#3 (config drift), not Cause #4 (stale
+// cache). Looping on a config error would amplify load on Cloud SQL Admin
+// API without resolving anything.
+async function callWithTlsRetry<T>(
+  callee: string,
+  invoke: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await invoke();
+  } catch (err) {
+    if (!isTlsHandshakeError(err)) throw err;
+    invalidateConnectorCache();
+    try {
+      return await invoke();
+    } catch (retryErr) {
+      if (isTlsHandshakeError(retryErr)) {
+        throw wrapTlsHandshakeError(retryErr, callee);
+      }
+      throw retryErr;
+    }
+  }
 }
 
 // Proxy handler that defers all property access until the underlying
@@ -226,43 +281,33 @@ const lazyConnectorHandler: ProxyHandler<PrismaClient> = {
 
     return new Proxy(function () {} as unknown as object, {
       apply: async (_t, _thisArg, args: unknown[]) => {
-        const client = await getOrInitConnectorClient();
-        const fn = (client as unknown as Record<string, unknown>)[prop as string];
-        if (typeof fn !== 'function') {
-          throw new TypeError(`prisma.${String(prop)} is not a function`);
-        }
-        try {
-          return await (fn as (...a: unknown[]) => unknown).apply(client, args);
-        } catch (err) {
-          if (isTlsHandshakeError(err)) {
-            throw wrapTlsHandshakeError(err, `prisma.${String(prop)}()`);
+        return callWithTlsRetry(`prisma.${String(prop)}()`, async () => {
+          const client = await getOrInitConnectorClient();
+          const fn = (client as unknown as Record<string, unknown>)[prop as string];
+          if (typeof fn !== 'function') {
+            throw new TypeError(`prisma.${String(prop)} is not a function`);
           }
-          throw err;
-        }
+          return await (fn as (...a: unknown[]) => unknown).apply(client, args);
+        });
       },
       get: (_t, methodProp) => {
         if (typeof methodProp === 'symbol') return undefined;
         return async (...args: unknown[]) => {
-          const client = await getOrInitConnectorClient();
-          const namespace = (client as unknown as Record<string, unknown>)[prop as string];
-          if (!namespace || typeof namespace !== 'object') {
-            throw new TypeError(`Unknown prisma namespace: ${String(prop)}`);
-          }
-          const fn = (namespace as Record<string, unknown>)[methodProp as string];
-          if (typeof fn !== 'function') {
-            throw new TypeError(`prisma.${String(prop)}.${String(methodProp)} is not a function`);
-          }
-          try {
-            return await (fn as (...a: unknown[]) => unknown).apply(namespace, args);
-          } catch (err) {
-            if (isTlsHandshakeError(err)) {
-              throw wrapTlsHandshakeError(
-                err,
-                `prisma.${String(prop)}.${String(methodProp)}()`,
-              );
-            }
-            throw err;
-          }
+          return callWithTlsRetry(
+            `prisma.${String(prop)}.${String(methodProp)}()`,
+            async () => {
+              const client = await getOrInitConnectorClient();
+              const namespace = (client as unknown as Record<string, unknown>)[prop as string];
+              if (!namespace || typeof namespace !== 'object') {
+                throw new TypeError(`Unknown prisma namespace: ${String(prop)}`);
+              }
+              const fn = (namespace as Record<string, unknown>)[methodProp as string];
+              if (typeof fn !== 'function') {
+                throw new TypeError(`prisma.${String(prop)}.${String(methodProp)} is not a function`);
+              }
+              return await (fn as (...a: unknown[]) => unknown).apply(namespace, args);
+            },
+          );
         };
       },
     });
