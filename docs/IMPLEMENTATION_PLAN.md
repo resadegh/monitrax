@@ -173,6 +173,65 @@
 | 21 | WIF Phase 11 / Phase 12 | 🚧 | Trigger-gated (Phase 11 ≥ 2026-05-31; Phase 12 trigger-based). Claude does the code; Reza does the env/network bits. |
 | 22 | Delete `DIRECT_URL` env var from Vercel (if present) | ✅ DONE 2026-05-19 | **Confirmed clean** — Reza checked Vercel Project Settings → Environment Variables; `DIRECT_URL` is not present in any scope (a "direc" search only matched `GOOGLE_REDIRECT_URI`, the OAuth callback URL — must stay). Either never set, or removed in an earlier cleanup. Tech Debt #6 fully closed at both code AND infra layer. |
 
+#### 📅 D-Day Bundle — pre-Basiq submission checklist (executed the day before Reza replies to the Basiq accreditation email)
+
+> **Why this exists:** Reza decision 2026-05-19 — defer all cost-incurring security activations to **the day before Basiq submission** so they're fresh when reviewers look (recently-activated SCC Premium with a "last scanned: 2 hours ago" timestamp reads more credible than a 4-month-old setup), and Reza doesn't pay for months of "waiting for Basiq." This bundle is the single source of truth for "what to do that morning."
+>
+> **Sequencing:** Tier 3 items MUST start ~3-6 weeks before submission (external lead times). Tier 2 ships in code PRs the week before. Tier 1 + Tier 4 are pure D-Day actions.
+
+##### Tier 1 — Cost-incurring activations (D-Day, ~2 hours)
+
+| # | Activity | Cost | Effort | Console path |
+|---|---|---|---|---|
+| T1.1 | **SCC Premium 30-day free trial** | $0 for 30 days → ~$15-40/mo after | 5 min activation + 25 min triage | GCP Console → Security → Security Command Center → Settings → upgrade to Premium → start free trial |
+| T1.2 | **Cloud Armor WAF policy** on Vercel-fronted endpoints | ~$5/policy/mo + per-request fees | 30 min create + 30 min tune | GCP Console → Network Security → Cloud Armor → create policy → attach to backend service. Per `05_RETENTION_SCHEDULERS.md` §6 |
+| T1.3 | **CMEK on Cloud SQL** | ~$0.06/key/mo + ~$0.03/10k operations | 30 min (requires maintenance window — schedule for Sunday 04:00 AEST already-configured maintenance window) | GCP Console → KMS → create keyring + key → SQL → instance → Customer-managed encryption keys → assign. Per `05_RETENTION_SCHEDULERS.md` §6 |
+
+##### Tier 2 — Code PRs that ship the week before D-Day
+
+| # | Activity | Where queued | Notes |
+|---|---|---|---|
+| T2.1 | **WIF Phase 11** — drop legacy `buildStandardPrisma()` from `lib/db.ts`; remove `DATABASE_URL` from runtime env scope (keep build scope for `prisma migrate deploy`); disable / drop `monitrax_user` | Up Next #1 | Trigger ≥ 2026-05-31 (30 days post-Phase-9). After this, the codebase has NO static-credential code path at all — IAM is the only auth mechanism. |
+| T2.2 | **WIF Phase 12** — Vercel Static IP add-on + Cloud SQL authorized networks restricted to that single IP (removes `0.0.0.0/0`) | Up Next #2 | 15-min cutover, but needs Vercel Pro Static IP add-on (~$20/mo) provisioned + the code change to land first. After this, the 2 muted "Public SQL instance" SCC findings can be UNMUTED → they'll auto-resolve. |
+| T2.3 | **Retry-on-TLS-error wrapper** for Prisma proxy in `lib/db.ts` | Up Next #6b | Defensive belt-and-braces for the Cloud SQL Connector handshake. Small PR. |
+| T2.4 | **`vercel-log-receiver` Cloud Function shim** | Up Next #15 | Closes the Vercel → Cloud Logging gap; SA + WIF binding already created 2026-05-19 ready for the Cloud Function to impersonate. |
+
+##### Tier 3 — External lead-time items (CAN'T be last-minute, must commission NOW)
+
+| # | Activity | Lead time | Cost | Notes |
+|---|---|---|---|---|
+| T3.1 | **Penetration test** | ~6 weeks | ~AU$15-25k | Basiq accreditation hard requirement. Start procurement conversation this week so the report is in your hands before submission. Phase 0 row #17. |
+| T3.2 | **Cyber insurance binding** | ~3 weeks | $TBD | Basiq accreditation hard requirement. Get quotes this week. Phase 0 row #18. |
+| T3.3 | **Stripe live-mode review** | ~2 weeks | $0 (application) | Required for real payments. Submit the live-mode application this week. When approved → ping Claude for the live-mode flip code PR (~3 days). Phase 0 row #19. |
+
+##### Tier 4 — D-Day morning verifications (15-20 min total)
+
+| # | Verification | Expected result | How to verify |
+|---|---|---|---|
+| T4.1 | Production schema-drift audit | `summary.hasDrift: false`, all `missing*` arrays empty | `GET /api/admin/schema-drift` (admin auth) |
+| T4.2 | All 3 Cloud Scheduler jobs healthy | All "Last status" = Success / 200 | GCP Console → Cloud Scheduler → check + force-run all 3 |
+| T4.3 | Prisma migrations applied | `_prisma_migrations` table count matches `prisma/migrations/` folder count on `main` | Cloud SQL Studio → `SELECT COUNT(*) FROM _prisma_migrations;` vs `ls prisma/migrations/ \| wc -l` |
+| T4.4 | Vercel deploy is green | Most recent Production deploy = Success | Vercel → Deployments → most recent Production = green |
+| T4.5 | SCC active-findings count | 0 (after Tier 1.1 trial activation reruns the scan) | SCC → Findings → Active filter |
+| T4.6 | **Submission screenshots captured** | Folder of evidence for Basiq email | SCC Compliance dashboard, Cloud Armor policy attached, IAM principal list, MFA-on-owner-account screenshot, WIF Phase 9 setup (already in `CDR_WIF_AUTHENTICATION_EVIDENCE.md`), pen-test executive summary cover page, cyber insurance certificate of currency |
+| T4.7 | **Reply to Basiq with submission package** | Email sent | Compose reply to the Basiq onboarding email with the evidence package attached |
+
+##### What happens DAY OF the reply
+
+1. **Morning (08:00 AEST)** — run Tier 4 verifications T4.1 → T4.5 in sequence
+2. **Mid-morning (10:00 AEST)** — execute Tier 1 activations T1.1 → T1.3 (SCC Premium trial → Cloud Armor policy → CMEK)
+3. **Afternoon (14:00 AEST)** — capture submission screenshots (T4.6)
+4. **Late afternoon (16:00 AEST)** — compose + send the Basiq reply (T4.7)
+5. **Evening** — monitor Cloud Logging for any anomalies in the 24h post-activation window; SCC findings may spike briefly as new scanners light up
+
+##### Rollback if any Tier 1 activation breaks production
+
+- **SCC Premium** — no production impact; can downgrade back to Standard tier at any time
+- **Cloud Armor** — if a rule blocks legitimate traffic, edit/disable the offending rule (the policy itself doesn't break anything by existing; only specific rules do). Worst case: detach the policy from the backend service to fully revert.
+- **CMEK** — most disruptive to roll back. Mitigation: schedule the activation for Sunday 04:00 AEST in the same maintenance window; have the rollback path (revert to Google-managed keys) verified before activation. If anything breaks: `gcloud sql instances patch monitrax-db-prod --no-customer-managed-encryption-key` (reverts to Google-managed in-place, ~30s downtime).
+
+
+
 ### 0b. Phase 32B PR3 — post-#9b polish, part 2: hero KPI strip + client book on real data
 
 - **Status:** 🟡 SHIPPING in this PR (`claude/phase-32b-pr3-post9b-real-kpis-MG8mr`)
