@@ -400,6 +400,154 @@ investmentAccountId: string
 
 ---
 
+# **3.9 CDR Compliance (Consumer Data Right)**
+
+> **Source of truth:** `prisma/schema.prisma` (`CDRConsent`, `CDRComplaint`, `CDRDisclosure` models). **Migrated to prod** 2026-05-19 via `prisma/migrations/20260519100000_fix_pre_migration_cdr_tables_drift/migration.sql` (corrective for pre-migration-era drift — declared in schema 2026-04-11 via Phase L Fix G18 + G43, shipped to prod 2026-05-19). **Read alongside:** `CLAUDE.md` Part 13 (CDR rules), `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, `docs/policy/CDR_*.md`.
+
+These three entities exist because CDR-regulated data (account balances, transactions, BSBs, etc. received via Basiq) has a stricter lifecycle than ordinary `Account` / `UnifiedTransaction` rows: **consent governs access; consent expiry triggers deletion; complaints and disclosures must be recordable in case the OAIC asks.**
+
+### **Entity: CDRConsent**
+
+```
+id: string
+type: "cdr_consent"
+userId: string
+consentStatus: "PENDING" | "ACTIVE" | "EXPIRED" | "REVOKED" | "WITHDRAWN"
+scope: string[]                  // CDR data scopes granted (e.g., ["accounts", "transactions", "balances"])
+legalBasis?: string              // e.g., "consumer_consent"
+grantedAt?: DateTime
+expiresAt?: DateTime             // CDR Privacy Safeguard 12 — must trigger deletion when passed
+revokedAt?: DateTime
+revokedReason?: string
+basiqConnectionId?: string       // Link to BasiqConnection if applicable
+organizationId?: string          // Link to Organization if consent is via the practice surface
+createdAt: DateTime
+updatedAt: DateTime
+```
+
+### **Relationships**
+
+```
+cdrConsent → user (Cascade delete — when user is hard-deleted, the consent row goes too)
+cdrConsent → basiqConnection? (loose ref by id, not a Prisma relation)
+cdrConsent → organization? (loose ref by id, not a Prisma relation)
+cdrConsent → cdrDisclosure[] (loose ref via CDRDisclosure.consentId)
+```
+
+### **Lifecycle Rules**
+
+- **Consent lifecycle is the gate** on CDR data access. A route that returns CDR-protected data MUST verify `consentStatus === 'ACTIVE'` before returning (`CLAUDE.md` §13.2 + §13.4).
+- **Expiry is enforced by Cloud Scheduler.** `monitrax-cdr-lifecycle` runs daily at `30 3 * * *` Australia/Sydney → calls `/api/cdr/lifecycle` → calls `checkConsentExpiry()` in `lib/services/cdrDataLifecycle.ts` → for each consent past `expiresAt`, the associated CDR data is deleted within 24h.
+- **Revocation is immediate.** When `consentStatus` flips to `REVOKED`, the same lifecycle service triggers deletion within 24h (`CLAUDE.md` §13.2).
+- **Deletion is irreversible.** CDR data deletion is hard-delete (no soft-delete tombstones) — see `deleteCDRData()` in the lifecycle service.
+- **Every deletion is audited** via `createAuditLog({ action: 'CDR_DATA_DELETED', ... })` with metadata sanitised via `sanitizeCdrMetadata()` (no balances, BSBs, or transaction values appear in audit-log metadata).
+
+### **Indexes**
+
+`userId`, `consentStatus`, `expiresAt` — supports the daily `where { consentStatus: 'ACTIVE', expiresAt: { lte: now } }` sweep without a full table scan.
+
+---
+
+### **Entity: CDRComplaint**
+
+```
+id: string
+type: "cdr_complaint"
+userId?: string                  // nullable — complaints can be filed by non-users (regulators, OAIC, external counsel)
+complainantName?: string
+complainantEmail?: string
+category: "DATA_ACCESS" | "DATA_DELETION" | "CONSENT_MANAGEMENT" | "DATA_ACCURACY" | "PRIVACY" | "SERVICE" | "OTHER"
+description: string
+status: "OPEN" | "IN_PROGRESS" | "RESOLVED" | "ESCALATED" | "CLOSED"
+resolution?: string              // populated when status → RESOLVED
+resolvedAt?: DateTime
+resolvedBy?: string              // user id of the person who resolved it
+escalatedToOAIC: boolean         // OAIC = Office of the Australian Information Commissioner
+oaicReferenceId?: string         // OAIC's reference number when escalated
+createdAt: DateTime
+updatedAt: DateTime
+```
+
+### **Relationships**
+
+```
+cdrComplaint → user? (SET NULL on delete — if a complainant deletes their account, the complaint record survives for OAIC audit trail)
+```
+
+### **Lifecycle Rules**
+
+- **Complaints are retained beyond user deletion.** This is the only CDR-related row that uses `onDelete: SetNull` instead of `Cascade` — required so OAIC can audit a closed-account complaint trail.
+- **Escalation is one-way.** `escalatedToOAIC = true` is set when the complaint goes to the OAIC; it never reverts.
+- **Status machine:** OPEN → IN_PROGRESS → (RESOLVED | ESCALATED) → CLOSED. The state transitions live in `/api/admin/cdr/complaints/[id]/route.ts`.
+
+### **Indexes**
+
+`userId`, `status` — supports the admin complaints dashboard and per-user complaint history.
+
+---
+
+### **Entity: CDRDisclosure**
+
+```
+id: string
+type: "cdr_disclosure"
+userId: string
+disclosedTo: string              // entity CDR data was disclosed to (free text, e.g., "OAIC", "ATO under s353-15 notice")
+disclosureType: "CONSUMER_REQUESTED" | "REGULATORY" | "LEGAL" | "INTERNAL"
+dataScope: string[]              // what CDR data was disclosed (e.g., ["balances", "transactions"])
+legalBasis: string               // legal basis for the disclosure (NOT optional — every disclosure must justify itself)
+consentId?: string               // link to CDRConsent if applicable (loose ref, not a Prisma relation)
+createdAt: DateTime
+```
+
+### **Relationships**
+
+```
+cdrDisclosure → user (Cascade delete — disclosure rows go with the user)
+cdrDisclosure → cdrConsent? (loose ref by id, not a Prisma relation)
+```
+
+### **Lifecycle Rules**
+
+- **Write-once.** Disclosure rows are append-only — no `updatedAt`, no status field, no resolution flow. Once a disclosure happens, the record is immutable.
+- **`legalBasis` is mandatory.** This is the only CDR field that's `NOT NULL` without a default — every disclosure must explicitly name its legal justification (consumer consent, regulatory notice, court order, internal operational use under approved scope).
+- **`dataScope` is the audit trail.** When the OAIC asks "what did you give them?" the answer reads from this array. Keep it accurate.
+
+### **Indexes**
+
+`userId`, `createdAt` — supports both the per-user disclosure history and the chronological compliance export.
+
+---
+
+### **CDR data flow at runtime**
+
+```
+User grants consent (consumer UI)
+        ↓
+CDRConsent row created (status=PENDING → ACTIVE on Basiq webhook confirmation)
+        ↓
+Basiq returns CDR data → stored in BasiqConnection / Account / UnifiedTransaction
+        ↓
+Routes serving CDR data verify consentStatus='ACTIVE' before responding (§13.4)
+        ↓
+Daily cron (monitrax-cdr-lifecycle):
+   - Detects expiresAt < now → triggers deleteCDRData() → hard-deletes Account / Transactions / Connection rows
+   - Records audit log with sanitised metadata (no balances/BSBs)
+        ↓
+If user complains: CDRComplaint row created (admin UI)
+If we disclose to a third party: CDRDisclosure row appended (admin UI / programmatic)
+```
+
+### **Consumer sites**
+
+- `app/api/admin/cdr/compliance/route.ts` — admin compliance dashboard counts
+- `app/api/admin/cdr/complaints/route.ts` + `[id]/route.ts` — complaint management
+- `app/api/admin/cdr/consent/route.ts` — consent admin operations
+- `app/api/cdr/lifecycle/route.ts` — cron-driven daily sweep
+- `lib/services/cdrDataLifecycle.ts` — canonical service for consent expiry + CDR data deletion
+
+---
+
 # **4. Frequency Enum (Global)**
 
 ```
