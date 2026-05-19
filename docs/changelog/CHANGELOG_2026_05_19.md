@@ -710,9 +710,43 @@ Attempted the Vercel-native OIDC-federated log-drain path. Completed the GCP sid
 
 **Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #6 → ⏸ DEFERRED with full backstory; Up Next #15 added with scope + trigger conditions.
 
+### Quick-Click #7 — Phase 0 console row #16 (Security Command Center triage)
+
+**Result:** ✅ **DONE on Standard tier; Premium activation deferred to D-Day Bundle Tier 1.1.**
+
+SCC Standard was already activated (Security Health Analytics enabled) — first scan had surfaced 4 active findings. Triaged all 4 today.
+
+**The 4 findings and their resolution:**
+
+| Finding | Severity | Verified resource | Action taken |
+|---|---|---|---|
+| Public SQL instance (×2) | High | `monitrax-db-prod` + `monitrax-db-dev` authorized network `0.0.0.0/0` | **Muted with documented exception** linking to CLAUDE.md §13.6 + WIF Phase 12 resolution path. Will unmute + auto-resolve at WIF Phase 12 cutover (Vercel Static IP migration). |
+| Open RDP port | High | `default-allow-rdp` firewall rule in default VPC (verified `//compute.googleapis.com/projects/monitrax-479700/global/firewalls/default-allow-rdp`) | **Deleted the firewall rule.** Zero Compute Engine VMs in our architecture (Vercel-hosted Next.js + Cloud SQL only) — the rule had no targets. |
+| Open SSH port | High | `default-allow-ssh` firewall rule in default VPC | **Deleted the firewall rule.** Same reasoning as RDP. |
+
+**Bonus housekeeping (not SCC-flagged but equally pointless given zero VMs):**
+- `default-allow-icmp` — deleted
+- `default-allow-internal` — deleted
+
+Net: 4 default VPC firewall rules removed (unused since we have no Compute Engine VMs). Two real attack-surface reductions (RDP + SSH from the internet), two prophylactic cleanups (ICMP + wide-open internal VPC traffic).
+
+**Why this is safe for our architecture:** Cloud Run, Cloud Functions, App Engine, and Vercel-hosted apps **don't use default VPC firewall rules** — only Compute Engine VMs do. Cloud SQL has its own authorized-networks list (separate from VPC firewall rules). So removing all 4 default VPC rules has zero functional impact on Monitrax.
+
+**Active findings after triage:** 0
+**Muted findings:** 2 (the Public SQL pair, will auto-resolve at WIF Phase 12)
+**Inactive findings:** 2 (RDP + SSH — auto-flipped to inactive since their resources were deleted)
+
+**Why Premium was deferred:** Reza decision 2026-05-19 — bundle all cost-incurring activations into a "D-Day Bundle" executed the day before Basiq submission so they're FRESH when reviewers look (a recently-activated SCC Premium with "last scanned: 2 hours ago" timestamp is more credible than a 4-month-old setup) + zero monthly spend during the months of "waiting for Basiq." Full bundle documented in `IMPLEMENTATION_PLAN.md` §0 → "D-Day Bundle" subsection (Tier 1.1 = SCC Premium trial; Tier 1.2 = Cloud Armor; Tier 1.3 = CMEK).
+
+**Rollback if anything breaks:**
+- If a future Compute Engine VM needs SSH/RDP access — create a narrow firewall rule (specific source IP range, specific target tag) instead of restoring the wide-open defaults. Don't restore `default-allow-*`.
+- If a future application needs ICMP — same approach, narrow rule only.
+- The 2 muted SCC findings will auto-resurface as active if someone re-adds the `0.0.0.0/0` entry to Cloud SQL authorized networks (which would be a regression we'd want to catch anyway).
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #16 → ✅ DONE; D-Day Bundle subsection added under §0 with full Tier 1-4 breakdown for the pre-Basiq submission morning.
+
 ### Remaining quick-clicks (in order)
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| #16 | Security Command Center Premium | ~30 min | **Up next** |
-| #5 | A1 + A9 alert policies | ~1 hr | Queued |
+| #5 | A1 + A9 alert policies (+ bonus A7 cron-health) | ~1 hr | **Up next — final quick-click** |
