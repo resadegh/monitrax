@@ -20,7 +20,7 @@
 
 | Job | Endpoint | Schedule (Australia/Sydney) | Purpose |
 |---|---|---|---|
-| `monitrax-cdr-lifecycle` | `POST /api/cdr/lifecycle` | `0 2 * * *` (02:00) | CDR consent-expiry sweep — see §3 |
+| `monitrax-cdr-lifecycle` | `POST /api/cdr/lifecycle` | `30 3 * * *` (03:30) | CDR consent-expiry sweep — see §3. **Moved from 02:00 to 03:30 on 2026-05-19** to dodge Cloud SQL maintenance-window collisions (TLS-handshake 500s — see `04_WIF_TROUBLESHOOTING.md` §3.G). |
 | `monitrax-conversation-retention-sweep` | `POST /api/conversations/retention-sweep` | `0 3 * * *` (03:00) | 7-yr conversation message purge — see §4 |
 | `monitrax-portal-alert-sweep` | `POST /api/portal/alerts/sweep` | `0 4 * * *` (04:00) | Recompute the Practice "needs attention" alert stream — **not** a retention obligation; documented in `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md`. Listed here because it shares the Cloud Scheduler console + the same `CRON_SECRET` + the same region/timezone. |
 
@@ -85,7 +85,7 @@ ready to run.
 gcloud scheduler jobs create http monitrax-cdr-lifecycle \
   --project=monitrax-479700 \
   --location=australia-southeast1 \
-  --schedule="0 2 * * *" \
+  --schedule="30 3 * * *" \
   --time-zone="Australia/Sydney" \
   --uri="https://www.monitrax.com.au/api/cdr/lifecycle" \
   --http-method=POST \
@@ -102,7 +102,7 @@ GCP Console → Cloud Scheduler → Create Job
 |---|---|
 | Name | `monitrax-cdr-lifecycle` |
 | Region | `australia-southeast1` |
-| Frequency | `0 2 * * *` |
+| Frequency | `30 3 * * *` |
 | Timezone | `Australia/Sydney` |
 | Target type | HTTP |
 | URL | `https://www.monitrax.com.au/api/cdr/lifecycle` |
