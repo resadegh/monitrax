@@ -1,9 +1,10 @@
 # Monitrax Friendlies Private Beta — Playbook + Invite Template
 
 > **AUDIENCE:** Reza (operator) — for sending 5–10 personally-invited friendlies to try Monitrax before broader launch.
-> **PURPOSE:** This is the operational playbook for **IMPLEMENTATION_PLAN.md workstream `0f`** (Friendlies private beta). Includes the invitation email template, the lifecycle stages, where to log what, and what NOT to do.
-> **Last updated:** 2026-05-15 evening, Reza + Claude
-> **Operating principle:** At 5–10 friendlies, **automation is the enemy**. Use Reza's personal Gmail + Airtable for tracking + the app's built-in Feedback system. Don't reach for n8n / Smartlead / Loops.
+> **PURPOSE:** This is the operational playbook for **IMPLEMENTATION_PLAN.md workstream `0f`** (Friendlies private beta). Includes the invitation email template, the lifecycle stages, where to log what, the `/welcome` landing page spec, and what NOT to do.
+> **Last updated:** 2026-05-15 evening (v2 — short email + `/welcome` landing page pattern; v1 plain-text-only retired per Reza directive)
+> **Operating principle:** At 5–10 friendlies, **automation is the enemy**. Use Reza's personal Gmail + Airtable for tracking + the app's built-in Feedback system + the `/welcome` landing page for visual polish. Don't reach for n8n / Smartlead / Loops.
+> **The two-layer invite pattern:** Email = warm personal voice (plain text, short, one link). Landing page (`/welcome`) = polished visual surface (design system, screenshots, FAQ). The email carries trust; the page carries proof.
 
 ---
 
@@ -155,59 +156,75 @@ Three lines × 8 friendlies × 2 calls each = 48 atomic signals. That's a produc
 
 ---
 
-## 6. The invitation email — TEMPLATE (personalise line 1)
+## 6. The invitation email — TEMPLATE (v2: short personal voice + ONE link to /welcome)
+
+> **THE PATTERN:** Short personal email carries the warm voice. The `/welcome` landing page at `https://monitrax.com.au/welcome?ref=[name]` carries the visual polish — hero with personalised greeting, "Why I'm asking you", "The deal" cards, "What it does" tiles, FAQ, big CTA. Built into the Monitrax app (Next.js page at `app/welcome/page.tsx`). The friendly opens a warm-from-a-friend email → clicks ONE link → lands on a polished page that matches the product they're about to use. Two conversion gates, two design layers, one consistent voice.
+>
+> **CRITICAL:** never paste the email into a marketing tool. Send from Reza's personal Gmail (or `admin@monitrax.com.au` manually composed 1:1, NOT via Smartlead). Plain text, no HTML chrome, no logos, no buttons in the email itself. The polish lives on the landing page.
+
+### Subject line variants — pick per friendly, A/B over the first 3 sends
+
+| Subject | When to use | Why it works |
+|---|---|---|
+| `[Name] — would love your eyes on this` | Default — close friends, family, anyone you know well | Personal name in subject → 3–5× open rate vs generic; "your eyes" implies you specifically chose them |
+| `Built you something — want to try it?` | Friends you'd describe Monitrax to in person | Curiosity gap; "built you" personalises; short |
+| `Quick favour — early access to what I've been building` | Slightly more professional contacts | Frames as helping you, not selling to them |
+| `[Name], a Monitrax thing — 2 weeks, your honest take` | Friends who like a direct ask | Most direct; sets the scope (2 weeks) and the ask (honest take) up front |
+
+### Email body (v2)
 
 ```
-Subject: Want to be one of the first to try Monitrax?
+Subject: [Name] — would love your eyes on this
 
 Hey [Name],
 
-[PERSONALISE THIS FIRST LINE — say something specific to your relationship
-with this person. Examples: "I know you've been wrestling with the
-property/investment trade-off lately — wanted to ask you something specific."
-/ "Remember last year when we talked about how messy keeping track of money
-across accounts is? Wanted to ask you something specific."]
+[PERSONALISE THIS FIRST LINE — say something specific to your relationship.
+Examples: "I know you've been wrestling with the property/investment trade-off
+lately — wanted to ask you something specific." / "Remember last year when we
+talked about how messy keeping track of money across accounts is?"]
 
-I'm building Monitrax — a financial-life app for Australians who don't want
-a financial adviser yet but want a clearer picture of their own money. I've
-been heads-down on it for [X] months, and it's at the point where it works
-end-to-end but only people I trust have seen it.
+I've spent the last [X] months building Monitrax — a financial app for
+Australians who don't want a financial adviser yet but want a clearer
+picture of their own money. It's at the point where it works end-to-end
+but only people I trust have seen it.
 
-You're on a short list of about [N] people I want feedback from before I open
-it up more broadly. Not because I'm asking for favours — because you'd actually
-use a thing like this and you'll tell me the truth.
+You're on a short list of about [N] people I want feedback from before
+broader launch — picked you because you'd actually use this and you'll
+tell me the truth (not the polite version).
 
-The deal:
-- You sign up and use it for ~2 weeks, however much makes sense for your
-  real situation (manual entry for now — live bank connections come later
-  this year).
-- After 2 weeks, we hop on a 30-min call — what worked, what felt wrong,
-  what's missing, what you'd never use.
-- You get the app at no charge, indefinitely. (When the paid plans launch
-  later this year, friendlies stay on the full-feature plan for free for
-  at least 6 months — longer if you're still using it.)
+Everything you need to know is here:
+https://monitrax.com.au/welcome?ref=[firstname-lowercase]
 
-If you're in:
-- Sign up at https://monitrax.com.au
-- Reply to this email and tell me you've signed up
-- Use it like you'd use it for real
-
-If you're not interested or it's not the right time, just say so — no
-awkwardness. I'd rather know now.
+Have a look — if it's a yes, sign up there. If it's a no or "not now",
+hit reply with one line; I'd rather know than wonder.
 
 Cheers,
 Reza
 ```
 
-**Why each line is there (don't change unless you understand why):**
+### Why v2 is significantly better than the long v1 plain-text version (which is archived in this section's history)
 
-- *"I wanted to ask you something specific"* — opens with intent, not pitch
+- **~40% shorter** — fits the mobile preview pane in full; no scrolling required to see the CTA
+- **ONE link** instead of three things to do — single decision for the friendly
+- **The landing page does the heavy lifting** — "the deal", screenshots, FAQ, AFSL disclaimer all live there, not in the email
+- **`?ref=[name]` UTM-style tag** — lets Reza see who clicked (manually log as Airtable Activity); also personalises the landing page hero (`Welcome, [Name].`)
+- **"Not now" framing** — explicit free out → counterintuitively raises yes-rate (Cialdini-friendly, protects the friendship)
+- **Easier to A/B test** — only the subject line and first line need to change per friendly; the page below the link can be iterated independently of the emails already sent
+
+### Personalisation rules
+
+- **First name only**, lowercased, in the `?ref=` param: `?ref=sarah` not `?ref=Sarah%20K`. The landing page capitalises it server-side. URL-safe characters only (letters, hyphens, apostrophes — the page sanitises but keep the input clean).
+- **First line MUST be personalised** per friendly. Don't blast. The whole point is "I picked you specifically".
+- **Don't send to 5 people with the same subject in a row** — Gmail's spam heuristics watch for sender bursts even from real Gmail accounts. Stagger by an hour or two if you're sending more than 3 in a session.
+
+### Why each remaining line is there (don't change unless you understand why)
+
 - *"You're on a short list of about [N] people"* — selection, not enrolment (psychology: scarcity + chosen-by-name)
-- *"You'd actually use a thing like this and you'll tell me the truth"* — sets the feedback tone, gives permission to be honest
-- *"The deal:"* + concrete bullets (2 weeks / 30 min / free indefinitely) — clear ask, no ambiguity
-- *"If you're not interested, just say so — no awkwardness"* — removes social pressure; protects the friendship; counterintuitively *raises* yes-rate (people respond to being given a free out)
-- Plain text, no HTML, no logos — reads like a friend writing a friend, not a marketing email
-- No "click here for more info" link — the only links are the signup page and the email reply
+- *"You'd actually use this and you'll tell me the truth"* — sets the feedback tone, gives permission to be honest
+- *"Everything you need to know is here:"* + the link — ONE call to action; no decision fatigue
+- *"If it's a no or 'not now', hit reply with one line"* — removes social pressure; protects the friendship; raises yes-rate (people respond to being given a free out)
+- Plain text body, no HTML, no logos — reads like a friend writing a friend, not a marketing email
+- The link is the only formatting decision — keep it on its own line so it stands out without needing a button
 
 ---
 
@@ -379,11 +396,50 @@ The friendlies cohort is the **lowest-cost, highest-signal-per-dollar growth inv
 
 ---
 
-## 14. References
+## 14. The `/welcome` landing page (the visual half of the invite)
+
+> **The pattern (recap):** the email is the warm voice; the landing page is the polished product surface. Don't try to do both in one channel.
+
+### Where it lives
+- **Public route:** `https://monitrax.com.au/welcome` — no auth required, friendly visits straight from the email link
+- **Source code:** `app/welcome/page.tsx` (Next.js client page using existing marketing-component design system: `bg-stone-950` + warm amber accents + Framer Motion via `Reveal`)
+- **Personalisation:** reads `?ref=<firstname>` query param → hero greeting becomes `Welcome, [Name].` Input is sanitised (letters/spaces/hyphens/apostrophes only, max 32 chars, first word taken, capitalised) so an attacker can't inject anything via the URL
+- **Auth-aware CTA:** primary button reads "Sign up — it's free →" for visitors; switches to "Open dashboard" if the visitor is already logged in (friendly who re-reads the email after signing up). Same page, different action.
+
+### What's on the page (in scroll order)
+1. **Hero** — `Welcome, [Name].` + one-sentence positioning + primary CTA + "No credit card. Two weeks. Honest feedback only."
+2. **"Why I'm asking you specifically"** — 3 bullets (short list, picked you, you'll tell the truth)
+3. **"The deal"** — 3 amber-bordered cards (2 weeks, 30-min call, free indefinitely)
+4. **"What it does"** — 3 tiles (Track / Reduce / Invest) with TRAIL-stage framing
+5. **FAQ accordion** — 4 questions (data safety / what if I hate it / will I get spammed / is this financial advice). The last item links to `REVIEW_SCOPE_AND_BOUNDARIES.md` posture by quoting the AFSL boundary in plain language.
+6. **Final CTA** — repeat of hero CTA, same auth-aware behaviour
+7. **Footer** — shared with the marketing site; carries the AFSL/legal text so the email body doesn't have to
+
+### What's intentionally NOT on the page
+- No pricing — friendlies don't need it (they're free indefinitely). When paid plans launch, this page may add a tiny "Friendlies stay free forever" reassurance.
+- No social proof / testimonials — too early. When testimonials accumulate (week 4–6 of the cohort), this page can grow a tasteful 2-quote block.
+- No second navigation. ONE primary action. Don't dilute.
+- No video. Even a 30-sec Loom adds friction at this stage; a short read + a sign-up is faster.
+
+### Iteration without re-sending emails
+- The email URLs to `/welcome` — that doesn't change.
+- Want to test new copy / a screenshot / a testimonial / a tile reorder? Ship a PR that updates `app/welcome/page.tsx`. The friendlies who haven't clicked yet see the new version. The friendlies who already signed up never see it again unless they re-click.
+- Want to A/B test? Easiest path: ship 2 variants behind a query-param switch (`?v=a` vs `?v=b`) and put one variant on half the email subjects. (Premature at 5–10 friendlies — revisit at 50+.)
+
+### What to fix in the page over time (post-launch backlog)
+- Replace the textual hero with a real app screenshot once you've taken a clean one
+- Add an "as featured in" strip when first press / podcast mention lands (~Phase 4+)
+- Add a 2-quote testimonial block when 2 friendlies have given written quotes (~week 6+)
+- Once paid plans are live, add a small "you're a friendly — your plan is free" callout if the visitor has a `friendly` tag in Airtable / the user record
+
+---
+
+## 15. References
 
 - `IMPLEMENTATION_PLAN.md` workstream `0f` — Friendlies private beta
 - `docs/marketing/GTM_EXECUTION_PLAN.md` — overall GTM plan
 - `docs/marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md` §7 — AFSL boundary escalation guidance for any friendly who crosses into asking for personal advice
 - `docs/marketing/GTM_TOOL_STACK.md` — confirms Airtable + Gmail + app's Feedback system are the tools to use; confirms Smartlead / Loops are NOT
 - `docs/operational/runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md` — how Activities you log here surface in the morning brief
+- `app/welcome/page.tsx` — the `/welcome` landing page source (the polished half of the invite)
 - App's `/admin/feedback` — where in-app feedback from friendlies lands (Phase 33g)
