@@ -25,6 +25,7 @@ import { WizardContainer } from '@/components/onboarding';
 import type { WizardData } from '@/components/onboarding';
 import { ConversationalModeToggle } from '@/components/onboarding/ConversationalModeToggle';
 import { ConversationalSetup } from '@/components/onboarding/wizard-chat/ConversationalSetup';
+import { OnboardingModeSelector } from '@/components/onboarding/OnboardingModeSelector';
 import { useConversationalOnboardingEnabled } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
 function OnboardingLoadingFallback() {
@@ -62,6 +63,7 @@ function OnboardingPageInner() {
   const requestedMode = searchParams?.get('mode');
   const mode: 'form' | 'chat' =
     chatFlagEnabled && requestedMode === 'chat' ? 'chat' : 'form';
+
   const { user, token, isLoading: authLoading } = useAuth();
   const {
     state: onboardingState,
@@ -70,6 +72,25 @@ function OnboardingPageInner() {
     clearDraft,
     readLocalDraft,
   } = useOnboardingState();
+
+  // Phase 12 Track E.2c — deliberate mode-choice landing screen.
+  // Show the selector when the chat flag is ON AND the user hasn't
+  // expressed a choice yet AND has no draft progress. After the
+  // first pick (recorded in the URL), subsequent visits skip the
+  // selector so the user lands directly back where they were.
+  // When the flag is OFF the selector is bypassed entirely —
+  // /onboarding stays byte-for-byte the existing form experience.
+  const hasDraftProgress = useMemo(() => {
+    if (!onboardingState) return false;
+    if ((onboardingState.currentStep ?? 0) > 0) return true;
+    const draft = onboardingState.draft;
+    if (draft && typeof draft === 'object' && Object.keys(draft).length > 0) {
+      return true;
+    }
+    return false;
+  }, [onboardingState]);
+  const showModeSelector =
+    chatFlagEnabled && !requestedMode && !hasDraftProgress;
 
   // Auth / completion gates
   useEffect(() => {
@@ -171,6 +192,11 @@ function OnboardingPageInner() {
 
   if (onboardingState?.onboardingCompleted) {
     return null;
+  }
+
+  // Mode-selector landing screen — only when flag ON + no choice yet + no draft.
+  if (showModeSelector) {
+    return <OnboardingModeSelector />;
   }
 
   return (

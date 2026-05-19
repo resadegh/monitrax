@@ -37,7 +37,11 @@ export function ConversationalModeToggle() {
         aria-label="Onboarding mode"
         className="inline-flex items-center gap-1 rounded-full border border-slate-200/60 bg-white/80 p-1 shadow-sm backdrop-blur-sm dark:border-slate-800/60 dark:bg-slate-900/60"
       >
-        <ModePill href="/onboarding" active={mode === 'form'} label="Fill in a form" />
+        <ModePill
+          href="/onboarding?mode=form"
+          active={mode === 'form'}
+          label="Fill in a form"
+        />
         <ModePill
           href="/onboarding?mode=chat"
           active={mode === 'chat'}
