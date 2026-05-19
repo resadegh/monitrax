@@ -745,8 +745,66 @@ Net: 4 default VPC firewall rules removed (unused since we have no Compute Engin
 
 **Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #16 → ✅ DONE; D-Day Bundle subsection added under §0 with full Tier 1-4 breakdown for the pre-Basiq submission morning.
 
-### Remaining quick-clicks (in order)
+### Quick-Click #8 — Phase 0 console row #5 (A1 + A9 alert policies; A7 partial)
+
+**Result:** 🟡 **A1 ✅ DONE; A9 ✅ DONE (with gap discovered); A7 already exists, needs verification (deferred).**
+
+#### A1 — Monitrax app down
+
+Created `A1 — Monitrax app down (/api/health)` policy in Cloud Monitoring.
+
+- **Metric:** Uptime Check URL → Check passed
+- **Filter:** `host = monitrax.com.au` (catches both existing uptime checks — `Monitrax API Health Check` + the existing `Notify on failure`)
+- **Trigger:** Threshold `< 1`, Below threshold, Any time series violation, 2-minute retest window
+- **Channels:** `Reza-Email` + `Reza-SMS` (both ticked)
+- **Severity:** Critical (P0)
+- **Auto-close duration:** 30 minutes (so the alert clears quickly when the app recovers)
+- **Documentation:** runbook reference to `01_INCIDENT_RESPONSE.md` Scenario 1 + first-diagnostic checklist
+- **Labels:** `category=availability` / `severity=p0` / `runbook=01_incident_response`
+
+Test alert successful — `Reza-Email` received the test within ~30 sec.
+
+#### A9 — Budget overrun (gap discovered during the fix)
+
+The existing budget policy was `Development Budget` at $50/mo with the default GCP "Email alerts to billing admins and users" recipient list only. **Diagnostic finding via inbox audit:** Reza confirmed **no budget alert email ever fired**, despite spend having crossed the 50% threshold ($40.10 vs $25) weeks ago. The budget alerts had been **silently broken** until today.
+
+**Edit applied to the existing budget:**
+- Renamed `Development Budget` → `Monitrax monthly budget`
+- Amount: $50 → **$100/mo** (gives breathing room while still catching real anomalies — current spend trajectory was projecting ~$65 end-of-month, which would have repeatedly triggered overrun alerts on the old $50)
+- Added 4th threshold at 120% of actual spend (catastrophic overrun tripwire)
+- **Notification channel: explicitly linked `Reza-Email`** (the actual fix — without this, the default "Email alerts to billing admins" wasn't reaching Reza's primary inbox)
+- Kept "Email alerts to billing admins and users" ticked too for belt-and-braces
+- Pub/Sub topic: skipped (overkill for budget alerts)
+- **GCP Billing budget alerts do NOT support SMS** at the platform level — email-only. This is a known restriction of the Billing API (Cloud Monitoring alerts support SMS, Billing alerts don't). Budget alerts are warning-class, not P0; email is sufficient.
+
+**Why this matters:** had we never done A1 + this A9 audit, Reza would have had a silently-overrunning prod GCP bill with no notification, and (separately) an "app down" event would have only auto-emailed `Admin@monitrax.com.au` (not SMS-d Reza personally). Today's session closes both gaps.
+
+#### A7 — Cron-failure alert ALREADY EXISTS (verification deferred)
+
+Discovered during the budget inbox audit: at **2:00 AM 2026-05-19 AEST**, an email arrived at `Admin@monitrax.com.au` titled `[ALERT - Warning] Cloud scheduler job failed for Cloud Scheduler Job with {job_id=monitrax-cdr-lifecycle}`. This was the same maintenance-window collision we diagnosed + fixed in Quick-Click #4 — and a cron-failure alert policy fired correctly on it.
+
+So **A7 is already wired and working for at least the cdr-lifecycle job.** Three open questions for the next session to verify:
+
+1. **Find the existing policy** — Monitoring → Alerting → Policies → search for "scheduler" or "cron"
+2. **Verify scope** — does the policy filter to all 3 crons (`monitrax-cdr-lifecycle`, `monitrax-portal-alert-sweep`, `monitrax-conversation-retention-sweep`) or only `cdr-lifecycle`?
+3. **Verify channels** — current notification was only to `Admin@monitrax.com.au` (the GCP-default channel). Add `Reza-Email` + `Reza-SMS` so Reza is paged on the next failure (the morning's failure email arrived but only via the shared admin inbox).
+4. **Rename for convention** — match `A7 — Cloud Scheduler cron failure` (matches `08_OBSERVABILITY_SLOS.md` §3 alert ID convention).
+
+**Deferred to next session.** Tracked in `IMPLEMENTATION_PLAN.md` Phase 0 row #5 as outstanding work + on the D-Day Bundle Tier 4 verification list.
+
+#### Two pending cleanups (next, this session)
+
+1. **Delete the duplicate `Notify on failure` policy** that GCP auto-created when the `Monitrax API Health Check` uptime check was set up. Now that `A1` covers the same condition, the duplicate would cause 2 emails per outage. Keep `A1`, delete `Notify on failure`.
+2. **Investigate the apac-singapore red ! mark** on `Monitrax API Health Check`. Could be (a) real prod issue from the APAC checker region, (b) Vercel edge routing quirk, (c) stale failure from a previous deploy that needs a re-run. 30-second diagnostic.
+
+#### Doc-sync (CLAUDE.md §16)
+
+- `docs/IMPLEMENTATION_PLAN.md` Phase 0 row #5 → 🟡 PARTIAL with A1 ✅ + A9 ✅ + A7 verification outstanding + bonus cleanups noted
+- This changelog records the budget-silent-overrun finding (operational learning worth keeping)
+
+### Remaining cleanups (in order)
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| #5 | A1 + A9 alert policies (+ bonus A7 cron-health) | ~1 hr | **Up next — final quick-click** |
+| C1 | Delete duplicate `Notify on failure` alert policy | ~1 min | **Up next** |
+| C2 | Diagnose apac-singapore red ! on health check | ~1 min | Queued |
