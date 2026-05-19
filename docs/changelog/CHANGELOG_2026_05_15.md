@@ -150,3 +150,66 @@ Coverage:
 2. Reza schedules an initial chat with an AU fintech lawyer (low priority — only blocks Review #6+ to strangers, ~weeks away)
 3. Saturday + Sunday: digest cron runs on autopilot
 4. Monday: Step 1.6 → ✅ DONE in a small follow-up commit; choose next active work (Step 2.1 broker ICP, or revisit lawyer scheduling)
+
+---
+
+## Session 4: GTM workstream 0f — Friendlies private beta playbook shipped
+
+Branch: `claude/gtm-0f-friendlies-playbook`
+
+### Scope
+- **Type:** Operational playbook / growth ops
+- **Scope:** GTM workstream `0f` (Friendlies private beta) — drafts the operational doc Reza will use to onboard 5–10 friendlies to the demo-ready Monitrax app for feedback, ahead of broader launch
+- **CDR scope:** Out of scope — friendlies use the app's existing pre-Basiq manual flow (no live CDR data feeds today; CDR Part 13 applies orthogonally once Basiq is live)
+
+### What was done
+
+**New file:** `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` — ~14 sections covering:
+
+1. Why this exists + the 3 sequenced purposes (feedback → testimonials → referrals)
+2. The stack (Reza's personal Gmail + Airtable + app's built-in Feedback system — NOT Smartlead, NOT Loops, NOT n8n; explicit "automation is the enemy at 5–10 humans")
+3. The new `Friendly stage` single-select field to add to Airtable Contacts (8 lifecycle stages: Invited → Signed up → Active → Feedback given → Testimonial received → Referred someone → Lapsed → Declined) + `🤝 Friendlies pipeline` view spec
+4. The 6-step playbook (pick → add to Airtable → personalised 1:1 invite → log → manage replies → sequenced asks)
+5. What "feedback" actually means — listening for stories, not running surveys; 3-line take-aways per call
+6. **The invitation email template** (verbatim, with personalisation guidance + a "why each line is there" annotation)
+7. **The 2-week follow-up email template** (proposes 3 concrete time slots — Cal.com overkill at this volume)
+8. **The re-engage email template** (send once, then move to Lapsed; protects the friendship)
+9. **The testimonial-ask template** (week 4–6, only if positive engagement)
+10. **The referral-ask template** (week 8–12, only if still actively using)
+11. **The failure-modes catalogue** (sign-up-no-engagement, negative feedback, AFSL boundary crossing, "how much will this cost?", "can I refer someone?", ASIC-tangent feedback) — 7 scenarios with handling guidance
+12. The weekly 15-min ops rhythm (Sunday/Monday review of the Airtable pipeline view)
+13. What this means for the broader GTM plan (friendly testimonials → Phase 4 broker pitches; friendly feedback → product priorities; friendly referrals → D2C top-of-funnel pre-Phase-6)
+14. References to all related docs (workstream `0f`, AFSL boundary doc §7, GTM tool stack confirming what NOT to use, etc.)
+
+**`IMPLEMENTATION_PLAN.md` workstream `0f` expanded** — flipped from 📋 QUEUED to 🟡 PLAYBOOK SHIPPED; added canonical-doc reference; added stack-summary (no new tools); added 6-step playbook summary; updated Scope checklist (ticked off the 3 drafting tasks completed in this session, kept open the Reza-side tasks of picking the friendlies + verifying new-user flow + sending invite #1); added AFSL boundary cross-reference; added four-lens "why-this-matters" block.
+
+### Architectural decisions
+1. **Manual stack only at this volume.** Per CLAUDE.md §0.4 restraint principle: 5–10 humans = automation is more cost than benefit. Reuse what exists: Airtable + Gmail + app's Feedback system.
+2. **Personal email, not automation.** Even though Smartlead is wired and Loops is queued, friendlies need 1:1 personal voice. Sending warmth via cold-outbound infrastructure breaks the relational frame.
+3. **In-app Feedback system as the feedback channel** (NOT a separate form). Less context-switching for the friendly; one feedback inbox for Reza at `/admin/feedback`; channels through the Phase 33g surface that already exists.
+4. **Sequenced asks across 12 weeks.** Feedback (week 0–2) → Testimonial (week 4–6) → Referral (week 8–12). Asking for all three on day one would feel transactional and burn trust.
+5. **Verbatim email templates with annotations** so future-Reza (or a VA) can use them confidently AND know which lines to NOT change.
+6. **AFSL boundary cross-reference baked in.** If a friendly asks for personal financial advice in the feedback call, the same discipline from `REVIEW_SCOPE_AND_BOUNDARIES.md` §7 applies — "speak to a licensed adviser". The friendlies cohort is a LOWER-risk surface than the paid Review service (they're using the app, not buying advice) but the operator habit is the same.
+
+### Files modified in this PR
+- `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` — **new file** (~14 sections, ~600 lines including all 5 email templates)
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0f` — expanded to 🟡 PLAYBOOK SHIPPED with stack summary, 6-step playbook, AFSL cross-reference, four-lens why-this-matters
+- This file — Session 4 entry appended
+
+### Build status
+- Doc-only. No app code, no schema, no migration.
+
+### Painful lessons memorialised
+1. **At 5–10 humans, automation is the enemy.** The temptation to wire an n8n workflow / Loops sequence / Smartlead campaign for the friendlies is real and wrong. Personal Gmail + manual Airtable entries is the correct level of infrastructure. The cost is 15 min/week of operator time; the value is friendlies feel personally selected.
+2. **Sending friendlies an email from `admin@monitrax.com.au` via Smartlead would FEEL cold.** Even though the email content could be identical, the relational frame breaks when the infrastructure is the cold-outbound stack. Use Reza's personal Gmail (or `admin@` directly, as long as it's manually composed 1:1, not blast).
+3. **Give people a free out.** The line *"If you're not interested, just say so — no awkwardness"* counterintuitively raises the yes-rate by removing social pressure. Cialdini-friendly. Protects the friendship.
+4. **Sequenced asks > combined asks.** Asking for feedback + testimonial + referral on day one signals transactional intent and burns trust. Spreading across 12 weeks signals authentic interest.
+5. **In-app Feedback system was waiting all along** (Phase 33g already shipped). Re-using existing infrastructure beats inventing a new feedback surface every time.
+
+### Next Steps (Reza-side, no rush)
+1. Add the `Friendly stage` single-select field to Airtable Contacts (30 sec) + create the `🤝 Friendlies pipeline` view
+2. Verify the new-user flow on `monitrax.com.au` end-to-end (sign up → onboarding wizard → first TRAIL "Track" win → add accounts/income/spending manually → Feedback affordance works) — fix anything broken before sending invite #1
+3. Pick the 5–10 friendlies (Q-GTM-7 — quality > headcount; spread across TRAIL stages)
+4. Send invite #1 (template in playbook §6 — personalise first line)
+5. Log every touch in Airtable Activities (the Founder Daily Digest's CRM ACTIVITY section will surface friendly engagement automatically once Activities start populating)
+6. Weekly 15-min ops review (playbook §12)

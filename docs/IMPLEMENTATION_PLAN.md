@@ -336,17 +336,33 @@
 
 ### 0f. Friendlies private beta — onboard early users for feedback (near-term)
 
-- **Status:** 📋 QUEUED — near-term; runs in parallel with Reza's Basiq onboarding work. Does NOT block on workstream 0e (the app is already demo-ready and there's no feature gating today, so comping = "they sign up and get the app as-is").
-- **Owner:** Reza (picks the friendlies, sends the invite, runs the feedback calls) + Claude (verify the new-user flow, draft the invite + feedback brief)
+- **Status:** 🟡 PLAYBOOK SHIPPED 2026-05-15 — operational doc at `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` (invite + 2-wk follow-up + re-engage + testimonial + referral email templates; 8-stage lifecycle; Airtable view spec; weekly 15-min cadence). Reza-side: pick the 5–10 friendlies, then execute the playbook on his own pace.
+- **Owner:** Reza (picks the friendlies, sends the invite, runs the feedback calls) + Claude (drafted the playbook + invite templates; updates the docs as the cohort moves)
+- **Canonical doc:** `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` — the operational guide. **Read this before sending the first invite.**
 - **Goal (Reza directive 2026-05-12):** *"at the end of this build I need to be able to send an email to friendlies with a workable app to start testing and providing feedback while I work on Basiq onboarding."*
-- **Scope:**
-  - [ ] Verify the new-user flow end-to-end on production (`monitrax.com.au`): sign up → onboarding wizard → first TRAIL "Track" win → can add accounts/income/spending manually → Feedback affordance works (`/dashboard` "Send feedback" + the consumer Feedback page, Phase 33g). Fix anything broken.
+- **The stack (no new tools):** Reza's personal Gmail (NOT Smartlead — wrong tool, wrong domain) · Airtable `Contacts` table with `friendly` tag + new `Friendly stage` single-select field · Airtable `Activities` table for touch logging · app's built-in `/dashboard` → "Send feedback" → triaged at `/admin/feedback` (Phase 33g). **Operating principle: at 5–10 friendlies, automation is the enemy.**
+- **The 6-step playbook (summary — full detail in canonical doc):**
+  1. Pick the 5–10 friendlies (spread across TRAIL stages; quality > headcount; avoid politely-supportive non-users)
+  2. Add to Airtable Contacts (tag `friendly`, set `Friendly stage = Invited`)
+  3. Send 1:1 personalised invite from Reza's Gmail (template in playbook §6 — personalise first line, plain text, no HTML)
+  4. Log the send as an Airtable Activity row (so the Founder Daily Digest's CRM ACTIVITY section can surface friendly engagement)
+  5. Manage replies + sign-ups + 2-week follow-up (template §7) + re-engage (template §8) — update `Friendly stage` as they progress
+  6. Sequenced asks: week 4–6 testimonial (§9), week 8–12 referral (§10) — only if positive engagement, never on day one
+- **Scope (revised):**
+  - [ ] Verify the new-user flow end-to-end on production (`monitrax.com.au`): sign up → onboarding wizard → first TRAIL "Track" win → can add accounts/income/spending manually → Feedback affordance works (`/dashboard` "Send feedback" + the consumer Feedback page, Phase 33g). Fix anything broken before sending invite #1.
+  - [x] **Draft the invitation email** + 4 follow-up templates (2-wk check-in, re-engage, testimonial ask, referral ask) — DONE 2026-05-15 in `FRIENDLIES_INVITE_PLAYBOOK.md`
+  - [x] **Document the lifecycle stages** (Invited → Signed up → Active → Feedback given → Testimonial received → Referred someone → Lapsed → Declined) — DONE 2026-05-15
+  - [x] **Document the failure modes + escalation** (sign-up-no-engagement, negative feedback, AFSL boundary crossing, etc.) — DONE 2026-05-15 in playbook §11
+  - [ ] **Add `Friendly stage` single-select field to Airtable `Contacts` table** + create `🤝 Friendlies pipeline` view (filter: Tags contains friendly; group by Friendly stage) — 30 sec manual setup in Airtable when Reza is ready to launch
   - [ ] Pick **5–10 friendlies**, deliberately spread across TRAIL stages (someone in debt, someone with property, someone just starting). Quality of feedback > headcount. (Q-GTM-7 — who, open.)
-  - [ ] Onboard them — they sign up normally (full access today; when 0e + Basiq enforcement land, comp them via `FeatureFlagOverride` / `UserSubscription.tier = PREMIUM`, **time-boxed 6 months**, cohort + review date logged here).
-  - [ ] Draft the **invitation email** (1:1, from `reza@monitrax.com.au` or personal — NOT cold, these are people Reza knows, so the primary domain is fine) + a short **feedback brief** ("use it 2 weeks → 30-min call; tell me where you got stuck / confused / what felt valuable").
-  - [ ] Brief them on the Feedback system as the channel; Reza triages at `/admin/feedback`.
+  - [ ] Send invite #1 — Reza-side, from his personal Gmail
+  - [ ] Brief them on the in-app Feedback system as the primary feedback channel; Reza triages at `/admin/feedback`
+  - [ ] When 0e + Basiq enforcement land, comp friendlies via `FeatureFlagOverride` / `UserSubscription.tier = PREMIUM`, **time-boxed 6 months**, cohort + review date logged in the playbook
+- **AFSL boundary (Step 0.1 cross-reference):** if any friendly asks "should I invest in X / refinance through Y / claim deduction Z?" in the feedback call, the AFSL boundary applies — the answer is "speak to a licensed adviser" (playbook §11 + `REVIEW_SCOPE_AND_BOUNDARIES.md` §7). The friendlies are USING the app, not buying a Review, so it's a lower-risk surface than the paid Review service — but the discipline is the same.
 - **Caveat:** "full access" pre-Basiq = everything *except* live bank feeds (Basiq not live — they use manual entry / CSV import, same as everyone now). Fine for feedback — the manual flow is what most users hit for months. CDR Part 13 still applies once Basiq is live, even to comped accounts — comped ≠ test environment, never seed prod with their data via a shortcut.
-- **Sequence:** after GTM Step 1.1 (n8n) + 1.6 (Founder Daily Digest) — those are tiny and unblock the GTM machine; then this mini-sprint; the Founder Daily Digest will also surface friendly feedback once it's live.
+- **Sequence:** after GTM Step 1.1 (n8n) + 1.6 (Founder Daily Digest) — both DONE — friendlies can launch any time. Playbook in hand, infrastructure in place. The remaining gate is Reza picking the 5–10 names.
+- **Why-this-matters (4-lens):** Behaviour psychologist — friendlies feel personally selected, not enrolled in a beta; 1:1 personal email is the right form. Designer — the system needs zero new UI; reuses the app's existing Feedback affordance + Airtable's existing schema. Architect — at 5–10 humans, automation is more cost than benefit; manual stack is correct (§0.4 restraint principle). Growth marketing — friendlies cohort is the lowest-cost, highest-signal-per-dollar growth investment pre-Phase-6, sequenced for feedback → testimonials → referrals.
+
 
 ### 0. Phase 14.6 — TRAIL-as-IA mobile + iPad navigation
 
