@@ -593,12 +593,80 @@ Reza opened GCP Console → APIs & Services → Credentials → the Gemini API k
 
 **Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #13 → ✅ DONE; this changelog records the full rollback recipe.
 
-### Remaining quick-clicks (in order)
+### Quick-Click #3 — Phase 0 console row #3 (Cloud Scheduler `monitrax-conversation-retention-sweep`)
+
+**Result:** ✅ **DONE — job created + force-run 200.**
+
+Reza created `monitrax-conversation-retention-sweep` in Cloud Scheduler (region `australia-southeast1`, `0 3 * * *` `Australia/Sydney`, target `https://www.monitrax.com.au/api/conversations/retention-sweep`, `Authorization: Bearer <CRON_SECRET>`). Force-run returned 200. AFSL 7-year conversation-message purge is now enforced daily.
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #3 → ✅ DONE.
+
+### Quick-Click #4 — diagnose + fix `monitrax-cdr-lifecycle` 500s (was failing at 02:00 AEST)
+
+**Result:** ✅ **DONE — root cause identified, two-part fix applied, force-run 200.**
+
+**Symptom.** The `monitrax-cdr-lifecycle` Cloud Scheduler job was returning 500 from `/api/cdr/lifecycle` on its 02:00 AEST runs — but only intermittently (May 17 failed, May 18 succeeded, May 19 failed). Cloud Scheduler logs only showed `URL_UNREACHABLE-UNREACHABLE_5xx`.
+
+**Diagnostic path.** Pulled the Vercel function logs filtered to `/api/cdr/lifecycle`. The full stack trace contained our own wrapped error from `lib/db.ts:202` (`wrapTlsHandshakeError`):
+
+```
+prisma:error
+Invalid `prisma.organizationClient.findMany()` invocation:
+C058D412777F0000:error:0A000412:SSL routines:ssl3_read_bytes:
+ssl/tls alert bad certificate:ssl/record/rec_layer_s3.c:912:SSL alert number 42
+
+CDR lifecycle job failed: Error: Cloud SQL TLS handshake rejected during
+prisma.organizationClient.findMany(). The ephemeral client cert was minted
+by SQL Admin but the instance refused it. [...]
+See docs/operational/security/04_WIF_TROUBLESHOOTING.md §3.G for the
+verification commands.
+```
+
+This is the same TLS-42 error documented in WIF runbook §3.G — but with a twist: it was **intermittent**, not constant. A permanent config issue (IAM auth flag OFF / SA missing role / wrong connection name) would have failed every Prisma call. We confirmed the WIF setup was fundamentally healthy by:
+
+1. Force-running the failed job during business hours — returned 200
+2. Confirming `/api/admin/schema-drift` (which uses the same Prisma client via the same WIF stack) had succeeded at 10:30am AEST the same morning
+
+**Root cause.** Cloud SQL maintenance-window collision. The `monitrax-db-prod` instance had:
+
+- "Updates may occur on any day of the week"
+- "Maintenance will be applied during week 1"
+- "Notifications: Off"
+
+— i.e. Cloud SQL was allowed to perform unscheduled maintenance at any hour, with no notification. When maintenance landed inside our 02:00 AEST cron window, the instance was mid-restart and rejected the freshly-minted Cloud SQL Connector cert at TLS handshake. Our 02:00 cron was effectively in a "Cloud SQL roulette" zone.
+
+(Backups, by elimination, weren't the cause — Operations log showed nightly backups happening between 23:00–00:30 AEST, well outside the 02:00 cron window.)
+
+**Fix — two parts, both Reza-side, no code change:**
+
+1. **Tightened the Cloud SQL maintenance window.** GCP Console → SQL → `monitrax-db-prod` → Edit maintenance preferences:
+   - Window: **Sunday 04:00–05:00 AEST** (lowest-traffic time of the week)
+   - Notifications: **ON**
+   - Was previously: "any day, any hour, notifications off"
+2. **Rescheduled the cron away from the early-morning window.** Cloud Scheduler → `monitrax-cdr-lifecycle` → Edit:
+   - Frequency: `0 2 * * *` → `30 3 * * *` (03:30 AEST)
+   - Two hours of separation absorbs any future maintenance event without losing the overnight slot
+   - Force-run after re-schedule: **200**
+
+**Rollback (if it starts failing again):**
+
+1. **First check:** GCP Console → SQL → `monitrax-db-prod` → Maintenance panel. Did the window get reset to "any day"? (Unlikely but possible after a manual GCP intervention.)
+2. **Second check:** Vercel logs for `/api/cdr/lifecycle` POST — is it still TLS-42, or a different error?
+3. **If still intermittent TLS-42:** ship the **retry-on-TLS-error wrapper** in `lib/db.ts` (queued in `IMPLEMENTATION_PLAN.md` Up Next #6b) — that's the defensive long-term fix; transient handshake failures should self-heal, not bubble up as 500s.
+4. **If a different error:** treat as a fresh diagnostic — open `04_WIF_TROUBLESHOOTING.md` and walk §3.A–§3.K.
+
+**Doc-sync (CLAUDE.md §16):**
+
+- `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` — updated 3 references to `0 2 * * *` → `30 3 * * *` (top table, gcloud setup, Cloud Scheduler form field)
+- `docs/operational/security/04_WIF_TROUBLESHOOTING.md` §3.G — appended new "Variant — intermittent TLS-42 at the same time every night (Cloud SQL maintenance-window collision)" section with the evidence pattern + two-part fix recipe + 2026-05-19 documented occurrence
+- `docs/operational/database/01_CLOUD_SQL_OPERATIONS.md` Maintenance Windows section — recorded current setting (Sunday 04:00–05:00 AEST, notifications ON) + the back-story
+- `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #1 (cdr-lifecycle) — updated schedule + linked to runbook for diagnostic; Up Next added row #6b (retry-on-TLS-error wrapper)
+
+### Remaining quick-clicks (in order — note: CRON_SECRET rotation moved to next based on sequencing correction)
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| #3 | Cloud Scheduler `monitrax-conversation-retention-sweep` job | ~5 min | Up next |
-| #12 | Rotate `CRON_SECRET` | ~10 min | Queued |
+| #12 | Rotate `CRON_SECRET` (now 3 scheduler jobs to update) | ~10 min | **Up next** |
 | #6 | Vercel → Cloud Logging log drain | ~15 min | Queued |
 | #16 | Security Command Center Premium | ~30 min | Queued |
 | #5 | A1 + A9 alert policies | ~1 hr | Queued |

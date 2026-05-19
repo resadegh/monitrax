@@ -166,6 +166,17 @@ gcloud sql instances patch monitrax-db-prod --project=monitrax-prod \
 
 Recommended: maintenance window on **Sunday 03:00 UTC** (low-traffic period).
 
+**Current setting (2026-05-19):** `monitrax-db-prod` maintenance window =
+**Sunday 04:00–05:00 AEST** (Sunday 18:00–19:00 UTC), notifications **ON**.
+Previously was "any day, any hour, notifications off" — which caused two
+intermittent `cdr-lifecycle` cron failures (2026-05-17 + 2026-05-19) when
+maintenance landed inside the 02:00 AEST run window. Tightening the window
++ rescheduling the cron to `30 3 * * *` AEST resolved the collision. See
+`docs/operational/security/04_WIF_TROUBLESHOOTING.md` §3.G ("Variant —
+intermittent TLS-42") for the full diagnostic, and
+`docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` for the new
+cron schedule.
+
 ---
 
 ## Authorized Networks

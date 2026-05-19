@@ -196,6 +196,42 @@ code: 'ERR_SSL_SSL/TLS_ALERT_BAD_CERTIFICATE'
   `USE_CLOUD_SQL_CONNECTOR=false` in Vercel Production env (see §4).
   Site is restored in <30s while you work the GCP side.
 
+- **Variant — intermittent TLS-42 at the same time every night (Cloud SQL
+  maintenance-window collision).** If you see the same TLS bad-cert error
+  but only on a single Cloud Scheduler job that runs at a fixed time
+  (e.g. `0 2 * * *` Australia/Sydney) — and the same Prisma calls succeed
+  during business hours and on `Force run` — the cause is almost certainly
+  that a Cloud SQL maintenance event landed inside the cron's run window.
+  **Evidence pattern:**
+  - Force runs always succeed
+  - Other Prisma endpoints (e.g. `/api/admin/schema-drift`) succeed at
+    other hours on the same day
+  - Failures appear at the same scheduled time once or twice a week
+  - GCP Console → SQL → instance → Maintenance panel shows
+    "Updates may occur on any day of the week" with notifications OFF
+
+  **Fix — two parts, both Reza-side, no code change:**
+  1. **Tighten the maintenance window** to a known low-traffic hour:
+     GCP Console → SQL → instance → Edit maintenance preferences →
+     pick a specific day + hour (e.g. Sunday 04:00–05:00) and turn
+     notifications ON. This bounds when Cloud SQL can self-restart.
+  2. **Reschedule the cron away from the early-morning window:**
+     Cloud Scheduler → job → Edit → change frequency from
+     `0 2 * * *` to e.g. `30 3 * * *` (03:30 AEST). The two hours of
+     separation absorbs the maintenance window without losing the
+     overnight slot.
+
+  **Documented occurrence:** 2026-05-19 — `monitrax-cdr-lifecycle`
+  failed twice in one week with TLS-42 at 02:00 AEST. Both fixes
+  applied; rescheduled to `30 3 * * *`. See
+  `docs/changelog/CHANGELOG_2026_05_19.md` Session 6 + Quick-Click #4
+  for the full diagnostic.
+
+  **Long-term hardening (queued):** add a retry-once-on-TLS-error
+  wrapper around the Prisma proxy in `lib/db.ts` so that transient
+  handshake failures self-heal instead of bubbling up as 500s. Filed
+  in `IMPLEMENTATION_PLAN.md` as a follow-on workstream.
+
 ### H. `SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`
 
 ```
