@@ -806,5 +806,103 @@ So **A7 is already wired and working for at least the cdr-lifecycle job.** Three
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| C1 | Delete duplicate `Notify on failure` alert policy | ~1 min | **Up next** |
-| C2 | Diagnose apac-singapore red ! on health check | ~1 min | Queued |
+| C1 | Delete duplicate `Notify on failure` alert policy | ~1 min | ✅ DONE |
+| C2 | Diagnose apac-singapore red ! on health check | ~1 min | ✅ DONE (and fixed via uptime check recreation) |
+
+### Cleanup C1 — Duplicate alert policies deleted
+
+**Result:** ✅ **Two duplicates deleted; Policies list now clean (A1 + A7 only).**
+
+Deleted these two redundant alert policies from `Monitoring → Alerting → Policies`:
+
+| Policy | Reason for deletion |
+|---|---|
+| `Monitrax API Health Check uptime...` (created 12 April 2026) | Auto-created when the OLD HTTP uptime check was created. Duplicates A1 on the same condition. Also became orphaned when C2 deleted the underlying check. |
+| `Notify on failure uptime failure` (created 11 March 2026) | Older default policy. Also duplicates A1. |
+
+**Result:** policies list went from 4 → 2:
+- `A1 — Monitrax app down (/api/health)` (today's new one — uptime metric)
+- `Cloud scheduler job failed` (the A7 we hardened — log-based)
+
+### Cleanup C2 — Uptime check HTTPS fix (resolved the apac-singapore failure)
+
+**Result:** ✅ **Root cause = HTTP/port 80 misconfiguration; deleted broken check, created fresh HTTPS check, all 6 regions now green.**
+
+**Diagnostic.** Reza clicked into the failing `Monitrax API Health Check` uptime check and saw:
+- Check Type: HTTP (not HTTPS)
+- Port: 80 (not 443)
+- All 6 regions failing (not just apac-singapore — the failure had spread)
+- Percent Uptime: 57.277%
+
+**Root cause.** The check was hitting `http://www.monitrax.com.au/api/health` on port 80. Vercel automatically redirects HTTP → HTTPS, so most requests returned a 308 redirect response (no `"healthy"` content match) → uptime check failed. Inconsistent across regions because Vercel's edge handling of HTTP→HTTPS varies by region (sometimes 200 from cached edge, sometimes a clean redirect, sometimes a timeout).
+
+**GCP limitation discovered.** Cloud Monitoring **does not allow editing the protocol of an existing uptime check** — it's pinned at creation. The only fix is delete + recreate.
+
+**Fix applied.**
+1. Deleted the broken HTTP `Monitrax API Health Check` (along with its auto-created alert policy — handled as part of C1)
+2. Created fresh HTTPS uptime check with the same name:
+   - Protocol: HTTPS, Port: 443
+   - Hostname: `www.monitrax.com.au`, Path: `/api/health`
+   - Check Frequency: 1 minute (was 5 min — faster recovery detection)
+   - Regions: Global (all 6)
+   - Response validation: content contains `healthy` (re-enabled — was disabled mid-config)
+   - Acceptable HTTP response codes: 2XX
+   - **Inline "Create an alert" toggle DISABLED** (to avoid creating yet another duplicate of A1)
+
+**Result:** all 6 regions now report passing. A1 alert policy automatically catches the new check via the `host = monitrax.com.au` filter — no rewiring needed.
+
+**Why this wasn't caught earlier.** The check was created 12 April 2026 with HTTP defaults. It worked intermittently because some regions returned 200 from Vercel's cached edges (matching the `"healthy"` content), others got redirects/timeouts. The failure rate slowly grew until today when it became persistent across most regions. Adding the new HTTPS check + content match `healthy` makes this deterministic going forward.
+
+### A7 hardening (deferred earlier, completed in same flow)
+
+After identifying the existing `Cloud scheduler job failed` policy in the Policies list, edited it:
+
+- **Renamed:** `Cloud scheduler job failed` → `A7 — Cloud Scheduler cron failure` (matches `08_OBSERVABILITY_SLOS.md` §3 alert-ID convention)
+- **Added notification channels:** `Reza-Email` + `Reza-SMS` (was previously only `GCP Monitrax Alert` — which is why this morning's CDR-lifecycle failure email arrived at the admin inbox, not Reza's personal channels)
+- **Added documentation field:**
+  ```
+  A Cloud Scheduler cron job emitted severity=ERROR.
+  Affected job is in $.jsonPayload.jobName.
+  Runbook: docs/operational/runbooks/05_RETENTION_SCHEDULERS.md
+  For cdr-lifecycle TLS-42 failures see 04_WIF_TROUBLESHOOTING.md §3.G variant.
+  First diagnostic: Cloud Scheduler → job → View logs → most recent run.
+  ```
+- **Filter scope confirmed correct (unchanged):** `resource.type="cloud_scheduler_job" AND severity="ERROR"` — covers ALL Cloud Scheduler jobs, not just cdr-lifecycle, so all 3 of our crons (`monitrax-cdr-lifecycle`, `monitrax-portal-alert-sweep`, `monitrax-conversation-retention-sweep`) are now alerted on
+- **Severity:** kept at Warning (appropriate — a cron failure isn't P0 like app-down)
+- **Notification rate limit:** 1 per hour (prevents spam if multiple jobs fail in quick succession)
+- **User Labels:** NOT added — GCP log-based alert policies don't support User Labels (metric-based policies do, e.g. A1). Platform limitation, not a process gap.
+
+### Day's tally — final scoreboard for 2026-05-19 (Day 2)
+
+**8 of 8 quick-clicks landed** + **2 cleanups** + **3 alert policies fully wired** + **5 important discoveries documented**:
+
+| # | Item | Outcome |
+|---|---|---|
+| QC #1 | Tech Debt #22 — `DIRECT_URL` env var | ✅ Confirmed not present in Vercel |
+| QC #2 | Phase 0 #13 — Gemini API key restricted | ✅ HTTP referrers + Gemini API restriction |
+| QC #3 | Phase 0 #3 — `monitrax-conversation-retention-sweep` Cloud Scheduler | ✅ Created, force-run 200 |
+| QC #4 | Phase 0 #1 — `monitrax-cdr-lifecycle` intermittent 500s | ✅ Root-caused (Cloud SQL maintenance window collision); fixed by tightening maintenance window + rescheduling cron to `30 3 * * *` |
+| QC #5 | Phase 0 #12 — `CRON_SECRET` rotated | ✅ Rotated atomically across Vercel + 3 scheduler jobs |
+| QC #6 | Phase 0 #6 — Vercel → Cloud Logging log drain | ⏸ Deferred (foundation work saved — SA + WIF binding ready for future Cloud Function shim PR per Up Next #15) |
+| QC #7 | Phase 0 #16 — Security Command Center triage | ✅ Active findings 4→0 (2 muted Public SQL, 2 firewall rules deleted) |
+| QC #8 | Phase 0 #5 — A1 + A9 + A7 alert policies | ✅ All 3 live with Reza-Email + (Reza-SMS for A1+A7) |
+| Cleanup C1 | Duplicate uptime-check alert policies | ✅ 2 deleted, Policies list clean |
+| Cleanup C2 | apac-singapore uptime-check failure | ✅ Root-caused (HTTP/80 misconfig), recreated as HTTPS/443, all 6 regions green |
+
+**5 important discoveries (operational learnings worth preserving):**
+1. Budget alerts had been **silently broken** — no email ever fired despite spend crossing 50% threshold weeks ago. Now fixed.
+2. CDR-lifecycle 2 AM failures were a **Cloud SQL maintenance-window collision** — documented in WIF runbook §3.G "Variant" so future operators recognize it in <5 min.
+3. **GCP log-based alert policies don't support User Labels** (only metric-based do) — platform limitation.
+4. **GCP Cloud Monitoring uptime checks pin protocol at creation** — can't edit HTTP↔HTTPS, must delete + recreate.
+5. **GCP Cloud Billing budget alerts don't support SMS** — email-only at platform level. Budget alerts are warning-class so this is acceptable.
+
+**Pre-Basiq engineering posture:**
+- ✅ Zero static credentials in runtime (WIF Phase 9 cutover stable since 2026-05-01)
+- ✅ All 3 daily crons wired + working + monitored
+- ✅ App-down + cron-failure + budget-overrun alerts paging Reza directly
+- ✅ SCC active findings = 0
+- ✅ Schema drift = 0 (Tech Debt #18 closed via the corrective migration in this branch)
+- ⏸ Cost-incurring activations (SCC Premium / Cloud Armor / CMEK) deferred to D-Day Bundle
+- 🚧 External lead-time items (pen test 6wk, cyber insurance 3wk, Stripe live 2wk) still to commission this week per D-Day Bundle Tier 3
+
+The pre-Basiq Reza-side checklist is now in the best shape it has ever been. Next: pre-Basiq code PRs (Up Next #1 WIF Phase 11, #2 WIF Phase 12, #6b retry-on-TLS-error wrapper, #15 Cloud Function log-receiver shim) — none of which are blockers for daily ops, all of which sharpen the submission package.
