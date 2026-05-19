@@ -662,11 +662,32 @@ This is the same TLS-42 error documented in WIF runbook §3.G — but with a twi
 - `docs/operational/database/01_CLOUD_SQL_OPERATIONS.md` Maintenance Windows section — recorded current setting (Sunday 04:00–05:00 AEST, notifications ON) + the back-story
 - `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #1 (cdr-lifecycle) — updated schedule + linked to runbook for diagnostic; Up Next added row #6b (retry-on-TLS-error wrapper)
 
-### Remaining quick-clicks (in order — note: CRON_SECRET rotation moved to next based on sequencing correction)
+### Quick-Click #5 — Phase 0 console row #12 (rotate `CRON_SECRET`)
+
+**Result:** ✅ **DONE — rotated atomically; all 3 jobs returning 200.**
+
+The previous `CRON_SECRET` had been pasted into chat during 2026-05-12 cron debugging, so although it never reached any public surface it was no longer credentialled-quality. Rotated before Basiq submission.
+
+**Sequencing used (matters — wrong order causes job 401-storm):**
+
+1. **Generate** new value locally: `openssl rand -base64 48` (never copy-pasted into any chat / doc / commit message).
+2. **Update Vercel env** (Production scope) → save **without redeploying** yet (so prod still uses the old secret for now, jobs keep working).
+3. **Update all 3 Cloud Scheduler `Authorization: Bearer …` headers** (`monitrax-cdr-lifecycle`, `monitrax-portal-alert-sweep`, `monitrax-conversation-retention-sweep`). Jobs are now sending the NEW secret but prod still accepts the OLD secret — overlap window.
+4. **Redeploy Vercel Production** → new secret goes live; old secret stops being accepted.
+5. **Force-run all 3 jobs** → all returned 200.
+
+**Rollback (if anything starts 401-ing later):**
+
+1. Most likely cause = a Scheduler job header wasn't actually saved — go to the failing job → Edit → re-paste the `Bearer` header → Save.
+2. If it's all 3 jobs simultaneously → the Vercel env var didn't update properly → check Vercel Production scope, re-paste the value, redeploy.
+3. Worst case — generate another fresh secret and re-run the full 5-step sequence above; the cost is 10 min.
+
+**Doc-sync:** `docs/IMPLEMENTATION_PLAN.md` Phase 0 console row #12 → ✅ DONE.
+
+### Remaining quick-clicks (in order)
 
 | # | Item | Effort | Status |
 |---|---|---|---|
-| #12 | Rotate `CRON_SECRET` (now 3 scheduler jobs to update) | ~10 min | **Up next** |
-| #6 | Vercel → Cloud Logging log drain | ~15 min | Queued |
+| #6 | Vercel → Cloud Logging log drain | ~15 min | **Up next** |
 | #16 | Security Command Center Premium | ~30 min | Queued |
 | #5 | A1 + A9 alert policies | ~1 hr | Queued |
