@@ -336,7 +336,7 @@
 
 ### 0f. Friendlies private beta — onboard early users for feedback (near-term)
 
-- **Status:** 🟡 PLAYBOOK SHIPPED 2026-05-15 — operational doc at `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` (invite + 2-wk follow-up + re-engage + testimonial + referral email templates; 8-stage lifecycle; Airtable view spec; weekly 15-min cadence). Reza-side: pick the 5–10 friendlies, then execute the playbook on his own pace.
+- **Status:** 🟡 PLAYBOOK + LANDING PAGE SHIPPED 2026-05-15 (v2) — operational doc at `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` (v2 invite template + 2-wk follow-up + re-engage + testimonial + referral; subject-line variants; 8-stage lifecycle; Airtable view spec; weekly 15-min cadence) + the `/welcome` landing page at `app/welcome/page.tsx` (real Next.js page using the existing `bg-stone-950` + amber-accent marketing design system; reads `?ref=<firstname>` for hero personalisation; auth-aware CTA; 4-item FAQ accordion including AFSL boundary callout). **The two-layer invite pattern:** email = warm personal voice (plain text, short, one link); `/welcome` page = polished visual surface (design system, screenshots, FAQ). Reza-side: pick the 5–10 friendlies, then execute the playbook on his own pace.
 - **Owner:** Reza (picks the friendlies, sends the invite, runs the feedback calls) + Claude (drafted the playbook + invite templates; updates the docs as the cohort moves)
 - **Canonical doc:** `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` — the operational guide. **Read this before sending the first invite.**
 - **Goal (Reza directive 2026-05-12):** *"at the end of this build I need to be able to send an email to friendlies with a workable app to start testing and providing feedback while I work on Basiq onboarding."*
@@ -350,7 +350,8 @@
   6. Sequenced asks: week 4–6 testimonial (§9), week 8–12 referral (§10) — only if positive engagement, never on day one
 - **Scope (revised):**
   - [ ] Verify the new-user flow end-to-end on production (`monitrax.com.au`): sign up → onboarding wizard → first TRAIL "Track" win → can add accounts/income/spending manually → Feedback affordance works (`/dashboard` "Send feedback" + the consumer Feedback page, Phase 33g). Fix anything broken before sending invite #1.
-  - [x] **Draft the invitation email** + 4 follow-up templates (2-wk check-in, re-engage, testimonial ask, referral ask) — DONE 2026-05-15 in `FRIENDLIES_INVITE_PLAYBOOK.md`
+  - [x] **Draft the invitation email** + 4 follow-up templates (2-wk check-in, re-engage, testimonial ask, referral ask) — DONE 2026-05-15 in `FRIENDLIES_INVITE_PLAYBOOK.md`. **Upgraded to v2 same day** — short email + ONE link → `/welcome` landing page; subject-line variants; landing page does visual heavy lifting
+  - [x] **Build the `/welcome` landing page** — `app/welcome/page.tsx` Next.js client page, existing marketing design system (`bg-stone-950` + amber accents + `Reveal` Framer Motion), `?ref=<firstname>` personalises hero, auth-aware CTA, 4-item FAQ accordion. DONE 2026-05-15
   - [x] **Document the lifecycle stages** (Invited → Signed up → Active → Feedback given → Testimonial received → Referred someone → Lapsed → Declined) — DONE 2026-05-15
   - [x] **Document the failure modes + escalation** (sign-up-no-engagement, negative feedback, AFSL boundary crossing, etc.) — DONE 2026-05-15 in playbook §11
   - [ ] **Add `Friendly stage` single-select field to Airtable `Contacts` table** + create `🤝 Friendlies pipeline` view (filter: Tags contains friendly; group by Friendly stage) — 30 sec manual setup in Airtable when Reza is ready to launch

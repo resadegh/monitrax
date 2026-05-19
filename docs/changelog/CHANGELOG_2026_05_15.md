@@ -213,3 +213,75 @@ Branch: `claude/gtm-0f-friendlies-playbook`
 4. Send invite #1 (template in playbook §6 — personalise first line)
 5. Log every touch in Airtable Activities (the Founder Daily Digest's CRM ACTIVITY section will surface friendly engagement automatically once Activities start populating)
 6. Weekly 15-min ops review (playbook §12)
+
+---
+
+## Session 5: GTM workstream 0f v2 — short email + `/welcome` landing page
+
+Branch: `claude/gtm-0f-friendlies-playbook` (extended from Session 4)
+
+### Reza pushback (the prompt for this session)
+*"I want to make sure we are using the most user friendly and easy to read capabilities available rather than your not so great documentation skills. What is the best way to make sure the emails we sent is not just another email users ignore and it is catchy, stylish and easy to read/follow?"*
+
+Fair pushback. Session 4's plain-text-only email was the *safe* move (won't trigger spam filters, no marketing-template suspicion) but not the *best* move. The better pattern is **short personal email + ONE link to a beautifully designed landing page** — how YC partners email founders, how Stewart Butterfield invited early Slack users, how Sam Altman launches products.
+
+### What was built
+
+**1. New Next.js page: `app/welcome/page.tsx`** — the polished visual half of the friendlies invite
+- ~290 lines, client component (needs `useSearchParams` for `?ref=` personalisation)
+- Uses existing marketing-component design system: `bg-stone-950` deep dark theme + warm amber accents (`from-amber-500 to-amber-600` gradient buttons, `amber-600/[0.07]` hero glow) + Apple-style easing via `Reveal` (Framer Motion with reduced-motion support)
+- Reads `?ref=<firstname>` query param → hero greeting becomes `Welcome, [Name].` Input sanitised (letters/spaces/hyphens/apostrophes only, max 32 chars, first word capitalised) so a URL can't inject anything
+- Auth-aware CTA: primary button reads "Sign up — it's free →" for visitors; switches to "Open dashboard" if the visitor is already logged in
+- Scroll order: Hero (personalised) → "Why I'm asking you specifically" (3 bullets) → "The deal" (3 amber-bordered cards) → "What it does" (3 TRAIL-stage tiles: Track / Reduce / Invest) → FAQ (4-item accordion incl. AFSL boundary callout) → Final CTA → Footer (existing marketing footer carries AFSL/legal disclaimer)
+- Wrapped in `<Suspense>` (Next.js requirement for `useSearchParams`)
+- TypeScript compiles cleanly (only the pre-existing `baseUrl` deprecation in `tsconfig.json` is flagged — unrelated)
+
+**2. Playbook upgrade: `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md`**
+- Section 6 (invitation email) **rewritten to v2** — ~40% shorter than v1, ONE link to `/welcome`, four subject-line variants table, personalisation rules (first-name-only, lowercase, `?ref=sarah`, stagger sends so Gmail doesn't flag burst pattern), "why each remaining line is here" annotations
+- New section 14: **The `/welcome` landing page** — what's on the page, what's intentionally NOT on it (no pricing, no testimonials yet, no second nav, no video), how to iterate without re-sending emails, post-launch backlog (real screenshot, "as featured in" strip, testimonial block, friendly-aware "your plan is free" callout)
+- Header updated: "v2 — short email + landing page pattern; v1 plain-text-only retired" + the two-layer invite pattern stated up front
+- Old long plain-text v1 email retired (the playbook's git history preserves it)
+
+**3. `IMPLEMENTATION_PLAN.md` workstream 0f**
+- Status flipped: "PLAYBOOK SHIPPED" → "PLAYBOOK + LANDING PAGE SHIPPED 2026-05-15 (v2)"
+- Scope checklist: added "Build the `/welcome` landing page" checkbox (✅ DONE this session) + annotated the invitation-email checkbox with the v2 upgrade
+
+### Why v2 is significantly better (4 lenses)
+- **Behaviour psychologist:** v1 was personal but flat; v2 is personal email + polished page = two conversion gates → higher quality signal
+- **Designer:** v1 looked like a 1995 email; v2's landing page matches the product they're about to use (first impression alignment)
+- **Architect:** v1 forced the email to do everything (long, hard to maintain); v2 splits the concerns (email = stable warmth, page = iterable polish)
+- **Growth marketing:** v1 had one funnel step (email → reply); v2 has three measurable steps (email → page view → signup), each with learning signal
+
+### Architectural decisions captured
+1. **Two-layer pattern is the right level of polish.** Doing all the polish in the email (HTML email with logos and buttons) triggers spam filters and breaks the personal-friend frame. Doing all the polish in the landing page is what YC-grade founders do.
+2. **Landing page lives in the app, not a separate marketing site.** Reuses the existing Next.js + Tailwind + Framer Motion + marketing-component design system. No new tooling, no new domain, no new build pipeline. The friendly's signup also stays in-app — no cross-domain handoff.
+3. **`?ref=<firstname>` is the only personalisation vector.** First-name only (no surnames, no emails, no IDs in URLs that get shared / screenshotted). Sanitised hard server-side.
+4. **Auth-aware CTA, not auth-gated page.** A friendly might revisit the URL after signing up; the page still loads, the button just becomes "Open dashboard". No annoying redirect.
+5. **No pricing on the page** (premature — friendlies are free indefinitely). When paid plans launch, add a small "Friendlies stay free forever" reassurance instead of a price.
+6. **No testimonials yet, no social proof yet** (premature — there are none). Add when they accumulate organically (~week 6+).
+
+### Files modified in this PR
+- `app/welcome/page.tsx` — **new file** (~290 lines, real product code)
+- `docs/marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md` — §6 rewritten v2; new §14 (landing page spec); header updated
+- `docs/IMPLEMENTATION_PLAN.md` — workstream 0f status + scope checklist updated
+- This file — Session 5 entry appended
+
+### Build status
+- TypeScript compilation: clean (only pre-existing `baseUrl` deprecation in tsconfig, unrelated)
+- Lint: not run (sandbox doesn't have `next` CLI installed; Vercel preview will run it)
+- Visual review: deferred to Vercel preview (Reza)
+
+### Painful lessons memorialised
+1. **My v1 was the safe-conventional move; the user was right to push for better.** "Personal voice" doesn't have to mean "1995-era plain-text email". The trick is splitting the voice (email) from the polish (landing page). When someone pushes back on quality, they're usually right — re-examine the constraint that led you to the safer answer.
+2. **Existing design systems are gold.** The marketing components (`bg-stone-950`, amber gradients, Framer Motion `Reveal`, Apple-easing) are exactly the right design language for the welcome page. Don't invent a new aesthetic for one new surface — extend the existing one.
+3. **`?ref=` is the cheapest "feels-personal" infrastructure imaginable.** No CRM lookup, no signed token, no API call — just a query param the page sanitises and capitalises. The hero reads `Welcome, [Name].` and that single touch reframes the whole page from "marketing landing" to "for you specifically".
+4. **Suspense is required around `useSearchParams` in Next.js App Router.** Easy to forget; build would have failed otherwise. The fallback is a quick branded spinner so the page never flashes blank.
+
+### Next Steps (Reza-side, unchanged from Session 4 + 1 new)
+1. Add the `Friendly stage` single-select field to Airtable Contacts (30 sec)
+2. Verify the new-user flow on `monitrax.com.au` end-to-end
+3. Pick the 5–10 friendlies (Q-GTM-7)
+4. Send invite #1 using the v2 template (subject + body + `?ref=` link)
+5. Log every touch in Airtable Activities
+6. Weekly 15-min ops review
+7. **NEW:** review the `/welcome` page in Vercel preview when this PR builds; tweak copy / tile order / FAQ as desired before sending invite #1 (it's a 1-min PR follow-up to change anything)
