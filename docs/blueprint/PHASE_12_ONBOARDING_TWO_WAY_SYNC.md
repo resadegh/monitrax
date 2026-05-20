@@ -1,0 +1,158 @@
+# Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
+
+> **Status:** 🟡 DESIGN — awaiting Reza go/no-go.
+> **Author:** Claude, 2026-05-20. **Owner:** Reza.
+> **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
+
+---
+
+## 1. Problem
+
+The onboarding wizard does **not** share a single source of truth with the rest of the app.
+
+Reza's reproduction (2026-05-20):
+- Entered a full household in `/onboarding?mode=form` — Newsha (spouse), Self, 3 pets (Moti, Asal, Fandogh), 2 vehicles.
+- Opened `/dashboard/household-profile` ("My Household") — **0% complete, no members, no pets, 0 vehicles**.
+
+Same data. Two surfaces. Out of sync.
+
+### 1.1 Root cause
+
+Onboarding uses a **two-phase model**:
+
+1. Both wizard modes (form + chat) stage everything into **one JSON blob** — `UserPreference.onboardingDraft` (a `WizardData` record).
+2. The real entity tables (`HouseholdProfile`, `HouseholdMember`, `HouseholdPet`, `Property`, `Account`, `Loan`, `Investment`, `SuperAccount`, `Asset`, `Income`, `Expense`) are written **only once** — at the final `/api/onboarding/bulk-create` call when the user clicks "Looks right" / completes onboarding.
+
+So during onboarding the wizard's data and the app's real data are **two separate representations that diverge until the very end**. Every dashboard surface (`/dashboard/household-profile`, `/dashboard/properties`, etc.) reads the real tables — which stay empty until bulk-create runs.
+
+This is a **§12.2 SSOT violation**. There should be exactly one canonical source for each piece of data.
+
+### 1.2 Why it matters (four-lens)
+
+| Lens | Why this is worth fixing |
+|---|---|
+| **Behaviour psychologist** | "I entered my whole household and My Household shows empty" is a trust-breaking moment. The user cannot tell whether their work saved. Financial-stress users (Mani et al.) least tolerate ambiguity about whether their effort counted. |
+| **Architect** | Two parallel representations of the same data is the exact smell §12.2 forbids. The draft blob is a shadow copy of data that also lives (eventually) in the real tables. |
+| **Financial adviser** | Data integrity is paramount. One canonical record, no parallel copy that can drift. |
+| **Product** | The wizard isn't a separate "thing" — it is a *guided front-end for populating + updating the app's real data*. It should behave like one. |
+
+---
+
+## 2. Principle
+
+> **The wizard is a guided UI over the app's real data tables. Nothing more.**
+
+It does not own a separate data representation. It **reads** the real tables to show what exists, and **writes** the real tables as the user enters or edits data. The dashboard entity pages (`/dashboard/household-profile`, `/dashboard/properties`, …) and the wizard become **two views of the same canonical tables**.
+
+A user can edit their household via the wizard OR via the My Household page, interchangeably, and both always agree — because there is only one source.
+
+---
+
+## 3. Target architecture
+
+### 3.1 The real tables become the single SSOT
+
+Onboarding data lives **only** in the real entity tables. There is no parallel `WizardData` blob holding entity data.
+
+### 3.2 What the wizard does
+
+| Action | Behaviour |
+|---|---|
+| **Open a step** | READ the relevant real table(s). If data exists, the step shows it pre-filled and the agent/UI **reconfirms** ("You've added Newsha and 3 pets — anything to change, or shall we continue?"). If empty, ask normally. |
+| **"Continue" on a step** | WRITE that step's entities to the real tables — `create` for new, `update` for edited, `delete` for removed. §12.11-safe (see §5). |
+| **Re-enter the wizard later** | Same as "open a step" — it reads whatever is in the real tables, wherever the user left off. The wizard is resumable because the *data itself is the state*. |
+
+### 3.3 What happens to the draft blob
+
+`UserPreference.onboardingDraft` is **retired as a data store**. Optionally it is reduced to a tiny **step pointer** (`currentStep: number`) so the wizard knows where to resume — but it holds **no entity data**. (Even the step pointer is arguably derivable: "first step whose table is empty". Decide in §8 Q-F1.)
+
+### 3.4 What happens to `bulk-create`
+
+`/api/onboarding/bulk-create` is **retired**. There is no "create everything at the end" — entities are created incrementally, per step. "Completing onboarding" becomes a pure flag flip (`onboardingCompleted = true`), writing zero entity data.
+
+### 3.5 Chat mode
+
+The chat (`ConversationalSetup`) follows the identical principle — each topic reads the real tables on entry, writes them on confirm. **PR #828's per-topic mapping + acknowledgement logic (`draftHydration.ts`) is reused** — only the data *source* flips from `UserPreference.onboardingDraft` → the real tables. The acknowledgement copy ("I can see you've already added …") is unchanged; it just reads from a different place.
+
+---
+
+## 4. The 8 domains + their real entity surfaces
+
+Each wizard step / chat topic maps to real tables that **already have entity APIs** (the dashboard pages already use them — this is a rewire, not new infrastructure).
+
+| Domain | Real tables | Existing entity API(s) | Dashboard page |
+|---|---|---|---|
+| Household | `HouseholdProfile`, `HouseholdMember`, `HouseholdPet` | `/api/household-profile`, `/api/household-members[/[id]]`, `/api/household-pets[/[id]]` | `/dashboard/household-profile` |
+| Properties | `Property` | `/api/properties` (verify in the domain PR) | `/dashboard/properties` |
+| Accounts | `Account` | `/api/accounts` (verify) | `/dashboard/balances` |
+| Debts / Loans | `Loan` | `/api/loans` (verify) | `/dashboard` loans surfaces |
+| Investments | `Investment` (+ holdings) | `/api/investments` (verify) | `/dashboard/investments` |
+| Super | `SuperAccount` (verify model name) | verify in the domain PR | `/dashboard/investments` or super surface |
+| Assets | `Asset` | `/api/assets` (verify) | `/dashboard` assets surface |
+| Income / Expenses | `Income`, `Expense` | `/api/income`, `/api/expenses` (verify) | `/dashboard` spending/income surfaces |
+
+> Each domain PR begins by **verifying** the exact API + Prisma model names for its domain (CLAUDE.md §10 — research before action). The table above is the starting map, not the final contract.
+
+---
+
+## 5. The write contract (§12.11 — NON-NEGOTIABLE)
+
+This re-architecture writes to the real entity tables during onboarding — the **exact risk class as the 2026-04-15 R12 incident** (a destructive `upsert` on `HouseholdProfile` clobbered a user's data; CLAUDE.md §12.11 exists because of it). Every write path in every domain PR MUST:
+
+1. **Prefer `create` for new entities.** Never blind-`upsert`.
+2. **Guard `update` / `delete`** so they only ever touch rows this user owns AND that the wizard is legitimately editing — `where: { id, userId }`, never `where: { userId }` alone.
+3. **Be idempotent on re-entry.** Re-opening a step and clicking "Continue" without changes must NOT duplicate rows. Each entity needs stable identity (the row `id` once created; the wizard holds the `id` after first save).
+4. **Fill in the §12.11 destructive-write checklist** in every domain PR that contains an `update` / `delete` / `upsert`.
+5. **Audit every state-changing write** via `createAuditLog()` (§12.5).
+
+The wizard's in-memory step state holds entity `id`s after first save, so the "Continue" handler knows which rows to `create` (no id), `update` (has id, changed), `delete` (id present in real table, removed from the step).
+
+---
+
+## 6. Migration / rollout plan
+
+Ship **one domain per PR**, household first (it's what Reza tested + the simplest). The two-phase model and the new 2-way model can coexist during rollout — a domain is either "draft-staged" (old) or "real-table-synced" (new); the wizard handles both until all 8 are migrated.
+
+| PR | Scope |
+|---|---|
+| **F.0** | This design doc + Reza go/no-go. |
+| **F.1** | Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Establishes the per-domain pattern (a `useEntitySync`-style hook or per-step read/write helpers). §12.11 checklist. |
+| **F.2 – F.8** | One PR each for properties, accounts, debts, investments, super, assets, income/expenses — replicate the F.1 pattern. |
+| **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
+
+Estimated: ~9 PRs, roughly 1.5–2 weeks of focused work. Each PR independently shippable + testable.
+
+---
+
+## 7. Risks
+
+| Risk | Mitigation |
+|---|---|
+| **R12-class destructive write** | §5 write contract — `create`-first, `where:{id,userId}` guards, §12.11 checklist on every domain PR. Reviewer rejects any domain PR without it. |
+| **Duplicate rows on wizard re-entry** | §5.3 idempotency — the wizard holds entity `id`s after first save; "Continue" diffs against the real table. F.1 must prove this with a test (enter → leave → re-enter → Continue → assert no duplicates). |
+| **Partial data from abandoned onboarding** | **Not a real risk.** Partial saved data is just *the user's data, saved* — the dashboard already renders partial state (empty states everywhere). This is strictly better UX than "your data vanished". The old two-phase model's atomicity argument does not survive scrutiny. |
+| **Coexistence during rollout** | A domain is flagged old/new; the wizard reads whichever applies. F.9 removes the old path once all 8 are migrated. |
+| **`onboardingEstimateService` is disabled** | Out of scope — that disabled stub stays disabled; this phase does not touch it. The new write paths are fresh, §12.11-clean code, not a revival of the R12-era service. |
+
+---
+
+## 8. Open questions for Reza
+
+| # | Question | Default recommendation |
+|---|---|---|
+| **Q-F1** | Keep a minimal `currentStep` pointer in `UserPreference`, or derive "resume at first incomplete domain" from the real tables? | Derive it — zero stored state is cleaner. But a stored pointer is fine if it lets the user resume mid-domain. Decide at F.1. |
+| **Q-F2** | When a user removes an entity in the wizard that exists in the real tables (e.g. deletes a pet they'd added), hard-delete the row immediately on "Continue", or soft-stage the deletion? | Hard-delete on "Continue" — consistent with the dashboard's own delete buttons, which hard-delete. |
+| **Q-F3** | Should the dashboard entity pages and the wizard steps eventually share the SAME components (one `<HouseholdEditor>` rendered in both places)? | Worth it long-term (true SSOT at the component layer too), but NOT required for this phase. Note as future cleanup. |
+
+---
+
+## 9. Relationship to prior work
+
+- **PR #828** (chat draft hydration) — not wasted. Its 8 per-topic mapping functions + acknowledgement copy in `draftHydration.ts` are reused; F.1–F.8 flip each one's source from the draft blob to the real tables.
+- **PR #818 / #825** (mode selector) — unaffected; the selector is a routing surface, not a data surface.
+- **`PHASE_12_SETUP_AND_ONBOARDING.md`** — the parent onboarding doc; gains a "Related → Track F" pointer when F.0 lands.
+- **CLAUDE.md §12.11 / §12.12** — the governing rules for every domain PR's writes + any schema change.
+
+---
+
+*This is a design doc. No code ships until Reza approves the go/no-go at F.0.*
