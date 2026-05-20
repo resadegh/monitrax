@@ -1,8 +1,9 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟡 DESIGN — awaiting Reza go/no-go.
+> **Status:** 🟢 APPROVED 2026-05-20 — F.0 (design + go/no-go) COMPLETE. F.1 (household domain) ready to start.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
+> **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
 
 ---
 
@@ -115,7 +116,7 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 
 | PR | Scope |
 |---|---|
-| **F.0** | This design doc + Reza go/no-go. |
+| ~~F.0~~ | ✅ **DONE 2026-05-20** — design doc + Reza go/no-go (approved, recommendations adopted). |
 | **F.1** | Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Establishes the per-domain pattern (a `useEntitySync`-style hook or per-step read/write helpers). §12.11 checklist. |
 | **F.2 – F.8** | One PR each for properties, accounts, debts, investments, super, assets, income/expenses — replicate the F.1 pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
@@ -136,13 +137,15 @@ Estimated: ~9 PRs, roughly 1.5–2 weeks of focused work. Each PR independently 
 
 ---
 
-## 8. Open questions for Reza
+## 8. Questions — all RESOLVED 2026-05-20
 
-| # | Question | Default recommendation |
+Reza go/no-go directive: *"for questions go with the recommendations."* All three resolved with the recommended defaults.
+
+| # | Question | ✅ DECISION (2026-05-20) |
 |---|---|---|
-| **Q-F1** | Keep a minimal `currentStep` pointer in `UserPreference`, or derive "resume at first incomplete domain" from the real tables? | Derive it — zero stored state is cleaner. But a stored pointer is fine if it lets the user resume mid-domain. Decide at F.1. |
-| **Q-F2** | When a user removes an entity in the wizard that exists in the real tables (e.g. deletes a pet they'd added), hard-delete the row immediately on "Continue", or soft-stage the deletion? | Hard-delete on "Continue" — consistent with the dashboard's own delete buttons, which hard-delete. |
-| **Q-F3** | Should the dashboard entity pages and the wizard steps eventually share the SAME components (one `<HouseholdEditor>` rendered in both places)? | Worth it long-term (true SSOT at the component layer too), but NOT required for this phase. Note as future cleanup. |
+| **Q-F1** | Keep a minimal `currentStep` pointer in `UserPreference`, or derive "resume at first incomplete domain" from the real tables? | **DERIVE** — no stored step pointer. The resume point is "the first domain whose real tables are empty"; the data itself is the state. Zero stored state, no draft blob at all. If F.1 finds that mid-domain resume genuinely needs a pointer (e.g. resuming halfway through a long property list), revisit then — but the default and intent is derive. |
+| **Q-F2** | When a user removes an entity in the wizard that exists in the real tables, hard-delete immediately on "Continue", or soft-stage the deletion? | **HARD-DELETE on "Continue"** — consistent with the dashboard's own delete buttons (which hard-delete). The wizard's "Continue" handler diffs its step state against the real table and issues `delete` for rows the user removed. §12.11-guarded (`where:{id,userId}`). |
+| **Q-F3** | Should the dashboard entity pages and the wizard steps eventually share the SAME components? | **YES long-term, NOT in this phase.** True SSOT at the component layer (one `<HouseholdEditor>` in both places) is the right end-state but out of scope for Track F. Logged as a future cleanup — Track F gets the *data layer* to one SSOT; a later pass can unify the *component layer*. |
 
 ---
 
@@ -155,4 +158,4 @@ Estimated: ~9 PRs, roughly 1.5–2 weeks of focused work. Each PR independently 
 
 ---
 
-*This is a design doc. No code ships until Reza approves the go/no-go at F.0.*
+*F.0 complete — Reza approved 2026-05-20, all §8 questions resolved. F.1 (household domain) is the next PR: wizard household step + chat household topic read/write `HouseholdProfile` / `HouseholdMember` / `HouseholdPet` directly, establishing the per-domain pattern + the §5 §12.11-safe write contract. F.1 is queued as a fresh-session task (see `IMPLEMENTATION_PLAN.md` Up Next row 0).*
