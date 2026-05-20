@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) ✅ DONE (#841) · F.8 (income/expenses) ✅ DONE (#842) — all 8 domains synced · F-reconcile-handoff ✅ DONE 2026-05-20. Next: F.9 (retire `bulk-create` + draft blob).
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) ✅ DONE (#841) · F.8 (income/expenses) ✅ DONE (#842) — all 8 domains synced · F-reconcile-handoff ✅ DONE 2026-05-20. **➡️ Phase 12 Track G (Unified Conversational Onboarding) now supersedes the remaining queue** — F.9 → G.3, F.10 ⛔ superseded, F.11 → G.5. See `PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md`.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -126,9 +126,9 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.7~~ | ✅ **DONE 2026-05-20 (PR #841)** — Assets domain (the `Asset` + its `Expense`s aggregate). `lib/onboarding/assetsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `ASSET_*` `AuditAction` values + migration. FORM step (`AssetsStep`) full two-way sync. See §6.7. |
 | ~~F.8~~ | ✅ **DONE 2026-05-20 (PR #842)** — Income / expenses domain — the LAST domain. GENERAL (non-property, non-loan, non-asset, non-investment) `Income` + `Expense` only. `lib/onboarding/incomeExpensesSync.ts` read/diff/write layer + 17 idempotency tests. **No schema change** — the `/api/income` + `/api/expenses` routes already gained `createAuditLog()` in F.2. FORM step (`IncomeExpensesStep`) full two-way sync. See §6.8. |
 | ~~F-reconcile-handoff~~ | ✅ **DONE 2026-05-20** — Post-onboarding reconciliation handoff. A closing card on the wizard's `ReviewStep` — shown only when the user connected / imported accounts during the wizard (`AccountInput.source` BASIQ or IMPORT) — bridges them to `My Budget → Cashflow` to see plan vs reality. Presentational only: no new fetch (the signal is in wizard state), no schema change. The wizard never surfaces actuals itself. See §6.4. |
-| **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
-| **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
-| **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
+| **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). **➡️ RE-SEQUENCED into Track G as G.3** (2026-05-20) — the chat write path is removed in Track G G.2, so doing F.9 first would be wasted motion. See `PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` §6. |
+| ~~F.10~~ | ⛔ **SUPERSEDED by Phase 12 Track G** (2026-05-20). F.10 was scoped as enrichment "follow-up-offer states" bolted onto the chat **script state-machines** (§10) — and Track G **deletes** those machines. Its *intent* (progressively offering optional enrichment fields for more complete day-one data) is **absorbed into Track G's companion**. The §10.2 four-lens constraints carry forward. See `PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` §7. |
+| **F.11** | Receipt / document upload — **➡️ RE-HOMED to Track G as G.5** (2026-05-20). Not redundant: a distinct capability (the document pipeline). Re-parented from "mid-chat" to "mid-onboarding companion". Still deferred. |
 
 Estimated: ~11 PRs (F.0–F.9 core ≈ 1.5–2 weeks; F.10 + F.11 the conversational-depth extension). Each PR independently shippable + testable.
 
@@ -442,6 +442,8 @@ Reza go/no-go directive: *"for questions go with the recommendations."* All thre
 
 ## 10. F.10 + F.11 — conversational enrichment (queued extension)
 
+> **⛔ 2026-05-20 — F.10 is SUPERSEDED, F.11 is RE-HOMED.** Reza decided to merge the form wizard and the standalone AI chat into one unified surface — **Phase 12 Track G** (`PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md`). Track G deletes the chat script state-machines this section's F.10 was built on, so F.10 *as specified* is redundant; its *intent* lives on in Track G's companion. F.11 (document upload) is re-parented to Track G as G.5. The section below is retained as the original record of the enrichment idea + the still-valid §10.2 four-lens constraints, which Track G inherits.
+>
 > **Status:** queued. Starts after F.9 — it depends on the real-table read/write machinery F.1–F.8 establish (enrichment fields write to the real entity columns).
 > **Driver:** Reza, 2026-05-20 — *"get the AI to engage with the user more and ask follow-up questions … AI asks about a property, user answers, then AI suggests 'would you like to add the council rate?' yes/no, then 'would you like to upload the receipt?' … so the AI captures the most complete data on onboarding. However the user can always skip and do them later."*
 

@@ -44,6 +44,9 @@ import { AssetsStep } from './steps/AssetsStep';
 import { IncomeExpensesStep } from './steps/IncomeExpensesStep';
 import { ReviewStep } from './steps/ReviewStep';
 import { AIHelper } from './AIHelper';
+// Phase 12 Track G (G.0): the onboarding companion — prototype on the
+// household step. See docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
+import { CompanionPanel } from './CompanionPanel';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -464,16 +467,26 @@ export function WizardContainer({
         return (
           <div key={currentStep.id} className={animationClass}>
             {/*
+             * Phase 12 Track G (G.0): the AI companion sits ABOVE the
+             * household form — "the form opens underneath" (Reza,
+             * 2026-05-20). Prototype scope: household step only; G.1
+             * widens it to every step. The companion is presentational
+             * and never a dependency — the form works untouched if it
+             * fails. See PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
+             *
              * Phase 12 Track F.1: HouseholdStep reads + writes the REAL
              * household tables directly. It registers an async commit via
              * `registerStepCommit`; the container awaits it on Continue /
              * Back / progress-jump (see runStepCommit above).
              */}
-            <HouseholdStep
-              data={data}
-              onUpdate={handleUpdate}
-              registerStepCommit={registerStepCommit}
-            />
+            <div className="space-y-5">
+              <CompanionPanel data={data} />
+              <HouseholdStep
+                data={data}
+                onUpdate={handleUpdate}
+                registerStepCommit={registerStepCommit}
+              />
+            </div>
           </div>
         );
       case 'entities':
@@ -629,11 +642,16 @@ export function WizardContainer({
       <div className="flex items-center gap-2 flex-shrink-0">
         {/* AI Helper trigger — rendered inline in the header so it never
             overlaps the wizard's Back/Next buttons (which sit in the
-            footer at the bottom-right of the card). */}
-        <AIHelper
-          currentStep={currentStep?.id || 'welcome'}
-          buttonClassName="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-1.5 text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all"
-        />
+            footer at the bottom-right of the card).
+            Phase 12 Track G (G.0): suppressed on the household step,
+            where the docked CompanionPanel is the help surface — two AI
+            affordances on one step would just be noise. */}
+        {currentStep?.id !== 'household' && (
+          <AIHelper
+            currentStep={currentStep?.id || 'welcome'}
+            buttonClassName="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-1.5 text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all"
+          />
+        )}
         {mode === 'modal' && (
           <button
             type="button"
