@@ -374,6 +374,16 @@ enum AuditAction {
   PROPERTY_CREATED
   PROPERTY_UPDATED
   PROPERTY_DELETED
+
+  // Phase 12 Track F.3 (Onboarding two-way sync — accounts domain).
+  // The account entity API (/api/accounts) became the wizard's SSOT
+  // write boundary for MANUAL bank accounts, so every manual-account
+  // write is now audited per CLAUDE.md §12.5. BASIQ / IMPORT accounts
+  // are externally sourced — F.3 never writes them. Metadata carries
+  // type/booleans only — no CDR/financial values (§13.3).
+  ACCOUNT_CREATED
+  ACCOUNT_UPDATED
+  ACCOUNT_DELETED
 }
 
 enum AuditStatus {

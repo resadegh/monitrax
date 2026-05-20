@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { balanceWriteFields } from '@/lib/utils/accountBalance';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 export const GET = withPermission('account.read', async (request, auth) => {
     try {
@@ -120,25 +121,61 @@ export const GET = withPermission('account.read', async (request, auth) => {
 export const POST = withPermission('account.write', async (request, auth) => {
     try {
       const body = await request.json();
-      const { name, type, institution, currentBalance } = body;
+      const { name, type, institution, currentBalance, interestRate, linkedLoanId } = body;
 
-      if (!name || !type || currentBalance === undefined) {
+      if (!name || !type || currentBalance === undefined || currentBalance === null) {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
 
-      const account = await prisma.account.create({
-        data: {
-          userId: auth.userId,
-          ownerEntityId,
-          name,
-          type,
-          institution: institution || null,
-          currentBalance: parseFloat(currentBalance),
-          // PR 3c.2c — manual create path; user is source of truth.
-          ...balanceWriteFields('MANUAL'),
-        },
+      // Account create + offset→loan link are atomic: if the OFFSET account
+      // can't be wired to its loan the whole thing rolls back, so a retry
+      // (Phase 12 Track F.3 two-way sync) can't leave a duplicate account.
+      const account = await prisma.$transaction(async (tx) => {
+        const created = await tx.account.create({
+          data: {
+            userId: auth.userId,
+            ownerEntityId,
+            name,
+            type,
+            institution: institution || null,
+            currentBalance: parseFloat(currentBalance),
+            interestRate:
+              interestRate === undefined || interestRate === null
+                ? null
+                : parseFloat(interestRate),
+            // PR 3c.2c — manual create path; user is source of truth.
+            ...balanceWriteFields('MANUAL'),
+          },
+        });
+        // OFFSET → loan link (Track F.3). The link lives on the loan
+        // (`Loan.offsetAccountId`). Ownership-verified; a loan owned by
+        // another user is simply not found and the link is skipped.
+        if (type === 'OFFSET' && linkedLoanId) {
+          const loan = await tx.loan.findFirst({
+            where: { id: linkedLoanId, userId: auth.userId },
+            select: { id: true },
+          });
+          if (loan) {
+            await tx.loan.update({
+              where: { id: loan.id },
+              data: { offsetAccountId: created.id },
+            });
+          }
+        }
+        return created;
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3). This
+      // route is the wizard's SSOT write boundary for MANUAL accounts.
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'ACCOUNT_CREATED',
+        status: 'SUCCESS',
+        entityType: 'Account',
+        entityId: account.id,
+        metadata: { type, hasOffsetLink: type === 'OFFSET' && !!linkedLoanId },
       });
 
       return NextResponse.json(account, { status: 201 });

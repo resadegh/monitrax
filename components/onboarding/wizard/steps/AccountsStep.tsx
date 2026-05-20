@@ -1,9 +1,27 @@
 'use client';
 
 /**
- * AccountsStep — Phase 12 PR 3a visual redesign + PR 3b data source tiers
+ * AccountsStep — Phase 12 PR 3a redesign + PR 3b data source tiers
+ *                + Track F.3 two-way sync
  *
  * Captures bank / transaction / savings / offset / credit card accounts.
+ *
+ * ============================================================================
+ * TRACK F.3 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.3 this step staged MANUAL accounts into the `WizardData` draft
+ * blob, written once at `/api/onboarding/bulk-create`. F.3 makes MANUAL
+ * accounts read + write the real `Account` table directly:
+ *   - ON OPEN  — `readAccounts()` loads the real table; the step merges it
+ *     with any unsynced (synthetic-id) in-session / chat-staged account.
+ *   - ON CONTINUE / BACK — the registered `commit` diffs + `syncAccounts()`
+ *     writes the delta (create / update / hard-delete), idempotent on
+ *     re-entry. Only MANUAL accounts are written.
+ *
+ * BASIQ / IMPORT accounts already have real rows (written by the Basiq sync
+ * / the file-import flow). F.3 reads + displays them but NEVER writes them —
+ * they are owned by their source. See `lib/onboarding/accountsSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.3.
  *
  * PR 3a: clean redesign using the primitives library.
  * PR 3b: adds the 3-tier data source picker at the top
@@ -23,7 +41,7 @@
  * created by bulk-create as before.
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   Wallet,
   Plus,
@@ -34,6 +52,7 @@ import {
   Link2,
   Building2,
   AlertCircle,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
@@ -42,7 +61,17 @@ import {
   AccountType,
   generateId,
   getLoansFromProperties,
+  type StepCommitFn,
 } from '../types';
+import {
+  readAccounts,
+  syncAccounts,
+  snapshotToWizardAccounts,
+  wizardAccountsToSnapshot,
+  accountRealId,
+  EMPTY_ACCOUNTS_SNAPSHOT,
+  type AccountsSnapshot,
+} from '@/lib/onboarding/accountsSync';
 import {
   WizardStepShell,
   WizardSection,
@@ -269,11 +298,89 @@ function QuickAddTile({ meta, onClick }: { meta: AccountTypeMeta; onClick: () =>
 interface AccountsStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.3: register an async commit with the container. The
+   * container awaits it before advancing — it writes the MANUAL bank
+   * accounts to the real `Account` table. Optional so the step still
+   * renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
+export function AccountsStep({ data, onUpdate, registerStepCommit }: AccountsStepProps) {
   const { token } = useAuth();
   const availableLoans = getLoansFromProperties(data.properties);
+
+  // ---- Phase 12 Track F.3: real-table sync state ---------------------
+  // `loading` is true while the initial READ is in flight. `snapshotRef`
+  // is the baseline the commit diffs against. Only MANUAL accounts are
+  // written — BASIQ / IMPORT rows are read + displayed but never synced.
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<AccountsSnapshot>(EMPTY_ACCOUNTS_SNAPSHOT);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real `Account` table on step open --------------------
+  // Merges the real accounts (authoritative — they carry real ids) with
+  // any wizard account that is NOT yet persisted (a synthetic-id MANUAL
+  // account staged in chat mode or added in-session), so nothing is lost.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readAccounts(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realAccounts = snapshotToWizardAccounts(snapshot);
+        const unsynced = dataRef.current.accounts.filter((a) => !accountRealId(a));
+        onUpdate({ accounts: [...realAccounts, ...unsynced] });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your accounts. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container -------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your accounts — please wait a moment.');
+      }
+      const current = wizardAccountsToSnapshot(dataRef.current.accounts);
+      const result = await syncAccounts(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the just-written real table, but keep any in-session
+      // MANUAL card still incomplete (no real id, no name) — `syncAccounts`
+      // does not persist those, so re-seeding alone would discard a
+      // half-filled card the user is working on (e.g. on a Back nav).
+      const stillUnsynced = dataRef.current.accounts.filter(
+        (a) => !accountRealId(a) && !a.name.trim(),
+      );
+      onUpdate({
+        accounts: [...snapshotToWizardAccounts(result.snapshot), ...stillUnsynced],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   // PR 3b: data source tier state
   const [showManual, setShowManual] = useState(
@@ -409,6 +516,24 @@ export function AccountsStep({ data, onUpdate }: AccountsStepProps) {
       title="Bank accounts"
       subtitle="Where your money lives. This is the first step on your TRAIL — Track your full picture."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking (Phase 12 Track F.3). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your accounts…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {/* PR 3b: 3-tier data source picker — always visible above the
           manual quick-add. Tiles are interactive buttons. */}
       <AccountsDataSourceTiles

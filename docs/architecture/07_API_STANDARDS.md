@@ -716,5 +716,19 @@ Two consequences for the property aggregate routes, applied in F.2
    Previously only `bulk-create` wrote these — routing wizard property
    writes through `/api/properties` without this would have dropped them.
 
+Applied in **F.3** (2026-05-20) for the accounts domain:
+
+4. **`/api/accounts` audit + extended fields.** POST + `[id]` PUT/DELETE
+   now call `createAuditLog()` (`ACCOUNT_CREATED/UPDATED/DELETED`). POST
+   gained `interestRate`; PUT gained `institution` — the route pair now
+   covers every field the wizard `AccountInput` carries. `currentBalance`
+   validation accepts `0` (present, not truthy).
+5. **`/api/accounts` offset→loan link.** POST + PUT accept `linkedLoanId`;
+   for an `OFFSET` account the route sets `Loan.offsetAccountId`
+   server-side, in the same transaction as the account write,
+   ownership-verified. PUT clears any stale link first (re-link / un-link).
+   F.3's two-way sync writes **MANUAL** accounts only — BASIQ / IMPORT
+   accounts are externally sourced and never written by the wizard.
+
 ---
 
