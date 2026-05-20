@@ -20,12 +20,17 @@ import type {
   SuperFields,
   SuperDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateSuperFromDraft } from './draftHydration';
 
 export type SuperScriptStep =
   | 'INTRO'
   | 'ASKING_OWNERSHIP'
   | 'ASKING_BALANCE'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had super accounts, so the
+  // agent acknowledged them and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -59,6 +64,12 @@ export const SUPER_AGENT_COPY = {
   recapHeader: 'Quick recap of your super',
   recapNoSuper: "Just to confirm — no super to add right now. We'll skip ahead.",
   changingPrompt: "What would you like to change?",
+  // Hydration path — shown when the draft already had super accounts.
+  // The acknowledgement sentence is built per-session in
+  // draftHydration.ts; this is the fallback ask if the user's reply
+  // adds nothing new.
+  hydratedMoveOnRetry:
+    "No problem — tell me any other super to add, or say \"move on\" and we'll continue.",
 } as const;
 
 function quote(fundName: string): string {
@@ -142,6 +153,28 @@ export function advanceSuperScript({
       : 0;
   const forceAdvance = retriesIfSameStep > MAX_RETRIES_PER_STEP;
 
+  // Hydration entry — the draft already had super accounts and the
+  // agent acknowledged them. The user's reply either adds more (fall
+  // through to the normal flow) or signals "move on" (→ recap).
+  if (state.step === 'REVIEWING_HYDRATED' && !extractedAnything) {
+    if (llmCouldNotExtract && !forceAdvance) {
+      return {
+        state: {
+          step: 'REVIEWING_HYDRATED',
+          staged: merged,
+          retriesOnCurrentStep: retriesIfSameStep,
+        },
+        agentNextMessage: SUPER_AGENT_COPY.hydratedMoveOnRetry,
+        showRecap: false,
+      };
+    }
+    return {
+      state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
+      agentNextMessage: null,
+      showRecap: true,
+    };
+  }
+
   if (hasSuper === false) {
     return {
       state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
@@ -188,7 +221,10 @@ export function advanceSuperScript({
 
   const incompleteIdx = firstIncompleteIndex(accounts);
   if (incompleteIdx === -1) {
-    if (state.step === 'ASKING_MORE' && newFields.superAccounts === undefined) {
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.superAccounts === undefined
+    ) {
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
         agentNextMessage: null,
@@ -232,10 +268,30 @@ export function advanceSuperScript({
   };
 }
 
-export function bootstrapSuperConversation(): {
+/**
+ * First-message bootstrap for the Super topic.
+ *
+ * When `draft` already contains super accounts (entered in form mode),
+ * the agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
+ */
+export function bootstrapSuperConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: SuperScriptState;
 } {
+  const hydration = hydrateSuperFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [SUPER_AGENT_COPY.intro],
     nextState: {

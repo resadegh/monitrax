@@ -29,6 +29,8 @@ import type {
   PropertiesFields,
   PropertyDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydratePropertiesFromDraft } from './draftHydration';
 
 export type PropertiesScriptStep =
   | 'INTRO'
@@ -37,6 +39,10 @@ export type PropertiesScriptStep =
   | 'ASKING_PROPERTY_VALUE'
   | 'ASKING_PROPERTY_LOAN'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had properties, so the agent
+  // acknowledged them and is asking whether to add more or move on.
+  // Behaves like ASKING_MORE once the user replies.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -258,8 +264,12 @@ export function advancePropertiesScript({
   if (incompleteIdx === -1) {
     // All staged properties complete. Ask if there are more, OR advance
     // to recap if the user already signaled "no more" (i.e. they're now
-    // in ASKING_MORE step + the latest reply didn't add a property).
-    if (state.step === 'ASKING_MORE' && newFields.properties === undefined) {
+    // in ASKING_MORE / REVIEWING_HYDRATED step + the latest reply didn't
+    // add a property).
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.properties === undefined
+    ) {
       // User answered "no more" or equivalent → recap.
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
@@ -347,11 +357,28 @@ export function advancePropertiesScript({
  * First-message bootstrap — returns the agent's intro for the
  * Properties topic. Called once when the orchestrator transitions
  * from Household → Properties.
+ *
+ * When `draft` already contains properties (entered in form mode),
+ * the agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
  */
-export function bootstrapPropertiesConversation(): {
+export function bootstrapPropertiesConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: PropertiesScriptState;
 } {
+  const hydration = hydratePropertiesFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [PROPERTIES_AGENT_COPY.intro],
     nextState: {
