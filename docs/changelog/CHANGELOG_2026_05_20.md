@@ -430,3 +430,40 @@ Branch: `claude/chat-ai-model-upgrade-NL4XV`
 ### Follow-up (not in this PR)
 
 A natural-answer / count-handling improvement (e.g. "yes 6 properties" — the user gives a count, but the properties schema has no count field and every entry needs a name) is a separate chat-script + schema change. The Sonnet upgrade alone makes the extraction far more capable; the count-handling refinement is queued.
+
+---
+
+## Session: Phase 12 Track F — F-reconcile-handoff (post-onboarding reconciliation handoff)
+
+Branch: `claude/track-f-reconcile-handoff-NL4XV`
+
+### Scope
+
+- **Type:** Feature — the post-onboarding reconciliation handoff. Closes the Track F decision (Reza, 2026-05-20): the wizard NEVER surfaces transaction-reconciled actuals; instead a completion-screen message bridges the user to reconciliation when they imported transactions during the wizard.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4 (budget-vs-actuals invariant + the DECIDED handoff).
+
+### What was done
+
+**`components/onboarding/wizard/steps/ReviewStep.tsx` — handoff card added**
+
+- The wizard's final `ReviewStep` (the confetti / "your TRAIL begins" completion screen) now renders a closing card **only when** the user connected or file-imported accounts during the wizard — `data.accounts.some(a => a.source === 'BASIQ' || a.source === 'IMPORT')`.
+- The signal is already in wizard state (`AccountInput.source`), so the card costs **zero new fetch, no API endpoint, no schema change** — purely presentational.
+- The card explains that real transactions are flowing in, frames the wizard amounts as the *starting budget*, and names `My Budget → Cashflow` (`/cashflow`) as where to see plan vs reality. It never shows an actual figure.
+- **Not a hyperlink** — by design. Navigating away from `ReviewStep` would skip the footer's completion handler (`onComplete` → `onboardingCompleted`). Naming the destination keeps "see plan vs reality" a *deliberate* post-onboarding action.
+- No card for MANUAL-only setups (nothing imported to reconcile against) — matches the §6.4 decision. The "connect your bank" nudge alternative was deliberately not built (different CTA / different page — out of scope for F-reconcile-handoff).
+
+**`.audit/financial-math-baseline.json` — re-keyed**
+
+The ReviewStep edits shifted a pre-existing grandfathered financial-math entry (`summary.annualExpenses + summary.annualLoanRepayments`, an inline metric in `MetricCard`) from line 201 → 221. Regenerated the baseline (`BASELINE_REGENERATE=1`) — only that one entry's line number changed, no entries added/removed (count stays 28). The §835 line-shift pattern.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations (after baseline re-key)
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — header status (F.8 done, F-reconcile-handoff done), §6 table (F.8 → done + new F-reconcile-handoff row), §6.4 "✅ BUILT" implementation note.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.8 merged, F-reconcile-handoff done, remaining F.9 → F.10 → F.11).
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.

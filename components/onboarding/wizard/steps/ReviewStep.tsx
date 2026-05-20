@@ -14,6 +14,17 @@
  *   - "What you'll unlock" section explaining what the dashboard can now do
  *   - Confetti on first render (preserved from PR 2)
  *
+ * Phase 12 Track F — F-reconcile-handoff:
+ *   When the user connected or imported accounts during the wizard
+ *   (`AccountInput.source` is BASIQ or IMPORT), a closing card bridges
+ *   them to reconciliation. The wizard captures the *budget*; imported
+ *   transactions are the *actuals*. The card never surfaces actuals
+ *   itself (Reza decision 2026-05-20 — the wizard stays a clean "set
+ *   your plan" surface); it just makes "see plan vs reality" a
+ *   deliberate next action by naming My Budget → Cashflow. It is NOT a
+ *   hyperlink: navigating away here would skip the footer's completion
+ *   handler. See docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md §6.4.
+ *
  * No data changes. No submission happens here — that's the footer's
  * "Launch dashboard" button, which calls `onComplete` in WizardContainer.
  */
@@ -35,6 +46,7 @@ import {
   Target,
   Activity,
   BarChart3,
+  Scale,
 } from 'lucide-react';
 import { WizardData, calculateSummary } from '../types';
 import { WizardStepShell, WizardChip } from '../primitives';
@@ -113,6 +125,14 @@ export function ReviewStep({ data }: ReviewStepProps) {
     data.expenses.length +
     data.properties.reduce((sum, p) => sum + p.expenses.length, 0) +
     data.assets.reduce((sum, a) => sum + a.expenses.length, 0);
+
+  // F-reconcile-handoff: true when the user connected (Basiq) or
+  // file-imported an account during the wizard. Those accounts already
+  // carry real transactions, so the reconciliation handoff card applies.
+  // MANUAL-only setups get no card (nothing to reconcile against yet).
+  const hasImportedAccounts = data.accounts.some(
+    (a) => a.source === 'BASIQ' || a.source === 'IMPORT',
+  );
 
   const entityItems: Array<{ icon: React.ReactNode; label: string; count: number }> = [
     { icon: <Home className="h-3.5 w-3.5" />, label: 'Properties', count: propertyCount },
@@ -269,6 +289,29 @@ export function ReviewStep({ data }: ReviewStepProps) {
             ))}
           </div>
         </div>
+
+        {/* F-reconcile-handoff — only when accounts were connected / imported */}
+        {hasImportedAccounts && (
+          <div className="rounded-2xl border border-emerald-200/60 dark:border-emerald-800/40 bg-gradient-to-br from-emerald-50/70 to-teal-50/40 dark:from-emerald-900/15 dark:to-teal-900/10 p-5">
+            <div className="mb-2 flex items-center gap-2">
+              <Scale className="h-4 w-4 text-emerald-500" />
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Your real spending is already flowing in
+              </h4>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+              You connected accounts during setup, so your actual transactions are
+              landing automatically. The amounts you just entered are your starting{' '}
+              <span className="font-semibold text-slate-900 dark:text-slate-100">budget</span>.
+              Once you&apos;re in, head to{' '}
+              <span className="font-semibold text-emerald-700 dark:text-emerald-300">
+                My Budget&nbsp;→&nbsp;Cashflow
+              </span>{' '}
+              to see your plan against what&apos;s really happening — and fine-tune
+              from there.
+            </p>
+          </div>
+        )}
 
         <p className="pt-1 text-center text-xs text-slate-500 dark:text-slate-400">
           Click <span className="font-semibold">Start your TRAIL</span> below to meet your Guide — you can

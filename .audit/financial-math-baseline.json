@@ -1,6 +1,6 @@
 {
   "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
-  "generatedAt": "2026-05-20T12:31:42.920Z",
+  "generatedAt": "2026-05-20T21:56:19.224Z",
   "count": 28,
   "entries": [
     {
@@ -167,7 +167,7 @@
     },
     {
       "file": "components/onboarding/wizard/steps/ReviewStep.tsx",
-      "line": 201,
+      "line": 221,
       "pattern": "INLINE_ARITHMETIC",
       "match": "summary.annualExpenses + summary.annualLoanRepayments"
     }
