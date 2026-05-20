@@ -26,6 +26,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Sparkles, Loader2 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { WizardData } from './types';
 
 // Scripted, instant intro for the household step. No LLM — this always
@@ -64,6 +65,13 @@ function buildHouseholdSnapshot(data: WizardData): Record<string, number> {
 }
 
 export function CompanionPanel({ data }: CompanionPanelProps) {
+  // The companion route is authenticated (`withPermission`). The fetch
+  // below MUST carry the Bearer token — a 401 from a tokenless fetch is
+  // read by SessionExpiryHandler as a dead session and logs the user
+  // out. (Tech Debt #20 / PR #798 — "never assume the wrapped fetch
+  // adds the header".)
+  const { token } = useAuth();
+
   const snapshot = useMemo(
     () => buildHouseholdSnapshot(data),
     [data.householdMembers, data.householdPets, data.carsCount],
@@ -79,6 +87,11 @@ export function CompanionPanel({ data }: CompanionPanelProps) {
   useEffect(() => {
     // Nothing entered yet → the scripted intro is enough.
     if (snapshot.memberCount === 0) return;
+    // No auth token yet → skip silently. Fetching the authenticated
+    // companion route without a Bearer token returns 401, which the
+    // session handler reads as a dead session and logs the user out.
+    // The companion is never a dependency — skipping is harmless.
+    if (!token) return;
     // Already reflected on this exact state → skip.
     if (signature === lastReflectedSigRef.current) return;
 
@@ -88,7 +101,10 @@ export function CompanionPanel({ data }: CompanionPanelProps) {
       try {
         const res = await fetch('/api/onboarding/companion', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({ step: 'household', snapshot }),
         });
         const json = (await res.json().catch(() => null)) as
@@ -117,7 +133,7 @@ export function CompanionPanel({ data }: CompanionPanelProps) {
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [signature, snapshot]);
+  }, [signature, snapshot, token]);
 
   return (
     <div className="rounded-2xl border border-indigo-200/60 dark:border-indigo-800/40 bg-gradient-to-br from-indigo-50/80 via-blue-50/50 to-violet-50/40 dark:from-indigo-900/20 dark:via-blue-900/15 dark:to-violet-900/10 p-4 sm:p-5">

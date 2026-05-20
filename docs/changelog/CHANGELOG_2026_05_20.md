@@ -511,3 +511,29 @@ New design doc `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` — probl
 ### Notes
 
 G.0 is deliberately household-only — a deployable proof of the concept for Reza to evaluate before G.1 rolls the companion to all 12 steps. The standalone chat (`ConversationalSetup`, the 8 script state-machines, the mode-selector) is **not** touched in G.0 — its removal is G.2.
+
+---
+
+## Session: Phase 12 Track G — G.0 HOTFIX (companion fetch logged the user out)
+
+Branch: `claude/track-g-companion-auth-hotfix-NL4XV`
+
+### Changes Made
+
+- **Type**: Fix (production hotfix).
+- **Scope**: `components/onboarding/wizard/CompanionPanel.tsx`.
+- **Root cause**: The G.0 `CompanionPanel` fetch to `/api/onboarding/companion` shipped **without an `Authorization: Bearer` header**. The route is `withPermission('settings.write')`, so a tokenless request returns **401**. `SessionExpiryHandler` interprets any 401-from-a-tokenless-fetch as a dead session and **logs the user out**. The household step pre-loads the user's existing household members on open (`readHousehold()`), so `memberCount > 0` immediately → the companion's reflection fired ~2.2s after the step opened → 401 → logout. Reza hit this every time on PROD. This is the same class as PR #798 / Tech Debt #20 ("never assume the wrapped `fetch` adds the header").
+- **Solution**: `CompanionPanel` now reads `token` from `useAuth()` (the canonical onboarding pattern — `HouseholdStep`, `ConversationalSetup` and the `*Sync.ts` layers all do this) and (a) sends `Authorization: Bearer ${token}` on the fetch, (b) skips the reflection entirely while `token` is null — so the route is never hit unauthenticated. The companion is never a dependency, so skipping is harmless.
+
+### Files Modified
+
+- `components/onboarding/wizard/CompanionPanel.tsx` — `useAuth()` token; `Authorization` header on the fetch; `if (!token) return` guard; `token` added to the effect deps.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+
+### Lesson
+
+A new client→API fetch is never complete until it carries the Bearer token. The wrapped `window.fetch` does NOT auto-inject it outside admin surfaces. This should have been caught in G.0 review — added to the mental checklist for G.1 (every step's companion fetch).
