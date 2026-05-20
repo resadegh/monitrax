@@ -9,12 +9,19 @@
  * actions on iOS — utility affordances belong in the header bar
  * (Maps / Stocks / Settings pattern).
  *
- * Per CLAUDE.md §0 designer lens: AI chat trigger now sits
- * adjacent to `<HelpDrawerButton />` in the top-right of the
- * dashboard chrome. Two utility icons in a row — same h-9 / w-9
- * size, same warm-ivory glass treatment, same ring + shadow.
- * Reads as a unified "ask for help" cluster rather than two
- * competing attention vacuums.
+ * Per CLAUDE.md §0 designer lens: AI chat trigger sits in the
+ * top-right dashboard-chrome utility cluster — three icons in a
+ * row, left-to-right `💬 feedback · 🤖 AI · ? help` — all h-9 /
+ * w-9, same warm-ivory glass treatment, same ring + shadow. Reads
+ * as a unified "ask for help" cluster rather than competing
+ * attention vacuums.
+ *
+ * Right-edge offsets are coordinated across the THREE separate
+ * components (no shared container): help right-3/4/6, AI
+ * right-14/16/[4.5rem], feedback right-[6.25rem]/28/[7.5rem].
+ * If you move one, check the other two — see the FeedbackButton.tsx
+ * header for the full table. (2026-05-20: feedback + AI previously
+ * collided at the same offset; feedback moved to the third slot.)
  *
  * Per CLAUDE.md §12.3: panel composition unchanged — same
  * `<AiAdvisorPanel />`, same conversation lifecycle. Only the
