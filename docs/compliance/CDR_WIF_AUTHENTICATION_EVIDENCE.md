@@ -231,19 +231,41 @@ This decision is revisitable. The trigger conditions are:
 3. **A Cloud SQL connection-attempt anomaly is observed** in
    Cloud Logging.
 
-When any of those triggers fires, the migration path is:
+> ⚠️ **WARNING — the migration path below is FLAWED. DO NOT FOLLOW IT.**
+> §10 research on 2026-05-20 established two facts that invalidate it:
+>
+> 1. **The runtime Cloud SQL Connector bypasses `authorized-networks`
+>    entirely** (verified against Google's Cloud SQL documentation —
+>    the Auth Proxy / Connector authenticates via IAM + an ephemeral
+>    Admin-API cert, and is not subject to the IP allowlist). So
+>    `0.0.0.0/0` provides ZERO runtime attack surface, and the Vercel
+>    Static IP add-on this path proposes solves nothing (it would also
+>    only cover runtime function egress, not the build pipeline).
+> 2. **`0.0.0.0/0` is load-bearing for the deploy pipeline.** The
+>    `vercel-build` script runs `prisma migrate deploy` +
+>    `seed:feature-flags` via a *direct* `DATABASE_URL` connection
+>    (Prisma's migration engine does not use the Connector), and those
+>    run on Vercel build runners with dynamic, un-whitelistable IPs.
+>    Replacing `0.0.0.0/0` with a single static IP would make every
+>    Vercel deploy's `prisma migrate deploy` step fail.
+>
+> **The real security task is eliminating the build-time `DATABASE_URL`
+> password — NOT restricting the network.** The correct migration path
+> is to move `prisma migrate deploy` into a dedicated IAM-authenticated
+> Cloud Run Job that uses the Cloud SQL Auth Proxy (no password, no
+> `0.0.0.0/0` dependency). That is a ~1-2 day infra PR, not a 15-minute
+> config change. Tracked in `IMPLEMENTATION_PLAN.md` Up Next #2.
+> This section will be rewritten when that work is scheduled.
 
-1. Enable Vercel Static IP add-on for the `syd1` region (~5 min
-   in Vercel dashboard).
-2. Note the assigned static IP.
-3. `gcloud sql instances patch monitrax-db-prod
-   --project=monitrax-479700
-   --authorized-networks="vercel-syd1=<STATIC_IP>"` (replaces
-   the `0.0.0.0/0` entry; ~30s instance change).
-4. Verify `/api/health` still returns 200.
-5. Update this section to reflect the network-restricted state.
+~~When any of those triggers fires, the migration path is:~~
 
-Estimated time end-to-end: 15 minutes.
+~~1. Enable Vercel Static IP add-on for the `syd1` region (~5 min in Vercel dashboard).~~
+~~2. Note the assigned static IP.~~
+~~3. `gcloud sql instances patch monitrax-db-prod --authorized-networks="vercel-syd1=<STATIC_IP>"`.~~
+~~4. Verify `/api/health` still returns 200.~~
+~~5. Update this section to reflect the network-restricted state.~~
+
+~~Estimated time end-to-end: 15 minutes.~~ — **superseded by the warning above (2026-05-20).**
 
 ### How this is documented in GCP
 
