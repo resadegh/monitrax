@@ -146,7 +146,23 @@ async function buildConnectorPrisma(): Promise<PrismaClient> {
       }
       return token;
     },
-    max: Number(process.env.CLOUD_SQL_POOL_MAX ?? 5),
+    // Per-warm-instance connection ceiling. Default 2 (down from 5 on
+    // 2026-05-20 after a `db-g1-small` instance hit Postgres error 53300
+    // — "remaining connection slots are reserved" — when concurrent
+    // Stackdriver uptime probes + browser activity + a wave of cold
+    // starts together pushed total open connections past the instance's
+    // `max_connections` limit. Math: ~10 warm instances × 5 conns each =
+    // ~50 simultaneous holders, which exceeds the previous default
+    // `max_connections` of ~25 on `db-g1-small`. With pool max=2 the
+    // worst-case holder count drops to ~20, well below the new
+    // `max_connections=200` ceiling. Workload analysis: typical routes
+    // do 1-3 sequential Prisma calls; routes doing parallel reads via
+    // `Promise.all` will queue briefly past 2 in-flight but never
+    // block forever (the pool releases as queries complete).
+    //
+    // Override via `CLOUD_SQL_POOL_MAX` env var for special cases
+    // (e.g. a heavy parallel-read job that needs more headroom).
+    max: Number(process.env.CLOUD_SQL_POOL_MAX ?? 2),
   });
 
   const adapter = new PrismaPg(pool);
