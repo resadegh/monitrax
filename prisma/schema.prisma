@@ -394,6 +394,15 @@ enum AuditAction {
   INVESTMENT_CREATED
   INVESTMENT_UPDATED
   INVESTMENT_DELETED
+
+  // Phase 12 Track F.6 (Onboarding two-way sync — superannuation domain).
+  // The super API (/api/tax/super [+ /[id]]) became the wizard's SSOT
+  // write boundary for `SuperannuationAccount`, so every super-account
+  // write is now audited per CLAUDE.md §12.5. Metadata carries booleans
+  // only — no CDR/financial values (§13.3).
+  SUPER_CREATED
+  SUPER_UPDATED
+  SUPER_DELETED
 }
 
 enum AuditStatus {

@@ -9,6 +9,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { TaxEngine } from '@/lib/tax-engine';
 import { getCurrentFinancialYear, SuperContributionType } from '@/lib/tax-engine/types';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 // Type for super account with contributions
 interface SuperAccountWithContributions {
@@ -266,6 +267,17 @@ export const POST = withPermission('income.write', async (request, auth) => {
         nonConcessionalCap: config.nonConcessionalCap,
         investmentOption,
       },
+    });
+
+    // Audit every state-changing write (CLAUDE.md §12.5). This route is the
+    // wizard's SSOT write boundary for super accounts (Track F.6). No
+    // CDR/financial values in metadata (§13.3).
+    void createAuditLog({
+      userId,
+      action: 'SUPER_CREATED',
+      status: 'SUCCESS',
+      entityType: 'SuperannuationAccount',
+      entityId: superAccount.id,
     });
 
     return NextResponse.json({

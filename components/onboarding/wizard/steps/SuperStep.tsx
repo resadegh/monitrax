@@ -1,10 +1,28 @@
 'use client';
 
 /**
- * SuperStep — Phase 12 PR 3b
+ * SuperStep — Phase 12 PR 3b + Track F.6 two-way sync
  *
- * Dedicated step for superannuation accounts. Captures the **minimum
- * viable** fields per the plan doc §3 row A decision:
+ * Dedicated step for superannuation accounts.
+ *
+ * ============================================================================
+ * TRACK F.6 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.6 this step staged super accounts into the `WizardData` draft
+ * blob, written once at `/api/onboarding/bulk-create`. F.6 makes the step
+ * read + write the real `SuperannuationAccount` table directly via the
+ * super API (`/api/tax/super` + the new `/api/tax/super/[id]`):
+ *   - ON OPEN  — `readSuper()` loads the real table; the step merges it
+ *     with any unsynced in-session account.
+ *   - ON CONTINUE / BACK — the registered `commit` diffs + `syncSuper()`
+ *     writes the delta (create / update / hard-delete), idempotent on
+ *     re-entry.
+ *
+ * See `lib/onboarding/superSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.6.
+ *
+ * Captures the **minimum viable** fields per the plan doc §3 row A
+ * decision:
  *
  *   - `name` — what the user calls the account ("My Super")
  *   - `fundName` — free-text fund name ("AustralianSuper")
@@ -23,9 +41,9 @@
  * Docs: docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md §3 row A
  */
 
-import React from 'react';
-import { Shield, Plus, Trash2 } from 'lucide-react';
-import { WizardData, SuperAccountInput, generateId } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { Shield, Plus, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { WizardData, SuperAccountInput, generateId, type StepCommitFn } from '../types';
 import {
   WizardStepShell,
   WizardField,
@@ -33,6 +51,16 @@ import {
   WizardAddButton,
 } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
+import {
+  readSuper,
+  syncSuper,
+  snapshotToWizardSuper,
+  wizardSuperToSnapshot,
+  isPersistedId,
+  EMPTY_SUPER_SNAPSHOT,
+  type SuperSnapshot,
+} from '@/lib/onboarding/superSync';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -122,9 +150,82 @@ function SuperCard({ account, onUpdate, onRemove }: SuperCardProps) {
 interface SuperStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.6: register an async commit with the container. The
+   * container awaits it before advancing — it writes the super accounts to
+   * the real `SuperannuationAccount` table. Optional so the step still
+   * renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function SuperStep({ data, onUpdate }: SuperStepProps) {
+export function SuperStep({ data, onUpdate, registerStepCommit }: SuperStepProps) {
+  const { token } = useAuth();
+
+  // ---- Phase 12 Track F.6: real-table sync state ---------------------
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<SuperSnapshot>(EMPTY_SUPER_SNAPSHOT);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real `SuperannuationAccount` table on step open ------
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readSuper(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realAccounts = snapshotToWizardSuper(snapshot);
+        const unsynced = dataRef.current.superAccounts.filter((s) => !isPersistedId(s.id));
+        onUpdate({ superAccounts: [...realAccounts, ...unsynced] });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your super. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container ------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your super — please wait a moment.');
+      }
+      const current = wizardSuperToSnapshot(dataRef.current.superAccounts);
+      const result = await syncSuper(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the real table, keeping any in-session card still
+      // incomplete (no real id, no fund name, 0 balance) so a half-filled
+      // card the user is working on isn't discarded on a Back navigation.
+      const stillUnsynced = dataRef.current.superAccounts.filter(
+        (s) => !isPersistedId(s.id) && !s.fundName.trim() && !(s.currentBalance > 0),
+      );
+      onUpdate({
+        superAccounts: [...snapshotToWizardSuper(result.snapshot), ...stillUnsynced],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
+
   const addSuper = () => {
     onUpdate({ superAccounts: [...data.superAccounts, createEmptySuperAccount()] });
   };
@@ -149,6 +250,24 @@ export function SuperStep({ data, onUpdate }: SuperStepProps) {
       title="Superannuation"
       subtitle="Your retirement future. Super is a key part of the Invest stage on your TRAIL."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking (Phase 12 Track F.6). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your super…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {data.superAccounts.length > 0 && (
         <div className="space-y-3">
           {data.superAccounts.map((account) => (

@@ -549,7 +549,17 @@ export function WizardContainer({
       case 'super':
         return (
           <div key={currentStep.id} className={animationClass}>
-            <SuperStep data={data} onUpdate={handleUpdate} />
+            {/*
+             * Phase 12 Track F.6: SuperStep reads + writes the real
+             * `SuperannuationAccount` table. It registers an async commit
+             * via `registerStepCommit`; the container awaits it on
+             * Continue / Back / progress-jump.
+             */}
+            <SuperStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
           </div>
         );
       case 'assets':

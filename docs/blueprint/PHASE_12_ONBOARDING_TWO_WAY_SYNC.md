@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 (debts) ✅ DONE (#838) · F.5 (investments) 🟡 IN PROGRESS 2026-05-20.
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) 🟡 IN PROGRESS 2026-05-20.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -121,8 +121,9 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.2~~ | ✅ **DONE 2026-05-20 (PR #836)** — Properties domain. **Scope: the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1). `lib/onboarding/propertiesSync.ts` read/diff/write layer + 18 idempotency tests; 3 `PROPERTY_*` `AuditAction` values + migration. FORM step (`PropertiesStep`) full two-way sync; chat property topic deferred (§6.2). |
 | ~~F.3~~ | ✅ **DONE 2026-05-20 (PR #837)** — Accounts domain. `lib/onboarding/accountsSync.ts` read/diff/write layer + 17 idempotency tests; 3 `ACCOUNT_*` `AuditAction` values + migration. FORM step (`AccountsStep`) full two-way sync for MANUAL accounts; **BASIQ / IMPORT accounts read-only — never written by the sync** (see §6.3). Offset→loan link handled server-side in `/api/accounts`. |
 | ~~F.4~~ | ✅ **DONE 2026-05-20 (PR #838)** — Debts domain (standalone non-property loans — car / student / personal / business). `lib/onboarding/debtsSync.ts` read/diff/write layer + 11 idempotency tests. **No schema change** — the `/api/loans` routes already gained audit + relaxed validation in F.2. FORM step (`DebtsStep`) full two-way sync. CAR→vehicle link deferred (see §6.4). |
-| **F.5** | 🟡 **IN PROGRESS 2026-05-20** — Investments domain (the `InvestmentAccount` + `InvestmentHolding` aggregate, mirroring F.2's property aggregate). `lib/onboarding/investmentsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `INVESTMENT_*` `AuditAction` values + migration. FORM step (`InvestmentsStep`) full two-way sync. See §6.5. |
-| **F.6 – F.8** | One PR each for super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
+| ~~F.5~~ | ✅ **DONE 2026-05-20 (PR #839)** — Investments domain (the `InvestmentAccount` + `InvestmentHolding` aggregate, mirroring F.2's property aggregate). `lib/onboarding/investmentsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `INVESTMENT_*` `AuditAction` values + migration. FORM step (`InvestmentsStep`) full two-way sync. See §6.5. |
+| **F.6** | 🟡 **IN PROGRESS 2026-05-20** — Superannuation domain (`SuperannuationAccount` — a flat entity, F.3-shaped). `lib/onboarding/superSync.ts` read/diff/write layer + 11 idempotency tests; 3 `SUPER_*` `AuditAction` values + migration; new `/api/tax/super/[id]` route (PUT + DELETE — the parent route had GET + POST only). FORM step (`SuperStep`) full two-way sync. See §6.6. |
+| **F.7 – F.8** | One PR each for assets, income/expenses — replicate the `*Sync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -285,6 +286,26 @@ core + nested holdings, and writes via `/api/investments/accounts` +
   post-sync) `data.investments[0].id` instead of this route's own creates.
 
 Chat investments topic deferred (alongside the other chat topics).
+
+### 6.6 F.6 scope — superannuation
+
+`SuperannuationAccount` is a **flat entity** — F.6 mirrors the F.3
+accounts layer (the simplest shape). `lib/onboarding/superSync.ts` reads
++ writes the three minimum-viable wizard fields (`name` / `fundName` /
+`currentBalance`); the many other `SuperannuationAccount` columns (member
+number, tax components, contribution caps, …) keep their schema defaults
+and are filled from a future Settings → Retirement surface — F.6's
+update path is a partial update that never touches them.
+
+**New per-id route.** The super API (`/api/tax/super`) had GET + POST
+only. F.6 adds **`/api/tax/super/[id]`** with PUT + DELETE
+(ownership-guarded, audited) so the step can update + hard-delete. Audit
+logging (`SUPER_CREATED/UPDATED/DELETED`) is added to POST + the new
+PUT/DELETE.
+
+**Quality guard:** an unpersisted account with no fund name AND a 0
+balance is dropped (incomplete in-session card; matches `bulk-create`'s
+skip). `bulk-create` §4a → no-op.
 
 ---
 
