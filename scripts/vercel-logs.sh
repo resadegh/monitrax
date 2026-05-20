@@ -70,23 +70,50 @@ curl_api() {
   curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" "$full_url"
 }
 
+# Aligns tab-separated stdin into padded columns. Portable replacement
+# for `column -t` — the BSD/util-linux `column` binary is NOT present in
+# the Claude Code Web sandbox (only `awk` is). Handles variable column
+# counts per row (e.g. the runtime command's single-line "no logs"
+# message) and never pads the final column, so long free-text fields
+# like log messages don't get trailing whitespace.
+align_tsv() {
+  awk -F'\t' '
+    {
+      nf[NR] = NF
+      for (i = 1; i <= NF; i++) {
+        cell[NR, i] = $i
+        if (length($i) > w[i]) w[i] = length($i)
+      }
+    }
+    END {
+      for (r = 1; r <= NR; r++) {
+        line = ""
+        for (i = 1; i <= nf[r]; i++) {
+          if (i < nf[r]) line = line sprintf("%-*s  ", w[i], cell[r, i])
+          else line = line cell[r, i]
+        }
+        print line
+      }
+    }'
+}
+
 case "$cmd" in
   list|list-deployments)
     # Most-recent 10 deployments for the project. Status column tells you
     # if a deploy is ERROR / BUILDING / READY / CANCELED.
-    curl_api "/v6/deployments?app=${PROJECT_NAME}&limit=10" \
-      | jq -r '
-          .deployments[] |
-          [
-            (.uid // "-"),
-            (.state // "-"),
-            (.target // "preview"),
-            (.url // "-"),
-            ((.created // 0) | (./1000) | strftime("%Y-%m-%d %H:%M:%S"))
-          ] | @tsv' \
-      | column -t -s $'\t' \
-      | sed '1i\
-ID\tSTATE\tTARGET\tURL\tCREATED'
+    {
+      printf 'ID\tSTATE\tTARGET\tURL\tCREATED\n'
+      curl_api "/v6/deployments?app=${PROJECT_NAME}&limit=10" \
+        | jq -r '
+            .deployments[] |
+            [
+              (.uid // "-"),
+              (.state // "-"),
+              (.target // "preview"),
+              (.url // "-"),
+              ((.created // 0) | (./1000) | strftime("%Y-%m-%d %H:%M:%S"))
+            ] | @tsv'
+    } | align_tsv
     ;;
 
   build)
@@ -102,7 +129,7 @@ ID\tSTATE\tTARGET\tURL\tCREATED'
             (.type // "?"),
             (.text // .info.text // (.payload.text // .payload | tostring))
           ] | @tsv' \
-      | column -t -s $'\t'
+      | align_tsv
     ;;
 
   runtime)
@@ -129,7 +156,7 @@ ID\tSTATE\tTARGET\tURL\tCREATED'
               (.message // .requestPath // "")
             ] | @tsv
           end' \
-      | column -t -s $'\t'
+      | align_tsv
     ;;
 
   latest-runtime)
