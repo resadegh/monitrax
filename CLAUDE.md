@@ -466,6 +466,7 @@ If work is incomplete, document:
 - [ ] Review affected codebase areas
 - [ ] Create session todo list
 - [ ] Create feature branch
+- [ ] **§17.1 — Confirm Vercel access (`./scripts/vercel-logs.sh project`) + note prod baseline (`./scripts/vercel-logs.sh list`)** if the session involves a PR or prod work
 
 ### Post-Change Checklist
 - [ ] All changes committed with proper messages
@@ -476,8 +477,15 @@ If work is incomplete, document:
 - [ ] Build passes
 - [ ] Lint passes
 - [ ] PR created
+- [ ] **§17.4 — `mcp__github__subscribe_pr_activity` called on the new PR immediately after creation**
 - [ ] PR URL provided to user
 - [ ] Summary provided to user
+
+### Post-Merge Checklist (§17.2 — non-negotiable when ANY PR merges during a session)
+- [ ] Within ~5 min of merge: `./scripts/vercel-logs.sh list` → confirm the new deploy reached `READY`
+- [ ] If deploy state is `ERROR`: pull `build` logs, surface diagnosis + proposed fix to user (don't wait for user to notice)
+- [ ] If deploy state is `READY`: pull `latest-runtime`, compare error patterns to pre-merge baseline (§17.1.2)
+- [ ] Report verification result to user — even if "all clean, no new errors". Paste relevant log excerpts as evidence.
 
 ---
 
@@ -1545,6 +1553,93 @@ Documented here so future sessions recognise the pattern:
 
 ---
 
+## PART 17: LIVE PRODUCTION MONITORING DISCIPLINE — MANDATORY
+
+> **Every coding session that opens, watches, or merges a PR MUST stay live on the resulting Vercel deployment.** No more "the user reports a bug → I guess at the cause → we spend an hour screenshotting." The agent has direct access to Vercel build + runtime logs via the helper script committed at `scripts/vercel-logs.sh`. It is a process violation to ship a PR without confirming the resulting deploy is healthy.
+>
+> This protocol exists because Reza explicitly stated (2026-05-20):
+>
+> *"add to the CLAUDE.md a critical instruction for each command so going forward you will first subscribe to the PRs in Vercel for each session and then check the logs as you go. this way I will have you always live on PR merges and logs."*
+>
+> Originating context: a multi-hour Cloud SQL TLS-handshake + connection-pool exhaustion firefight where the operator had to screenshot Vercel logs back to the agent dozens of times. The fix landed (PRs #819 / #820 / #822) but the lesson is permanent: **the agent should read prod logs directly, not by proxy.**
+
+### 17.1 Session-startup ritual (every session with a PR or prod work)
+
+When a session involves an active PR, a recent merge, or any prod-touching work, the agent MUST:
+
+1. **Confirm Vercel access early.** Run `./scripts/vercel-logs.sh project` in Bash. Expected: project metadata returns. If it fails with `Host not in allowlist` or `VERCEL_TOKEN env var not set`, surface that to the user immediately — the live-monitoring path is broken until they fix the env var / network policy (see `docs/operational/runbooks/12_CLAUDE_CODE_MCP_SETUP.md`).
+2. **Identify the prod baseline.** Run `./scripts/vercel-logs.sh list` and note the current production deployment ID + state. This is the "before" reference for any change made this session.
+3. **Subscribe to active PR events.** For any PR the agent is working on, has opened, or the user mentions as relevant: call `mcp__github__subscribe_pr_activity` immediately. PR events (CI status, comments, reviews, merge) arrive as live notifications and the agent acts on them per CLAUDE.md "PR Activity Events" rules at the top of the runtime prompt.
+
+For purely doc-only / planning sessions with no PR or prod implications, this ritual is optional — but if in doubt, run it anyway. It's three Bash calls.
+
+### 17.2 Post-merge verification (NON-NEGOTIABLE)
+
+When ANY of the following happens during a session:
+- The agent merges a PR via `mcp__github__merge_pull_request`
+- The user reports they merged a PR the agent opened
+- A subscribed PR's events show a merge
+
+The agent MUST, within ~5 minutes of the merge, run this sequence:
+
+1. `./scripts/vercel-logs.sh list` — find the new production deployment for the merge commit. Expected state: `READY`. If still `BUILDING`, wait a minute and re-run.
+2. **If the deploy state is `ERROR`** — pull build logs immediately: `./scripts/vercel-logs.sh build <deployment-url>`. Report the error to the user with the actual log excerpt + a diagnosis + a proposed fix. Do NOT wait for the user to notice.
+3. **If the deploy state is `READY`** — pull recent runtime logs: `./scripts/vercel-logs.sh latest-runtime`. Compare error patterns to the pre-merge baseline (step 17.1.2). New errors introduced by this PR are the agent's responsibility to surface — silence is not consent.
+4. **Report the verification result to the user** in the session, even if it's "all clean, no new errors". The user should know the deploy was checked, not have to ask.
+
+This is the structural fix for the failure mode where the agent ships a PR and the user discovers the regression days later when a real user hits it.
+
+### 17.3 Active-debugging discipline
+
+When the user reports a prod issue ("admin login is throwing 500", "users see error X", "the chat isn't working"), the agent's FIRST action MUST be:
+
+```bash
+./scripts/vercel-logs.sh latest-runtime
+```
+
+Then diagnose from the real log data, not from guessed hypotheses. The screenshot-back-and-forth pattern is **deprecated** — the agent has direct log access and should use it.
+
+Only after reading the logs should the agent propose a fix. If the logs don't reveal the cause:
+- Pull build logs of the latest deploy (`./scripts/vercel-logs.sh build <id>`)
+- Pull older deployment logs to compare against a known-good state (`./scripts/vercel-logs.sh list` → pick the previous deployment → `runtime <id>`)
+- Only then escalate to "I need more context, can you share X"
+
+### 17.4 PR-monitoring subscription protocol
+
+For every PR the agent opens via `mcp__github__create_pull_request`, the agent MUST immediately afterward call `mcp__github__subscribe_pr_activity` on that PR's number. This subscribes to:
+- CI status events (failures the agent should investigate)
+- Reviewer comments (the agent should respond to)
+- Merge events (which trigger the §17.2 post-merge verification automatically)
+
+When the user explicitly asks the agent to stop watching ("you can stop, I'll take it from here", "park this PR for now"), call `mcp__github__unsubscribe_pr_activity` immediately and don't push further changes.
+
+### 17.5 What this protocol is NOT
+
+- **Not a license to spam log calls.** Use the helper script when it answers a real question — e.g. post-merge verification, active debugging, when an error is reported. Don't poll logs every minute "just in case."
+- **Not a substitute for the user's judgment.** If a deploy looks clean and the user says "actually it's still broken on my screen," trust them — runtime logs can lag, browser caches can serve stale UI. The agent's log read is a data point, not the final word.
+- **Not a security shortcut.** The `VERCEL_TOKEN` is read-only on `monitrax` deployments + logs. The agent CANNOT redeploy, change env vars, or modify infrastructure via this token. Those still require explicit user action via the Vercel dashboard.
+
+### 17.6 Failure modes to recognize + report
+
+| Symptom from the helper script | Likely cause | Agent action |
+|---|---|---|
+| `Host not in allowlist` | Session predates the `Network access = Full` policy change | Tell user — they need to restart in a fresh session |
+| `VERCEL_TOKEN env var not set` | Token missing from cloud env vars | Tell user to provision per `12_CLAUDE_CODE_MCP_SETUP.md` |
+| `403 Forbidden` from API | Token scope too narrow OR expired | Tell user to verify token at `vercel.com/account/tokens` |
+| Empty runtime-logs response | Deploy is older than the 1-day Pro retention window | Surface "no logs in retention window" — not an error per se, but explain |
+| Long delay before `READY` state | Build is genuinely slow (normal sometimes) OR hung (rare) | Wait up to 10 min; beyond that, pull build logs to investigate |
+
+### 17.7 Enforcement
+
+Reviewers (human or future-Claude in a follow-up session) MUST reject any PR that:
+1. Was merged without the §17.2 post-merge verification taking place (check the session changelog for the log-read evidence).
+2. Closes a prod issue without the §17.3 first-action discipline (the diagnosis must reference real log content, not guesses).
+3. Opens a PR without the §17.4 subscription call immediately afterward.
+
+The agent's session changelog should contain log excerpts as evidence — not just "I checked the logs and it was fine." Paste the relevant lines so the audit trail is real.
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -1566,5 +1661,5 @@ Documented here so future sessions recognise the pattern:
 
 ---
 
-*Last Updated: 2026-05-02*
-*Protocol Version: 1.9 — Part 0 added (Advisory Mindset: financial adviser / designer / architect / behaviour psychologist) + Part 16 added (Design, Config & Support-Doc Sync Protocol) + §3.1 matrix expanded to cover infra / Cloud SQL / identity / deployment / security / runbook / policy / strategic decisions + Pre/Post-change checklists updated.*
+*Last Updated: 2026-05-20*
+*Protocol Version: 2.0 — Part 17 added (Live Production Monitoring Discipline: session-startup Vercel access check + post-merge log-verification + PR subscription protocol) + Pre/Post-Change + new Post-Merge checklist in Part 9. Driven by the 2026-05-20 firefight where the operator screenshotted Vercel logs to the agent for hours during a Cloud SQL TLS-handshake + connection-pool exhaustion debug — fixed structurally via `scripts/vercel-logs.sh` (PR #822) and this protocol making its use non-optional. Previous: 1.9 (Part 0 Advisory Mindset + Part 16 Doc-Sync, 2026-05-02).*
