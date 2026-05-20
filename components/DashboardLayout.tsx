@@ -144,48 +144,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [shouldShowWelcome, pathname, showWizard]);
 
-  // Phase 12 twin-track (C.1): auto-route incomplete users from
-  // /dashboard to the new /onboarding wizard. Triggers only when:
-  //   • the user is on /dashboard (not a sub-page — we never redirect
-  //     from /dashboard/properties, /dashboard/accounts, etc.),
-  //   • onboardingState has loaded (not null),
-  //   • onboarding is not marked complete,
-  //   • the user has no real data yet,
-  //   • the user has EITHER dismissed the welcome modal before OR
-  //     has a saved draft (i.e. they've seen the greeting once or
-  //     have in-progress setup to resume),
-  //   • the `?legacy=wizard` support/QA escape hatch is NOT active.
+  // Phase 12 Track F (2026-05-20): the auto-route-incomplete-users-from-
+  // /dashboard-to-/onboarding effect was REMOVED here. It made the
+  // wizard inescapable — any incomplete-onboarding user with a saved
+  // draft who landed on /dashboard (including via the wizard's own
+  // "Exit" button) was immediately `router.push`'d back to /onboarding.
+  // An infinite loop with no way out.
   //
-  // Truly fresh users (no draft, no dismiss flag) still see the
-  // welcome modal first, click "Start setup", and land on the same
-  // wizard via handleStartSetup. This effect covers the "returning
-  // incomplete user" case where the welcome modal has already been
-  // dismissed. Users who opt out of the wizard entirely go to
-  // /dashboard/setup via the "Start over" button (which clears the
-  // draft) and the auto-redirect respects hasExistingData.
-  useEffect(() => {
-    if (pathname !== '/dashboard') return;
-    if (!onboardingState) return;
-    if (onboardingState.onboardingCompleted) return;
-    if (onboardingState.hasExistingData) return;
-
-    // Respect the legacy escape hatch: users hitting
-    // /dashboard?legacy=wizard must stay on /dashboard with the
-    // legacy flow for support/QA purposes.
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('legacy') === 'wizard') return;
-    }
-
-    const hasDismissedWelcome =
-      onboardingState.preferences?.dismissedWelcomeModal === true;
-    const hasSavedDraft =
-      onboardingState.draft !== null && onboardingState.draft !== undefined;
-
-    if (hasDismissedWelcome || hasSavedDraft) {
-      router.push('/onboarding');
-    }
-  }, [pathname, onboardingState, router]);
+  // It was also redundant: `<OnboardingResumeBanner>` ("Continue your
+  // TRAIL", with a Resume button) already renders on /dashboard for
+  // exactly the returning-incomplete-user case — gently, visibly, and
+  // dismissable. That banner IS the SSOT affordance for "you have
+  // setup to finish". Forcibly hijacking navigation on top of it was
+  // both user-hostile (traps the user) and a duplicate.
+  //
+  // Returning incomplete users now land on /dashboard, see the resume
+  // banner, and choose for themselves whether to continue setup or
+  // browse the app. Truly fresh users still get the welcome modal.
 
   // Onboarding handlers - all wrapped in try-catch to work even if DB not migrated
   //
