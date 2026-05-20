@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractIncomeLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 export const GET = withPermission('income.read', async (request, auth) => {
     try {
@@ -262,6 +263,19 @@ export const POST = withPermission('income.write', async (request, auth) => {
           frankingCredits: toNumber(frankingCredits),
         },
         include: { property: true, investmentAccount: true },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5). This route is a
+      // wizard SSOT write boundary for property rental income (Phase 12
+      // Track F.2). Generic CREATE action with entityType — F.8 owns the
+      // income/expenses domain. No CDR/financial values in metadata (§13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'CREATE',
+        status: 'SUCCESS',
+        entityType: 'Income',
+        entityId: incomeRecord.id,
+        metadata: { type: incomeRecord.type, hasProperty: !!incomeRecord.propertyId },
       });
 
       return NextResponse.json(incomeRecord, { status: 201 });

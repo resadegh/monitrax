@@ -693,3 +693,28 @@ UI consumers render this via `<BoundaryFootnote citations={...} uncomputed={...}
 
 ---
 
+## **15.8 Entity routes as onboarding write boundaries (Phase 12 Track F)**
+
+Track F makes the existing entity APIs the onboarding wizard's SSOT write
+boundary (replacing the `bulk-create` "write everything at the end" model).
+Two consequences for the property aggregate routes, applied in F.2
+(2026-05-20):
+
+1. **Audit logging.** `/api/properties`, `/api/loans`, `/api/income` and
+   `/api/expenses` (POST + `[id]` PUT/DELETE) now call `createAuditLog()` on
+   every state-changing write (§12.5 / §15.6). Property writes use
+   `PROPERTY_CREATED/UPDATED/DELETED`; loan/income/expense use the generic
+   `CREATE/UPDATE/DELETE` actions with an `entityType`. Metadata carries
+   type/category + booleans only — never CDR/financial values (§13.3).
+2. **Numeric validation accepts 0.** `/api/properties` POST (`purchasePrice`,
+   `currentValue`) and `/api/loans` POST (`minRepayment`,
+   `termMonthsRemaining`) validate these as *present* (`!= null`), not
+   *truthy* — `0` is a legitimate value the wizard's two-way sync can send.
+3. **`/api/properties` reform fields.** POST + PUT now accept + persist the
+   Phase 41E inputs `acquisitionContractDate` / `isNewBuild` /
+   `newBuildEvidence`, applying the cut-over backfill (CLAUDE.md §12.14).
+   Previously only `bulk-create` wrote these — routing wizard property
+   writes through `/api/properties` without this would have dropped them.
+
+---
+

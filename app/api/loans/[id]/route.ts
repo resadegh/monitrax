@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -113,6 +114,16 @@ export const PUT = withPermission<RouteContext>('loan.write', async (request, au
         },
       });
 
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'UPDATE',
+        status: 'SUCCESS',
+        entityType: 'Loan',
+        entityId: loan.id,
+        metadata: { type: loan.type, hasProperty: !!loan.propertyId },
+      });
+
       return NextResponse.json(loan);
     } catch (error) {
       console.error('Update loan error:', error);
@@ -133,6 +144,15 @@ export const DELETE = withPermission<RouteContext>('loan.delete', async (request
 
       await prisma.loan.delete({
         where: { id },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'DELETE',
+        status: 'SUCCESS',
+        entityType: 'Loan',
+        entityId: id,
       });
 
       return NextResponse.json({ message: 'Loan deleted successfully' });

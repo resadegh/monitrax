@@ -2,8 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 type RouteContext = { params: Promise<{ id: string }> };
+
+/**
+ * Phase 41E reform cut-over (CLAUDE.md §12.14): 7:30pm AEST 12 May 2026 =
+ * 2026-05-12T09:30:00Z. Pre-cut-over purchases auto-fill
+ * `acquisitionContractDate := purchaseDate`; post-cut-over keep the
+ * user-confirmed value or null. Reform INPUTS only — no post-reform math.
+ */
+const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
 
 export const GET = withPermission<RouteContext>('property.read', async (request, auth, context) => {
     try {
@@ -240,6 +249,10 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
         purchaseDate,
         currentValue,
         valuationDate,
+        // Phase 41E reform inputs (CLAUDE.md §12.14)
+        acquisitionContractDate,
+        isNewBuild,
+        newBuildEvidence,
         // Location fields (Google Maps)
         latitude,
         longitude,
@@ -257,6 +270,17 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
       const ownershipResult = verifyOwnership(existing, auth.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
 
+      // Phase 41E (§12.14): resolve the regime-determining contract date.
+      const purchaseDateObj = new Date(purchaseDate);
+      const isPostCutOver =
+        !Number.isNaN(purchaseDateObj.getTime()) &&
+        purchaseDateObj.getTime() > REFORM_CUT_OVER_UTC_MS;
+      const resolvedContractDate = acquisitionContractDate
+        ? new Date(acquisitionContractDate)
+        : isPostCutOver
+          ? null
+          : purchaseDateObj;
+
       const property = await prisma.property.update({
         where: { id },
         data: {
@@ -264,9 +288,23 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
           type,
           address,
           purchasePrice,
-          purchaseDate: new Date(purchaseDate),
+          purchaseDate: purchaseDateObj,
           currentValue,
           valuationDate: new Date(valuationDate),
+          // Phase 41E reform inputs — stored, never computed here. Only
+          // written when the caller sent a reform field, so a dashboard
+          // edit that omits them leaves the existing values untouched.
+          ...(acquisitionContractDate !== undefined ||
+          isNewBuild !== undefined ||
+          newBuildEvidence !== undefined
+            ? {
+                acquisitionContractDate: resolvedContractDate,
+                isNewBuild: isPostCutOver ? (isNewBuild ?? null) : null,
+                newBuildEvidence: isPostCutOver
+                  ? (newBuildEvidence ?? null)
+                  : null,
+              }
+            : {}),
           // Location data
           latitude: latitude !== undefined ? (latitude ? parseFloat(latitude) : null) : undefined,
           longitude: longitude !== undefined ? (longitude ? parseFloat(longitude) : null) : undefined,
@@ -275,6 +313,16 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
           state: state !== undefined ? (state || null) : undefined,
           postcode: postcode !== undefined ? (postcode || null) : undefined,
         },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'PROPERTY_UPDATED',
+        status: 'SUCCESS',
+        entityType: 'Property',
+        entityId: property.id,
+        metadata: { type, isPostCutOver },
       });
 
       return NextResponse.json(property);
@@ -297,6 +345,15 @@ export const DELETE = withPermission<RouteContext>('property.delete', async (req
 
       await prisma.property.delete({
         where: { id },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'PROPERTY_DELETED',
+        status: 'SUCCESS',
+        entityType: 'Property',
+        entityId: id,
       });
 
       return NextResponse.json({ message: 'Property deleted successfully' });

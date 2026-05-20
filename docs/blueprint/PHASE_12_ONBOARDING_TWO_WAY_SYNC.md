@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 APPROVED 2026-05-20 — F.0 (design + go/no-go) COMPLETE. F.1 (household domain) ready to start.
+> **Status:** 🟢 IN PROGRESS — F.0 (design + go/no-go) ✅ COMPLETE · F.1 (household) ✅ DONE (PR #831) · F.2 (properties) 🟡 IN PROGRESS 2026-05-20.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -118,12 +118,66 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 |---|---|
 | ~~F.0~~ | ✅ **DONE 2026-05-20** — design doc + Reza go/no-go (approved, recommendations adopted). |
 | ~~F.1~~ | ✅ **DONE 2026-05-20 (PR #831)** — Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Established the per-domain pattern — the reusable `lib/onboarding/householdSync.ts` read/diff/write layer (14 idempotency tests). |
-| **F.2 – F.8** | One PR each for properties, accounts, debts, investments, super, assets, income/expenses — replicate the F.1 `householdSync.ts` pattern. |
+| **F.2** | 🟡 **IN PROGRESS 2026-05-20** — Properties domain. **Scope (Reza decision 2026-05-20): the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1 below). Reusable `lib/onboarding/propertiesSync.ts` read/diff/write layer + idempotency tests; 3 new `PROPERTY_*` `AuditAction` values + migration; `lint:financial-surfaces`-clean. Delivers the FORM step (`PropertiesStep`) full two-way sync; the chat property topic is deferred (see §6.2). |
+| **F.3 – F.8** | One PR each for accounts, debts, investments, super, assets, income/expenses — replicate the F.1/F.2 `*Sync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
 
 Estimated: ~11 PRs (F.0–F.9 core ≈ 1.5–2 weeks; F.10 + F.11 the conversational-depth extension). Each PR independently shippable + testable.
+
+### 6.1 F.2 scope — the whole property aggregate (Reza decision 2026-05-20)
+
+The §4 table maps the Properties domain to the `Property` table alone. F.2
+**widens** that: the wizard's property card captures a `Property` *together
+with* its mortgage `Loan`, its rental `Income` and its property `Expense`s —
+a user thinks of "a property" as one thing. F.2 syncs all four so that
+re-entering the wizard reconfirms ALL of a property's data, not half of it.
+
+Consequence — **F.4 / F.8 scope clarified:**
+
+| Domain PR | Now covers |
+|---|---|
+| **F.2** | `Property` + **property-attached** `Loan` / `Income` / `Expense` |
+| **F.4** | only **standalone** debts (`Loan` with no `propertyId` — car / personal / student / business) |
+| **F.8** | only **general** (non-property) `Income` / `Expense` |
+
+Why this is right, not scope-creep (Reza feedback 2026-05-20): *"if a user
+talks about a mortgage on a property you'll already be updating the loan
+account."* Exactly — the mortgage entered on the property step **is** the
+real `Loan` row; the Debts step and the dashboard read that same row.
+Capture once, appears everywhere. The property step gains a carry-forward
+reminder — *"We've linked this mortgage to [property]. You can fine-tune the
+rate, offset and repayments in the Debts step."* — so the Debts step is a
+continuation, not a surprise re-ask.
+
+F.2 audit actions: `PROPERTY_CREATED/UPDATED/DELETED` for the property
+itself; the property-attached loan/income/expense writes use the generic
+`CREATE/UPDATE/DELETE` actions with an `entityType` — F.4/F.8 own those
+domains and may introduce domain-specific actions later. F.2 adds
+`createAuditLog()` to the property, loan, income and expense entity routes
+(they had none — a pre-existing §12.5 gap this PR closes).
+
+### 6.2 F.2 chat property topic — deferred (F.2-chat)
+
+F.2 migrates the **form** step (`PropertiesStep`) to full two-way sync. The
+**chat** property topic is deliberately left draft-staging for now:
+
+- The chat captures only name / type / value / `hasLoan` — it cannot build a
+  complete `Property` because the required `purchaseDate` is form-mode-only
+  (the form is better at date pickers + Phase 41E reform context).
+- The chat hands off to form mode regardless (ConversationalSetup's topic
+  chain ends in form mode). So the chat stages partial properties into the
+  draft blob; **form mode drains them into the real tables**: the form
+  step's read-on-open MERGES the real-table portfolio with any unsynced
+  synthetic-id draft properties (chat-staged or in-session), so a
+  chat-staged property is never lost — it is created on the next Continue.
+
+This contrasts F.1, where the chat household topic could fully write the
+real tables (household entities have no equivalent required field). A
+follow-up **F.2-chat** migrates the chat property topic once the
+purchaseDate-capture approach is decided (ask it conversationally vs. keep
+the form-mode handoff). Tracked in `IMPLEMENTATION_PLAN.md` Up Next row 0.
 
 ---
 

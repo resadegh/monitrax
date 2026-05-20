@@ -3,6 +3,17 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { createAuditLog } from '@/lib/security/auditLog';
+
+/**
+ * Phase 41E reform cut-over (CLAUDE.md §12.14): 7:30pm AEST 12 May 2026 =
+ * 2026-05-12T09:30:00Z. Same constant `bulk-create` uses. Pre-cut-over
+ * purchases auto-fill `acquisitionContractDate := purchaseDate`
+ * (unambiguously grandfathered); post-cut-over keep the user-confirmed
+ * contract date or null. This route stores reform INPUTS only — no
+ * post-reform math (FW-2: no silent post-reform numbers).
+ */
+const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
 
 export const GET = withPermission('property.read', async (request, auth) => {
     try {
@@ -51,6 +62,10 @@ export const POST = withPermission('property.write', async (request, auth) => {
         purchaseDate,
         currentValue,
         valuationDate,
+        // Phase 41E reform inputs (CLAUDE.md §12.14)
+        acquisitionContractDate,
+        isNewBuild,
+        newBuildEvidence,
         // Location fields (Google Maps)
         latitude,
         longitude,
@@ -60,7 +75,20 @@ export const POST = withPermission('property.write', async (request, auth) => {
         postcode,
       } = body;
 
-      if (!name || !type || !purchasePrice || !purchaseDate || !currentValue || !valuationDate) {
+      // `purchasePrice` / `currentValue` are validated as "present", not
+      // "truthy" — 0 is a legitimate value (a user may not know what they
+      // paid, or an off-the-plan value). The wizard's two-way sync (Track
+      // F.2) can legitimately send 0.
+      if (
+        !name ||
+        !type ||
+        purchasePrice === undefined ||
+        purchasePrice === null ||
+        !purchaseDate ||
+        currentValue === undefined ||
+        currentValue === null ||
+        !valuationDate
+      ) {
         return NextResponse.json(
           { error: 'Missing required fields' },
           { status: 400 }
@@ -68,6 +96,17 @@ export const POST = withPermission('property.write', async (request, auth) => {
       }
 
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+
+      // Phase 41E (§12.14): resolve the regime-determining contract date.
+      const purchaseDateObj = new Date(purchaseDate);
+      const isPostCutOver =
+        !Number.isNaN(purchaseDateObj.getTime()) &&
+        purchaseDateObj.getTime() > REFORM_CUT_OVER_UTC_MS;
+      const resolvedContractDate = acquisitionContractDate
+        ? new Date(acquisitionContractDate)
+        : isPostCutOver
+          ? null // user didn't confirm — engine surfaces the UNCOMPUTED code
+          : purchaseDateObj; // pre-cut-over → grandfathered
 
       const property = await prisma.property.create({
         data: {
@@ -77,9 +116,13 @@ export const POST = withPermission('property.write', async (request, auth) => {
           type,
           address,
           purchasePrice: parseFloat(purchasePrice),
-          purchaseDate: new Date(purchaseDate),
+          purchaseDate: purchaseDateObj,
           currentValue: parseFloat(currentValue),
           valuationDate: new Date(valuationDate),
+          // Phase 41E reform inputs — stored, never computed here.
+          acquisitionContractDate: resolvedContractDate,
+          isNewBuild: isPostCutOver ? (isNewBuild ?? null) : null,
+          newBuildEvidence: isPostCutOver ? (newBuildEvidence ?? null) : null,
           // Location data
           latitude: latitude ? parseFloat(latitude) : null,
           longitude: longitude ? parseFloat(longitude) : null,
@@ -88,6 +131,18 @@ export const POST = withPermission('property.write', async (request, auth) => {
           state: state || null,
           postcode: postcode || null,
         },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5). This route is the
+      // wizard's SSOT write boundary for properties (Phase 12 Track F.2). No
+      // CDR/financial values in metadata (§13.3) — type + booleans only.
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'PROPERTY_CREATED',
+        status: 'SUCCESS',
+        entityType: 'Property',
+        entityId: property.id,
+        metadata: { type, isPostCutOver },
       });
 
       return NextResponse.json(property, { status: 201 });

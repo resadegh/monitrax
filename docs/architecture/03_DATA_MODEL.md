@@ -3884,6 +3884,24 @@ Five additive values for the new account-lifecycle audit trail:
 CDR-safe metadata only via `sanitizeCdrMetadata()` patterns — no
 balances / transactions / payee names in the metadata blobs.
 
+## **N.4 `AuditAction` enum extensions — Phase 12 Track F (onboarding two-way sync)**
+
+Track F makes the entity APIs the onboarding wizard's SSOT write
+boundary, so every wizard-driven entity write is audited (§12.5).
+Additive enum values:
+
+- **F.1 — household** (migration `20260520120000_…_track_f1_household_audit_actions`):
+  `HOUSEHOLD_MEMBER_CREATED/UPDATED/DELETED`,
+  `HOUSEHOLD_PET_CREATED/UPDATED/DELETED`.
+- **F.2 — properties** (migration `20260520140000_…_track_f2_property_audit_actions`):
+  `PROPERTY_CREATED/UPDATED/DELETED`. The property-attached
+  loan/income/expense writes F.2 also makes are audited via the
+  generic `CREATE/UPDATE/DELETE` actions with an `entityType` — F.4
+  (debts) and F.8 (income/expenses) own those domains.
+
+CDR-safe metadata only (§13.3) — type/category + booleans, never
+balances / amounts / addresses.
+
 ---
 
 ## **O. Phase 41E reform 2026-27 — schema additions**
