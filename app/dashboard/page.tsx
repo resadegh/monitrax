@@ -580,80 +580,25 @@ export default function DashboardPage() {
           </div>
         </div>
       ) : isEmpty ? (
-        <div className="space-y-6">
-          {/* Getting Started Card */}
-          <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                Welcome to Your TRAIL
-              </CardTitle>
-              <CardDescription>
-                Your personal financial guide. Start by connecting your bank or adding your data — each step takes you further on your TRAIL.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ol className="space-y-3 text-sm mb-6">
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">1</span>
-                  <span>Add your <strong>properties</strong> (home, investment properties)</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">2</span>
-                  <span>Add your <strong>loans</strong> and link them to properties</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">3</span>
-                  <span>Add your <strong>income sources</strong> and <strong>expenses</strong></span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">4</span>
-                  <span>Track your <strong>investments</strong> (shares, ETFs, managed funds)</span>
-                </li>
-                <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">5</span>
-                  <span>Use tools like <strong>Debt Planner</strong> and <strong>Tax Calculator</strong></span>
-                </li>
-              </ol>
-              {/* Phase 12 v3: primary "Set up Monitrax" CTA routes to
-                  the dedicated /dashboard/setup page that hosts the
-                  Setup Tray + Basiq hero + empty-state tile grid. The
-                  legacy per-entity shortcut buttons remain below as a
-                  secondary option for users who already know what
-                  they want to add first. See
-                  docs/blueprint/PHASE_12_REDESIGN_V3.md §2.1. */}
-              <div className="mb-4">
-                <Link href="/dashboard/setup">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    <Target className="h-4 w-4 mr-2" />
-                    Set up Monitrax
-                  </Button>
-                </Link>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard/properties">
-                  <Button variant="outline">
-                    <Home className="h-4 w-4 mr-2" />
-                    Add Property
-                  </Button>
-                </Link>
-                <Link href="/dashboard/loans">
-                  <Button variant="outline">
-                    <Banknote className="h-4 w-4 mr-2" />
-                    Add Loan
-                  </Button>
-                </Link>
-                <Link href="/dashboard/investments/accounts">
-                  <Button variant="outline">
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    Add Investment
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-
-        </div>
+        /* Phase 12 Track F (2026-05-20): the legacy "Welcome to Your
+           TRAIL" getting-started card was REMOVED here. It was a
+           redundant onboarding/setup surface — a numbered 5-step list
+           + a "Set up Monitrax" button + Add Property/Loan/Investment
+           shortcuts. Redundant because:
+             - the canonical setup flow is the /onboarding wizard
+               (form + AI chat),
+             - `<OnboardingResumeBanner>` ("Continue your TRAIL", with
+               a Resume button) already renders layout-level on the
+               dashboard for any user mid-onboarding,
+             - `<OnboardingWelcomeModal>` greets genuinely fresh users,
+             - and its "Set up Monitrax" CTA pointed at the retired
+               `/dashboard/setup` route (PR #830).
+           "Mark and hide" per Reza — rendered nothing here, card code
+           deleted. Tracked in IMPLEMENTATION_PLAN.md Dead Code backlog.
+           A future pass can drop the `isEmpty` derivation entirely +
+           let empty users fall through to the real dashboard's
+           per-section empty states. */
+        null
       ) : (
         <div className="space-y-6">
           {/* Phase 43 — Money Story (Personal P&L scoreboard).
