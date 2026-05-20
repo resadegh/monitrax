@@ -27,6 +27,8 @@ import type {
   IncomeDelta,
   ExpenseDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateIncomeExpensesFromDraft } from './draftHydration';
 
 export type IncomeExpensesScriptStep =
   | 'INTRO'
@@ -43,6 +45,11 @@ export type IncomeExpensesScriptStep =
   | 'ASKING_EXPENSE_AMOUNT'
   | 'ASKING_EXPENSE_FREQUENCY'
   | 'ASKING_EXPENSE_MORE'
+  // Hydration entry — the draft already had income and/or expenses, so
+  // the agent acknowledged them and is asking whether to add more or
+  // move on. Once the user replies, routes into the normal income or
+  // expense phase if they add something, or straight to RECAP otherwise.
+  | 'REVIEWING_HYDRATED'
   // Terminal
   | 'RECAP'
   | 'CHANGING';
@@ -98,6 +105,12 @@ export const INCOME_EXPENSES_AGENT_COPY = {
   recapNoExpenses: "Just to confirm — no regular expenses to record. We'll wrap up.",
 
   changingPrompt: "What would you like to change?",
+  // Hydration path — shown when the draft already had income and/or
+  // expenses. The acknowledgement sentence is built per-session in
+  // draftHydration.ts; this is the fallback ask if the user's reply
+  // adds nothing new.
+  hydratedMoveOnRetry:
+    "No problem — tell me any other income or expense to add, or say \"move on\" and we'll wrap up.",
 } as const;
 
 function quote(name: string): string {
@@ -271,6 +284,51 @@ export function advanceIncomeExpensesScript({
       ? state.retriesOnCurrentStep + 1
       : 0;
   const forceAdvance = retriesIfSameStep > MAX_RETRIES_PER_STEP;
+
+  // Hydration entry — the draft already had income and/or expenses and
+  // the agent acknowledged them. The user's reply either adds more
+  // (route into the income or expense phase, whichever the new data
+  // belongs to) or signals "move on" (→ recap).
+  if (state.step === 'REVIEWING_HYDRATED') {
+    if (!extractedAnything) {
+      if (llmCouldNotExtract && !forceAdvance) {
+        return {
+          state: {
+            step: 'REVIEWING_HYDRATED',
+            staged: merged,
+            retriesOnCurrentStep: retriesIfSameStep,
+          },
+          agentNextMessage: INCOME_EXPENSES_AGENT_COPY.hydratedMoveOnRetry,
+          showRecap: false,
+        };
+      }
+      return {
+        state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
+        agentNextMessage: null,
+        showRecap: true,
+      };
+    }
+    // User added something — re-enter the relevant phase at its
+    // "MORE" step so the normal completeness-fill logic takes over.
+    const addedIncome =
+      newFields.hasIncome !== undefined || newFields.incomes !== undefined;
+    if (addedIncome) {
+      return advanceIncomePhase(
+        merged,
+        { ...state, step: 'ASKING_INCOME_MORE' },
+        forceAdvance,
+        retriesIfSameStep,
+        newFields,
+      );
+    }
+    return advanceExpensePhase(
+      merged,
+      { ...state, step: 'ASKING_EXPENSE_MORE' },
+      forceAdvance,
+      retriesIfSameStep,
+      newFields,
+    );
+  }
 
   if (inIncomePhase) {
     return advanceIncomePhase(merged, state, forceAdvance, retriesIfSameStep, newFields);
@@ -532,10 +590,31 @@ function advanceExpensePhase(
   };
 }
 
-export function bootstrapIncomeExpensesConversation(): {
+/**
+ * First-message bootstrap for the Income & Expenses topic.
+ *
+ * When `draft` already contains income and/or expenses (entered in
+ * form mode), the agent acknowledges them and asks whether to add more
+ * or move on. When the draft is empty, behaviour is byte-for-byte
+ * unchanged.
+ */
+export function bootstrapIncomeExpensesConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: IncomeExpensesScriptState;
 } {
+  const hydration = hydrateIncomeExpensesFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [INCOME_EXPENSES_AGENT_COPY.intro],
     nextState: {

@@ -25,6 +25,8 @@ import type {
   DebtsFields,
   DebtDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateDebtsFromDraft } from './draftHydration';
 
 export type DebtsScriptStep =
   | 'INTRO'
@@ -32,6 +34,9 @@ export type DebtsScriptStep =
   | 'ASKING_DEBT_TYPE'
   | 'ASKING_DEBT_PRINCIPAL'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had debts, so the agent
+  // acknowledged them and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -215,7 +220,10 @@ export function advanceDebtsScript({
 
   const incompleteIdx = firstIncompleteIndex(debts);
   if (incompleteIdx === -1) {
-    if (state.step === 'ASKING_MORE' && newFields.debts === undefined) {
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.debts === undefined
+    ) {
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
         agentNextMessage: null,
@@ -281,10 +289,30 @@ export function advanceDebtsScript({
   };
 }
 
-export function bootstrapDebtsConversation(): {
+/**
+ * First-message bootstrap for the Debts topic.
+ *
+ * When `draft` already contains debts (entered in form mode), the
+ * agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
+ */
+export function bootstrapDebtsConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: DebtsScriptState;
 } {
+  const hydration = hydrateDebtsFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [DEBTS_AGENT_COPY.intro],
     nextState: {

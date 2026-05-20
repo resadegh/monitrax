@@ -24,6 +24,8 @@ import type {
   AssetsFields,
   AssetDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateAssetsFromDraft } from './draftHydration';
 
 export type AssetsScriptStep =
   | 'INTRO'
@@ -31,6 +33,9 @@ export type AssetsScriptStep =
   | 'ASKING_ASSET_TYPE'
   | 'ASKING_ASSET_VALUE'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had assets, so the agent
+  // acknowledged them and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -212,7 +217,10 @@ export function advanceAssetsScript({
 
   const incompleteIdx = firstIncompleteIndex(assets);
   if (incompleteIdx === -1) {
-    if (state.step === 'ASKING_MORE' && newFields.assets === undefined) {
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.assets === undefined
+    ) {
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
         agentNextMessage: null,
@@ -278,10 +286,30 @@ export function advanceAssetsScript({
   };
 }
 
-export function bootstrapAssetsConversation(): {
+/**
+ * First-message bootstrap for the Assets topic.
+ *
+ * When `draft` already contains personal assets (entered in form mode),
+ * the agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
+ */
+export function bootstrapAssetsConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: AssetsScriptState;
 } {
+  const hydration = hydrateAssetsFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [ASSETS_AGENT_COPY.intro],
     nextState: {

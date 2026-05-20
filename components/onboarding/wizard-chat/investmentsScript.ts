@@ -23,6 +23,8 @@ import type {
   InvestmentsFields,
   InvestmentDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateInvestmentsFromDraft } from './draftHydration';
 
 export type InvestmentsScriptStep =
   | 'INTRO'
@@ -30,6 +32,9 @@ export type InvestmentsScriptStep =
   | 'ASKING_INVESTMENT_TYPE'
   | 'ASKING_INVESTMENT_VALUE'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had investments, so the agent
+  // acknowledged them and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -213,7 +218,10 @@ export function advanceInvestmentsScript({
 
   const incompleteIdx = firstIncompleteIndex(investments);
   if (incompleteIdx === -1) {
-    if (state.step === 'ASKING_MORE' && newFields.investments === undefined) {
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.investments === undefined
+    ) {
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
         agentNextMessage: null,
@@ -279,10 +287,30 @@ export function advanceInvestmentsScript({
   };
 }
 
-export function bootstrapInvestmentsConversation(): {
+/**
+ * First-message bootstrap for the Investments topic.
+ *
+ * When `draft` already contains investments (entered in form mode),
+ * the agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
+ */
+export function bootstrapInvestmentsConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: InvestmentsScriptState;
 } {
+  const hydration = hydrateInvestmentsFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [INVESTMENTS_AGENT_COPY.intro],
     nextState: {

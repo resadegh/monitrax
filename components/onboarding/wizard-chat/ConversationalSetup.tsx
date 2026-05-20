@@ -184,7 +184,12 @@ interface ExtractApiResponse {
 export function ConversationalSetup() {
   const router = useRouter();
   const { token } = useAuth();
-  const { state: onboardingState, saveDraft } = useOnboardingState();
+  const {
+    state: onboardingState,
+    isLoading: onboardingLoading,
+    saveDraft,
+    readLocalDraft,
+  } = useOnboardingState();
 
   // Chat thread + ambient orchestrator state.
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -225,11 +230,33 @@ export function ConversationalSetup() {
     [messages],
   );
 
-  // Bootstrap intro + first ask, exactly once.
+  // Resolve the current onboarding draft for hydration. The server
+  // state is authoritative; the localStorage cache is a same-device
+  // fallback for users whose server draft never made it to the DB.
+  // Returns `null` for a genuinely new user (no draft anywhere) — every
+  // topic then behaves exactly as it did before chat hydration existed.
+  const resolveDraft = useCallback((): Partial<WizardData> | null => {
+    const serverDraft = onboardingState?.draft;
+    if (serverDraft && typeof serverDraft === 'object') {
+      return serverDraft as Partial<WizardData>;
+    }
+    const localDraft = readLocalDraft();
+    if (localDraft && typeof localDraft === 'object') {
+      return localDraft as Partial<WizardData>;
+    }
+    return null;
+  }, [onboardingState?.draft, readLocalDraft]);
+
+  // Bootstrap intro + first ask, exactly once. Waits until the
+  // onboarding state has finished loading so the Household topic can
+  // hydrate from any draft the user already built in form mode — if it
+  // bootstrapped before the draft loaded, the chat would start the
+  // Household topic from scratch even when data exists.
   useEffect(() => {
     if (bootstrappedRef.current) return;
+    if (onboardingLoading) return;
     bootstrappedRef.current = true;
-    const { agentMessages, nextState } = bootstrapHouseholdConversation();
+    const { agentMessages, nextState } = bootstrapHouseholdConversation(resolveDraft());
     setMessages(
       agentMessages.map((text) => ({
         id: nextId(),
@@ -239,7 +266,7 @@ export function ConversationalSetup() {
       })),
     );
     setHouseholdScript(nextState);
-  }, []);
+  }, [onboardingLoading, resolveDraft]);
 
   const appendAgent = useCallback((text: string, opts?: { animate?: boolean }) => {
     const id = nextId();
@@ -959,25 +986,31 @@ export function ConversationalSetup() {
       }
 
       // Pivot to the next topic — bootstrap its conversation in-thread.
+      // Pass `mergedDraft` (the freshest draft — it already includes the
+      // topic just confirmed) so the next topic hydrates from any data
+      // the user previously entered in form mode and the agent
+      // acknowledges it instead of asking from scratch. `onboardingState
+      // .draft` is updated optimistically by saveDraft but React state
+      // is not synchronous within this closure — `mergedDraft` is.
       const bootstrap = (() => {
         switch (next) {
           case 'properties':
-            return bootstrapPropertiesConversation();
+            return bootstrapPropertiesConversation(mergedDraft);
           case 'debts':
-            return bootstrapDebtsConversation();
+            return bootstrapDebtsConversation(mergedDraft);
           case 'accounts':
-            return bootstrapAccountsConversation();
+            return bootstrapAccountsConversation(mergedDraft);
           case 'investments':
-            return bootstrapInvestmentsConversation();
+            return bootstrapInvestmentsConversation(mergedDraft);
           case 'super':
-            return bootstrapSuperConversation();
+            return bootstrapSuperConversation(mergedDraft);
           case 'assets':
-            return bootstrapAssetsConversation();
+            return bootstrapAssetsConversation(mergedDraft);
           case 'income-expenses':
-            return bootstrapIncomeExpensesConversation();
+            return bootstrapIncomeExpensesConversation(mergedDraft);
           case 'household':
             // Defensive — household is never a pivot target.
-            return bootstrapHouseholdConversation();
+            return bootstrapHouseholdConversation(mergedDraft);
         }
       })();
       for (const text of bootstrap.agentMessages) appendAgent(text);

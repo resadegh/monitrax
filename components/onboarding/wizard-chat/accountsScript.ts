@@ -19,6 +19,8 @@ import type {
   AccountsFields,
   AccountDelta,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
+import type { WizardData } from '@/components/onboarding/wizard/types';
+import { hydrateAccountsFromDraft } from './draftHydration';
 
 export type AccountsScriptStep =
   | 'INTRO'
@@ -26,6 +28,9 @@ export type AccountsScriptStep =
   | 'ASKING_ACCOUNT_TYPE'
   | 'ASKING_ACCOUNT_BALANCE'
   | 'ASKING_MORE'
+  // Hydration entry — the draft already had accounts, so the agent
+  // acknowledged them and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -216,7 +221,10 @@ export function advanceAccountsScript({
 
   const incompleteIdx = firstIncompleteIndex(accounts);
   if (incompleteIdx === -1) {
-    if (state.step === 'ASKING_MORE' && newFields.accounts === undefined) {
+    if (
+      (state.step === 'ASKING_MORE' || state.step === 'REVIEWING_HYDRATED') &&
+      newFields.accounts === undefined
+    ) {
       return {
         state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
         agentNextMessage: null,
@@ -282,10 +290,30 @@ export function advanceAccountsScript({
   };
 }
 
-export function bootstrapAccountsConversation(): {
+/**
+ * First-message bootstrap for the Accounts topic.
+ *
+ * When `draft` already contains accounts (entered in form mode), the
+ * agent acknowledges them and asks whether to add more or move on.
+ * When the draft is empty, behaviour is byte-for-byte unchanged.
+ */
+export function bootstrapAccountsConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: AccountsScriptState;
 } {
+  const hydration = hydrateAccountsFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [ACCOUNTS_AGENT_COPY.intro],
     nextState: {

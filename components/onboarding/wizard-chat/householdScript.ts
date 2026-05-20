@@ -26,13 +26,18 @@ import type { HouseholdFields } from '@/lib/ai/onboarding-agent/schemas/wizardSt
 import type {
   HouseholdRelationship,
   HouseholdPetType,
+  WizardData,
 } from '@/components/onboarding/wizard/types';
+import { hydrateHouseholdFromDraft } from './draftHydration';
 
 export type HouseholdScriptStep =
   | 'INTRO'
   | 'ASKING_MEMBERS'
   | 'ASKING_PETS'
   | 'ASKING_CARS'
+  // Hydration entry — the draft already had household data, so the
+  // agent acknowledged it and is asking whether to add more or move on.
+  | 'REVIEWING_HYDRATED'
   | 'RECAP'
   | 'CHANGING';
 
@@ -70,6 +75,12 @@ export const AGENT_COPY = {
   askCarsRetry: "Could you tell me how many cars? You can say \"none\" or just a number.",
   recapHeader: 'Quick recap of your household',
   changingPrompt: "What would you like to change?",
+  // Hydration path — shown when the draft already had household data.
+  // The acknowledgement sentence itself is built per-session in
+  // draftHydration.ts; this is the fallback ask if the user's reply to
+  // the acknowledgement adds nothing new.
+  hydratedMoveOnRetry:
+    "No problem — tell me anyone or anything to add, or say \"move on\" and we'll continue.",
 } as const;
 
 // ============================================================================
@@ -174,6 +185,61 @@ export function advanceScript({ state, newFields, llmCouldNotExtract }: AdvanceI
   const forceAdvance = retriesIfSameStep > MAX_RETRIES_PER_STEP;
 
   switch (state.step) {
+    case 'REVIEWING_HYDRATED': {
+      // The draft already had household data and the agent acknowledged
+      // it. The user's reply either adds more (continue the normal
+      // member→pets→cars flow from wherever data is still missing) or
+      // signals "move on" (→ recap).
+      if (extractedAnything) {
+        // User added something — fall through to the normal flow by
+        // re-entering the machine at the first un-filled step.
+        if (!merged.householdMembers || merged.householdMembers.length === 0) {
+          return {
+            state: { step: 'ASKING_MEMBERS', staged: merged, retriesOnCurrentStep: 0 },
+            agentNextMessage: AGENT_COPY.askMembersRetry,
+            showRecap: false,
+          };
+        }
+        if (merged.householdPets === undefined) {
+          return {
+            state: { step: 'ASKING_PETS', staged: merged, retriesOnCurrentStep: 0 },
+            agentNextMessage: AGENT_COPY.askPets,
+            showRecap: false,
+          };
+        }
+        if (typeof merged.carsCount !== 'number') {
+          return {
+            state: { step: 'ASKING_CARS', staged: merged, retriesOnCurrentStep: 0 },
+            agentNextMessage: AGENT_COPY.askCars,
+            showRecap: false,
+          };
+        }
+        // Everything filled — go straight to recap.
+        return {
+          state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
+          agentNextMessage: null,
+          showRecap: true,
+        };
+      }
+      // No new data — treat as "move on" once the LLM is confident
+      // (or after retries) and otherwise re-ask gently.
+      if (llmCouldNotExtract && !forceAdvance) {
+        return {
+          state: {
+            step: 'REVIEWING_HYDRATED',
+            staged: merged,
+            retriesOnCurrentStep: retriesIfSameStep,
+          },
+          agentNextMessage: AGENT_COPY.hydratedMoveOnRetry,
+          showRecap: false,
+        };
+      }
+      return {
+        state: { step: 'RECAP', staged: merged, retriesOnCurrentStep: 0 },
+        agentNextMessage: null,
+        showRecap: true,
+      };
+    }
     case 'INTRO':
     case 'ASKING_MEMBERS': {
       if ((merged.householdMembers && merged.householdMembers.length > 0) || forceAdvance) {
@@ -247,11 +313,30 @@ export function advanceScript({ state, newFields, llmCouldNotExtract }: AdvanceI
 /**
  * First-message bootstrap — returns the agent's intro + first ask
  * paired together as a single message. Called once on mount.
+ *
+ * When `draft` already contains household data (the user entered it in
+ * form mode before switching to chat), the agent acknowledges what's
+ * there and asks whether to add more or move on — instead of asking
+ * from scratch. When the draft is empty (genuinely new user), behaviour
+ * is byte-for-byte unchanged.
  */
-export function bootstrapHouseholdConversation(): {
+export function bootstrapHouseholdConversation(
+  draft?: Partial<WizardData> | null,
+): {
   agentMessages: string[];
   nextState: HouseholdScriptState;
 } {
+  const hydration = hydrateHouseholdFromDraft(draft);
+  if (hydration.hasExistingData && hydration.acknowledgement) {
+    return {
+      agentMessages: [AGENT_COPY.intro, hydration.acknowledgement],
+      nextState: {
+        step: 'REVIEWING_HYDRATED',
+        staged: hydration.staged,
+        retriesOnCurrentStep: 0,
+      },
+    };
+  }
   return {
     agentMessages: [AGENT_COPY.intro, AGENT_COPY.askMembers],
     nextState: {
