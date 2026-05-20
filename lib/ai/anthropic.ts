@@ -1,9 +1,11 @@
 /**
  * Anthropic Claude API — server-side client.
  *
- * Phase 33g.2 (2026-05-10): first Anthropic dep in the codebase. Used ONLY
- * for the live AI feedback chat triage (`lib/services/feedbackService.ts`).
- * In-app financial advice continues to flow through Gemini (`lib/ai/gemini.ts`).
+ * Phase 33g.2 (2026-05-10): first Anthropic dep in the codebase. Used by
+ * the live AI feedback chat triage (`lib/services/feedbackService.ts`) and
+ * the onboarding conversational agent (`lib/ai/onboarding-agent/gateway.ts`,
+ * Phase 12 Track E). In-app financial advice continues to flow through
+ * Gemini (`lib/ai/gemini.ts`).
  *
  * Why a different model for feedback triage:
  *   - Conversational quality / clarification-question quality is Claude's strength
@@ -12,7 +14,10 @@
  *     system prompts, rate-limit budgets, and audit metadata
  *
  * Cost-control posture (CLAUDE.md §12.7 + cost-control runbook §4):
- *   - Default model: claude-haiku-4-5 (Haiku 4.5) — cheap + fast triage
+ *   - Feedback triage: claude-haiku-4-5 (Haiku 4.5) — cheap + fast
+ *   - Onboarding agent: claude-sonnet-4-6 (Sonnet 4.6) — forced structured
+ *     extraction needs a model that reliably produces schema-valid tool
+ *     calls; Haiku does not. Onboarding is once-per-user + capped.
  *   - Hard env cap set at console.anthropic.com → Settings → Limits → US$50/mo
  *   - Graceful disable: when ANTHROPIC_API_KEY is absent, every call site
  *     falls back to non-AI behaviour (form-only feedback drawer, etc.)
@@ -32,6 +37,18 @@ let cachedClient: Anthropic | null = null;
 export const ANTHROPIC_MODELS = {
   /** Cheap conversational triage. Default for feedback chat. */
   HAIKU: 'claude-haiku-4-5' as const,
+  /**
+   * Mid-tier — strong, reliable structured tool-call extraction at a
+   * fraction of Opus cost. Used by the onboarding conversational agent
+   * (`lib/ai/onboarding-agent/gateway.ts`): that surface FORCES a tool
+   * call and validates the result against a strict Zod schema. Haiku
+   * does not do that reliably — it frequently emits output the schema
+   * rejects, surfacing to the user as "Could not understand the answer."
+   * Sonnet handles forced structured extraction dependably. Onboarding
+   * is once-per-user and capped (200 extractions/user/day) so the cost
+   * delta over Haiku is negligible.
+   */
+  SONNET: 'claude-sonnet-4-6' as const,
   /** Reserved for synthesis-summary work. NEVER for per-message replies. */
   OPUS: 'claude-opus-4-7' as const,
 } as const;
