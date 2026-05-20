@@ -49,8 +49,13 @@ export default function OnboardingLayout({
           Monitrax
         </Link>
 
+        {/* Exit → the main dashboard. NOT /dashboard/setup — that route
+            was retired 2026-05-20 (PR #830) and now redirects to
+            /onboarding, so pointing Exit there created an infinite loop
+            (onboarding → exit → /dashboard/setup → redirect → onboarding).
+            Exit means "leave onboarding"; the destination is /dashboard. */}
         <Link
-          href="/dashboard/setup"
+          href="/dashboard"
           aria-label="Exit onboarding"
           className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-300 motion-reduce:transition-none dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:ring-slate-600"
         >
