@@ -1,10 +1,33 @@
 'use client';
 
 /**
- * PropertiesStep — Phase 12 PR 3a redesign + simplification
+ * PropertiesStep — Phase 12 PR 3a redesign + Track F.2 two-way sync
  *
  * Captures owned properties (HOME or INVESTMENT) with their mortgage,
  * rental income (for investment), and recurring expenses.
+ *
+ * ============================================================================
+ * TRACK F.2 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.2 this step staged the property aggregate into the `WizardData`
+ * draft blob, and the real tables (`Property` / `Loan` / `Income` /
+ * `Expense`) were written ONCE at the final `/api/onboarding/bulk-create`.
+ * Result: `/dashboard/properties` showed empty while the wizard held a full
+ * portfolio — a §12.2 SSOT violation.
+ *
+ * F.2 makes this step read + write the REAL tables directly:
+ *   - ON OPEN  — `readProperties()` loads the real tables and merges them
+ *     into `WizardData.properties` (real properties + any unsynced
+ *     chat-staged / in-session ones). `snapshotRef` captures the baseline.
+ *   - ON CONTINUE / BACK / JUMP — the registered `commit` diffs the current
+ *     portfolio against the snapshot and `syncProperties()` writes the delta
+ *     (create / update / hard-delete — design Q-F2), idempotent on re-entry.
+ *
+ * Per Reza's scope decision the unit is the WHOLE property aggregate —
+ * `Property` + its mortgage `Loan` + rental `Income` + `Expense`s — so a
+ * mortgage entered here IS the real `Loan` row the Debts step + dashboard
+ * read. See `lib/onboarding/propertiesSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md`.
  *
  * Simplification (PR 3a):
  *   - Purchase price and purchase date demoted behind "Advanced details"
@@ -18,7 +41,7 @@
  * All existing WizardData fields are preserved. No new fields.
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AddressAutocomplete } from '@/components/ui/address-autocomplete';
 import {
   Home,
@@ -32,6 +55,8 @@ import {
   Users as UsersIcon,
   Receipt,
   Settings as AdvancedIcon,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   WizardData,
@@ -42,6 +67,7 @@ import {
   PropertyType,
   ExpenseCategory,
   generateId,
+  type StepCommitFn,
 } from '../types';
 import {
   WizardStepShell,
@@ -53,6 +79,16 @@ import {
   WizardAddButton,
 } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
+import {
+  readProperties,
+  syncProperties,
+  snapshotToWizardProperties,
+  wizardPropertiesToSnapshot,
+  isPersistedId,
+  EMPTY_PROPERTIES_SNAPSHOT,
+  type PropertiesSnapshot,
+} from '@/lib/onboarding/propertiesSync';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -501,6 +537,16 @@ function PropertyCard({
                     Interest only
                   </label>
                 </div>
+                {/* Phase 12 Track F.2: the mortgage entered here IS the real
+                    Loan row — the Debts step + dashboard read the same row.
+                    Tell the user so the Debts step isn't a surprise re-ask. */}
+                <p className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-500 dark:text-slate-400">
+                  <Landmark className="h-3.5 w-3.5 flex-shrink-0 mt-px text-slate-400" />
+                  <span>
+                    We&apos;ve linked this mortgage to {property.name || 'this property'}.
+                    You can fine-tune the rate, offset and repayments in the Debts step.
+                  </span>
+                </p>
               </div>
             )}
           </div>
@@ -644,12 +690,105 @@ function PropertyCard({
 interface PropertiesStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.2: register an async commit with the container. The
+   * container awaits it before advancing — it writes the property aggregate
+   * (`Property` + mortgage `Loan` + rental `Income` + `Expense`s) to its
+   * real tables. Optional so the step still renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function PropertiesStep({ data, onUpdate }: PropertiesStepProps) {
+export function PropertiesStep({ data, onUpdate, registerStepCommit }: PropertiesStepProps) {
+  const { token } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(
     data.properties.length > 0 ? data.properties[0].id : null
   );
+
+  // ---- Phase 12 Track F.2: real-table sync state ----------------------
+  // `loading` is true while the initial READ of the real tables is in
+  // flight. `loadError` surfaces a failed READ. `snapshotRef` holds the
+  // baseline the commit diffs against — the portfolio as it was at
+  // step-open (or after the last successful commit).
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<PropertiesSnapshot>(EMPTY_PROPERTIES_SNAPSHOT);
+  // Latest `data` in a ref so the registered commit closure always reads
+  // the freshest portfolio without re-registering on every keypress.
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real tables on step open -----------------------------
+  // Seeds `snapshotRef` (the diff baseline) and merges the real-table
+  // portfolio into `WizardData.properties`. The merge keeps the real
+  // properties (authoritative — they carry real ids) AND any wizard
+  // property that is NOT yet persisted (a synthetic `temp_…` / `chat-…`
+  // id) — so a property staged in chat mode, or added in-session before
+  // this read resolved, is never lost. It is synced on the next Continue.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readProperties(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realProps = snapshotToWizardProperties(snapshot);
+        const unsynced = dataRef.current.properties.filter(
+          (p) => !isPersistedId(p.id),
+        );
+        onUpdate({ properties: [...realProps, ...unsynced] });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your properties. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount — token is stable post-auth, `onUpdate` is a
+    // stable useCallback from the container.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container -------
+  // Diffs the user's current portfolio (from `dataRef`) against
+  // `snapshotRef` and writes the delta via the property/loan/income/
+  // expense entity APIs. On success, re-seeds the snapshot + WizardData
+  // with the fresh real ids so the NEXT Continue is idempotent.
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your properties — please wait a moment.');
+      }
+      const current = wizardPropertiesToSnapshot(dataRef.current.properties);
+      const result = await syncProperties(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the just-written real tables, but KEEP any in-session
+      // property card that is still incomplete (synthetic id, no purchase
+      // date) — `syncProperties` deliberately does not persist those, so
+      // re-seeding from the snapshot alone would discard a half-filled card
+      // the user is still working on (e.g. on a Back navigation).
+      const stillUnsynced = dataRef.current.properties.filter(
+        (p) => !isPersistedId(p.id) && !p.purchaseDate?.trim(),
+      );
+      onUpdate({
+        properties: [...snapshotToWizardProperties(result.snapshot), ...stillUnsynced],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   const addProperty = () => {
     const newProperty = createEmptyProperty();
@@ -682,6 +821,25 @@ export function PropertiesStep({ data, onUpdate }: PropertiesStepProps) {
       title="Your properties"
       subtitle="What you're building. Properties are the foundation of your wealth on the TRAIL."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking: the user can still edit and a successful
+          commit on Continue persists everything (Phase 12 Track F.2). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your properties…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {data.properties.map((property, index) => (
         <PropertyCard
           key={property.id}

@@ -321,11 +321,6 @@ interface WizardData {
 // (e.g. $1000/week became $225K/year instead of $52K/year). We now pass the
 // amount and frequency through unchanged.
 
-// Map PropertyType to LoanType
-function getLoanType(propertyType: PropertyType): 'HOME' | 'INVESTMENT' {
-  return propertyType === 'HOME' ? 'HOME' : 'INVESTMENT';
-}
-
 // =============================================================================
 // POST - Bulk create all onboarding data
 // =============================================================================
@@ -338,9 +333,6 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
     try {
       parsedPayload = (await request.json()) as WizardData;
       const data = parsedPayload;
-
-      // ID mapping for linking (temp ID -> real ID)
-      const loanIdMap = new Map<string, string>();
 
       // Start a transaction to create all data atomically.
       //
@@ -467,113 +459,29 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // =======================================================================
 
         // =======================================================================
-        // 2. Create Properties with Loans
+        // 2. Properties (with mortgage / rental income / expenses)
+        //
+        // ⚠ Phase 12 Track F.2 (2026-05-20): the PROPERTIES domain is no
+        // longer written here. The whole property aggregate — `Property`
+        // plus its mortgage `Loan`, rental `Income` and `Expense`s — is now
+        // written incrementally to the real tables by the wizard properties
+        // step, via the property/loan/income/expense entity APIs. See
+        // `lib/onboarding/propertiesSync.ts` and
+        // `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md`.
+        //
+        // The wizard payload still carries `data.properties` (it stays in
+        // `WizardData` for the Review step), but it MUST NOT be re-written
+        // here: the properties step's commit already persisted every
+        // property — re-creating them would duplicate the whole portfolio.
+        // The properties step's commit runs on every Continue / Back /
+        // progress-jump, so by the time `bulk-create` runs (Review step)
+        // every property is already in the real tables.
+        //
+        // Intentionally a no-op until `bulk-create` is fully retired in
+        // Track F.9. The other draft-staged domains below are unaffected
+        // (coexistence — F.3–F.8 migrate them one PR at a time).
         // =======================================================================
-        const createdProperties = [];
-        for (const prop of data.properties) {
-          const now = new Date();
-          // Reject missing purchase date instead of silently defaulting to today.
-          // A wrong purchase date corrupts CGT, depreciation and equity history
-          // downstream; an approximate one from the user is infinitely better.
-          if (!prop.purchaseDate) {
-            throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" is missing a purchase date.`);
-          }
-          const purchaseDate = new Date(prop.purchaseDate);
-          if (Number.isNaN(purchaseDate.getTime())) {
-            throw new Error(`Property "${prop.name || prop.address || 'unnamed'}" has an invalid purchase date.`);
-          }
-          // Phase 41E.5 — reform-aware fields.
-          // Same backfill rule as the 41E.0 schema migration: if the
-          // wizard didn't ask for the contract date (pre-cut-over
-          // purchaseDate), default acquisitionContractDate := purchaseDate
-          // (unambiguously grandfathered). For post-cut-over the wizard
-          // prompts for both fields explicitly.
-          const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0); // 2026-05-12T09:30:00Z
-          const isPostCutOverPurchase = purchaseDate.getTime() > REFORM_CUT_OVER_UTC_MS;
-          const acquisitionContractDate = prop.acquisitionContractDate
-            ? new Date(prop.acquisitionContractDate)
-            : isPostCutOverPurchase
-              ? null // user didn't confirm; engine surfaces UC-PROPERTY-CONTRACT-DATE-UNKNOWN
-              : purchaseDate; // auto-backfill for pre-cut-over (grandfathered)
-          // Create property
-          const property = await tx.property.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: prop.name || prop.address || 'Property',
-              type: prop.type,
-              address: prop.address || null,
-              purchasePrice: prop.purchasePrice,
-              purchaseDate,
-              currentValue: prop.currentValue,
-              valuationDate: now,
-              // Phase 41E.5 — reform fields from wizard.
-              acquisitionContractDate,
-              isNewBuild: isPostCutOverPurchase ? (prop.isNewBuild ?? null) : null,
-              newBuildEvidence: isPostCutOverPurchase ? (prop.newBuildEvidence ?? null) : null,
-            },
-          });
-          createdProperties.push(property);
-
-          // Create loan if exists
-          if (prop.hasLoan && prop.loan) {
-            const loan = await tx.loan.create({
-              data: {
-                userId,
-                ownerEntityId,
-                propertyId: property.id,
-                name: prop.loan.name || `${prop.loan.lender} - ${prop.name}`,
-                type: getLoanType(prop.type),
-                principal: prop.loan.principal,
-                interestRateAnnual: prop.loan.interestRateAnnual / 100, // Convert from percentage to decimal
-                rateType: prop.loan.rateType,
-                isInterestOnly: prop.loan.isInterestOnly,
-                termMonthsRemaining: prop.loan.termMonthsRemaining || 360, // Default 30 years
-                minRepayment: prop.loan.minRepayment,
-                repaymentFrequency: prop.loan.repaymentFrequency,
-              },
-            });
-            // Map temp ID to real ID for offset linking
-            loanIdMap.set(prop.loan.id, loan.id);
-          }
-
-          // Create rental income if investment property
-          if (prop.type === 'INVESTMENT' && prop.income && prop.income.amount > 0) {
-            await tx.income.create({
-              data: {
-                userId,
-                ownerEntityId,
-                propertyId: property.id,
-                name: `Rent - ${prop.name || prop.address}`,
-                type: 'RENTAL',
-                sourceType: 'PROPERTY',
-                // Canonical contract: store amount AT the given frequency (no conversion).
-                amount: prop.income.amount,
-                frequency: prop.income.frequency,
-              },
-            });
-          }
-
-          // Create property expenses
-          for (const expense of prop.expenses) {
-            if (expense.amount > 0) {
-              await tx.expense.create({
-                data: {
-                  userId,
-                  ownerEntityId,
-                  propertyId: property.id,
-                  name: expense.name || expense.category,
-                  category: expense.category,
-                  sourceType: 'PROPERTY',
-                  // Canonical contract: store amount AT the given frequency (no conversion).
-                  amount: expense.amount,
-                  frequency: expense.frequency,
-                  isTaxDeductible: prop.type === 'INVESTMENT', // Investment property expenses are tax deductible
-                },
-              });
-            }
-          }
-        }
+        const createdProperties: never[] = [];
 
         // =======================================================================
         // 3. Create Bank Accounts
@@ -596,10 +504,16 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
               acc.linkedLoanId &&
               acc.existingAccountId
             ) {
-              const realLoanId = loanIdMap.get(acc.linkedLoanId);
-              if (realLoanId) {
+              // Track F.2: property loans are now created by the wizard's
+              // two-way sync, so `linkedLoanId` is already a real `Loan`
+              // id. Verify ownership before writing the offset link.
+              const linkedLoan = await tx.loan.findFirst({
+                where: { id: acc.linkedLoanId, userId },
+                select: { id: true },
+              });
+              if (linkedLoan) {
                 await tx.loan.update({
-                  where: { id: realLoanId },
+                  where: { id: linkedLoan.id },
                   data: { offsetAccountId: acc.existingAccountId },
                 });
               }
@@ -627,12 +541,18 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           });
           createdAccounts.push(account);
 
-          // If this is an offset account linked to a loan, update the loan
+          // If this is an offset account linked to a loan, update the loan.
+          // Track F.2: `linkedLoanId` is already a real `Loan` id (property
+          // loans are created by the wizard's two-way sync) — verify
+          // ownership before writing the offset link.
           if (acc.type === 'OFFSET' && acc.linkedLoanId) {
-            const realLoanId = loanIdMap.get(acc.linkedLoanId);
-            if (realLoanId) {
+            const linkedLoan = await tx.loan.findFirst({
+              where: { id: acc.linkedLoanId, userId },
+              select: { id: true },
+            });
+            if (linkedLoan) {
               await tx.loan.update({
-                where: { id: realLoanId },
+                where: { id: linkedLoan.id },
                 data: { offsetAccountId: account.id },
               });
             }

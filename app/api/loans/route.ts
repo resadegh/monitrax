@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractLoanLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 export const GET = withPermission('loan.read', async (request, auth) => {
     try {
@@ -181,14 +182,21 @@ export const POST = withPermission('loan.write', async (request, auth) => {
         extraRepaymentCap,
       } = body;
 
+      // `termMonthsRemaining` / `minRepayment` are validated as "present",
+      // not "truthy" — 0 is a legitimate value (e.g. a not-yet-known
+      // repayment). The wizard's two-way sync (Track F.2) can send 0.
       if (
         !name ||
         !type ||
         principal === undefined ||
+        principal === null ||
         interestRateAnnual === undefined ||
+        interestRateAnnual === null ||
         !rateType ||
-        !termMonthsRemaining ||
-        !minRepayment ||
+        termMonthsRemaining === undefined ||
+        termMonthsRemaining === null ||
+        minRepayment === undefined ||
+        minRepayment === null ||
         !repaymentFrequency
       ) {
         return NextResponse.json(
@@ -246,6 +254,20 @@ export const POST = withPermission('loan.write', async (request, auth) => {
           repaymentFrequency,
           extraRepaymentCap: extraRepaymentCap ? parseFloat(extraRepaymentCap) : null,
         },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5). This route is a
+      // wizard SSOT write boundary for property mortgages (Phase 12 Track
+      // F.2). Generic CREATE action with entityType — F.4 (debts) owns the
+      // loan domain and may introduce domain-specific actions later. No
+      // CDR/financial values in metadata (§13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'CREATE',
+        status: 'SUCCESS',
+        entityType: 'Loan',
+        entityId: loan.id,
+        metadata: { type, hasProperty: !!propertyId },
       });
 
       return NextResponse.json(loan, { status: 201 });
