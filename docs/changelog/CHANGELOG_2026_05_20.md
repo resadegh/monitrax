@@ -351,3 +351,54 @@ F.7's `AssetsStep.tsx` edits shifted a pre-existing grandfathered financial-math
 - `docs/architecture/07_API_STANDARDS.md` §15.8 — assets route audit + validation.
 - `docs/architecture/03_DATA_MODEL.md` §N.4 — F.7 `ASSET_*` audit actions.
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+---
+
+## Session: Phase 12 Track F.8 — Onboarding two-way sync (income/expenses domain)
+
+Branch: `claude/track-f8-income-expenses-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, income/expenses domain. The **LAST** Track F domain. The wizard's Income & Expenses step captures two flat lists; F.8 syncs both `Income` + `Expense` (F.3-shaped, two flat entities — not an aggregate).
+- **Scope boundary — GENERAL only:** F.8 owns only **general** (non-property, non-loan, non-asset, non-investment) income + expenses. Property-attached rows are F.2's; asset expenses F.7's; INVESTMENT-type income stays with `bulk-create`.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.4 (budget-vs-actuals invariant), §6.8 (income/expenses scope).
+
+### What was done
+
+**1. `lib/onboarding/incomeExpensesSync.ts` — NEW (~450 LOC)**
+
+- `readIncomeExpenses()` — GET `/api/income` + GET `/api/expenses` in parallel. **Filters to GENERAL rows only** — `isGeneralIncome()` / `isGeneralExpense()` require `sourceType === 'GENERAL'` AND every FK link field null (`propertyId`/`investmentAccountId` for income; `propertyId`/`loanId`/`assetId`/`investmentAccountId` for expenses). Reads ONLY the raw budget `amount` — never the transaction-reconciled actuals (budget-vs-actuals invariant, design doc §6.4).
+- `diffIncomeExpenses()` — PURE idempotency core. Holds two lists (`incomes` + `expenses`); a shared generic `diffList()` produces create/update/delete ops for each.
+- `syncIncomeExpenses()` — applies the diff via `/api/income` + `/api/expenses` (per-id PUT/DELETE); re-reads.
+- Mappers (`snapshotToWizardIncome` / `snapshotToWizardExpenses` / `wizardToSnapshotIncomeExpenses`) + `isPersistedId`. Writes create rows with `sourceType: 'GENERAL'`. Quality guard: an unpersisted row with `amount <= 0` is dropped (matches `bulk-create` sections 6/7); a persisted row is always kept.
+
+**2. No schema change**
+
+F.2 already added `createAuditLog()` to `/api/income` + `/api/expenses` (generic `CREATE/UPDATE/DELETE`, `entityType: 'Income'` / `'Expense'`). F.8 reuses the route surface unchanged — no new `AuditAction` values, no migration (like F.4).
+
+**3. `components/onboarding/wizard/steps/IncomeExpensesStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real tables on open (merges real GENERAL rows + unsynced in-session rows for both income + expenses), commits the delta on Continue/Back. Loading + error banner. Track F.8 header JSDoc.
+
+**4. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<IncomeExpensesStep>`.
+
+**5. `app/api/onboarding/bulk-create/route.ts`** — sections 6 (income) + 7 (expenses) → no-op for GENERAL rows. Section 6 preserves the INVESTMENT-income path (INVESTMENT income is not general income — it links to an `InvestmentAccount`). Section 7 → `never[]` placeholder.
+
+**6. `tests/onboarding/incomeExpensesSync.test.ts` — NEW (17 tests)**
+
+Re-entry idempotency (both lists), mapper round-trip, create/update/delete classification for income AND expenses, quality guards, `isPersistedId`.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations (28 grandfathered, unchanged)
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+- [x] `npx vitest run tests/onboarding/incomeExpensesSync.test.ts` — ✓ 17/17 pass
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.6/F.7 → done, F.8 row), new §6.7 (assets) + §6.8 (income/expenses + GENERAL filter), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.6/F.7 done, F.8 in progress).
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — F.7 + F.8 notes (F.8 reused the already-audited income/expense routes).
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.

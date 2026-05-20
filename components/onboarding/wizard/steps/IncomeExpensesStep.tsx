@@ -1,10 +1,10 @@
 'use client';
 
 /**
- * IncomeExpensesStep — Phase 12 PR 3a visual redesign
+ * IncomeExpensesStep — Phase 12 PR 3a visual redesign + Track F.8 two-way sync
  *
  * Captures general income and expenses (not linked to a property, asset,
- * or investment). PR 3a simplification:
+ * loan, or investment). PR 3a simplification:
  *   - Cleaner tab switcher with live counts
  *   - Inline "annualised to $X/yr" preview on every row
  *   - Category / type picker uses a dropdown (not a horizontal chip row)
@@ -12,10 +12,33 @@
  *   - Summary card at the bottom shows total income, total expenses,
  *     annual surplus / deficit + per-month equivalent
  *
- * No data model changes.
+ * ============================================================================
+ * TRACK F.8 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.8 this step staged income/expenses into the `WizardData` draft
+ * blob, written once at `/api/onboarding/bulk-create`. F.8 — the LAST
+ * Track F domain — makes the step read + write the real `Income` +
+ * `Expense` tables directly:
+ *   - ON OPEN  — `readIncomeExpenses()` loads the real GENERAL income +
+ *     expense rows; the step merges them with any unsynced in-session row.
+ *   - ON CONTINUE / BACK — the registered `commit` diffs + `syncIncomeExpenses()`
+ *     writes the delta (create / update / hard-delete), idempotent on
+ *     re-entry.
+ *
+ * SCOPE: GENERAL income/expenses only — property-attached rows are F.2's,
+ * asset expenses F.7's, INVESTMENT-type income stays with `bulk-create`.
+ * The two-way sync reads/writes only the raw budget `amount`, never the
+ * transaction-reconciled actuals (design doc §6.4 budget-vs-actuals
+ * invariant).
+ *
+ * See `lib/onboarding/incomeExpensesSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.8.
+ *
+ * No data model changes — the income/expense routes were already audited
+ * in F.2, so F.8 needs no new audit actions and no migration.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   DollarSign,
   Plus,
@@ -36,6 +59,8 @@ import {
   Package,
   ArrowUpCircle,
   ArrowDownCircle,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   WizardData,
@@ -44,7 +69,19 @@ import {
   IncomeType,
   ExpenseCategory,
   generateId,
+  type StepCommitFn,
 } from '../types';
+import { useAuth } from '@/lib/context/AuthContext';
+import {
+  readIncomeExpenses,
+  syncIncomeExpenses,
+  snapshotToWizardIncome,
+  snapshotToWizardExpenses,
+  wizardToSnapshotIncomeExpenses,
+  isPersistedId,
+  EMPTY_INCOME_EXPENSES_SNAPSHOT,
+  type IncomeExpensesSnapshot,
+} from '@/lib/onboarding/incomeExpensesSync';
 import {
   WizardStepShell,
   WizardField,
@@ -367,10 +404,112 @@ function ExpenseCard({
 interface IncomeExpensesStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.8: register an async commit with the container. The
+   * container awaits it before advancing — it writes the GENERAL income +
+   * expense rows to the real `Income` / `Expense` tables. Optional so the
+   * step still renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) {
+export function IncomeExpensesStep({
+  data,
+  onUpdate,
+  registerStepCommit,
+}: IncomeExpensesStepProps) {
+  const { token } = useAuth();
   const [activeTab, setActiveTab] = useState<'income' | 'expenses'>('income');
+
+  // ---- Phase 12 Track F.8: real-table sync state ---------------------
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<IncomeExpensesSnapshot>(
+    EMPTY_INCOME_EXPENSES_SNAPSHOT,
+  );
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real `Income` / `Expense` tables on step open -------
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readIncomeExpenses(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realIncome = snapshotToWizardIncome(snapshot);
+        const realExpenses = snapshotToWizardExpenses(snapshot);
+        const unsyncedIncome = dataRef.current.income.filter(
+          (i) => !isPersistedId(i.id),
+        );
+        const unsyncedExpenses = dataRef.current.expenses.filter(
+          (e) => !isPersistedId(e.id),
+        );
+        onUpdate({
+          income: [...realIncome, ...unsyncedIncome],
+          expenses: [...realExpenses, ...unsyncedExpenses],
+        });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your income and expenses. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container ------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error(
+          'Still loading your income and expenses — please wait a moment.',
+        );
+      }
+      const current = wizardToSnapshotIncomeExpenses(
+        dataRef.current.income,
+        dataRef.current.expenses,
+      );
+      const result = await syncIncomeExpenses(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the real tables, keeping any in-session row still
+      // incomplete (no real id, amount 0) so a half-filled row the user
+      // is working on isn't discarded on a Back navigation.
+      const stillUnsyncedIncome = dataRef.current.income.filter(
+        (i) => !isPersistedId(i.id) && !(i.amount > 0),
+      );
+      const stillUnsyncedExpenses = dataRef.current.expenses.filter(
+        (e) => !isPersistedId(e.id) && !(e.amount > 0),
+      );
+      onUpdate({
+        income: [
+          ...snapshotToWizardIncome(result.snapshot),
+          ...stillUnsyncedIncome,
+        ],
+        expenses: [
+          ...snapshotToWizardExpenses(result.snapshot),
+          ...stillUnsyncedExpenses,
+        ],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   // Income operations
   const addIncome = (type: IncomeType = 'SALARY') =>
@@ -408,6 +547,24 @@ export function IncomeExpensesStep({ data, onUpdate }: IncomeExpensesStepProps) 
       title="Income & expenses"
       subtitle="Where your money comes from and where it goes. This powers your Budget and cashflow tracking."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking (Phase 12 Track F.8). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your income and expenses…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {/* Tab switcher */}
       <div className="flex gap-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 p-1">
         <button

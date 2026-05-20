@@ -622,7 +622,23 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
-        // 6. Create Income Sources
+        // 6. Income Sources
+        //
+        // ⚠ Phase 12 Track F.8 (2026-05-20): GENERAL income (salary + other
+        // non-property, non-investment personal income) is no longer written
+        // here. It is written incrementally to the real `Income` table by the
+        // wizard Income & Expenses step via /api/income — see
+        // `lib/onboarding/incomeExpensesSync.ts`. The step's commit runs
+        // before bulk-create, so every GENERAL income row is already
+        // persisted by the time this runs.
+        //
+        // INVESTMENT-type income is NOT general income — F.8 does not own it
+        // (it links to an `InvestmentAccount` captured on the Investments
+        // step). It is still created here so the link is wired. Property
+        // rental income is F.2's domain (written by the properties step).
+        //
+        // Intentionally a no-op for GENERAL rows until bulk-create is fully
+        // retired in Track F.9.
         // =======================================================================
         // Pick the first investment account (if any) so INVESTMENT-type income
         // can be linked to a real InvestmentAccount rather than floating free.
@@ -637,33 +653,21 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         const createdIncome = [];
         for (const inc of data.income) {
+          // Track F.8: GENERAL income → no-op (written by the wizard step).
+          // Only INVESTMENT-type income is still created here.
+          if (inc.type !== 'INVESTMENT') continue;
           if (inc.amount > 0) {
-            // Route sourceType based on the income type (not always GENERAL).
-            // Per schema (prisma/schema.prisma) and IncomeSourceType enum:
-            //   GENERAL    — salary, other personal income
-            //   PROPERTY   — handled earlier in the property loop
-            //   INVESTMENT — dividends, distributions, investment interest
-            let sourceType: 'GENERAL' | 'INVESTMENT' = 'GENERAL';
-            let investmentAccountId: string | null = null;
-            if (inc.type === 'INVESTMENT') {
-              sourceType = 'INVESTMENT';
-              investmentAccountId = firstInvestmentAccountId;
-            }
-
             const income = await tx.income.create({
               data: {
                 userId,
                 ownerEntityId,
                 name: inc.name || inc.type,
                 type: inc.type,
-                sourceType,
-                investmentAccountId,
+                sourceType: 'INVESTMENT',
+                investmentAccountId: firstInvestmentAccountId,
                 // Canonical contract: store amount AT the given frequency.
                 amount: inc.amount,
                 frequency: inc.frequency,
-                ...(inc.type === 'SALARY' && inc.salaryType && {
-                  salaryType: inc.salaryType,
-                }),
               },
             });
             createdIncome.push(income);
@@ -671,38 +675,27 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
-        // 7. Create Expenses
+        // 7. Expenses
         //
-        // Phase 12 PR 3b — Renter path note:
-        //   When the user picks housing === 'RENT' or 'BOTH' on the
-        //   Welcome step, the Properties step is hidden (see
-        //   getStepsForProfile in wizard/types.ts). Rent is modelled as
-        //   a regular Expense row with category='RENT' — NOT as a
-        //   Property(type=RENTAL). The user adds the rent row themselves
-        //   in the Income/Expenses step UI. We do NOT auto-seed a rent
-        //   expense here because we don't know the amount — a $0 row
-        //   would be worse than none. Plan doc §3 row 3 for details.
+        // ⚠ Phase 12 Track F.8 (2026-05-20): GENERAL expenses are no longer
+        // written here. They are written incrementally to the real `Expense`
+        // table by the wizard Income & Expenses step via /api/expenses — see
+        // `lib/onboarding/incomeExpensesSync.ts`. The step's commit runs
+        // before bulk-create, so every GENERAL expense row is already
+        // persisted by the time this runs.
+        //
+        // Property expenses (F.2) + asset expenses (F.7) were never written
+        // in this section — they belong to their own domain steps.
+        //
+        // Phase 12 PR 3b — Renter path note: when the user picks
+        // housing === 'RENT' or 'BOTH' the Properties step is hidden and
+        // rent is modelled as an Expense(category='RENT', sourceType=GENERAL)
+        // the user adds themselves in the Income & Expenses step. That row
+        // is now written by the step's commit (Track F.8), not here.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in F.9.
         // =======================================================================
-        const createdExpenses = [];
-        for (const exp of data.expenses) {
-          if (exp.amount > 0) {
-            const expense = await tx.expense.create({
-              data: {
-                userId,
-                ownerEntityId,
-                name: exp.name || exp.category,
-                category: exp.category,
-                sourceType: 'GENERAL',
-                // Canonical contract: store amount AT the given frequency.
-                amount: exp.amount,
-                frequency: exp.frequency,
-                isEssential: exp.isEssential ?? true,
-                isTaxDeductible: exp.isTaxDeductible ?? false,
-              },
-            });
-            createdExpenses.push(expense);
-          }
-        }
+        const createdExpenses: never[] = [];
 
         // =======================================================================
         // 8. Update user preferences
