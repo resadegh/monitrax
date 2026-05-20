@@ -446,128 +446,25 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         // =======================================================================
         // 1a. Phase 29 — Household profile, members, pets
-        //                + Phase 12 PR 3b lifestyle fields
         //
-        // The wizard collects members/pets/carsCount + (PR 3b) lifestyle
-        // preferences for the Phase 28 budget AI. We upsert a
-        // HouseholdProfile and its children here. Lifestyle fields come
-        // from Welcome step + Household step's "Your lifestyle" section.
-        // Falls back to schema defaults (MODERATE / SOMETIMES) only when
-        // the user hasn't picked one.
+        // ⚠ Phase 12 Track F.1 (2026-05-20): the HOUSEHOLD domain is no
+        // longer written here. It is now written incrementally to the real
+        // tables (`HouseholdProfile` / `HouseholdMember` / `HouseholdPet`)
+        // by the wizard household step + chat household topic, via the
+        // household entity APIs — see `lib/onboarding/householdSync.ts` and
+        // `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md`.
+        //
+        // The wizard payload still carries `householdMembers` / `householdPets`
+        // / `carsCount` / lifestyle fields (they remain in `WizardData` for
+        // the Review step), but they MUST NOT be re-written here: doing so
+        // would `deleteMany` + recreate the rows F.1 already persisted,
+        // discarding their ids + re-running category generation. Household
+        // is the single SSOT in the real tables — this block is intentionally
+        // a no-op until `bulk-create` is fully retired in Track F.9.
+        //
+        // The other 7 domains below remain draft-staged + written here
+        // (coexistence — F.2–F.8 migrate them one PR at a time).
         // =======================================================================
-        const householdMembers = data.householdMembers ?? [];
-        const householdPets = data.householdPets ?? [];
-        const carsCount = data.carsCount ?? 0;
-        // PR 3b lifestyle inputs (may be null/undefined if user skipped)
-        const lifestylePreference = data.lifestylePreference ?? undefined;
-        const diningOutFrequency = data.diningOutFrequency ?? undefined;
-        const hobbiesWithCosts = data.hobbiesWithCosts?.trim() || undefined;
-        const hasLifestyleData =
-          !!lifestylePreference || !!diningOutFrequency || !!hobbiesWithCosts;
-
-        if (
-          householdMembers.length > 0 ||
-          householdPets.length > 0 ||
-          carsCount > 0 ||
-          hasLifestyleData
-        ) {
-          const childrenAges: number[] = [];
-          let adultsCount = 0;
-          let childrenCount = 0;
-          for (const m of householdMembers) {
-            if (m.relationship === 'CHILD') {
-              childrenCount += 1;
-              if (m.dateOfBirth) {
-                const dob = new Date(m.dateOfBirth);
-                if (!Number.isNaN(dob.getTime())) {
-                  const ageMs = Date.now() - dob.getTime();
-                  const ageYears = Math.floor(ageMs / (365.25 * 24 * 60 * 60 * 1000));
-                  if (ageYears >= 0) childrenAges.push(ageYears);
-                }
-              }
-            } else {
-              adultsCount += 1;
-            }
-          }
-          // Ensure at least one adult — the user themselves — to satisfy the
-          // "adultsCount default 1" schema contract even when no SELF member
-          // was explicitly added.
-          if (adultsCount === 0) adultsCount = 1;
-
-          const petTypes = Array.from(new Set(householdPets.map((p) => p.type.toLowerCase())));
-
-          const householdProfile = await tx.householdProfile.upsert({
-            where: { userId },
-            create: {
-              userId,
-              adultsCount,
-              childrenCount,
-              childrenAges,
-              petsCount: householdPets.length,
-              petTypes,
-              carsCount,
-              isComplete: true,
-              // PR 3b: lifestyle fields for Phase 28 budget AI
-              ...(lifestylePreference && { lifestylePreference }),
-              ...(diningOutFrequency && { diningOutFrequency }),
-              ...(hobbiesWithCosts && { hobbiesWithCosts }),
-            },
-            update: {
-              adultsCount,
-              childrenCount,
-              childrenAges,
-              petsCount: householdPets.length,
-              petTypes,
-              carsCount,
-              isComplete: true,
-              // PR 3b: lifestyle fields — only overwrite if the wizard
-              // actually captured them (so we don't clobber existing
-              // Settings values with null on a re-run).
-              ...(lifestylePreference && { lifestylePreference }),
-              ...(diningOutFrequency && { diningOutFrequency }),
-              ...(hobbiesWithCosts && { hobbiesWithCosts }),
-            },
-          });
-
-          // Replace members/pets idempotently: delete any existing rows for
-          // this profile, then recreate from the wizard payload. This keeps
-          // re-running onboarding safe (consistent with the atomic-bulk model).
-          await tx.householdMember.deleteMany({
-            where: { householdProfileId: householdProfile.id },
-          });
-          await tx.householdPet.deleteMany({
-            where: { householdProfileId: householdProfile.id },
-          });
-
-          for (let i = 0; i < householdMembers.length; i++) {
-            const m = householdMembers[i];
-            if (!m.name?.trim()) continue;
-            await tx.householdMember.create({
-              data: {
-                householdProfileId: householdProfile.id,
-                name: m.name.trim(),
-                relationship: m.relationship,
-                dateOfBirth: m.dateOfBirth ? new Date(m.dateOfBirth) : null,
-                isIncomeEarner: m.relationship === 'CHILD' ? false : m.isIncomeEarner,
-                sortOrder: i,
-              },
-            });
-          }
-
-          for (let i = 0; i < householdPets.length; i++) {
-            const p = householdPets[i];
-            if (!p.name?.trim()) continue;
-            await tx.householdPet.create({
-              data: {
-                householdProfileId: householdProfile.id,
-                name: p.name.trim(),
-                type: p.type,
-                breed: p.breed?.trim() || null,
-                sortOrder: i,
-              },
-            });
-          }
-        }
 
         // =======================================================================
         // 2. Create Properties with Loans
@@ -1057,8 +954,12 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
           assets: createdAssets.length,
           income: createdIncome.length,
           expenses: createdExpenses.length,
-          householdMembers: householdMembers.length,
-          householdPets: householdPets.length,
+          // Phase 12 Track F.1: the household domain is written incrementally
+          // to the real tables by the wizard/chat (not here). These counts
+          // are informational only — taken from the payload, not from rows
+          // this transaction created.
+          householdMembers: (data.householdMembers ?? []).length,
+          householdPets: (data.householdPets ?? []).length,
         };
         },
         {

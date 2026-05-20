@@ -350,6 +350,18 @@ enum AuditAction {
   ONBOARDING_AGENT_EXTRACTION
   ONBOARDING_AGENT_TOPIC_CONFIRMED
   ONBOARDING_AGENT_MODE_SWITCHED
+
+  // Phase 12 Track F.1 (Onboarding two-way sync — household domain).
+  // The household entity APIs (/api/household-members, /api/household-pets)
+  // became the wizard's SSOT write boundary, so every household write is
+  // now audited per CLAUDE.md §12.5. Metadata carries relationship/type
+  // + booleans only — no CDR/financial data (§13.3).
+  HOUSEHOLD_MEMBER_CREATED
+  HOUSEHOLD_MEMBER_UPDATED
+  HOUSEHOLD_MEMBER_DELETED
+  HOUSEHOLD_PET_CREATED
+  HOUSEHOLD_PET_UPDATED
+  HOUSEHOLD_PET_DELETED
 }
 
 enum AuditStatus {

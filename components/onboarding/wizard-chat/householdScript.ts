@@ -26,8 +26,12 @@ import type { HouseholdFields } from '@/lib/ai/onboarding-agent/schemas/wizardSt
 import type {
   HouseholdRelationship,
   HouseholdPetType,
-  WizardData,
 } from '@/components/onboarding/wizard/types';
+import {
+  EMPTY_HOUSEHOLD_SNAPSHOT,
+  snapshotToWizardSlice,
+  type HouseholdSnapshot,
+} from '@/lib/onboarding/householdSync';
 import { hydrateHouseholdFromDraft } from './draftHydration';
 
 export type HouseholdScriptStep =
@@ -48,12 +52,22 @@ export interface HouseholdScriptState {
    *  anything new. Used to break loops — after 2 retries with no
    *  progress, advance regardless. */
   retriesOnCurrentStep: number;
+  /**
+   * Phase 12 Track F.1: the household as it existed in the REAL tables
+   * (`HouseholdProfile` / `HouseholdMember` / `HouseholdPet`) when the
+   * topic was bootstrapped. This is the diff baseline `handleConfirm`
+   * uses so confirming household writes only the delta — and so
+   * re-entering chat + re-confirming with no changes is idempotent (no
+   * duplicate rows). Empty for a fresh user with no household.
+   */
+  realSnapshot: HouseholdSnapshot;
 }
 
 export const initialHouseholdScriptState: HouseholdScriptState = {
   step: 'INTRO',
   staged: {},
   retriesOnCurrentStep: 0,
+  realSnapshot: EMPTY_HOUSEHOLD_SNAPSHOT,
 };
 
 // ============================================================================
@@ -166,7 +180,29 @@ interface AdvanceOutput {
   showRecap: boolean;
 }
 
-export function advanceScript({ state, newFields, llmCouldNotExtract }: AdvanceInput): AdvanceOutput {
+/** The inner state machine reasons only about the step/staged/retries
+ *  triple — `realSnapshot` is carried by the public `advanceScript`. */
+interface AdvanceOutputInner {
+  state: Omit<HouseholdScriptState, 'realSnapshot'>;
+  agentNextMessage: string | null;
+  showRecap: boolean;
+}
+
+/**
+ * Public entry point. Runs the pure state-machine (`advanceScriptInner`)
+ * and then carries the immutable `realSnapshot` baseline (Phase 12 Track
+ * F.1 diff baseline) through onto the returned state — the inner machine
+ * only reasons about `step` / `staged` / `retriesOnCurrentStep`.
+ */
+export function advanceScript(input: AdvanceInput): AdvanceOutput {
+  const out = advanceScriptInner(input);
+  return {
+    ...out,
+    state: { ...out.state, realSnapshot: input.state.realSnapshot },
+  };
+}
+
+function advanceScriptInner({ state, newFields, llmCouldNotExtract }: AdvanceInput): AdvanceOutputInner {
   // Merge: new fields overwrite if present, otherwise keep staged.
   const merged: HouseholdFields = {
     householdMembers: newFields.householdMembers ?? state.staged.householdMembers,
@@ -314,19 +350,30 @@ export function advanceScript({ state, newFields, llmCouldNotExtract }: AdvanceI
  * First-message bootstrap — returns the agent's intro + first ask
  * paired together as a single message. Called once on mount.
  *
- * When `draft` already contains household data (the user entered it in
- * form mode before switching to chat), the agent acknowledges what's
- * there and asks whether to add more or move on — instead of asking
- * from scratch. When the draft is empty (genuinely new user), behaviour
- * is byte-for-byte unchanged.
+ * Phase 12 Track F.1: the household topic now reads the REAL household
+ * tables (not the draft blob). `snapshot` is the real-table household
+ * (`readHousehold()` result) — it becomes the diff baseline carried on
+ * `nextState.realSnapshot` so confirming writes only the delta and
+ * re-entry is idempotent.
+ *
+ * When the real tables already contain household data, the agent
+ * acknowledges what's there and asks whether to add more or move on —
+ * instead of asking from scratch. When empty (genuinely new user),
+ * behaviour is byte-for-byte unchanged. The acknowledgement copy is
+ * unchanged — it just reads from the real tables now (design doc §3.5).
  */
 export function bootstrapHouseholdConversation(
-  draft?: Partial<WizardData> | null,
+  snapshot?: HouseholdSnapshot | null,
 ): {
   agentMessages: string[];
   nextState: HouseholdScriptState;
 } {
-  const hydration = hydrateHouseholdFromDraft(draft);
+  const realSnapshot = snapshot ?? EMPTY_HOUSEHOLD_SNAPSHOT;
+  // Reuse the existing acknowledgement builder by feeding it the
+  // real-table snapshot in the draft-shaped slice it already understands.
+  // `hydrateHouseholdFromDraft` is pure copy/mapping — it does not care
+  // whether the data came from the draft blob or the real tables.
+  const hydration = hydrateHouseholdFromDraft(snapshotToWizardSlice(realSnapshot));
   if (hydration.hasExistingData && hydration.acknowledgement) {
     return {
       agentMessages: [AGENT_COPY.intro, hydration.acknowledgement],
@@ -334,6 +381,7 @@ export function bootstrapHouseholdConversation(
         step: 'REVIEWING_HYDRATED',
         staged: hydration.staged,
         retriesOnCurrentStep: 0,
+        realSnapshot,
       },
     };
   }
@@ -343,6 +391,7 @@ export function bootstrapHouseholdConversation(
       step: 'ASKING_MEMBERS',
       staged: {},
       retriesOnCurrentStep: 0,
+      realSnapshot,
     },
   };
 }

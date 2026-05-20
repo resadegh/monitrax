@@ -702,6 +702,34 @@ export const INITIAL_WIZARD_DATA: WizardData = {
 };
 
 // =============================================================================
+// PHASE 12 TRACK F.1: PER-STEP COMMIT HOOK
+// =============================================================================
+
+/**
+ * Phase 12 Track F.1 — per-step "commit" hook.
+ *
+ * Most wizard steps stage into the `WizardData` draft blob and write the
+ * real tables only at the final bulk-create. Track F migrates one domain
+ * per PR to write the REAL entity tables on "Continue" instead. A
+ * migrated step registers an async `commit` function via the
+ * `registerStepCommit` prop passed to it; `WizardContainer` awaits that
+ * function before advancing (Continue / Back / progress-bar jump).
+ *
+ * Contract:
+ *   - `commit()` persists the step's domain to its real tables and
+ *     resolves when done. It throws on failure — the container catches,
+ *     surfaces the message, and does NOT advance.
+ *   - Steps NOT yet migrated never register a commit; for them navigation
+ *     is unchanged (synchronous, draft-only). This is the coexistence
+ *     guarantee — household on the new model, the other 7 domains on the
+ *     old model, in the same wizard.
+ *
+ * Lives here (not in WizardContainer) so step components can import it
+ * without creating an import cycle with the container.
+ */
+export type StepCommitFn = () => Promise<void>;
+
+// =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
