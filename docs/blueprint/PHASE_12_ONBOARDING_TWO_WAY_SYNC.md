@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 (design + go/no-go) ✅ COMPLETE · F.1 (household) ✅ DONE (PR #831) · F.2 (properties) 🟡 IN PROGRESS 2026-05-20.
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 (household) ✅ DONE (PR #831) · F.2 (properties) ✅ DONE (PR #836) · F.3 (accounts) 🟡 IN PROGRESS 2026-05-20.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -118,8 +118,9 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 |---|---|
 | ~~F.0~~ | ✅ **DONE 2026-05-20** — design doc + Reza go/no-go (approved, recommendations adopted). |
 | ~~F.1~~ | ✅ **DONE 2026-05-20 (PR #831)** — Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Established the per-domain pattern — the reusable `lib/onboarding/householdSync.ts` read/diff/write layer (14 idempotency tests). |
-| **F.2** | 🟡 **IN PROGRESS 2026-05-20** — Properties domain. **Scope (Reza decision 2026-05-20): the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1 below). Reusable `lib/onboarding/propertiesSync.ts` read/diff/write layer + idempotency tests; 3 new `PROPERTY_*` `AuditAction` values + migration; `lint:financial-surfaces`-clean. Delivers the FORM step (`PropertiesStep`) full two-way sync; the chat property topic is deferred (see §6.2). |
-| **F.3 – F.8** | One PR each for accounts, debts, investments, super, assets, income/expenses — replicate the F.1/F.2 `*Sync.ts` pattern. |
+| ~~F.2~~ | ✅ **DONE 2026-05-20 (PR #836)** — Properties domain. **Scope: the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1). `lib/onboarding/propertiesSync.ts` read/diff/write layer + 18 idempotency tests; 3 `PROPERTY_*` `AuditAction` values + migration. FORM step (`PropertiesStep`) full two-way sync; chat property topic deferred (§6.2). |
+| **F.3** | 🟡 **IN PROGRESS 2026-05-20** — Accounts domain. `lib/onboarding/accountsSync.ts` read/diff/write layer + 17 idempotency tests; 3 `ACCOUNT_*` `AuditAction` values + migration. FORM step (`AccountsStep`) full two-way sync for MANUAL accounts; **BASIQ / IMPORT accounts read-only — never written by the sync** (see §6.3). Offset→loan link handled server-side in `/api/accounts`. Chat accounts topic deferred (alongside F.2's chat-properties). |
+| **F.4 – F.8** | One PR each for debts, investments, super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -178,6 +179,36 @@ real tables (household entities have no equivalent required field). A
 follow-up **F.2-chat** migrates the chat property topic once the
 purchaseDate-capture approach is decided (ask it conversationally vs. keep
 the form-mode handoff). Tracked in `IMPLEMENTATION_PLAN.md` Up Next row 0.
+
+### 6.3 F.3 scope — accounts, and the three data sources
+
+A bank account in the wizard has one of three provenances:
+
+| Source | How the real `Account` row is created | F.3 sync behaviour |
+|---|---|---|
+| **MANUAL** | the user typed the balance in the wizard | **F.3 reads + writes it** — create / update / hard-delete via `/api/accounts` |
+| **BASIQ** | the Basiq Open Banking consent flow writes it directly to the DB | **read + display only** — never written by the sync |
+| **IMPORT** | the Phase 18 CSV/OFX/QIF import flow writes it directly | **read + display only** — never written by the sync |
+
+`diffAccounts()` only emits create/update/delete ops for **MANUAL**
+accounts. BASIQ / IMPORT accounts are owned by their source — the wizard
+displays them so the user sees their full picture, but a "remove" or an
+edit on one produces no op (exactly the pre-F.3 behaviour, where
+`bulk-create` skipped them). This is data-safe by construction: the wizard
+can never destroy an externally-sourced account.
+
+`Account.balanceSource` is the discriminator on read (`MANUAL` /
+`USER_VERIFIED` / null → manageable; `BASIQ` / `IMPORT` → external).
+
+**Offset → loan link.** An OFFSET account points at a mortgage; the link
+lives on the loan (`Loan.offsetAccountId`). F.3 carries `linkedLoanId` on
+the account record and `/api/accounts` POST/PUT set `Loan.offsetAccountId`
+server-side, atomically with the account write, ownership-verified.
+Property loans carry real ids after F.2, and the properties step precedes
+the accounts step, so `linkedLoanId` is always a real `Loan` id by then.
+
+Chat accounts topic: deferred alongside F.2's chat-properties (the chat
+captures name/type/balance only; form mode is the write boundary).
 
 ---
 

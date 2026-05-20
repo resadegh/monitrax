@@ -484,29 +484,34 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         const createdProperties: never[] = [];
 
         // =======================================================================
-        // 3. Create Bank Accounts
+        // 3. Bank Accounts
         //
-        // PR 3b: accounts with source='BASIQ' or 'IMPORT' are already
-        // persisted (by the Basiq sync or the Phase 18 import flow) and
-        // pointed to via `existingAccountId`. We skip writing them here
-        // to avoid duplicates. MANUAL accounts (or untagged legacy rows)
-        // still get created as before.
+        // ⚠ Phase 12 Track F.3 (2026-05-20): MANUAL bank accounts are no
+        // longer written here. They are written incrementally to the real
+        // `Account` table by the wizard accounts step via /api/accounts —
+        // see `lib/onboarding/accountsSync.ts`. The accounts step's commit
+        // runs before bulk-create, so every MANUAL account (and its
+        // offset→loan link) is already persisted by the time this runs.
+        //
+        // BASIQ / IMPORT accounts were never written here (they already
+        // exist in the DB) — that skip is unchanged. We keep their
+        // offset→loan linking: F.3 does not manage externally-sourced
+        // accounts, so if the user marked a BASIQ/IMPORT account as a
+        // loan's offset, the link is still wired here.
+        //
+        // Intentionally a no-op for MANUAL rows until bulk-create is fully
+        // retired in Track F.9.
         // =======================================================================
-        const createdAccounts = [];
+        const createdAccounts: never[] = [];
         for (const acc of data.accounts) {
-          // Skip BASIQ / IMPORT rows — they already exist in the DB
+          // BASIQ / IMPORT accounts already exist in the DB. Honour their
+          // offset→loan link if the user chose one as a loan's offset.
           if (acc.source === 'BASIQ' || acc.source === 'IMPORT') {
-            // We still honour offset→loan linking for pre-existing
-            // accounts: if the user chose an imported account as the
-            // offset, write the link to the loan now.
             if (
               acc.type === 'OFFSET' &&
               acc.linkedLoanId &&
               acc.existingAccountId
             ) {
-              // Track F.2: property loans are now created by the wizard's
-              // two-way sync, so `linkedLoanId` is already a real `Loan`
-              // id. Verify ownership before writing the offset link.
               const linkedLoan = await tx.loan.findFirst({
                 where: { id: acc.linkedLoanId, userId },
                 select: { id: true },
@@ -518,45 +523,8 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
                 });
               }
             }
-            continue;
           }
-
-          const account = await tx.account.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: acc.name || `${acc.type} Account`,
-              type: acc.type,
-              institution: acc.institution || null,
-              currentBalance:
-                acc.type === 'CREDIT_CARD'
-                  ? -Math.abs(acc.currentBalance)
-                  : acc.currentBalance,
-              interestRate: acc.interestRate || null,
-              // PR 1 + PR 3b: MANUAL is the only source that reaches
-              // this branch now. BASIQ/IMPORT are skipped above.
-              balanceSource: 'MANUAL',
-              balanceLastUpdatedAt: new Date(),
-            },
-          });
-          createdAccounts.push(account);
-
-          // If this is an offset account linked to a loan, update the loan.
-          // Track F.2: `linkedLoanId` is already a real `Loan` id (property
-          // loans are created by the wizard's two-way sync) — verify
-          // ownership before writing the offset link.
-          if (acc.type === 'OFFSET' && acc.linkedLoanId) {
-            const linkedLoan = await tx.loan.findFirst({
-              where: { id: acc.linkedLoanId, userId },
-              select: { id: true },
-            });
-            if (linkedLoan) {
-              await tx.loan.update({
-                where: { id: linkedLoan.id },
-                data: { offsetAccountId: account.id },
-              });
-            }
-          }
+          // MANUAL rows → no-op (Track F.3 — written by the wizard step).
         }
 
         // =======================================================================

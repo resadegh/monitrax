@@ -3898,6 +3898,9 @@ Additive enum values:
   loan/income/expense writes F.2 also makes are audited via the
   generic `CREATE/UPDATE/DELETE` actions with an `entityType` — F.4
   (debts) and F.8 (income/expenses) own those domains.
+- **F.3 — accounts** (migration `20260520160000_…_track_f3_account_audit_actions`):
+  `ACCOUNT_CREATED/UPDATED/DELETED`. Only MANUAL bank accounts are
+  written by the wizard; BASIQ / IMPORT accounts are externally sourced.
 
 CDR-safe metadata only (§13.3) — type/category + booleans, never
 balances / amounts / addresses.

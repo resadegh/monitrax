@@ -69,3 +69,62 @@ The **chat** property topic stays draft-staging — it captures only name/type/v
 - `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.2 in progress + scope decision).
 - `docs/architecture/07_API_STANDARDS.md` — property/loan validation relaxation + property reform-field plumbing note.
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+## Session: Phase 12 Track F.3 — Onboarding two-way sync (accounts domain)
+
+Branch: `claude/track-f3-accounts-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, accounts domain. Replicates the F.1/F.2 `*Sync.ts` pattern.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.3 (accounts + the three data sources).
+- **Key rule:** the sync writes **MANUAL accounts only**. BASIQ (Open Banking) and IMPORT (file-import) accounts already have real rows written by their source — F.3 reads + displays them but never creates/updates/deletes them. Data-safe by construction; matches pre-F.3 behaviour.
+
+### What was done
+
+**1. `lib/onboarding/accountsSync.ts` — NEW (~340 LOC)**
+
+- `readAccounts()` — GET `/api/accounts` → `AccountsSnapshot`; classifies each row by `balanceSource` (MANUAL/USER_VERIFIED/null → manageable; BASIQ/IMPORT → external).
+- `diffAccounts()` — PURE idempotency core; only MANUAL accounts produce create/update/delete ops; BASIQ/IMPORT are passthrough.
+- `syncAccounts()` — applies the diff via `/api/accounts`; re-reads.
+- Mappers `snapshotToWizardAccounts` / `wizardAccountsToSnapshot` / `isPersistedId` / `accountRealId` (resolves the real id from `id` or the legacy `existingAccountId` for BASIQ/IMPORT). Quality guard: an unpersisted MANUAL account with no name is dropped.
+
+**2. `prisma/schema.prisma` + migration — `ACCOUNT_*` audit actions**
+
+- 3 new `AuditAction` values: `ACCOUNT_CREATED/UPDATED/DELETED`.
+- Migration `20260520160000_phase_12_track_f3_account_audit_actions/migration.sql` — additive `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
+
+**3. `app/api/accounts/route.ts` + `[id]/route.ts`**
+
+- `createAuditLog()` on POST/PUT/DELETE (`ACCOUNT_*`).
+- POST gained `interestRate`; PUT gained `institution` — the pair now covers every wizard `AccountInput` field. `currentBalance` validation accepts 0.
+- **Offset→loan link**: POST + PUT accept `linkedLoanId`; for an OFFSET account the route sets `Loan.offsetAccountId` server-side, atomically (`prisma.$transaction`), ownership-verified. PUT clears any stale link first (re-link / un-link).
+
+**4. `components/onboarding/wizard/steps/AccountsStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real `Account` table on open (merges real + unsynced in-session/chat-staged accounts), registers an async `commit` → `syncAccounts()` on Continue/Back. Loading + error banner.
+
+**5. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<AccountsStep>`.
+
+**6. `app/api/onboarding/bulk-create/route.ts` — accounts loop → no-op for MANUAL**
+
+The MANUAL `tx.account.create` block is removed (the accounts step's commit persists them). The BASIQ/IMPORT skip + their offset-linking branch is kept (F.3 doesn't manage externally-sourced accounts).
+
+**7. `tests/onboarding/accountsSync.test.ts` — NEW (17 tests)**
+
+Re-entry idempotency, mapper round-trip, create/update/delete classification, **BASIQ/IMPORT never written** (3 tests), quality guard, `isPersistedId`/`accountRealId`.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+- [x] `npx vitest run tests/onboarding/accountsSync.test.ts` — ✓ 17/17 pass
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.2 → done, F.3 row), new §6.3 (accounts + the three data sources), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.2 done, F.3 in progress).
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — accounts route audit + offset-link + extended fields.
+- `docs/architecture/03_DATA_MODEL.md` §N.4 — F.3 `ACCOUNT_*` audit actions.
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
