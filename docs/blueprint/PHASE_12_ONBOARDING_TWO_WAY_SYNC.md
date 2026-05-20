@@ -117,11 +117,13 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | PR | Scope |
 |---|---|
 | ~~F.0~~ | ✅ **DONE 2026-05-20** — design doc + Reza go/no-go (approved, recommendations adopted). |
-| **F.1** | Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Establishes the per-domain pattern (a `useEntitySync`-style hook or per-step read/write helpers). §12.11 checklist. |
-| **F.2 – F.8** | One PR each for properties, accounts, debts, investments, super, assets, income/expenses — replicate the F.1 pattern. |
+| ~~F.1~~ | ✅ **DONE 2026-05-20 (PR #831)** — Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Established the per-domain pattern — the reusable `lib/onboarding/householdSync.ts` read/diff/write layer (14 idempotency tests). |
+| **F.2 – F.8** | One PR each for properties, accounts, debts, investments, super, assets, income/expenses — replicate the F.1 `householdSync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
+| **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
+| **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
 
-Estimated: ~9 PRs, roughly 1.5–2 weeks of focused work. Each PR independently shippable + testable.
+Estimated: ~11 PRs (F.0–F.9 core ≈ 1.5–2 weeks; F.10 + F.11 the conversational-depth extension). Each PR independently shippable + testable.
 
 ---
 
@@ -158,4 +160,45 @@ Reza go/no-go directive: *"for questions go with the recommendations."* All thre
 
 ---
 
-*F.0 complete — Reza approved 2026-05-20, all §8 questions resolved. F.1 (household domain) is the next PR: wizard household step + chat household topic read/write `HouseholdProfile` / `HouseholdMember` / `HouseholdPet` directly, establishing the per-domain pattern + the §5 §12.11-safe write contract. F.1 is queued as a fresh-session task (see `IMPLEMENTATION_PLAN.md` Up Next row 0).*
+## 10. F.10 + F.11 — conversational enrichment (queued extension)
+
+> **Status:** queued. Starts after F.9 — it depends on the real-table read/write machinery F.1–F.8 establish (enrichment fields write to the real entity columns).
+> **Driver:** Reza, 2026-05-20 — *"get the AI to engage with the user more and ask follow-up questions … AI asks about a property, user answers, then AI suggests 'would you like to add the council rate?' yes/no, then 'would you like to upload the receipt?' … so the AI captures the most complete data on onboarding. However the user can always skip and do them later."*
+
+### 10.1 The idea
+
+Today each chat topic captures a fixed **bare-minimum** field set per entity (e.g. a property captures name / type / value / hasLoan; everything else is deferred to form mode). F.10 makes the chat agent **progressively offer optional enrichment fields** as one-tap follow-ups after the core entity is captured:
+
+```
+agent:  Got it — "12 Smith St", an investment property worth $850k.
+agent:  Want to add the council rate for it?            [ Yes ]  [ Skip ]
+user:   Yes
+agent:  Roughly how much, and how often?
+user:   $2,400 a year
+agent:  Added. Anything else for this property, or move on?   [ Add more ]  [ Move on ]
+```
+
+More complete data on day one → better TRAIL guidance (net worth, cashflow, tax position). The user can always skip and fill it in later via form mode or the dashboard.
+
+### 10.2 Design constraints (four-lens — these are load-bearing)
+
+| Lens | Constraint |
+|---|---|
+| **Behaviour psychologist** | The chain MUST be capped — offer the **top 1–2** enrichment fields per entity, then "anything else, or move on?". A 10-question interrogation per property is fatigue, not thoroughness. "Skip" must be **visually equal-weight** to "Yes" — never a tiny grey link. The completionist user still has form mode for every field. |
+| **Financial adviser** | Enrichment fields are **prioritised by advice-impact** — ask for what materially improves the guidance (council rate = a real recurring expense + tax-deductible on an IP; valuation = equity/LVR accuracy). Never ask for vanity fields. |
+| **AFSL boundary** | Follow-up copy is a **neutral data offer** — "Would you like to add the council rate?" ✅. NOT "you should add it, it'll save you tax" ❌ — that edges into advice. Extraction-only, like the rest of the chat agent. |
+| **Architect** | Needs a clean **"core fields (required) vs enrichment fields (optional follow-up)"** split per topic. Each topic gets an ordered enrichment list. The state machine gains follow-up-offer states. Enrichment writes go to the same real-table columns via the same F.1 `*Sync` layer — F.10 is mechanically small *once F is done*. |
+
+### 10.3 F.10 vs F.11 — why two PRs
+
+- **F.10 — enrichment field follow-ups.** The lightweight part: yes/no offers for text/number/enum columns (council rate, valuation date, etc.). Capped per entity. Pure conversation + a write to an existing real-table column. Self-contained once F.1–F.8 exist.
+- **F.11 — receipt / document upload mid-chat.** The heavy part: "would you like to upload the rates notice?" pulls in the whole document pipeline (`/api/documents/upload`, the Phase 25 / 38 Document Management Engine) + an upload affordance in the chat composer + the document-to-entity link. Deliberately a separate PR so F.10's value isn't blocked behind the document-pipeline wiring.
+
+### 10.4 Open questions (for when F.10 is scoped — not blocking now)
+
+- **Q-F10-1** — the per-topic enrichment field list + priority order. Decide per domain when each F.2–F.8 PR lands (it already touches that domain's fields).
+- **Q-F10-2** — does the form-mode wizard also surface these enrichment fields, or do they stay chat-only + form-mode-full-fields? (Default: form mode already exposes all fields; F.10 is about making the *chat* reach parity progressively.)
+
+---
+
+*F.0 + F.1 complete (2026-05-20, PRs approved + #831). F.2 (properties domain) is next — replicate the `lib/onboarding/householdSync.ts` pattern. F.10 + F.11 (conversational enrichment) are queued after F.9. See `IMPLEMENTATION_PLAN.md` Up Next row 0.*
