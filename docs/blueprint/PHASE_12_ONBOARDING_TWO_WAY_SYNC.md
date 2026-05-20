@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) ✅ DONE (#841) · F.8 (income/expenses) 🟡 IN PROGRESS 2026-05-20 — the LAST domain. Next: F.9 (retire `bulk-create` + draft blob).
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) ✅ DONE (#841) · F.8 (income/expenses) ✅ DONE (#842) — all 8 domains synced · F-reconcile-handoff ✅ DONE 2026-05-20. Next: F.9 (retire `bulk-create` + draft blob).
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -124,7 +124,8 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.5~~ | ✅ **DONE 2026-05-20 (PR #839)** — Investments domain (the `InvestmentAccount` + `InvestmentHolding` aggregate, mirroring F.2's property aggregate). `lib/onboarding/investmentsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `INVESTMENT_*` `AuditAction` values + migration. FORM step (`InvestmentsStep`) full two-way sync. See §6.5. |
 | ~~F.6~~ | ✅ **DONE 2026-05-20 (PR #840)** — Superannuation domain (`SuperannuationAccount` — a flat entity, F.3-shaped). `lib/onboarding/superSync.ts` read/diff/write layer + 11 idempotency tests; 3 `SUPER_*` `AuditAction` values + migration; new `/api/tax/super/[id]` route (PUT + DELETE — the parent route had GET + POST only). FORM step (`SuperStep`) full two-way sync. See §6.6. |
 | ~~F.7~~ | ✅ **DONE 2026-05-20 (PR #841)** — Assets domain (the `Asset` + its `Expense`s aggregate). `lib/onboarding/assetsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `ASSET_*` `AuditAction` values + migration. FORM step (`AssetsStep`) full two-way sync. See §6.7. |
-| **F.8** | 🟡 **IN PROGRESS 2026-05-20** — Income / expenses domain — the LAST domain. GENERAL (non-property, non-loan, non-asset, non-investment) `Income` + `Expense` only. `lib/onboarding/incomeExpensesSync.ts` read/diff/write layer + 17 idempotency tests. **No schema change** — the `/api/income` + `/api/expenses` routes already gained `createAuditLog()` in F.2. FORM step (`IncomeExpensesStep`) full two-way sync. See §6.8. |
+| ~~F.8~~ | ✅ **DONE 2026-05-20 (PR #842)** — Income / expenses domain — the LAST domain. GENERAL (non-property, non-loan, non-asset, non-investment) `Income` + `Expense` only. `lib/onboarding/incomeExpensesSync.ts` read/diff/write layer + 17 idempotency tests. **No schema change** — the `/api/income` + `/api/expenses` routes already gained `createAuditLog()` in F.2. FORM step (`IncomeExpensesStep`) full two-way sync. See §6.8. |
+| ~~F-reconcile-handoff~~ | ✅ **DONE 2026-05-20** — Post-onboarding reconciliation handoff. A closing card on the wizard's `ReviewStep` — shown only when the user connected / imported accounts during the wizard (`AccountInput.source` BASIQ or IMPORT) — bridges them to `My Budget → Cashflow` to see plan vs reality. Presentational only: no new fetch (the signal is in wizard state), no schema change. The wizard never surfaces actuals itself. See §6.4. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -260,6 +261,31 @@ wizard a clean "set your plan" surface and makes "see plan vs reality" a
 deliberate post-onboarding next action. It is a single follow-up
 (**F-reconcile-handoff**) after the F.5–F.8 domain sweep — it supersedes
 the earlier "surface actuals on re-entry" idea.
+
+**✅ BUILT 2026-05-20 (F-reconcile-handoff).** The message lives on the
+wizard's final `ReviewStep` (the confetti / "your TRAIL begins"
+completion screen) — not a separate dashboard banner. Rationale: the
+ReviewStep is already the celebration surface and the moment of peak
+motivation; a dashboard banner would have needed new "just finished
+onboarding" state + dismissal tracking for no extra benefit.
+Implementation:
+- **Trigger:** `data.accounts.some(a => a.source === 'BASIQ' || a.source
+  === 'IMPORT')` — the signal is already in wizard state (`AccountInput.
+  source`), so the card costs **zero new fetch, no endpoint, no schema
+  change**.
+- **No-import case:** no card (the "connect your bank" nudge alternative
+  was not built — it is a different CTA to a different page; noted as an
+  optional future nudge, out of scope for F-reconcile-handoff).
+- **Not a hyperlink.** The card names `My Budget → Cashflow` (`/cashflow`)
+  but is deliberately not clickable: navigating away from `ReviewStep`
+  would skip the footer's completion handler (`onComplete` →
+  `onboardingCompleted`). The handoff is by naming the destination, so
+  "see plan vs reality" stays a *deliberate* action the user takes after
+  landing on the dashboard — matching the decision above.
+- **Copy** (warm-words, §14): *"Your real spending is already flowing in
+  … The amounts you just entered are your starting budget … head to My
+  Budget → Cashflow to see your plan against what's really happening —
+  and fine-tune from there."* The card never shows an actual figure.
 
 ### 6.5 F.5 scope — investments (the account + holdings aggregate)
 
