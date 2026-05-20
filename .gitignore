@@ -32,6 +32,10 @@ yarn-error.log*
 # claude code local settings (contains secrets, never commit)
 .claude/settings.local.json
 
+# claude code ephemeral agent worktrees — created per background sub-agent,
+# never part of the repo
+.claude/worktrees/
+
 # vercel
 .vercel
 
