@@ -467,3 +467,47 @@ The ReviewStep edits shifted a pre-existing grandfathered financial-math entry (
 - `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — header status (F.8 done, F-reconcile-handoff done), §6 table (F.8 → done + new F-reconcile-handoff row), §6.4 "✅ BUILT" implementation note.
 - `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.8 merged, F-reconcile-handoff done, remaining F.9 → F.10 → F.11).
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+---
+
+## Session: Phase 12 Track G — Unified Conversational Onboarding (G.0 — companion prototype)
+
+Branch: `claude/track-g-unified-onboarding-NL4XV`
+
+### Scope
+
+- **Type**: Feature (design + prototype) — Phase 12 Track G G.0.
+- **Driver**: Reza, 2026-05-20 — the form wizard and the standalone AI chat are two implementations of one job; the chat "is clunky, doesn't get the questions, and breaks", the form is "dry, old-school". Decision: merge into one surface — the form stays the system of record, an AI **companion** lives alongside it (narrates each step, reads what the user entered, reacts with warm advice-free reflection).
+- **This session**: the design doc for the whole track + the **G.0 prototype** — the companion wired to the household step only, so Reza can evaluate the concept before the full build.
+
+### Design
+
+New design doc `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` — problem, the guide-only-v1 decision, target architecture (keep the 12-step wizard spine + Track F sync layers; evolve `AIHelper`; add the companion; delete the chat state-machines in G.2), the companion contract, the build sequence G.0–G.5, risks.
+
+**F.10 / F.11 disposition** (the redundancy check Reza asked for):
+- **F.10 (conversational enrichment) — SUPERSEDED.** It was scoped as enrichment states bolted onto the chat script state-machines, which Track G deletes. Its *intent* (progressive optional-field enrichment) folds into the Track G companion.
+- **F.11 (document upload) — RE-HOMED, not redundant.** Re-parented from "mid-chat" to "mid-onboarding companion" as G.5.
+- **F.9 (retire bulk-create) — RE-SEQUENCED** into Track G as G.3 (the chat write path is removed in G.2; doing F.9 first would be wasted motion).
+
+### Files added
+
+- `lib/ai/onboarding-agent/companionGateway.ts` — `generateCompanionReflection()`: a warm, bounded, **advice-free** reflection LLM call (Haiku). Separate concern from the extraction gateway. Sees a counts/flags-only snapshot — never names, never CDR values.
+- `app/api/onboarding/companion/route.ts` — `POST`, `withPermission('settings.write')`, the standard `{success,data,error,meta}` envelope. Validates the snapshot is counts/flags only (rejects string values → enforces the no-PII contract server-side). Shares the daily `ONBOARDING_AGENT_EXTRACTION` cap (no new `AuditAction` → no schema migration); audits with snapshot KEY names only (CDR §13.3).
+- `components/onboarding/wizard/CompanionPanel.tsx` — the docked companion. Scripted household intro (instant, never fails) + an auto-fetched reflection that reads the de-identified household snapshot. The companion is **never a dependency** — every failure path is silent, the form is untouched.
+- `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` — the Track G design doc.
+
+### Files modified
+
+- `components/onboarding/wizard/WizardContainer.tsx` — renders `CompanionPanel` above `HouseholdStep` ("the form opens underneath"); suppresses the header `AIHelper` trigger on the household step (the companion is the help there).
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — header + §6 table + §10: F.10 superseded, F.11 re-homed, F.9 re-sequenced.
+- `docs/IMPLEMENTATION_PLAN.md` — row 0 (Track F remaining queue superseded) + new row 0G (Track G).
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [ ] `npm run build` — pending
+- [ ] `npm run lint:financial-surfaces` — pending
+
+### Notes
+
+G.0 is deliberately household-only — a deployable proof of the concept for Reza to evaluate before G.1 rolls the companion to all 12 steps. The standalone chat (`ConversationalSetup`, the 8 script state-machines, the mode-selector) is **not** touched in G.0 — its removal is G.2.
