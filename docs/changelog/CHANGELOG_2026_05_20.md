@@ -165,7 +165,7 @@ Re-entry idempotency, mapper round-trip, create/update/delete classification, qu
 
 ### Budget vs actuals (Reza directive 2026-05-20)
 
-Confirmed + documented: the two-way sync reads/writes only the raw **budget** columns; the transaction-reconciled **actuals** (`actualFromTransactions`, `monthlyAverageActual`) are never read or written by F.2/F.3/F.4. Reconciliation stays fully independent. Surfacing actuals as read-only context on wizard re-entry is a recommended follow-up (pairs with F.10), not folded into the domain PRs.
+Confirmed + documented: the two-way sync reads/writes only the raw **budget** columns; the transaction-reconciled **actuals** (`actualFromTransactions`, `monthlyAverageActual`) are never read or written by F.2/F.3/F.4. Reconciliation stays fully independent. **DECIDED (Reza):** the wizard never surfaces actuals — onboarding captures the initial budget data only. A **post-onboarding completion message** (shown only when transactions were imported during the wizard) reminds the user about reconciliation and links to that page. Single follow-up — **F-reconcile-handoff** — after the F.5–F.8 sweep. Supersedes the earlier "actuals-on-re-entry" idea. See design doc §6.4.
 
 ### Build status
 

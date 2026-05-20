@@ -244,6 +244,20 @@ the invariant for every income/expense/loan domain (F.2 / F.4 / F.8): the
 two-way sync touches the budget layer only, so reconciliation is never
 disturbed.
 
+**DECIDED 2026-05-20 (Reza) — the wizard never surfaces actuals.**
+Onboarding captures the *initial budget data* only; it does not show
+transaction-reconciled actuals in any step or on re-entry. Instead, a
+**post-onboarding completion message** bridges to reconciliation: when the
+user finishes the wizard, if they imported transactions during it (Basiq
+connect / file import), a message reminds them about reconciliation and
+links them to that page (the dashboard's budget-vs-actual surface). If no
+transactions were imported the message does not apply (or becomes a
+gentler "connect your bank" nudge — decided when built). This keeps the
+wizard a clean "set your plan" surface and makes "see plan vs reality" a
+deliberate post-onboarding next action. It is a single follow-up
+(**F-reconcile-handoff**) after the F.5–F.8 domain sweep — it supersedes
+the earlier "surface actuals on re-entry" idea.
+
 ---
 
 ## 7. Risks
