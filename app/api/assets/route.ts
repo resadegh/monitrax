@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 // GET /api/assets - List all assets for the user
 export const GET = withPermission('investment.read', async (request, auth) => {
@@ -143,8 +144,18 @@ export const POST = withPermission('investment.write', async (request, auth) => 
         notes,
       } = body;
 
-      // Validate required fields
-      if (!name || !type || !purchasePrice || !purchaseDate || !currentValue) {
+      // Validate required fields. `purchasePrice` / `currentValue` are
+      // validated as "present", not "truthy" — 0 is a legitimate value the
+      // wizard's two-way sync (Track F.7) can send.
+      if (
+        !name ||
+        !type ||
+        purchasePrice === undefined ||
+        purchasePrice === null ||
+        !purchaseDate ||
+        currentValue === undefined ||
+        currentValue === null
+      ) {
         return NextResponse.json(
           { error: 'Missing required fields: name, type, purchasePrice, purchaseDate, currentValue' },
           { status: 400 }
@@ -193,6 +204,18 @@ export const POST = withPermission('investment.write', async (request, auth) => 
           source: 'MANUAL',
           notes: 'Initial value at creation',
         },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5). This route is
+      // the wizard's SSOT write boundary for assets (Track F.7). No
+      // CDR/financial values in metadata (§13.3) — type only.
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'ASSET_CREATED',
+        status: 'SUCCESS',
+        entityType: 'Asset',
+        entityId: asset.id,
+        metadata: { type },
       });
 
       return NextResponse.json(asset, { status: 201 });

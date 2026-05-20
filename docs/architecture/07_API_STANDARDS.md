@@ -750,5 +750,14 @@ Applied in **F.6** (2026-05-20) for the superannuation domain:
    PUT/DELETE. PUT/DELETE use `income.write` / `income.delete`
    permissions (consistent with the existing super POST's `income.write`).
 
+Applied in **F.7** (2026-05-20) for the assets domain:
+
+8. **`/api/assets` audit + validation.** `/api/assets` (POST + `[id]`
+   PUT/DELETE) now call `createAuditLog()` (`ASSET_CREATED/UPDATED/DELETED`).
+   `purchasePrice` / `currentValue` are validated/written as *present*
+   (not *truthy*) on both POST and PUT — `0` is a legitimate value the
+   wizard's two-way sync can send. Asset-expense writes route through the
+   already-audited `/api/expenses` routes.
+
 ---
 

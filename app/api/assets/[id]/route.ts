@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { toAnnual } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { verifyOwnership } from '@/lib/utils/ownership';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -125,8 +126,12 @@ export const PUT = withPermission<RouteContext>('investment.write', async (reque
         notes,
       } = body;
 
-      // Check if value changed - record in history
-      const valueChanged = currentValue && currentValue !== verifiedExisting.currentValue;
+      // Check if value changed - record in history. `currentValue` is
+      // compared as "present" (not "truthy") so a legitimate 0 still
+      // updates + records (Track F.7 two-way sync).
+      const currentValueProvided = currentValue !== undefined && currentValue !== null;
+      const valueChanged =
+        currentValueProvided && parseFloat(currentValue) !== verifiedExisting.currentValue;
 
       const asset = await prisma.asset.update({
         where: { id },
@@ -135,9 +140,12 @@ export const PUT = withPermission<RouteContext>('investment.write', async (reque
           type,
           status,
           description,
-          purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
+          purchasePrice:
+            purchasePrice !== undefined && purchasePrice !== null
+              ? parseFloat(purchasePrice)
+              : undefined,
           purchaseDate: purchaseDate ? new Date(purchaseDate) : undefined,
-          currentValue: currentValue ? parseFloat(currentValue) : undefined,
+          currentValue: currentValueProvided ? parseFloat(currentValue) : undefined,
           valuationDate: valuationDate ? new Date(valuationDate) : valueChanged ? new Date() : undefined,
           salePrice: salePrice ? parseFloat(salePrice) : null,
           saleDate: saleDate ? new Date(saleDate) : null,
@@ -174,6 +182,16 @@ export const PUT = withPermission<RouteContext>('investment.write', async (reque
         });
       }
 
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'ASSET_UPDATED',
+        status: 'SUCCESS',
+        entityType: 'Asset',
+        entityId: asset.id,
+        metadata: { type: asset.type },
+      });
+
       return NextResponse.json(asset);
     } catch (error) {
       console.error('Update asset error:', error);
@@ -200,6 +218,15 @@ export const DELETE = withPermission<RouteContext>('investment.delete', async (r
       // Delete the asset (cascades to value history and service records)
       await prisma.asset.delete({
         where: { id },
+      });
+
+      // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+      void createAuditLog({
+        userId: auth.userId,
+        action: 'ASSET_DELETED',
+        status: 'SUCCESS',
+        entityType: 'Asset',
+        entityId: id,
       });
 
       return NextResponse.json({ message: 'Asset deleted successfully' });

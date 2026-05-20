@@ -575,97 +575,48 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         const createdDebts: never[] = [];
 
         // =======================================================================
-        // 5. Create Personal Assets
-        // =======================================================================
-        // Fix (PR 3b.11): explicit element type. The CAR→Asset linking
-        // second pass (section 5a below) reads `createdAssets[i].id`,
-        // which means TypeScript strict mode can't fall back to the
-        // push-site inference. A structural `{ id: string }` type is
-        // enough — it's satisfied by the full Prisma `Asset` object we
-        // push, and covers the only field we read.
-        const createdAssets: Array<{ id: string }> = [];
-        for (const asset of data.assets) {
-          const now = new Date();
-          if (!asset.purchaseDate) {
-            throw new Error(`Asset "${asset.name || asset.type}" is missing a purchase date.`);
-          }
-          const assetPurchaseDate = new Date(asset.purchaseDate);
-          if (Number.isNaN(assetPurchaseDate.getTime())) {
-            throw new Error(`Asset "${asset.name || asset.type}" has an invalid purchase date.`);
-          }
-          const createdAsset = await tx.asset.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: asset.name || getAssetName(asset),
-              type: asset.type,
-              description: asset.description || null,
-              purchasePrice: asset.purchasePrice,
-              purchaseDate: assetPurchaseDate,
-              currentValue: asset.currentValue,
-              valuationDate: now,
-              ...(asset.type === 'VEHICLE' && {
-                vehicleMake: asset.vehicleMake || null,
-                vehicleModel: asset.vehicleModel || null,
-                vehicleYear: asset.vehicleYear || null,
-              }),
-            },
-          });
-          createdAssets.push(createdAsset);
-
-          // Create asset expenses
-          for (const expense of asset.expenses) {
-            if (expense.amount > 0) {
-              await tx.expense.create({
-                data: {
-                  userId,
-                  ownerEntityId,
-                  assetId: createdAsset.id,
-                  name: expense.name,
-                  category: expense.category,
-                  sourceType: 'ASSET',
-                  // Canonical contract: store amount AT the given frequency.
-                  amount: expense.amount,
-                  frequency: expense.frequency,
-                },
-              });
-            }
-          }
-        }
-
-        // =======================================================================
-        // 5a. Phase 12 Track F.4 — wire CAR debts to their vehicle Assets
+        // 5. Personal assets (+ expenses)
         //
-        // The Debts step (F.4) creates every CAR loan as a real `Loan` row,
-        // but it cannot set `linkedAssetId` — the vehicle has no real
-        // `Asset` row during the Debts step (Assets is a later step, not
-        // migrated until F.7). The asset is created above in section 5, so
-        // here — once both the real loan and the real asset exist — we wire
-        // the link. `data.debts[i].id` is the real `Loan` id (F.4 re-seeds
-        // it after the sync); the asset temp-id → real-id map resolves the
-        // vehicle. Ownership-verified before the write.
+        // ⚠ Phase 12 Track F.7 (2026-05-20): assets + their expenses are no
+        // longer written here. They are written incrementally to the real
+        // `Asset` / `Expense` tables by the wizard Assets step via
+        // /api/assets + /api/expenses — see `lib/onboarding/assetsSync.ts`.
+        // The Assets step's commit runs before bulk-create, so every asset
+        // is already persisted (with a real id carried back into
+        // `data.assets`) by the time this runs.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in F.9.
         // =======================================================================
-        const wizardAssetIdToRealId = new Map<string, string>();
-        data.assets.forEach((asset, i) => {
-          if (createdAssets[i]) {
-            wizardAssetIdToRealId.set(asset.id, createdAssets[i].id);
-          }
-        });
+        const createdAssets: never[] = [];
+
+        // =======================================================================
+        // 5a. Wire CAR debts to their vehicle Assets
+        //
+        // The Debts step (F.4) creates every CAR loan as a real `Loan` row
+        // but cannot set `linkedAssetId` (the Assets step comes later). The
+        // Assets step (F.7) now creates the vehicle as a real `Asset`. By
+        // the time bulk-create runs BOTH ids are real — `data.debts[i].id`
+        // (F.4-synced) and `data.debts[i].linkedAssetId` (a real `Asset`
+        // id, set on a Debts-step re-entry). Wire the link here,
+        // ownership-verifying both rows. Moves into `debtsSync` when
+        // bulk-create is fully retired in F.9.
+        // =======================================================================
         const isRealId = (id: string | undefined): boolean =>
           !!id && !id.startsWith('temp_') && !id.startsWith('chat-');
         for (const debt of data.debts ?? []) {
           if (debt.type !== 'CAR' || !debt.linkedAssetId) continue;
-          if (!isRealId(debt.id)) continue; // debt not synced — nothing to wire
-          const realAssetId = wizardAssetIdToRealId.get(debt.linkedAssetId);
-          if (!realAssetId) continue;
-          const loan = await tx.loan.findFirst({
-            where: { id: debt.id, userId },
-            select: { id: true },
-          });
-          if (loan) {
+          if (!isRealId(debt.id) || !isRealId(debt.linkedAssetId)) continue;
+          const [loan, asset] = await Promise.all([
+            tx.loan.findFirst({ where: { id: debt.id, userId }, select: { id: true } }),
+            tx.asset.findFirst({
+              where: { id: debt.linkedAssetId, userId },
+              select: { id: true },
+            }),
+          ]);
+          if (loan && asset) {
             await tx.loan.update({
               where: { id: loan.id },
-              data: { linkedAssetId: realAssetId },
+              data: { linkedAssetId: asset.id },
             });
           }
         }
@@ -923,11 +874,3 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
       );
     }
 });
-
-// Helper to generate asset name
-function getAssetName(asset: AssetInput): string {
-  if (asset.type === 'VEHICLE' && asset.vehicleMake) {
-    return `${asset.vehicleYear || ''} ${asset.vehicleMake} ${asset.vehicleModel || ''}`.trim();
-  }
-  return asset.type;
-}
