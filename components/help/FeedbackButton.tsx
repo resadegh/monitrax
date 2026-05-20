@@ -3,10 +3,22 @@
  * feedback chat drawer (Phase 33g.2).
  *
  * Lives in the consumer dashboard chrome, mounted alongside HelpDrawerButton
- * + AiChatButton. Fixed top-right of the viewport, slightly to the LEFT of
- * the help button so the visual hierarchy reads:
+ * + AiChatButton. Fixed top-right of the viewport. The three buttons form a
+ * single utility cluster, spaced left-to-right so they never overlap:
  *
- *   ?  💬   ←  help  feedback   (top-right edge of viewport)
+ *   💬   🤖   ?     (top-right edge of viewport)
+ *   feedback  AI  help
+ *
+ * Right-edge offsets (default / sm / lg), each button is h-9 (36px):
+ *   help      right-3  / right-4  / right-6      (12 / 16 / 24 px)
+ *   AI        right-14 / right-16 / right-[4.5rem] (56 / 64 / 72 px)
+ *   feedback  right-[6.25rem] / right-28 / right-[7.5rem] (100 / 112 / 120 px)
+ *
+ * ⚠ These three offsets MUST stay coordinated — they are hard-coded in
+ * three separate components (no shared container). A ~44-48px step keeps
+ * a clean gap between the 36px buttons. Bug fixed 2026-05-20: AiChatButton
+ * + FeedbackButton previously BOTH sat at right-14/right-16 and stacked,
+ * the feedback bubble covering the AI Advisor bubble.
  *
  * Same warm-ivory glass aesthetic as HelpDrawerButton (Phase 33b) +
  * PracticeGlassCard (Phase 32B PR1) — the design language is locked.
@@ -36,7 +48,7 @@ export function FeedbackButton({ className = '' }: FeedbackButtonProps) {
         aria-label="Send feedback"
         title="Send feedback"
         className={`
-          fixed top-3 right-14 sm:top-4 sm:right-16 lg:top-5 lg:right-20
+          fixed top-3 right-[6.25rem] sm:top-4 sm:right-28 lg:top-5 lg:right-[7.5rem]
           z-40
           inline-flex items-center justify-center
           h-9 w-9 rounded-full
