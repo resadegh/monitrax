@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 (household) ✅ DONE (PR #831) · F.2 (properties) ✅ DONE (PR #836) · F.3 (accounts) 🟡 IN PROGRESS 2026-05-20.
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 (accounts) ✅ DONE (#837) · F.4 (debts) 🟡 IN PROGRESS 2026-05-20.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -119,8 +119,9 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.0~~ | ✅ **DONE 2026-05-20** — design doc + Reza go/no-go (approved, recommendations adopted). |
 | ~~F.1~~ | ✅ **DONE 2026-05-20 (PR #831)** — Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Established the per-domain pattern — the reusable `lib/onboarding/householdSync.ts` read/diff/write layer (14 idempotency tests). |
 | ~~F.2~~ | ✅ **DONE 2026-05-20 (PR #836)** — Properties domain. **Scope: the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1). `lib/onboarding/propertiesSync.ts` read/diff/write layer + 18 idempotency tests; 3 `PROPERTY_*` `AuditAction` values + migration. FORM step (`PropertiesStep`) full two-way sync; chat property topic deferred (§6.2). |
-| **F.3** | 🟡 **IN PROGRESS 2026-05-20** — Accounts domain. `lib/onboarding/accountsSync.ts` read/diff/write layer + 17 idempotency tests; 3 `ACCOUNT_*` `AuditAction` values + migration. FORM step (`AccountsStep`) full two-way sync for MANUAL accounts; **BASIQ / IMPORT accounts read-only — never written by the sync** (see §6.3). Offset→loan link handled server-side in `/api/accounts`. Chat accounts topic deferred (alongside F.2's chat-properties). |
-| **F.4 – F.8** | One PR each for debts, investments, super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
+| ~~F.3~~ | ✅ **DONE 2026-05-20 (PR #837)** — Accounts domain. `lib/onboarding/accountsSync.ts` read/diff/write layer + 17 idempotency tests; 3 `ACCOUNT_*` `AuditAction` values + migration. FORM step (`AccountsStep`) full two-way sync for MANUAL accounts; **BASIQ / IMPORT accounts read-only — never written by the sync** (see §6.3). Offset→loan link handled server-side in `/api/accounts`. |
+| **F.4** | 🟡 **IN PROGRESS 2026-05-20** — Debts domain (standalone non-property loans — car / student / personal / business). `lib/onboarding/debtsSync.ts` read/diff/write layer + 11 idempotency tests. **No schema change** — the `/api/loans` routes already gained audit + relaxed validation in F.2. FORM step (`DebtsStep`) full two-way sync. CAR→vehicle link deferred (see §6.4). |
+| **F.5 – F.8** | One PR each for investments, super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -209,6 +210,39 @@ the accounts step, so `linkedLoanId` is always a real `Loan` id by then.
 
 Chat accounts topic: deferred alongside F.2's chat-properties (the chat
 captures name/type/balance only; form mode is the write boundary).
+
+### 6.4 F.4 scope — debts, and the CAR→vehicle link
+
+A "debt" is a standalone, non-property `Loan` — `type` ∈ `CAR` / `STUDENT`
+/ `PERSONAL` / `BUSINESS`. Property mortgages (`type` HOME / INVESTMENT,
+`propertyId` set) are F.2's; `readDebts()` filters by `type` so the two
+domains never collide.
+
+**No schema change.** F.2 already added `createAuditLog()` to `/api/loans`
+(generic `CREATE/UPDATE/DELETE`, `entityType: 'Loan'`) and relaxed the
+numeric validation (`minRepayment` / `termMonthsRemaining` accept 0 — HECS
+has a 0 minimum). F.4 reuses that route surface unchanged — no new
+`AuditAction` values, no migration.
+
+**The CAR→vehicle link is not F.4's.** A CAR debt can carry
+`linkedAssetId` (a link to a vehicle `Asset`). F.4 does NOT write it: the
+Assets step comes *after* Debts and is not migrated until F.7, so during
+the Debts step the vehicle has no real `Asset` row — sending a synthetic
+id would fail the loan API's related-ownership check. F.4 writes the
+debt's core fields only. `bulk-create`'s post-Assets pass (§5a) wires the
+link: it now *updates* the already-real CAR loan's `linkedAssetId` (the
+loan is created by F.4; `data.debts[i].id` carries the real id) instead of
+creating the loan. Once F.7 ships, the Assets step owns the link.
+
+**Budget vs actuals (Reza, 2026-05-20).** `/api/loans` GET returns each
+loan enriched with transaction-reconciled actuals (`actualFromTransactions`,
+`monthlyAverageActual`, …) *alongside* the raw budget columns
+(`principal`, `minRepayment`, `interestRateAnnual`). `readDebts()` reads
+**only the raw budget columns** — never the actuals. The wizard owns the
+budget; transaction reconciliation independently owns the actuals. This is
+the invariant for every income/expense/loan domain (F.2 / F.4 / F.8): the
+two-way sync touches the budget layer only, so reconciliation is never
+disturbed.
 
 ---
 
