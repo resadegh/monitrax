@@ -53,8 +53,9 @@ interface UseOnboardingStateReturn {
   // State checks
   shouldShowWelcome: boolean;
   shouldShowTour: boolean;
-  shouldShowOnboardingBadge: boolean;
   // Phase 12 PR 2: true when the user has an unfinished wizard to resume.
+  // This is the SINGLE onboarding-progress signal — the legacy
+  // `shouldShowOnboardingBadge` was removed 2026-05-20 with its widget.
   shouldShowResumeBanner: boolean;
 
   // Actions
@@ -63,7 +64,6 @@ interface UseOnboardingStateReturn {
   startOnboarding: () => Promise<void>;
   completeOnboarding: () => Promise<void>;
   dismissWelcomeModal: () => Promise<void>;
-  dismissOnboardingBadge: () => Promise<void>;
   markTourCompleted: () => Promise<void>;
   markTourSkipped: () => Promise<void>;
   resetTour: () => Promise<void>; // Restart the tour from settings
@@ -237,10 +237,6 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     }
   }, [updateState, user?.id]);
 
-  const dismissOnboardingBadge = useCallback(async () => {
-    await updateState({ dismissOnboardingBadge: true });
-  }, [updateState]);
-
   const markTourCompleted = useCallback(async () => {
     await updateState({ tourCompleted: true });
   }, [updateState]);
@@ -379,12 +375,6 @@ export function useOnboardingState(): UseOnboardingStateReturn {
       !state.preferences.tourSkippedAt
     : false;
 
-  const shouldShowOnboardingBadge = state
-    ? !state.onboardingCompleted &&
-      !state.preferences.dismissedOnboardingBadge &&
-      state.onboardingStartedAt !== null
-    : false;
-
   // Phase 12 PR 2: banner fires when the user has an unfinished wizard.
   // "Unfinished" = onboarding not completed AND we have either a server
   // draft or some persisted step progress. localStorage is checked as a
@@ -407,14 +397,12 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     error,
     shouldShowWelcome,
     shouldShowTour,
-    shouldShowOnboardingBadge,
     shouldShowResumeBanner,
     setProfileType,
     setCurrentStep,
     startOnboarding,
     completeOnboarding,
     dismissWelcomeModal,
-    dismissOnboardingBadge,
     markTourCompleted,
     markTourSkipped,
     resetTour,
