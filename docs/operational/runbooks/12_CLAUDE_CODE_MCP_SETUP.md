@@ -1,117 +1,169 @@
-# 12 — Claude Code MCP Setup
+# 12 — Claude Code Vercel Log Access
 
 **Owner:** Reza · **Last reviewed:** 2026-05-20
 
-This runbook explains how the project's `.mcp.json` file wires Claude Code sessions to external Model Context Protocol (MCP) servers — and how to add, audit, or revoke server access.
+This runbook explains how Claude Code agent sessions read Vercel deployment + runtime logs during live debugging. Originally written 2026-05-20 to configure the official Vercel MCP server — discovered that flow is blocked in Claude Code Web sandboxes, so the **working path is now the Vercel REST API + helper script** (§REST API path below). The MCP setup is retained but currently dormant (§MCP path — currently blocked).
 
 ---
 
-## What is `.mcp.json`?
+## ⚡ TL;DR — The working path (REST API)
 
-A repo-root config file read automatically by every Claude Code session (Web cloud environment, Desktop, CLI). It declares which remote/HTTP MCP servers the agent is allowed to talk to, along with how to authenticate.
-
-Source of truth: `https://code.claude.com/docs/en/mcp.md`.
-
----
-
-## Currently configured servers
-
-### `vercel` — Vercel platform read access
-
-- **Type:** HTTP
-- **URL:** `https://mcp.vercel.com`
-- **Auth:** `Authorization: Bearer ${VERCEL_TOKEN}` (env-var expansion)
-- **Added:** 2026-05-20 — Reza wanted the agent to read Vercel deployment logs + runtime logs directly during live debugging (e.g. Cloud SQL TLS handshake intermittents, connection-pool exhaustion 53300 errors) instead of relying on screenshots back-and-forth.
-
-**Tools the agent can call once connected:**
-- `mcp__vercel__list_deployments` — find latest/failed/successful builds
-- `mcp__vercel__get_deployment` — single deployment detail
-- `mcp__vercel__get_deployment_build_logs` — Vercel build-time logs
-- `mcp__vercel__get_runtime_logs` — Vercel function runtime logs (the most useful for live debugging)
-- `mcp__vercel__list_projects` — list projects
-- `mcp__vercel__get_project` — project metadata
-
-The agent does **not** have write access via the token's scope — read-only on deployments + logs.
-
----
-
-## How `VERCEL_TOKEN` is provisioned
-
-1. **Create the token at Vercel:** `vercel.com/account/tokens` → **Create Token**. Scope to the `monitrax` project only (least-privilege). No expiry vs short expiry is operator preference — short expiry is safer but requires periodic rotation.
-2. **Store the token in the Claude Code Web cloud environment:**
-   - Open `claude.ai/code` → click `Default` (cloud environment) badge → **gear icon ⚙️** next to Default → **Update cloud environment**.
-   - **Environment variables** field → paste:
-     ```
-     VERCEL_TOKEN=<the-token-value>
-     ```
-   - Save. The variable becomes available as `${VERCEL_TOKEN}` to every new Claude Code session that uses the `Default` environment.
-3. **Verify in a new session:** start a fresh session → ask the agent to list its Vercel tools. Expected: `mcp__vercel__*` tools enumerated.
-
----
-
-## Why the token lives in env vars despite the warning
-
-The cloud environment dialog warns: *"Environment variables are visible to anyone using this environment — don't add secrets or credentials."*
-
-For Monitrax today, **the cloud environment is solo-user (Reza only)** — so "visible to anyone using this environment" reduces to "visible to me". The trade-off is acceptable.
-
-**When this changes:**
-- If Monitrax adds collaborators with shared access to the same Claude Code cloud environment → migrate to per-user OAuth (Option 1 in this PR's context) OR rotate the token.
-- If the Vercel token is ever compromised → rotate immediately at `vercel.com/account/tokens` and re-paste into the cloud env var.
-
----
-
-## Rotation procedure (every 90 days recommended)
-
-1. `vercel.com/account/tokens` → revoke existing `claude-code-web` token.
-2. Create a new token, same scope.
-3. Update `VERCEL_TOKEN` in the Claude Code cloud environment.
-4. Start a fresh session to confirm the new token works (no Vercel API 401s).
-
----
-
-## Adding a new MCP server
-
-1. Determine if the server is HTTP/remote or stdio/local.
-2. For HTTP, append to `mcpServers` in `.mcp.json`:
-   ```json
-   {
-     "mcpServers": {
-       "vercel": { ... },
-       "newserver": {
-         "type": "http",
-         "url": "https://example.com/mcp",
-         "headers": {
-           "Authorization": "Bearer ${NEW_SERVER_TOKEN}"
-         }
-       }
-     }
-   }
+1. Reza creates a Vercel personal token at `vercel.com/account/tokens`, scoped to `monitrax` project, read-only.
+2. Reza adds the token to the Claude Code Web cloud environment: `claude.ai/code` → Default → ⚙️ → Environment variables → `VERCEL_TOKEN=vcp_...`.
+3. Agent runs `./scripts/vercel-logs.sh <command>` via Bash to fetch logs:
+   ```bash
+   ./scripts/vercel-logs.sh list                       # recent deployments
+   ./scripts/vercel-logs.sh latest-runtime             # latest prod runtime logs
+   ./scripts/vercel-logs.sh runtime <deploymentId>    # specific deploy runtime logs
+   ./scripts/vercel-logs.sh build <deploymentIdOrUrl>  # build events
+   ./scripts/vercel-logs.sh project                    # sanity-check token
    ```
-3. Provision the token in the cloud env var.
-4. Commit `.mcp.json`, redeploy not needed (config is read by Claude Code, not by the app build).
-5. Append a section to this runbook documenting the new server.
+4. No OAuth, no MCP, no host restrictions — just curl-to-`api.vercel.com` with the Bearer token.
 
 ---
 
-## Revoking access
+## REST API path (currently working)
 
-1. **For everyone, immediately:** delete the relevant block from `.mcp.json` → commit → push. Existing live sessions may still have the tool until they end; new sessions won't see it.
-2. **For the credential separately:** revoke the token at the provider's dashboard. This kills the connection even for in-flight sessions.
+### Why this instead of the MCP
+
+Vercel's REST API authenticates with the same personal token (`vcp_...`) that the user creates at `vercel.com/account/tokens`. Direct HTTPS to `api.vercel.com` works from any host that can reach the public internet — including Claude Code Web sandboxes. **No OAuth callback, no host allowlist on Vercel's side.**
+
+The official Vercel MCP server (`https://mcp.vercel.com`) uses an OAuth dance whose callback host is allowlisted only for approved hosts (e.g. `claude.ai` itself, for Claude.ai chat connectors). Claude Code Web sandboxes use a different host that's NOT on Vercel's allowlist — so the MCP flow returns `403 Host not in allowlist` and never completes (§MCP path — currently blocked).
+
+### Endpoints used
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /v6/deployments?app={project}&limit=N` | List recent deployments |
+| `GET /v9/projects/{name}` | Project metadata (used to resolve project ID for runtime-log calls) |
+| `GET /v3/deployments/{id}/events` | Build/deployment events (build logs) |
+| `GET /v1/projects/{projectId}/deployments/{id}/runtime-logs` | Runtime logs (function-level errors) |
+
+All authenticate with `Authorization: Bearer ${VERCEL_TOKEN}`.
+
+### Helper script
+
+`scripts/vercel-logs.sh` wraps the four common operations with jq-based pretty-printing. Agent calls it via Bash; humans can call it interactively too. Source has inline docs and a `help` command.
+
+### Token provisioning (Reza-side)
+
+1. Open `vercel.com/account/tokens` → **Create Token**.
+2. Token settings:
+   - **Name:** `claude-code-web-monitrax-logs` (or similar — clear single purpose)
+   - **Scope:** `monitrax` project ONLY (NOT account-wide — least-privilege)
+   - **Permissions:** read-only on deployments + runtime logs (don't grant write)
+   - **Expiry:** 90 days recommended (matches rotation cadence)
+3. Copy the token (Vercel shows it once).
+4. Open `claude.ai/code` → click the `Default` cloud-environment badge (bottom of page) → click the **⚙️ gear icon** next to Default → **Update cloud environment**.
+5. In **Environment variables**, paste:
+   ```
+   VERCEL_TOKEN=vcp_<paste-the-token-value>
+   ```
+6. Click **Save changes**.
+7. Start a **fresh Claude Code session** (existing sessions don't pick up env-var changes mid-flight).
+
+### Token rotation (every 90 days)
+
+1. Create a NEW token in Vercel, same settings.
+2. Update the env var in the cloud environment.
+3. Save changes.
+4. Verify the new token works in a fresh session: `./scripts/vercel-logs.sh project`.
+5. Revoke the OLD token at `vercel.com/account/tokens`.
+
+If you accidentally leak the token (e.g. screenshot, paste in chat): rotate immediately. Treat any visible token as compromised.
+
+### Plan-related retention caveats
+
+Vercel runtime-log retention depends on plan:
+- **Hobby:** 1 hour
+- **Pro:** 1 day (Monitrax current)
+- **Enterprise:** 3 days
+- **Observability Plus add-on:** up to 30 days
+
+Calls outside the retention window return an empty array (NOT an error) — the script surfaces that as a friendly message. For older logs you need the GCP Cloud Logging path (§Long-term, below).
+
+### What the agent gets
+
+When the agent runs the helper script, it can answer questions like:
+- "Show me runtime errors on the latest production deployment"
+- "What did the build log say on the deploy that's currently in `ERROR` state?"
+- "Is `/api/health` still throwing TLS errors in the last hour of logs?"
+- "Which deployment was active when this error was reported?"
+
+Without the screenshot middleman.
+
+---
+
+## MCP path (currently blocked)
+
+### Status
+
+The repo-root `.mcp.json` declares the Vercel MCP server. When a Claude Code session starts, it attempts to authenticate via OAuth with Vercel. **As of 2026-05-20 this fails** with `403 Host not in allowlist` because Vercel's OAuth host allowlist doesn't include Claude Code Web sandbox hosts. The MCP tools (`mcp__vercel__list_deployments`, etc.) are advertised but unreachable.
+
+### Why we keep it anyway
+
+Cheap to leave in place. If/when Anthropic and Vercel coordinate to add Claude Code Web sandbox hosts to Vercel's OAuth allowlist, the MCP will "just start working" without any action from us — at which point the MCP path becomes preferred over the REST API path (richer tool surface, structured types, better observability).
+
+### File
+
+`.mcp.json` at repo root:
+```json
+{
+  "mcpServers": {
+    "vercel": {
+      "type": "http",
+      "url": "https://mcp.vercel.com",
+      "headers": {
+        "Authorization": "Bearer ${VERCEL_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+The `${VERCEL_TOKEN}` expansion is read from the same env var that powers the REST API path — so one credential serves both potential paths.
+
+### When to remove `.mcp.json`
+
+If after 6 months (≥ 2026-11-20) the MCP path is still blocked, remove `.mcp.json` and this section to reduce confusion for future operators. Track in `IMPLEMENTATION_PLAN.md` Open Questions.
+
+---
+
+## Long-term (queued) — GCP Cloud Logging log drain
+
+The proper BAU-grade answer: configure a Vercel Log Drain to forward all logs to Google Cloud Logging via a small Cloud Functions relay. Then the agent queries GCL via `gcloud logging read` — which works from any sandbox + has unlimited retention (per the GCL retention policy).
+
+**Trigger conditions to ship this:**
+- First paying user on Monitrax, OR
+- Pre-Basiq accreditation submission (CDR posture wants log retention in GCP per CLAUDE.md §13.9), OR
+- The 1-day Pro retention starts biting (a week-old issue can't be diagnosed from logs)
+
+**One-time setup (~10 min):**
+1. Deploy `kym6464/vercel-google-cloud-logging` (Cloud Functions gen2, Python 3.12, MIT-licensed) to `monitrax-479700` project.
+2. Generate a shared secret + register a Vercel log drain pointing at the function URL.
+3. Verify ownership of the destination via Vercel's challenge response.
+4. Logs start landing in Cloud Logging under `logName=projects/monitrax-479700/logs/vercel-monitrax`.
+
+**Cost:** Pro plan log drain add-on (~$0.50/GB drain throughput) + standard Cloud Logging ingestion (free tier 50 GB/mo, then $0.50/GB).
+
+**Tracked in:** `IMPLEMENTATION_PLAN.md` Up Next #15 (vercel-log-receiver Cloud Function shim).
 
 ---
 
 ## Security considerations
 
-- **Never commit raw tokens** in `.mcp.json` — always use `${VAR}` expansion. The repo is a public-or-organization artifact; tokens belong in environment configuration only.
-- **Least-privilege every token.** Vercel tokens default to broad scope; explicitly scope them to the `monitrax` project.
-- **Audit periodically.** Quarterly review: list active tokens at `vercel.com/account/tokens`, confirm each is still in use, revoke stale ones.
-- **Network access on the cloud environment** is set to `Trusted` — meaning the environment can reach external URLs like `mcp.vercel.com`. If this is ever tightened to a restricted egress list, `mcp.vercel.com` would need to be allowlisted.
+- **Token NEVER committed to repo** — always env-var expansion via `${VERCEL_TOKEN}`.
+- **Least-privilege scope:** monitrax project only, read-only on deployments + logs.
+- **Single-tenant environment caveat:** the cloud environment's Environment variables field warns "visible to anyone using this environment". For Monitrax today that's solo-user (Reza only), so the trade-off is acceptable. If collaborators join the same cloud environment, rotate to per-user tokens or use OAuth (when/if Anthropic + Vercel fix the allowlist).
+- **Network egress** on the cloud env is set to `Full` (changed 2026-05-20 from `Trusted` during MCP debugging). `api.vercel.com` and `mcp.vercel.com` both reachable. If this is ever tightened, the REST API path still works as long as `api.vercel.com` stays allowlisted.
 
 ---
 
 ## References
 
+- Vercel REST API reference: `https://vercel.com/docs/rest-api`
+- Vercel runtime logs endpoint: `https://vercel.com/docs/rest-api/logs/get-logs-for-a-deployment`
 - Claude Code MCP docs: `https://code.claude.com/docs/en/mcp.md`
-- Vercel MCP docs: `https://vercel.com/docs/mcp` (provider-side, lists available tools + auth)
-- `04_WIF_TROUBLESHOOTING.md` — the originating use case (TLS-handshake + connection-pool live debugging that drove the request to wire this up).
+- Helper script source: `scripts/vercel-logs.sh`
+- Long-term log drain candidate: `https://github.com/kym6464/vercel-google-cloud-logging`
+- Originating firefight: `docs/changelog/CHANGELOG_2026_05_20.md` (Cloud SQL TLS-handshake + connection-pool exhaustion debugging session)
