@@ -74,10 +74,14 @@ function OnboardingPageInner() {
   } = useOnboardingState();
 
   // Phase 12 Track E.2c — deliberate mode-choice landing screen.
-  // Show the selector when the chat flag is ON AND the user hasn't
-  // expressed a choice yet AND has no draft progress. After the
-  // first pick (recorded in the URL), subsequent visits skip the
-  // selector so the user lands directly back where they were.
+  // Track E.2c rev 2 (Option C, 2026-05-20): the selector now shows
+  // whenever the chat flag is ON and the user hasn't expressed a
+  // choice via `?mode=` — INCLUDING returning users mid-draft. For
+  // those users the selector renders a "continue where you left off"
+  // variant (see OnboardingModeSelector) instead of forcing a blind
+  // re-choice. This closes the gap from rev 1 where mid-draft users
+  // bypassed the selector entirely and only ever saw the small pill
+  // toggle (Reza live-test feedback 2026-05-20, Open Question Q-CONV-2).
   // When the flag is OFF the selector is bypassed entirely —
   // /onboarding stays byte-for-byte the existing form experience.
   const hasDraftProgress = useMemo(() => {
@@ -89,8 +93,7 @@ function OnboardingPageInner() {
     }
     return false;
   }, [onboardingState]);
-  const showModeSelector =
-    chatFlagEnabled && !requestedMode && !hasDraftProgress;
+  const showModeSelector = chatFlagEnabled && !requestedMode;
 
   // Auth / completion gates
   useEffect(() => {
@@ -194,9 +197,11 @@ function OnboardingPageInner() {
     return null;
   }
 
-  // Mode-selector landing screen — only when flag ON + no choice yet + no draft.
+  // Mode-selector landing screen — flag ON + no `?mode=` chosen yet.
+  // `hasDraft` switches the selector to the returning-user "continue
+  // where you left off" variant (Option C).
   if (showModeSelector) {
-    return <OnboardingModeSelector />;
+    return <OnboardingModeSelector hasDraft={hasDraftProgress} />;
   }
 
   return (

@@ -3,49 +3,66 @@
 /**
  * Onboarding mode selector — Phase 12 Track E.2c
  *
- * Renders BEFORE either the form-wizard or the chat surface when:
- *   (a) the `CONVERSATIONAL_ONBOARDING` flag is ON, AND
- *   (b) no `?mode=` query param is present, AND
- *   (c) the user has no draft progress yet (currentStep === 0 and
- *       no entered fields in their draft).
+ * Renders BEFORE either the form-wizard or the chat surface when the
+ * `CONVERSATIONAL_ONBOARDING` flag is ON and no `?mode=` query param
+ * is present. Two variants:
  *
- * Why this exists: live testing 2026-05-19 surfaced that the small
- * pill toggle at the top of `/onboarding` was effectively invisible
- * — users landed, saw the form below, and started typing without
- * registering that "Chat with Monitrax" was a real option. Per the
- * Behavioural-Psychologist + Designer lenses (CLAUDE.md §0), when
- * the default path is visible the alternative gets ~5% engagement.
- * Solution: stop the user at a fork before either path renders.
- * Two equally weighted cards, deliberate click, no default.
+ *   - `hasDraft={false}` — NEW user. Two equally weighted cards
+ *     ("Chat with Monitrax" / "Fill in a form"). Forces a deliberate
+ *     first-time choice instead of letting the form anchor the eye.
+ *
+ *   - `hasDraft={true}` — RETURNING user mid-setup. A prominent
+ *     "Continue where you left off" primary (resumes the form wizard
+ *     at the saved step) PLUS a single "switch to chat" card. The
+ *     user's progress is never lost — both paths read the same draft.
+ *
+ * Why the two variants (Option C, decided by Reza 2026-05-20,
+ * Open Question Q-CONV-2): rev 1 of this component bypassed the
+ * selector entirely for mid-draft users, so they only ever saw the
+ * small hard-to-see pill toggle. Rev 2 keeps the mode choice visible
+ * for returning users too, without forcing a blind re-pick — the
+ * "continue" path is one tap.
  *
  * Design discipline (Phase 12 §4a — presence, not persona):
  *   - No "AI" marketing language, no character framing, no emojis.
- *   - Two cards, equal visual weight. Neither is "recommended".
- *   - Time estimates on both ("Either mode reaches the same place").
+ *   - New-user variant: two cards, equal visual weight, neither
+ *     "recommended". Time estimates on both.
+ *   - Returning-user variant: continue is primary (the path of least
+ *     resistance — behaviour-psychology lens), chat is the clearly
+ *     labelled alternative. Progress reassurance in the subcopy.
  *   - Mobile-first stack; side-by-side from `sm:` (640px).
- *   - Matches the existing wizard hero token palette (warm gradient
- *     glyph, slate-on-white card chrome, green pill for time).
+ *   - Matches the wizard hero token palette (warm gradient glyph,
+ *     slate-on-white card chrome, green pill for time).
  *
- * After selection, navigates to `/onboarding?mode=chat` or
+ * After a choice, navigates to `/onboarding?mode=chat` or
  * `/onboarding?mode=form` — the existing `<ConversationalModeToggle>`
- * (smaller pill) remains rendered in the chosen mode as a way to
- * switch later.
+ * (smaller pill) still renders in the chosen mode as a later switch.
  */
 
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';
-import { MessagesSquare, ListChecks, Clock, ArrowRight } from 'lucide-react';
+import {
+  MessagesSquare,
+  ListChecks,
+  Clock,
+  ArrowRight,
+  RotateCcw,
+} from 'lucide-react';
 
-export function OnboardingModeSelector() {
+export function OnboardingModeSelector({
+  hasDraft = false,
+}: {
+  hasDraft?: boolean;
+}) {
   const router = useRouter();
 
   const choose = useCallback(
     (mode: 'chat' | 'form') => {
       router.replace(
-        mode === 'chat' ? '/onboarding?mode=chat' : '/onboarding?mode=form'
+        mode === 'chat' ? '/onboarding?mode=chat' : '/onboarding?mode=form',
       );
     },
-    [router]
+    [router],
   );
 
   return (
@@ -69,7 +86,23 @@ export function OnboardingModeSelector() {
         </svg>
       </div>
 
-      {/* Heading */}
+      {hasDraft ? (
+        <ReturningUserVariant choose={choose} />
+      ) : (
+        <NewUserVariant choose={choose} />
+      )}
+    </section>
+  );
+}
+
+/** New user — two equally weighted mode cards. */
+function NewUserVariant({
+  choose,
+}: {
+  choose: (mode: 'chat' | 'form') => void;
+}) {
+  return (
+    <>
       <h1 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
         Welcome to Monitrax
       </h1>
@@ -78,7 +111,6 @@ export function OnboardingModeSelector() {
         paths reach the same place.
       </p>
 
-      {/* Mode cards */}
       <div className="mt-10 grid w-full gap-4 sm:grid-cols-2 sm:gap-5">
         <ModeCard
           icon={<MessagesSquare className="h-6 w-6" aria-hidden="true" />}
@@ -100,12 +132,83 @@ export function OnboardingModeSelector() {
         />
       </div>
 
-      {/* Reassurance */}
       <p className="mt-8 max-w-md text-center text-xs text-slate-500 dark:text-slate-400">
         Your progress saves automatically. You can switch modes any time
         from the toggle at the top.
       </p>
-    </section>
+    </>
+  );
+}
+
+/** Returning user mid-setup — prominent continue + a switch-to-chat card. */
+function ReturningUserVariant({
+  choose,
+}: {
+  choose: (mode: 'chat' | 'form') => void;
+}) {
+  return (
+    <>
+      <h1 className="text-center text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
+        Welcome back
+      </h1>
+      <p className="mt-3 max-w-md text-center text-sm text-slate-600 sm:text-base dark:text-slate-400">
+        You&rsquo;re partway through your setup. Pick up where you left off,
+        or switch how you finish — your progress is saved either way.
+      </p>
+
+      {/* Primary — continue the form wizard at the saved step */}
+      <button
+        type="button"
+        onClick={() => choose('form')}
+        className="group mt-9 flex w-full items-center gap-4 rounded-2xl border border-transparent bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-500 p-5 text-left shadow-[0_12px_32px_-14px_rgba(99,102,241,0.6)] transition-all hover:-translate-y-0.5 hover:shadow-[0_16px_40px_-14px_rgba(99,102,241,0.7)] focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/50 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
+      >
+        <span
+          aria-hidden="true"
+          className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/20 text-white"
+        >
+          <RotateCcw className="h-6 w-6" />
+        </span>
+        <span className="flex flex-1 flex-col">
+          <span className="text-lg font-semibold text-white">
+            Continue where you left off
+          </span>
+          <span className="text-sm text-white/80">
+            Resume the step-by-step form from your last saved step.
+          </span>
+        </span>
+        <ArrowRight
+          className="h-5 w-5 shrink-0 text-white transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0"
+          aria-hidden="true"
+        />
+      </button>
+
+      {/* Divider */}
+      <div className="mt-7 flex w-full items-center gap-3" aria-hidden="true">
+        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+        <span className="text-xs font-medium text-slate-400 dark:text-slate-500">
+          or switch how you finish
+        </span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+      </div>
+
+      {/* Secondary — switch to chat */}
+      <div className="mt-5 w-full">
+        <ModeCard
+          icon={<MessagesSquare className="h-6 w-6" aria-hidden="true" />}
+          title="Switch to chat"
+          description="Finish by talking it through instead — your answers so far carry over."
+          time="~3 min"
+          accent="from-violet-500 via-indigo-500 to-blue-500"
+          ctaLabel="Chat with Monitrax"
+          onClick={() => choose('chat')}
+        />
+      </div>
+
+      <p className="mt-8 max-w-md text-center text-xs text-slate-500 dark:text-slate-400">
+        Switching modes never loses your progress — both paths save to the
+        same place.
+      </p>
+    </>
   );
 }
 

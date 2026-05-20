@@ -30,7 +30,6 @@ import {
   OnboardingWelcomeModal,
   GuidedTour,
   WizardContainer,
-  OnboardingProgressBadge,
   OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
@@ -81,10 +80,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const {
     state: onboardingState,
     shouldShowWelcome,
-    shouldShowOnboardingBadge,
     shouldShowResumeBanner,
     dismissWelcomeModal,
-    dismissOnboardingBadge,
     startOnboarding,
     markTourCompleted,
     markTourSkipped,
@@ -280,10 +277,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       setShowWizard(false);
     }
   }, [clearDraft, completeOnboarding, token]);
-
-  const handleResumeOnboarding = useCallback(() => {
-    setShowWizard(true);
-  }, []);
 
   // Phase 12 PR 2: Wizard autosave callback. Invoked by WizardContainer
   // after the debounce fires. Persists the in-progress draft + current
@@ -667,18 +660,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 onStartOver={handleResumeBannerStartOver}
                 onDismiss={handleResumeBannerDismiss}
               />
-            )}
-            {/* Phase 12: Onboarding Progress Badge */}
-            {shouldShowOnboardingBadge && onboardingState && (
-              <div className="mb-4" data-tour="dashboard-stats">
-                <OnboardingProgressBadge
-                  isVisible={true}
-                  currentStep={onboardingState.currentStep}
-                  totalSteps={8}
-                  onResume={handleResumeOnboarding}
-                  onDismiss={dismissOnboardingBadge}
-                />
-              </div>
             )}
             {children}
           </div>
