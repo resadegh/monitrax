@@ -1,10 +1,28 @@
 'use client';
 
 /**
- * DebtsStep — Phase 12 PR 3b
+ * DebtsStep — Phase 12 PR 3b + Track F.4 two-way sync
  *
  * Captures non-property loans: car loans, HECS/student loans, personal
- * loans, business loans. Shown conditionally based on the Welcome
+ * loans, business loans.
+ *
+ * ============================================================================
+ * TRACK F.4 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.4 this step staged debts into the `WizardData` draft blob,
+ * written once at `/api/onboarding/bulk-create`. F.4 makes the step read +
+ * write the real `Loan` table directly:
+ *   - ON OPEN  — `readDebts()` loads the standalone debts (loan `type`
+ *     CAR / STUDENT / PERSONAL / BUSINESS); the step merges them with any
+ *     unsynced in-session card, or pre-seeds one card per Welcome-step
+ *     debt category when there is nothing yet.
+ *   - ON CONTINUE / BACK — the registered `commit` diffs + `syncDebts()`
+ *     writes the delta (create / update / hard-delete), idempotent on
+ *     re-entry.
+ *
+ * Property mortgages are F.2's domain; the CAR→vehicle link is F.7's
+ * (the Assets step). See `lib/onboarding/debtsSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4. Shown conditionally based on the Welcome
  * step's "Do you have any of these debts?" checkbox — users who tick
  * nothing never see this step.
  *
@@ -25,7 +43,7 @@
  * Docs: docs/blueprint/PHASE_12_WIZARD_REDESIGN_PLAN.md §3 row C, §6.3
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   CreditCard,
   Plus,
@@ -36,6 +54,8 @@ import {
   GraduationCap,
   Banknote,
   Briefcase,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   WizardData,
@@ -43,6 +63,7 @@ import {
   DebtLoanType,
   DebtCategory,
   generateId,
+  type StepCommitFn,
 } from '../types';
 import {
   WizardStepShell,
@@ -53,6 +74,16 @@ import {
   WizardAddButton,
 } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
+import {
+  readDebts,
+  syncDebts,
+  snapshotToWizardDebts,
+  wizardDebtsToSnapshot,
+  isPersistedId,
+  EMPTY_DEBTS_SNAPSHOT,
+  type DebtsSnapshot,
+} from '@/lib/onboarding/debtsSync';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -315,27 +346,95 @@ function DebtCard({
 interface DebtsStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.4: register an async commit with the container. The
+   * container awaits it before advancing — it writes the standalone debts
+   * to the real `Loan` table. Optional so the step still renders in
+   * non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function DebtsStep({ data, onUpdate }: DebtsStepProps) {
+export function DebtsStep({ data, onUpdate, registerStepCommit }: DebtsStepProps) {
+  const { token } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(
     data.debts.length > 0 ? data.debts[0].id : null
   );
 
-  // On first render, if the user has debt categories but no debt rows
-  // yet, pre-seed one row per category so they're not staring at an
-  // empty step. Only runs when debts is empty to avoid re-seeding on
-  // navigation back.
+  // ---- Phase 12 Track F.4: real-table sync state ---------------------
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<DebtsSnapshot>(EMPTY_DEBTS_SNAPSHOT);
+  const dataRef = useRef(data);
   useEffect(() => {
-    if (data.debts.length === 0 && data.debtCategories.length > 0) {
-      const seeded = data.debtCategories.map((cat) =>
-        createEmptyDebt(debtCategoryToType(cat))
-      );
-      onUpdate({ debts: seeded });
-      setExpandedId(seeded[0]?.id ?? null);
-    }
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real `Loan` table on step open -----------------------
+  // Loads the standalone debts, merges them with any unsynced (synthetic-
+  // id) in-session / chat-staged debt. When there is genuinely nothing
+  // yet, pre-seeds one card per Welcome-step debt category (the old
+  // pre-seed effect, folded in here so it can't race the read).
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readDebts(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realDebts = snapshotToWizardDebts(snapshot);
+        const unsynced = dataRef.current.debts.filter((d) => !isPersistedId(d.id));
+        let merged = [...realDebts, ...unsynced];
+        if (merged.length === 0 && dataRef.current.debtCategories.length > 0) {
+          merged = dataRef.current.debtCategories.map((cat) =>
+            createEmptyDebt(debtCategoryToType(cat)),
+          );
+        }
+        onUpdate({ debts: merged });
+        setExpandedId((prev) => prev ?? merged[0]?.id ?? null);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your debts. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- COMMIT: register the real-table write with the container -------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your debts — please wait a moment.');
+      }
+      const current = wizardDebtsToSnapshot(dataRef.current.debts);
+      const result = await syncDebts(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the real table, keeping any in-session card still
+      // incomplete (no real id, no balance) so a half-filled card the user
+      // is working on isn't discarded on a Back navigation.
+      const stillUnsynced = dataRef.current.debts.filter(
+        (d) => !isPersistedId(d.id) && !(d.principal > 0),
+      );
+      onUpdate({
+        debts: [...snapshotToWizardDebts(result.snapshot), ...stillUnsynced],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   const addDebt = () => {
     const newDebt = createEmptyDebt();
@@ -376,6 +475,24 @@ export function DebtsStep({ data, onUpdate }: DebtsStepProps) {
       title="Your debts"
       subtitle="Let's see what you owe. Knowing your debts is the first step to your Debt Freedom plan."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking (Phase 12 Track F.4). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your debts…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {data.debts.length > 0 && (
         <div className="space-y-3">
           {data.debts.map((debt) => (

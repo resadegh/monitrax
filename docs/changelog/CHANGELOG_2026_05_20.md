@@ -128,3 +128,58 @@ Re-entry idempotency, mapper round-trip, create/update/delete classification, **
 - `docs/architecture/07_API_STANDARDS.md` §15.8 — accounts route audit + offset-link + extended fields.
 - `docs/architecture/03_DATA_MODEL.md` §N.4 — F.3 `ACCOUNT_*` audit actions.
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+## Session: Phase 12 Track F.4 — Onboarding two-way sync (debts domain)
+
+Branch: `claude/track-f4-debts-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, debts domain (standalone non-property loans: car / student / personal / business). Replicates the F.1–F.3 `*Sync.ts` pattern.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.4 (debts scope + CAR-link deferral + budget/actuals invariant).
+- **No schema change** — F.2 already added `createAuditLog()` + relaxed validation to the `/api/loans` routes; F.4 reuses them.
+
+### What was done
+
+**1. `lib/onboarding/debtsSync.ts` — NEW (~290 LOC)**
+
+- `readDebts()` — GET `/api/loans`, filtered to non-property debt types (`CAR/STUDENT/PERSONAL/BUSINESS`). Reads **only the raw budget columns** (`principal`, `minRepayment`, `interestRateAnnual`) — never the transaction-reconciled actuals.
+- `diffDebts()` — PURE idempotency core; create/update/delete classification.
+- `syncDebts()` — applies the diff via `/api/loans`; re-reads.
+- Mappers + `isPersistedId`. Quality guard: an unpersisted debt with `principal <= 0` is dropped (matches bulk-create's skip).
+
+**2. `components/onboarding/wizard/steps/DebtsStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real `Loan` table on open (merges real + unsynced; folds the old category pre-seed into the read so it can't race), commits the delta on Continue/Back. Loading + error banner.
+
+**3. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<DebtsStep>`.
+
+**4. `app/api/onboarding/bulk-create/route.ts`**
+
+- §4b debts loop → no-op (the Debts step's commit persists them).
+- §5a → now *updates* the already-real CAR loan's `linkedAssetId` after the Assets loop (instead of creating the loan); ownership-verified.
+
+**5. `tests/onboarding/debtsSync.test.ts` — NEW (11 tests)**
+
+Re-entry idempotency, mapper round-trip, create/update/delete classification, quality guard, lender-is-not-persisted, HECS derivation, `isPersistedId`.
+
+### Budget vs actuals (Reza directive 2026-05-20)
+
+Confirmed + documented: the two-way sync reads/writes only the raw **budget** columns; the transaction-reconciled **actuals** (`actualFromTransactions`, `monthlyAverageActual`) are never read or written by F.2/F.3/F.4. Reconciliation stays fully independent. **DECIDED (Reza):** the wizard never surfaces actuals — onboarding captures the initial budget data only. A **post-onboarding completion message** (shown only when transactions were imported during the wizard) reminds the user about reconciliation and links to that page. Single follow-up — **F-reconcile-handoff** — after the F.5–F.8 sweep. Supersedes the earlier "actuals-on-re-entry" idea. See design doc §6.4.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npx vitest run tests/onboarding/debtsSync.test.ts` — ✓ 11/11 pass
+- [x] `npm run build` — ✓ succeeds
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.3 → done, F.4 row), new §6.4 (debts scope + CAR-link + budget/actuals invariant), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.3 done, F.4 in progress + budget/actuals invariant).
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+### Status
+
+F.4 code complete + verified. PR held pending Reza's design call on whether "surface actuals on wizard re-entry" folds into the domain PRs or lands as a single follow-up.

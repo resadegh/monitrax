@@ -592,47 +592,21 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
-        // 4b. Phase 12 PR 3b — Non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
+        // 4b. Non-property loans (CAR / STUDENT / PERSONAL / BUSINESS)
         //
-        // Captured by the new DebtsStep. CAR loans can link to an Asset
-        // (vehicle) via linkedAssetId — the asset is created below in
-        // section 5, so we resolve the wizard temp-ID → real ID via a
-        // second pass after Assets are written. For now, stash the debt
-        // rows to write later.
+        // ⚠ Phase 12 Track F.4 (2026-05-20): standalone debts are no longer
+        // written here. They are written incrementally to the real `Loan`
+        // table by the wizard Debts step via /api/loans — see
+        // `lib/onboarding/debtsSync.ts`. The Debts step's commit runs before
+        // bulk-create, so every debt is already persisted (with a real id
+        // carried back into `data.debts`) by the time this runs.
+        //
+        // The CAR→vehicle link still needs wiring after the Assets loop
+        // (the Assets step is not migrated until F.7) — see section 5a.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in F.9.
         // =======================================================================
-        const debtInputs = data.debts ?? [];
-        // We write the non-CAR debts immediately; CAR debts wait until
-        // after the Assets loop so we can resolve linkedAssetId.
-        const carDebtsToWriteAfterAssets: typeof debtInputs = [];
-        // Typed for the same reason as createdAssets / createdSuper above.
-        const createdDebts: Array<{ id: string }> = [];
-        for (const debt of debtInputs) {
-          if (debt.principal <= 0) continue;
-          if (debt.type === 'CAR' && debt.linkedAssetId) {
-            carDebtsToWriteAfterAssets.push(debt);
-            continue;
-          }
-          const loan = await tx.loan.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: debt.name?.trim() || debt.type,
-              type: debt.type, // CAR | STUDENT | PERSONAL | BUSINESS
-              principal: debt.principal,
-              interestRateAnnual: (debt.interestRateAnnual || 0) / 100,
-              rateType: 'VARIABLE',
-              isInterestOnly: false,
-              termMonthsRemaining: debt.termMonthsRemaining || 60,
-              // HECS/STUDENT is income-contingent — we record 0 as
-              // minRepayment since there's no fixed amount. The Tax
-              // Intelligence Engine (Phase 20) handles HECS repayment
-              // from the user's salary separately.
-              minRepayment: debt.isHecsHelp ? 0 : debt.minRepayment,
-              repaymentFrequency: debt.repaymentFrequency || 'MONTHLY',
-            },
-          });
-          createdDebts.push(loan);
-        }
+        const createdDebts: never[] = [];
 
         // =======================================================================
         // 5. Create Personal Assets
@@ -694,12 +668,16 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
-        // 5a. Phase 12 PR 3b — CAR debts linked to vehicle Assets
+        // 5a. Phase 12 Track F.4 — wire CAR debts to their vehicle Assets
         //
-        // Second pass after Assets are written, so we can resolve the
-        // wizard temp-ID → real DB Asset ID for linkedAssetId. If the
-        // linked asset doesn't exist (user deleted it mid-flow), we
-        // still write the loan but without the link.
+        // The Debts step (F.4) creates every CAR loan as a real `Loan` row,
+        // but it cannot set `linkedAssetId` — the vehicle has no real
+        // `Asset` row during the Debts step (Assets is a later step, not
+        // migrated until F.7). The asset is created above in section 5, so
+        // here — once both the real loan and the real asset exist — we wire
+        // the link. `data.debts[i].id` is the real `Loan` id (F.4 re-seeds
+        // it after the sync); the asset temp-id → real-id map resolves the
+        // vehicle. Ownership-verified before the write.
         // =======================================================================
         const wizardAssetIdToRealId = new Map<string, string>();
         data.assets.forEach((asset, i) => {
@@ -707,27 +685,23 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
             wizardAssetIdToRealId.set(asset.id, createdAssets[i].id);
           }
         });
-        for (const debt of carDebtsToWriteAfterAssets) {
-          const realAssetId = debt.linkedAssetId
-            ? wizardAssetIdToRealId.get(debt.linkedAssetId) || null
-            : null;
-          const loan = await tx.loan.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: debt.name?.trim() || 'Car loan',
-              type: 'CAR',
-              principal: debt.principal,
-              interestRateAnnual: (debt.interestRateAnnual || 0) / 100,
-              rateType: 'VARIABLE',
-              isInterestOnly: false,
-              termMonthsRemaining: debt.termMonthsRemaining || 60,
-              minRepayment: debt.minRepayment,
-              repaymentFrequency: debt.repaymentFrequency || 'MONTHLY',
-              linkedAssetId: realAssetId,
-            },
+        const isRealId = (id: string | undefined): boolean =>
+          !!id && !id.startsWith('temp_') && !id.startsWith('chat-');
+        for (const debt of data.debts ?? []) {
+          if (debt.type !== 'CAR' || !debt.linkedAssetId) continue;
+          if (!isRealId(debt.id)) continue; // debt not synced — nothing to wire
+          const realAssetId = wizardAssetIdToRealId.get(debt.linkedAssetId);
+          if (!realAssetId) continue;
+          const loan = await tx.loan.findFirst({
+            where: { id: debt.id, userId },
+            select: { id: true },
           });
-          createdDebts.push(loan);
+          if (loan) {
+            await tx.loan.update({
+              where: { id: loan.id },
+              data: { linkedAssetId: realAssetId },
+            });
+          }
         }
 
         // =======================================================================
