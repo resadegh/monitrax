@@ -3907,6 +3907,8 @@ Additive enum values:
   with an `entityType`.
 - **F.4 — debts** added no new values — the `/api/loans` routes were
   already audited (generic `CREATE/UPDATE/DELETE`) by F.2.
+- **F.6 — superannuation** (migration `20260520200000_…_track_f6_super_audit_actions`):
+  `SUPER_CREATED/UPDATED/DELETED` for `SuperannuationAccount`.
 
 CDR-safe metadata only (§13.3) — type/category + booleans, never
 balances / amounts / addresses.

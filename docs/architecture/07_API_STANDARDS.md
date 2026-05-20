@@ -740,5 +740,15 @@ Applied in **F.5** (2026-05-20) for the investments domain:
    already cover every wizard `InvestmentAccountInput` / `HoldingInput`
    field.
 
+Applied in **F.6** (2026-05-20) for the superannuation domain:
+
+7. **New `/api/tax/super/[id]` route.** The super API (`/api/tax/super`)
+   had GET + POST only. F.6 adds the per-id route — **PUT** (partial
+   update of name / fundName / currentBalance; other columns untouched)
+   and **DELETE** — both ownership-guarded (`verifyOwnership`). Audit
+   logging (`SUPER_CREATED/UPDATED/DELETED`) added to POST + the new
+   PUT/DELETE. PUT/DELETE use `income.write` / `income.delete`
+   permissions (consistent with the existing super POST's `income.write`).
+
 ---
 

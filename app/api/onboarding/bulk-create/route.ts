@@ -544,33 +544,18 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         const createdInvestments: never[] = [];
 
         // =======================================================================
-        // 4a. Phase 12 PR 3b — SuperannuationAccount rows
+        // 4a. SuperannuationAccount rows
         //
-        // Super is no longer routed through InvestmentAccount(type=SUPERS).
-        // Creates real SuperannuationAccount rows with the minimum viable
-        // fields (name, fundName, currentBalance). Everything else defers
-        // to a future Settings > Retirement page.
+        // ⚠ Phase 12 Track F.6 (2026-05-20): super accounts are no longer
+        // written here. They are written incrementally to the real
+        // `SuperannuationAccount` table by the wizard Super step via the
+        // super API (`/api/tax/super` + `/api/tax/super/[id]`) — see
+        // `lib/onboarding/superSync.ts`. The Super step's commit runs
+        // before bulk-create, so every account is already persisted by then.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in F.9.
         // =======================================================================
-        // Typed as the minimal structural shape we push — avoids the
-        // `implicitly has type any[]` strict-mode error if a future
-        // edit adds a read site to this array.
-        const createdSuper: Array<{ id: string }> = [];
-        const superInputs = data.superAccounts ?? [];
-        for (const s of superInputs) {
-          if (!s.fundName?.trim() && s.currentBalance <= 0) {
-            // Skip empty rows — user may have clicked "Add" without filling
-            continue;
-          }
-          const superAccount = await tx.superannuationAccount.create({
-            data: {
-              userId,
-              name: s.name?.trim() || 'My Super',
-              fundName: s.fundName?.trim() || null,
-              currentBalance: s.currentBalance,
-            },
-          });
-          createdSuper.push(superAccount);
-        }
+        const createdSuper: never[] = [];
 
         // =======================================================================
         // 4b. Non-property loans (CAR / STUDENT / PERSONAL / BUSINESS)

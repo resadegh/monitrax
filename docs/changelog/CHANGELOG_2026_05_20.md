@@ -237,3 +237,59 @@ Re-entry idempotency, mapper round-trip, account create/update/delete, nested ho
 - `docs/architecture/07_API_STANDARDS.md` §15.8 — investment routes audit.
 - `docs/architecture/03_DATA_MODEL.md` §N.4 — F.5 `INVESTMENT_*` audit actions.
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+## Session: Phase 12 Track F.6 — Onboarding two-way sync (superannuation domain)
+
+Branch: `claude/track-f6-super-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, superannuation domain. `SuperannuationAccount` is a flat entity — mirrors the F.3 accounts layer.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.6 (super).
+
+### What was done
+
+**1. `lib/onboarding/superSync.ts` — NEW (~290 LOC)**
+
+- `readSuper()` — GET `/api/tax/super` → maps the `accounts` array to `SuperRecord`s (name / fundName / currentBalance — the three minimum-viable wizard fields).
+- `diffSuper()` — PURE idempotency core; create/update/delete classification.
+- `syncSuper()` — applies the diff via the super API; re-reads.
+- Mappers + `isPersistedId`. Quality guard: an unpersisted account with no fund name AND 0 balance is dropped (matches bulk-create's skip).
+
+**2. `prisma/schema.prisma` + migration — `SUPER_*` audit actions**
+
+- 3 new `AuditAction` values: `SUPER_CREATED/UPDATED/DELETED`.
+- Migration `20260520200000_phase_12_track_f6_super_audit_actions/migration.sql` — additive `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
+
+**3. `app/api/tax/super/[id]/route.ts` — NEW**
+
+- PUT (partial update — name/fundName/currentBalance; other `SuperannuationAccount` columns untouched) + DELETE, both ownership-guarded (`verifyOwnership`) + audited. The parent `/api/tax/super` had GET + POST only.
+
+**4. `app/api/tax/super/route.ts`** — `createAuditLog()` (`SUPER_CREATED`) added to POST.
+
+**5. `components/onboarding/wizard/steps/SuperStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real table on open (merges real + unsynced accounts), commits the delta on Continue/Back. Loading + error banner.
+
+**6. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<SuperStep>`.
+
+**7. `app/api/onboarding/bulk-create/route.ts`** — §4a super loop → no-op.
+
+**8. `tests/onboarding/superSync.test.ts` — NEW (11 tests)**
+
+Re-entry idempotency, mapper round-trip, create/update/delete, quality guard, `isPersistedId`.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+- [x] `npx vitest run tests/onboarding/superSync.test.ts` — ✓ 11/11 pass
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.5 → done, F.6 row), new §6.6 (super), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.5 merged, F.6 in progress).
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — new `/api/tax/super/[id]` route + audit.
+- `docs/architecture/03_DATA_MODEL.md` §N.4 — F.6 `SUPER_*` audit actions.
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
