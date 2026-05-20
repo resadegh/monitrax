@@ -210,7 +210,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
           code: result.reason,
           message:
             result.reason === 'SCHEMA_VIOLATION' || result.reason === 'NO_TOOL_USE'
-              ? 'Could not understand the answer. Please rephrase.'
+              ? 'Sorry — I didn’t quite catch that. Could you put it another way?'
               : 'Chat-mode hit an issue. Try again or switch to the form.',
           details: null,
         },

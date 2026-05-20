@@ -402,3 +402,31 @@ Re-entry idempotency (both lists), mapper round-trip, create/update/delete class
 - `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.6/F.7 done, F.8 in progress).
 - `docs/architecture/07_API_STANDARDS.md` §15.8 — F.7 + F.8 notes (F.8 reused the already-audited income/expense routes).
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+---
+
+## Session: Onboarding chat agent — Sonnet upgrade
+
+Branch: `claude/chat-ai-model-upgrade-NL4XV`
+
+### Scope
+
+- **Type:** Fix — the conversational onboarding agent ("chat mode") repeatedly failed to understand answers.
+- **Root cause:** the agent (`lib/ai/onboarding-agent/gateway.ts`) FORCES a structured tool call and validates the result against the strict `wizardStateDeltaSchema` discriminated union. It ran on **Haiku**, which frequently emits output that fails that validation → the gateway returns `SCHEMA_VIOLATION` / `NO_TOOL_USE` → the user sees "Could not understand the answer." Even trivial replies ("yes", "move on") flaked. Haiku is the codebase's cheap-triage model — it does not do forced structured extraction reliably.
+
+### What was done
+
+- `lib/ai/anthropic.ts` — added a **`SONNET`** tier (`claude-sonnet-4-6`) to `ANTHROPIC_MODELS`. Mid-tier — reliable structured tool-call extraction; far cheaper than Opus (which is reserved for synthesis work, never per-message). Header + cost-control comments updated.
+- `lib/ai/onboarding-agent/gateway.ts` — the onboarding extraction now uses `ANTHROPIC_MODELS.SONNET`. Onboarding is once-per-user and daily-capped (200 extractions/user/day), so the cost delta over Haiku is negligible.
+- `app/api/onboarding/chat/extract/route.ts` — warmer copy on the extraction-failure path (warm-words rule, CLAUDE.md §14): "Sorry — I didn't quite catch that. Could you put it another way?"
+- `.gitignore` — ignore `.claude/worktrees/` (ephemeral background-agent worktrees; never part of the repo).
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+
+### Follow-up (not in this PR)
+
+A natural-answer / count-handling improvement (e.g. "yes 6 properties" — the user gives a count, but the properties schema has no count field and every entry needs a name) is a separate chat-script + schema change. The Sonnet upgrade alone makes the extraction far more capable; the count-handling refinement is queued.

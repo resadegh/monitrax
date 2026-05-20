@@ -143,7 +143,14 @@ export async function extractWizardStepDelta(
   }
 
   const client = getAnthropicClient();
-  const model = ANTHROPIC_MODELS.HAIKU;
+  // Sonnet, not Haiku. This call forces a tool call (`tool_choice`) and
+  // validates the result against the strict `wizardStateDeltaSchema`
+  // discriminated union — Haiku frequently emits output that fails that
+  // validation, which the user experiences as the chat "not understanding"
+  // even trivial answers. Sonnet does forced structured extraction
+  // reliably. Onboarding is once-per-user + daily-capped, so the cost
+  // delta is negligible (see `ANTHROPIC_MODELS.SONNET`).
+  const model = ANTHROPIC_MODELS.SONNET;
 
   // Pick the right system prompt + tool spec per topic. All tools
   // share the same tool NAME (the closed-discriminant pattern from
