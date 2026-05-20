@@ -403,6 +403,15 @@ enum AuditAction {
   SUPER_CREATED
   SUPER_UPDATED
   SUPER_DELETED
+
+  // Phase 12 Track F.7 (Onboarding two-way sync — assets domain).
+  // The asset entity API (/api/assets) became the wizard's SSOT write
+  // boundary, so every asset write is now audited per CLAUDE.md §12.5.
+  // The nested asset-expense writes use the generic CREATE/UPDATE/DELETE
+  // actions with entityType. Metadata carries type/booleans only (§13.3).
+  ASSET_CREATED
+  ASSET_UPDATED
+  ASSET_DELETED
 }
 
 enum AuditStatus {

@@ -293,3 +293,61 @@ Re-entry idempotency, mapper round-trip, create/update/delete, quality guard, `i
 - `docs/architecture/07_API_STANDARDS.md` §15.8 — new `/api/tax/super/[id]` route + audit.
 - `docs/architecture/03_DATA_MODEL.md` §N.4 — F.6 `SUPER_*` audit actions.
 - `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+## Session: Phase 12 Track F.7 — Onboarding two-way sync (assets domain)
+
+Branch: `claude/track-f7-assets-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, assets domain. The `Asset` + its `Expense`s **aggregate**, mirroring F.2's property aggregate.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.7 (assets aggregate).
+
+### What was done
+
+**1. `lib/onboarding/assetsSync.ts` — NEW (~410 LOC)**
+
+- `readAssets()` — GET `/api/assets` (includes expenses) → `AssetsSnapshot`.
+- `diffAssets()` — PURE idempotency core; per-asset `AssetOp` carrying nested `expenseOps`.
+- `syncAssets()` — CREATE POSTs the asset then its expenses; UPDATE PUTs the asset (if core changed) + applies expense ops; DELETE removes the asset's expenses FIRST (`Expense.asset` is `onDelete: SetNull` — avoid orphans) then the asset.
+- Mappers + `isPersistedId`. Quality guards: an expense with `amount<=0` is dropped; an unpersisted asset with no `purchaseDate` is dropped.
+
+**2. `prisma/schema.prisma` + migration — `ASSET_*` audit actions**
+
+- 3 new `AuditAction` values: `ASSET_CREATED/UPDATED/DELETED`.
+- Migration `20260520220000_phase_12_track_f7_asset_audit_actions/migration.sql` — additive `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
+
+**3. `app/api/assets/route.ts` + `[id]/route.ts`**
+
+- `createAuditLog()` on POST/PUT/DELETE (`ASSET_*`). `purchasePrice` / `currentValue` validated/written as *present* (not *truthy*) on POST + PUT — `0` is a legitimate value.
+
+**4. `components/onboarding/wizard/steps/AssetsStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real tables on open (merges real + unsynced assets), commits the delta on Continue/Back. Loading + error banner.
+
+**5. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<AssetsStep>`.
+
+**6. `app/api/onboarding/bulk-create/route.ts`** — §5 assets loop → no-op (removed the now-dead `getAssetName` helper); §5a (CAR-debt → vehicle-asset link) rewired — both `data.debts[i].id` and `data.debts[i].linkedAssetId` are real post-F.7, so it wires the link directly, ownership-verifying both rows.
+
+**7. `tests/onboarding/assetsSync.test.ts` — NEW (11 tests)**
+
+Re-entry idempotency, mapper round-trip, asset create/update/delete, nested expense create+update+delete, expenses-deleted-first-on-asset-delete, quality guards, `isPersistedId`.
+
+**8. `.audit/financial-math-baseline.json` — re-keyed**
+
+F.7's `AssetsStep.tsx` edits shifted a pre-existing grandfathered financial-math entry (`asset.purchasePrice - asset.currentValue`, an inline depreciation calc) from line 195 → 224. Regenerated the baseline (`BASELINE_REGENERATE=1`) — only that one entry's line number changed, no entries added/removed (count stays 28). The §835 line-shift pattern.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations (after baseline re-key)
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+- [x] `npx vitest run tests/onboarding/assetsSync.test.ts` — ✓ 11/11 pass
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.6 → done, F.7 row), new §6.7 (assets aggregate), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.6 merged, F.7 in progress).
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — assets route audit + validation.
+- `docs/architecture/03_DATA_MODEL.md` §N.4 — F.7 `ASSET_*` audit actions.
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.

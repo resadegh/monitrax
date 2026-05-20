@@ -3909,6 +3909,9 @@ Additive enum values:
   already audited (generic `CREATE/UPDATE/DELETE`) by F.2.
 - **F.6 — superannuation** (migration `20260520200000_…_track_f6_super_audit_actions`):
   `SUPER_CREATED/UPDATED/DELETED` for `SuperannuationAccount`.
+- **F.7 — assets** (migration `20260520220000_…_track_f7_asset_audit_actions`):
+  `ASSET_CREATED/UPDATED/DELETED` for `Asset`. The nested asset-expense
+  writes use the generic `CREATE/UPDATE/DELETE` actions with an `entityType`.
 
 CDR-safe metadata only (§13.3) — type/category + booleans, never
 balances / amounts / addresses.
