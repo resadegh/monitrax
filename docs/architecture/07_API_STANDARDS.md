@@ -730,5 +730,15 @@ Applied in **F.3** (2026-05-20) for the accounts domain:
    F.3's two-way sync writes **MANUAL** accounts only — BASIQ / IMPORT
    accounts are externally sourced and never written by the wizard.
 
+Applied in **F.5** (2026-05-20) for the investments domain:
+
+6. **`/api/investments/*` audit.** `/api/investments/accounts` (POST +
+   `[id]` PUT/DELETE) and `/api/investments/holdings` (POST + `[id]`
+   PUT/PATCH/DELETE) now call `createAuditLog()` — `INVESTMENT_*` for the
+   account, generic `CREATE/UPDATE/DELETE` (`entityType: 'InvestmentHolding'`)
+   for holdings. No route-contract change — the existing Zod schemas
+   already cover every wizard `InvestmentAccountInput` / `HoldingInput`
+   field.
+
 ---
 

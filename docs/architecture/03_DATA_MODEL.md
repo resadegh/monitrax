@@ -3901,6 +3901,12 @@ Additive enum values:
 - **F.3 — accounts** (migration `20260520160000_…_track_f3_account_audit_actions`):
   `ACCOUNT_CREATED/UPDATED/DELETED`. Only MANUAL bank accounts are
   written by the wizard; BASIQ / IMPORT accounts are externally sourced.
+- **F.5 — investments** (migration `20260520180000_…_track_f5_investment_audit_actions`):
+  `INVESTMENT_CREATED/UPDATED/DELETED` for `InvestmentAccount`. The nested
+  `InvestmentHolding` writes use the generic `CREATE/UPDATE/DELETE` actions
+  with an `entityType`.
+- **F.4 — debts** added no new values — the `/api/loans` routes were
+  already audited (generic `CREATE/UPDATE/DELETE`) by F.2.
 
 CDR-safe metadata only (§13.3) — type/category + booleans, never
 balances / amounts / addresses.

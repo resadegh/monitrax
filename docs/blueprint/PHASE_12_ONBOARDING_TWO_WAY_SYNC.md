@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 (accounts) ✅ DONE (#837) · F.4 (debts) 🟡 IN PROGRESS 2026-05-20.
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 (debts) ✅ DONE (#838) · F.5 (investments) 🟡 IN PROGRESS 2026-05-20.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -120,8 +120,9 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.1~~ | ✅ **DONE 2026-05-20 (PR #831)** — Household domain: wizard household step + chat household topic read/write `HouseholdProfile`/`HouseholdMember`/`HouseholdPet` directly. Established the per-domain pattern — the reusable `lib/onboarding/householdSync.ts` read/diff/write layer (14 idempotency tests). |
 | ~~F.2~~ | ✅ **DONE 2026-05-20 (PR #836)** — Properties domain. **Scope: the WHOLE property aggregate** — `Property` + its mortgage `Loan` + rental `Income` + property `Expense`s, synced together (see §6.1). `lib/onboarding/propertiesSync.ts` read/diff/write layer + 18 idempotency tests; 3 `PROPERTY_*` `AuditAction` values + migration. FORM step (`PropertiesStep`) full two-way sync; chat property topic deferred (§6.2). |
 | ~~F.3~~ | ✅ **DONE 2026-05-20 (PR #837)** — Accounts domain. `lib/onboarding/accountsSync.ts` read/diff/write layer + 17 idempotency tests; 3 `ACCOUNT_*` `AuditAction` values + migration. FORM step (`AccountsStep`) full two-way sync for MANUAL accounts; **BASIQ / IMPORT accounts read-only — never written by the sync** (see §6.3). Offset→loan link handled server-side in `/api/accounts`. |
-| **F.4** | 🟡 **IN PROGRESS 2026-05-20** — Debts domain (standalone non-property loans — car / student / personal / business). `lib/onboarding/debtsSync.ts` read/diff/write layer + 11 idempotency tests. **No schema change** — the `/api/loans` routes already gained audit + relaxed validation in F.2. FORM step (`DebtsStep`) full two-way sync. CAR→vehicle link deferred (see §6.4). |
-| **F.5 – F.8** | One PR each for investments, super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
+| ~~F.4~~ | ✅ **DONE 2026-05-20 (PR #838)** — Debts domain (standalone non-property loans — car / student / personal / business). `lib/onboarding/debtsSync.ts` read/diff/write layer + 11 idempotency tests. **No schema change** — the `/api/loans` routes already gained audit + relaxed validation in F.2. FORM step (`DebtsStep`) full two-way sync. CAR→vehicle link deferred (see §6.4). |
+| **F.5** | 🟡 **IN PROGRESS 2026-05-20** — Investments domain (the `InvestmentAccount` + `InvestmentHolding` aggregate, mirroring F.2's property aggregate). `lib/onboarding/investmentsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `INVESTMENT_*` `AuditAction` values + migration. FORM step (`InvestmentsStep`) full two-way sync. See §6.5. |
+| **F.6 – F.8** | One PR each for super, assets, income/expenses — replicate the `*Sync.ts` pattern. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -257,6 +258,33 @@ wizard a clean "set your plan" surface and makes "see plan vs reality" a
 deliberate post-onboarding next action. It is a single follow-up
 (**F-reconcile-handoff**) after the F.5–F.8 domain sweep — it supersedes
 the earlier "surface actuals on re-entry" idea.
+
+### 6.5 F.5 scope — investments (the account + holdings aggregate)
+
+The investments domain is an **aggregate** — an `InvestmentAccount` plus
+its `InvestmentHolding`s — mirroring F.2's property aggregate. F.5 syncs
+the whole thing: `lib/onboarding/investmentsSync.ts` reads
+`/api/investments/accounts` (which `include`s holdings), diffs account
+core + nested holdings, and writes via `/api/investments/accounts` +
+`/api/investments/holdings`.
+
+- **Create order:** a new account is POSTed first (the holding API
+  requires a real `investmentAccountId` uuid), then its holdings.
+- **Delete:** `InvestmentHolding.investmentAccount` is `onDelete: Cascade`,
+  so deleting an account cascade-deletes its holdings — a delete op only
+  DELETEs the account (no per-holding delete needed, unlike F.2's
+  property→loan `SetNull`).
+- **Quality guards:** a holding with no ticker / `units <= 0` /
+  `averagePrice <= 0` is dropped (the holding API also requires positive
+  units + price); an unpersisted account with no name is dropped.
+- **Audit:** `INVESTMENT_*` for the account, generic `CREATE/UPDATE/DELETE`
+  (`entityType: 'InvestmentHolding'`) for holdings — added to the four
+  investment routes in F.5.
+- **`bulk-create`:** §4 investments loop → no-op. The `firstInvestmentAccountId`
+  used for INVESTMENT-income linking is now resolved from the (real,
+  post-sync) `data.investments[0].id` instead of this route's own creates.
+
+Chat investments topic deferred (alongside the other chat topics).
 
 ---
 

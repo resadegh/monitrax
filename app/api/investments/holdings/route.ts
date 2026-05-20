@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 import { z } from 'zod';
 import { extractHoldingLinks, wrapWithGRDCS } from '@/lib/grdcs';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 const createHoldingSchema = z.object({
   investmentAccountId: z.string().uuid('Invalid account ID'),
@@ -112,6 +113,19 @@ export const POST = withPermission('holding.write', async (request, auth) => {
         unrealizedGain,
         unrealizedGainPct,
       },
+    });
+
+    // Audit every state-changing write (CLAUDE.md §12.5). Generic CREATE
+    // action with entityType — F.5's investment-account writes use
+    // INVESTMENT_*; the nested holding writes use the generic actions. No
+    // CDR/financial values in metadata (§13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'CREATE',
+      status: 'SUCCESS',
+      entityType: 'InvestmentHolding',
+      entityId: holding.id,
+      metadata: { type: holding.type },
     });
 
     return NextResponse.json(holding, { status: 201 });

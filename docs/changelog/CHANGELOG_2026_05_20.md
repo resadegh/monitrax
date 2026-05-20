@@ -182,4 +182,58 @@ Confirmed + documented: the two-way sync reads/writes only the raw **budget** co
 
 ### Status
 
-F.4 code complete + verified. PR held pending Reza's design call on whether "surface actuals on wizard re-entry" folds into the domain PRs or lands as a single follow-up.
+F.4 code complete + verified. PR held pending Reza's design call on whether "surface actuals on wizard re-entry" folds into the domain PRs or lands as a single follow-up. — **Resolved:** Reza confirmed the single-follow-up (`F-reconcile-handoff`) + the refined "completion message" approach (see the F-reconcile-handoff decision entry above); F.4 shipped as PR #838.
+
+## Session: Phase 12 Track F.5 — Onboarding two-way sync (investments domain)
+
+Branch: `claude/track-f5-investments-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — onboarding wizard ⇄ real-table two-way sync, investments domain. The `InvestmentAccount` + `InvestmentHolding` **aggregate**, mirroring F.2's property aggregate.
+- **Refs:** `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §5 (write contract), §6.5 (investments aggregate).
+
+### What was done
+
+**1. `lib/onboarding/investmentsSync.ts` — NEW (~410 LOC)**
+
+- `readInvestments()` — GET `/api/investments/accounts` (includes holdings) → `InvestmentsSnapshot`.
+- `diffInvestments()` — PURE idempotency core; per-account `InvestmentOp` carrying nested `holdingOps`.
+- `syncInvestments()` — CREATE POSTs the account then its holdings; UPDATE PUTs the account (if core changed) + applies holding ops; DELETE removes the account (holdings cascade-delete).
+- Mappers + `isPersistedId`. Quality guards: a holding with no ticker / `units<=0` / `averagePrice<=0` is dropped; an unpersisted account with no name is dropped.
+
+**2. `prisma/schema.prisma` + migration — `INVESTMENT_*` audit actions**
+
+- 3 new `AuditAction` values: `INVESTMENT_CREATED/UPDATED/DELETED`.
+- Migration `20260520180000_phase_12_track_f5_investment_audit_actions/migration.sql` — additive `ALTER TYPE ... ADD VALUE IF NOT EXISTS`.
+
+**3. `/api/investments/accounts` + `/api/investments/holdings` (route.ts + [id])**
+
+- `createAuditLog()` on every state-changing write — `INVESTMENT_*` for the account; generic `CREATE/UPDATE/DELETE` (`entityType: 'InvestmentHolding'`) for holdings (incl. the holdings PATCH price-update).
+
+**4. `components/onboarding/wizard/steps/InvestmentsStep.tsx` — rewired**
+
+- New optional `registerStepCommit` prop. Reads the real tables on open (merges real + unsynced accounts), commits the delta on Continue/Back. Loading + error banner.
+
+**5. `components/onboarding/wizard/WizardContainer.tsx`** — passes `registerStepCommit` to `<InvestmentsStep>`.
+
+**6. `app/api/onboarding/bulk-create/route.ts`** — §4 investments loop → no-op; `firstInvestmentAccountId` (used for INVESTMENT-income linking) now resolved from the real `data.investments[0].id` instead of this route's own creates.
+
+**7. `tests/onboarding/investmentsSync.test.ts` — NEW (11 tests)**
+
+Re-entry idempotency, mapper round-trip, account create/update/delete, nested holding create+update+delete, cascade-delete (holdingOps empty on account delete), quality guards, `isPersistedId`.
+
+### Build status
+
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run build` — ✓ succeeds
+- [x] `npx vitest run tests/onboarding/investmentsSync.test.ts` — ✓ 11/11 pass
+
+### Documentation updated
+
+- `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` — §6 table (F.4 → done, F.5 row), new §6.5 (investments aggregate), header status.
+- `docs/IMPLEMENTATION_PLAN.md` — Up Next row 0 (F.4 merged, F.5 in progress).
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — investment routes audit.
+- `docs/architecture/03_DATA_MODEL.md` §N.4 — F.5 `INVESTMENT_*` audit actions.
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
