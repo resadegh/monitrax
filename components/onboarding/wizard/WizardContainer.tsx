@@ -27,6 +27,7 @@ import {
   WizardData,
   INITIAL_WIZARD_DATA,
   getStepsForProfile,
+  type StepCommitFn,
 } from './types';
 import { WelcomeStep } from './steps/WelcomeStep';
 import { HouseholdStep } from './steps/HouseholdStep';
@@ -112,6 +113,46 @@ export function WizardContainer({
   // that quietly reverts from "Launching…" to "Launch dashboard" with
   // no idea what went wrong. Cleared on each new submit attempt.
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  // ---- Phase 12 Track F.1: per-step commit ------------------------------
+  // `stepCommitRef` holds the current step's async commit function, if it
+  // registered one (a Track-F-migrated step does; un-migrated steps don't).
+  // The container awaits it before advancing. `isCommitting` disables the
+  // footer + shows a spinner while a domain is writing to its real tables.
+  const stepCommitRef = useRef<StepCommitFn | null>(null);
+  const [isCommitting, setIsCommitting] = useState(false);
+  // Surface a commit failure (e.g. a household write 500'd) in the footer
+  // so the user can retry instead of silently failing to advance.
+  const [commitError, setCommitError] = useState<string | null>(null);
+
+  const registerStepCommit = useCallback((fn: StepCommitFn | null) => {
+    stepCommitRef.current = fn;
+  }, []);
+
+  /**
+   * Run the current step's registered commit (if any). Returns `true` when
+   * it's safe to advance (no commit, or commit succeeded), `false` when a
+   * commit threw — in which case the caller must NOT navigate.
+   */
+  const runStepCommit = useCallback(async (): Promise<boolean> => {
+    const commit = stepCommitRef.current;
+    if (!commit) return true;
+    setCommitError(null);
+    setIsCommitting(true);
+    try {
+      await commit();
+      return true;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'We couldn’t save this step. Please try again.';
+      setCommitError(message);
+      return false;
+    } finally {
+      setIsCommitting(false);
+    }
+  }, []);
 
   // ---- Late hydration from server draft --------------------------------
   // If the wizard mounts BEFORE the parent finishes fetching
@@ -259,20 +300,35 @@ export function WizardContainer({
     setData((prev) => ({ ...prev, ...updates }));
   }, []);
 
-  const handleNext = useCallback(() => {
-    if (isLastStep) return;
+  // Phase 12 Track F.1: handleNext is now async — it commits the current
+  // step's domain to its real tables (if the step registered a commit)
+  // BEFORE advancing. A failed commit keeps the user on the step with an
+  // error in the footer; their data is not lost.
+  const handleNext = useCallback(async () => {
+    if (isLastStep || isCommitting) return;
+    const ok = await runStepCommit();
+    if (!ok) return;
     setDirection('forward');
     setCurrentStepIndex((prev) => Math.min(prev + 1, steps.length - 1));
-  }, [isLastStep, steps.length]);
+  }, [isLastStep, isCommitting, runStepCommit, steps.length]);
 
-  const handleBack = useCallback(() => {
-    if (isFirstStep) return;
+  // Back also commits — leaving the household step backward should still
+  // persist the user's edits (the data IS the state, design doc §3.2).
+  // A failed commit keeps them on the step so nothing is silently lost.
+  const handleBack = useCallback(async () => {
+    if (isFirstStep || isCommitting) return;
+    const ok = await runStepCommit();
+    if (!ok) return;
     setDirection('backward');
     setCurrentStepIndex((prev) => Math.max(prev - 1, 0));
-  }, [isFirstStep]);
+  }, [isFirstStep, isCommitting, runStepCommit]);
 
   const handleJumpToStep = useCallback(
-    (index: number) => {
+    async (index: number) => {
+      if (isCommitting || index === currentStepIndex) return;
+      // Commit the current step's domain before jumping away from it.
+      const ok = await runStepCommit();
+      if (!ok) return;
       if (index < currentStepIndex) {
         setDirection('backward');
       } else {
@@ -280,7 +336,7 @@ export function WizardContainer({
       }
       setCurrentStepIndex(index);
     },
-    [currentStepIndex]
+    [currentStepIndex, isCommitting, runStepCommit]
   );
 
   const handleSubmit = useCallback(async () => {
@@ -407,7 +463,17 @@ export function WizardContainer({
       case 'household':
         return (
           <div key={currentStep.id} className={animationClass}>
-            <HouseholdStep data={data} onUpdate={handleUpdate} />
+            {/*
+             * Phase 12 Track F.1: HouseholdStep reads + writes the REAL
+             * household tables directly. It registers an async commit via
+             * `registerStepCommit`; the container awaits it on Continue /
+             * Back / progress-jump (see runStepCommit above).
+             */}
+            <HouseholdStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
           </div>
         );
       case 'entities':
@@ -586,12 +652,30 @@ export function WizardContainer({
         </div>
       )}
       {/*
+       * Phase 12 Track F.1: a commit failure (the step's domain couldn't
+       * be written to its real tables). Distinct from `submitError`
+       * (final bulk-create) — this one means "Continue couldn't save".
+       * The user's in-step data is intact; they can retry Continue.
+       */}
+      {!submitError && commitError && (
+        <div
+          role="alert"
+          className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs text-rose-800 dark:border-rose-800/40 dark:bg-rose-900/30 dark:text-rose-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <strong className="font-semibold">Couldn’t save this step.</strong>{' '}
+            {commitError} Your answers are still here — please try again.
+          </div>
+        </div>
+      )}
+      {/*
        * Inline hint when the user can't continue because a required
        * field on the current step is missing. Using amber (not rose)
        * so it reads as a gentle nudge rather than an error — the
        * user hasn't done anything wrong, they just haven't finished.
        */}
-      {!submitError && blockedReason && (
+      {!submitError && !commitError && blockedReason && (
         <div
           role="status"
           className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
@@ -605,8 +689,8 @@ export function WizardContainer({
       <button
         type="button"
         onClick={handleBack}
-        disabled={isFirstStep}
-        className={`wz-btn-ghost ${isFirstStep ? 'opacity-30' : ''}`}
+        disabled={isFirstStep || isCommitting}
+        className={`wz-btn-ghost ${isFirstStep || isCommitting ? 'opacity-30' : ''}`}
       >
         <ChevronLeft className="h-4 w-4" />
         Back
@@ -627,7 +711,7 @@ export function WizardContainer({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={isSubmitting || !canProceed}
+            disabled={isSubmitting || isCommitting || !canProceed}
             className="wz-btn-primary"
           >
             {isSubmitting ? (
@@ -646,11 +730,20 @@ export function WizardContainer({
           <button
             type="button"
             onClick={handleNext}
-            disabled={!canProceed}
+            disabled={!canProceed || isCommitting}
             className="wz-btn-primary"
           >
-            Continue
-            <ChevronRight className="h-4 w-4" />
+            {isCommitting ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              <>
+                Continue
+                <ChevronRight className="h-4 w-4" />
+              </>
+            )}
           </button>
         )}
       </div>

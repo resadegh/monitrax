@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { createAuditLog } from '@/lib/security/auditLog';
 import { z } from 'zod';
 import { HouseholdRelationship } from '@prisma/client';
 import {
@@ -170,6 +171,18 @@ export const POST = withPermission('settings.write', async (request, auth) => {
       });
 
       console.log(`[API] Household member created: ${name} (${relationship}) for user ${userId}`);
+
+      // Audit every state-changing write (CLAUDE.md §12.5). SSOT write
+      // boundary for the household domain (dashboard + Phase 12 Track F.1
+      // onboarding wizard). No CDR/financial data in metadata (§13.3).
+      void createAuditLog({
+        userId,
+        action: 'HOUSEHOLD_MEMBER_CREATED',
+        status: 'SUCCESS',
+        entityType: 'HouseholdMember',
+        entityId: member.id,
+        metadata: { relationship, isIncomeEarner },
+      });
 
       return NextResponse.json(
         {

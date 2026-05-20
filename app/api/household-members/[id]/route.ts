@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { createAuditLog } from '@/lib/security/auditLog';
 import { z } from 'zod';
 import { HouseholdRelationship } from '@prisma/client';
 import {
@@ -179,6 +180,18 @@ export const PUT = withPermission<RouteContext>('settings.write', async (request
 
       console.log(`[API] Household member updated: ${member.name} for user ${userId}`);
 
+      // Audit every state-changing write (CLAUDE.md §12.5). Guarded above
+      // by `findFirst({ id, householdProfile: { userId } })` — only the
+      // user's own row can reach this point. No CDR data in metadata.
+      void createAuditLog({
+        userId,
+        action: 'HOUSEHOLD_MEMBER_UPDATED',
+        status: 'SUCCESS',
+        entityType: 'HouseholdMember',
+        entityId: id,
+        metadata: { relationship: member.relationship, isIncomeEarner: member.isIncomeEarner },
+      });
+
       return NextResponse.json({
         success: true,
         data: updatedMember,
@@ -237,6 +250,17 @@ export const DELETE = withPermission<RouteContext>('settings.write', async (requ
       await updateHouseholdCounts(member.householdProfileId);
 
       console.log(`[API] Household member deleted: ${member.name} for user ${userId}`);
+
+      // Audit every state-changing write (CLAUDE.md §12.5). Hard-delete —
+      // guarded above by `findFirst({ id, householdProfile: { userId } })`.
+      void createAuditLog({
+        userId,
+        action: 'HOUSEHOLD_MEMBER_DELETED',
+        status: 'SUCCESS',
+        entityType: 'HouseholdMember',
+        entityId: id,
+        metadata: { relationship: member.relationship },
+      });
 
       return NextResponse.json({
         success: true,

@@ -120,6 +120,10 @@ import type {
   IncomeExpensesFields,
 } from '@/lib/ai/onboarding-agent/schemas/wizardStateDelta';
 import { jitteredThinkingPauseMs } from './design/motionTokens';
+// Phase 12 Track F.1: the household domain reads + writes the REAL
+// household tables (not the draft blob). The other 7 chat topics remain
+// draft-staged until F.2–F.8.
+import { readHousehold, syncHousehold, chatStagedToSnapshot } from '@/lib/onboarding/householdSync';
 
 // After the chat chain ends, redirect to form mode at `review`
 // (currentStep = 10) — the final wizard step. Chat now covers every
@@ -188,7 +192,6 @@ export function ConversationalSetup() {
     state: onboardingState,
     isLoading: onboardingLoading,
     saveDraft,
-    readLocalDraft,
   } = useOnboardingState();
 
   // Chat thread + ambient orchestrator state.
@@ -230,43 +233,44 @@ export function ConversationalSetup() {
     [messages],
   );
 
-  // Resolve the current onboarding draft for hydration. The server
-  // state is authoritative; the localStorage cache is a same-device
-  // fallback for users whose server draft never made it to the DB.
-  // Returns `null` for a genuinely new user (no draft anywhere) — every
-  // topic then behaves exactly as it did before chat hydration existed.
-  const resolveDraft = useCallback((): Partial<WizardData> | null => {
-    const serverDraft = onboardingState?.draft;
-    if (serverDraft && typeof serverDraft === 'object') {
-      return serverDraft as Partial<WizardData>;
-    }
-    const localDraft = readLocalDraft();
-    if (localDraft && typeof localDraft === 'object') {
-      return localDraft as Partial<WizardData>;
-    }
-    return null;
-  }, [onboardingState?.draft, readLocalDraft]);
-
   // Bootstrap intro + first ask, exactly once. Waits until the
-  // onboarding state has finished loading so the Household topic can
-  // hydrate from any draft the user already built in form mode — if it
-  // bootstrapped before the draft loaded, the chat would start the
-  // Household topic from scratch even when data exists.
+  // onboarding state has finished loading.
+  //
+  // Phase 12 Track F.1: the Household topic now hydrates from the REAL
+  // household tables (`readHousehold()`), not the draft blob — so a user
+  // who built a household in form mode (or a prior chat session) sees it
+  // acknowledged, and the real-table snapshot is captured on
+  // `householdScript.realSnapshot` as the diff baseline for confirm.
+  // If the read fails, fall back to an empty bootstrap (a new user) so
+  // chat is never blocked — the confirm step re-reads anyway.
   useEffect(() => {
     if (bootstrappedRef.current) return;
     if (onboardingLoading) return;
     bootstrappedRef.current = true;
-    const { agentMessages, nextState } = bootstrapHouseholdConversation(resolveDraft());
-    setMessages(
-      agentMessages.map((text) => ({
-        id: nextId(),
-        role: 'agent' as const,
-        text,
-        ts: Date.now(),
-      })),
-    );
-    setHouseholdScript(nextState);
-  }, [onboardingLoading, resolveDraft]);
+    let cancelled = false;
+    void (async () => {
+      let snapshot = null;
+      try {
+        snapshot = await readHousehold(token);
+      } catch {
+        snapshot = null; // new-user fallback
+      }
+      if (cancelled) return;
+      const { agentMessages, nextState } = bootstrapHouseholdConversation(snapshot);
+      setMessages(
+        agentMessages.map((text) => ({
+          id: nextId(),
+          role: 'agent' as const,
+          text,
+          ts: Date.now(),
+        })),
+      );
+      setHouseholdScript(nextState);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [onboardingLoading, token]);
 
   const appendAgent = useCallback((text: string, opts?: { animate?: boolean }) => {
     const id = nextId();
@@ -790,29 +794,46 @@ export function ConversationalSetup() {
       let mergedDraft: WizardData = baseDraft;
 
       if (chatTopic === 'household') {
-        const stagedMembers = householdScript.staged.householdMembers;
-        const stagedPets = householdScript.staged.householdPets;
-        const stagedCars = householdScript.staged.carsCount;
+        // Phase 12 Track F.1: the household domain writes the REAL tables
+        // directly (not the draft blob). Diff the chat's staged household
+        // against `householdScript.realSnapshot` — the real-table baseline
+        // captured at topic bootstrap — and write only the delta via the
+        // household entity APIs. `chatStagedToSnapshot` reconciles the
+        // chat's id-less staged list against the baseline by name, so
+        // confirming household twice (re-entering chat) is idempotent and
+        // never duplicates rows. §12.11-safe: every write is `create` for
+        // new rows / ownership-guarded `update`/`delete` for existing ones.
+        const current = chatStagedToSnapshot(
+          householdScript.realSnapshot,
+          householdScript.staged,
+        );
+        const syncResult = await syncHousehold(
+          token,
+          householdScript.realSnapshot,
+          current,
+        );
+        // Re-seed the topic's baseline so a later re-confirm is a no-op.
+        setHouseholdScript((prev) => ({ ...prev, realSnapshot: syncResult.snapshot }));
+        // Mirror the freshly-written household into the draft too, so the
+        // form-mode Review step (which still reads `WizardData.household*`)
+        // shows it. The REAL TABLES remain the SSOT — this is a derived
+        // copy for the review surface only.
         mergedDraft = {
           ...baseDraft,
-          householdMembers:
-            stagedMembers !== undefined
-              ? stagedMembers.map((m, idx) => ({
-                  id: `chat-${idx}-${Date.now()}`,
-                  name: m.name,
-                  relationship: m.relationship,
-                  isIncomeEarner: m.isIncomeEarner,
-                }))
-              : baseDraft.householdMembers,
-          householdPets:
-            stagedPets !== undefined
-              ? stagedPets.map((p, idx) => ({
-                  id: `chat-pet-${idx}-${Date.now()}`,
-                  name: p.name,
-                  type: p.type,
-                }))
-              : baseDraft.householdPets,
-          carsCount: stagedCars !== undefined ? stagedCars : baseDraft.carsCount,
+          householdMembers: syncResult.snapshot.members.map((m) => ({
+            id: m.id ?? `chat-${Math.random().toString(36).slice(2)}`,
+            name: m.name,
+            relationship: m.relationship,
+            dateOfBirth: m.dateOfBirth,
+            isIncomeEarner: m.isIncomeEarner,
+          })),
+          householdPets: syncResult.snapshot.pets.map((p) => ({
+            id: p.id ?? `chat-pet-${Math.random().toString(36).slice(2)}`,
+            name: p.name,
+            type: p.type,
+            breed: p.breed,
+          })),
+          carsCount: syncResult.snapshot.carsCount,
         };
       } else if (chatTopic === 'properties') {
         const stagedProps = propertiesScript.staged.properties ?? [];
@@ -1009,8 +1030,10 @@ export function ConversationalSetup() {
           case 'income-expenses':
             return bootstrapIncomeExpensesConversation(mergedDraft);
           case 'household':
-            // Defensive — household is never a pivot target.
-            return bootstrapHouseholdConversation(mergedDraft);
+            // Defensive — household is never a pivot target (it is first
+            // in TOPIC_CHAIN). Pass `null`: bootstrapHouseholdConversation
+            // takes a real-table snapshot now, not a draft (Track F.1).
+            return bootstrapHouseholdConversation(null);
         }
       })();
       for (const text of bootstrap.agentMessages) appendAgent(text);
@@ -1048,7 +1071,9 @@ export function ConversationalSetup() {
     confirming,
     chatTopic,
     onboardingState?.draft,
-    householdScript.staged,
+    // Track F.1: the household confirm also reads `realSnapshot`, so the
+    // whole household script object is the dependency (not just `.staged`).
+    householdScript,
     propertiesScript.staged,
     debtsScript.staged,
     accountsScript.staged,

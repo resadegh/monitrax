@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+import { createAuditLog } from '@/lib/security/auditLog';
 import {
   validateHouseholdProfile,
   isProfileComplete,
@@ -162,14 +163,33 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         },
       });
 
-      console.log(`[API] Household profile ${profile.id ? 'updated' : 'created'} for user ${userId}`);
+      const wasCreated = profile.createdAt.getTime() === profile.updatedAt.getTime();
+      console.log(`[API] Household profile ${wasCreated ? 'created' : 'updated'} for user ${userId}`);
+
+      // Audit every state-changing write (CLAUDE.md §12.5). This route is
+      // the household domain's SSOT write boundary — used by the dashboard
+      // AND, since Phase 12 Track F.1, by the onboarding wizard. CDR rule
+      // §13.3: no financial/CDR data in metadata — only counts + flags.
+      void createAuditLog({
+        userId,
+        action: wasCreated ? 'HOUSEHOLD_PROFILE_CREATED' : 'HOUSEHOLD_PROFILE_UPDATED',
+        status: 'SUCCESS',
+        entityType: 'HouseholdProfile',
+        entityId: profile.id,
+        metadata: {
+          adultsCount: profile.adultsCount,
+          childrenCount: profile.childrenCount,
+          petsCount: profile.petsCount,
+          carsCount: profile.carsCount,
+        },
+      });
 
       return NextResponse.json(
         {
           success: true,
           data: profile,
         },
-        { status: profile.createdAt.getTime() === profile.updatedAt.getTime() ? 201 : 200 }
+        { status: wasCreated ? 201 : 200 }
       );
     } catch (error) {
       console.error('[API] Save household profile error:', error);

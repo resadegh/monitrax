@@ -1,25 +1,52 @@
 'use client';
 
 /**
- * HouseholdStep — Phase 12 PR 3a visual redesign
+ * HouseholdStep — Phase 12 Track F.1: onboarding ⇄ real-table two-way sync.
  *
- * Composes the new PR 3a primitives. Still captures the same fields as
- * before (members, pets, cars count); no data model changes. The
- * lifestyle fields (lifestylePreference, diningOutFrequency,
- * hobbiesWithCosts) land in PR 3b, not here.
+ * ============================================================================
+ * WHAT CHANGED IN F.1 (and what this establishes for F.2–F.8)
+ * ============================================================================
+ * Before F.1 this step staged household members/pets/cars into the
+ * `WizardData` draft blob, and the real tables (`HouseholdProfile` /
+ * `HouseholdMember` / `HouseholdPet`) were written ONCE at the final
+ * `/api/onboarding/bulk-create`. Result: `/dashboard/household-profile`
+ * showed empty while the wizard held a full household — a §12.2 SSOT
+ * violation.
  *
- * Layout:
- *   [WizardStepShell]
- *     ├─ Members section
- *     │   ├─ empty state OR member cards grid
- *     │   └─ Add member dialog
- *     ├─ Pets section
- *     │   ├─ empty state OR pet cards grid
- *     │   └─ Add pet dialog
- *     └─ Vehicles section (inline number picker)
+ * F.1 makes the household domain read + write the REAL tables directly:
+ *
+ *   - ON OPEN  — `readHousehold()` loads the real tables. Existing members/
+ *     pets/cars show pre-filled, each carrying its real-table `id`. The
+ *     `snapshotRef` captures this baseline for the diff on Continue.
+ *
+ *   - ON CONTINUE / BACK / PROGRESS-JUMP — the step's registered `commit`
+ *     diffs the user's current household against the snapshot and calls
+ *     `syncHousehold()`: `create` new entities, `update` changed ones,
+ *     `delete` removed ones (hard-delete — design Q-F2). The diff is
+ *     idempotent — re-opening the step and pressing Continue with no
+ *     edits writes nothing (see `lib/onboarding/householdSync.ts`).
+ *
+ * Coexistence: the other 7 wizard domains still stage into `WizardData`
+ * and write at bulk-create. F.1 touches ONLY household. The step still
+ * mirrors household into `WizardData` via `onUpdate` so the Review step
+ * and any other reader stay consistent — but the REAL TABLES are the
+ * single source of truth; `WizardData.household*` is now a derived view.
+ *
+ * Re-entry idempotency (the §5.3 guarantee):
+ *   - Every persisted member/pet in step state carries its real-table id
+ *     (a uuid). New in-session entities carry a synthetic `member-…`/
+ *     `pet-…` id (see `isPersistedId`).
+ *   - `commit` reads the LATEST real-table snapshot, diffs the step's
+ *     current state against it, and only writes the delta. After the
+ *     write it re-seeds state with the fresh real ids, so a second
+ *     Continue with no edits is a pure no-op.
+ *
+ * Visual layout is unchanged from the PR 3a redesign — members section,
+ * pets section, vehicles picker, lifestyle section. A thin load/error
+ * banner is added at the top while the real tables are being read.
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Users,
   UserPlus,
@@ -30,6 +57,8 @@ import {
   Baby,
   Car,
   Sparkles,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,6 +74,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   WizardData,
   HouseholdMemberInput,
@@ -55,6 +85,7 @@ import {
   DiningFrequency,
   RELATIONSHIP_LABELS,
   PET_TYPE_LABELS,
+  type StepCommitFn,
 } from '../types';
 import {
   WizardStepShell,
@@ -62,6 +93,14 @@ import {
   WizardSegmentedControl,
   WizardField,
 } from '../primitives';
+import {
+  readHousehold,
+  syncHousehold,
+  snapshotToWizardSlice,
+  wizardSliceToSnapshot,
+  EMPTY_HOUSEHOLD_SNAPSHOT,
+  type HouseholdSnapshot,
+} from '@/lib/onboarding/householdSync';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -71,9 +110,33 @@ import '@/styles/wizard-animations.css';
 interface HouseholdStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.1: register an async commit with the container.
+   * The container awaits it before advancing — it writes the household
+   * domain to its real tables. Optional so the step still renders in
+   * non-wizard contexts (tests / storybook).
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
+export function HouseholdStep({ data, onUpdate, registerStepCommit }: HouseholdStepProps) {
+  const { token } = useAuth();
+
+  // ---- Real-table sync state -----------------------------------------
+  // `loading` is true while the initial READ of the real tables is in
+  // flight. `loadError` surfaces a failed READ. `snapshotRef` holds the
+  // baseline the commit diffs against — it is the household as it was at
+  // step-open (or after the last successful commit).
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<HouseholdSnapshot>(EMPTY_HOUSEHOLD_SNAPSHOT);
+  // Latest `data` in a ref so the registered commit closure always reads
+  // the freshest household state without re-registering on every keypress.
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
   // ---- Member dialog state -------------------------------------------
   const [memberDialogOpen, setMemberDialogOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<HouseholdMemberInput | null>(null);
@@ -92,6 +155,86 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
     type: 'DOG' as HouseholdPetType,
     breed: '',
   });
+
+  // ---- READ the real tables on step open -----------------------------
+  // Seeds both the WizardData household slice (so the Review step + any
+  // other reader stay consistent) AND `snapshotRef` (the diff baseline).
+  // A fresh user with no HouseholdProfile gets the empty snapshot — the
+  // step renders empty states, exactly as before.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readHousehold(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        // Only overwrite the WizardData household slice from the real
+        // tables when the real tables actually have data, OR the wizard
+        // slice is itself empty. This avoids clobbering in-session edits
+        // the user made before this effect resolved on a slow network.
+        const realHasData =
+          snapshot.members.length > 0 ||
+          snapshot.pets.length > 0 ||
+          snapshot.profileExists;
+        const wizardHasData =
+          dataRef.current.householdMembers.length > 0 ||
+          dataRef.current.householdPets.length > 0;
+        if (realHasData || !wizardHasData) {
+          onUpdate(snapshotToWizardSlice(snapshot));
+        }
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your household. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Intentionally run once on mount — token is stable post-auth and
+    // `onUpdate` is a stable useCallback from the container.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container -------
+  // Diffs the user's current household (from `dataRef`) against
+  // `snapshotRef` and writes the delta via the household entity APIs.
+  // On success, re-seeds the snapshot + WizardData with the fresh real
+  // ids so the NEXT Continue is idempotent.
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      // Block commit while the initial READ is still resolving — without
+      // the snapshot baseline a diff would mis-classify every existing
+      // row as a CREATE and duplicate the user's household.
+      if (loading) {
+        throw new Error('Still loading your household — please wait a moment.');
+      }
+      const current = wizardSliceToSnapshot({
+        householdMembers: dataRef.current.householdMembers,
+        householdPets: dataRef.current.householdPets,
+        carsCount: dataRef.current.carsCount,
+        lifestylePreference: dataRef.current.lifestylePreference,
+        diningOutFrequency: dataRef.current.diningOutFrequency,
+        hobbiesWithCosts: dataRef.current.hobbiesWithCosts,
+      });
+      const result = await syncHousehold(token, snapshotRef.current, current);
+      // Re-seed: the snapshot becomes the just-written state, and the
+      // WizardData slice gets the fresh real ids (so a second Continue
+      // with no edits diffs to an empty op set — idempotency §5.3).
+      snapshotRef.current = result.snapshot;
+      onUpdate(snapshotToWizardSlice(result.snapshot));
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   // ---- Member operations ---------------------------------------------
   const openAddMemberDialog = () => {
@@ -120,6 +263,8 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
   const saveMember = () => {
     if (!memberForm.name.trim()) return;
     if (editingMember) {
+      // Edit in place — the member keeps its id (real or synthetic), so a
+      // persisted member edited here is classified UPDATE by the diff.
       const updatedMembers = data.householdMembers.map((m) =>
         m.id === editingMember.id
           ? {
@@ -133,6 +278,7 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       );
       onUpdate({ householdMembers: updatedMembers });
     } else {
+      // New member — synthetic `member-…` id marks it as "needs CREATE".
       const newMember: HouseholdMemberInput = {
         id: `member-${Date.now()}`,
         name: memberForm.name.trim(),
@@ -146,6 +292,8 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
   };
 
   const deleteMember = (id: string) => {
+    // Just removes from step state. If the member was persisted, the diff
+    // on Continue sees it absent and issues a hard-delete (design Q-F2).
     onUpdate({ householdMembers: data.householdMembers.filter((m) => m.id !== id) });
   };
 
@@ -202,6 +350,25 @@ export function HouseholdStep({ data, onUpdate }: HouseholdStepProps) {
       title="Your household"
       subtitle="Who are you building this for? We'll personalise your TRAIL journey for your whole family."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking: the user can still edit and a successful
+          commit on Continue persists everything. */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your household…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {/* Members */}
       <WizardSection
         icon={<Users className="h-4 w-4" />}
