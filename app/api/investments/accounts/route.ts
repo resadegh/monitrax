@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { extractInvestmentAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 const createAccountSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -89,6 +90,18 @@ export const POST = withPermission('investment.write', async (request, auth) => 
         totalWithdrawals: totalWithdrawals || 0,
         costBasisMethod: costBasisMethod || 'FIFO',
       },
+    });
+
+    // Audit every state-changing write (CLAUDE.md §12.5). This route is the
+    // wizard's SSOT write boundary for investment accounts (Track F.5). No
+    // CDR/financial values in metadata (§13.3) — type only.
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'INVESTMENT_CREATED',
+      status: 'SUCCESS',
+      entityType: 'InvestmentAccount',
+      entityId: account.id,
+      metadata: { type },
     });
 
     return NextResponse.json(account, { status: 201 });

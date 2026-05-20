@@ -1,10 +1,29 @@
 'use client';
 
 /**
- * InvestmentsStep — Phase 12 PR 3a visual redesign
+ * InvestmentsStep — Phase 12 PR 3a redesign + Track F.5 two-way sync
  *
  * Captures investment accounts (brokerage, super, fund, trust, ETF/crypto)
- * and their holdings. PR 3a simplification:
+ * and their holdings.
+ *
+ * ============================================================================
+ * TRACK F.5 — onboarding ⇄ real-table two-way sync (2026-05-20)
+ * ============================================================================
+ * Before F.5 this step staged investment accounts + holdings into the
+ * `WizardData` draft blob, written once at `/api/onboarding/bulk-create`.
+ * F.5 makes the step read + write the real `InvestmentAccount` /
+ * `InvestmentHolding` tables directly — the account aggregate, mirroring
+ * the F.2 property aggregate:
+ *   - ON OPEN  — `readInvestments()` loads the real tables; the step
+ *     merges them with any unsynced in-session account.
+ *   - ON CONTINUE / BACK — the registered `commit` diffs + `syncInvestments()`
+ *     writes the delta (create / update / hard-delete), idempotent on
+ *     re-entry.
+ *
+ * See `lib/onboarding/investmentsSync.ts` and
+ * `docs/blueprint/PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.5.
+ *
+ * Original PR 3a simplification notes:
  *   - Each account card is expandable — collapsed shows just the name
  *     and the value summary; expanded shows the holdings table
  *   - Holdings inline table with ticker / units / avg price
@@ -14,7 +33,7 @@
  * SuperannuationAccount step.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   TrendingUp,
   Plus,
@@ -25,6 +44,8 @@ import {
   Briefcase,
   BarChart3,
   Bitcoin,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import {
   WizardData,
@@ -32,6 +53,7 @@ import {
   HoldingInput,
   InvestmentAccountType,
   generateId,
+  type StepCommitFn,
 } from '../types';
 import {
   WizardStepShell,
@@ -41,6 +63,16 @@ import {
   WizardAddButton,
 } from '../primitives';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { useAuth } from '@/lib/context/AuthContext';
+import {
+  readInvestments,
+  syncInvestments,
+  snapshotToWizardInvestments,
+  wizardInvestmentsToSnapshot,
+  isPersistedId,
+  EMPTY_INVESTMENTS_SNAPSHOT,
+  type InvestmentsSnapshot,
+} from '@/lib/onboarding/investmentsSync';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -351,12 +383,86 @@ function InvestmentCard({
 interface InvestmentsStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track F.5: register an async commit with the container. The
+   * container awaits it before advancing — it writes the investment
+   * accounts + holdings to their real tables. Optional so the step still
+   * renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
+export function InvestmentsStep({ data, onUpdate, registerStepCommit }: InvestmentsStepProps) {
+  const { token } = useAuth();
   const [expandedId, setExpandedId] = useState<string | null>(
     data.investments.length > 0 ? data.investments[0].id : null
   );
+
+  // ---- Phase 12 Track F.5: real-table sync state ---------------------
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<InvestmentsSnapshot>(EMPTY_INVESTMENTS_SNAPSHOT);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real tables on step open -----------------------------
+  // Merges the real investment accounts (authoritative — real ids) with
+  // any unsynced (synthetic-id) in-session / chat-staged account.
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readInvestments(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realInvestments = snapshotToWizardInvestments(snapshot);
+        const unsynced = dataRef.current.investments.filter((a) => !isPersistedId(a.id));
+        onUpdate({ investments: [...realInvestments, ...unsynced] });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your investments. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container -------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your investments — please wait a moment.');
+      }
+      const current = wizardInvestmentsToSnapshot(dataRef.current.investments);
+      const result = await syncInvestments(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      // Re-seed from the real tables, keeping any in-session account still
+      // incomplete (no real id, no name) so a half-filled card the user is
+      // working on isn't discarded on a Back navigation.
+      const stillUnsynced = dataRef.current.investments.filter(
+        (a) => !isPersistedId(a.id) && !a.name.trim(),
+      );
+      onUpdate({
+        investments: [...snapshotToWizardInvestments(result.snapshot), ...stillUnsynced],
+      });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   const addInvestment = () => {
     const newAcc = createEmptyInvestment();
@@ -391,6 +497,24 @@ export function InvestmentsStep({ data, onUpdate }: InvestmentsStepProps) {
       title="Investments"
       subtitle="How you're growing. Track your investments to watch your wealth compound."
     >
+      {/* Real-table sync status — loading while reading, error on failure.
+          Both are non-blocking (Phase 12 Track F.5). */}
+      {loading && (
+        <div className="flex items-center gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-800/40 px-3 py-2 text-xs text-slate-500 dark:text-slate-400">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Loading your investments…
+        </div>
+      )}
+      {!loading && loadError && (
+        <div
+          role="status"
+          className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+        >
+          <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+          <span className="min-w-0">{loadError}</span>
+        </div>
+      )}
+
       {data.investments.length > 0 && (
         <div className="space-y-3">
           {data.investments.map((account) => (

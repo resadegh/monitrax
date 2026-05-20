@@ -384,6 +384,16 @@ enum AuditAction {
   ACCOUNT_CREATED
   ACCOUNT_UPDATED
   ACCOUNT_DELETED
+
+  // Phase 12 Track F.5 (Onboarding two-way sync — investments domain).
+  // The investment-account entity API (/api/investments/accounts) became
+  // the wizard's SSOT write boundary, so every investment-account write is
+  // now audited per CLAUDE.md §12.5. The nested holding writes use the
+  // generic CREATE/UPDATE/DELETE actions with entityType. Metadata carries
+  // type/booleans only — no CDR/financial values (§13.3).
+  INVESTMENT_CREATED
+  INVESTMENT_UPDATED
+  INVESTMENT_DELETED
 }
 
 enum AuditStatus {

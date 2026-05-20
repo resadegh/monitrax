@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyIndirectOwnership } from '@/lib/utils/ownership';
+import { createAuditLog } from '@/lib/security/auditLog';
 import { z } from 'zod';
 
 const updateHoldingSchema = z.object({
@@ -115,6 +116,16 @@ export const PUT = withPermission<RouteContext>('holding.write', async (request,
       },
     });
 
+    // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'UPDATE',
+      status: 'SUCCESS',
+      entityType: 'InvestmentHolding',
+      entityId: holding.id,
+      metadata: { type: holding.type },
+    });
+
     return NextResponse.json(holding);
   } catch (error) {
     console.error('Update holding error:', error);
@@ -176,6 +187,16 @@ export const PATCH = withPermission<RouteContext>('holding.write', async (reques
       },
     });
 
+    // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'UPDATE',
+      status: 'SUCCESS',
+      entityType: 'InvestmentHolding',
+      entityId: holding.id,
+      metadata: { priceUpdate: true },
+    });
+
     return NextResponse.json({
       ...holding,
       priceChange: {
@@ -211,6 +232,15 @@ export const DELETE = withPermission<RouteContext>('holding.delete', async (requ
 
     await prisma.investmentHolding.delete({
       where: { id },
+    });
+
+    // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'DELETE',
+      status: 'SUCCESS',
+      entityType: 'InvestmentHolding',
+      entityId: id,
     });
 
     return NextResponse.json({ message: 'Holding deleted successfully' });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
+import { createAuditLog } from '@/lib/security/auditLog';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
@@ -86,6 +87,16 @@ export const PUT = withPermission<RouteContext>('investment.write', async (reque
       },
     });
 
+    // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'INVESTMENT_UPDATED',
+      status: 'SUCCESS',
+      entityType: 'InvestmentAccount',
+      entityId: account.id,
+      metadata: { type: account.type },
+    });
+
     return NextResponse.json(account);
   } catch (error) {
     console.error('Update investment account error:', error);
@@ -106,6 +117,15 @@ export const DELETE = withPermission<RouteContext>('investment.delete', async (r
 
     await prisma.investmentAccount.delete({
       where: { id },
+    });
+
+    // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
+    void createAuditLog({
+      userId: auth.userId,
+      action: 'INVESTMENT_DELETED',
+      status: 'SUCCESS',
+      entityType: 'InvestmentAccount',
+      entityId: id,
     });
 
     return NextResponse.json({ message: 'Investment account deleted successfully' });

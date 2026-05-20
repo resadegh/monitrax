@@ -528,39 +528,20 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         }
 
         // =======================================================================
-        // 4. Create Investment Accounts with Holdings
+        // 4. Investment accounts (+ holdings)
+        //
+        // ⚠ Phase 12 Track F.5 (2026-05-20): investment accounts + holdings
+        // are no longer written here. They are written incrementally to the
+        // real `InvestmentAccount` / `InvestmentHolding` tables by the
+        // wizard Investments step via /api/investments/* — see
+        // `lib/onboarding/investmentsSync.ts`. The Investments step's commit
+        // runs before bulk-create, so every account is already persisted
+        // (with a real id carried back into `data.investments`) by the time
+        // this runs.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in F.9.
         // =======================================================================
-        const createdInvestments = [];
-        for (const inv of data.investments) {
-          const investmentAccount = await tx.investmentAccount.create({
-            data: {
-              userId,
-              ownerEntityId,
-              name: inv.name || `${inv.platform || ''} - ${inv.type}`.trim(),
-              type: inv.type,
-              platform: inv.platform || null,
-              cashBalance: inv.cashBalance,
-            },
-          });
-          createdInvestments.push(investmentAccount);
-
-          // Create holdings
-          for (const holding of inv.holdings) {
-            if (holding.ticker && holding.units > 0) {
-              await tx.investmentHolding.create({
-                data: {
-                  investmentAccountId: investmentAccount.id,
-                  ticker: holding.ticker.toUpperCase(),
-                  name: holding.name || null,
-                  units: holding.units,
-                  averagePrice: holding.averagePrice,
-                  type: holding.type,
-                  totalCostBasis: holding.units * holding.averagePrice,
-                },
-              });
-            }
-          }
-        }
+        const createdInvestments: never[] = [];
 
         // =======================================================================
         // 4a. Phase 12 PR 3b — SuperannuationAccount rows
@@ -709,7 +690,14 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // =======================================================================
         // Pick the first investment account (if any) so INVESTMENT-type income
         // can be linked to a real InvestmentAccount rather than floating free.
-        const firstInvestmentAccountId = createdInvestments[0]?.id ?? null;
+        // Track F.5: investment accounts are created by the wizard step, so
+        // resolve the first real id from the payload (it carries the real id
+        // post-sync) rather than from this route's own creates.
+        const firstInvestmentAccountId =
+          (data.investments ?? [])
+            .map((inv) => inv.id)
+            .find((id) => !!id && !id.startsWith('temp_') && !id.startsWith('chat-')) ??
+          null;
 
         const createdIncome = [];
         for (const inc of data.income) {
