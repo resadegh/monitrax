@@ -581,7 +581,17 @@ export function WizardContainer({
       case 'income-expenses':
         return (
           <div key={currentStep.id} className={animationClass}>
-            <IncomeExpensesStep data={data} onUpdate={handleUpdate} />
+            {/*
+             * Phase 12 Track F.8: IncomeExpensesStep reads + writes the real
+             * `Income` / `Expense` tables (GENERAL rows only). It registers
+             * an async commit via `registerStepCommit`; the container awaits
+             * it on Continue / Back / progress-jump.
+             */}
+            <IncomeExpensesStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
           </div>
         );
       case 'review':

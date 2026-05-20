@@ -1,6 +1,6 @@
 # Phase 12 Track F — Onboarding Two-Way Sync (Wizard ⇄ Real Tables)
 
-> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 ✅ (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) 🟡 IN PROGRESS 2026-05-20.
+> **Status:** 🟢 IN PROGRESS — F.0 ✅ · F.1 ✅ (#831) · F.2 ✅ (#836) · F.3 ✅ (#837) · F.4 ✅ (#838) · F.5 (investments) ✅ DONE (#839) · F.6 (super) ✅ DONE (#840) · F.7 (assets) ✅ DONE (#841) · F.8 (income/expenses) 🟡 IN PROGRESS 2026-05-20 — the LAST domain. Next: F.9 (retire `bulk-create` + draft blob).
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"the wizard and the relevant sections/tables in the app should have a 2-way read/write relationship. the wizard should expose the existing data and reconfirm the user, and ask questions where there is no existing data. after all the wizard is to help user populate/update the required data to the app."*
 > **Go/no-go:** Reza approved 2026-05-20 — *"for questions go with the recommendations"* — all three §8 open questions resolved with the recommended defaults (see §8).
@@ -123,8 +123,8 @@ Ship **one domain per PR**, household first (it's what Reza tested + the simples
 | ~~F.4~~ | ✅ **DONE 2026-05-20 (PR #838)** — Debts domain (standalone non-property loans — car / student / personal / business). `lib/onboarding/debtsSync.ts` read/diff/write layer + 11 idempotency tests. **No schema change** — the `/api/loans` routes already gained audit + relaxed validation in F.2. FORM step (`DebtsStep`) full two-way sync. CAR→vehicle link deferred (see §6.4). |
 | ~~F.5~~ | ✅ **DONE 2026-05-20 (PR #839)** — Investments domain (the `InvestmentAccount` + `InvestmentHolding` aggregate, mirroring F.2's property aggregate). `lib/onboarding/investmentsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `INVESTMENT_*` `AuditAction` values + migration. FORM step (`InvestmentsStep`) full two-way sync. See §6.5. |
 | ~~F.6~~ | ✅ **DONE 2026-05-20 (PR #840)** — Superannuation domain (`SuperannuationAccount` — a flat entity, F.3-shaped). `lib/onboarding/superSync.ts` read/diff/write layer + 11 idempotency tests; 3 `SUPER_*` `AuditAction` values + migration; new `/api/tax/super/[id]` route (PUT + DELETE — the parent route had GET + POST only). FORM step (`SuperStep`) full two-way sync. See §6.6. |
-| **F.7** | 🟡 **IN PROGRESS 2026-05-20** — Assets domain (the `Asset` + its `Expense`s aggregate, mirroring F.2's property aggregate). `lib/onboarding/assetsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `ASSET_*` `AuditAction` values + migration. FORM step (`AssetsStep`) full two-way sync. See §6.7. |
-| **F.8** | Income / expenses — the last domain; replicate the `*Sync.ts` pattern. |
+| ~~F.7~~ | ✅ **DONE 2026-05-20 (PR #841)** — Assets domain (the `Asset` + its `Expense`s aggregate). `lib/onboarding/assetsSync.ts` read/diff/write layer + 11 idempotency tests; 3 `ASSET_*` `AuditAction` values + migration. FORM step (`AssetsStep`) full two-way sync. See §6.7. |
+| **F.8** | 🟡 **IN PROGRESS 2026-05-20** — Income / expenses domain — the LAST domain. GENERAL (non-property, non-loan, non-asset, non-investment) `Income` + `Expense` only. `lib/onboarding/incomeExpensesSync.ts` read/diff/write layer + 17 idempotency tests. **No schema change** — the `/api/income` + `/api/expenses` routes already gained `createAuditLog()` in F.2. FORM step (`IncomeExpensesStep`) full two-way sync. See §6.8. |
 | **F.9** | Retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft` (keep or drop the step pointer per Q-F1). Final cleanup. Schema migration if a column is dropped (§12.12). |
 | **F.10** | Conversational enrichment follow-ups (see §10). Queued — starts after F.9. |
 | **F.11** | Receipt / document upload mid-chat (see §10). Queued — starts after F.10. |
@@ -330,6 +330,54 @@ loan/income). `lib/onboarding/assetsSync.ts` reads `/api/assets` (which
   and `data.debts[i].linkedAssetId` (a real `Asset` id post-F.7) are now
   real, so §5a wires the link directly, ownership-verifying both rows.
   This moves into `debtsSync` when `bulk-create` is retired in F.9.
+
+### 6.8 F.8 scope — income / expenses (the LAST domain)
+
+F.8 owns the **general** (non-property, non-loan, non-asset,
+non-investment) `Income` + `Expense` rows. Unlike F.2 (property
+aggregate) or F.7 (asset aggregate), F.8 is **two flat lists** — the
+wizard's Income & Expenses step captures both, so the snapshot holds
+`incomes: IncomeRecord[]` + `expenses: ExpenseRecord[]` and
+`diffIncomeExpenses()` produces ops for both. `lib/onboarding/incomeExpensesSync.ts`
+reads `/api/income` + `/api/expenses` and writes via the same routes
+(per-id PUT/DELETE).
+
+- **The GENERAL filter (scope boundary).** `readIncomeExpenses()` includes
+  a row ONLY when its `sourceType === 'GENERAL'` AND every FK link field
+  is null — `propertyId` / `investmentAccountId` for income;
+  `propertyId` / `loanId` / `assetId` / `investmentAccountId` for
+  expenses. Property-attached income/expenses are F.2's domain; asset
+  expenses are F.7's; loan/investment-attached rows belong to other
+  domains. On write, rows are created with `sourceType: 'GENERAL'`. The
+  diff/sync therefore only ever create/update/delete GENERAL rows — it
+  never touches a property/asset/loan/investment-attached row. This
+  mirrors how F.3 filtered MANUAL-only accounts and F.4 filtered
+  standalone (non-property) loan types.
+- **INVESTMENT-type income is NOT general income.** It links to an
+  `InvestmentAccount` (captured on the Investments step) — the F.8 step
+  does not own it, and `bulk-create` section 6 still creates INVESTMENT
+  income so its link is wired. Property rental income (F.2) is likewise
+  untouched.
+- **Budget-vs-actuals invariant (§6.4).** The `/api/income` +
+  `/api/expenses` GET routes enrich each row with transaction-reconciled
+  actuals (`actualFromTransactions`, `monthlyAverageActual`,
+  `budgetAmount`, …) alongside the raw budget column `amount`.
+  `readIncomeExpenses()` reads ONLY the raw `amount` — the budget the
+  user enters. The wizard owns the budget; reconciliation independently
+  owns the actuals. The two-way sync touches the budget layer only.
+- **No schema change.** F.2 already added `createAuditLog()` to
+  `/api/income` + `/api/expenses` (generic `CREATE/UPDATE/DELETE`,
+  `entityType: 'Income'` / `'Expense'`). F.8 reuses that route surface
+  unchanged — no new `AuditAction` values, no migration (like F.4).
+- **Quality guard:** an unpersisted row with `amount <= 0` is dropped
+  (matches `bulk-create` sections 6/7, which skip non-positive amounts).
+  A persisted row is always kept so the diff can still see + update it.
+- **`bulk-create`:** sections 6 + 7 → no-op for GENERAL rows (section 6
+  preserves the INVESTMENT-income path).
+
+F.8 is the last domain — once it ships, all 8 onboarding domains write
+the real tables directly and F.9 can retire `/api/onboarding/bulk-create`
++ the draft blob.
 
 ---
 

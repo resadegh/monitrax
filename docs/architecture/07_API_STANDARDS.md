@@ -759,5 +759,23 @@ Applied in **F.7** (2026-05-20) for the assets domain:
    wizard's two-way sync can send. Asset-expense writes route through the
    already-audited `/api/expenses` routes.
 
+Applied in **F.8** (2026-05-20) for the income / expenses domain:
+
+9. **No route change — the income/expense routes were already onboarding
+   write boundaries.** F.8 (the last Track F domain) reuses `/api/income`
+   + `/api/income/[id]` and `/api/expenses` + `/api/expenses/[id]`
+   exactly as they stand. They already gained `createAuditLog()` in F.2
+   (generic `CREATE/UPDATE/DELETE`, `entityType: 'Income'` / `'Expense'`)
+   and already validate `amount` as *present* (`amount === undefined`
+   check), so a `0` budget is accepted. F.8 therefore adds **no new audit
+   actions and no migration** — like F.4. The wizard `IncomeExpensesStep`
+   writes only **GENERAL** rows (`sourceType === 'GENERAL'`, no
+   property/loan/asset/investment FK); `bulk-create` sections 6 + 7
+   no-op for GENERAL rows while section 6 preserves the INVESTMENT-income
+   path. The `GET` routes' transaction-reconciled actuals
+   (`actualFromTransactions`, `monthlyAverageActual`, …) are NOT read by
+   the sync — it reads only the raw budget `amount` (budget-vs-actuals
+   invariant; see `PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4 / §6.8).
+
 ---
 
