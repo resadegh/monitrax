@@ -11,10 +11,14 @@
  *   `unresolved` so the chat client knows to ask a clarifying
  *   question on the next turn.
  *
- * The LLM is NOT a conversational agent in the autonomous sense. The
- * chat client (`components/onboarding/wizard-chat/*`) drives the
- * question sequence via a state machine; this tool just parses each
- * answer into fields.
+ * The LLM is NOT a conversational agent in the autonomous sense — this
+ * tool just parses each answer into fields.
+ *
+ * Phase 12 Track G.2 (2026-05-21): the standalone chat client that drove
+ * this tool was retired (the unified in-wizard companion replaced it).
+ * This extraction tool + gateway + schemas are kept DORMANT — Track G.4
+ * re-uses them for the optional "describe it in your own words"
+ * form-prefill accelerator. See PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md §4.
  *
  * Hard rules baked into the prompt:
  *   - Numbers come from the user, never the model.

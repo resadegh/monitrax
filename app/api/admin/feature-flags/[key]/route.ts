@@ -17,10 +17,6 @@ import {
   BASIQ_FLAG_KEY,
   invalidateBasiqGateCache,
 } from '@/lib/featureFlags/basiqGate';
-import {
-  CONVERSATIONAL_ONBOARDING_FLAG_KEY,
-  invalidateConversationalOnboardingGateCache,
-} from '@/lib/featureFlags/conversationalOnboardingGate';
 import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
@@ -170,9 +166,6 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     // on THIS instance + ≤30s on warm peers via the TTL.
     if (updatedFlag.key === BASIQ_FLAG_KEY) {
       invalidateBasiqGateCache();
-    }
-    if (updatedFlag.key === CONVERSATIONAL_ONBOARDING_FLAG_KEY) {
-      invalidateConversationalOnboardingGateCache();
     }
 
     return NextResponse.json(updatedFlag);

@@ -22,18 +22,17 @@ interface FlagSeed {
   description: string;
 }
 
+// Phase 12 Track G.2 (2026-05-21): the CONVERSATIONAL_ONBOARDING flag was
+// retired — the standalone chat path it gated is replaced by the unified
+// in-wizard companion (Track G.1). No code reads the flag any more; the
+// seed no longer creates it. Any existing DB row is harmless and inert.
+// See docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
 const FLAGS: FlagSeed[] = [
   {
     key: 'BASIQ_INTEGRATION',
     name: 'Basiq Integration',
     description:
       'Master switch for Basiq Open Banking surfaces. When OFF (default), all "Connect bank account" buttons, the Basiq onboarding tile, the consumer balances Basiq panel, and the bank-connections settings section are HIDDEN from end-user UI. The /api/basiq/* routes ALSO refuse with 503 BASIQ_DISABLED (defense in depth). Flip ON only after Basiq accreditation is complete and live keys are configured.',
-  },
-  {
-    key: 'CONVERSATIONAL_ONBOARDING',
-    name: 'Conversational Onboarding (Phase 12 Track E)',
-    description:
-      'Master switch for the conversational + voice input mode on /onboarding. When OFF (default), the form-based wizard (Track B) is the only path — byte-for-byte the existing experience. When ON, a "Chat with Monitrax" toggle appears next to "Fill in a form" on /onboarding, routing users to a parallel chat surface that stages the same OnboardingState and converges on the same ReviewStep + /api/onboarding/bulk-create. See docs/blueprint/PHASE_12_CONVERSATIONAL_ONBOARDING.md.',
   },
 ];
 
