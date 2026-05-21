@@ -1,29 +1,32 @@
 'use client';
 
 /**
- * CompanionPanel — Phase 12 Track G (G.1a, pacing iteration)
+ * CompanionPanel — Phase 12 Track G (G.1a, accent + typewriter iteration)
  *
  * The onboarding companion hosts a wizard step as one beat of a guided
- * conversation. It is a **paced, one-line-at-a-time** exchange — NOT a
- * stacked chat thread:
+ * conversation — a paced, one-line-at-a-time exchange:
  *
  *   - ONE companion line at a time, swapped in place as the conversation
  *     advances: greeting → invitation → reaction → bridge.
- *   - ONE "you" line — a compact, deterministic summary of what the user
- *     has entered, updated in place.
+ *   - ONE compact "you" line — a deterministic summary of what the user
+ *     has entered.
  *
- * Pacing (Reza feedback 2026-05-21 — "the conversation needs to reset on
- * the page and be on time"): the sequence is driven by a phase machine
- * that always starts at `greeting` on mount and advances on timers /
- * events — so even a returning user with existing data sees the
- * conversation play out in order, not jump to the end.
+ * Visual treatment (Reza feedback 2026-05-21 — "the ai box is not visible
+ * enough … needs to be accent and bold … Apple-like … feels modern when
+ * the text is typing"):
+ *   - An accent **glow halo** (Apple-Intelligence style) lifts the card
+ *     off the page so it reads as THE AI surface, not a soft card.
+ *   - The companion line is **larger** text, **typed out** character by
+ *     character with a blinking caret.
  *
- * Design rules (docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md §5):
- *   - PUSH-ONLY. The companion guides; it does not field questions and
- *     does not do extraction.
- *   - NEVER a dependency. Every LLM path is silent on failure — the
- *     scripted greeting/invitation/bridge still carry the conversation.
- *   - The snapshot sent to the server is counts/flags ONLY — never names.
+ * Pacing: a phase machine always starts at the greeting on mount and
+ * advances on timers/events — a returning user with existing data sees
+ * the conversation play out in order, never jump to the end.
+ *
+ * Invariants (docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md §5):
+ *   - PUSH-ONLY — guides, does not field questions, does not extract.
+ *   - NEVER a dependency — every LLM path is silent on failure.
+ *   - Counts/flags-only snapshot to the server — never names.
  *   - Guide, not adviser — no financial advice (enforced server-side).
  *
  * G.1a scope: household step only.
@@ -35,8 +38,6 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { WizardData } from './types';
 import '@/styles/wizard-animations.css';
 
-// The four companion turns. greeting → invitation are scripted + timed;
-// reaction is the LLM line; bridge is scripted.
 type Phase = 'greeting' | 'invitation' | 'reaction' | 'bridge';
 
 // Scripted lines — one line each, instant, never fail.
@@ -45,13 +46,13 @@ const GREETING =
 const INVITATION =
   'First up: who shares your home? Add everyone — and any pets — below.';
 
-// Pacing. The greeting holds, then the invitation; the reaction loads
-// once the user has data; the reaction holds before the bridge.
-const GREETING_MS = 2600;
+// Pacing (generous enough to cover type-out + a read pause).
+const GREETING_MS = 4200;
 const REFLECTION_DEBOUNCE_MS = 2000;
-const REACTION_HOLD_MS = 4800;
-// If the reaction never arrives (LLM down), advance to the bridge anyway.
-const FALLBACK_TO_BRIDGE_MS = 9000;
+const REACTION_HOLD_MS = 6000;
+const FALLBACK_TO_BRIDGE_MS = 10000;
+// Typewriter speed — brisk, so it feels alive, not sluggish.
+const TYPE_SPEED_MS = 22;
 
 interface CompanionPanelProps {
   data: WizardData;
@@ -59,11 +60,6 @@ interface CompanionPanelProps {
   nextStepLabel?: string;
 }
 
-/**
- * Minimal, de-identified household snapshot — COUNTS ONLY, no names.
- * Count-only means editing a member's name does not change the snapshot,
- * so the reaction fires on structural changes, not keystrokes.
- */
 function buildHouseholdSnapshot(data: WizardData) {
   const members = data.householdMembers;
   const childCount = members.filter((m) => m.relationship === 'CHILD').length;
@@ -81,7 +77,6 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-/** The compact "you" line — what the user has entered, in plain words. */
 function buildYouSummary(s: ReturnType<typeof buildHouseholdSnapshot>): string {
   const parts: string[] = [];
   if (s.adultCount > 0) parts.push(plural(s.adultCount, 'adult', 'adults'));
@@ -91,9 +86,43 @@ function buildYouSummary(s: ReturnType<typeof buildHouseholdSnapshot>): string {
   return parts.join(' · ');
 }
 
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+}
+
+/**
+ * Reveal `text` character by character — the modern-AI "typing" feel.
+ * Returns the revealed substring + whether it has finished. Honours
+ * `prefers-reduced-motion` (shows the full text instantly).
+ */
+function useTypewriter(text: string): { shown: string; done: boolean } {
+  const [shown, setShown] = useState('');
+
+  useEffect(() => {
+    if (!text || prefersReducedMotion()) {
+      setShown(text);
+      return;
+    }
+    setShown('');
+    let i = 0;
+    const id = window.setInterval(() => {
+      i += 1;
+      setShown(text.slice(0, i));
+      if (i >= text.length) window.clearInterval(id);
+    }, TYPE_SPEED_MS);
+    return () => window.clearInterval(id);
+  }, [text]);
+
+  return { shown, done: shown === text };
+}
+
 function TypingDots() {
   return (
-    <span className="inline-flex items-center gap-1 text-slate-400 dark:text-slate-500">
+    <span className="inline-flex items-center gap-1 text-indigo-400 dark:text-indigo-300">
       <span className="companion-typing-dot" />
       <span className="companion-typing-dot" style={{ animationDelay: '0.15s' }} />
       <span className="companion-typing-dot" style={{ animationDelay: '0.3s' }} />
@@ -114,8 +143,8 @@ export function CompanionPanel({ data, nextStepLabel }: CompanionPanelProps) {
   const hasMembers = snapshot.memberCount > 0;
   const youSummary = buildYouSummary(snapshot);
 
-  // Phase always starts at 'greeting' on mount — this is the "reset on
-  // the page" behaviour: the conversation replays in order every visit.
+  // Phase always starts at 'greeting' on mount — the conversation
+  // replays in order every visit ("reset on the page").
   const [phase, setPhase] = useState<Phase>('greeting');
   const [reflection, setReflection] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
@@ -161,10 +190,9 @@ export function CompanionPanel({ data, nextStepLabel }: CompanionPanelProps) {
           setReflection(json.data.message.trim());
           setPhase('reaction');
         }
-        // Any non-success: silent. The bridge fallback (effect D) still
-        // carries the conversation forward.
       } catch {
-        // Network error — silent.
+        // Network error — silent. The bridge fallback still completes
+        // the beat.
       } finally {
         if (!cancelled) setIsThinking(false);
       }
@@ -197,52 +225,65 @@ export function CompanionPanel({ data, nextStepLabel }: CompanionPanelProps) {
     ? `Your household is set. Hit Continue when you're ready — ${nextStepLabel} is next.`
     : "Your household is set. Hit Continue when you're ready, and we'll keep going.";
 
-  // The single companion line for the current moment.
-  let aiLine: React.ReactNode;
-  if (isThinking) aiLine = <TypingDots />;
-  else if (phase === 'greeting') aiLine = GREETING;
-  else if (phase === 'invitation') aiLine = INVITATION;
-  else if (phase === 'reaction') aiLine = reflection ?? INVITATION;
-  else aiLine = bridge;
+  // The string for the current companion line (drives the typewriter).
+  const aiText =
+    phase === 'greeting'
+      ? GREETING
+      : phase === 'invitation'
+        ? INVITATION
+        : phase === 'reaction'
+          ? (reflection ?? INVITATION)
+          : bridge;
 
-  // Key changes whenever the visible line changes → it fades in fresh.
-  const aiKey = isThinking ? 'thinking' : phase;
+  const { shown, done } = useTypewriter(aiText);
   const showYouLine = phase !== 'greeting' && hasMembers;
 
   return (
-    <div className="rounded-2xl border border-indigo-200/60 bg-gradient-to-br from-indigo-50/80 via-blue-50/50 to-violet-50/40 p-4 dark:border-indigo-800/40 dark:from-indigo-900/20 dark:via-blue-900/15 dark:to-violet-900/10 sm:p-5">
-      {/* Header */}
-      <div className="flex items-center gap-2.5">
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-white shadow-[0_6px_16px_-6px_rgba(99,102,241,0.5)]">
-          <Sparkles className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            Monitrax
-          </div>
-          <div className="text-[11px] text-slate-500 dark:text-slate-400">
-            Your setup guide
-          </div>
-        </div>
-      </div>
+    <div className="relative">
+      {/* Accent glow halo — makes the companion read as THE AI surface. */}
+      <div
+        aria-hidden
+        className="companion-glow pointer-events-none absolute -inset-1.5 rounded-[1.7rem] bg-gradient-to-r from-blue-500 via-indigo-500 to-fuchsia-500 opacity-50 blur-xl"
+      />
 
-      {/* The exchange — one companion line, one "you" line, both swap in
-          place as the conversation advances (no stacked thread). */}
-      <div className="mt-3 space-y-2" aria-live="polite">
-        <div className="flex">
-          <div
-            key={aiKey}
-            className="companion-bubble-enter max-w-[92%] rounded-xl rounded-tl-sm bg-white/80 px-3.5 py-2.5 text-xs leading-relaxed text-slate-700 ring-1 ring-slate-200/70 dark:bg-slate-800/60 dark:text-slate-200 dark:ring-slate-700/50"
-          >
-            {aiLine}
+      {/* Card */}
+      <div className="relative rounded-2xl bg-gradient-to-br from-white to-indigo-50/60 p-5 shadow-[0_12px_40px_-12px_rgba(79,70,229,0.5)] ring-1 ring-indigo-200/70 dark:from-slate-900 dark:to-indigo-950/50 dark:ring-indigo-700/50">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-violet-600 text-white shadow-[0_8px_20px_-6px_rgba(99,102,241,0.65)]">
+            <Sparkles className="h-[18px] w-[18px]" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-bold tracking-tight text-slate-900 dark:text-slate-50">
+              Monitrax
+            </div>
+            <div className="text-[11px] font-medium uppercase tracking-wide text-indigo-500 dark:text-indigo-300">
+              Your setup guide
+            </div>
           </div>
         </div>
 
+        {/* The companion's current line — larger, typed out with a caret. */}
+        <p
+          className="mt-3.5 min-h-[3em] text-[15px] font-medium leading-relaxed text-slate-800 dark:text-slate-100"
+          aria-live="polite"
+        >
+          {isThinking ? (
+            <TypingDots />
+          ) : (
+            <>
+              {shown}
+              {!done && <span className="companion-caret text-indigo-500" />}
+            </>
+          )}
+        </p>
+
+        {/* The "you" line — a compact summary of what was entered. */}
         {showYouLine && (
-          <div className="flex justify-end">
+          <div className="mt-1 flex justify-end">
             <div
               key={youSummary}
-              className="companion-bubble-enter max-w-[92%] rounded-xl rounded-tr-sm bg-gradient-to-br from-blue-500 to-indigo-600 px-3.5 py-2.5 text-xs font-medium leading-relaxed text-white shadow-[0_4px_12px_-4px_rgba(99,102,241,0.5)]"
+              className="companion-bubble-enter max-w-[92%] rounded-xl rounded-tr-sm bg-gradient-to-br from-blue-500 to-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-[0_4px_14px_-4px_rgba(99,102,241,0.6)]"
             >
               {youSummary}
             </div>
