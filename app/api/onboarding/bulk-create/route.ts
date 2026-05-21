@@ -6,8 +6,6 @@ import { withPermission } from '@/lib/auth/guards';
 // See: https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields#using-null-values
 import { Prisma } from '@prisma/client';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
-// Phase 41b: TFN at-rest encryption for wizard-defined entities (CLAUDE.md §13).
-import { encryptTfn } from '@/lib/security/tfnEncryption';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -364,65 +362,18 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         const ownerEntityId = await getDefaultLegalEntityId(userId, tx);
 
         // =======================================================================
-        // Phase 41b — persist wizard-defined LegalEntity rows
+        // Phase 41b — wizard-defined LegalEntity rows
         //
-        // The EntitiesStep collects optional Trust / SMSF / Pty Ltd /
-        // Partnership / Sole Trader entries with wizard-local temp ids.
-        // Two-pass write so trustee→trust parent FKs can resolve to real
-        // DB ids:
-        //   1. Insert all entities WITHOUT parentEntityId.
-        //   2. UPDATE each entity that had a parentEntityTempId, mapping
-        //      the temp id to the real entity id created in pass 1.
-        // The temp→real mapping is kept in `wizardEntityMap` for future
-        // wizard steps (Phase 41c+) that may want to attach properties
-        // to a non-default entity.
+        // ⚠ Phase 12 Track G.3a (2026-05-21): entities are no longer
+        // written here. The EntitiesStep now reads + writes the real
+        // `LegalEntity` table directly via `lib/onboarding/entitiesSync.ts`
+        // — including the two-pass trust→trustee parent linking. The
+        // step's commit runs on Continue (before bulk-create), so every
+        // entity is already persisted (with a real id carried back into
+        // `data.entities`) by the time this runs.
+        //
+        // Intentionally a no-op until bulk-create is fully retired in G.3c.
         // =======================================================================
-        const wizardEntityMap = new Map<string, string>();
-        if (data.entities && data.entities.length > 0) {
-          // Pass 1 — create entities, no parent linkage yet
-          for (const entity of data.entities) {
-            if (!entity.name?.trim()) continue;   // skip malformed wizard rows
-            const created = await tx.legalEntity.create({
-              data: {
-                userId,
-                name: entity.name.trim(),
-                type: entity.type,
-                role: entity.role,
-                abn: entity.abn?.replace(/\D+/g, '') || null,
-                acn: entity.acn?.replace(/\D+/g, '') || null,
-                tfnEncrypted: encryptTfn(entity.tfn ?? null),
-                tradingName: entity.tradingName?.trim() || null,
-                establishedDate: entity.establishedDate
-                  ? new Date(entity.establishedDate)
-                  : null,
-                // Phase 41E.5 — reform-aware inputs from the wizard.
-                // Only persist trustType when the entity is a trust type
-                // (mirrors the entity edit form's payload logic).
-                trustType:
-                  entity.trustType &&
-                  (entity.type === 'DISCRETIONARY_TRUST' || entity.type === 'UNIT_TRUST')
-                    ? entity.trustType
-                    : null,
-                isForeignResident: entity.isForeignResident ?? false,
-                // parentEntityId set in pass 2 below
-              },
-              select: { id: true },
-            });
-            wizardEntityMap.set(entity.id, created.id);
-          }
-
-          // Pass 2 — wire up trustee → trust parent FKs
-          for (const entity of data.entities) {
-            if (!entity.parentEntityTempId) continue;
-            const realId = wizardEntityMap.get(entity.id);
-            const realParentId = wizardEntityMap.get(entity.parentEntityTempId);
-            if (!realId || !realParentId) continue;
-            await tx.legalEntity.update({
-              where: { id: realId },
-              data: { parentEntityId: realParentId },
-            });
-          }
-        }
 
         // =======================================================================
         // 1. Update user onboarding status

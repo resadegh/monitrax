@@ -762,3 +762,60 @@ The Entities domain (`G.3a`) is the **last + most complex** domain migration —
 ### Notes
 
 This PR is the **design** for G.3 — no code change. The implementation (G.3a entities migration) is the next build; it is now fully spec'd so it can be executed cleanly.
+
+---
+
+## Session: Phase 12 Track G — G.3a (Entities domain two-way sync)
+
+Branch: `claude/track-g3a-entities-sync-NL4XV`
+
+### Scope
+
+- **Type:** Feature — the last + most complex onboarding domain migration. Replicates the Track F `*Sync.ts` pattern for `LegalEntity`.
+- **Driver:** Reza 2026-05-21 — *"Built it now"* (build G.3a).
+- **Refs:** `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` §10.
+
+### What was done
+
+**1. `lib/onboarding/entitiesSync.ts` — NEW**
+
+The read/diff/write layer for the Entities domain:
+- `readEntities()` — GET `/api/entities` → `EntitiesSnapshot`.
+- `diffEntities()` — PURE idempotency core; create/update/delete ops on core fields. Parent links are reconciled separately.
+- `syncEntities()` — **two-pass**: pass 1 POSTs every create without a parent (building a `wizardId→realId` map); a dedicated parent pass then PUTs `parentEntityId` (trust → trustee) only when it differs from the DB; updates + deletes applied; re-reads.
+- Mappers `snapshotToWizardEntities` / `wizardEntitiesToSnapshot` / `isPersistedId`.
+- **Encrypted-TFN asymmetry resolved:** GET returns `hasTfn` only, never the value. The diff compares the raw `tfn` value (both sides `''` after a read → idempotent re-entry); the write payload omits `tfn` when empty so a PUT never clobbers a stored TFN.
+
+**2. Entity `POST` route + `createEntity()` service — field plumbing**
+
+`POST /api/entities` + `CreateEntityInput` + `createEntity()` now accept `trustType` / `isForeignResident` (previously only the PUT did). Without this a wizard-created trust would lose its `trustType`. The F.2-style "field plumbing" fix.
+
+**3. `components/onboarding/wizard/steps/EntitiesStep.tsx` — migrated**
+
+Reads the real `LegalEntity` table on step open (merges real + in-session unsynced), registers an async `StepCommitFn` that `syncEntities()` writes on Continue/Back/jump, surfaces a load-error banner.
+
+**4. `WizardContainer.tsx`** — passes `registerStepCommit` to `<EntitiesStep>`.
+
+**5. `app/api/onboarding/bulk-create/route.ts` — §41b → no-op**
+
+The two-pass entity-creation block is now a no-op (the step's commit already persisted everything). Removed the now-unused `wizardEntityMap` + `encryptTfn` import.
+
+**6. `tests/onboarding/entitiesSync.test.ts` — NEW (14 tests)**
+
+Re-entry idempotency, mapper round-trip (incl. the TFN-asymmetry case), create/update/delete classification, the parent-only-change → no-core-op case, quality guard, `isPersistedId`, parent-link round-trip.
+
+### No schema migration
+
+The entity routes already audit every write via generic `logCRUD(entityType:'LegalEntity')` — no domain-specific `AuditAction` values needed (the F.4 precedent).
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npx vitest run tests/onboarding/entitiesSync.test.ts` — ✓ 14/14 pass
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Remaining for G.3
+
+- **G.3b** — relocate the 4 remaining `bulk-create` stragglers (completion write, CAR→asset link, BASIQ/IMPORT offset link, INVESTMENT income).
+- **G.3c** — delete `/api/onboarding/bulk-create` + drop the entity data from `UserPreference.onboardingDraft` (Prisma schema migration, §12.12).
