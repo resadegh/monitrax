@@ -62,7 +62,7 @@ interface UseOnboardingStateReturn {
   setProfileType: (type: OnboardingProfileType) => Promise<void>;
   setCurrentStep: (step: number) => Promise<void>;
   startOnboarding: () => Promise<void>;
-  completeOnboarding: () => Promise<void>;
+  completeOnboarding: (wizardData?: unknown) => Promise<void>;
   dismissWelcomeModal: () => Promise<void>;
   markTourCompleted: () => Promise<void>;
   markTourSkipped: () => Promise<void>;
@@ -201,28 +201,35 @@ export function useOnboardingState(): UseOnboardingStateReturn {
     await updateState({ startOnboarding: true, currentStep: 0 });
   }, [updateState]);
 
-  const completeOnboarding = useCallback(async () => {
-    try {
-      const response = await fetch('/api/onboarding/complete', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-      });
+  const completeOnboarding = useCallback(
+    async (wizardData?: unknown) => {
+      try {
+        // Phase 12 Track G.3b: the complete route is now the end-of-wizard
+        // finaliser — it marks completion AND does the cross-domain wiring
+        // relocated from bulk-create. Pass the wizard data so it can.
+        const response = await fetch('/api/onboarding/complete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(wizardData ?? {}),
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to complete onboarding');
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to complete onboarding');
+        }
+
+        await fetchState();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        throw err;
       }
-
-      await fetchState();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      throw err;
-    }
-  }, [fetchState, token]);
+    },
+    [fetchState, token],
+  );
 
   const dismissWelcomeModal = useCallback(async () => {
     // Always save to localStorage as fallback (works even if DB fails)

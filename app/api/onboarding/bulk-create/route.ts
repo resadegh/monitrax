@@ -5,7 +5,6 @@ import { withPermission } from '@/lib/auth/guards';
 // (sentinel meaning "write SQL NULL") to clear a JSONB field.
 // See: https://www.prisma.io/docs/orm/prisma-client/special-fields-and-types/working-with-json-fields#using-null-values
 import { Prisma } from '@prisma/client';
-import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 
 // Prisma transaction client type
 type TransactionClient = Omit<
@@ -354,13 +353,6 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
       // acquisition stage during traffic spikes.
       const result = await prisma.$transaction(
         async (tx: TransactionClient) => {
-        // Phase 41a: resolve the user's PERSONAL_NAME LegalEntity inside the
-        // transaction (creates one on demand for brand-new registrations).
-        // Used as the FALLBACK ownerEntityId for every owned row that
-        // wasn't explicitly attached to a user-defined entity in Phase
-        // 41b's wizard step.
-        const ownerEntityId = await getDefaultLegalEntityId(userId, tx);
-
         // =======================================================================
         // Phase 41b — wizard-defined LegalEntity rows
         //
@@ -377,15 +369,13 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
 
         // =======================================================================
         // 1. Update user onboarding status
+        //
+        // ⚠ Track G.3b (2026-05-21): the onboarding-completion write
+        // (`onboardingCompleted` / `onboardingCompletedAt` /
+        // `onboardingProfileType`) is now owned by
+        // `/api/onboarding/complete` — the end-of-wizard finaliser, called
+        // right after this route. This section is a full no-op.
         // =======================================================================
-        await tx.user.update({
-          where: { id: userId },
-          data: {
-            onboardingCompleted: true,
-            onboardingCompletedAt: new Date(),
-            onboardingProfileType: data.profileType as 'HOMEOWNER' | 'INVESTOR' | 'MIXED' | 'STARTER' | null,
-          },
-        });
 
         // =======================================================================
         // 1a. Phase 29 — Household profile, members, pets
@@ -444,39 +434,12 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         // runs before bulk-create, so every MANUAL account (and its
         // offset→loan link) is already persisted by the time this runs.
         //
-        // BASIQ / IMPORT accounts were never written here (they already
-        // exist in the DB) — that skip is unchanged. We keep their
-        // offset→loan linking: F.3 does not manage externally-sourced
-        // accounts, so if the user marked a BASIQ/IMPORT account as a
-        // loan's offset, the link is still wired here.
-        //
-        // Intentionally a no-op for MANUAL rows until bulk-create is fully
-        // retired in Track F.9.
+        // MANUAL accounts were never written here after F.3. ⚠ Track G.3b
+        // (2026-05-21): the BASIQ/IMPORT offset→loan link this section used
+        // to wire is now done by `/api/onboarding/complete` (the
+        // end-of-wizard finaliser). This section is a full no-op.
         // =======================================================================
         const createdAccounts: never[] = [];
-        for (const acc of data.accounts) {
-          // BASIQ / IMPORT accounts already exist in the DB. Honour their
-          // offset→loan link if the user chose one as a loan's offset.
-          if (acc.source === 'BASIQ' || acc.source === 'IMPORT') {
-            if (
-              acc.type === 'OFFSET' &&
-              acc.linkedLoanId &&
-              acc.existingAccountId
-            ) {
-              const linkedLoan = await tx.loan.findFirst({
-                where: { id: acc.linkedLoanId, userId },
-                select: { id: true },
-              });
-              if (linkedLoan) {
-                await tx.loan.update({
-                  where: { id: linkedLoan.id },
-                  data: { offsetAccountId: acc.existingAccountId },
-                });
-              }
-            }
-          }
-          // MANUAL rows → no-op (Track F.3 — written by the wizard step).
-        }
 
         // =======================================================================
         // 4. Investment accounts (+ holdings)
@@ -541,89 +504,22 @@ export const POST = withPermission('onboarding.complete', async (request, auth) 
         const createdAssets: never[] = [];
 
         // =======================================================================
-        // 5a. Wire CAR debts to their vehicle Assets
+        // 5a. CAR debt → vehicle Asset link
         //
-        // The Debts step (F.4) creates every CAR loan as a real `Loan` row
-        // but cannot set `linkedAssetId` (the Assets step comes later). The
-        // Assets step (F.7) now creates the vehicle as a real `Asset`. By
-        // the time bulk-create runs BOTH ids are real — `data.debts[i].id`
-        // (F.4-synced) and `data.debts[i].linkedAssetId` (a real `Asset`
-        // id, set on a Debts-step re-entry). Wire the link here,
-        // ownership-verifying both rows. Moves into `debtsSync` when
-        // bulk-create is fully retired in F.9.
+        // ⚠ Track G.3b (2026-05-21): the CAR-loan → vehicle-Asset link is
+        // now wired by `/api/onboarding/complete` (the end-of-wizard
+        // finaliser). This section is a full no-op.
         // =======================================================================
-        const isRealId = (id: string | undefined): boolean =>
-          !!id && !id.startsWith('temp_') && !id.startsWith('chat-');
-        for (const debt of data.debts ?? []) {
-          if (debt.type !== 'CAR' || !debt.linkedAssetId) continue;
-          if (!isRealId(debt.id) || !isRealId(debt.linkedAssetId)) continue;
-          const [loan, asset] = await Promise.all([
-            tx.loan.findFirst({ where: { id: debt.id, userId }, select: { id: true } }),
-            tx.asset.findFirst({
-              where: { id: debt.linkedAssetId, userId },
-              select: { id: true },
-            }),
-          ]);
-          if (loan && asset) {
-            await tx.loan.update({
-              where: { id: loan.id },
-              data: { linkedAssetId: asset.id },
-            });
-          }
-        }
 
         // =======================================================================
         // 6. Income Sources
         //
-        // ⚠ Phase 12 Track F.8 (2026-05-20): GENERAL income (salary + other
-        // non-property, non-investment personal income) is no longer written
-        // here. It is written incrementally to the real `Income` table by the
-        // wizard Income & Expenses step via /api/income — see
-        // `lib/onboarding/incomeExpensesSync.ts`. The step's commit runs
-        // before bulk-create, so every GENERAL income row is already
-        // persisted by the time this runs.
-        //
-        // INVESTMENT-type income is NOT general income — F.8 does not own it
-        // (it links to an `InvestmentAccount` captured on the Investments
-        // step). It is still created here so the link is wired. Property
-        // rental income is F.2's domain (written by the properties step).
-        //
-        // Intentionally a no-op for GENERAL rows until bulk-create is fully
-        // retired in Track F.9.
+        // ⚠ Track G.3b (2026-05-21): GENERAL income was already F.8's
+        // domain; INVESTMENT-type income is now created by
+        // `/api/onboarding/complete` (the end-of-wizard finaliser). This
+        // section is a full no-op.
         // =======================================================================
-        // Pick the first investment account (if any) so INVESTMENT-type income
-        // can be linked to a real InvestmentAccount rather than floating free.
-        // Track F.5: investment accounts are created by the wizard step, so
-        // resolve the first real id from the payload (it carries the real id
-        // post-sync) rather than from this route's own creates.
-        const firstInvestmentAccountId =
-          (data.investments ?? [])
-            .map((inv) => inv.id)
-            .find((id) => !!id && !id.startsWith('temp_') && !id.startsWith('chat-')) ??
-          null;
-
-        const createdIncome = [];
-        for (const inc of data.income) {
-          // Track F.8: GENERAL income → no-op (written by the wizard step).
-          // Only INVESTMENT-type income is still created here.
-          if (inc.type !== 'INVESTMENT') continue;
-          if (inc.amount > 0) {
-            const income = await tx.income.create({
-              data: {
-                userId,
-                ownerEntityId,
-                name: inc.name || inc.type,
-                type: inc.type,
-                sourceType: 'INVESTMENT',
-                investmentAccountId: firstInvestmentAccountId,
-                // Canonical contract: store amount AT the given frequency.
-                amount: inc.amount,
-                frequency: inc.frequency,
-              },
-            });
-            createdIncome.push(income);
-          }
-        }
+        const createdIncome: never[] = [];
 
         // =======================================================================
         // 7. Expenses

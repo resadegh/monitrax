@@ -819,3 +819,43 @@ The entity routes already audit every write via generic `logCRUD(entityType:'Leg
 
 - **G.3b** — relocate the 4 remaining `bulk-create` stragglers (completion write, CAR→asset link, BASIQ/IMPORT offset link, INVESTMENT income).
 - **G.3c** — delete `/api/onboarding/bulk-create` + drop the entity data from `UserPreference.onboardingDraft` (Prisma schema migration, §12.12).
+
+---
+
+## Session: Phase 12 Track G — G.3b (relocate the bulk-create stragglers)
+
+Branch: `claude/track-g3b-relocate-stragglers-NL4XV`
+
+### Scope
+
+- **Type:** Refactor — move the last cross-domain writes off `bulk-create` so G.3c can delete it.
+- **Driver:** Reza 2026-05-21 — *"Continue"* (G.3 sequence).
+
+### What was done
+
+The 4 things `bulk-create` still did after G.3a were relocated into **`/api/onboarding/complete`** — the end-of-wizard finaliser:
+
+1. **Onboarding completion** incl. `User.onboardingProfileType` (the completed/At flags were already double-written by the `complete` route; `onboardingProfileType` was the unique bit).
+2. **BASIQ/IMPORT offset account → loan link** (`Loan.offsetAccountId`).
+3. **CAR loan → vehicle Asset link** (`Loan.linkedAssetId`).
+4. **INVESTMENT-type income** creation (links to an `InvestmentAccount`).
+
+**Why the `complete` route, not the `*Sync` layers** — the original spec suggested scattering the 3 links into per-domain sync layers, but each is inherently *cross-domain* (it needs data from two domains at once, which no single step has). The `complete` route runs last with everything persisted — the correct single home.
+
+### Files modified
+
+- `app/api/onboarding/complete/route.ts` — rewritten as the finaliser. Accepts an optional wizard-data body; marks completion (critical path) then does the cross-domain wiring **best-effort** (a link failure is logged + swallowed — it must never block a user from finishing onboarding; strictly safer than `bulk-create`'s old all-or-nothing transaction). All writes ownership-guarded.
+- `hooks/useOnboardingState.ts` — `completeOnboarding(wizardData?)` now accepts + POSTs the wizard data.
+- `app/onboarding/page.tsx` — `handleComplete` passes `wizardData` to `completeOnboarding`.
+- `app/api/onboarding/bulk-create/route.ts` — §1 / §3 / §5a / §6 → no-ops; removed the now-unused `getDefaultLegalEntityId` import + `ownerEntityId`.
+- `docs/architecture/07_API_STANDARDS.md` §15.8 — the `complete`-route finaliser change.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Remaining for G.3
+
+- **G.3c** — delete `/api/onboarding/bulk-create` (now a near-total no-op — only §8's draft-blob wipe + `country`/`taxYear` prefs remain), remove the `page.tsx` bulk-create call, drop the entity data from `UserPreference.onboardingDraft` (Prisma schema migration, §12.12). After G.3c, Track G is structurally complete.

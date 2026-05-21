@@ -109,7 +109,9 @@ export default function OnboardingPage() {
           );
         }
 
-        await completeOnboarding();
+        // Track G.3b: the complete route is the end-of-wizard finaliser —
+        // pass the wizard data so it can do the cross-domain wiring.
+        await completeOnboarding(wizardData);
         await clearDraft();
 
         // Full reload so dashboard refetches all client-side data
