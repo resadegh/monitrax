@@ -4,8 +4,8 @@
  * The chat surface calls this endpoint with the user's free-text
  * reply + the current topic + the subset of staged state for that
  * topic. The endpoint:
- *   1. Authenticates + checks `settings.write` permission (same gate
- *      as the form-wizard's `/api/onboarding/estimates/*` routes).
+ *   1. Authenticates + checks `settings.write` permission (the standard
+ *      onboarding-route gate).
  *   2. Validates the request body (topic, message length, transcript
  *      shape).
  *   3. Calls the onboarding-agent gateway (`lib/ai/onboarding-agent/gateway.ts`).
