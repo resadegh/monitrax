@@ -46,6 +46,11 @@ import { ReviewStep } from './steps/ReviewStep';
 // Phase 12 Track G: the onboarding companion hosts every entity step.
 // See docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
 import { CompanionPanel, isCompanionStep } from './CompanionPanel';
+// Track G.4: the optional "describe it in your own words" accelerator.
+import {
+  DescribeItAccelerator,
+  isAcceleratorStep,
+} from './DescribeItAccelerator';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -725,6 +730,18 @@ export function WizardContainer({
             step={currentStep.id}
             data={data}
             nextStepLabel={steps[currentStepIndex + 1]?.title}
+          />
+        </div>
+      )}
+      {/* Track G.4: the optional "describe it in a sentence" accelerator —
+          collapsed by default; appends pre-filled rows to the step form. */}
+      {currentStep && isAcceleratorStep(currentStep.id) && (
+        <div className="mb-4">
+          <DescribeItAccelerator
+            key={`accel-${currentStep.id}`}
+            step={currentStep.id}
+            data={data}
+            onUpdate={handleUpdate}
           />
         </div>
       )}

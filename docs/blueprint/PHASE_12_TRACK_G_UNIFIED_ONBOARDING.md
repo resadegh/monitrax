@@ -1,6 +1,6 @@
 # Phase 12 Track G — Unified Conversational Onboarding
 
-> **Status:** ✅ **STRUCTURALLY COMPLETE 2026-05-21** — G.0 · G.1a · G.1b · G.2 · estimate-service cleanup · G.3a · G.3b · **G.3c ✅ (`bulk-create` deleted)**. Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser. **G.4** (the optional accelerator) and **G.5** (document upload) remain as optional enhancements.
+> **Status:** ✅ **STRUCTURALLY COMPLETE 2026-05-21** — G.0 · G.1a · G.1b · G.2 · estimate-service cleanup · G.3a · G.3b · G.3c (`bulk-create` deleted) · **G.4 ✅ (the "describe it" accelerator)**. Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser. **G.5** (document upload) is the one remaining optional enhancement.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"having these two separated is not the best idea … the AI chat is clunky, doesn't get the questions, and it just breaks. And the form is very dry, old-school. Combine these two together."* Scope sharpened 2026-05-21 — see §3.
 > **Supersedes:** Track F's queued **F.10** (conversational enrichment) — see §7. **Re-sequences** F.9 — see §6.
@@ -80,7 +80,7 @@ The companion shows **one line at a time**, not a stacked chat thread (Reza, 202
 | ~~G.1~~ | ✅ **DONE 2026-05-21** — the conversational guide. The companion hosts each step — invitation + reaction + bridge (§5). **G.1a** (#847/#848/#849) — household step + paced one-line model + accent glow + typewriter. **G.1b** — rolled to all 9 entity steps via per-step `STEP_CONFIG` (invitation + counts-snapshot + you-summary); `AIHelper` removed. Cross-step memory + adaptive narration deferred to a later polish pass. |
 | ~~G.2~~ | ✅ **DONE 2026-05-21** — retired the standalone chat: deleted the 8 script state-machines, `ConversationalSetup` + the `wizard-chat/` UI, the mode-selector + toggle, the `CONVERSATIONAL_ONBOARDING` flag (gate + context + route + seed). Onboarding entry → wizard only. The extraction gateway / tools / schemas + the `chat/extract` route are kept **dormant** for G.4. |
 | **G.3** | Fold in Track F's **F.9** — retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft`. A 3-PR effort (see §10): **G.3a** ✅ (Entities domain migrated) · **G.3b** relocate stragglers · **G.3c** delete `bulk-create` + schema migration. |
-| **G.4** | *(later)* The optional "describe it in your own words" accelerator — repurpose the dormant extraction gateway as a form pre-fill, form always primary. |
+| ~~G.4~~ | ✅ **DONE 2026-05-21** — the optional "describe it in your own words" accelerator. `DescribeItAccelerator` (a collapsed-by-default affordance on the 8 extraction-topic steps) → the dormant `/api/onboarding/chat/extract` engine → `applyWizardDelta()` **appends** pre-filled rows to the step form. The form stays the system of record — the accelerator never replaces or deletes, so a bad extraction is non-destructive. |
 | **G.5** | *(later)* Document upload (was F.11) — upload a payslip / rates notice, the companion reads it. |
 
 ## 7. F.10 / F.11 disposition
