@@ -895,3 +895,36 @@ The spec (Track G doc §10.4) anticipated dropping the `UserPreference.onboardin
 ### Note — stale comments
 
 ~10 Track F `*Sync.ts` + step files still carry comments referencing "`bulk-create`" (e.g. "by the time bulk-create runs…"). They are now historical/stale but harmless; a comment-only cleanup sweep was left out of this PR to keep the diff focused.
+
+---
+
+## Session: Phase 12 Track G — G.4 (the "describe it in your own words" accelerator)
+
+Branch: `claude/track-g4-describe-accelerator-NL4XV`
+
+### Scope
+
+- **Type:** Feature — the optional onboarding accelerator. The first of the two deferred Track G enhancements.
+- **Driver:** Reza 2026-05-21 — *"I agree with both enhancements. Finish all G track."*
+
+### What was done
+
+The extraction engine kept dormant since G.2 (`/api/onboarding/chat/extract` + the gateway + the per-topic Zod schemas + tools) is now re-used as an optional **pre-fill accelerator**.
+
+- **`lib/onboarding/applyWizardDelta.ts` — NEW.** The pure delta→wizard merge. `applyWizardDelta(delta, data)` turns a `WizardStateDelta` into a `Partial<WizardData>`; `countDeltaItems(delta)` counts the source rows. **APPEND-only semantics** — each delta item becomes a NEW `*Input` row (fresh `temp_` id) appended to the step's array, the delta's fields overlaid on safe defaults for the required fields the extraction does not capture. The form stays the system of record — a bad extraction is non-destructive (at worst the user deletes a row).
+- **`components/onboarding/wizard/DescribeItAccelerator.tsx` — NEW.** A collapsed-by-default affordance ("In a hurry? Describe this in a sentence…") shown on the 8 steps whose id maps 1:1 to an extraction topic. Expands to a textarea + "Fill the form" button; on submit it calls `/api/onboarding/chat/extract`, applies the delta via `onUpdate`, and shows a result/error message. Every failure path is gentle — the form below is untouched.
+- **`components/onboarding/wizard/WizardContainer.tsx`** — renders `DescribeItAccelerator` in the Body, above the step form, on accelerator-eligible steps.
+- **`tests/onboarding/applyWizardDelta.test.ts` — NEW (9 tests)** — append semantics, per-topic mapping + defaults, empty delta, `countDeltaItems`.
+
+No backend change — the extraction route/gateway/schemas were already in place (dormant). No schema change.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npx vitest run tests/onboarding/applyWizardDelta.test.ts` — ✓ 9/9 pass
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Remaining for Track G
+
+Only **G.5** (document upload mid-onboarding — was F.11) remains. It pulls in the Phase 25/38 document pipeline — a genuinely large standalone feature, best scoped as its own focused build.
