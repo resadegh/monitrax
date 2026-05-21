@@ -29,12 +29,15 @@
  * they did not enter. `hasUserProgress` turns true only once the user
  * changes the counts AFTER the baseline has settled.
  *
- * Field-aware snapshot: each step sends the LLM a field-level read —
- * not just `{count}` but the shape of what is there and what is
+ * Field-aware, probing reaction: each step sends the LLM a field-level
+ * read — not just `{count}` but the shape of what is there and what is
  * notably missing (a rental with no rent recorded, an investment
- * account with no holdings). The reaction can then respond to what the
- * user actually did and prompt for a real gap — counts/flags only, no
- * PII, no balances.
+ * account with no holdings). The reaction acknowledges what the user
+ * actually did, then ALWAYS ends with a specific follow-up question
+ * that pushes for what else they might have ("you've added an SMSF —
+ * do you also hold anything in a family trust or a company?"). Each
+ * fresh entry triggers a fresh question — the back-and-forth. Snapshot
+ * is counts/flags only — no PII, no balances.
  *
  * G.1b generalises the G.1a household-only panel to every collection
  * step via `STEP_CONFIG` (per-step invitation + checklist + snapshot +
@@ -72,7 +75,9 @@ const GREETING =
 const GREETING_MS = 4200;
 const INVITATION_HOLD_MS = 5000;
 const REFLECTION_DEBOUNCE_MS = 2000;
-const REACTION_HOLD_MS = 6000;
+// The reaction is a follow-up question — it must hold long enough for
+// the user to read it and act on it, not flash past to the bridge.
+const REACTION_HOLD_MS = 18000;
 const FALLBACK_TO_BRIDGE_MS = 10000;
 const TYPE_SPEED_MS = 22;
 
@@ -383,6 +388,11 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
   const [reflection, setReflection] = useState<string | null>(null);
   const [isThinking, setIsThinking] = useState(false);
   const lastReflectedSigRef = useRef<string | null>(null);
+  // Bumped each time a fresh reaction arrives. The reaction-hold timer
+  // (effect C) depends on it, so each new reaction restarts the hold —
+  // a user who keeps adding things keeps getting fresh follow-up
+  // questions instead of being rushed to the bridge.
+  const [reactionSeq, setReactionSeq] = useState(0);
 
   // A — greeting holds, then hands to the invitation.
   useEffect(() => {
@@ -404,9 +414,13 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
 
   // B — once the user has made REAL progress on this step (not a
   // pre-existing default), fetch the reaction. On success, swap to the
-  // reaction line.
+  // reaction line. This fires from ANY phase except the greeting —
+  // including while a reaction is already showing — so each new thing
+  // the user adds gets its own fresh follow-up question (the
+  // back-and-forth). The signature guard stops a re-fetch of the same
+  // state.
   useEffect(() => {
-    if (phase === 'greeting' || phase === 'reaction') return;
+    if (phase === 'greeting') return;
     if (!hasUserProgress || !token) return;
     if (signature === lastReflectedSigRef.current) return;
 
@@ -434,6 +448,7 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
         ) {
           lastReflectedSigRef.current = signature;
           setReflection(json.data.message.trim());
+          setReactionSeq((s) => s + 1);
           setPhase('reaction');
         }
       } catch {
@@ -450,12 +465,15 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
     };
   }, [phase, hasUserProgress, token, signature, snapshot, step]);
 
-  // C — the reaction holds, then hands to the bridge.
+  // C — the reaction (a follow-up question) holds long enough to be
+  // read and acted on, then hands to the bridge. `reactionSeq` is a dep
+  // so each fresh reaction restarts the hold — the user is never rushed
+  // off a question they might still answer.
   useEffect(() => {
     if (phase !== 'reaction') return;
     const t = window.setTimeout(() => setPhase('bridge'), REACTION_HOLD_MS);
     return () => window.clearTimeout(t);
-  }, [phase]);
+  }, [phase, reactionSeq]);
 
   // D — fallback: if the user has made real progress but the reaction
   // never arrived (LLM unavailable), advance to the bridge so the beat

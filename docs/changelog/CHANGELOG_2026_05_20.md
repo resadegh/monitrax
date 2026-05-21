@@ -1051,3 +1051,32 @@ No schema change, no destructive writes.
 - [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
 - [x] `npm run build` — ✓ succeeds
 - [x] `npm run lint` — ✓ no new errors/warnings
+
+---
+
+## Session: Phase 12 Track G — companion probing reaction (push for more, not just acknowledge)
+
+Branch: `claude/companion-probing-reaction-NL4XV`
+
+### Scope
+
+- **Type:** Enhancement — the onboarding companion's reaction.
+- **Driver:** Reza 2026-05-21, testing the live wizard — *"it recognised what I entered but it doesn't push or suggest for more information. I expect something like: you entered an SMSF, do you have any other entities such as a business, trust, etc.? A real ai driven question. Still feels very basic and not dynamic."*
+
+### Root cause
+
+The field-aware change made the reaction *acknowledge* what the user entered, but the system prompt only asked it to acknowledge (+ prompt a concrete gap flag). On a step with no gap flag — e.g. entities, after adding an SMSF — the reaction was a flat acknowledgement with no forward push. The companion never asked "what else do you have?".
+
+### What was done
+
+1. **`lib/ai/onboarding-agent/companionGateway.ts` — the reaction now PUSHES.** The system prompt is rewritten: every reply has two parts — (1) acknowledge the specific thing added, (2) **always end with a specific, friendly follow-up question** that probes for what else of this kind the user might have, naming concrete examples for the step (after an SMSF: *"Do you also hold anything through a family trust, a company, or a partnership?"*). If the snapshot shows a concrete gap, the question targets that gap; on a fixed picker (`welcome`) it asks a warm forward-looking question instead. Cap raised to one-or-two short sentences / 30 words (acknowledge + question needs the room). `STEP_BRIEF['welcome']` flagged as a fixed picker so the companion does not probe-for-more there. `buildUserPrompt` instruction updated to match.
+2. **`components/onboarding/wizard/CompanionPanel.tsx` — the back-and-forth.** The reaction effect can now re-fire **while a reaction is already showing** (previously it was excluded during the `reaction` phase) — so each fresh entry the user adds gets its own fresh follow-up question, a real back-and-forth. A new `reactionSeq` counter is a dependency of the reaction-hold timer, so each new reaction restarts the hold rather than letting an old timer rush the user off. `REACTION_HOLD_MS` raised 6 s → 18 s so a follow-up question is never flashed past before it can be read and acted on.
+
+The companion remains a **guide that reacts to form actions**, not a free-text chatbot — the typed-question conversational AI stays scoped to "My Guide" (flagged to Reza as a separate future build if wanted). No schema change; the only server change is the prompt text.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+- [x] `npm run lint` — ✓ no new errors/warnings
