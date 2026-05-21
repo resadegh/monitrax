@@ -735,3 +735,30 @@ Branch: `claude/track-g-retire-estimate-service-NL4XV`
 ### Notes
 
 Pure dead-code removal — the service was non-functional (threw on every call) and the routes had no caller. No schema change, no behavioural change. The live onboarding write path (per-step Track F `*Sync.ts` + `bulk-create`) is untouched.
+
+---
+
+## Session: Phase 12 Track G — G.3 research + implementation spec
+
+Branch: `claude/track-g3a-entities-sync-NL4XV`
+
+### Scope
+
+- **Type:** Docs / design — the executable spec for retiring `/api/onboarding/bulk-create` (the old Track F "F.9").
+- **Driver:** Reza 2026-05-21 — *"go with your recommendation"* (= estimate cleanup, then G.3).
+
+### What was found
+
+`bulk-create` was assumed to be a no-op after Track F. Reading `app/api/onboarding/bulk-create/route.ts` end-to-end shows it still does **6 real things**: creates `LegalEntity` rows (two-pass parent-FK write), writes onboarding completion, INVESTMENT-type income, the CAR→asset link, the BASIQ/IMPORT offset link, and the `UserPreference`/draft-blob wipe. So "retire bulk-create" is a **3-PR effort**, not one.
+
+The Entities domain (`G.3a`) is the **last + most complex** domain migration — beyond the standard Track F `*Sync.ts` pattern it has: a self-referential `parentEntityId` FK (trust → trustee company) needing a two-pass write; an encrypted-TFN read/write asymmetry (GET returns `hasTfn` only, never the value); and a route gap — `POST /api/entities` does not accept `trustType`/`isForeignResident` (only PUT does), which must be plumbed or a wizard-created trust loses its `trustType`.
+
+### Changes Made
+
+- `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` — new **§10**: the full executable G.3 spec (§10.1 what bulk-create still does · §10.2 G.3a entities migration with two-pass + TFN + route-gap detail · §10.3 G.3b relocate stragglers · §10.4 G.3c retire bulk-create + schema migration). §11 header added over the iteration history.
+- `docs/IMPLEMENTATION_PLAN.md` — row 0G updated with the G.3 research finding + the 3-PR breakdown.
+- `docs/changelog/CHANGELOG_2026_05_20.md` — this entry.
+
+### Notes
+
+This PR is the **design** for G.3 — no code change. The implementation (G.3a entities migration) is the next build; it is now fully spec'd so it can be executed cleanly.
