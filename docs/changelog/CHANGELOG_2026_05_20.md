@@ -1021,3 +1021,33 @@ The companion now hosts **all 10 collection steps**; only `review` (the celebrat
 - [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
 - [x] `npm run build` — ✓ succeeds
 - [x] `npm run lint` — ✓ no new errors/warnings
+
+---
+
+## Session: Phase 12 Track G — companion field-aware + baseline hardened
+
+Branch: `claude/companion-field-aware-NL4XV`
+
+### Scope
+
+- **Type:** Fix + Enhancement — the onboarding companion.
+- **Driver:** Reza 2026-05-21, testing the live wizard a third time — the Entities step *still* jumped to "Nicely done" with nothing entered. *"My name is not an entity… looks like this is not a real ai and just pre populated text with no logic behind it."*
+
+### Root cause (why the previous fix did not hold)
+
+The companion-guidance beat captured the genuine-progress baseline **at mount**. But the migrated wizard steps hydrate their real table **asynchronously after mount** — `EntitiesStep` runs `readEntities()` on mount and calls `onUpdate({entities})` a few hundred ms later. So the companion's baseline was taken *before* the auto-created `PERSONAL_NAME` entity loaded; when it loaded, the count went 0→1 and read as "the user added a structure" → reaction → bridge → "Nicely done". The mount-time baseline assumed the step's data was stable at mount; it is not.
+
+### What was done
+
+1. **Settled baseline — `components/onboarding/wizard/CompanionPanel.tsx`.** The baseline is no longer the mount-time signature. It now *settles*: it is the counts signature once it has been stable for `BASELINE_SETTLE_MS` (700 ms), captured no earlier than `BASELINE_MIN_MS` (2 s) after mount — enough headroom for even a cold serverless read to land. Async-hydrated pre-existing data (an auto-created default, a resumed step) is part of the settled baseline, never progress. `hasUserProgress` turns true only on a change *after* the baseline settles.
+2. **Field-aware snapshots — `CompanionPanel.tsx` + `lib/ai/onboarding-agent/companionGateway.ts`.** Each step's snapshot is no longer a bare `{count}`. It is a field-level read: `entities` counts trusts/companies/SMSFs and **excludes `PERSONAL_NAME`** (the user's own name is not a structure they set up); `properties` flags `rentalsMissingRent`; `investments` flags `accountsWithoutHoldings`; `assets` counts vehicles. The companion system prompt now uses this to acknowledge the *specific* thing the user added and to gently prompt for a genuine gap (a rental with no rent recorded) — product-completeness guidance, never financial advice. Still counts/flags only — no PII, no balances.
+3. **`EntitiesStep` stops showing "my personal name" as a structure — `components/onboarding/wizard/steps/EntitiesStep.tsx`.** The `PERSONAL_NAME` entity stays in `data.entities` for the real-table sync, but is filtered out of the rendered list and the empty-state check. "Just my personal name" now shows the clean empty state, matching the step's original design intent.
+
+No schema change, no destructive writes.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+- [x] `npm run lint` — ✓ no new errors/warnings

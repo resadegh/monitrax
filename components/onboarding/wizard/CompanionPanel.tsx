@@ -19,11 +19,22 @@
  * there *directing* the user until they genuinely engage. Only real
  * progress made on this visit advances the beat to reaction → bridge.
  *
- * Genuine-progress gating: the panel captures the step's counts
- * signature at mount. A pre-existing row (an auto-created default
- * entity, a resumed step) is NOT progress — so the companion never
- * congratulates the user for data they did not enter. `hasUserProgress`
- * is true only once the user changes the counts while on this step.
+ * Genuine-progress gating: the panel settles a baseline signature once
+ * the step's data has stopped changing. The migrated wizard steps
+ * hydrate their real table ASYNCHRONOUSLY after mount (EntitiesStep
+ * reads `LegalEntity`, etc.) — so the data at mount is not yet the
+ * baseline. A pre-existing row (an auto-created default entity, a
+ * resumed step's saved data) is part of the settled baseline, NOT
+ * progress — so the companion never congratulates the user for data
+ * they did not enter. `hasUserProgress` turns true only once the user
+ * changes the counts AFTER the baseline has settled.
+ *
+ * Field-aware snapshot: each step sends the LLM a field-level read —
+ * not just `{count}` but the shape of what is there and what is
+ * notably missing (a rental with no rent recorded, an investment
+ * account with no holdings). The reaction can then respond to what the
+ * user actually did and prompt for a real gap — counts/flags only, no
+ * PII, no balances.
  *
  * G.1b generalises the G.1a household-only panel to every collection
  * step via `STEP_CONFIG` (per-step invitation + checklist + snapshot +
@@ -64,6 +75,17 @@ const REFLECTION_DEBOUNCE_MS = 2000;
 const REACTION_HOLD_MS = 6000;
 const FALLBACK_TO_BRIDGE_MS = 10000;
 const TYPE_SPEED_MS = 22;
+
+// Baseline-settle window. The migrated steps hydrate their real table
+// asynchronously AFTER mount, so the baseline cannot be taken at mount.
+// The baseline is the signature once it has been stable for
+// `BASELINE_SETTLE_MS`, and never before `BASELINE_MIN_MS` has elapsed
+// since mount — enough headroom for even a cold serverless read to land.
+// A user genuinely adding a row on a fresh step takes far longer than
+// this (they must open a dialog and fill it), so real input is never
+// mistaken for hydration.
+const BASELINE_MIN_MS = 2000;
+const BASELINE_SETTLE_MS = 700;
 
 interface StepConfig {
   /** The scripted invitation — warm orientation: what this step is. */
@@ -150,8 +172,27 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
       'Next — how your wealth is held. Many Australians hold assets in more than one place.',
     checklist:
       'Hold anything through a family trust, SMSF, company or partnership? Add each one above. If it is all in your personal name, that is the most common setup — just continue.',
-    snapshot: (d) => ({ structureCount: d.entities.length }),
-    youSummary: (d) => plural(d.entities.length, 'structure', 'structures'),
+    // A PERSONAL_NAME entity is an auto-created default — the user's own
+    // name is not a "structure" they set up, so it is excluded from
+    // every count. structureCount only ever reflects real structures
+    // the user actually added.
+    snapshot: (d) => {
+      const structures = d.entities.filter((e) => e.type !== 'PERSONAL_NAME');
+      return {
+        structureCount: structures.length,
+        trustCount: structures.filter(
+          (e) => e.type === 'DISCRETIONARY_TRUST' || e.type === 'UNIT_TRUST',
+        ).length,
+        companyCount: structures.filter((e) => e.type === 'COMPANY').length,
+        smsfCount: structures.filter((e) => e.type === 'SMSF').length,
+      };
+    },
+    youSummary: (d) =>
+      plural(
+        d.entities.filter((e) => e.type !== 'PERSONAL_NAME').length,
+        'structure',
+        'structures',
+      ),
   },
   properties: {
     invitation:
@@ -161,8 +202,11 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
     snapshot: (d) => ({
       propertyCount: d.properties.length,
       withMortgageCount: d.properties.filter((p) => p.hasLoan).length,
-      rentalCount: d.properties.filter(
-        (p) => (p.income?.amount ?? 0) > 0,
+      rentalCount: d.properties.filter((p) => p.type === 'INVESTMENT').length,
+      // A rental with no rent recorded is a likely gap the companion
+      // can prompt for.
+      rentalsMissingRent: d.properties.filter(
+        (p) => p.type === 'INVESTMENT' && !((p.income?.amount ?? 0) > 0),
       ).length,
     }),
     youSummary: (d) => plural(d.properties.length, 'property', 'properties'),
@@ -195,6 +239,10 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
         (sum, inv) => sum + inv.holdings.length,
         0,
       ),
+      // An investment account with no holdings is a likely gap.
+      accountsWithoutHoldings: d.investments.filter(
+        (inv) => inv.holdings.length === 0,
+      ).length,
     }),
     youSummary: (d) =>
       plural(d.investments.length, 'investment account', 'investment accounts'),
@@ -212,7 +260,10 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
     invitation: 'Anything else of real value? Let us round out the picture.',
     checklist:
       'Add the things worth a meaningful amount — a car, jewellery, tools, collectibles. These complete your true net worth.',
-    snapshot: (d) => ({ assetCount: d.assets.length }),
+    snapshot: (d) => ({
+      assetCount: d.assets.length,
+      vehicleCount: d.assets.filter((a) => a.type === 'VEHICLE').length,
+    }),
     youSummary: (d) => plural(d.assets.length, 'asset', 'assets'),
   },
   'income-expenses': {
@@ -305,13 +356,24 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
   const hasEntries = Object.values(snapshot).some((v) => v > 0);
   const youSummary = config ? config.youSummary(data) : '';
 
-  // Genuine-progress gate. The signature captured at mount is the
-  // baseline — any data already present then (an auto-created default
-  // entity, a resumed step) is NOT the user's doing. `hasUserProgress`
-  // turns true only once the user changes the counts while on this
-  // step, so the companion never congratulates them for nothing.
-  const initialSignatureRef = useRef(signature);
-  const hasUserProgress = signature !== initialSignatureRef.current;
+  // Genuine-progress gate. The migrated steps hydrate their real table
+  // asynchronously AFTER mount, so the baseline cannot be the mount-time
+  // signature — that would read the hydrated pre-existing data (an
+  // auto-created default entity, a resumed step) as if the user had just
+  // added it. Instead the baseline SETTLES: it is the signature once it
+  // has been stable for `BASELINE_SETTLE_MS`, captured no earlier than
+  // `BASELINE_MIN_MS` after mount. `hasUserProgress` turns true only
+  // once the user changes the counts after that settled baseline.
+  const mountedAtRef = useRef(Date.now());
+  const [baseline, setBaseline] = useState<string | null>(null);
+  useEffect(() => {
+    if (baseline !== null) return;
+    const sinceMount = Date.now() - mountedAtRef.current;
+    const wait = Math.max(BASELINE_SETTLE_MS, BASELINE_MIN_MS - sinceMount);
+    const t = window.setTimeout(() => setBaseline(signature), wait);
+    return () => window.clearTimeout(t);
+  }, [signature, baseline]);
+  const hasUserProgress = baseline !== null && signature !== baseline;
 
   // Phase always starts fresh on mount — the caller keys this component
   // by step id, so each step replays its own beat in order.
