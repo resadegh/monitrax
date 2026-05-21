@@ -670,3 +670,39 @@ Branch: `claude/track-g2-retire-chat-NL4XV`
 ### Notes
 
 `/onboarding` is now always the form wizard with its companion — no chat, no mode choice. No schema migration: the `CONVERSATIONAL_ONBOARDING` `GlobalFeatureFlag` row (if present in a DB) is simply never read again.
+
+---
+
+## Session: Phase 12 Track G — G.1b (companion on all steps) + AIHelper cleanup
+
+Branch: `claude/track-g1b-companion-all-steps-NL4XV`
+
+### Scope
+
+- **Type**: Feature — Phase 12 Track G, G.1b.
+- **Driver**: Reza 2026-05-21 — *"lets build the rest of the steps with the same design"* + *"delete the legacy onboarding wizards that you hide for cleanup."*
+
+### Changes Made
+
+**Companion rolled to all 9 entity-collection steps:**
+- `components/onboarding/wizard/CompanionPanel.tsx` — generalised from household-only to a per-step `STEP_CONFIG` (invitation + counts-snapshot + you-summary) covering household, entities, properties, debts, accounts, investments, super, assets, income-expenses. Exports `isCompanionStep()`. The greeting shows only on the first companion step (household). `welcome` + `review` have no companion (welcome is a quick picker; review is the celebration screen).
+- `lib/ai/onboarding-agent/companionGateway.ts` — `CompanionStep` widened to the 9 ids; new `COMPANION_STEPS` runtime list; per-step `STEP_BRIEF` (the LLM context for each step's reaction); reaction prompt phrasing tidied.
+- `app/api/onboarding/companion/route.ts` — validates the incoming `step` against `COMPANION_STEPS` (was hard-coded to `household`); passes the real step to the gateway.
+- `components/onboarding/wizard/WizardContainer.tsx` — `CompanionPanel` lifted out of the household case into the shared Body, rendered above every companion-eligible step, **keyed by step id** so it remounts and replays that step's beat on navigation.
+
+**Legacy cleanup (the "hidden" onboarding helper):**
+- Deleted `components/onboarding/wizard/AIHelper.tsx` — a passive Q&A drawer with **mocked** (fake) responses; suppressed on the household step in G.0, fully superseded by the companion. Removed its barrel export + the `WizardContainer` header trigger.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Legacy onboarding code — flagged, not deleted
+
+While scanning for legacy onboarding code, found the disabled `lib/services/onboardingEstimateService.ts` (throws `OnboardingDisabledError`) + 6 orphaned `/api/onboarding/estimates/*` routes — genuinely dead (no live caller; only a stale comment in `chat/extract/route.ts` mentions them). **Not deleted on this PR** — flagged to Reza for a separate, focused cleanup PR (deleting a 7-file subsystem deserves its own verified change).
+
+### Notes
+
+Cross-step memory ("you mentioned two kids earlier…") + adaptive narration are deferred to a later polish pass — G.1b delivers the companion on every step in the established paced / accent / typewriter design.

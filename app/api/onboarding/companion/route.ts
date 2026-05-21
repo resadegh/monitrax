@@ -35,7 +35,9 @@ import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import {
   generateCompanionReflection,
   isCompanionAvailable,
+  COMPANION_STEPS,
   type CompanionSnapshot,
+  type CompanionStep,
 } from '@/lib/ai/onboarding-agent/companionGateway';
 
 const DAILY_CAP_PER_USER = 200;
@@ -106,13 +108,16 @@ export const POST = withPermission('settings.write', async (request, auth) => {
 
     const { step, snapshot } = body as { step?: unknown; snapshot?: unknown };
 
-    if (step !== 'household') {
+    if (
+      typeof step !== 'string' ||
+      !COMPANION_STEPS.includes(step as CompanionStep)
+    ) {
       return envelope(400, {
         success: false,
         data: null,
         error: {
           code: 'VALIDATION_ERROR',
-          message: 'step must be one of: household',
+          message: `step must be one of: ${COMPANION_STEPS.join(', ')}`,
           details: null,
         },
       });
@@ -162,7 +167,7 @@ export const POST = withPermission('settings.write', async (request, auth) => {
     }
 
     const result = await generateCompanionReflection({
-      step: 'household',
+      step: step as CompanionStep,
       snapshot: cleanSnapshot,
     });
 

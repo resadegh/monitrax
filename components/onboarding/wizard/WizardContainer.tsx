@@ -43,10 +43,9 @@ import { SuperStep } from './steps/SuperStep';
 import { AssetsStep } from './steps/AssetsStep';
 import { IncomeExpensesStep } from './steps/IncomeExpensesStep';
 import { ReviewStep } from './steps/ReviewStep';
-import { AIHelper } from './AIHelper';
-// Phase 12 Track G (G.0): the onboarding companion — prototype on the
-// household step. See docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
-import { CompanionPanel } from './CompanionPanel';
+// Phase 12 Track G: the onboarding companion hosts every entity step.
+// See docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
+import { CompanionPanel, isCompanionStep } from './CompanionPanel';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -467,29 +466,19 @@ export function WizardContainer({
         return (
           <div key={currentStep.id} className={animationClass}>
             {/*
-             * Phase 12 Track G (G.0): the AI companion sits ABOVE the
-             * household form — "the form opens underneath" (Reza,
-             * 2026-05-20). Prototype scope: household step only; G.1
-             * widens it to every step. The companion is presentational
-             * and never a dependency — the form works untouched if it
-             * fails. See PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md.
-             *
              * Phase 12 Track F.1: HouseholdStep reads + writes the REAL
              * household tables directly. It registers an async commit via
              * `registerStepCommit`; the container awaits it on Continue /
              * Back / progress-jump (see runStepCommit above).
+             *
+             * The Track G companion is rendered above the step content in
+             * the Body (shared for all companion steps) — not here.
              */}
-            <div className="space-y-5">
-              <CompanionPanel
-                data={data}
-                nextStepLabel={steps[currentStepIndex + 1]?.title}
-              />
-              <HouseholdStep
-                data={data}
-                onUpdate={handleUpdate}
-                registerStepCommit={registerStepCommit}
-              />
-            </div>
+            <HouseholdStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
           </div>
         );
       case 'entities':
@@ -643,18 +632,9 @@ export function WizardContainer({
         </div>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        {/* AI Helper trigger — rendered inline in the header so it never
-            overlaps the wizard's Back/Next buttons (which sit in the
-            footer at the bottom-right of the card).
-            Phase 12 Track G (G.0): suppressed on the household step,
-            where the docked CompanionPanel is the help surface — two AI
-            affordances on one step would just be noise. */}
-        {currentStep?.id !== 'household' && (
-          <AIHelper
-            currentStep={currentStep?.id || 'welcome'}
-            buttonClassName="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-blue-500 to-indigo-600 px-3 py-1.5 text-white shadow-sm hover:shadow-md hover:brightness-110 transition-all"
-          />
-        )}
+        {/* Phase 12 Track G: the legacy `AIHelper` Q&A trigger was
+            removed here — the docked CompanionPanel (rendered above each
+            step in the Body) is the onboarding AI surface now. */}
         {mode === 'modal' && (
           <button
             type="button"
@@ -724,6 +704,20 @@ export function WizardContainer({
         mode === 'modal' ? 'max-h-[60vh]' : ''
       }`}
     >
+      {/* Phase 12 Track G: the AI companion hosts each step — rendered
+          above the step's form. Keyed by step id so it remounts and
+          replays its beat on every step change. welcome + review have no
+          companion (isCompanionStep === false). */}
+      {currentStep && isCompanionStep(currentStep.id) && (
+        <div className="mb-5">
+          <CompanionPanel
+            key={currentStep.id}
+            step={currentStep.id}
+            data={data}
+            nextStepLabel={steps[currentStepIndex + 1]?.title}
+          />
+        </div>
+      )}
       {renderStepContent()}
     </div>
   );
@@ -848,9 +842,6 @@ export function WizardContainer({
       {ProgressBar}
       {Body}
       {Footer}
-      {/* AIHelper trigger is rendered inline inside the Header (see above)
-          to avoid the floating button overlapping the wizard's Next button.
-          The panel itself is still portaled from within <AIHelper />. */}
     </div>
   );
 

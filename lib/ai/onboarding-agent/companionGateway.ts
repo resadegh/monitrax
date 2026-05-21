@@ -20,8 +20,30 @@ import {
   isAnthropicConfigured,
 } from '@/lib/ai/anthropic';
 
-/** Steps the companion supports. G.0 = household only; G.1 widens this. */
-export type CompanionStep = 'household';
+/** Steps the companion supports — the 9 entity-collection wizard steps. */
+export type CompanionStep =
+  | 'household'
+  | 'entities'
+  | 'properties'
+  | 'debts'
+  | 'accounts'
+  | 'investments'
+  | 'super'
+  | 'assets'
+  | 'income-expenses';
+
+/** Runtime list — the route validates an incoming `step` against this. */
+export const COMPANION_STEPS: readonly CompanionStep[] = [
+  'household',
+  'entities',
+  'properties',
+  'debts',
+  'accounts',
+  'investments',
+  'super',
+  'assets',
+  'income-expenses',
+];
 
 /**
  * A minimal, de-identified snapshot of the user's entries for one step.
@@ -73,7 +95,23 @@ STRICT RULES — these are not optional:
 
 const STEP_BRIEF: Record<CompanionStep, string> = {
   household:
-    'The user is on the "Household" step — capturing the people and pets who share their financial life. This is the foundation the rest of setup is personalised around.',
+    'the "Household" step — the people and pets who share the user\'s financial life. The foundation the rest of setup is personalised around.',
+  entities:
+    'the "Wealth Structure" step — legal entities (family trust, SMSF, company) the user holds wealth through. Holding wealth in your personal name is normal and fine.',
+  properties:
+    'the "Properties" step — homes and investment properties the user owns, each with its mortgage.',
+  debts:
+    'the "Debts" step — non-property loans: car, personal, business loans and HECS/HELP study debt.',
+  accounts:
+    'the "Accounts" step — the user\'s everyday bank and savings accounts.',
+  investments:
+    'the "Investments" step — share, ETF and managed-fund accounts and the holdings inside them.',
+  super:
+    'the "Superannuation" step — the user\'s super fund account(s).',
+  assets:
+    'the "Assets" step — personal assets like vehicles, valuables and collectibles.',
+  'income-expenses':
+    'the "Income & Spending" step — the user\'s income sources and regular spending: their starting budget.',
 };
 
 function buildUserPrompt(req: CompanionReflectionRequest): string {
@@ -81,9 +119,9 @@ function buildUserPrompt(req: CompanionReflectionRequest): string {
     .map(([k, v]) => `- ${k}: ${v}`)
     .join('\n');
   return [
-    STEP_BRIEF[req.step],
-    `What the user has entered so far (counts only):\n${lines || '- (nothing yet)'}`,
-    'Write your 1-2 sentence reflection now.',
+    `The user is on ${STEP_BRIEF[req.step]}`,
+    `What they have entered so far (counts only):\n${lines || '- (nothing yet)'}`,
+    'Write your one-sentence reflection now.',
   ].join('\n\n');
 }
 
