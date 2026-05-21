@@ -57,6 +57,10 @@ Two further moves make it feel alive across the whole journey (G.1b):
 - **Memory** — later steps reference earlier answers, read **deterministically** from `WizardData` (*"you mentioned two kids — I've made sure their costs have a home"*). No LLM, no guesswork — the system visibly listening.
 - **Adaptive narration** — when the wizard skips a step (a renter has no property step), the companion *says so* — *"Since you're renting, we'll skip straight to your savings."* The user feels it tailoring to them, not just hiding fields.
 
+### Presentation — paced, one line at a time
+
+The companion shows **one line at a time**, not a stacked chat thread (Reza, 2026-05-21 — *"rather than a text message feel"*): a single **companion line** that swaps *in place* as the beat advances (greeting → invitation → reaction → bridge), plus a single compact **"you" line** summarising what the user has entered (e.g. *"2 adults · 3 pets · 3 cars"*). A phase machine drives the sequence and **always starts at the greeting on mount** — so a returning user with existing data sees the conversation *play out in order, paced*, never jump straight to the end. This keeps the panel short (critical on mobile) and makes it read as a live exchange, not a transcript. Each companion line is **one sentence** — the LLM reaction is capped at one short sentence server-side.
+
 ### The contract (invariants)
 
 - **Voice.** Warm, calm, brief. Australian English. Warm-words rule (CLAUDE.md §14 — "spending" not "expenses", "home" not "PPOR"). Celebrates small wins, normalises, never shames.
@@ -86,7 +90,7 @@ Two further moves make it feel alive across the whole journey (G.1b):
 
 - **The companion must never become a dependency.** Enforced by §5: graceful degradation on every call. If this slips, we have re-created the brittleness we are removing.
 - **AFSL boundary.** The reaction must stay reflection/encouragement/product-explanation — never advice. The companion system prompt hard-codes this; reviewers check reflection copy stays neutral.
-- **Cognitive load.** A beat is a short *thread* of turns (greeting / invitation / reaction / bridge) — each turn one or two sentences, paced so it reads as a calm conversation, never a wall. Financial stress already costs the user ~13 IQ points (Mani et al., CLAUDE.md §0); the companion gives clarity back.
+- **Cognitive load.** The companion shows **one line at a time** (not a stacked thread) — each line one short sentence, paced, swapped in place. Calm by construction; the panel never grows into a wall of text. Financial stress already costs the user ~13 IQ points (Mani et al., CLAUDE.md §0); the companion gives clarity back.
 - **Scope creep.** The onboarding companion is push-only by design (§3). Any pull toward "let the user ask it things" must be resisted and routed to My Guide — otherwise we re-grow the brittle free-form surface we are removing.
 - **Layout.** G.0/G.1a place the companion as a full-width card **above** the form ("the form opens underneath" — Reza). A desktop side-rail is a possible G.1b refinement once the wizard shell is widened.
 - **Cost / rate-limit.** Reflections are LLM calls. The snapshot is counts-only, so reflections fire on *structural* changes (a member added), not keystrokes; a client-side debounce + signature-dedup + the server daily cap bound spend. Invitation, bridge and memory are scripted/deterministic — zero LLM cost.
@@ -95,10 +99,15 @@ Two further moves make it feel alive across the whole journey (G.1b):
 
 The **household step**, rebuilt in the guided-conversation style (§5) — for Reza to merge, try, and react to before G.1b rolls it across all 12 steps.
 
-- `components/onboarding/wizard/CompanionPanel.tsx` — reworked from a static panel into the step's **host**: a staggered **greeting + invitation** (the companion introducing itself + the journey, then inviting the first action), the **LLM reaction** (kept from G.0 — reads the counts-only household snapshot), and a forward **bridge** that names the next step. The messages appear as conversational turns, lightly staggered so it reads as the companion talking, not a static panel.
-- `components/onboarding/wizard/WizardContainer.tsx` — passes the next step's label to the companion so the bridge is concrete.
-- **No backend change** — the reaction reuses the G.0 `companionGateway` + `/api/onboarding/companion`; invitation, bridge (and, in G.1b, memory) are scripted/deterministic.
+- `components/onboarding/wizard/CompanionPanel.tsx` — the step's **host**, as a **paced, one-line-at-a-time** exchange: a phase machine (greeting → invitation → reaction → bridge) that always starts at the greeting on mount and advances on timers/events; one companion line + one compact "you" line, both swapped in place (no stacked thread). A "typing" indicator covers the reaction fetch.
+- `components/onboarding/wizard/WizardContainer.tsx` — passes the next step's label so the bridge is concrete.
+- `lib/ai/onboarding-agent/companionGateway.ts` — the reaction prompt capped at **one short sentence** (≤18 words).
+- `styles/wizard-animations.css` — `companion-bubble-enter` (line swap) + `companion-typing-dot` (typing indicator); both respect `prefers-reduced-motion`.
 - Scope is the **household step only**; `AIHelper` stays on the other 11 steps until G.1b removes it.
+
+### Pacing iteration (2026-05-21)
+
+The first G.1a build stacked all four turns as a chat thread and, for a returning user with existing data, showed them all at once — the conversation "jumped to the end". Fixed: the phase machine resets to the greeting on every mount and paces the sequence; the panel now shows one line at a time, replaced in place — *"rather than a text message feel"* (Reza).
 
 ---
 

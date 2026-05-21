@@ -571,3 +571,34 @@ Onboarding is reframed from "a 12-step form with a helper" into "a guided conver
 ### Notes
 
 No backend change — the reaction reuses the G.0 `companionGateway` + `/api/onboarding/companion`; invitation and bridge are scripted/deterministic. Scope is the household step only; `AIHelper` stays on the other 11 steps until G.1b removes it. The companion fetch carries the Bearer token (G.0 hotfix lesson applied).
+
+---
+
+## Session: Phase 12 Track G — G.1a pacing iteration (paced, one-line-at-a-time companion)
+
+Branch: `claude/track-g1a-conversation-pacing-NL4XV`
+
+### Scope
+
+- **Type**: Fix / UX iteration on G.1a (PR #847).
+- **Driver**: Reza feedback 2026-05-21, with a screenshot — on login with existing household data the companion conversation "jumped to the end" (greeting + invitation + reaction + bridge all stacked at once); and the stacked-bubble layout was a "text message feel". Reza: *"the conversation needs to reset on the page and be on time"* and *"have a one line ai and 1 line user and they replace with new ones rather than a text message feel."*
+
+### Changes Made
+
+- **`components/onboarding/wizard/CompanionPanel.tsx`** — reworked from a stacked thread into a **paced, one-line-at-a-time** exchange:
+  - A **phase machine** (`greeting → invitation → reaction → bridge`) that **always starts at the greeting on mount** and advances on timers/events. This is the "reset on the page and be on time" fix — a returning user with existing data now sees the conversation play out in order, paced, instead of jumping to the end.
+  - **One companion line + one "you" line**, both swapped *in place* (not appended). The "you" line is a compact deterministic summary of what the user entered (e.g. "2 adults · 3 pets · 3 cars"), right-aligned. No stacked thread.
+  - A typing-dots indicator covers the reaction fetch.
+- **`lib/ai/onboarding-agent/companionGateway.ts`** — reaction prompt capped at **one short sentence** (≤18 words) so the companion line stays one line.
+- **`styles/wizard-animations.css`** — added `companion-typing-dot` keyframe (the typing indicator); both companion animations respect `prefers-reduced-motion`.
+- Docs: Track G doc §5 (new "Presentation — paced, one line at a time" subsection), §8, §9; `IMPLEMENTATION_PLAN.md` row 0G.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Notes
+
+`WizardContainer` already passes `nextStepLabel` (from #847) — no change needed there. The companion remains push-only, never a dependency, counts-only snapshot, and carries the Bearer token.
