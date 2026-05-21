@@ -31,7 +31,7 @@
  * displays it after the user types it (the field is masked on resume).
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Building2,
   Crown,
@@ -44,6 +44,7 @@ import {
   AlertCircle,
   Lock,
 } from 'lucide-react';
+import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,8 +72,19 @@ import {
   LEGAL_ENTITY_TYPE_LABELS,
   LEGAL_ENTITY_ROLE_LABELS,
   generateId,
+  type StepCommitFn,
 } from '../types';
 import { WizardStepShell, WizardAddButton } from '../primitives';
+// Phase 12 Track G.3a — onboarding ⇄ real-table two-way sync for entities.
+import {
+  readEntities,
+  syncEntities,
+  snapshotToWizardEntities,
+  wizardEntitiesToSnapshot,
+  isPersistedId,
+  EMPTY_ENTITIES_SNAPSHOT,
+  type EntitiesSnapshot,
+} from '@/lib/onboarding/entitiesSync';
 import {
   isValidAbn,
   isValidAcn,
@@ -542,11 +554,81 @@ function EntityDialog({
 interface EntitiesStepProps {
   data: WizardData;
   onUpdate: (updates: Partial<WizardData>) => void;
+  /**
+   * Phase 12 Track G.3a: register an async commit with the container.
+   * The container awaits it before advancing — it writes the entities to
+   * the real `LegalEntity` table via `entitiesSync`. Optional so the step
+   * still renders in non-wizard contexts.
+   */
+  registerStepCommit?: (fn: StepCommitFn | null) => void;
 }
 
-export function EntitiesStep({ data, onUpdate }: EntitiesStepProps) {
+export function EntitiesStep({
+  data,
+  onUpdate,
+  registerStepCommit,
+}: EntitiesStepProps) {
+  const { token } = useAuth();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<EntityInput | null>(null);
+
+  // ---- Phase 12 Track G.3a: real-table sync state --------------------
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const snapshotRef = useRef<EntitiesSnapshot>(EMPTY_ENTITIES_SNAPSHOT);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
+
+  // ---- READ the real `LegalEntity` table on step open ---------------
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    readEntities(token)
+      .then((snapshot) => {
+        if (cancelled) return;
+        snapshotRef.current = snapshot;
+        const realEntities = snapshotToWizardEntities(snapshot);
+        const unsynced = dataRef.current.entities.filter(
+          (e) => !isPersistedId(e.id),
+        );
+        onUpdate({ entities: [...realEntities, ...unsynced] });
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(
+          err instanceof Error
+            ? err.message
+            : 'Could not load your entities. You can still edit — we’ll save when you continue.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ---- COMMIT: register the real-table write with the container ------
+  useEffect(() => {
+    if (!registerStepCommit) return;
+    const commit: StepCommitFn = async () => {
+      if (loading) {
+        throw new Error('Still loading your entities — please wait a moment.');
+      }
+      const current = wizardEntitiesToSnapshot(dataRef.current.entities);
+      const result = await syncEntities(token, snapshotRef.current, current);
+      snapshotRef.current = result.snapshot;
+      onUpdate({ entities: snapshotToWizardEntities(result.snapshot) });
+    };
+    registerStepCommit(commit);
+    return () => registerStepCommit(null);
+  }, [registerStepCommit, token, loading, onUpdate]);
 
   const openAdd = () => {
     setEditing(null);
@@ -595,6 +677,12 @@ export function EntitiesStep({ data, onUpdate }: EntitiesStepProps) {
       title="How is your wealth held?"
       subtitle="Most Australian wealth-builders hold their assets across more than one legal entity — your name, a family trust, an SMSF, a company. Tell us about yours so we can map your full picture."
     >
+      {loadError && (
+        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+          <span>{loadError}</span>
+        </div>
+      )}
       {data.entities.length > 0 && (
         <div className="space-y-3">
           {data.entities.map((entity) => {

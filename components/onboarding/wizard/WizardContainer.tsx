@@ -484,7 +484,17 @@ export function WizardContainer({
       case 'entities':
         return (
           <div key={currentStep.id} className={animationClass}>
-            <EntitiesStep data={data} onUpdate={handleUpdate} />
+            {/*
+             * Phase 12 Track G.3a: EntitiesStep reads + writes the REAL
+             * `LegalEntity` table via `entitiesSync`. It registers an
+             * async commit via `registerStepCommit`; the container awaits
+             * it on Continue / Back / progress-jump.
+             */}
+            <EntitiesStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
           </div>
         );
       case 'properties':

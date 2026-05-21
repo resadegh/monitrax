@@ -777,5 +777,19 @@ Applied in **F.8** (2026-05-20) for the income / expenses domain:
    the sync — it reads only the raw budget `amount` (budget-vs-actuals
    invariant; see `PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4 / §6.8).
 
+Applied in **Track G G.3a** (2026-05-21) for the legal-entities domain:
+
+10. **`/api/entities` POST — reform-field plumbing.** `POST /api/entities`
+    (and the `createEntity()` service + `CreateEntityInput`) now accept
+    `trustType` and `isForeignResident`. Previously only `PUT
+    /api/entities/[id]` did, and `bulk-create` wrote them directly via
+    Prisma — so routing wizard entity writes through the POST without
+    this fix would have dropped a trust's `trustType`. `createEntity()`
+    only persists `trustType` for trust entity types (mirrors the PUT).
+    No new audit actions / no migration — the entity routes already
+    audit via generic `logCRUD` (`entityType: 'LegalEntity'`). This is
+    the last Track F/G domain migration (entities via
+    `lib/onboarding/entitiesSync.ts`).
+
 ---
 

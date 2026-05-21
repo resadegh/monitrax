@@ -331,6 +331,22 @@ export interface CreateEntityInput {
   tradingName?: string | null;
   establishedDate?: Date | string | null;
   parentEntityId?: string | null;
+  /**
+   * Phase 12 Track G.3a — reform-aware inputs, so the onboarding wizard's
+   * entities step (`entitiesSync.ts`) can create a trust WITH its
+   * `trustType` in one call. Mirrors `UpdateEntityInput`.
+   */
+  trustType?:
+    | 'DISCRETIONARY'
+    | 'FIXED'
+    | 'UNIT'
+    | 'TESTAMENTARY_FIXED'
+    | 'CHARITABLE'
+    | 'DECEASED_ESTATE'
+    | 'SPECIAL_DISABILITY'
+    | 'OTHER'
+    | null;
+  isForeignResident?: boolean | null;
 }
 
 /**
@@ -375,6 +391,14 @@ export async function createEntity(
       establishedDate:
         input.establishedDate ? new Date(input.establishedDate) : null,
       parentEntityId: input.parentEntityId ?? null,
+      // Phase 12 Track G.3a — reform-aware inputs. Only persist trustType
+      // for trust entity types (mirrors the entity edit form's logic).
+      trustType:
+        input.trustType &&
+        (input.type === 'DISCRETIONARY_TRUST' || input.type === 'UNIT_TRUST')
+          ? input.trustType
+          : null,
+      isForeignResident: input.isForeignResident ?? false,
     },
     select: { id: true },
   });

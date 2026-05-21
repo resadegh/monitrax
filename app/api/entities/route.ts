@@ -20,6 +20,7 @@ import { withPermission } from '@/lib/auth/guards';
 import {
   listEntitiesForUser,
   createEntity,
+  type CreateEntityInput,
 } from '@/lib/services/legalEntityService';
 import { logCRUD } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
@@ -96,7 +97,22 @@ interface CreateEntityRequestBody {
   tradingName?: unknown;
   establishedDate?: unknown;
   parentEntityId?: unknown;
+  // Phase 12 Track G.3a — reform-aware fields, so the onboarding wizard's
+  // entities step can create a trust WITH its trustType in one POST.
+  trustType?: unknown;
+  isForeignResident?: unknown;
 }
+
+const VALID_TRUST_TYPES: ReadonlyArray<string> = [
+  'DISCRETIONARY',
+  'FIXED',
+  'UNIT',
+  'TESTAMENTARY_FIXED',
+  'CHARITABLE',
+  'DECEASED_ESTATE',
+  'SPECIAL_DISABILITY',
+  'OTHER',
+];
 
 export const POST = withPermission('entity.write', async (request: NextRequest, auth) => {
   try {
@@ -172,6 +188,18 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
         ? body.parentEntityId
         : null;
 
+    // Phase 12 Track G.3a — reform-aware fields. `createEntity` only
+    // persists `trustType` for trust entity types; an unrecognised value
+    // is dropped to null rather than 400'd (lenient — the wizard never
+    // sends a bad one, and the field is non-critical).
+    const trustType =
+      typeof body.trustType === 'string' &&
+      VALID_TRUST_TYPES.includes(body.trustType)
+        ? (body.trustType as CreateEntityInput['trustType'])
+        : null;
+    const isForeignResident =
+      typeof body.isForeignResident === 'boolean' ? body.isForeignResident : false;
+
     // -------------------------------------------------------------------
     // Delegate to the canonical service
     // -------------------------------------------------------------------
@@ -185,6 +213,8 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
       tradingName,
       establishedDate,
       parentEntityId,
+      trustType,
+      isForeignResident,
     });
 
     // Fire-and-forget audit log (CLAUDE.md §12.10 — never block responses).
