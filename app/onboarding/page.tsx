@@ -1,69 +1,35 @@
 'use client';
 
 /**
- * /onboarding page — TRAIL-aligned wizard (2026-04-18)
+ * /onboarding page — TRAIL-aligned wizard
  *
  * Full-page mode of WizardContainer. Renders the onboarding wizard
  * directly (not as a modal on /dashboard).
+ *
+ * Phase 12 Track G.2 (2026-05-21): the standalone conversational-chat
+ * path + the chat/form mode-selector + the mid-flow toggle were retired.
+ * The unified companion (inside the wizard — Track G.1) makes them
+ * redundant, and two onboarding implementations was a §12.1/§12.3
+ * violation. `/onboarding` is now always the form wizard with its
+ * companion — no mode choice, no flag.
  *
  * The wizard uses the bulk-create API exclusively
  * (POST /api/onboarding/bulk-create) which creates new rows via
  * prisma.create — no destructive upserts, no overwrite risk.
  *
- * The old onboardingEstimateService remains disabled (throws
- * OnboardingDisabledError) as defence in depth.
- *
- * See: docs/blueprint/TRAIL_FRAMEWORK.md §10
- *      docs/blueprint/PHASE_12_SETUP_AND_ONBOARDING.md
+ * See: docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md
+ *      docs/blueprint/TRAIL_FRAMEWORK.md §10
  */
 
-import { Suspense, useCallback, useEffect, useMemo } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
 import { WizardContainer } from '@/components/onboarding';
 import type { WizardData } from '@/components/onboarding';
-import { ConversationalModeToggle } from '@/components/onboarding/ConversationalModeToggle';
-import { ConversationalSetup } from '@/components/onboarding/wizard-chat/ConversationalSetup';
-import { OnboardingModeSelector } from '@/components/onboarding/OnboardingModeSelector';
-import { useConversationalOnboardingEnabled } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
-function OnboardingLoadingFallback() {
-  return (
-    <section className="flex min-h-[60vh] items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-4 border-amber-500 border-t-transparent motion-reduce:animate-none" />
-    </section>
-  );
-}
-
-/**
- * Next.js 15 requires `useSearchParams()` to be wrapped in a Suspense
- * boundary during static prerendering. Phase 12 Track E.0 added a
- * `?mode=chat` query-param read here + in `<ConversationalModeToggle>`.
- * Both are descendants of this `<Suspense>` boundary, so the page
- * still prerenders cleanly and the search-param read happens client-side
- * after hydration.
- */
 export default function OnboardingPage() {
-  return (
-    <Suspense fallback={<OnboardingLoadingFallback />}>
-      <OnboardingPageInner />
-    </Suspense>
-  );
-}
-
-function OnboardingPageInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const chatFlagEnabled = useConversationalOnboardingEnabled();
-  // Phase 12 Track E.0 — read ?mode=chat. Only honoured when the
-  // CONVERSATIONAL_ONBOARDING flag is ON; otherwise the toggle is
-  // hidden and form-mode is the only path (byte-for-byte unchanged
-  // behaviour pre-flag).
-  const requestedMode = searchParams?.get('mode');
-  const mode: 'form' | 'chat' =
-    chatFlagEnabled && requestedMode === 'chat' ? 'chat' : 'form';
-
   const { user, token, isLoading: authLoading } = useAuth();
   const {
     state: onboardingState,
@@ -72,28 +38,6 @@ function OnboardingPageInner() {
     clearDraft,
     readLocalDraft,
   } = useOnboardingState();
-
-  // Phase 12 Track E.2c — deliberate mode-choice landing screen.
-  // Track E.2c rev 2 (Option C, 2026-05-20): the selector now shows
-  // whenever the chat flag is ON and the user hasn't expressed a
-  // choice via `?mode=` — INCLUDING returning users mid-draft. For
-  // those users the selector renders a "continue where you left off"
-  // variant (see OnboardingModeSelector) instead of forcing a blind
-  // re-choice. This closes the gap from rev 1 where mid-draft users
-  // bypassed the selector entirely and only ever saw the small pill
-  // toggle (Reza live-test feedback 2026-05-20, Open Question Q-CONV-2).
-  // When the flag is OFF the selector is bypassed entirely —
-  // /onboarding stays byte-for-byte the existing form experience.
-  const hasDraftProgress = useMemo(() => {
-    if (!onboardingState) return false;
-    if ((onboardingState.currentStep ?? 0) > 0) return true;
-    const draft = onboardingState.draft;
-    if (draft && typeof draft === 'object' && Object.keys(draft).length > 0) {
-      return true;
-    }
-    return false;
-  }, [onboardingState]);
-  const showModeSelector = chatFlagEnabled && !requestedMode;
 
   // Auth / completion gates
   useEffect(() => {
@@ -151,9 +95,7 @@ function OnboardingPageInner() {
           // 5xx the route puts the generic "Failed to save…" in
           // `error` and the actual message in `details`. Without
           // surfacing `details`, the user only ever sees the
-          // generic fallback in the wizard footer banner — which
-          // is exactly what we don't want, since it hides the
-          // information that lets them (or us) fix the cause.
+          // generic fallback in the wizard footer banner.
           const baseMessage =
             typeof errorData.error === 'string'
               ? errorData.error
@@ -197,29 +139,15 @@ function OnboardingPageInner() {
     return null;
   }
 
-  // Mode-selector landing screen — flag ON + no `?mode=` chosen yet.
-  // `hasDraft` switches the selector to the returning-user "continue
-  // where you left off" variant (Option C).
-  if (showModeSelector) {
-    return <OnboardingModeSelector hasDraft={hasDraftProgress} />;
-  }
-
   return (
-    <>
-      <ConversationalModeToggle />
-      {mode === 'chat' ? (
-        <ConversationalSetup />
-      ) : (
-        <WizardContainer
-          isOpen={true}
-          mode="page"
-          onClose={handleClose}
-          onComplete={handleComplete}
-          initialData={hydratedDraft}
-          initialStepIndex={hydratedStepIndex}
-          onAutoSave={handleAutoSave}
-        />
-      )}
-    </>
+    <WizardContainer
+      isOpen={true}
+      mode="page"
+      onClose={handleClose}
+      onComplete={handleComplete}
+      initialData={hydratedDraft}
+      initialStepIndex={hydratedStepIndex}
+      onAutoSave={handleAutoSave}
+    />
   );
 }

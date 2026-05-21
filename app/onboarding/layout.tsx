@@ -22,7 +22,6 @@ import Link from 'next/link';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { BasiqGateProvider } from '@/lib/featureFlags/BasiqGateContext';
-import { ConversationalOnboardingGateProvider } from '@/lib/featureFlags/ConversationalOnboardingGateContext';
 
 export default function OnboardingLayout({
   children,
@@ -31,7 +30,6 @@ export default function OnboardingLayout({
 }) {
   return (
     <BasiqGateProvider>
-    <ConversationalOnboardingGateProvider>
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-white via-slate-50 to-white dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       {/* Top bar */}
       <header className="flex items-center justify-between border-b border-slate-200/60 px-5 py-4 dark:border-slate-800/60">
@@ -66,7 +64,6 @@ export default function OnboardingLayout({
 
       {children}
     </div>
-    </ConversationalOnboardingGateProvider>
     </BasiqGateProvider>
   );
 }

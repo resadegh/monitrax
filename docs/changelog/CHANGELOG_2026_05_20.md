@@ -632,3 +632,41 @@ Branch: `claude/track-g1a-companion-accent-NL4XV`
 ### Notes
 
 No backend change. All new motion (glow, caret, typing dots, bubble-enter) honours `prefers-reduced-motion` — reduced-motion users get the full text instantly with no animation.
+
+---
+
+## Session: Phase 12 Track G — G.2 (retire the standalone chat)
+
+Branch: `claude/track-g2-retire-chat-NL4XV`
+
+### Scope
+
+- **Type**: Refactor — dead-code removal (§12.1).
+- **Driver**: Reza 2026-05-21 — *"I can still see the toggle between chat and form and also switch to chat option which are both redundant now — remove those."* The unified in-wizard companion (Track G.1) replaced the standalone chat path; keeping it was a §12.1/§12.3 violation (two onboarding implementations).
+
+### Changes Made
+
+**Deleted (24 files):**
+- `components/onboarding/wizard-chat/` — the entire chat UI + the 8 per-topic script state-machines (`householdScript`, `propertiesScript`, `debtsScript`, `accountsScript`, `investmentsScript`, `superScript`, `assetsScript`, `incomeExpensesScript`), `ConversationalSetup`, `ChatThread`, `ChatComposer`, `AgentMessage`, `UserMessage`, `TopicRecapCard`, `draftHydration`, `PresenceOrb`, the `design/` tokens.
+- `components/onboarding/ConversationalModeToggle.tsx`, `components/onboarding/OnboardingModeSelector.tsx`.
+- `lib/featureFlags/conversationalOnboardingGate.ts`, `lib/featureFlags/ConversationalOnboardingGateContext.tsx`.
+- `app/api/feature-flags/conversational-onboarding/route.ts`.
+
+**Edited:**
+- `app/onboarding/page.tsx` — rewritten: no mode-selector, no `?mode=` handling, no flag check, no `Suspense`/`useSearchParams`. Always renders `<WizardContainer mode="page" />`.
+- `app/onboarding/layout.tsx` — removed the `ConversationalOnboardingGateProvider` wrapper (kept `BasiqGateProvider`).
+- `app/api/admin/feature-flags/[key]/route.ts` — removed the `CONVERSATIONAL_ONBOARDING` import block + the cache-invalidation `if` branch.
+- `prisma/seed-feature-flags.ts` — removed the `CONVERSATIONAL_ONBOARDING` flag entry (only `BASIQ_INTEGRATION` remains). Any existing DB flag row is harmless + inert.
+- `lib/ai/onboarding-agent/tools/extractWizardStepDelta.ts` — header comment updated (the chat client it referenced is gone).
+
+**Kept dormant (per Track G §4 — re-used by G.4):** the extraction gateway (`lib/ai/onboarding-agent/gateway.ts`), the delta schemas, the extract tools, and `app/api/onboarding/chat/extract/route.ts`. These are intentionally retained, not dead code — G.4's "describe it in your own words" accelerator re-uses them.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean (after a clean `.next` rebuild — stale generated route types)
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Notes
+
+`/onboarding` is now always the form wizard with its companion — no chat, no mode choice. No schema migration: the `CONVERSATIONAL_ONBOARDING` `GlobalFeatureFlag` row (if present in a DB) is simply never read again.
