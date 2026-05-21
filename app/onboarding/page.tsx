@@ -30,7 +30,7 @@ import type { WizardData } from '@/components/onboarding';
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { user, token, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const {
     state: onboardingState,
     saveDraft,
@@ -77,51 +77,23 @@ export default function OnboardingPage() {
   const handleComplete = useCallback(
     async (wizardData: WizardData) => {
       try {
-        const response = await fetch('/api/onboarding/bulk-create', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(wizardData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Failed to save wizard data:', errorData);
-          // The server returns `{ error, details? }`. For 4xx
-          // user-recoverable errors (validation) `error` is the
-          // human-readable message and `details` is omitted. For
-          // 5xx the route puts the generic "Failed to save…" in
-          // `error` and the actual message in `details`. Without
-          // surfacing `details`, the user only ever sees the
-          // generic fallback in the wizard footer banner.
-          const baseMessage =
-            typeof errorData.error === 'string'
-              ? errorData.error
-              : 'Failed to save data';
-          const details =
-            typeof errorData.details === 'string' ? errorData.details : null;
-          throw new Error(
-            details && details !== baseMessage
-              ? `${baseMessage}: ${details}`
-              : baseMessage
-          );
-        }
-
-        // Track G.3b: the complete route is the end-of-wizard finaliser —
-        // pass the wizard data so it can do the cross-domain wiring.
+        // Track G.3c: `bulk-create` is retired. Every domain has already
+        // written itself to the real tables via its step's commit
+        // (Track F + G.3a). `completeOnboarding` calls the `/api/
+        // onboarding/complete` finaliser — the sole end-of-wizard write:
+        // it marks completion + does the cross-domain wiring (G.3b). It
+        // throws on failure; the wizard footer surfaces the message.
         await completeOnboarding(wizardData);
         await clearDraft();
 
-        // Full reload so dashboard refetches all client-side data
+        // Full reload so dashboard refetches all client-side data.
         window.location.href = '/dashboard';
       } catch (e) {
         console.error('Could not complete wizard:', e);
         throw e;
       }
     },
-    [token, completeOnboarding, clearDraft]
+    [completeOnboarding, clearDraft]
   );
 
   const handleClose = useCallback(() => {

@@ -218,40 +218,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleWizardComplete = useCallback(async (wizardData: WizardData) => {
     try {
-      // Save all wizard data to the database via bulk-create API.
-      // bulk-create itself clears UserPreference.onboardingDraft on success
-      // (see PR 1 / PR 2 changelog), so the resume banner disappears and
-      // the welcome modal will never re-fire (onboardingCompleted = true).
-      const response = await fetch('/api/onboarding/bulk-create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(wizardData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to save wizard data:', errorData);
-        throw new Error(errorData.error || 'Failed to save data');
-      }
-
-      // Mark onboarding as complete + clear local draft fallback.
-      await completeOnboarding();
+      // Track G.3c: `bulk-create` is retired. Every domain wrote itself
+      // to the real tables via its step's commit (Track F + G.3a);
+      // `completeOnboarding` calls the `/api/onboarding/complete`
+      // finaliser — marks completion + the cross-domain wiring (G.3b).
+      // `clearDraft` wipes `UserPreference.onboardingDraft`.
+      await completeOnboarding(wizardData);
       await clearDraft();
       setShowWizard(false);
 
       // Full page reload to ensure client components refetch data
-      // router.refresh() only invalidates server component cache,
-      // but dashboard uses client-side useEffect to fetch data
+      // (router.refresh() only invalidates the server-component cache).
       window.location.reload();
     } catch (e) {
       console.error('Could not complete wizard:', e);
-      // Still close the wizard but show an error state could be added here
+      // Still close the wizard — onboarding completion is best-effort here.
       setShowWizard(false);
     }
-  }, [clearDraft, completeOnboarding, token]);
+  }, [clearDraft, completeOnboarding]);
 
   // Phase 12 PR 2: Wizard autosave callback. Invoked by WizardContainer
   // after the debounce fires. Persists the in-progress draft + current

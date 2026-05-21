@@ -50,6 +50,8 @@ interface FinaliseInvestment {
 }
 interface FinaliseBody {
   profileType?: unknown;
+  country?: unknown;
+  taxYear?: unknown;
   accounts?: unknown;
   debts?: unknown;
   income?: unknown;
@@ -90,10 +92,28 @@ export const POST = withPermission('settings.write', async (request, auth) => {
         onboardingProfileType: profileType,
       },
     });
+    // `country` / `taxYear` / `hasSeenGuidedTour` were written by
+    // `bulk-create` §8 (retired in G.3c) — relocate them here. Country /
+    // tax year are only written when supplied (a body-less re-entry call
+    // must not null an existing value).
+    const country =
+      typeof body.country === 'string' && body.country ? body.country : null;
+    const taxYear =
+      typeof body.taxYear === 'string' && body.taxYear ? body.taxYear : null;
     await prisma.userPreference.upsert({
       where: { userId },
-      create: { userId, dismissedWelcomeModal: true },
-      update: { dismissedWelcomeModal: true },
+      create: {
+        userId,
+        dismissedWelcomeModal: true,
+        hasSeenGuidedTour: true,
+        ...(country ? { country } : {}),
+        ...(taxYear ? { taxYear } : {}),
+      },
+      update: {
+        dismissedWelcomeModal: true,
+        ...(country ? { country } : {}),
+        ...(taxYear ? { taxYear } : {}),
+      },
     });
 
     // --- Best-effort cross-domain wiring (Track G.3b) ------------------
