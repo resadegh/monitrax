@@ -1,6 +1,6 @@
 # Phase 12 Track G — Unified Conversational Onboarding
 
-> **Status:** 🟡 IN PROGRESS — G.0 ✅ (#845, +hotfix #846) · G.1a ✅ (#847/#848/#849) · G.2 ✅ (chat retired, #850) · G.1b ✅ (companion on all 9 steps, #851) · estimate-service cleanup ✅ (#852) · G.3 spec ✅ (#853) · **G.3a ✅ (Entities domain migrated — the last domain) 2026-05-21**. **G.3b 🟢 next** — relocate the `bulk-create` stragglers. G.3c, G.4, G.5 queued.
+> **Status:** 🟡 IN PROGRESS — G.0 ✅ · G.1a ✅ · G.2 ✅ · G.1b ✅ · estimate-service cleanup ✅ · G.3 spec ✅ · G.3a ✅ (#854) · **G.3b ✅ (the 4 `bulk-create` stragglers relocated to the `complete` finaliser) 2026-05-21**. **G.3c 🟢 next** — delete `bulk-create` + drop the draft blob (schema migration). G.4, G.5 queued.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"having these two separated is not the best idea … the AI chat is clunky, doesn't get the questions, and it just breaks. And the form is very dry, old-school. Combine these two together."* Scope sharpened 2026-05-21 — see §3.
 > **Supersedes:** Track F's queued **F.10** (conversational enrichment) — see §7. **Re-sequences** F.9 — see §6.
@@ -136,9 +136,9 @@ Replicate the Track F `*Sync.ts` pattern (`superSync.ts` is the closest template
 
 G.3a deliverables: `lib/onboarding/entitiesSync.ts` (read/diff/sync + mappers) · entity POST-route field plumbing · `EntitiesStep.tsx` migrated (reads on open, registers a `StepCommitFn`) · `WizardContainer` passes `registerStepCommit` · `bulk-create` §41b → no-op · `tests/onboarding/entitiesSync.test.ts` (idempotency + parent-link cases). **No schema migration** — the entity routes already audit via generic `logCRUD(entityType:'LegalEntity')` (F.4 precedent).
 
-### 10.3 G.3b — relocate the stragglers
+### 10.3 G.3b — relocate the stragglers — ✅ DONE 2026-05-21
 
-Move items 2–5 of §10.1 off `bulk-create`: the completion write into a dedicated complete-onboarding call (the `useOnboardingState().completeOnboarding()` path); the CAR→asset link into `debtsSync`/`assetsSync`; the BASIQ/IMPORT offset link into `accountsSync`; INVESTMENT-type income into `investmentsSync` or `incomeExpensesSync`.
+All four of items 2–5 of §10.1 were relocated into **`/api/onboarding/complete`** — the end-of-wizard finaliser. (Implementation note: the original spec suggested scattering the 3 links into the per-domain `*Sync` layers, but each link is inherently *cross-domain* — it needs data from two domains at once, which no single step has — so the `complete` route, which runs last with everything persisted, is the correct single home.) The `complete` route now: (1) writes onboarding completion incl. `onboardingProfileType`; (2) wires the BASIQ/IMPORT offset→loan link; (3) wires the CAR→vehicle-asset link; (4) creates INVESTMENT-type income. `completeOnboarding(wizardData)` passes the data; `bulk-create` §1/§3/§5a/§6 are now no-ops. The completion write is the critical path; the cross-domain wiring is **best-effort** (a cosmetic link failure must never block a user from finishing onboarding — strictly safer than `bulk-create`'s old all-or-nothing transaction).
 
 ### 10.4 G.3c — retire `bulk-create` + drop the draft blob
 

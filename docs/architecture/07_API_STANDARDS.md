@@ -777,6 +777,19 @@ Applied in **F.8** (2026-05-20) for the income / expenses domain:
    the sync — it reads only the raw budget `amount` (budget-vs-actuals
    invariant; see `PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4 / §6.8).
 
+Applied in **Track G G.3b** (2026-05-21) — the end-of-wizard finaliser:
+
+0. **`/api/onboarding/complete` is now the finaliser.** It accepts an
+   optional wizard-data body and, after marking onboarding complete
+   (`onboardingCompleted` / `onboardingCompletedAt` / `onboardingStep` /
+   `onboardingProfileType`), performs the cross-domain wiring relocated
+   from `bulk-create` — BASIQ/IMPORT offset→loan link, CAR-loan→vehicle-
+   asset link, INVESTMENT-type income. The completion write is the
+   critical path; the cross-domain wiring is **best-effort** (logged +
+   swallowed on failure — must never block a user from finishing
+   onboarding). `bulk-create` §1/§3/§5a/§6 are now no-ops; G.3c deletes
+   the route.
+
 Applied in **Track G G.3a** (2026-05-21) for the legal-entities domain:
 
 10. **`/api/entities` POST — reform-field plumbing.** `POST /api/entities`
