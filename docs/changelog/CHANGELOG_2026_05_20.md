@@ -859,3 +859,39 @@ The 4 things `bulk-create` still did after G.3a were relocated into **`/api/onbo
 ### Remaining for G.3
 
 - **G.3c** — delete `/api/onboarding/bulk-create` (now a near-total no-op — only §8's draft-blob wipe + `country`/`taxYear` prefs remain), remove the `page.tsx` bulk-create call, drop the entity data from `UserPreference.onboardingDraft` (Prisma schema migration, §12.12). After G.3c, Track G is structurally complete.
+
+---
+
+## Session: Phase 12 Track G — G.3c (retire `bulk-create`) — Track G structurally complete
+
+Branch: `claude/track-g3c-retire-bulkcreate-NL4XV`
+
+### Scope
+
+- **Type:** Refactor — delete the legacy `bulk-create` route. The final structural piece of Track G.
+- **Driver:** Reza 2026-05-21 — *"Continue"*.
+
+### What was done
+
+- **Deleted `app/api/onboarding/bulk-create/route.ts`.** After G.3a (§41b no-op) + G.3b (§1/§3/§5a/§6 no-ops) it did nothing but §8's `UserPreference` writes.
+- **`app/onboarding/page.tsx`** `handleComplete` — removed the `bulk-create` POST + its error handling; it now calls only `completeOnboarding(wizardData)` + `clearDraft()`. Dropped the now-unused `token` from `useAuth()`.
+- **`components/DashboardLayout.tsx`** `handleWizardComplete` — same: the dashboard-modal wizard path now calls `completeOnboarding(wizardData)` + `clearDraft()`.
+- **`app/api/onboarding/complete/route.ts`** — absorbed §8's residual `UserPreference` writes: `country` / `taxYear` (only when supplied — a body-less re-entry call must not null an existing value) + `hasSeenGuidedTour: true` (create branch).
+
+### No schema migration — and why
+
+The spec (Track G doc §10.4) anticipated dropping the `UserPreference.onboardingDraft` column. On inspection that column is **still load-bearing**: `saveDraft` autosaves to it, `hydratedDraft` seeds the wizard from it on resume, and the resume banner reads it. Dropping it would break resume. After Track F/G the draft's *entity arrays* are redundant (every step reads its real table on open), so a future optional optimization can slim what `saveDraft` persists — but that is a `saveDraft` code change, not a column drop, and is deliberately out of G.3c scope. **G.3c therefore ships no schema migration.**
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean (after a clean `.next` rebuild)
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Track G — structurally complete
+
+`bulk-create` and the standalone chat are both gone. Onboarding is one unified, companion-guided wizard; all 9 domains write straight to their real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser. Optional remaining work: **G.4** (the "describe it in your own words" accelerator) and **G.5** (document upload mid-onboarding).
+
+### Note — stale comments
+
+~10 Track F `*Sync.ts` + step files still carry comments referencing "`bulk-create`" (e.g. "by the time bulk-create runs…"). They are now historical/stale but harmless; a comment-only cleanup sweep was left out of this PR to keep the diff focused.

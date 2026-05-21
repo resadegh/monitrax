@@ -1,6 +1,6 @@
 # Phase 12 Track G — Unified Conversational Onboarding
 
-> **Status:** 🟡 IN PROGRESS — G.0 ✅ · G.1a ✅ · G.2 ✅ · G.1b ✅ · estimate-service cleanup ✅ · G.3 spec ✅ · G.3a ✅ (#854) · **G.3b ✅ (the 4 `bulk-create` stragglers relocated to the `complete` finaliser) 2026-05-21**. **G.3c 🟢 next** — delete `bulk-create` + drop the draft blob (schema migration). G.4, G.5 queued.
+> **Status:** ✅ **STRUCTURALLY COMPLETE 2026-05-21** — G.0 · G.1a · G.1b · G.2 · estimate-service cleanup · G.3a · G.3b · **G.3c ✅ (`bulk-create` deleted)**. Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser. **G.4** (the optional accelerator) and **G.5** (document upload) remain as optional enhancements.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"having these two separated is not the best idea … the AI chat is clunky, doesn't get the questions, and it just breaks. And the form is very dry, old-school. Combine these two together."* Scope sharpened 2026-05-21 — see §3.
 > **Supersedes:** Track F's queued **F.10** (conversational enrichment) — see §7. **Re-sequences** F.9 — see §6.
@@ -140,9 +140,13 @@ G.3a deliverables: `lib/onboarding/entitiesSync.ts` (read/diff/sync + mappers) �
 
 All four of items 2–5 of §10.1 were relocated into **`/api/onboarding/complete`** — the end-of-wizard finaliser. (Implementation note: the original spec suggested scattering the 3 links into the per-domain `*Sync` layers, but each link is inherently *cross-domain* — it needs data from two domains at once, which no single step has — so the `complete` route, which runs last with everything persisted, is the correct single home.) The `complete` route now: (1) writes onboarding completion incl. `onboardingProfileType`; (2) wires the BASIQ/IMPORT offset→loan link; (3) wires the CAR→vehicle-asset link; (4) creates INVESTMENT-type income. `completeOnboarding(wizardData)` passes the data; `bulk-create` §1/§3/§5a/§6 are now no-ops. The completion write is the critical path; the cross-domain wiring is **best-effort** (a cosmetic link failure must never block a user from finishing onboarding — strictly safer than `bulk-create`'s old all-or-nothing transaction).
 
-### 10.4 G.3c — retire `bulk-create` + drop the draft blob
+### 10.4 G.3c — retire `bulk-create` — ✅ DONE 2026-05-21
 
-Delete `/api/onboarding/bulk-create`; rewire `app/onboarding/page.tsx` `handleComplete` to the relocated completion call; drop entity data from `UserPreference.onboardingDraft` — a **Prisma schema migration** (§12.12). Touches the completion flow — verify a full wizard run end-to-end before merge.
+`/api/onboarding/bulk-create` is **deleted**. Its two callers — `app/onboarding/page.tsx` `handleComplete` and `components/DashboardLayout.tsx` `handleWizardComplete` — now call only `completeOnboarding(wizardData)` (→ the `/api/onboarding/complete` finaliser) + `clearDraft()`. `bulk-create` §8's `country` / `taxYear` / `hasSeenGuidedTour` writes were relocated into the `complete` route's `UserPreference` upsert.
+
+**No schema migration.** The spec anticipated dropping the `UserPreference.onboardingDraft` column, but on inspection that column is **still load-bearing** — `saveDraft` autosaves to it, `hydratedDraft` seeds the wizard from it on resume, and the resume banner reads it. After Track F/G the draft's *entity arrays* are redundant (every step reads its real table on open), so a future optional optimization can make `saveDraft` persist only the welcome-step fields + step pointer — but that is a `saveDraft` code change, not a column drop, and is **deliberately out of G.3c scope** (the column stays).
+
+Track G is structurally complete: `bulk-create` and the chat are gone; the wizard + companion + the `complete` finaliser are the whole onboarding surface.
 
 ---
 

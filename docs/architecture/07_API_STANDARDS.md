@@ -777,6 +777,18 @@ Applied in **F.8** (2026-05-20) for the income / expenses domain:
    the sync — it reads only the raw budget `amount` (budget-vs-actuals
    invariant; see `PHASE_12_ONBOARDING_TWO_WAY_SYNC.md` §6.4 / §6.8).
 
+Applied in **Track G G.3c** (2026-05-21) — `bulk-create` retired:
+
+00. **`/api/onboarding/bulk-create` is DELETED.** After Track F + G.3a +
+    G.3b every domain writes itself to its real tables via its step's
+    commit, and the cross-domain wiring moved to `/api/onboarding/
+    complete`. The route's callers (`app/onboarding/page.tsx`,
+    `components/DashboardLayout.tsx`) now call only `completeOnboarding`.
+    The onboarding wizard write surface is now: the per-domain entity
+    routes (per-step) + `/api/onboarding/complete` (the finaliser). No
+    schema change — `UserPreference.onboardingDraft` stays (still used
+    for autosave + resume).
+
 Applied in **Track G G.3b** (2026-05-21) — the end-of-wizard finaliser:
 
 0. **`/api/onboarding/complete` is now the finaliser.** It accepts an
