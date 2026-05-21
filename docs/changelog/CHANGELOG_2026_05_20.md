@@ -962,3 +962,33 @@ APPEND-only like G.4 — the accelerator never replaces or deletes, so a poor ex
 ### Track G — COMPLETE
 
 With G.5 shipped, **all of Track G (G.0–G.5) is delivered.** Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser; and both optional accelerators — describe-it (G.4) and document-upload (G.5) — ship on top of a stable form.
+
+---
+
+## Session: Phase 12 Track G — companion-guidance beat (fix premature "nicely done" + add the checklist beat)
+
+Branch: `claude/companion-guidance-beat-NL4XV`
+
+### Scope
+
+- **Type:** Fix + Enhancement — the onboarding companion.
+- **Driver:** Reza 2026-05-21, testing the live wizard — *"I moved to entity and didn't type anything but the ai guide is saying to click on continue. The guide should direct user to fill the sections of each page, and ask additional questions to make sure user remembers to add every detail on each section."*
+
+### Root cause
+
+The companion's phase machine gated progression on `hasEntries` — *"does the step have any data?"*. The Entities step always arrives with one **auto-created `PERSONAL_NAME` entity** (the smart default / Phase 41a backfill), so `hasEntries` was true on landing. The companion ran invitation → reaction → bridge within ~10s and showed *"Nicely done. Hit Continue when you're ready"* — congratulating the user for data they never entered. `hasEntries` cannot tell a user's input apart from a system-created default or a resumed step.
+
+### What was done — `components/onboarding/wizard/CompanionPanel.tsx` (one file)
+
+1. **Genuine-progress gating.** The panel now captures the step's counts `signature` at mount (`initialSignatureRef`). `hasUserProgress` is true only once the user changes the counts *while on this step*. The Reaction (LLM fetch) and Bridge now fire on `hasUserProgress`, not `hasEntries` — so an auto-created default, or a resumed/already-filled step, never triggers a false celebration. (The "you" summary chip still mirrors raw form state — it is a factual mirror, not a congratulation.)
+2. **New `checklist` beat.** The phase machine is now `greeting → invitation → checklist → reaction → bridge`. Each step has a two-beat lead-in: **invitation** (warm orientation — what this step is, why it matters) → **checklist** (a directive completeness prompt — what to add, and the things people forget). The checklist is the **resting state**: it does not auto-advance — the companion stays there *directing* the user until they genuinely engage. For optional steps the checklist line also carries the permission to move on (e.g. Entities: *"…if it is all in your personal name, that is the most common setup — just continue."*).
+3. Per-step `invitation` rewritten to pure orientation; new per-step `checklist` copy added for all 9 companion steps — warm, AU-context, normalising, behaviourally framed.
+
+No server change (the LLM reaction route/gateway are unchanged — they simply fire less often, only on genuine progress). No schema change.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+- [x] `npm run lint` — ✓ no new errors/warnings

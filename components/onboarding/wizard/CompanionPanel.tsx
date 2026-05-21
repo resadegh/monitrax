@@ -1,19 +1,34 @@
 'use client';
 
 /**
- * CompanionPanel — Phase 12 Track G (G.1b — companion on all steps)
+ * CompanionPanel — Phase 12 Track G (G.1b + companion-guidance beat)
  *
  * The onboarding companion hosts each wizard step as one beat of a guided
  * conversation — a paced, one-line-at-a-time exchange:
  *
  *   - ONE companion line at a time, typed out, swapped in place as the
- *     beat advances: (greeting →) invitation → reaction → bridge.
+ *     beat advances: (greeting →) invitation → checklist → reaction →
+ *     bridge.
  *   - ONE compact "you" line — a deterministic summary of what the user
  *     has entered on this step.
  *
+ * The beat is two-phase before the user acts: an **invitation** (warm
+ * orientation — what this step is, why it matters) then a **checklist**
+ * (a directive completeness prompt — what to add, and the things people
+ * forget). The checklist is the resting state — the companion stays
+ * there *directing* the user until they genuinely engage. Only real
+ * progress made on this visit advances the beat to reaction → bridge.
+ *
+ * Genuine-progress gating: the panel captures the step's counts
+ * signature at mount. A pre-existing row (an auto-created default
+ * entity, a resumed step) is NOT progress — so the companion never
+ * congratulates the user for data they did not enter. `hasUserProgress`
+ * is true only once the user changes the counts while on this step.
+ *
  * G.1b generalises the G.1a household-only panel to all 9 entity-
- * collection steps via `STEP_CONFIG` (per-step invitation + snapshot +
- * you-summary). The greeting shows only on the first step (household).
+ * collection steps via `STEP_CONFIG` (per-step invitation + checklist +
+ * snapshot + you-summary). The greeting shows only on the first step
+ * (household).
  *
  * Visual: an Apple-Intelligence-style accent glow halo + a larger
  * companion line typed out with a blinking caret.
@@ -35,7 +50,7 @@ import { useAuth } from '@/lib/context/AuthContext';
 import { WizardData, WizardStepId } from './types';
 import '@/styles/wizard-animations.css';
 
-type Phase = 'greeting' | 'invitation' | 'reaction' | 'bridge';
+type Phase = 'greeting' | 'invitation' | 'checklist' | 'reaction' | 'bridge';
 
 // The greeting — shown once, on the first companion step (household).
 const GREETING =
@@ -43,14 +58,22 @@ const GREETING =
 
 // Pacing (generous enough to cover type-out + a read pause).
 const GREETING_MS = 4200;
+const INVITATION_HOLD_MS = 5000;
 const REFLECTION_DEBOUNCE_MS = 2000;
 const REACTION_HOLD_MS = 6000;
 const FALLBACK_TO_BRIDGE_MS = 10000;
 const TYPE_SPEED_MS = 22;
 
 interface StepConfig {
-  /** The scripted invitation — warm, instant, invites the form action. */
+  /** The scripted invitation — warm orientation: what this step is. */
   invitation: string;
+  /**
+   * The scripted checklist — a directive completeness prompt. This is
+   * the companion's resting line: it stays here, telling the user what
+   * to add (and the things people forget), until they genuinely act.
+   * For optional steps it also carries the permission to move on.
+   */
+  checklist: string;
   /** Counts/flags for the LLM reaction. Numbers only — never PII. */
   snapshot: (d: WizardData) => Record<string, number>;
   /** The compact "you" line — plain words for what the user entered. */
@@ -67,7 +90,9 @@ function plural(n: number, one: string, many: string): string {
 const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
   household: {
     invitation:
-      'First up: who shares your home? Add everyone — and any pets — below.',
+      'First up — your household. This is everyone your money looks after.',
+    checklist:
+      'Add each person who lives with you — partner, children, anyone else — then any pets and cars. The fuller the picture, the better I can shape your budget.',
     snapshot: (d) => {
       const childCount = d.householdMembers.filter(
         (m) => m.relationship === 'CHILD',
@@ -98,13 +123,17 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
   },
   entities: {
     invitation:
-      'Do you hold any wealth through a trust, SMSF or company? Add them here — or skip if it is all in your personal name.',
+      'Next — how your wealth is held. Many Australians hold assets in more than one place.',
+    checklist:
+      'Hold anything through a family trust, SMSF, company or partnership? Add each one above. If it is all in your personal name, that is the most common setup — just continue.',
     snapshot: (d) => ({ structureCount: d.entities.length }),
     youSummary: (d) => plural(d.entities.length, 'structure', 'structures'),
   },
   properties: {
     invitation:
-      'Now the bricks and mortar — tell me about any property you own. Add each one below, with its loan if it has one.',
+      'Now the bricks and mortar — let us map any property in your world.',
+    checklist:
+      'Add every property — the home you live in and any you rent out. Include the loan against each one, and the weekly rent if it is an investment.',
     snapshot: (d) => ({
       propertyCount: d.properties.length,
       withMortgageCount: d.properties.filter((p) => p.hasLoan).length,
@@ -115,14 +144,17 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
     youSummary: (d) => plural(d.properties.length, 'property', 'properties'),
   },
   debts: {
-    invitation:
-      'Let us map any other debts — car, personal or business loans, or HECS/HELP. Add each one below.',
+    invitation: 'Let us look at what you owe — beyond any home loan.',
+    checklist:
+      'Add the debts that are easy to forget — a car loan, HECS or HELP, a personal loan, anything on a payment plan. Each one shapes your real cashflow.',
     snapshot: (d) => ({ debtCount: d.debts.length }),
     youSummary: (d) => plural(d.debts.length, 'debt', 'debts'),
   },
   accounts: {
     invitation:
-      'Where does your money live day to day? Add your bank and savings accounts below.',
+      'Where does your money live day to day? Let us add your accounts.',
+    checklist:
+      'Add your everyday account and any savings. Have an offset account? Add it too — it is quietly cutting your loan interest.',
     snapshot: (d) => ({
       accountCount: d.accounts.length,
       offsetCount: d.accounts.filter((a) => !!a.linkedLoanId).length,
@@ -130,8 +162,9 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
     youSummary: (d) => plural(d.accounts.length, 'account', 'accounts'),
   },
   investments: {
-    invitation:
-      'Time for the growth side — add any share, ETF or managed-fund accounts you hold.',
+    invitation: 'Onto the growth side — the money already working for you.',
+    checklist:
+      'Add any shares, ETFs or managed funds — even a small parcel counts. You can list the individual holdings too if you have them handy.',
     snapshot: (d) => ({
       accountCount: d.investments.length,
       holdingCount: d.investments.reduce(
@@ -144,20 +177,24 @@ const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
   },
   super: {
     invitation:
-      'Your super is a big part of the picture — add your super fund (or funds) below.',
+      "Super is often a person's second-largest asset. Let us capture yours.",
+    checklist:
+      'Add every super fund you hold — many people carry two or three from past jobs. Tracking down lost super counts too.',
     snapshot: (d) => ({ superAccountCount: d.superAccounts.length }),
     youSummary: (d) =>
       plural(d.superAccounts.length, 'super account', 'super accounts'),
   },
   assets: {
-    invitation:
-      'Anything else of value? Add personal assets like vehicles, valuables or collectibles.',
+    invitation: 'Anything else of real value? Let us round out the picture.',
+    checklist:
+      'Add the things worth a meaningful amount — a car, jewellery, tools, collectibles. These complete your true net worth.',
     snapshot: (d) => ({ assetCount: d.assets.length }),
     youSummary: (d) => plural(d.assets.length, 'asset', 'assets'),
   },
   'income-expenses': {
-    invitation:
-      'Last one — let us set your starting budget. Add your income and your regular spending below.',
+    invitation: 'Last step — your cashflow. What comes in, and what goes out.',
+    checklist:
+      'Add every income source — salary, side income, government payments — then your regular bills and spending. The closer to reality, the more useful your budget.',
     snapshot: (d) => ({
       incomeCount: d.income.length,
       expenseCount: d.expenses.length,
@@ -244,6 +281,14 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
   const hasEntries = Object.values(snapshot).some((v) => v > 0);
   const youSummary = config ? config.youSummary(data) : '';
 
+  // Genuine-progress gate. The signature captured at mount is the
+  // baseline — any data already present then (an auto-created default
+  // entity, a resumed step) is NOT the user's doing. `hasUserProgress`
+  // turns true only once the user changes the counts while on this
+  // step, so the companion never congratulates them for nothing.
+  const initialSignatureRef = useRef(signature);
+  const hasUserProgress = signature !== initialSignatureRef.current;
+
   // Phase always starts fresh on mount — the caller keys this component
   // by step id, so each step replays its own beat in order.
   const [phase, setPhase] = useState<Phase>(
@@ -260,11 +305,23 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  // B — once past the greeting and the user has entered something, fetch
-  // the reaction. On success, swap to the reaction line.
+  // A.2 — the invitation holds, then hands to the checklist (the
+  // directive resting line). The checklist does NOT auto-advance — the
+  // companion stays there guiding until the user genuinely engages.
   useEffect(() => {
-    if (phase !== 'invitation' && phase !== 'bridge') return;
-    if (!hasEntries || !token) return;
+    if (phase !== 'invitation') return;
+    const t = window.setTimeout(() => {
+      setPhase((p) => (p === 'invitation' ? 'checklist' : p));
+    }, INVITATION_HOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [phase]);
+
+  // B — once the user has made REAL progress on this step (not a
+  // pre-existing default), fetch the reaction. On success, swap to the
+  // reaction line.
+  useEffect(() => {
+    if (phase === 'greeting' || phase === 'reaction') return;
+    if (!hasUserProgress || !token) return;
     if (signature === lastReflectedSigRef.current) return;
 
     let cancelled = false;
@@ -305,7 +362,7 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [phase, hasEntries, token, signature, snapshot, step]);
+  }, [phase, hasUserProgress, token, signature, snapshot, step]);
 
   // C — the reaction holds, then hands to the bridge.
   useEffect(() => {
@@ -314,15 +371,20 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
     return () => window.clearTimeout(t);
   }, [phase]);
 
-  // D — fallback: if the user has data but the reaction never arrived
-  // (LLM unavailable), advance to the bridge so the beat still completes.
+  // D — fallback: if the user has made real progress but the reaction
+  // never arrived (LLM unavailable), advance to the bridge so the beat
+  // still completes. Without progress the companion stays on the
+  // checklist — it never bridges off data the user did not enter.
   useEffect(() => {
-    if (phase !== 'invitation' || !hasEntries) return;
+    if (!hasUserProgress) return;
+    if (phase !== 'invitation' && phase !== 'checklist') return;
     const t = window.setTimeout(() => {
-      setPhase((p) => (p === 'invitation' ? 'bridge' : p));
+      setPhase((p) =>
+        p === 'invitation' || p === 'checklist' ? 'bridge' : p,
+      );
     }, FALLBACK_TO_BRIDGE_MS);
     return () => window.clearTimeout(t);
-  }, [phase, hasEntries]);
+  }, [phase, hasUserProgress]);
 
   // Steps without a config (welcome / review) render nothing.
   if (!config) return null;
@@ -337,9 +399,11 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
       ? GREETING
       : phase === 'invitation'
         ? config.invitation
-        : phase === 'reaction'
-          ? (reflection ?? config.invitation)
-          : bridge;
+        : phase === 'checklist'
+          ? config.checklist
+          : phase === 'reaction'
+            ? (reflection ?? config.checklist)
+            : bridge;
 
   const { shown, done } = useTypewriter(aiText);
   const showYouLine = phase !== 'greeting' && hasEntries && youSummary.length > 0;

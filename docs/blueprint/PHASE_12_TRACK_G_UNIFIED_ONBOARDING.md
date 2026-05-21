@@ -44,13 +44,16 @@ A dry form loses users at the highest-friction moment of the product (onboarding
 
 ## 5. The guided-conversation model — the companion as host
 
-Onboarding is reframed from "a 12-step form with a helper" into **a guided conversation the companion hosts**. Same 12 steps, same reliable forms underneath — but the experience becomes one continuous, narrated journey. Each step is one *beat* in that conversation, and every beat has three companion moves:
+Onboarding is reframed from "a 12-step form with a helper" into **a guided conversation the companion hosts**. Same 12 steps, same reliable forms underneath — but the experience becomes one continuous, narrated journey. Each step is one *beat* in that conversation, and every beat has four companion moves:
 
 | Move | What | How it's produced |
 |---|---|---|
-| **Invitation** | The companion opens the step with a warm, human invitation to act — *"Let's start with the people who share your home — add everyone below."* Not a form header. | **Scripted** per step. Instant, never fails. |
-| **Reaction** | Once the user has entered something, the companion reads it and responds with something true and warm — *"A family of four, two of you earning — a solid base."* | **LLM** (`generateCompanionReflection`, Haiku). Reads a counts-only snapshot. |
-| **Bridge** | The companion acknowledges the step is done and hands off to the next — *"That's your household mapped. Next, let's look at where your money lives."* This connective tissue is what turns 12 forms into one conversation. | **Scripted**; names the next step. |
+| **Invitation** | The companion opens the step with a warm orientation — *what this step is, why it matters*. *"First up — your household. This is everyone your money looks after."* Not a form header. | **Scripted** per step. Instant, never fails. |
+| **Checklist** | The companion's directive resting line — *what to add, and the things people forget*. *"Add each person who lives with you — partner, children, anyone else — then any pets and cars."* The companion **stays here, guiding**, until the user genuinely engages; for optional steps it also carries the permission to move on. | **Scripted** per step. Instant, never fails. |
+| **Reaction** | Once the user has made **genuine progress on this visit**, the companion reads it and responds with something true and warm — *"A family of four, two of you earning — a solid base."* | **LLM** (`generateCompanionReflection`, Haiku). Reads a counts-only snapshot. |
+| **Bridge** | The companion acknowledges the step is done and hands off to the next — *"Nicely done. Hit Continue when you're ready — Properties is next."* This connective tissue is what turns 12 forms into one conversation. | **Scripted**; names the next step. |
+
+**Genuine-progress gating (companion-guidance beat, 2026-05-21).** The Reaction + Bridge only fire on progress the user makes *on this visit*. The panel captures the step's counts signature at mount; a pre-existing row (an auto-created default entity, a resumed step) is **not** progress. This fixes a trust-eroding bug — on the Entities step, which always arrives with one auto-created `PERSONAL_NAME` entity, the companion used to fast-forward to *"Nicely done, hit Continue"* within ~10s of landing, congratulating the user for data they never entered. With the gate, the companion rests on the **Checklist** line — directing — until the user genuinely acts.
 
 Two further moves make it feel alive across the whole journey (G.1b):
 
@@ -59,7 +62,7 @@ Two further moves make it feel alive across the whole journey (G.1b):
 
 ### Presentation — paced, one line at a time
 
-The companion shows **one line at a time**, not a stacked chat thread (Reza, 2026-05-21 — *"rather than a text message feel"*): a single **companion line** that swaps *in place* as the beat advances (greeting → invitation → reaction → bridge), plus a single compact **"you" line** summarising what the user has entered (e.g. *"2 adults · 3 pets · 3 cars"*). A phase machine drives the sequence and **always starts at the greeting on mount** — so a returning user with existing data sees the conversation *play out in order, paced*, never jump straight to the end. This keeps the panel short (critical on mobile) and makes it read as a live exchange, not a transcript. Each companion line is **one sentence** — the LLM reaction is capped at one short sentence server-side.
+The companion shows **one line at a time**, not a stacked chat thread (Reza, 2026-05-21 — *"rather than a text message feel"*): a single **companion line** that swaps *in place* as the beat advances (greeting → invitation → checklist → reaction → bridge), plus a single compact **"you" line** summarising what the user has entered (e.g. *"2 adults · 3 pets · 3 cars"*). A phase machine drives the sequence and **always starts at the greeting on mount** — so a returning user with existing data sees the conversation *play out in order, paced*, never jump straight to the end. The invitation auto-advances to the checklist after a read pause; the checklist is the **resting state** — it does not auto-advance, the companion stays there directing the user until they make genuine progress (then reaction → bridge). This keeps the panel short (critical on mobile) and makes it read as a live exchange, not a transcript. Each companion line is **one sentence** — the LLM reaction is capped at one short sentence server-side.
 
 **Visual treatment — accent, not a soft card (Reza, 2026-05-21).** The companion must read as *the* AI surface, not blend into the page. It carries an Apple-Intelligence-style accent **glow halo**, a crisp lifted card (indigo-tinted shadow + ring), and a larger companion line. Each line **types out** character-by-character with a blinking caret — the modern-AI "typing" feel. The reaction is preceded by a typing-dots indicator (think → speak). All motion honours `prefers-reduced-motion`.
 
