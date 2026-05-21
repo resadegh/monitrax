@@ -107,6 +107,43 @@ The **household step**, rebuilt in the guided-conversation style (§5) — for R
 - `styles/wizard-animations.css` — `companion-bubble-enter` (line swap) + `companion-typing-dot` (typing indicator); both respect `prefers-reduced-motion`.
 - Scope is the **household step only**; `AIHelper` stays on the other 11 steps until G.1b removes it.
 
+---
+
+## 10. G.3 — retiring `bulk-create` (implementation spec)
+
+> Researched 2026-05-21. `bulk-create` looked like a no-op after Track F, but reading it end-to-end (`app/api/onboarding/bulk-create/route.ts`) shows it still does **6 real things**. Retiring it is a 3-PR effort, not one. This section is the executable spec.
+
+### 10.1 What `bulk-create` still does (not a no-op)
+
+1. **Creates `LegalEntity` rows** from the Entities step — a two-pass write (lines ~366–425): pass 1 creates all entities, pass 2 wires `parentEntityId` (trust → trustee) from the wizard's `parentEntityTempId`.
+2. **Writes onboarding completion** — `User.onboardingCompleted` / `onboardingCompletedAt` / `onboardingProfileType` (§1, ~line 430).
+3. **INVESTMENT-type income** creation, linked to the first investment account (§6).
+4. The **CAR-loan → vehicle-asset** `linkedAssetId` link (§5a).
+5. The **BASIQ/IMPORT offset → loan** `offsetAccountId` link (§3).
+6. **`UserPreference` upsert** + wiping the `onboardingDraft` blob (§8).
+
+### 10.2 G.3a — migrate the Entities domain (the last domain migration)
+
+Replicate the Track F `*Sync.ts` pattern (`superSync.ts` is the closest template — a flat single table) **plus** two entity-specific wrinkles:
+
+- **Two-pass parent linking.** `LegalEntity.parentEntityId` is a self-referential FK (a trust's trustee company). `syncEntities()` must: (pass 1) POST every create **without** `parentEntityId`, building a `wizardId → realId` map; (pass 2) for every entity whose `parentEntityTempId` resolves, PUT `parentEntityId`. Mirror the proven `bulk-create` §41b algorithm. Re-entry idempotency: a dedicated parent-reconcile compares resolved-desired-parent vs the DB parent and writes nothing when equal.
+- **Encrypted-TFN read/write asymmetry.** GET `/api/entities` returns `hasTfn: boolean`, **never the TFN value** (CDR §13). So: `diffEntities()` compares `hasTfn`, not the value; the PUT payload **omits `tfn` when the wizard field is empty** (sending `undefined` leaves it untouched — never clobbers a stored TFN).
+- **Route gap to close.** `POST /api/entities` (`CreateEntityRequestBody`) does **not** accept `trustType` / `isForeignResident` — only the PUT does. `bulk-create` writes them directly via Prisma. G.3a must plumb both fields through the entity POST route + `createEntity()` service (the F.2-style "field plumbing" fix), or a trust created via the wizard step loses its `trustType`.
+
+G.3a deliverables: `lib/onboarding/entitiesSync.ts` (read/diff/sync + mappers) · entity POST-route field plumbing · `EntitiesStep.tsx` migrated (reads on open, registers a `StepCommitFn`) · `WizardContainer` passes `registerStepCommit` · `bulk-create` §41b → no-op · `tests/onboarding/entitiesSync.test.ts` (idempotency + parent-link cases). **No schema migration** — the entity routes already audit via generic `logCRUD(entityType:'LegalEntity')` (F.4 precedent).
+
+### 10.3 G.3b — relocate the stragglers
+
+Move items 2–5 of §10.1 off `bulk-create`: the completion write into a dedicated complete-onboarding call (the `useOnboardingState().completeOnboarding()` path); the CAR→asset link into `debtsSync`/`assetsSync`; the BASIQ/IMPORT offset link into `accountsSync`; INVESTMENT-type income into `investmentsSync` or `incomeExpensesSync`.
+
+### 10.4 G.3c — retire `bulk-create` + drop the draft blob
+
+Delete `/api/onboarding/bulk-create`; rewire `app/onboarding/page.tsx` `handleComplete` to the relocated completion call; drop entity data from `UserPreference.onboardingDraft` — a **Prisma schema migration** (§12.12). Touches the completion flow — verify a full wizard run end-to-end before merge.
+
+---
+
+## 11. Iteration history
+
 ### Pacing iteration (2026-05-21)
 
 The first G.1a build stacked all four turns as a chat thread and, for a returning user with existing data, showed them all at once — the conversation "jumped to the end". Fixed: the phase machine resets to the greeting on every mount and paces the sequence; the panel now shows one line at a time, replaced in place — *"rather than a text message feel"* (Reza).
