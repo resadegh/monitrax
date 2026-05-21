@@ -120,6 +120,26 @@
 
 > Sorted by priority. Top of list = work in flight right now.
 
+### 0·Φ44. Phase 44 — Entity Graph & Structure Modelling
+
+- **Status:** 🟡 DESIGN doc shipped 2026-05-20 (`docs/blueprint/PHASE_44_ENTITY_GRAPH.md`) — **build is review-gated.** No code until Reza reviews the design (and, given the legal weight, ideally has an accountant sanity-check the §4 node types / §5 edges / §6 validity matrix).
+- **Started:** 2026-05-20 (Reza brief: "enrich the entity function … capture all combinations possible for financial/company structures … make sure the rules and logic and connections are done correctly so all the calculations in monitrax will be done correctly").
+- **Owner:** Reza (direction + structural review) + Claude (research, design, build).
+- **Last touched:** 2026-05-20 — design doc written (deep AU-rules research + codebase gap analysis) + tax-treatment/SSOT section added per Reza follow-up.
+- **Phases:**
+  - [x] Deep research — AU entity/relationship rules + Phase 41 codebase gap analysis (Explore agent)
+  - [x] Design doc `PHASE_44_ENTITY_GRAPH.md` — node taxonomy, edge taxonomy, edge-validity matrix (the "grammar"), proposed schema (`EntityRelationship` + `ShareParcel` + `LegalEntity` extensions), tax-treatment-by-structure + SSOT/single-engine commitment, legal-positioning strategy, migration plan, phased build sequence
+  - [ ] Reza review of the design doc (+ accountant sanity-check) ← **NEXT — gates everything below**
+  - [ ] Part 1a — schema + migration (`EntityRelationship`, `ShareParcel`, `LegalEntity` field additions, `parentEntityId`→`TRUSTEE_OF` migration)
+  - [ ] Part 1b — `entityRelationshipService.ts` (edge-validity matrix enforcement)
+  - [ ] Part 1c — entity-section UI (multi-edge `EntityTree`, accountant-review share-pass, joint-ownership `OwnershipStake` pending Q1)
+  - [ ] Part 1d — onboarding wizard relationship sub-step
+  - [ ] Part 2 — money-flow + tax-engine rewire (separate design pass — higher legal risk)
+- **Risk:** High legal weight — wrong entity/relationship modelling → wrong tax numbers. Mitigated by: design-doc review gate; the SSOT rule (Phase 44 adds ZERO calc logic — all tax stays in `lib/tax-engine/`, §8.3 of the doc); `accountantVerified` provenance flags; estimates-not-determinations positioning (§9 of the doc). Schema is additive throughout (§12.11 N/A; §12.12 migration-in-PR).
+- **Blocking:** Reza review of the design doc.
+- **Why this matters:** Phase 41 shipped the entity *type* layer but explicitly deferred the *relationship* layer — shareholding, directorship, beneficiary entitlements, partnership interests, SMSF membership. The current model (a single `parentEntityId` self-FK) literally cannot represent a normal multi-entity AU structure. Every per-entity tax figure and the Phase 41E reform dispatch read ownership/control off this layer — so until it can represent the real graph, those numbers are wrong by construction.
+- **Open questions:** see `PHASE_44_ENTITY_GRAPH.md` §12 — Q1 joint ownership in Part 1?, Q2 Director-ID store value vs presence, Q3 wizard-vs-entity-section capture split, Q4 accountant-review share-pass timing.
+
 ### 0. Production Readiness — gate to first paying user
 
 - **Status:** 🟡 In flight — Reza directive 2026-05-09: *"Leave gate 1 and continue with the rest, let's get it a prod ready system."* Compliance bedrock chunk in this PR; subsequent chunks queued below.
