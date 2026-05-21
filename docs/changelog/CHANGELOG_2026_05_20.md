@@ -602,3 +602,33 @@ Branch: `claude/track-g1a-conversation-pacing-NL4XV`
 ### Notes
 
 `WizardContainer` already passes `nextStepLabel` (from #847) — no change needed there. The companion remains push-only, never a dependency, counts-only snapshot, and carries the Bearer token.
+
+---
+
+## Session: Phase 12 Track G — G.1a accent + typewriter iteration
+
+Branch: `claude/track-g1a-companion-accent-NL4XV`
+
+### Scope
+
+- **Type**: UX iteration on G.1a.
+- **Driver**: Reza feedback 2026-05-21, with a screenshot — *"the ai box is not visible enough. It is the same font size and shape and it is blending into the whole page. This feature needs to be accent and bold. It should be the same design as apple-like websites that feels modern when the text is typing."*
+
+### Changes Made
+
+- **`components/onboarding/wizard/CompanionPanel.tsx`**:
+  - **Accent glow.** The companion card now sits inside an Apple-Intelligence-style **glow halo** (a soft blurred gradient that gently breathes) on a crisp, lifted surface (indigo-tinted shadow + ring) — so it reads as *the* AI surface, not a soft card that blends into the page.
+  - **Typewriter.** Each companion line now **types out** character-by-character (`useTypewriter`, ~22ms/char) with a blinking caret — the modern-AI "typing" feel. The reaction is still preceded by typing-dots (think → speak).
+  - **Bolder line.** The companion line is larger (`text-[15px]`, medium weight) and rendered directly on the card surface (no inner bubble that mushed into the background).
+- **`styles/wizard-animations.css`** — `companion-glow` (halo breathe) + `companion-caret` (caret blink) keyframes; both respect `prefers-reduced-motion`.
+- Docs: Track G doc §5 (visual treatment) + §9 (accent iteration note); `IMPLEMENTATION_PLAN.md` row 0G.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Notes
+
+No backend change. All new motion (glow, caret, typing dots, bubble-enter) honours `prefers-reduced-motion` — reduced-motion users get the full text instantly with no animation.

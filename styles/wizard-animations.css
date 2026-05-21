@@ -1348,3 +1348,54 @@
     opacity: 0.6;
   }
 }
+
+/* Companion accent glow — a soft Apple-Intelligence-style halo that makes
+ * the companion read as THE AI surface, not just another card. Subtle:
+ * a slow opacity breathe, never a flashing rave. */
+@keyframes companion-glow {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.companion-glow {
+  animation: companion-glow 6s ease-in-out infinite;
+}
+
+/* Typewriter caret — blinks at the end of the line while it types out. */
+@keyframes companion-caret {
+  0%,
+  45% {
+    opacity: 1;
+  }
+  55%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.companion-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 1px;
+  background: currentColor;
+  animation: companion-caret 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-glow {
+    animation: none;
+    opacity: 0.55;
+  }
+  .companion-caret {
+    animation: none;
+    opacity: 0;
+  }
+}

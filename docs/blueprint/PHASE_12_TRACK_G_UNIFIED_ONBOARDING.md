@@ -61,6 +61,8 @@ Two further moves make it feel alive across the whole journey (G.1b):
 
 The companion shows **one line at a time**, not a stacked chat thread (Reza, 2026-05-21 — *"rather than a text message feel"*): a single **companion line** that swaps *in place* as the beat advances (greeting → invitation → reaction → bridge), plus a single compact **"you" line** summarising what the user has entered (e.g. *"2 adults · 3 pets · 3 cars"*). A phase machine drives the sequence and **always starts at the greeting on mount** — so a returning user with existing data sees the conversation *play out in order, paced*, never jump straight to the end. This keeps the panel short (critical on mobile) and makes it read as a live exchange, not a transcript. Each companion line is **one sentence** — the LLM reaction is capped at one short sentence server-side.
 
+**Visual treatment — accent, not a soft card (Reza, 2026-05-21).** The companion must read as *the* AI surface, not blend into the page. It carries an Apple-Intelligence-style accent **glow halo**, a crisp lifted card (indigo-tinted shadow + ring), and a larger companion line. Each line **types out** character-by-character with a blinking caret — the modern-AI "typing" feel. The reaction is preceded by a typing-dots indicator (think → speak). All motion honours `prefers-reduced-motion`.
+
 ### The contract (invariants)
 
 - **Voice.** Warm, calm, brief. Australian English. Warm-words rule (CLAUDE.md §14 — "spending" not "expenses", "home" not "PPOR"). Celebrates small wins, normalises, never shames.
@@ -108,6 +110,10 @@ The **household step**, rebuilt in the guided-conversation style (§5) — for R
 ### Pacing iteration (2026-05-21)
 
 The first G.1a build stacked all four turns as a chat thread and, for a returning user with existing data, showed them all at once — the conversation "jumped to the end". Fixed: the phase machine resets to the greeting on every mount and paces the sequence; the panel now shows one line at a time, replaced in place — *"rather than a text message feel"* (Reza).
+
+### Accent + typewriter iteration (2026-05-21)
+
+Reza feedback on the paced build: *"the ai box is not visible enough … same font size and shape … blending into the whole page … needs to be accent and bold … Apple-like … feels modern when the text is typing."* Fixed: the companion card now has an accent **glow halo** + a lifted crisp surface (indigo shadow + ring), a larger companion line, and each line **types out** with a blinking caret. `companion-glow` + `companion-caret` keyframes added to `wizard-animations.css`; all motion respects `prefers-reduced-motion`.
 
 ---
 
