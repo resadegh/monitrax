@@ -992,3 +992,32 @@ No server change (the LLM reaction route/gateway are unchanged — they simply f
 - [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
 - [x] `npm run build` — ✓ succeeds
 - [x] `npm run lint` — ✓ no new errors/warnings
+
+---
+
+## Session: Phase 12 Track G — companion on the welcome step
+
+Branch: `claude/companion-welcome-step-NL4XV`
+
+### Scope
+
+- **Type:** Fix — the onboarding companion was missing from the first screen.
+- **Driver:** Reza 2026-05-21, testing the live wizard — *"Now I cant see the ai box"* (on the welcome / "Start your TRAIL" step).
+
+### Root cause
+
+The Track G refactor (G.1b) removed the legacy `AIHelper` Q&A drawer and replaced it with the docked `CompanionPanel` — but only added the companion to the **9 entity-collection steps**. The `welcome` step (the very first onboarding screen) was left with **no AI presence at all**, and the greeting did not appear until step 2 (household). The first impression was a dry form.
+
+### What was done
+
+- **`lib/ai/onboarding-agent/companionGateway.ts`** — `'welcome'` added to the `CompanionStep` type, the `COMPANION_STEPS` runtime list (which the route validates against), and `STEP_BRIEF`. The companion route now accepts `step: 'welcome'`.
+- **`components/onboarding/wizard/CompanionPanel.tsx`** — `welcome` added to `STEP_CONFIG` (invitation + checklist + a counts/flags snapshot of own/rent + has-investments + debt-type count + a "you" summary). The greeting now opens on `welcome` (`withGreeting = step === 'welcome'`) — the user is met by the guide from the very first screen.
+
+The companion now hosts **all 10 collection steps**; only `review` (the celebration screen) deliberately has none. The `welcome` snapshot is counts/flags only — no PII, same contract as every other step. No schema change.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+- [x] `npm run lint` — ✓ no new errors/warnings

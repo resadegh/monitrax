@@ -25,10 +25,11 @@
  * congratulates the user for data they did not enter. `hasUserProgress`
  * is true only once the user changes the counts while on this step.
  *
- * G.1b generalises the G.1a household-only panel to all 9 entity-
- * collection steps via `STEP_CONFIG` (per-step invitation + checklist +
- * snapshot + you-summary). The greeting shows only on the first step
- * (household).
+ * G.1b generalises the G.1a household-only panel to every collection
+ * step via `STEP_CONFIG` (per-step invitation + checklist + snapshot +
+ * you-summary): the `welcome` picker plus the 9 entity steps. The
+ * greeting shows only on the first step (welcome); only `review` (the
+ * celebration screen) has no companion.
  *
  * Visual: an Apple-Intelligence-style accent glow halo + a larger
  * companion line typed out with a blinking caret.
@@ -52,7 +53,7 @@ import '@/styles/wizard-animations.css';
 
 type Phase = 'greeting' | 'invitation' | 'checklist' | 'reaction' | 'bridge';
 
-// The greeting — shown once, on the first companion step (household).
+// The greeting — shown once, on the first companion step (welcome).
 const GREETING =
   "Hi — I'm your Monitrax guide. Let's set things up together, one step at a time.";
 
@@ -85,9 +86,32 @@ function plural(n: number, one: string, many: string): string {
 }
 
 // Per-step companion config. The keys here ARE the companion-eligible
-// steps — `welcome` (a quick picker) and `review` (the celebration
-// screen) deliberately have no companion.
+// steps — only `review` (the celebration screen) deliberately has no
+// companion.
 const STEP_CONFIG: Partial<Record<WizardStepId, StepConfig>> = {
+  welcome: {
+    invitation:
+      'A couple of quick questions about your situation — they shape every step that follows.',
+    checklist:
+      'Tell me whether you own or rent, and whether you hold any investments or super. There are no wrong answers — this just tailors your setup.',
+    snapshot: (d) => ({
+      housingAnswered: d.housing !== null ? 1 : 0,
+      owns: d.housing === 'OWN' || d.housing === 'BOTH' ? 1 : 0,
+      rents: d.housing === 'RENT' || d.housing === 'BOTH' ? 1 : 0,
+      investmentsAnswered: d.hasInvestments !== null ? 1 : 0,
+      hasInvestments: d.hasInvestments === 'YES' ? 1 : 0,
+      debtTypeCount: d.debtCategories.length,
+    }),
+    youSummary: (d) => {
+      const parts: string[] = [];
+      if (d.housing === 'OWN') parts.push('owns');
+      else if (d.housing === 'RENT') parts.push('rents');
+      else if (d.housing === 'BOTH') parts.push('owns + rents');
+      if (d.hasInvestments === 'YES') parts.push('has investments');
+      else if (d.hasInvestments === 'NO') parts.push('no investments yet');
+      return parts.join(' · ');
+    },
+  },
   household: {
     invitation:
       'First up — your household. This is everyone your money looks after.',
@@ -270,8 +294,8 @@ export function CompanionPanel({ step, data, nextStepLabel }: CompanionPanelProp
   const { token } = useAuth();
 
   const config = STEP_CONFIG[step];
-  // Greeting is shown once, on the first companion step.
-  const withGreeting = step === 'household';
+  // Greeting is shown once, on the first companion step (welcome).
+  const withGreeting = step === 'welcome';
 
   const snapshot = useMemo(
     () => (config ? config.snapshot(data) : {}),

@@ -55,6 +55,8 @@ Onboarding is reframed from "a 12-step form with a helper" into **a guided conve
 
 **Genuine-progress gating (companion-guidance beat, 2026-05-21).** The Reaction + Bridge only fire on progress the user makes *on this visit*. The panel captures the step's counts signature at mount; a pre-existing row (an auto-created default entity, a resumed step) is **not** progress. This fixes a trust-eroding bug — on the Entities step, which always arrives with one auto-created `PERSONAL_NAME` entity, the companion used to fast-forward to *"Nicely done, hit Continue"* within ~10s of landing, congratulating the user for data they never entered. With the gate, the companion rests on the **Checklist** line — directing — until the user genuinely acts.
 
+**The companion hosts the `welcome` step too (2026-05-21).** The companion now appears on **all 10 collection steps** — the `welcome` picker plus the 9 entity steps. Previously `welcome` had no companion: the Track G refactor removed the legacy `AIHelper`, so the *first* onboarding screen lost any AI presence, and the greeting did not appear until step 2 (household). The greeting now opens on `welcome` — the user is met by the guide from the very first screen. Only `review` (the celebration screen) has no companion. The `welcome` snapshot is own/rent + has-investments flags (counts/flags only — no PII).
+
 Two further moves make it feel alive across the whole journey (G.1b):
 
 - **Memory** — later steps reference earlier answers, read **deterministically** from `WizardData` (*"you mentioned two kids — I've made sure their costs have a home"*). No LLM, no guesswork — the system visibly listening.
