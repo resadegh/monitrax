@@ -1,6 +1,6 @@
 # Phase 12 Track G — Unified Conversational Onboarding
 
-> **Status:** 🟡 IN PROGRESS — G.0 ✅ (PR #845, +hotfix #846) · G.1a ✅ (companion on the household step — paced one-line-at-a-time + accent glow + typewriter; PRs #847/#848/#849) · G.2 ✅ (standalone chat retired) 2026-05-21. **G.1b 🟢 next** — roll the companion to all 12 steps. G.3–G.5 queued.
+> **Status:** 🟡 IN PROGRESS — G.0 ✅ (PR #845, +hotfix #846) · G.1a ✅ (companion on the household step — paced one-line + accent glow + typewriter; #847/#848/#849) · G.2 ✅ (standalone chat retired) · G.1b ✅ (companion on all 9 entity steps; `AIHelper` removed) 2026-05-21. **G.3 🟢 next** — retire `bulk-create` (= old F.9). G.4–G.5 queued.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"having these two separated is not the best idea … the AI chat is clunky, doesn't get the questions, and it just breaks. And the form is very dry, old-school. Combine these two together."* Scope sharpened 2026-05-21 — see §3.
 > **Supersedes:** Track F's queued **F.10** (conversational enrichment) — see §7. **Re-sequences** F.9 — see §6.
@@ -38,7 +38,7 @@ A dry form loses users at the highest-friction moment of the product (onboarding
 |---|---|
 | **Keep — untouched** | The 12-step form wizard spine (`WizardContainer`, the step components), `WizardData`, the Track F `lib/onboarding/*Sync.ts` real-table layers. The reliability is the asset; we do not rebuild it. |
 | **Add** | `CompanionPanel` (the companion that hosts each step) · `companionGateway.ts` (a warm, bounded, AFSL-safe reflection LLM call) · `/api/onboarding/companion` (the route). |
-| **Delete (G.1b)** | `AIHelper.tsx` — today a passive Q&A drawer with **mocked** responses. The onboarding companion does not do Q&A (§3), so AIHelper is not evolved — it is removed. |
+| ~~Delete (G.1b)~~ | ✅ **DONE 2026-05-21** — `AIHelper.tsx` deleted (it was a passive Q&A drawer with **mocked** responses; the companion replaces it — it does not do Q&A, §3). |
 | ~~Delete (G.2)~~ | ✅ **DONE 2026-05-21** — deleted the 8 chat script state-machines, `ConversationalSetup.tsx`, the `wizard-chat/` chat UI, `OnboardingModeSelector`, `ConversationalModeToggle`, and the `CONVERSATIONAL_ONBOARDING` flag (gate lib + context + public API route + seed entry + admin special-case). 24 files removed. Onboarding entry → wizard only. |
 | **Defer (dormant)** | The extraction gateway + delta schemas + per-topic extract tools — kept, not deleted. Re-used by the G.4 accelerator. |
 
@@ -77,7 +77,7 @@ The companion shows **one line at a time**, not a stacked chat thread (Reza, 202
 | PR | Scope |
 |---|---|
 | **G.0** | ✅ **DONE** (PR #845 + auth hotfix #846) — static companion prototype on the household step: `CompanionPanel` + `companionGateway` + `/api/onboarding/companion`. |
-| **G.1** | **The conversational guide.** The companion becomes the host of each step — invitation + reaction + bridge (§5). **G.1a** (this PR) — the household step in the guided-conversation style, for Reza to merge + evaluate. **G.1b** — roll to all 12 steps + memory + adaptive narration; remove `AIHelper`. |
+| ~~G.1~~ | ✅ **DONE 2026-05-21** — the conversational guide. The companion hosts each step — invitation + reaction + bridge (§5). **G.1a** (#847/#848/#849) — household step + paced one-line model + accent glow + typewriter. **G.1b** — rolled to all 9 entity steps via per-step `STEP_CONFIG` (invitation + counts-snapshot + you-summary); `AIHelper` removed. Cross-step memory + adaptive narration deferred to a later polish pass. |
 | ~~G.2~~ | ✅ **DONE 2026-05-21** — retired the standalone chat: deleted the 8 script state-machines, `ConversationalSetup` + the `wizard-chat/` UI, the mode-selector + toggle, the `CONVERSATIONAL_ONBOARDING` flag (gate + context + route + seed). Onboarding entry → wizard only. The extraction gateway / tools / schemas + the `chat/extract` route are kept **dormant** for G.4. |
 | **G.3** | Fold in Track F's **F.9** — retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft`. Sequenced here because G.2 removes the chat's write path. |
 | **G.4** | *(later)* The optional "describe it in your own words" accelerator — repurpose the dormant extraction gateway as a form pre-fill, form always primary. |

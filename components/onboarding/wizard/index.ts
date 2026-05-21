@@ -3,7 +3,7 @@
  */
 
 export { WizardContainer } from './WizardContainer';
-export { AIHelper } from './AIHelper';
+export { CompanionPanel } from './CompanionPanel';
 export * from './types';
 
 // Step components (for direct use if needed)
