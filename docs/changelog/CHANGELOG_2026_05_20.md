@@ -706,3 +706,32 @@ While scanning for legacy onboarding code, found the disabled `lib/services/onbo
 ### Notes
 
 Cross-step memory ("you mentioned two kids earlier…") + adaptive narration are deferred to a later polish pass — G.1b delivers the companion on every step in the established paced / accent / typewriter design.
+
+---
+
+## Session: Phase 12 Track G — retire the dead onboarding-estimate subsystem
+
+Branch: `claude/track-g-retire-estimate-service-NL4XV`
+
+### Scope
+
+- **Type**: Refactor — dead-code removal (§12.1).
+- **Driver**: Reza 2026-05-21 — *"delete the legacy onboarding wizards … for cleanup."* While doing G.1b a genuinely-dead onboarding subsystem was found and flagged; this PR removes it.
+
+### Changes Made
+
+**Deleted (7 files):**
+- `lib/services/onboardingEstimateService.ts` — the legacy onboarding-estimate service. It was already disabled — every method threw `OnboardingDisabledError` ("defence in depth" after the estimate flow was retired long ago).
+- `app/api/onboarding/estimates/` — the 6 routes that wrapped it: `goal`, `housing`, `household`, `expenses`, `income`, `snapshot`. All orphaned — no component, hook, or other route called them (verified by grep; the only reference was a stale comment in `chat/extract/route.ts`).
+
+**Edited:**
+- `app/api/onboarding/chat/extract/route.ts` — header comment no longer references the deleted estimates routes.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean (after a clean `.next` rebuild — stale generated route types)
+- [x] `npm run build` — ✓ succeeds
+
+### Notes
+
+Pure dead-code removal — the service was non-functional (threw on every call) and the routes had no caller. No schema change, no behavioural change. The live onboarding write path (per-step Track F `*Sync.ts` + `bulk-create`) is untouched.
