@@ -20,8 +20,9 @@ import {
   isAnthropicConfigured,
 } from '@/lib/ai/anthropic';
 
-/** Steps the companion supports — the 9 entity-collection wizard steps. */
+/** Steps the companion supports — welcome + the 9 entity-collection steps. */
 export type CompanionStep =
+  | 'welcome'
   | 'household'
   | 'entities'
   | 'properties'
@@ -34,6 +35,7 @@ export type CompanionStep =
 
 /** Runtime list — the route validates an incoming `step` against this. */
 export const COMPANION_STEPS: readonly CompanionStep[] = [
+  'welcome',
   'household',
   'entities',
   'properties',
@@ -94,6 +96,8 @@ STRICT RULES — these are not optional:
 - If the snapshot shows nothing entered yet, gently encourage them to add their first entry.`;
 
 const STEP_BRIEF: Record<CompanionStep, string> = {
+  welcome:
+    'the "Welcome" step — the user is telling us their starting point: whether they own or rent their home, whether they hold any investments or super, and which debts they have. Their answers tailor every later step.',
   household:
     'the "Household" step — the people and pets who share the user\'s financial life. The foundation the rest of setup is personalised around.',
   entities:
