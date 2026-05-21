@@ -928,3 +928,37 @@ No backend change — the extraction route/gateway/schemas were already in place
 ### Remaining for Track G
 
 Only **G.5** (document upload mid-onboarding — was F.11) remains. It pulls in the Phase 25/38 document pipeline — a genuinely large standalone feature, best scoped as its own focused build.
+
+---
+
+## Session: Phase 12 Track G — G.5 (the document-upload accelerator) — Track G COMPLETE
+
+Branch: `claude/track-g5-document-upload-NL4XV`
+
+### Scope
+
+- **Type:** Feature — the optional onboarding document-upload accelerator. The second (and last) of the two deferred Track G enhancements.
+- **Driver:** Reza 2026-05-21 — *"I agree with both enhancements. Finish all G track."*
+
+### What was done
+
+Research corrected the original framing: G.5 does **not** "pull in the Phase 25/38 document pipeline as a large standalone feature". The document → form-fields engine **already exists** — Phase 26.6's `/api/documents/analyze-for-form` (OCR via Google Vision for images / `unpdf` for PDFs, AI field mapping via Gemini, returns a `fieldMappings` record). So G.5 is "wire the existing engine into the wizard", a medium-scope build — and crucially **adds no new endpoint** (SSOT — §12.4).
+
+- **`lib/onboarding/mapDocumentFields.ts` — NEW.** A pure shape adapter from the API's `fieldMappings` record to ONE wizard row. `mapDocumentToIncome()` → an `IncomeInput` (a payslip; `type` SALARY, `salaryType` GROSS, frequency defaults FORTNIGHTLY); `mapDocumentToExpense()` → an `ExpenseInput` (a bill/receipt; frequency defaults MONTHLY). Every field is validated against the wizard enums — an unrecognised category falls back to OTHER, a frequency variant is normalised, a missing/unparseable amount yields 0. Contains **no financial calculation** and does **no extraction** — OCR + AI mapping stay owned by the canonical endpoint; frequency→annual conversion stays owned by `lib/utils/frequencies.ts`.
+- **`components/onboarding/wizard/DocumentUploadAccelerator.tsx` — NEW.** A collapsed-by-default affordance ("Have a payslip or bill handy? Upload it and I will fill the form.") on the `income-expenses` step. Expands to a Payslip / Bill-or-receipt toggle + a drag-and-drop file zone; on file select it POSTs the file to `/api/documents/analyze-for-form` with the Bearer token, maps the result, and **appends** one pre-filled row via `onUpdate`. Every failure path is gentle — the form below is untouched.
+- **`components/onboarding/wizard/WizardContainer.tsx`** — renders `DocumentUploadAccelerator` in the Body, above the step form, on the income-expenses step.
+- **`tests/onboarding/mapDocumentFields.test.ts` — NEW (12 tests)** — enum validation, defensive defaults, currency-string parsing, negative-amount magnitude, name fallbacks.
+
+APPEND-only like G.4 — the accelerator never replaces or deletes, so a poor extraction is non-destructive (at worst the user deletes the row). The form stays the system of record. No backend change, no schema change. Loan/property document mapping noted as a future extension.
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npx vitest run tests/onboarding/mapDocumentFields.test.ts` — ✓ 12/12 pass
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+- [x] `npm run lint` — ✓ no new errors/warnings
+
+### Track G — COMPLETE
+
+With G.5 shipped, **all of Track G (G.0–G.5) is delivered.** Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser; and both optional accelerators — describe-it (G.4) and document-upload (G.5) — ship on top of a stable form.

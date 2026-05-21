@@ -51,6 +51,11 @@ import {
   DescribeItAccelerator,
   isAcceleratorStep,
 } from './DescribeItAccelerator';
+// Track G.5: the optional document-upload accelerator (payslip / bill).
+import {
+  DocumentUploadAccelerator,
+  isDocumentUploadStep,
+} from './DocumentUploadAccelerator';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
@@ -739,6 +744,18 @@ export function WizardContainer({
         <div className="mb-4">
           <DescribeItAccelerator
             key={`accel-${currentStep.id}`}
+            step={currentStep.id}
+            data={data}
+            onUpdate={handleUpdate}
+          />
+        </div>
+      )}
+      {/* Track G.5: the optional document-upload accelerator — collapsed by
+          default; a payslip/bill becomes one pre-filled row. */}
+      {currentStep && isDocumentUploadStep(currentStep.id) && (
+        <div className="mb-4">
+          <DocumentUploadAccelerator
+            key={`docupload-${currentStep.id}`}
             step={currentStep.id}
             data={data}
             onUpdate={handleUpdate}

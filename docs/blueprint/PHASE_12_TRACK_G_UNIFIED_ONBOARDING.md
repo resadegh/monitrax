@@ -1,6 +1,6 @@
 # Phase 12 Track G — Unified Conversational Onboarding
 
-> **Status:** ✅ **STRUCTURALLY COMPLETE 2026-05-21** — G.0 · G.1a · G.1b · G.2 · estimate-service cleanup · G.3a · G.3b · G.3c (`bulk-create` deleted) · **G.4 ✅ (the "describe it" accelerator)**. Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser. **G.5** (document upload) is the one remaining optional enhancement.
+> **Status:** ✅ **COMPLETE 2026-05-21** — G.0 · G.1a · G.1b · G.2 · estimate-service cleanup · G.3a · G.3b · G.3c (`bulk-create` deleted) · G.4 (the "describe it" accelerator) · **G.5 ✅ (the document-upload accelerator)**. Track G is fully delivered. Onboarding is one unified, companion-guided wizard; every domain writes straight to its real tables; `/api/onboarding/complete` is the sole end-of-wizard finaliser; both optional accelerators (describe-it + document-upload) ship on top of a stable form.
 > **Author:** Claude, 2026-05-20. **Owner:** Reza.
 > **Driver:** Reza, 2026-05-20 — *"having these two separated is not the best idea … the AI chat is clunky, doesn't get the questions, and it just breaks. And the form is very dry, old-school. Combine these two together."* Scope sharpened 2026-05-21 — see §3.
 > **Supersedes:** Track F's queued **F.10** (conversational enrichment) — see §7. **Re-sequences** F.9 — see §6.
@@ -81,12 +81,12 @@ The companion shows **one line at a time**, not a stacked chat thread (Reza, 202
 | ~~G.2~~ | ✅ **DONE 2026-05-21** — retired the standalone chat: deleted the 8 script state-machines, `ConversationalSetup` + the `wizard-chat/` UI, the mode-selector + toggle, the `CONVERSATIONAL_ONBOARDING` flag (gate + context + route + seed). Onboarding entry → wizard only. The extraction gateway / tools / schemas + the `chat/extract` route are kept **dormant** for G.4. |
 | **G.3** | Fold in Track F's **F.9** — retire `/api/onboarding/bulk-create` + drop entity data from `UserPreference.onboardingDraft`. A 3-PR effort (see §10): **G.3a** ✅ (Entities domain migrated) · **G.3b** relocate stragglers · **G.3c** delete `bulk-create` + schema migration. |
 | ~~G.4~~ | ✅ **DONE 2026-05-21** — the optional "describe it in your own words" accelerator. `DescribeItAccelerator` (a collapsed-by-default affordance on the 8 extraction-topic steps) → the dormant `/api/onboarding/chat/extract` engine → `applyWizardDelta()` **appends** pre-filled rows to the step form. The form stays the system of record — the accelerator never replaces or deletes, so a bad extraction is non-destructive. |
-| **G.5** | *(later)* Document upload (was F.11) — upload a payslip / rates notice, the companion reads it. |
+| ~~G.5~~ | ✅ **DONE 2026-05-21** — the optional document-upload accelerator. `DocumentUploadAccelerator` (a collapsed-by-default affordance on the `income-expenses` step) → the existing Phase 26.6 engine `/api/documents/analyze-for-form` → `mapDocumentToIncome` / `mapDocumentToExpense` **append** one pre-filled row. A payslip becomes an income row, a bill/receipt an expense row. The form stays the system of record — APPEND-only, so a poor extraction is non-destructive. **No new endpoint** — reuses the canonical document-analysis engine (SSOT). Loan/property document mapping is a future extension. |
 
 ## 7. F.10 / F.11 disposition
 
 - **F.10 (conversational enrichment) — SUPERSEDED.** F.10 was specified as new "follow-up-offer states" bolted onto the chat **script state machines** (PHASE_12 §10). Track G deletes those machines. Its *intent* — progressively offering optional enrichment fields — is **absorbed into Track G**: the companion nudges, the form reveals an optional field (progressive disclosure on the reliable surface). The §10.2 four-lens constraints carry forward.
-- **F.11 (document upload) — RE-HOMED, not redundant.** Re-parented from "mid-chat" to "mid-onboarding companion" as **G.5**. Still deferred.
+- **F.11 (document upload) — RE-HOMED + DELIVERED.** Re-parented from "mid-chat" to "mid-onboarding companion" as **G.5**, and shipped 2026-05-21 — a `DocumentUploadAccelerator` on the Income & Expenses step that reuses the Phase 26.6 `/api/documents/analyze-for-form` engine.
 
 ## 8. Risks / considerations
 
