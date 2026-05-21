@@ -537,3 +537,37 @@ Branch: `claude/track-g-companion-auth-hotfix-NL4XV`
 ### Lesson
 
 A new client→API fetch is never complete until it carries the Bearer token. The wrapped `window.fetch` does NOT auto-inject it outside admin surfaces. This should have been caught in G.0 review — added to the mental checklist for G.1 (every step's companion fetch).
+
+---
+
+## Session: Phase 12 Track G — G.1a (the conversational guide — household step)
+
+Branch: `claude/track-g1-conversational-guide-NL4XV`
+
+### Scope
+
+- **Type**: Feature — Phase 12 Track G, G.1a.
+- **Driver**: Reza feedback on the G.0 prototype, 2026-05-21 — G.0's companion "doesn't have the conversation feel anymore, the AI is only feedback". **Scope sharpened**: the onboarding companion should *guide* the user through setup ("now let's create your accounts", "tell me about your properties") — it is **push-only**; it does NOT field free-form questions. The full conversational AI (talk-with-it Q&A) belongs to **My Guide**, a separate surface, out of Track G scope. (An interim proposal to add a Q&A composer to the onboarding companion was considered and rejected.)
+- **This session**: documented the corrected scope + the guided-conversation model in the Track G doc, and rebuilt the **household step** in that style for Reza to merge + evaluate before G.1b rolls it to all 12 steps.
+
+### The guided-conversation model
+
+Onboarding is reframed from "a 12-step form with a helper" into "a guided conversation the companion hosts". Each step is a *beat* with three companion moves: a scripted **invitation** (warm, instant, never fails), an LLM **reaction** (reads a counts-only snapshot), and a scripted **bridge** that names the next step — the connective tissue that turns 12 forms into one conversation. G.1b adds cross-step **memory** (deterministic, from `WizardData`) + **adaptive narration**.
+
+### Files modified
+
+- `components/onboarding/wizard/CompanionPanel.tsx` — reworked from a static intro+reflection panel into the step's **host**: a staggered greeting + invitation (the companion introduces itself + the journey, then invites the first action), the LLM reaction (kept from G.0, still auth'd with the Bearer token), and a forward **bridge** that names the next step. Messages render as conversational turns with a fade-in.
+- `components/onboarding/wizard/WizardContainer.tsx` — passes `nextStepLabel` (`steps[currentStepIndex + 1]?.title`) to `CompanionPanel` so the bridge is concrete.
+- `styles/wizard-animations.css` — new `companion-bubble-enter` keyframe (fade + rise; respects `prefers-reduced-motion`).
+- `docs/blueprint/PHASE_12_TRACK_G_UNIFIED_ONBOARDING.md` — rewritten §3 (scope: companion guides, does not chat; full AI = My Guide), §5 (the guided-conversation model — invitation/reaction/bridge/memory/adaptive), §6 (revised sequence — G.1a/G.1b), §9 (what G.1a ships).
+- `docs/IMPLEMENTATION_PLAN.md` — row 0G updated (G.0 done + hotfix; G.1a in progress; revised sequence).
+
+### Build status
+
+- [x] `npx tsc --noEmit` — ✓ clean
+- [x] `npm run lint:financial-surfaces` — ✓ 0 new violations
+- [x] `npm run build` — ✓ succeeds
+
+### Notes
+
+No backend change — the reaction reuses the G.0 `companionGateway` + `/api/onboarding/companion`; invitation and bridge are scripted/deterministic. Scope is the household step only; `AIHelper` stays on the other 11 steps until G.1b removes it. The companion fetch carries the Bearer token (G.0 hotfix lesson applied).
