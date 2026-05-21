@@ -671,6 +671,16 @@ export function EntitiesStep({
     return true;
   });
 
+  // The user's own personal name is NOT a "structure" they set up — the
+  // PERSONAL_NAME entity is an auto-created default (Phase 41a backfill /
+  // the bulk-create fallback). It stays in `data.entities` for the
+  // real-table sync, but it is never rendered as a structure card: the
+  // step's whole design is "empty list = just my personal name". Only
+  // genuine structures (trust / SMSF / company / partnership) are shown.
+  const displayedEntities = data.entities.filter(
+    (e) => e.type !== 'PERSONAL_NAME',
+  );
+
   return (
     <WizardStepShell
       icon={<Building2 className="h-8 w-8" strokeWidth={1.5} />}
@@ -683,9 +693,9 @@ export function EntitiesStep({
           <span>{loadError}</span>
         </div>
       )}
-      {data.entities.length > 0 && (
+      {displayedEntities.length > 0 && (
         <div className="space-y-3">
-          {data.entities.map((entity) => {
+          {displayedEntities.map((entity) => {
             const parent = entity.parentEntityTempId
               ? data.entities.find((e) => e.id === entity.parentEntityTempId)
               : undefined;
@@ -703,12 +713,12 @@ export function EntitiesStep({
       )}
 
       <WizardAddButton leadingIcon={<Plus className="h-4 w-4" />} onClick={openAdd}>
-        {data.entities.length === 0
+        {displayedEntities.length === 0
           ? 'Add a trust, SMSF, or company'
           : 'Add another entity'}
       </WizardAddButton>
 
-      {data.entities.length === 0 && (
+      {displayedEntities.length === 0 && (
         <div className="rounded-xl border border-dashed border-slate-300 dark:border-slate-700 p-4 text-center">
           <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
             Just my personal name — I can add more later
