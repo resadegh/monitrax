@@ -480,7 +480,10 @@ export function WizardContainer({
              * Back / progress-jump (see runStepCommit above).
              */}
             <div className="space-y-5">
-              <CompanionPanel data={data} />
+              <CompanionPanel
+                data={data}
+                nextStepLabel={steps[currentStepIndex + 1]?.title}
+              />
               <HouseholdStep
                 data={data}
                 onUpdate={handleUpdate}

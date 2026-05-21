@@ -1291,3 +1291,30 @@
     transition: none;
   }
 }
+
+/* =============================================================================
+ * COMPANION BUBBLE — Phase 12 Track G (G.1a)
+ * Each companion turn (greeting / invitation / reaction / bridge) fades +
+ * rises in, so the panel reads as the companion talking, not a static block.
+ * ============================================================================= */
+
+@keyframes companion-bubble-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.companion-bubble-enter {
+  animation: companion-bubble-enter 0.32s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .companion-bubble-enter {
+    animation: none;
+  }
+}
