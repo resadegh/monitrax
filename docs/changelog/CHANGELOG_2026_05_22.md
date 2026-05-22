@@ -306,3 +306,68 @@ Phase 41b's `EntitiesStep` captured entities + exactly one edge (`parentEntityTe
 ### Next
 
 Part 2 — money-flow + tax-engine rewire (a separate, higher-legal-risk design pass; opens with a full tax-engine audit).
+
+---
+
+## Session: Phase 44 Part 2 — design pass (tax-engine audit + design document)
+
+Branch: `claude/phase-44-part-2-design-ONspp`
+
+### Changes Made
+
+- **Type**: Design (no code) — Phase 44 Part 2, the money-flow + tax-engine-rewire design pass.
+- **Scope**: a new design document + doc-sync. No code, no schema — Part 2 is review-gated; build begins only after Reza review (+ an external second-eye review).
+- **Design contract**: `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` §11 ("Part 2 … opens with a full tax-engine audit … captured in its own design document").
+
+The Part 2 design pass was run as architect-mode work: a full audit of all 45 `lib/tax-engine/` modules (deep reads of the orchestrator, entity router, the `/api/tax/entity` route, `types.ts`, `trustMinimumTax`; an Explore-agent catalog of the rest).
+
+**Central audit finding:** the tax engine is already a mature, pure, citation-traced computation library — every rule module is built and correct for current law. The gap is *not* the engine; it is the **data layer**. Trust-distribution / Div 7A / SMSF dispatch data reaches the engine today only through a `curl` POST request body (`POST /api/tax/entity/[entityId]`); nothing persists or derives it, so `GET` returns `UNCOMPUTED` for every trust / company / SMSF. `parentEntityId` is confirmed already inert for tax (no engine module reads `facts.parentEntityId`).
+
+So Part 2 is a **data-layer build, not an engine rewrite**: four new "what actually happened" models + a canonical fact-assembler + a repoint of the tax route. The engine's compute logic is not modified (CLAUDE.md §8.3 / PHASE_44 §8.3 holds) — with one honestly-flagged exception surfaced for Reza's decision (`super/smsfIncomeTax.ts` — there is no SMSF fund-earnings income-tax module today; the engine is *incomplete* there, not being duplicated).
+
+### Files Created / Modified
+
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — **new**. The Part 2 design contract: §2 the 45-module audit; §3 architecture; §4 the four new models (`DistributionResolution`, `DividendDistribution`, `PrivateCompanyBenefit`, structured `TrustDeedRule`) with Prisma sketches; §5 model services; §6 the `entityTaxFactsAssembler` + repoint plan; §7 correctness gaps needing decisions; §8 the SSOT / one-engine commitment; §9 §12.14 reform-interaction; §10 the 2a–2d build sequence; §11 open questions; §12 risks.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — §11 Part 2 build-progress note pointing to the design doc.
+- `docs/IMPLEMENTATION_PLAN.md` — Part 2 → 🟡 DESIGN PASS (design doc under review).
+
+### CLAUDE.md alignment (verified before documenting — per Reza directive)
+
+- §0 advisory mindset — the doc leads with the architect + financial-adviser lenses (correct for a tax-engine design): SSOT, one-engine, every number traceable, `UNCOMPUTED`-not-false-numbers.
+- §8.3 / §12.2–§12.3 SSOT — the doc commits to one tax engine, one fact-assembler, one writer per model; the §8.3 tension (the proposed `smsfIncomeTax.ts`) is surfaced explicitly as a flagged Open Question, not assumed.
+- §10 research-before-action — the doc *is* the audit; every finding is grounded in actual file reads.
+- §12.12 — Part 2a will carry the migration; noted in the build sequence.
+- §12.14 — §9 of the doc; Part 2 never flips a reform commencement flag (FW-2).
+- §13 CDR — §12 of the doc; the new models hold financial amounts → sanitised metadata + §12.11 discipline on the writers.
+
+### §12.11 / §12.12 / §12.14
+
+- All N/A for this PR — it is a design document only. No Prisma, no schema, no code. Part 2a will carry the schema + migration + the §12.14 block.
+
+### Build Status
+
+- No code — `tsc` / `build` / `tests` unaffected. Doc-only PR.
+
+### Documentation Updated
+
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md`, `docs/IMPLEMENTATION_PLAN.md` — see above.
+
+### Next
+
+Reza review of `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` (+ an external second-eye review). Part 2a (schema) begins only after approval.
+
+### Update — Part 2 design doc v2 (external law review incorporated)
+
+The Part 2 design document was put through an external Australian-tax-law conformance review (ChatGPT, scoped strictly to law — not design). 23 findings returned; **only the law-alignment findings were adopted**, each translated into the doc by the Monitrax architect against the actual codebase — no technical/design direction taken from the review (per Reza directive).
+
+Net effect — no structural change (the central finding stood: engine built, gap is the data layer); the review's value was law precision. Changes folded into `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` v2:
+
+- The "built + correct" overclaim softened throughout — the doc now states the engine *exists and dispatches*, never that it is *certified legally correct* (F1, F11).
+- New §7.1 engine law-precision gaps with `UNCOMPUTED` gates: G-S99 (s99 vs s99A), G-DIV7A (non-loan limbs), G-UPE (the TD 2022/11 vs *Bendel* contest — engine never auto-deems a UPE a Div 7A dividend), G-PARTNERSHIP, G-RESIDENCY, G-ASSETSRC.
+- Law-precision notes added to §4.1 (Bamford proportionate model; streaming = deed power + specific entitlement, Subdiv 115-C/207-B; trust-type mechanics), §4.2 (Div 207 imputation), §4.3 (Div 7A breadth + the UPE contest).
+- §5 — assembler/engine returns `UNCOMPUTED` on inconsistent allocation shares (the service still records — digital twin).
+- §6.4 — the money-flow lens labelled "entitlements & declared distributions", not cash.
+- New §13 records the review + a full F1–F23 disposition table.
+- New open questions: Q-UPE, Q-PARTNERSHIP, Q-DISTINCOME, Q-RESOLUTION-AMEND.
+
+`PHASE_44_ENTITY_GRAPH.md` §11 + `IMPLEMENTATION_PLAN.md` updated to reflect v2. PR #870 carries the revision; build of Part 2a remains blocked on Reza's approval of the v2 doc.
