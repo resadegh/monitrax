@@ -263,3 +263,46 @@ Branch: `claude/fix-vercel-logs-runtime-ndjson-ONspp`
 ### Documentation Updated
 
 - `docs/operational/runbooks/12_CLAUDE_CODE_MCP_SETUP.md` — see above.
+
+---
+
+## Session: Phase 44 Part 1d — Onboarding relationship-skeleton step
+
+Branch: `claude/phase-44-part-1d-wizard-relationships-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (onboarding) — Phase 44 Part 1d, the §11 relationship sub-step.
+- **Scope**: the onboarding wizard — a new optional step + the data model + the commit-time sync.
+- **Design contract**: `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` §11 (Part 1d), Q3 (working-graph skeleton, refined in the entity section). Capture depth — control + ownership edges — confirmed with Reza this session.
+
+Phase 41b's `EntitiesStep` captured entities + exactly one edge (`parentEntityTempId`, the trustee link). Part 1d adds the relationship layer: a new wizard step that sketches the load-bearing edges of the user's structure, persisted via the Part 1c `/api/entities/relationships` route.
+
+### Files Modified / Created
+
+- `components/onboarding/wizard/types.ts` — `WizardStepId` += `entity-relationships`; new `entity-relationships` entry in `WIZARD_STEPS`; `WizardRelationshipType` + `RelationshipInput` types; `WizardData.relationships` + `INITIAL_WIZARD_DATA`; `getStepsForProfile` gains `hasStructureEntities` context and the conditional gate for the new step.
+- `components/onboarding/wizard/steps/RelationshipsStep.tsx` — new. Per non-personal entity, a collapsed card with the load-bearing roles for that type (directors + shareholders, trustee + beneficiaries/unitholders, members + trustee, partners, sole-trader operator) via toggle-chip pickers. Pre-seeds `TRUSTEE_OF` from `parentEntityTempId`. Optional + finishable later; Continue never blocked.
+- `lib/onboarding/relationshipsSync.ts` — new. Persists the skeleton via the Part 1c route; idempotent (`DUPLICATE_EDGE` → skipped); best-effort (never throws — onboarding must not trap the user).
+- `components/onboarding/wizard/WizardContainer.tsx` — `hasStructureEntities` added to the `getStepsForProfile` context; `renderStepContent` case for the new step.
+- `tests/onboarding/relationshipSkeleton.test.ts` — new. 9 tests (step gate + sync behaviour).
+
+### §12.11 / §12.12 / §12.14
+
+- §12.11 — N/A. No Prisma writes in this PR; the wizard persists via the Part 1c route → `entityRelationshipService` (already §12.11-reviewed in PR #867).
+- §12.12 — N/A. No `prisma/schema.prisma` change.
+- §12.14 — N/A. No `lib/tax-engine/` change, no financial calculation, no schema column, no AI tool, no per-asset tax UI.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes (✓ Compiled successfully).
+- [x] `npx vitest run tests/onboarding` — 154/154 passing (12 files — the 11 existing sync tests + the new relationship-skeleton test, no regressions).
+
+### Documentation Updated
+
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — §11 Part 1d build-progress note (Part 1 of Phase 44 now complete).
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44: Part 1c → ✅ MERGED (#867); Part 1d → 🟡 SHIPPING; status → Part 1 complete.
+
+### Next
+
+Part 2 — money-flow + tax-engine rewire (a separate, higher-legal-risk design pass; opens with a full tax-engine audit).
