@@ -411,6 +411,22 @@ CLAUDE.md §12.2 / §12.3 / §6.1 applied here, a reviewer-reject rule:
 4. **No financial aggregation outside the canonical services** — net worth / income / expense / cashflow flow through `getMasterFinancialSnapshot()` + `lib/calculations/*`.
 5. **Reviewer-reject:** any Phase 44 PR with tax or financial arithmetic outside `lib/tax-engine/` / `lib/calculations/` is rejected.
 
+### §8.4 — The centralised entity-rules engine (SSOT architecture)
+
+Phase 44's logic is **centralised into canonical modules — each the single source of truth for one concern, consumed everywhere, re-implemented nowhere** (CLAUDE.md §12.2 / §12.3). It is deliberately *not* one mega-engine — a single blob mixing rules, traversal and tax would itself violate separation of concerns. Instead, each concern has exactly one home:
+
+| Concern | Canonical SSOT module | Consumed by |
+|---|---|---|
+| **The grammar** — node/edge legality, the §6 validity matrix, the corrected SMSF rules (§6.3), the three-state classifier (§6.1), cycle detection (§6.5) | `lib/entity-graph/validityMatrix.ts` — **pure functions, no I/O** | the relationship service (write-time validation); the entity-section UI (live "is this valid / compliant?" feedback); the onboarding wizard; any structural-completeness check |
+| **Relationship & ownership writes** | `lib/services/entityRelationshipService.ts` — the **only** writer of `EntityRelationship` / `OwnershipGroup` / `OwnershipStake` / `BeneficialOwnershipOverride`; calls `validityMatrix` inside the write transaction; audited | every API route + UI flow that mutates the graph |
+| **Graph traversal / queries** — "who controls entity X?", "the ownership chain of X", "resolve the beneficial owner of asset A", "is X an associate of Y for Div 7A?" | `lib/entity-graph/queries.ts` — **pure functions over the loaded graph** | the tax engine, the calc engines, the entity UI, the AI advisor — all read these, none re-walks the graph itself |
+| **Per-entity tax** | `lib/tax-engine/` — the **existing** single engine, unchanged (§8.3) | — (Phase 44 feeds it; never duplicates it) |
+| **Financial aggregation** (net worth, income, cashflow) | `getMasterFinancialSnapshot()` + `lib/calculations/*` — **existing**, unchanged | — |
+
+The contract: **no route handler, no React component, no second service ever re-implements a validity rule or a graph traversal.** "A company needs a director", "an SMSF's directors must equal its members", "who controls this trust" — each is exactly one function. When a rule changes (a law change, a deed nuance, a new entity type), it changes in **one place** and every consumer — wizard, entity UI, tax engine, AI advisor — inherits it automatically.
+
+So: the entity graph is a centralised **data layer** + a centralised **rules engine** (`lib/entity-graph/`). It does not *contain* a tax engine or a calc engine — those already exist as their own SSOTs. Three engines, three single sources of truth, one direction of flow: **graph → tax/calc engines → UI**. That is what keeps SSOT valid end-to-end.
+
 ---
 
 ## §9 — Legal-positioning strategy
@@ -445,7 +461,7 @@ Net: a record-keeping, organisation and estimation tool with explicit provenance
 **Part 1 — the structural graph (review-gated).**
 
 - **1a — Schema + migration.** `EntityRelationship`, `ShareParcel`, `OwnershipGroup`/`OwnershipStake`, `BeneficialOwnershipOverride`, all enums; `LegalEntity` field additions; `LegalEntityType`/`Role` extensions; the `parentEntityId` → `TRUSTEE_OF` migration. **Decimal** for all financial fields. Additive only.
-- **1b — Service layer + migrate calculations off `parentEntityId`.** `entityRelationshipService.ts` — CRUD + the §6 validity matrix (incl. the corrected SMSF rule, the three-state classifier, the duplicate-edge guard, cycle *detection*) inside the write transaction; pure functions, SSOT, audited. The `OwnershipGroup`/`OwnershipStake` and `BeneficialOwnershipOverride` services. **All calculations reading `parentEntityId` repointed to `TRUSTEE_OF` edges here, not 1c.**
+- **1b — Centralised rules engine + service layer + migrate calculations off `parentEntityId`.** `lib/entity-graph/validityMatrix.ts` (the §6 grammar — pure functions, SSOT) + `lib/entity-graph/queries.ts` (graph traversal — pure functions, SSOT) + `lib/services/entityRelationshipService.ts` (the only writer of the graph; calls `validityMatrix` inside the write transaction; audited). See §8.4 for the SSOT architecture. The `OwnershipGroup`/`OwnershipStake` and `BeneficialOwnershipOverride` services. **All calculations reading `parentEntityId` repointed to the `TRUSTEE_OF` edges (via `queries.ts`) here, not 1c.**
 - **1c — Entity-section UI.** `EntityTree` → a true multi-edge graph (control sub-graph emphasised; the three §3A dimensions visually distinct); entity-detail lists all relationships; the accountant-review share-pass; the three-state badges.
 - **1d — Onboarding wizard.** Extend `EntitiesStep` — a relationship sub-step capturing a working-graph skeleton (every entity + the load-bearing edges), progressive disclosure, finishable later in the entity section.
 
