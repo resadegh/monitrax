@@ -477,6 +477,42 @@ export const POST = withPermission<RouteContext>(
         }));
       }
 
+      // Phase 44 Part 2c-i — SMSF fund-earnings income tax from body.
+      // (Part 2c-ii's `entityTaxFactsAssembler` will derive this for the
+      // GET path from persisted data; until then this is the testable
+      // surface — same pattern as the other dispatch fields.)
+      let smsfIncomeTax: EntityTaxFacts['smsfIncomeTax'] = undefined;
+      if (body && typeof body === 'object' && body.smsfIncomeTax) {
+        const s = body.smsfIncomeTax;
+        if (
+          typeof s.assessableInvestmentIncome !== 'number' ||
+          typeof s.deductions !== 'number' ||
+          typeof s.assessableContributions !== 'number' ||
+          typeof s.nonArmsLengthIncome !== 'number' ||
+          typeof s.isComplying !== 'boolean' ||
+          typeof s.isInPensionPhase !== 'boolean'
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              error:
+                'Invalid smsfIncomeTax body — requires { assessableInvestmentIncome, deductions, assessableContributions, nonArmsLengthIncome } as numbers and { isComplying, isInPensionPhase } as booleans.',
+            },
+            { status: 400 },
+          );
+        }
+        smsfIncomeTax = {
+          assessableInvestmentIncome: s.assessableInvestmentIncome,
+          deductions: s.deductions,
+          assessableContributions: s.assessableContributions,
+          nonArmsLengthIncome: s.nonArmsLengthIncome,
+          isComplying: s.isComplying,
+          isInPensionPhase: s.isInPensionPhase,
+          ecpiExemptProportion:
+            typeof s.ecpiExemptProportion === 'number' ? s.ecpiExemptProportion : undefined,
+        };
+      }
+
       const facts: EntityTaxFacts = {
         entityId: entity.id,
         entityType: entity.type,
@@ -510,6 +546,7 @@ export const POST = withPermission<RouteContext>(
         smsfContributions,
         highIncomeSuper,
         div7aLoans,
+        smsfIncomeTax,
       };
 
       const entityPosition = calculateEntityTaxPosition(facts);

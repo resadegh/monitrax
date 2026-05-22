@@ -830,6 +830,23 @@ export interface EntityTaxFacts {
     hasComplianceAgreement: boolean;
     isSubTrustUpe?: boolean;
   }>;
+  /**
+   * Phase 44 Part 2c-i — SMSF fund-earnings income tax. When provided for
+   * an SMSF entity, the router runs `calculateSmsfIncomeTax` (Div 295 —
+   * 15% concessional / ECPI / NALI top-rate) and adds the result to the
+   * entity's `result.smsfIncomeTax`. Shape mirrors `SmsfIncomeTaxInput`
+   * from `lib/tax-engine/super/smsfIncomeTax.ts` — inlined here to avoid
+   * a circular import (same rationale as the other dispatch fields).
+   */
+  smsfIncomeTax?: {
+    assessableInvestmentIncome: number;
+    deductions: number;
+    assessableContributions: number;
+    nonArmsLengthIncome: number;
+    isComplying: boolean;
+    isInPensionPhase: boolean;
+    ecpiExemptProportion?: number;
+  };
 }
 
 /**

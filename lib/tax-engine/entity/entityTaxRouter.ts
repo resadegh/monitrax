@@ -46,6 +46,7 @@ import {
 import type { CgtEligibleEntityType } from '../divisions/cgtDiscount';
 import { trackContributionCaps } from '../super/capTracker';
 import { calculateHighIncomeSuperTax } from '../super/highIncomeSuperTax';
+import { calculateSmsfIncomeTax } from '../super/smsfIncomeTax';
 import { classifyDiv7ALoans } from '../divisions/div7aLoanClassifier';
 import type {
   AuthorityCitation,
@@ -286,27 +287,38 @@ export function calculateEntityTaxPosition(
     };
   }
 
-  // Phase 41e.2 — SMSF entities flip to computed when smsfContributions
-  // data is provided. Returns the CapTrackingResult shape — concessional
-  // + non-concessional cap headroom, carry-forward and bring-forward
-  // eligibility, excess-contribution tax. Without contribution data,
-  // SMSF stays UNCOMPUTED.
-  if (facts.entityType === 'SMSF' && facts.smsfContributions) {
-    const capResult = trackContributionCaps(
-      {
-        concessionalYTD: facts.smsfContributions.concessionalYTD,
-        nonConcessionalYTD: facts.smsfContributions.nonConcessionalYTD,
-        totalSuperBalance: facts.smsfContributions.totalSuperBalance,
-        carryForwardAmounts: facts.smsfContributions.carryForwardAmounts?.map(
-          (c) => ({ financialYear: c.financialYear, unusedAmount: c.unusedAmount }),
-        ),
-      },
-      config,
-    );
+  // Phase 41e.2 — SMSF entities flip to computed when SMSF dispatch data
+  // is provided. The three SMSF computations are independent: cap
+  // tracking (Phase 41e.2), Div 293/296/TBC (41e.3), and — Phase 44
+  // Part 2c-i — the fund-earnings income tax (Div 295). The branch fires
+  // when ANY of them has input; each runs only when its own input is
+  // present. Without any SMSF dispatch data, SMSF stays UNCOMPUTED.
+  if (
+    facts.entityType === 'SMSF' &&
+    (facts.smsfContributions || facts.highIncomeSuper || facts.smsfIncomeTax)
+  ) {
+    const capResult = facts.smsfContributions
+      ? trackContributionCaps(
+          {
+            concessionalYTD: facts.smsfContributions.concessionalYTD,
+            nonConcessionalYTD: facts.smsfContributions.nonConcessionalYTD,
+            totalSuperBalance: facts.smsfContributions.totalSuperBalance,
+            carryForwardAmounts: facts.smsfContributions.carryForwardAmounts?.map(
+              (c) => ({ financialYear: c.financialYear, unusedAmount: c.unusedAmount }),
+            ),
+          },
+          config,
+        )
+      : null;
 
     // Phase 41e.3 — Div 293 / 296 / TBC if data provided
     const highIncomeResult = facts.highIncomeSuper
       ? calculateHighIncomeSuperTax(facts.highIncomeSuper, config)
+      : null;
+
+    // Phase 44 Part 2c-i — fund-earnings income tax (Div 295) if provided.
+    const smsfIncomeResult = facts.smsfIncomeTax
+      ? calculateSmsfIncomeTax(facts.smsfIncomeTax, config)
       : null;
 
     const smsfCitations: AuthorityCitation[] = [
@@ -323,26 +335,36 @@ export function calculateEntityTaxPosition(
       },
     ];
 
-    // Merge highIncomeSuperTax citations + uncomputed
-    let citations = smsfCitations;
-    let uncomputed = smsfUncomputed;
-    if (highIncomeResult) {
-      const seenC = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
-      for (const c of highIncomeResult.citations) {
-        const key = `${c.kind}:${c.reference}`;
-        if (!seenC.has(key)) {
-          seenC.add(key);
-          citations.push(c);
+    // Merge the citations + UNCOMPUTED of every SMSF sub-computation
+    // (Div 293/296/TBC + Part 2c-i fund-earnings income tax).
+    const citations = smsfCitations;
+    const uncomputed = smsfUncomputed;
+    const mergeInto = (
+      cs: AuthorityCitation[] | undefined,
+      us: UncomputedFlag[] | undefined,
+    ): void => {
+      if (cs) {
+        const seenC = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
+        for (const c of cs) {
+          const key = `${c.kind}:${c.reference}`;
+          if (!seenC.has(key)) {
+            seenC.add(key);
+            citations.push(c);
+          }
         }
       }
-      const seenU = new Set(uncomputed.map((u) => u.id));
-      for (const u of highIncomeResult.uncomputed) {
-        if (!seenU.has(u.id)) {
-          seenU.add(u.id);
-          uncomputed.push(u);
+      if (us) {
+        const seenU = new Set(uncomputed.map((u) => u.id));
+        for (const u of us) {
+          if (!seenU.has(u.id)) {
+            seenU.add(u.id);
+            uncomputed.push(u);
+          }
         }
       }
-    }
+    };
+    if (highIncomeResult) mergeInto(highIncomeResult.citations, highIncomeResult.uncomputed);
+    if (smsfIncomeResult) mergeInto(smsfIncomeResult.citations, smsfIncomeResult.uncomputed);
 
     const merged = cgt ? mergeCgt(citations, uncomputed, cgt) : { citations, uncomputed };
 
@@ -350,7 +372,11 @@ export function calculateEntityTaxPosition(
       entityId: facts.entityId,
       entityType: facts.entityType,
       fy: facts.fy,
-      result: { capResult, highIncomeSuperTax: highIncomeResult ?? undefined },
+      result: {
+        capResult: capResult ?? undefined,
+        highIncomeSuperTax: highIncomeResult ?? undefined,
+        smsfIncomeTax: smsfIncomeResult ?? undefined,
+      },
       cgtResult: cgt ?? undefined,
       citations: merged.citations,
       uncomputed: merged.uncomputed,
