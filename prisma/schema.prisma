@@ -878,6 +878,195 @@ model BeneficialOwnershipOverride {
 }
 
 // =============================================================================
+// PHASE 44 — MONEY-FLOW & TRANSACTIONS (Part 2a — schema)
+// Design contract: docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md §4.
+// The "what actually happened in an income year" layer — persisted
+// distribution resolutions, dividends and Div 7A benefits that the Part 2c
+// fact-assembler feeds to the tax engine. PURE DATA — no tax computation
+// lives here (§8.3). All money / percentage fields Decimal. Additive
+// throughout. Entity references are plain-string FKs validated by the
+// service layer (the `BeneficialOwnershipOverride` precedent, §3A).
+// =============================================================================
+
+// Lifecycle status shared by DistributionResolution + DividendDistribution.
+enum ResolutionStatus {
+  DRAFT
+  CONFIRMED
+}
+
+// Div 7A benefit kinds (PHASE_44_PART_2 §4.3). The engine computes the
+// LOAN limb today; PAYMENT / DEBT_FORGIVENESS / UPE / SUB_TRUST_ARRANGEMENT
+// are recorded and return UNCOMPUTED until the engine's Div 7A coverage is
+// extended (§7.1 G-DIV7A). UPE / sub-trust treatment is legally contested
+// (§7.1 G-UPE) — the engine never auto-deems them a Div 7A dividend.
+enum PrivateCompanyBenefitType {
+  LOAN
+  PAYMENT
+  DEBT_FORGIVENESS
+  UPE
+  SUB_TRUST_ARRANGEMENT
+}
+
+// Structured trust-deed rule kinds (PHASE_44_PART_2 §4.4) — the typed
+// promotion of `TrustDeedExtractedRules`' JSON columns into a queryable
+// SSOT the tax engine reads.
+enum TrustDeedRuleType {
+  BENEFICIARY_CLASS
+  DISTRIBUTION_METHOD
+  DEFAULT_BENEFICIARY
+  STREAMING_POWER
+  VESTING_DATE
+  INCOME_DEFINITION
+  SUB_TRUST_UPE_CLAUSE
+}
+
+// `DistributionResolution` — a discretionary / unit / fixed / hybrid
+// trust's per-FY resolution. Feeds `EntityTaxFacts.trustDistribution`.
+// Bamford proportionate model: each allocation's `presentlyEntitledShare`
+// is a fraction of the trust-law `distributableIncome`; the engine
+// applies that fraction to the s 95 `trustNetIncome` (a tax concept).
+model DistributionResolution {
+  id                     String           @id @default(uuid())
+  userId                 String
+  trustEntityId          String // the trust LegalEntity (plain FK — service-validated)
+  financialYear          String // "2026-27"
+  trustNetIncome         Decimal          @db.Decimal(19, 4) // s95 ITAA 1936 net income (tax concept)
+  distributableIncome    Decimal?         @db.Decimal(19, 4) // trust-law income — Q-DISTINCOME (Bamford)
+  resolutionDate         DateTime? // trustee resolution date — one input to streaming validity
+  frankedDividendPool    Decimal?         @db.Decimal(19, 4) // Div 6E character pool available to stream
+  capitalGainPool        Decimal?         @db.Decimal(19, 4)
+  hasFamilyTrustElection Boolean          @default(false)
+  status                 ResolutionStatus @default(DRAFT)
+  accountantVerified     Boolean          @default(false)
+  verifiedAt             DateTime?
+  sourceDocumentId       String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  allocations DistributionAllocation[]
+
+  @@index([userId])
+  @@index([trustEntityId, financialYear])
+  @@map("distribution_resolutions")
+}
+
+// One beneficiary's slice of a `DistributionResolution`.
+model DistributionAllocation {
+  id                       String   @id @default(uuid())
+  resolutionId             String
+  beneficiaryEntityId      String // a BENEFICIARY_OF / UNITHOLDER_OF entity (service-validated)
+  presentlyEntitledShare   Decimal  @db.Decimal(9, 6) // fraction of distributable income (0..1)
+  streamedFrankedDividends Decimal? @db.Decimal(19, 4) // Subdiv 207-B specific entitlement
+  streamedCapitalGains     Decimal? @db.Decimal(19, 4) // Subdiv 115-C specific entitlement
+  notes                    String?
+
+  resolution DistributionResolution @relation(fields: [resolutionId], references: [id], onDelete: Cascade)
+
+  @@index([resolutionId])
+  @@index([beneficiaryEntityId])
+  @@map("distribution_allocations")
+}
+
+// `DividendDistribution` — an actual dividend declared by a company.
+// Feeds the Div 207 imputation computation; franking is recorded
+// explicitly, never inferred from a rate guess (PHASE_44 §8.2).
+model DividendDistribution {
+  id                   String           @id @default(uuid())
+  userId               String
+  companyEntityId      String // the declaring company (plain FK — service-validated)
+  financialYear        String
+  declaredDate         DateTime
+  paymentDate          DateTime? // null = declared, not yet paid (entitlement ≠ cash)
+  totalAmount          Decimal          @db.Decimal(19, 4)
+  frankingPercentage   Decimal          @db.Decimal(5, 2) // 0..100
+  frankingCreditsTotal Decimal          @db.Decimal(19, 4)
+  status               ResolutionStatus @default(DRAFT)
+  accountantVerified   Boolean          @default(false)
+  verifiedAt           DateTime?
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payments DividendPayment[]
+
+  @@index([userId])
+  @@index([companyEntityId, financialYear])
+  @@map("dividend_distributions")
+}
+
+// One shareholder's slice of a `DividendDistribution`.
+model DividendPayment {
+  id                     String  @id @default(uuid())
+  dividendDistributionId String
+  shareholderEntityId    String // a SHAREHOLDER_OF entity (service-validated)
+  amount                 Decimal @db.Decimal(19, 4)
+  frankingCredits        Decimal @db.Decimal(19, 4)
+
+  dividend DividendDistribution @relation(fields: [dividendDistributionId], references: [id], onDelete: Cascade)
+
+  @@index([dividendDistributionId])
+  @@index([shareholderEntityId])
+  @@map("dividend_payments")
+}
+
+// `PrivateCompanyBenefit` — a Div 7A benefit from a private company to a
+// shareholder / associate. The engine computes the LOAN limb; the others
+// are recorded + returned UNCOMPUTED (§7.1 G-DIV7A / G-UPE).
+model PrivateCompanyBenefit {
+  id                     String                    @id @default(uuid())
+  userId                 String
+  companyEntityId        String // the private company (plain FK — service-validated)
+  recipientEntityId      String // shareholder / associate (service-validated)
+  financialYear          String
+  benefitType            PrivateCompanyBenefitType
+  amount                 Decimal                   @db.Decimal(19, 4)
+  openingBalance         Decimal?                  @db.Decimal(19, 4) // LOAN
+  loanTermYears          Int? // LOAN — 7 or 25 (s109N)
+  benchmarkRate          Decimal?                  @db.Decimal(7, 4) // LOAN
+  repaymentsThisFy       Decimal?                  @db.Decimal(19, 4) // LOAN
+  hasComplianceAgreement Boolean                   @default(false)
+  isSubTrustUpe          Boolean                   @default(false)
+  accountantVerified     Boolean                   @default(false)
+  verifiedAt             DateTime?
+  createdAt              DateTime                  @default(now())
+  updatedAt              DateTime                  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyEntityId, financialYear])
+  @@map("private_company_benefits")
+}
+
+// `TrustDeedRule` — structured, queryable deed-derived facts: the typed
+// promotion of `TrustDeedExtractedRules`' JSON columns, and the SSOT the
+// tax engine reads. `ruleValue` is typed JSON, Zod-validated by the
+// service writer. `TrustDeedExtractedRules` is retained as the raw
+// PDF-extraction provenance record.
+model TrustDeedRule {
+  id                  String            @id @default(uuid())
+  userId              String
+  trustEntityId       String // the trust LegalEntity (plain FK — service-validated)
+  sourceExtractionId  String? // provenance — id of the source TrustDeedExtractedRules row
+  ruleType            TrustDeedRuleType
+  ruleValue           Json // typed per ruleType; Zod-validated at write time
+  effectiveFrom       DateTime
+  effectiveTo         DateTime?
+  extractedConfidence Decimal?          @db.Decimal(4, 3) // 0..1 — AI-extraction confidence
+  accountantVerified  Boolean           @default(false)
+  verifiedAt          DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([trustEntityId, ruleType])
+  @@map("trust_deed_rules")
+}
+
+// =============================================================================
 // COMPANY TAX HISTORY (Phase 41E reform 2026-27 — Measure 5)
 // =============================================================================
 
@@ -1063,6 +1252,12 @@ model User {
   entityRelationships          EntityRelationship[]
   ownershipGroups              OwnershipGroup[]
   beneficialOwnershipOverrides BeneficialOwnershipOverride[]
+
+  // Phase 44 Part 2: money-flow & transaction records.
+  distributionResolutions DistributionResolution[]
+  dividendDistributions   DividendDistribution[]
+  privateCompanyBenefits  PrivateCompanyBenefit[]
+  trustDeedRules          TrustDeedRule[]
 
   // Phase 41f: bookkeeping integrations the user has connected for any of
   // their LegalEntities (USER_ENTITY scope). Cascades on user delete via

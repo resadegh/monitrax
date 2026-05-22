@@ -371,3 +371,50 @@ Net effect — no structural change (the central finding stood: engine built, ga
 - New open questions: Q-UPE, Q-PARTNERSHIP, Q-DISTINCOME, Q-RESOLUTION-AMEND.
 
 `PHASE_44_ENTITY_GRAPH.md` §11 + `IMPLEMENTATION_PLAN.md` updated to reflect v2. PR #870 carries the revision; build of Part 2a remains blocked on Reza's approval of the v2 doc.
+
+---
+
+## Session: Phase 44 Part 2a — money-flow & transactions schema
+
+Branch: `claude/phase-44-part-2a-schema-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (schema) — Phase 44 Part 2a, the money-flow & transaction models.
+- **Scope**: `prisma/schema.prisma` + a new migration. Pure data layer — no service / API / engine code in this PR.
+- **Design contract**: `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §4 (the four models), §10 (build sequence — 2a's gate is the design-doc review, now merged via PR #870).
+
+Part 2's central finding: the tax engine is built; the gap is the data layer. Part 2a is that data layer's foundation — the persisted "what actually happened" models the Part 2c fact-assembler will feed to the engine.
+
+### Schema additions (`prisma/schema.prisma`)
+
+- **6 new models**: `DistributionResolution` + `DistributionAllocation` (trust per-FY resolution → `EntityTaxFacts.trustDistribution`; carries `trustNetIncome` (s 95) and `distributableIncome` (trust-law income) separately — the Bamford proportionate model); `DividendDistribution` + `DividendPayment` (actual company dividend + franking → Div 207 imputation); `PrivateCompanyBenefit` (Div 7A loan / payment / forgiveness / UPE / sub-trust); `TrustDeedRule` (structured deed-derived facts — the typed promotion of `TrustDeedExtractedRules`' JSON).
+- **3 new enums**: `ResolutionStatus`, `PrivateCompanyBenefitType`, `TrustDeedRuleType`.
+- **`User`**: 4 additive back-relations.
+- Entity references are plain-string FKs validated by the service layer (the `BeneficialOwnershipOverride` precedent). All money / percentage fields `Decimal`.
+
+### Migration
+
+- `prisma/migrations/20260522100000_phase_44_part_2a_money_flow/migration.sql` — generated offline via `prisma migrate diff` (schema-to-schema; no dev-DB connection available in this environment — the SQL is exactly what `migrate dev` would emit). **Purely additive** — `CREATE TYPE` / `CREATE TABLE` / `CREATE INDEX` / `ADD FOREIGN KEY` only. No `DROP`, no `ALTER ... DROP`, no `TRUNCATE`, no `ADD COLUMN NOT NULL` on an existing table.
+
+### §12.11 / §12.12 / §12.14
+
+- **§12.11** — N/A. No Prisma `update` / `upsert` / `delete` / `$executeRaw` in this PR. The migration is additive (new tables only) — the destructive-write checklist does not apply.
+- **§12.12** — satisfied. `prisma/schema.prisma` changed *and* a matching migration folder is in the same PR. Additive — no destructive SQL.
+- **§12.14** — Part 2 triggers §12.14 (it is the tax-engine workstream). 2a is **schema only** — no function, no financial calculation, no AI tool, no per-asset tax UI. FW-3: the new models are **standalone tables** — no column added to `Property` / `Investment` / `LegalEntity` — so the reform-grandfathering column question is N/A. Regime-awareness (FW-1) lands with the 2b/2c services + engine repoint, gated as the design doc §9 specifies.
+
+### Build Status
+
+- [x] `npx prisma validate` — schema valid.
+- [x] `npx prisma generate` — client regenerated with the 6 new models.
+- [x] `npx tsc --noEmit` — clean.
+
+### Documentation Updated
+
+- `docs/architecture/03_DATA_MODEL.md` — §3.10 new subsection "New models (Part 2a — money-flow & transactions)".
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — §10 build sequence: 2a marked built.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44 Part 2 → 🟡 BUILDING; 2a → 🟡 SHIPPING; 2b–2d listed; 2c flagged blocked on the §11 open questions.
+
+### Next
+
+2b — the model service writers + API routes. 2c (the engine repoint) is **blocked** on Reza's answers to §11 Q-SMSF / Q-UPE / Q-PARTNERSHIP.

@@ -338,7 +338,7 @@ Part 2 squarely triggers §12.14 (it touches CGT, negative gearing, trust distri
 
 | Sub-part | Scope | Gate |
 |---|---|---|
-| **2a — Schema** | The four models + enums + the migration (CLAUDE.md §12.12). `03_DATA_MODEL.md` updated. Additive only. | Reza review of this design doc → then build. |
+| **2a — Schema** ✅ | The four models + enums + the migration (CLAUDE.md §12.12). `03_DATA_MODEL.md` updated. Additive only. **Built** — migration `20260522100000_phase_44_part_2a_money_flow`. | Design-doc review → built (the §10 gate for 2a is the design-doc review, not the §11 open questions — those gate 2c). |
 | **2b — Model services + routes** | The four service writers (§5) + thin API routes. Audited, §12.11-compliant. Tests. | Standard PR review. |
 | **2c — Assembler + repoint** | `entityTaxFactsAssembler`; repoint `GET /api/tax/entity`; repoint `trustMinimumTax` to `TrustDeedRule`; remove the dead `parentEntityId` read. **If Q-SMSF approved:** `super/smsfIncomeTax.ts`. | **Higher-risk PR** — careful review; the tax-route output changes from `UNCOMPUTED` to real numbers. |
 | **2d — Money-flow** | `MoneyFlowSankey` / `getMoneyFlow()` upgrade to actual flows; the §11A money-flow lens becomes "actual". | Standard PR review. |
