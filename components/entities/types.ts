@@ -21,7 +21,8 @@ export type LegalEntityRole =
   | 'HOLDING'
   | 'OPERATING'
   | 'INVESTMENT'
-  | 'SUPERANNUATION';
+  | 'SUPERANNUATION'
+  | 'CORPORATE_TRUSTEE';
 
 export const TYPE_LABELS: Record<LegalEntityType, string> = {
   PERSONAL_NAME: 'My personal name',
@@ -49,6 +50,7 @@ export const ROLE_LABELS: Record<LegalEntityRole, string> = {
   OPERATING: 'Operating',
   INVESTMENT: 'Investment',
   SUPERANNUATION: 'Superannuation',
+  CORPORATE_TRUSTEE: 'Corporate trustee',
 };
 
 export interface OwnedObjectsCount {
@@ -107,6 +109,7 @@ export const ROLES: LegalEntityRole[] = [
   'OPERATING',
   'INVESTMENT',
   'SUPERANNUATION',
+  'CORPORATE_TRUSTEE',
 ];
 
 /**
@@ -156,5 +159,15 @@ export const ROLE_PALETTE: Record<
     iconBg: 'bg-fuchsia-100 dark:bg-fuchsia-900/40',
     ring: 'hover:ring-fuchsia-300 dark:hover:ring-fuchsia-600',
     chip: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/40 dark:text-fuchsia-200',
+  },
+  // A corporate trustee is structural plumbing — a control vehicle that
+  // holds no beneficial wealth. A neutral slate tone signals "structural,
+  // not wealth-bearing" so it never competes visually with the entities
+  // that actually carry value.
+  CORPORATE_TRUSTEE: {
+    icon: 'text-slate-700 dark:text-slate-300',
+    iconBg: 'bg-slate-100 dark:bg-slate-800/60',
+    ring: 'hover:ring-slate-300 dark:hover:ring-slate-600',
+    chip: 'bg-slate-100 text-slate-700 dark:bg-slate-800/60 dark:text-slate-200',
   },
 };

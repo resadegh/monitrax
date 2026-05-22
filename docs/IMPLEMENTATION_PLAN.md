@@ -134,9 +134,9 @@
   - [x] Open questions Q1-Q4 resolved (Reza, 2026-05-20)
   - [x] Adversarial design review #1 (internal review agent, source-verified vs ATO/ASIC) — 4 critical issues; incorporated → v2
   - [x] Adversarial design review #2 (external AI / ChatGPT) — found v2 still over-claimed completeness, the SMSF corporate-trustee rule still too loose, `Float`-not-`Decimal`, legal-title/beneficial-ownership/control blurred, binary accept/reject too rigid; **ALL incorporated → v3** (new §3A three-dimensions, §6.1 three-state model, §6.3 corrected SMSF rule, §6.5 cycle detection, `OwnershipGroup` split, `BeneficialOwnershipOverride`, executor/LPR/family/associate edges, residency/jurisdiction metadata, §8 tax corrections). See doc §14 + §15 acceptance criteria.
-  - [ ] Reza review of the v3 design doc (+ accountant sanity-check of §3A-§6) ← **NEXT — gates everything below**
-  - [ ] Part 1a — schema + migration (`EntityRelationship`, `ShareParcel`, `LegalEntity` field additions, `parentEntityId`→`TRUSTEE_OF` migration)
-  - [ ] Part 1b — `entityRelationshipService.ts` (edge-validity matrix enforcement)
+  - [x] Reza reviewed + approved the v3 design doc 2026-05-20; accountant sanity-check deferred to Basiq-onboarding prep (D-Day Bundle T3.4)
+  - [x] **Part 1a — schema + migration 🟡 SHIPPING (PR pending)** — `prisma/schema.prisma`: 5 new models (`EntityRelationship`, `ShareParcel`, `OwnershipGroup`, `OwnershipStake`, `BeneficialOwnershipOverride`) + 8 new enums; `LegalEntityType` +12 / `LegalEntityRole` +1 / `TrustType` +2; 22 additive `LegalEntity` columns. Migration `20260522030000_phase_44_entity_graph_part_1a` — purely additive, includes the `parentEntityId`→`TRUSTEE_OF` data migration. All financial fields `Decimal`. Hand-written migration (sandbox has no DB) — Vercel preview `prisma migrate deploy` is the canonical check. Branch `claude/phase-44-part-1a-schema-MG8mr`.
+  - [ ] Part 1b — `lib/entity-graph/validityMatrix.ts` + `queries.ts` + `entityRelationshipService.ts` (the §6 grammar, §8.4 SSOT engine; repoint calculations off `parentEntityId`)
   - [ ] Part 1c — entity-section UI (multi-edge `EntityTree`, accountant-review share-pass, joint-ownership `OwnershipStake` pending Q1)
   - [ ] Part 1d — onboarding wizard relationship sub-step
   - [ ] Part 2 — money-flow + tax-engine rewire (separate design pass — higher legal risk)

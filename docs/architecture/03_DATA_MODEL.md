@@ -548,6 +548,31 @@ If we disclose to a third party: CDRDisclosure row appended (admin UI / programm
 
 ---
 
+# **3.10 Entity Graph (Phase 44)**
+
+> **Full design contract:** `docs/blueprint/PHASE_44_ENTITY_GRAPH.md`. This section is the data-model summary; the design doc is the authoritative spec for the grammar, the validity matrix, and the build plan. **Part 1a (schema)** shipped via migration `20260522030000_phase_44_entity_graph_part_1a` — purely additive.
+
+Phase 41 (§10) modelled entity *types*. Phase 44 adds the *relationship* layer Phase 41 deferred — a typed, directed, time-bounded graph so Monitrax can represent real Australian multi-entity structures (companies, trusts, SMSFs, partnerships and their inter-relationships). It is a **pure data layer** — every validity rule lives in `lib/entity-graph/`, every tax/financial computation stays in the existing engines (CLAUDE.md §12.2/§12.3).
+
+### New models (Part 1a)
+
+| Model | Purpose |
+|---|---|
+| `EntityRelationship` | The one typed edge — `from` → `to`, directed, time-bounded (`effectiveFrom`/`effectiveTo`). `type` is `EntityRelationshipType` (19 values — `TRUSTEE_OF`, `APPOINTOR_OF`, `SHAREHOLDER_OF`, `DIRECTOR_OF`, `BENEFICIARY_OF`, `MEMBER_OF`, …). Carries edge-specific metadata + a `structuralState` (the §6.1 three-state classifier) + `accountantVerified`. |
+| `ShareParcel` | First-class equity detail (company shares + unit-trust units) hanging off a `SHAREHOLDER_OF`/`UNITHOLDER_OF` edge — count, class, paid price, CGT acquisition date. All `Decimal`. |
+| `OwnershipGroup` + `OwnershipStake` | Joint / shared ownership of an owned object — layered *beside* `ownerEntityId`. `tenancyType` distinguishes joint tenancy (survivorship) from tenants-in-common (fixed fractions). |
+| `BeneficialOwnershipOverride` | Asset-scoped record that legal title ≠ beneficial ownership (nominee / bare trust / custodian). |
+
+### `LegalEntity` additions
+
+`LegalEntityType` gains 12 values (`INDIVIDUAL`, `FIXED_TRUST`, `HYBRID_TRUST`, `BARE_TRUST`, `TESTAMENTARY_TRUST`, `DECEASED_ESTATE`, `FOREIGN_COMPANY`, `INCORPORATED_ASSOCIATION`, `CO_OPERATIVE`, `STRATA_BODY_CORPORATE`, `CUSTODIAN_PLATFORM`, `OTHER`); `LegalEntityRole` gains `CORPORATE_TRUSTEE`; `TrustType` gains `HYBRID` + `TESTAMENTARY`. Plus 22 additive columns — `companySubtype`, `dateOfBirth`, `directorIdEncrypted` (encrypted, same treatment as TFN), the legal-title/beneficial/control capability flags, the residency + jurisdiction blocks, trust + estate metadata, `regulatoryStatus`, `structuralState`, `accountantVerified`.
+
+### Migration note
+
+The legacy `LegalEntity.parentEntityId` (the single trustee→trust self-FK) is **frozen read-only** — the Part 1a migration converts every non-null `parentEntityId` into a `TRUSTEE_OF` edge. Calculations repoint to the graph in Part 1b. `parentEntityId` is dropped in a later cleanup once nothing reads it. `ownerEntityId` on owned objects is untouched.
+
+---
+
 # **4. Frequency Enum (Global)**
 
 ```
