@@ -1161,3 +1161,67 @@ Every Basiq CTA in this family of primitives MUST be gated by `useBasiqEnabled()
 The chip itself is **not** gated — when an account's `balanceSource` IS `BASIQ` (legacy data from when flag was ON), the chip truthfully renders "Synced X ago". The chip describes existing state; it never advertises Basiq.
 
 See `docs/operational/runbooks/06_BASIQ_INTEGRATION_TOGGLE.md` §2 for the exhaustive gating reference + `docs/operational/runbooks/10_DATA_SOURCE_HYGIENE.md` §4 for surface-by-surface gating notes.
+
+---
+
+## Entity-structure canvas (Phase 44 Part 1c, 2026-05-22)
+
+The entity section's centrepiece is the **entity-structure canvas** — the
+digital, live equivalent of the org chart an accountant hands a client
+(`PHASE_44_ENTITY_GRAPH.md` §11A). Canonical component:
+`components/entities/EntityCanvas.tsx`.
+
+**Library.** Built on **React Flow (`@xyflow/react`) + `@dagrejs/dagre`**
+— choice confirmed with Reza before build. React Flow supplies the
+interaction engine only (pan / zoom / drag / hit-testing / viewport);
+dagre supplies the layered auto-layout. The canvas brings its **own**
+node component (`canvas/EntityCanvasNode.tsx`) so the Phase 39 / 41c
+design language — role palette, Apple-glass surface, restraint — carries
+over unchanged. The canvas is dynamically imported (`ssr:false`) so the
+graph libraries never weigh on other routes' bundles.
+
+**The five §11A patterns:**
+
+1. **Colour by role.** Each box is tinted by `LegalEntityRole` using the
+   established `ROLE_PALETTE` (`components/entities/types.ts`) — Personal
+   amber / Holding indigo / Operating emerald / Investment fuchsia /
+   Superannuation violet / Corporate-trustee slate. One colour system
+   across the whole app.
+2. **Progressive disclosure.** The box shows name + type + one key line
+   (the ABN, or "Trustee: …"). Full detail — every relationship, the
+   §6.1 state — opens in the entity-detail dialog on click.
+3. **The lens toggle.** Control / Ownership / Money-flow / All. Because
+   the §3A model keeps legal title / beneficial ownership / control
+   distinct, the canvas shows one dimension at a time. Default is
+   **Control**. The money-flow lens folds in the existing
+   `MoneyFlowSankey` (there is no longer a separate Money Flow tab).
+   Edge-set definitions live in `canvas/graphMeta.ts` — the Control lens
+   reuses the exact control-edge set `lib/entity-graph/queries.ts`
+   defines, one SSOT for "what is a control edge".
+4. **Interactive + navigable.** Click a box → `EntityDetailDialog`;
+   click a connector → `RelationshipDetailDialog`. Every box carries a
+   §6.1 three-state badge — green `VALID`, amber
+   `NON_COMPLIANT_BUT_RECORDED` (reason on hover), red
+   `IMPOSSIBLE_SYSTEM_ERROR`.
+5. **Auto-layout + nudge.** Layered top-to-bottom dagre layout;
+   controllers/owners sit above what they control. Manual drag is
+   allowed and persisted to `localStorage` (per device — Part 1c ships
+   zero schema changes); a "Reset layout" affordance clears it.
+
+**Presentational only.** The canvas reads `/api/entities/graph`, runs
+the pure `lib/entity-graph/` rules engine (`classifyGraph` for the
+badges, `classifyEdge` for the add-relationship live preview) and
+renders. It computes nothing financial and performs no tax arithmetic
+(§8.3 / §8.4).
+
+**Accountant-review report** (`/dashboard/entities/accountant-review`) —
+a standalone, print-friendly structure report (every entity +
+relationship, §6.1 state, accountant-verified status, a verification
+progress meter, an accountant sign-off block). Action controls carry
+`print:hidden` so the browser print / Save-as-PDF output is clean.
+
+**Where this pattern replicates next.** The accountant portal client
+view (`app/portal/clients/[id]/view`) still renders the legacy
+`EntityTree` (the Phase 41c two-row SVG tree). A future PR can adopt the
+canvas there too — `EntityCanvas` is self-contained and only needs a
+graph endpoint scoped to the viewed client. Out of scope for Part 1c.
