@@ -110,3 +110,61 @@ The §11 Part 1b task "repoint calculations off `parentEntityId`": a grep of `ap
 ### Next
 
 Part 1b-ii — `lib/services/entityRelationshipService.ts` (the only writer of `EntityRelationship`; calls `validityMatrix` inside the write transaction; audited) + the `OwnershipGroup`/`OwnershipStake` and `BeneficialOwnershipOverride` services.
+
+---
+
+## Session: Phase 44 Part 1b-ii — Entity-graph service layer
+
+Branch: `claude/phase-44-part-1b-ii-service-MG8mr`
+
+### Changes Made
+
+- **Type**: Feature — Phase 44 Part 1b-ii, the DB-writing service layer for the typed entity graph.
+- **Scope**: Three new canonical services in `lib/services/` — the sole writers of `EntityRelationship`, `OwnershipGroup`/`OwnershipStake`, and `BeneficialOwnershipOverride`. No tax / financial arithmetic (§8.3). No API routes / UI (those are Part 1c).
+- **Design contract**: `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` §8.4 (the SSOT service layer), §6 (the validity grammar the relationship service enforces at write time).
+
+### Files Created
+
+- `lib/services/entityRelationshipService.ts` — the only writer of `EntityRelationship`. `loadEntityGraph` (Prisma rows → the pure `EntityGraph` the rules engine consumes), `createRelationship` / `endRelationship` / `deleteRelationship`, `listRelationships`. Every write runs in one transaction: ownership-checked (both entities belong to the user), duplicate-guarded (no overlapping `[from, to, type]` window — schema §7 note), classified by `validityMatrix` (an `IMPOSSIBLE_SYSTEM_ERROR` edge is rejected via `RelationshipValidationError`; a `NON_COMPLIANT` edge is recorded + flagged, never erased — §6.1, §9), structural state persisted to the edge and to every entity whose §6.1 state changed, then audited fire-and-forget.
+- `lib/services/ownershipService.ts` — the only writer of `OwnershipGroup` / `OwnershipStake` (joint / shared ownership of an *asset*). `createOwnershipGroup` / `endOwnershipGroup` / `deleteOwnershipGroup`, `listOwnershipGroups`. Joint tenancy carries survivorship (not fractional ownership — §7). The pure `validateOwnershipStakes` helper surfaces data-quality warnings (TIC shares not summing to 100, etc.) without rejecting — digital-twin philosophy.
+- `lib/services/beneficialOwnershipService.ts` — the only writer of `BeneficialOwnershipOverride` — asset-scoped "legal title ≠ beneficial owner" (nominee / bare trust / custodian, §3A).
+- `tests/entity-graph/serviceHelpers.test.ts` — 9 tests for the pure helpers (`windowsOverlap` duplicate-edge guard; `validateOwnershipStakes`). The DB-touching write paths are integration-tested elsewhere (no database in the unit-test environment — repo convention).
+
+### §12.11 Destructive-write checklist
+
+This PR contains destructive Prisma writes — all guarded; **user confirmation NOT REQUIRED** (reasoning below).
+
+| Operation | `where` clause | Columns / rows touched | Guard |
+|---|---|---|---|
+| `entityRelationship.update` (`endRelationship`) | `{ id, userId }` (primary key + tenancy) | `effectiveTo` only — the normal time-bound close | composite `where` + `findFirst` existence check; new Part-1a model; the service is the sole writer |
+| `entityRelationship.delete` (`deleteRelationship`) | `{ id, userId }` | one edge row | composite `where` + `findFirst` |
+| `legalEntity.update` (`reconcileEntityStates`) | `{ id, userId }` | **`structuralState` only** — a system-derived §6.1 classification owned exclusively by the validity engine; never user-entered data | composite `where`; the column is system-owned, written only with the freshly-computed classification |
+| `ownershipGroup.update` / `.delete` | `{ id, userId }` | `effectiveTo` / one group row (stakes cascade) | composite `where` + `findFirst`; new Part-1a model |
+| `beneficialOwnershipOverride.update` / `.delete` | `{ id, userId }` | `effectiveTo` / one override row | composite `where` + `findFirst`; new Part-1a model |
+
+1. **`where` clause matches:** only the caller's own row, identified by primary `id` scoped to `userId`. Nothing else can match.
+2. **Columns overwritten:** `effectiveTo` (the lifecycle close) and `structuralState` (system-derived). None holds user-entered financial / verified data.
+3. **Guard:** composite `{ id, userId }` `where` on every write + a `findFirst` existence check; these services are the sole writers of their models (§8.4).
+
+User confirmation: **NOT REQUIRED** — every write is PK-scoped to the caller's own data and overwrites only lifecycle / system-derived columns.
+
+### §12.12 / §12.14
+
+- §12.12 — N/A. No `prisma/schema.prisma` change.
+- §12.14 — N/A. No `lib/tax-engine/` change, no financial calculation, no schema column, no AI tool, no per-asset tax UI.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes.
+- [x] `npx vitest run tests/entity-graph` — 30/30 passing (21 rules-engine + 9 service-helper).
+
+### Documentation Updated
+
+- `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` — §13.1 new subsection "The entity-graph service layer — Phase 44 Part 1b-ii".
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44: Part 1b-i → ✅ MERGED (#865); Part 1b-ii → 🟡 SHIPPING.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — §11 build-progress updated.
+
+### Next
+
+Part 1c — entity-section UI (the multi-edge, multi-lens entity-structure canvas, §11A) + the API routes that expose these services + the accountant-review share-pass.
