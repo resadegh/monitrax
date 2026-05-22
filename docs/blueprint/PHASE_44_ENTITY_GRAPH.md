@@ -467,7 +467,9 @@ Net: a record-keeping, organisation and estimation tool with explicit provenance
 
 **Part 2 — money-flow, transactions & tax-engine rewire (separate design pass — higher legal risk).**
 
-- `DistributionResolution`, `DividendDistribution`, `PrivateCompanyBenefit` (Div 7A), structured `TrustDeedRule`; rewire `trustDistribution.ts` / `div6E.ts` / `div7A.ts` / `super/*` / `s100A.ts` to read graph + transactions; `MoneyFlowSankey` upgrade. Its own document.
+- **Part 1 does NOT touch the tax engine.** During Part 1 the engine keeps reading `TrustDeedExtractedRules` JSON exactly as today (§8.3) — so no tax-engine review is needed to ship the structural graph.
+- **Part 2's design pass opens with a full tax-engine audit.** Before any rewire, every existing `lib/tax-engine/` module is audited against (a) the new graph + transaction inputs it will consume, and (b) the correctness points the two design reviews surfaced — trust assessment under s98 / s99 / s99A + present-entitlement (not naive "distributed ⇒ beneficiary"), SMSF ECPI (not a blanket 0%), testamentary excepted-income `assetSource` gating, franking computed from actual `DividendDistribution` records (not inferred from shareholding), and the Div 7A associate determination reading the `FAMILY_MEMBER_OF` / `ASSOCIATE_OF` graph. The audit confirms what the mature Phase 41e engine already handles correctly and pins exactly what the rewire must change.
+- **Then the rewire:** new `DistributionResolution`, `DividendDistribution`, `PrivateCompanyBenefit` (Div 7A), structured `TrustDeedRule` models; repoint `trustDistribution.ts` / `div6E.ts` / `div7A.ts` / `super/*` / `s100A.ts` to read graph + transactions; `MoneyFlowSankey` upgrade. The engine stays the one engine (§8.3) — only its *input shape* changes. Captured in its own design document.
 
 ---
 
