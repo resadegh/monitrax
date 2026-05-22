@@ -497,6 +497,18 @@ Eight new canonical services in `lib/services/`:
 Plus one new helper:
 - `lib/portal/adviserClientAccess.ts` — `verifyAdviserClientAccess` is the centralised consent + membership + role + assignment guard that all `/api/portal/clients/[id]/*` endpoints route through. **Reviewers reject any new portal client-data endpoint that doesn't use it.**
 
+### The entity-graph rules engine — `lib/entity-graph/` (Phase 44 Part 1b)
+
+A new **pure** rules + traversal layer — the centralised SSOT for the typed entity graph (`PHASE_44_ENTITY_GRAPH.md` §8.4):
+
+| Module | Responsibility |
+|---|---|
+| `lib/entity-graph/types.ts` | The in-memory graph shapes (`EntityGraph`, `GraphNode`, `GraphEdge`), the node-type group predicates, the §6.1 issue/state types, the time-bounding helper. |
+| `lib/entity-graph/validityMatrix.ts` | The §6 grammar — node/edge legality (§6.2), the three-state classifier (§6.1: `VALID` / `NON_COMPLIANT_BUT_RECORDED` / `IMPOSSIBLE_SYSTEM_ERROR`), the corrected SMSF rules (§6.3), entity validity (§6.4), cycle handling (§6.5). |
+| `lib/entity-graph/queries.ts` | Pure graph traversal — `getTrusteesOf` (the canonical replacement for the frozen `LegalEntity.parentEntityId` self-FK), `getControllersOf`, `getOwnershipChain`, cycle detection, `isAssociateOf`, `resolveBeneficialOwner`. |
+
+These are **pure functions** — no I/O, no clock reads, no tax/financial arithmetic. The grammar GRADES; it does not blanket-reject — legal non-compliance is recorded and flagged, never erased (§6.1, §9). Every consumer (the relationship service, the entity UI, the onboarding wizard, the tax engine) reads these; a validity rule or a graph traversal is re-implemented nowhere else (CLAUDE.md §12.2). Loading the graph from the database and writing edges is the relationship service's job (Part 1b-ii).
+
 ## **§13.2 Architectural rules across the B2B2C surface**
 
 Documented in full in `docs/architecture/03_DATA_MODEL.md` §11.7 and `docs/architecture/07_API_STANDARDS.md` §15.1-15.7. Summary:
