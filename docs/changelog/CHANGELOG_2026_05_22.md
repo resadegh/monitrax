@@ -63,3 +63,50 @@ PR #864's first CI run failed `Build verification` (a `tsc` failure — `prisma 
 ### Next
 
 Part 1b — `lib/entity-graph/validityMatrix.ts` + `queries.ts` + `entityRelationshipService.ts` (the §6 grammar + the §8.4 centralised SSOT engine; repoint calculations off `parentEntityId`).
+
+---
+
+## Session: Phase 44 Part 1b-i — Entity-graph rules engine
+
+Branch: `claude/phase-44-part-1b-validity-engine-MG8mr`
+
+### Changes Made
+
+- **Type**: Feature — Phase 44 Part 1b-i, the centralised entity-graph rules engine.
+- **Scope**: New pure-function layer `lib/entity-graph/` + a test suite. No I/O, no API, no UI, no tax-engine change — the design contract §8.3 requires Part 1 to add zero calculation logic.
+- **Design contract**: `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` §6 (the validity grammar), §8.4 (the SSOT architecture).
+
+Part 1b in the design doc is "centralised rules engine + service layer + repoint calculations off `parentEntityId`". It is split into two reviewable PRs: **1b-i (this PR)** — the pure rules engine; **1b-ii (next)** — the DB-writing service layer. The pure engine has zero runtime risk and is the well-specified core of §6 / §8.4.
+
+### Files Created
+
+- `lib/entity-graph/types.ts` — the in-memory graph representation (`EntityGraph`, `GraphNode`, `GraphEdge`), the node-type group predicates the §6 grammar is written in, the §6.1 issue/state types, and the `isEdgeActiveAt` time-bounding helper. Leaf module — no intra-package dependency, so `queries` + `validityMatrix` import it without a cycle.
+- `lib/entity-graph/queries.ts` — pure graph traversal (SSOT, §8.4). `getTrusteesOf` (the canonical replacement for the frozen `LegalEntity.parentEntityId` self-FK, §10), `getControllersOf`, `getOwnershipChain`, `findTrusteeCycle` / `findOwnershipCycles` (§6.5), `isAssociateOf` (a structural Div 7A input — the authoritative s318 test stays in the tax engine), `resolveBeneficialOwner` (§3A asset-scoped beneficial ownership).
+- `lib/entity-graph/validityMatrix.ts` — the §6 grammar (SSOT, §8.4). `classifyEdge` (§6.2 edge legality), `classifyEntity` (§6.3 SMSF rules + §6.4 entity validity), `classifyGraph` (whole-graph classification + §6.5 cycle folding). Implements the §6.1 three-state model: only `IMPOSSIBLE_SYSTEM_ERROR` is rejected; legal non-compliance is recorded and flagged (`NON_COMPLIANT_BUT_RECORDED`), never erased (§9).
+- `tests/entity-graph/validityMatrix.test.ts` — 21 tests encoding the §14.1 combination-completeness acceptance cases (single-/multi-member SMSF, LPR exceptions, 7-member SMSF, partnership of two trusts, company limited by guarantee, nominee beneficial ownership, circular cross-shareholding) plus edge-legality and traversal coverage.
+
+### `parentEntityId` repoint — finding
+
+The §11 Part 1b task "repoint calculations off `parentEntityId`": a grep of `app/`, `lib/`, `components/` shows **no `lib/calculations/` engine reads `parentEntityId`**. The only "calculation" reader is the tax-entity route (`app/api/tax/entity/[entityId]/route.ts`), which populates `EntityTaxFacts.parentEntityId`. Per §11 ("Part 1 does NOT touch the tax engine") that repoint belongs to Part 2's tax-engine audit + rewire. `getTrusteesOf()` is in place as the canonical replacement query for when that rewire happens.
+
+### §12.11 / §12.12 / §12.14
+
+- §12.11 — N/A. No Prisma writes in this PR (pure functions only).
+- §12.12 — N/A. No `prisma/schema.prisma` change.
+- §12.14 — N/A. No `lib/tax-engine/` change, no financial calculation, no schema column, no AI tool, no per-asset tax UI. The rules engine classifies *structure*; it computes no tax.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes.
+- [x] `npx vitest run tests/entity-graph` — 21/21 passing.
+
+### Documentation Updated
+
+- `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` — §13.1 new subsection "The entity-graph rules engine — `lib/entity-graph/`".
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44 workstream: Part 1a → ✅ MERGED; Part 1b split into 1b-i (shipping) + 1b-ii; status → 🟢 BUILDING.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — §11 build-sequence annotated with the 1b-i / 1b-ii split.
+
+### Next
+
+Part 1b-ii — `lib/services/entityRelationshipService.ts` (the only writer of `EntityRelationship`; calls `validityMatrix` inside the write transaction; audited) + the `OwnershipGroup`/`OwnershipStake` and `BeneficialOwnershipOverride` services.
