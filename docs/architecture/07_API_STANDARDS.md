@@ -841,3 +841,26 @@ graph write goes through the canonical services (`entityRelationshipService`
 **Response shape.** Success → `{ data, _meta? }`; error → `{ error: { code, message, details? } }` (CLAUDE.md §6.6). Service `*ValidationError`s map to a 4xx with the service's own error code: `ENTITY_NOT_FOUND` / `RELATIONSHIP_NOT_FOUND` / `GROUP_NOT_FOUND` / `OVERRIDE_NOT_FOUND` → 404, `DUPLICATE_EDGE` → 409, `IMPOSSIBLE_EDGE` / `BAD_REQUEST` → 400.
 
 **Why a dedicated `/graph` endpoint and not `/api/entities` + `/relationships`.** The canvas needs nodes *and* typed edges *and* the full structural metadata (`companySubtype`, `trustType`, `structuralState`, …) in one shape it can feed straight into the pure `lib/entity-graph/` rules engine. `/api/entities` returns a flat `LegalEntitySummary` list with neither edges nor that metadata. One graph endpoint = one round-trip (CLAUDE.md §12.10) and is not a §12.4 duplicate — it answers a different question (the relational graph, not the entity list).
+## **15.10 Phase 44 Part 2b money-flow routes (2026-05-22)**
+
+The Part 2b routes expose the money-flow & transaction service layer
+(`PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §5). **Thin handlers** —
+every write goes through the canonical service (the only writer of its
+model); no route contains tax arithmetic (§8.3). All routes
+`withPermission()`-gated: `tax_data.read` for GET, `tax_data.write` for
+POST / PATCH / DELETE.
+
+| Route | Methods | Purpose |
+|---|---|---|
+| `/api/tax/distribution-resolutions` | GET, POST | List / create a trust's per-FY `DistributionResolution` + allocations. `?trustEntityId=&financialYear=` filters the GET. |
+| `/api/tax/distribution-resolutions/[id]` | PATCH, DELETE | PATCH moves status `DRAFT`↔`CONFIRMED`; DELETE hard-deletes (allocations cascade). |
+| `/api/tax/dividend-distributions` | GET, POST | List / create a `DividendDistribution` + per-shareholder payments. |
+| `/api/tax/dividend-distributions/[id]` | PATCH, DELETE | PATCH status; DELETE (payments cascade). |
+| `/api/tax/private-company-benefits` | GET, POST | List / create a `PrivateCompanyBenefit` (Div 7A loan / payment / forgiveness / UPE / sub-trust). |
+| `/api/tax/private-company-benefits/[id]` | DELETE | Hard-delete a benefit record. |
+| `/api/tax/trust-deed-rules` | GET, POST | List / create a structured `TrustDeedRule`. |
+| `/api/tax/trust-deed-rules/[id]` | PATCH, DELETE | PATCH ends the rule (`effectiveTo`); DELETE hard-deletes. |
+
+**Response shape.** Success → `{ data, _meta? }`; error → `{ error: { code, message } }`. Service `*ValidationError`s map to a 4xx with the service's own code (`ENTITY_NOT_FOUND` / `*_NOT_FOUND` → 404; `BAD_REQUEST` / `NO_ALLOCATIONS` / `NO_PAYMENTS` / `SAME_ENTITY` / `INVALID_RULE_VALUE` → 400).
+
+**Digital-twin write semantics.** Create routes return `{ data: { …id, warnings: string[] } }` — soft data-quality problems (allocation shares not summing to 100%, a payee not recorded as a shareholder, a beneficiary not in the graph) are RECORDED and surfaced as `warnings`, never rejected (PHASE_44 §6.1). Only data-model-impossible cases (an entity not owned by the caller) are hard 4xx-rejected.

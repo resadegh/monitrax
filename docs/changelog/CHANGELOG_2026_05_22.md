@@ -418,3 +418,53 @@ Part 2's central finding: the tax engine is built; the gap is the data layer. Pa
 ### Next
 
 2b — the model service writers + API routes. 2c (the engine repoint) is **blocked** on Reza's answers to §11 Q-SMSF / Q-UPE / Q-PARTNERSHIP.
+
+---
+
+## Session: Phase 44 Part 2b — money-flow service layer + routes
+
+Branch: `claude/phase-44-part-2b-services-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (services + API) — Phase 44 Part 2b, the money-flow & transaction service layer.
+- **Scope**: 4 new SSOT service writers + 8 thin API routes + tests. No engine code, no schema (Part 2a shipped the schema in PR #871).
+- **Design contract**: `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §5.
+
+### Files Created
+
+- `lib/services/distributionResolutionService.ts` — the only writer of `DistributionResolution` / `DistributionAllocation`.
+- `lib/services/dividendDistributionService.ts` — the only writer of `DividendDistribution` / `DividendPayment`.
+- `lib/services/privateCompanyBenefitService.ts` — the only writer of `PrivateCompanyBenefit`.
+- `lib/services/trustDeedRuleService.ts` — the only writer of `TrustDeedRule`.
+- 8 routes under `app/api/tax/{distribution-resolutions,dividend-distributions,private-company-benefits,trust-deed-rules}` (collection + `[id]`).
+- `tests/entity-graph/part2bServices.test.ts` — 9 data-quality tests.
+
+Each service follows the Part 1b-ii pattern: the only writer of its model(s), audited via `logCRUD`, §12.11-compliant (composite `where`, `findFirst` guards on update/delete), no tax arithmetic (§8.3). Digital twin (§6.1): data-quality problems — allocation shares not summing to 100%, a payee not recorded as a shareholder, a beneficiary not in the graph, a recipient not a shareholder/associate — are RECORDED and returned as `warnings`, never rejected. Only entity-not-owned (and a company-equals-recipient self-reference) is hard-rejected. The pure data-quality checks (`allocationShareWarning`, `paymentSumWarning`, `isValidRuleValue`) are extracted as exported helpers and unit-tested.
+
+### §12.11 / §12.12 / §12.14
+
+- **§12.11** — the services contain `prisma.<model>.update` (status / `effectiveTo`) and `.delete`. Checklist:
+  - `update` / `delete` operations: `distributionResolution.update` (status), `dividendDistribution.update` (status), `trustDeedRule.update` (`effectiveTo`); `.delete` on all four models.
+  - **`where` clause matches:** exactly one row — composite `{ id, userId }`; `id` is `@id`. Each preceded by a `findFirst` existence check.
+  - **Columns overwritten:** `status` (a DRAFT/CONFIRMED lifecycle enum) or `effectiveTo` (a lifecycle close) — never user-entered financial amounts.
+  - **Guard:** composite `{ id, userId }` `where` + `findFirst`; these services are the sole writers of their models.
+  - User confirmation: **NOT REQUIRED** — every write is PK-scoped to the caller's own row and touches only lifecycle columns; no financial data at risk.
+- **§12.12** — N/A. No `prisma/schema.prisma` change (Part 2a shipped the schema).
+- **§12.14** — 2b is service + route plumbing; no financial calculation, no tax-engine module, no AI tool, no per-asset tax UI. Regime-aware computation lands in 2c per design doc §9.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes (✓ Compiled; all 8 new routes registered).
+- [x] `npx vitest run tests/entity-graph/part2bServices.test.ts` — 9/9 passing.
+
+### Documentation Updated
+
+- `docs/architecture/07_API_STANDARDS.md` — new §15.10 (Phase 44 Part 2b money-flow routes).
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — §10: 2b marked built.
+- `docs/IMPLEMENTATION_PLAN.md` — Part 2a → ✅ MERGED (#871); 2b → 🟡 SHIPPING.
+
+### Next
+
+2c — the `entityTaxFactsAssembler` + the tax-route repoint. **Blocked** on Reza's answers to §11 Q-SMSF / Q-UPE / Q-PARTNERSHIP.
