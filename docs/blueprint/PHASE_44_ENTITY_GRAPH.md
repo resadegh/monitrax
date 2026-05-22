@@ -195,6 +195,7 @@ model EntityRelationship {
   beneficiaryClass     BeneficiaryClass?  // BENEFICIARY_OF only
   partnerInterestPct   Float?             // PARTNER_OF only
   partnerCapitalAmount Float?             // PARTNER_OF only
+  tfnQuoted            Boolean?           // BENEFICIARY_OF / SHAREHOLDER_OF / UNITHOLDER_OF — has the `from` entity quoted its TFN to the `to` entity? (Q2, 2026-05-20.) Drives TFN-withholding: a beneficiary who has not quoted a TFN means the trustee must withhold at the top marginal rate; a shareholder without a quoted TFN triggers dividend withholding. The TFN *value* lives once-per-entity in `LegalEntity.tfnEncrypted` — this is ONLY the per-relationship "quoted?" fact, never the number.
   notes                String?
 
   // Legal-positioning (§9): has the user / their accountant confirmed this edge?
@@ -245,7 +246,7 @@ model LegalEntity {
 
   companySubtype  CompanySubtype?   // NEW — PROPRIETARY / PUBLIC / LIMITED_BY_GUARANTEE
   dateOfBirth     DateTime?         // NEW — INDIVIDUAL nodes only
-  directorIdRef   String?           // NEW — Director ID presence flag for INDIVIDUAL (the ID itself is sensitive; store presence, not value, or encrypt like TFN)
+  directorIdEncrypted String?       // NEW — Director ID. Q2 decided 2026-05-20: store the VALUE (not just presence). Sensitive identifier — encrypted at rest via `lib/security/tfnEncryption.ts` (the same swap-point as TFN; upgrades to CMEK when CMEK lands). Never logged, never sent to AI, never returned by default API responses. Read only inside an authorisation boundary.
   householdMemberId String?         // NEW — optional link: this INDIVIDUAL is a known household member
   accountantVerified Boolean @default(false) // NEW — §9
 
@@ -257,7 +258,28 @@ model LegalEntity {
 enum CompanySubtype { PROPRIETARY  PUBLIC  LIMITED_BY_GUARANTEE }
 ```
 
-**Joint ownership of owned objects** — a deliberately-scoped gap. Today `Property.ownerEntityId` (and the six siblings) is a *single* FK, so a property held 50/50 by two individuals as tenants-in-common cannot be represented. Phase 44 Part 1 keeps the single FK (zero disruption to the 11 files that read it) and Part 1c adds an **`OwnershipStake`** junction (`ownedObjectType`, `ownedObjectId`, `entityId`, `sharePct`, `tenancyType: JOINT_TENANTS | TENANTS_IN_COMMON`) layered *beside* `ownerEntityId` — `ownerEntityId` becomes the "primary / legal-title" owner, `OwnershipStake` rows carry the beneficial split. Calculations migrate to read `OwnershipStake` when present, falling back to `ownerEntityId`. Flagged in §12 as the one piece that needs an explicit go/no-go.
+**Joint / shared ownership of owned objects** — **Q1 decided 2026-05-20: included in Part 1c, and not limited to 50/50 — *any* split across *any* number of co-owners.** Today `Property.ownerEntityId` (and the six siblings) is a *single* FK, so a property co-owned cannot be represented at all. Part 1 keeps the single FK (zero disruption to the 11 files that read it); Part 1c adds an **`OwnershipStake`** junction layered *beside* it:
+
+```prisma
+enum TenancyType { JOINT_TENANTS  TENANTS_IN_COMMON  OTHER }
+
+model OwnershipStake {
+  id              String   @id @default(uuid())
+  userId          String
+  ownedObjectType String              // 'property' | 'loan' | 'account' | 'investmentAccount' | 'asset'
+  ownedObjectId   String
+  entityId        String              // the co-owning LegalEntity
+  sharePct        Float               // ANY value 0–100 — supports 70/20/10, 33.3×3, etc.
+  tenancyType     TenancyType @default(TENANTS_IN_COMMON)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entity LegalEntity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@index([ownedObjectType, ownedObjectId])
+  @@map("ownership_stakes")
+}
+```
+
+`ownerEntityId` becomes the "primary / legal-title" owner; `OwnershipStake` rows carry the full beneficial split — e.g. 70/20/10 across three entities, two individuals as joint tenants, or a person + their family trust as tenants-in-common. The validity check warns when stakes for one object do not sum to 100%. Calculations migrate to read `OwnershipStake` when present, falling back to `ownerEntityId` for single-owner objects (the common case stays a single row).
 
 ---
 
@@ -350,14 +372,14 @@ Net: Monitrax becomes a *record-keeping, organisation and estimation* tool with 
 
 ---
 
-## §12 — Open questions (need Reza's call)
+## §12 — Open questions — ALL RESOLVED 2026-05-20
 
-| # | Question | Default recommendation |
+| # | Question | Decision (Reza, 2026-05-20) |
 |---|---|---|
-| Q1 | **Joint ownership (`OwnershipStake`) — Part 1 or deferred?** A property held 50/50 by two individuals cannot be represented today. | **Include in Part 1c.** It is common (couples own property jointly), and the worked example has two individuals — without it their personal holdings can't be split. Additive, low-risk. |
-| Q2 | **Director ID — store the value or just presence?** Director IDs are sensitive identifiers. | **Store presence only** in Part 1 (`directorIdRef` as a boolean-ish flag). If the value is ever needed, encrypt it via the existing `tfnEncryption.ts` swap-point. Smallest data-liability surface. |
-| Q3 | **How much does the onboarding wizard capture vs the entity section?** Full graph entry in the wizard risks overwhelming a new user. | **Wizard captures the skeleton** (entities + the one or two most important edges — trustee, primary owner); the entity section is where the full graph is built and refined. Psychology lens: a 30-edge wizard step kills activation. |
-| Q4 | **Accountant review** — build the share-pass in Part 1c, or defer? | **Build in Part 1c.** It is the mechanism that makes `accountantVerified` meaningful, and it directly serves the §9 legal-positioning. Reuses the `SharePackage` pattern. |
+| Q1 | Joint ownership — Part 1 or deferred? | ✅ **Included in Part 1c — and not 50/50-only: any split, any number of co-owners.** `OwnershipStake` junction with arbitrary `sharePct` + `tenancyType` (joint tenants / tenants-in-common / other). See §7. |
+| Q2 | Director ID — store the value or just presence? | ✅ **Store the value, encrypted** (`directorIdEncrypted`, via the `tfnEncryption.ts` swap-point — same treatment as TFN). Reza also asked to capture TFN for tax relationships → added `EntityRelationship.tfnQuoted` (the per-relationship "TFN quoted to this counterparty?" fact, driving TFN-withholding logic; the TFN value itself stays once-per-entity, encrypted). See §7. |
+| Q3 | How much does the onboarding wizard capture vs the entity section? | ✅ **Skeleton — but enough to build a working graph.** The wizard captures every entity + the load-bearing edges (trustee, appointor, primary shareholders/beneficiaries) so the graph is genuinely usable on exit; the entity section is where it's refined and completed. Not a bare skeleton, not the exhaustive graph. |
+| Q4 | Accountant-review share-pass — Part 1c or defer? | ✅ **Build in Part 1c.** It makes `accountantVerified` meaningful and directly serves the §9 legal-positioning. Reuses the `SharePackage` pattern. |
 
 ---
 
