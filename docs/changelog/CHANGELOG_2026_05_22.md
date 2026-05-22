@@ -516,3 +516,57 @@ The Part 2 audit found the tax engine had **no** SMSF fund-earnings income-tax m
 ### Next
 
 2c-ii — the `entityTaxFactsAssembler` + the `GET /api/tax/entity` repoint + the `trustMinimumTax`→`TrustDeedRule` repoint.
+
+---
+
+## Session: Phase 44 Part 2c-ii — entity-tax-facts assembler + route repoint
+
+Branch: `claude/phase-44-part-2c-ii-assembler-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (service + API repoint) — Phase 44 Part 2c-ii, the canonical fact-assembler.
+- **Scope**: one new SSOT service + the `GET /api/tax/entity` repoint + removal of the dead `parentEntityId` read. No new tax arithmetic — the assembler is pure data assembly (§8.3).
+- **Design contract**: `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §6.
+
+This is the step that makes the Part 2 rewire deliver its payoff: `GET /api/tax/entity` now returns **real per-entity tax numbers** instead of `UNCOMPUTED`.
+
+### Files Created / Modified
+
+- `lib/services/entityTaxFactsAssembler.ts` — **new**. `assembleEntityTaxFacts(userId, entityId, fy)` — the single SSOT for building `EntityTaxFacts`. Reads the entity's income/expense rows + the persisted Part 2 money-flow models, returns a fully-populated facts object. Pure mappers extracted + exported: `buildDiv7aLoansFromBenefits` (Q-UPE — only `LOAN` benefits become `div7aLoans`; `UPE`/`SUB_TRUST_ARRANGEMENT` excluded), `buildTrustDistribution`, `pickOperativeResolution` (latest `CONFIRMED` — never computes off a draft).
+- `app/api/tax/entity/[entityId]/route.ts` — `GET` repointed to `assembleEntityTaxFacts`; the dead `parentEntityId` read removed from both `GET` + `POST`; the slice-C aggregator tree-shake hack removed.
+- `lib/tax-engine/types.ts` — `EntityTaxFacts.parentEntityId` removed (confirmed inert for tax — no engine module read it; `tsc` clean after removal proves it).
+- `tests/tax-engine/entityTaxFactsAssembler.test.ts` — **new**. 10 mapper tests.
+
+### Decisions baked in
+
+- **Q-UPE** — `buildDiv7aLoansFromBenefits` maps only `LOAN` benefits; `UPE` / `SUB_TRUST_ARRANGEMENT` rows are never passed to the engine (their Div 7A treatment is legally contested — the engine must not auto-deem a dividend).
+- **Q-PARTNERSHIP** — the assembler does not build partnership attribution; partnerships stay `UNCOMPUTED` (a `PartnershipDistribution` follow-up later).
+
+### Scope notes (honest deferrals)
+
+- `trustMinimumTax` is a reform skeleton that does not yet read deed rules — the design's "repoint to `TrustDeedRule`" is a no-op until it leaves Stage 1 (post-Royal-Assent). The `TrustDeedRule` model + service are ready for it.
+- `smsfIncomeTax` GET-feed is deferred — it needs pension-phase / ECPI facts not captured in any model yet (a follow-up). The module (2c-i) is reachable via `POST` today.
+
+### §12.11 / §12.12 / §12.14
+
+- §12.11 — N/A. No Prisma writes (the assembler is read-only; the route repoint adds no writes).
+- §12.12 — N/A. No `prisma/schema.prisma` change.
+- §12.14 — the assembler performs no financial calculation (pure data assembly); the engine it feeds is unchanged. No reform interaction.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean (removal of `EntityTaxFacts.parentEntityId` broke nothing — confirms it was inert).
+- [x] `npm run build` — passes.
+- [x] `npx vitest run tests/tax-engine/entityTaxFactsAssembler.test.ts` — 10/10 passing.
+
+### Documentation Updated
+
+- `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` — §13.1 new subsection "The money-flow layer + the fact-assembler — Phase 44 Part 2".
+- `docs/architecture/07_API_STANDARDS.md` — new §15.11 (the `/api/tax/entity` assembler repoint).
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — §10: 2c-ii marked built.
+- `docs/IMPLEMENTATION_PLAN.md` — 2c-ii → 🟡 SHIPPING; 2d listed; Part 2 follow-ups recorded.
+
+### Next
+
+2d — the `MoneyFlowSankey` upgrade to actual entitlement flows. Part 2c (the tax-engine rewire) is complete.

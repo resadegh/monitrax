@@ -626,8 +626,6 @@ export interface EntityTaxFacts {
     | 'STRATA_BODY_CORPORATE'
     | 'CUSTODIAN_PLATFORM'
     | 'OTHER';
-  /** Self-FK chain — populated by the dispatcher walking `parentEntityId`. */
-  parentEntityId?: string;
   /** FY this fact-set applies to. */
   fy: FYReference;
   /**
