@@ -78,6 +78,7 @@ const ROLE_HEX: Record<Entity['role'], string> = {
   OPERATING: '#059669',        // emerald-600
   SUPERANNUATION: '#7c3aed',   // violet-600
   INVESTMENT: '#c026d3',       // fuchsia-600
+  CORPORATE_TRUSTEE: '#475569', // slate-600 — structural control vehicle
 };
 
 // =============================================================================
@@ -129,6 +130,7 @@ function buildRechartsData(flow: MoneyFlowResult): {
     'HOLDING',
     'INVESTMENT',
     'SUPERANNUATION',
+    'CORPORATE_TRUSTEE',
   ];
   const sortedEntities = [...flow.entities].sort((a, b) => {
     const ra = roleOrder.indexOf(a.role);

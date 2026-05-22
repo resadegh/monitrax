@@ -88,7 +88,8 @@ type LegalEntityRole =
   | 'HOLDING'
   | 'OPERATING'
   | 'INVESTMENT'
-  | 'SUPERANNUATION';
+  | 'SUPERANNUATION'
+  | 'CORPORATE_TRUSTEE';
 
 const TYPE_LABELS: Record<LegalEntityType, string> = {
   PERSONAL_NAME: 'My personal name',
@@ -106,6 +107,7 @@ const ROLE_LABELS: Record<LegalEntityRole, string> = {
   OPERATING: 'Operating',
   INVESTMENT: 'Investment',
   SUPERANNUATION: 'Superannuation',
+  CORPORATE_TRUSTEE: 'Corporate trustee',
 };
 
 interface OwnedObjectsCount {

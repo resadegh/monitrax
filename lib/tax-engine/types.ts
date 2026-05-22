@@ -599,14 +599,33 @@ export interface FYReference {
  */
 export interface EntityTaxFacts {
   entityId: string;
+  /**
+   * Mirrors the Prisma `LegalEntityType` enum. Phase 44 (Part 1a) widened
+   * this from the original 7 values to the full structural grammar. The
+   * tax dispatcher handles the original 7 explicitly; the Phase 44
+   * additions fall through to its existing default until Part 1b wires
+   * regime-aware dispatch for them — no dispatch behaviour changes here.
+   */
   entityType:
     | 'PERSONAL_NAME'
-    | 'SOLE_TRADER'
-    | 'PARTNERSHIP'
     | 'COMPANY'
     | 'DISCRETIONARY_TRUST'
     | 'UNIT_TRUST'
-    | 'SMSF';
+    | 'SMSF'
+    | 'PARTNERSHIP'
+    | 'SOLE_TRADER'
+    | 'INDIVIDUAL'
+    | 'FIXED_TRUST'
+    | 'HYBRID_TRUST'
+    | 'BARE_TRUST'
+    | 'TESTAMENTARY_TRUST'
+    | 'DECEASED_ESTATE'
+    | 'FOREIGN_COMPANY'
+    | 'INCORPORATED_ASSOCIATION'
+    | 'CO_OPERATIVE'
+    | 'STRATA_BODY_CORPORATE'
+    | 'CUSTODIAN_PLATFORM'
+    | 'OTHER';
   /** Self-FK chain — populated by the dispatcher walking `parentEntityId`. */
   parentEntityId?: string;
   /** FY this fact-set applies to. */

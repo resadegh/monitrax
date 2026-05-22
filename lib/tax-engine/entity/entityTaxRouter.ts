@@ -43,6 +43,7 @@ import {
   type CgtEvent,
   type CarryForwardLoss,
 } from '../divisions/capitalLossNetting';
+import type { CgtEligibleEntityType } from '../divisions/cgtDiscount';
 import { trackContributionCaps } from '../super/capTracker';
 import { calculateHighIncomeSuperTax } from '../super/highIncomeSuperTax';
 import { classifyDiv7ALoans } from '../divisions/div7aLoanClassifier';
@@ -93,6 +94,31 @@ const BASE_CITATIONS: Record<string, AuthorityCitation[]> = {
 };
 
 /**
+ * The seven entity types the CGT discount + loss-netting path supports
+ * (Div 115). Phase 44 widened `EntityTaxFacts.entityType` to the full
+ * structural grammar; the twelve new types are not yet reachable at
+ * runtime (no UI creates them) and Part 1b wires their CGT dispatch.
+ * Until then this guard narrows the type so the build stays sound —
+ * for any non-eligible type CGT simply returns null (no CGT computed),
+ * identical to an entity with no CGT events.
+ */
+const CGT_ELIGIBLE_ENTITY_TYPES: ReadonlySet<CgtEligibleEntityType> = new Set<CgtEligibleEntityType>([
+  'PERSONAL_NAME',
+  'SOLE_TRADER',
+  'PARTNERSHIP',
+  'COMPANY',
+  'DISCRETIONARY_TRUST',
+  'UNIT_TRUST',
+  'SMSF',
+]);
+
+function isCgtEligibleEntityType(
+  entityType: EntityTaxFacts['entityType'],
+): entityType is CgtEligibleEntityType {
+  return CGT_ELIGIBLE_ENTITY_TYPES.has(entityType as CgtEligibleEntityType);
+}
+
+/**
  * Compute CGT side calc if `cgtEvents` is non-empty. Returns null
  * otherwise. Independent of entity-specific income-tax dispatch so a
  * COMPANY entity (income tax UNCOMPUTED) can still surface a
@@ -102,6 +128,9 @@ function dispatchCgtIfPresent(
   facts: EntityTaxFacts,
 ): CapitalLossNettingResult | null {
   if (!facts.cgtEvents || facts.cgtEvents.length === 0) {
+    return null;
+  }
+  if (!isCgtEligibleEntityType(facts.entityType)) {
     return null;
   }
   return applyCapitalLossNetting({
