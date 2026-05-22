@@ -462,7 +462,7 @@ Net: a record-keeping, organisation and estimation tool with explicit provenance
 
 - **1a — Schema + migration.** `EntityRelationship`, `ShareParcel`, `OwnershipGroup`/`OwnershipStake`, `BeneficialOwnershipOverride`, all enums; `LegalEntity` field additions; `LegalEntityType`/`Role` extensions; the `parentEntityId` → `TRUSTEE_OF` migration. **Decimal** for all financial fields. Additive only.
 - **1b — Centralised rules engine + service layer + migrate calculations off `parentEntityId`.** `lib/entity-graph/validityMatrix.ts` (the §6 grammar — pure functions, SSOT) + `lib/entity-graph/queries.ts` (graph traversal — pure functions, SSOT) + `lib/services/entityRelationshipService.ts` (the only writer of the graph; calls `validityMatrix` inside the write transaction; audited). See §8.4 for the SSOT architecture. The `OwnershipGroup`/`OwnershipStake` and `BeneficialOwnershipOverride` services. **All calculations reading `parentEntityId` repointed to the `TRUSTEE_OF` edges (via `queries.ts`) here, not 1c.**
-- **1c — Entity-section UI.** `EntityTree` → a true multi-edge graph (control sub-graph emphasised; the three §3A dimensions visually distinct); entity-detail lists all relationships; the accountant-review share-pass; the three-state badges.
+- **1c — Entity-section UI.** `EntityTree` → the entity-structure canvas (full spec in §11A) — a multi-edge, multi-lens graph; entity-detail lists all relationships; the accountant-review share-pass; the three-state badges.
 - **1d — Onboarding wizard.** Extend `EntitiesStep` — a relationship sub-step capturing a working-graph skeleton (every entity + the load-bearing edges), progressive disclosure, finishable later in the entity section.
 
 **Part 2 — money-flow, transactions & tax-engine rewire (separate design pass — higher legal risk).**
@@ -470,6 +470,29 @@ Net: a record-keeping, organisation and estimation tool with explicit provenance
 - **Part 1 does NOT touch the tax engine.** During Part 1 the engine keeps reading `TrustDeedExtractedRules` JSON exactly as today (§8.3) — so no tax-engine review is needed to ship the structural graph.
 - **Part 2's design pass opens with a full tax-engine audit.** Before any rewire, every existing `lib/tax-engine/` module is audited against (a) the new graph + transaction inputs it will consume, and (b) the correctness points the two design reviews surfaced — trust assessment under s98 / s99 / s99A + present-entitlement (not naive "distributed ⇒ beneficiary"), SMSF ECPI (not a blanket 0%), testamentary excepted-income `assetSource` gating, franking computed from actual `DividendDistribution` records (not inferred from shareholding), and the Div 7A associate determination reading the `FAMILY_MEMBER_OF` / `ASSOCIATE_OF` graph. The audit confirms what the mature Phase 41e engine already handles correctly and pins exactly what the rewire must change.
 - **Then the rewire:** new `DistributionResolution`, `DividendDistribution`, `PrivateCompanyBenefit` (Div 7A), structured `TrustDeedRule` models; repoint `trustDistribution.ts` / `div6E.ts` / `div7A.ts` / `super/*` / `s100A.ts` to read graph + transactions; `MoneyFlowSankey` upgrade. The engine stays the one engine (§8.3) — only its *input shape* changes. Captured in its own design document.
+
+---
+
+## §11A — Visual representation: the entity-structure canvas
+
+The entity section's centrepiece is a **visual structure canvas** — the digital, live equivalent of the org chart an accountant hands a client (the user's adviser-produced `Renew Group Structure` diagram is the reference point). The accountant org-chart paradigm — boxes per entity, labelled connectors per relationship — is **deliberately kept**: it is the mental model the user and their accountant already share, and familiarity reduces cognitive load (behaviour-psychologist lens). The digital canvas improves on the static PDF in five specific ways:
+
+1. **Colour by role, using Monitrax's existing palette.** Each entity box is tinted by `LegalEntityRole` per the established Phase 41c palette (Personal amber / Holding indigo / Operating emerald / Investment fuchsia / Superannuation violet, + Corporate-trustee a neutral slate). One colour system across the whole app — not the ad-hoc colours of a one-off PDF.
+
+2. **Progressive disclosure — restraint over density.** The accountant's PDF crams every field into every box. The canvas box shows only the essentials — entity name, type, one key line (the ABN, or "Trustee: …"). Full detail — all identifiers, all relationships, the tax position, the §6.1 state — opens in the entity-detail dialog on click. The canvas reads in the first second; the depth is one click away (Apple / Linear / Stripe restraint).
+
+3. **The lens toggle — the genuine improvement over a static chart.** A paper org chart draws every relationship as a similar arrow, so a real structure becomes a tangle. Because the §3A model keeps **legal title / beneficial ownership / control** as distinct dimensions, the canvas shows **one lens at a time**:
+   - **Control** *(default)* — `TRUSTEE_OF`, `APPOINTOR_OF`, `GUARDIAN_OF`, `POWER_HOLDER_OF`, `DIRECTOR_OF`, controlling shareholdings. *"Who runs this?"*
+   - **Ownership** — `SHAREHOLDER_OF`, `UNITHOLDER_OF`, `PARTNER_OF`, `OwnershipStake`, `BeneficialOwnershipOverride`. *"Who owns what?"*
+   - **Money flow** — distributions / dividends / contributions (the Part 2 layer; until Part 2, this lens shows *eligibility* edges — `BENEFICIARY_OF` etc. — explicitly labelled "eligibility, not actual", per §8.2).
+   - **All** — every edge, for the user who wants the whole picture.
+   Default is **Control** — "who controls this structure" is most users' first question. The lens toggle is the single most valuable thing the digital canvas does that paper cannot.
+
+4. **Interactive + navigable.** Click an entity → its detail dialog. Click a connector → the relationship detail (type, effective dates, `accountantVerified` state). Each box carries a small **structural-state badge** — green (`VALID`) / amber (`NON_COMPLIANT_BUT_RECORDED`, reason on hover) — so the §6.1 state is visible at a glance, never buried.
+
+5. **Auto-layout + export.** A layered/hierarchical auto-layout keeps the canvas clean as the structure grows (manual nudge allowed and persisted, never required). A clean **export / share** (PDF + the accountant share-pass, §9) lets the user hand their accountant the same artefact the accountant first handed them — now live and current.
+
+**Implementation.** This evolves the existing `components/entities/EntityTree.tsx` (today a `parentEntityId` tree) into the multi-edge, multi-lens canvas, and folds in `MoneyFlowSankey.tsx` as the money-flow lens. Built in Part 1c. The canvas is **presentational only** — it reads the graph via `lib/entity-graph/queries.ts` (§8.4) and renders; it computes nothing.
 
 ---
 
