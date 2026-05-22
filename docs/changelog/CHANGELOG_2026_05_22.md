@@ -468,3 +468,51 @@ Each service follows the Part 1b-ii pattern: the only writer of its model(s), au
 ### Next
 
 2c — the `entityTaxFactsAssembler` + the tax-route repoint. **Blocked** on Reza's answers to §11 Q-SMSF / Q-UPE / Q-PARTNERSHIP.
+
+---
+
+## Session: Phase 44 Part 2c-i — SMSF fund-earnings income-tax module
+
+Branch: `claude/phase-44-part-2c-i-smsf-income-tax-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (tax engine) — Phase 44 Part 2c-i, the new SMSF fund-earnings income-tax module.
+- **Scope**: one new `lib/tax-engine/super/` module + its wiring into `entityTaxRouter` + the `POST /api/tax/entity` testable surface. The §8.3 exception Reza explicitly approved (Q-SMSF).
+- **Design contract**: `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §7.2 Q-SMSF, §10. 2c is split into 2c-i (this — the compute module, isolated for focused review) + 2c-ii (the assembler + route repoint).
+
+The Part 2 audit found the tax engine had **no** SMSF fund-earnings income-tax module — it computed contribution caps + Div 293/296 + the SIS-compliance classifier, but not the fund's own income tax. An SMSF entity could therefore never return a real income-tax number. This module fills that gap. It is current law (not reform), and *completes* the one engine rather than duplicating one — the §8.3 exception.
+
+### Files Created / Modified
+
+- `lib/tax-engine/super/smsfIncomeTax.ts` — **new**. `calculateSmsfIncomeTax(input, config)`: a complying SMSF's taxable income at the 15% concessional rate (`ITAA 1997` Div 295); ECPI exemption (`s295-385`) on the retirement-phase proportion of non-NALI investment income; NALI at the top marginal rate (`s295-550`); non-complying funds at the top rate. Pure, deterministic.
+- `lib/tax-engine/types.ts` — `EntityTaxFacts` gains an inlined `smsfIncomeTax?` dispatch field.
+- `lib/tax-engine/entity/entityTaxRouter.ts` — the SMSF branch now fires when *any* SMSF dispatch input is present (cap-tracking, Div 293/296, or the new income tax), each computed independently; the income-tax result is merged into `result.smsfIncomeTax` with its citations + UNCOMPUTED.
+- `app/api/tax/entity/[entityId]/route.ts` — `POST` accepts an `smsfIncomeTax` body (the testable surface until the 2c-ii assembler derives it for `GET`).
+- `tests/tax-engine/smsfIncomeTax.test.ts` — **new**. 9 tests.
+
+### Law-precision discipline (external review §13-F9)
+
+- ECPI does **not** apply to assessable contributions or to NALI — both are taxed regardless of pension phase. The module enforces this: `contributionsTax` is always 15%; `naliTax` is always the top rate.
+- **Honesty gate:** when a fund is in pension phase and the ECPI exempt proportion has not been supplied (no segregation data, no proportionate-method actuary's certificate), the investment-income tax is **`UNCOMPUTED`** (`tax: null`, `UC-SMSF-ECPI-PROPORTION`) — the exempt proportion is never guessed. Contributions + NALI tax (where ECPI never applies) are still shown.
+
+### §12.11 / §12.12 / §12.14
+
+- §12.11 — N/A. No Prisma writes; this is a pure compute module + wiring.
+- §12.12 — N/A. No `prisma/schema.prisma` change.
+- §12.14 — Part 2 triggers §12.14. `smsfIncomeTax.ts` is **current law**, not a reform measure — outcome (b): it does not produce a different number under the 2026-27 reform, so no `commencementVerified` gate applies. The module is a financial calculation in `lib/tax-engine/`; it is reform-neutral. No reform `commencementVerified` flag is read or flipped.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes.
+- [x] `npx vitest run tests/tax-engine/smsfIncomeTax.test.ts` — 9/9 passing.
+
+### Documentation Updated
+
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — §10: 2c split into 2c-i (built) + 2c-ii.
+- `docs/IMPLEMENTATION_PLAN.md` — open questions recorded as decided; 2c-i → 🟡 SHIPPING; 2c-ii listed.
+
+### Next
+
+2c-ii — the `entityTaxFactsAssembler` + the `GET /api/tax/entity` repoint + the `trustMinimumTax`→`TrustDeedRule` repoint.
