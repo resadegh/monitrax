@@ -489,7 +489,7 @@ Net: a record-keeping, organisation and estimation tool with explicit provenance
 
 On build, per CLAUDE.md §16: Part 1a updates `03_DATA_MODEL.md` (new §3.10) + migration (§12.12); 1b/1c/1d update `07_API_STANDARDS.md`, `06_UI_UX_FOUNDATION.md`; every PR updates `IMPLEMENTATION_PLAN.md` (§15) + a daily `CHANGELOG`; the §12.14 block on each PR (schema columns on entity models). New sensitive surface beyond the encrypted-TFN pattern: only the encrypted Director ID (Q2) — same treatment.
 
-**This document is the Part 1 design contract.** No Phase 44 code until Reza reviews it. Given the legal weight, an accountant sanity-check of §3A–§6 remains recommended — that review is the first risk control.
+**This document is the Part 1 design contract.** Reza reviewed and approved v3 on 2026-05-20; Part 1 build is authorised. **The accountant sanity-check of §3A–§6 is deferred to Basiq-onboarding prep** (Reza decision 2026-05-20) — the structural model was hardened by two independent adversarial reviews (§14), so the build proceeds now; the accountant confirmation becomes diligence evidence for the Basiq submission and is tracked in `IMPLEMENTATION_PLAN.md` D-Day Bundle row T3.4.
 
 ---
 

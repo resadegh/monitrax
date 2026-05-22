@@ -228,6 +228,7 @@
 | T3.1 | **Penetration test** | ~6 weeks | ~AU$15-25k | ⏸ Parked. Basiq accreditation hard requirement. Phase 0 row #17. |
 | T3.2 | **Cyber insurance binding** | ~3 weeks | $TBD | ⏸ Parked. Basiq accreditation hard requirement. Phase 0 row #18. |
 | T3.3 | **Stripe live-mode review** | ~2 weeks | $0 (application) | ⏸ Parked (monetisation timing — Reza "can wait until later", NOT Basiq-gated). Phase 0 row #19. |
+| T3.4 | **Accountant sanity-check of the Phase 44 entity model** (`PHASE_44_ENTITY_GRAPH.md` §3A–§6 — node taxonomy, edge taxonomy, validity matrix) | schedule a short call | nominal | ⏸ Deferred to Basiq-onboarding prep — **Reza decision 2026-05-20: skip for now, do it at Basiq-onboarding time.** Phase 44 build proceeds without it (the structural model was hardened by two independent AI adversarial reviews — see `PHASE_44_ENTITY_GRAPH.md` §14). The accountant check becomes diligence evidence for the Basiq submission: have the accountant confirm the model correctly reflects real AU structures + the user's actual deeds before Basiq go-live. |
 
 ##### Tier 4 — D-Day morning verifications (15-20 min total)
 
