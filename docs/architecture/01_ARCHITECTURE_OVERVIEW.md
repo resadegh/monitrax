@@ -509,6 +509,18 @@ A new **pure** rules + traversal layer — the centralised SSOT for the typed en
 
 These are **pure functions** — no I/O, no clock reads, no tax/financial arithmetic. The grammar GRADES; it does not blanket-reject — legal non-compliance is recorded and flagged, never erased (§6.1, §9). Every consumer (the relationship service, the entity UI, the onboarding wizard, the tax engine) reads these; a validity rule or a graph traversal is re-implemented nowhere else (CLAUDE.md §12.2). Loading the graph from the database and writing edges is the relationship service's job (Part 1b-ii).
 
+### The entity-graph service layer — Phase 44 Part 1b-ii
+
+The DB-writing services for the typed entity graph — the **only** writers of their respective models (`PHASE_44_ENTITY_GRAPH.md` §8.4):
+
+| Service | Responsibility |
+|---|---|
+| `lib/services/entityRelationshipService.ts` | The sole writer of `EntityRelationship`. `loadEntityGraph` (Prisma rows → the pure `EntityGraph`), `createRelationship` / `endRelationship` / `deleteRelationship`, `listRelationships`. Every write runs in one transaction: ownership-checked, duplicate-guarded (no overlapping `[from, to, type]` window), classified by `validityMatrix` (an `IMPOSSIBLE_SYSTEM_ERROR` is rejected; a `NON_COMPLIANT` structure is recorded + flagged), structural state persisted to the edge + every affected entity, audited. |
+| `lib/services/ownershipService.ts` | The sole writer of `OwnershipGroup` / `OwnershipStake` — joint / shared ownership of an *asset* (property, loan, account). Joint tenancy carries survivorship (not fractional ownership). |
+| `lib/services/beneficialOwnershipService.ts` | The sole writer of `BeneficialOwnershipOverride` — asset-scoped "legal title ≠ beneficial owner" (nominee / bare trust / custodian, §3A). |
+
+These services perform no tax or financial arithmetic (§8.3) — they write the graph and read the pure `lib/entity-graph/` rules engine. API routes + UI consume them in Part 1c.
+
 ## **§13.2 Architectural rules across the B2B2C surface**
 
 Documented in full in `docs/architecture/03_DATA_MODEL.md` §11.7 and `docs/architecture/07_API_STANDARDS.md` §15.1-15.7. Summary:
