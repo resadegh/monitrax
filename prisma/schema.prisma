@@ -487,13 +487,27 @@ enum SuperContributionType {
 // bare trusts, etc.) escalate to OTHER-style support requests until demand
 // proves out. See `docs/architecture/03_DATA_MODEL.md` §10.
 enum LegalEntityType {
+  // Phase 41 original values — order preserved (DB enum order must match).
   PERSONAL_NAME // Default — assets held in a natural person's own name
-  COMPANY // Pty Ltd / Ltd
+  COMPANY // Pty Ltd / Ltd — see CompanySubtype
   DISCRETIONARY_TRUST // Family discretionary trust (most common AU structure)
   UNIT_TRUST // Fixed-unit trust
   SMSF // Self-Managed Super Fund (regulated by ATO)
   PARTNERSHIP // General or limited partnership
   SOLE_TRADER // ABN-registered individual operating a business
+  // Phase 44 additions — appended to match the migration's ADD VALUE order.
+  INDIVIDUAL // a natural person as a legal actor (director / shareholder / beneficiary / trustee / member); not all are Monitrax users
+  FIXED_TRUST // a fixed (non-unit) trust
+  HYBRID_TRUST // a hybrid trust (discretionary + unit features)
+  BARE_TRUST // a holding trust; incl. the SMSF LRBA holding trust
+  TESTAMENTARY_TRUST // a trust created by a will (minor-beneficiary excepted-income concession)
+  DECEASED_ESTATE // estate administered by an executor/administrator before distribution
+  FOREIGN_COMPANY // a company incorporated outside Australia
+  INCORPORATED_ASSOCIATION // a state-registered incorporated association
+  CO_OPERATIVE // a registered co-operative
+  STRATA_BODY_CORPORATE // an owners corporation / body corporate
+  CUSTODIAN_PLATFORM // a custodian / wrap-platform vehicle holding investments as bare custodian
+  OTHER // outside the supported grammar; recorded + flagged unsupportedStructure
 }
 
 // `LegalEntityRole` — the *purpose* of the entity in the user's wealth picture.
@@ -507,6 +521,7 @@ enum LegalEntityRole {
   INVESTMENT // Investment-only vehicle (e.g. unit trust used as a property syndicate)
   SUPERANNUATION // SMSF — superannuation only
   PERSONAL // Natural person ownership (default for every existing user)
+  CORPORATE_TRUSTEE // Phase 44 — a company whose function is purely to be a trustee
 }
 
 // Phase 41E reform 2026-27 — Measure 3 dispatch input.
@@ -530,6 +545,9 @@ enum TrustType {
   DECEASED_ESTATE // Deceased estate — excluded
   SPECIAL_DISABILITY // Special disability trust — excluded
   OTHER // Catch-all; UC-TRUST-TYPE-UNKNOWN until user confirms
+  // Phase 44 additions — appended to match the migration's ADD VALUE order.
+  HYBRID // hybrid trust (discretionary + unit features)
+  TESTAMENTARY // testamentary trust (discretionary); minor-beneficiary excepted income
 }
 
 // `LegalEntity` — the foundational ownership object for the Phase 41 entity
@@ -570,7 +588,31 @@ model LegalEntity {
   // `isForeignResident` drives Measure 4 (Div 855 TARP + 365-day PAT).
   // See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10.3 + §10.4.
   trustType         TrustType? // Set only when `type === DISCRETIONARY_TRUST | UNIT_TRUST | ...`
-  isForeignResident Boolean? // Drives Measure 4 dispatch; null = treated as resident (UC-FR-STATUS-UNKNOWN if entity has TARP-relevant assets)
+  isForeignResident Boolean? // Drives Measure 4 dispatch; null = treated as resident (UC-FR-STATUS-UNKNOWN if entity has TARP-relevant assets). Phase 44: superseded by `taxResidencyStatus` — kept for the Phase 41E dispatch + back-compat.
+
+  // Phase 44 — Entity Graph additive fields. Design: docs/blueprint/PHASE_44_ENTITY_GRAPH.md §7.
+  companySubtype                        CompanySubtype? // COMPANY only — drives the §6 validity branch
+  dateOfBirth                           DateTime? // INDIVIDUAL nodes only
+  directorIdEncrypted                   String? // Director ID — sensitive; encrypted via lib/security/tfnEncryption.ts; never logged / AI / default API
+  householdMemberId                     String? // optional link: this INDIVIDUAL is a known household member
+  canHoldLegalTitle                     Boolean         @default(true) // false for Trust / Partnership — they are not legal persons (§3A)
+  taxReportingEntity                    Boolean         @default(true) // lodges a tax return
+  requiresTrusteeOrNomineeForLegalTitle Boolean         @default(false) // true for Trust / Partnership
+  taxResidencyStatus                    String? // AUSTRALIAN_RESIDENT / FOREIGN_RESIDENT / TEMPORARY_RESIDENT / DUAL_RESIDENT / UNKNOWN
+  centralManagementControlCountry       String?
+  placeOfIncorporation                  String?
+  governingJurisdiction                 String? // state-varying land tax / duty / association law — NSW / VIC / ... / FEDERAL / FOREIGN
+  registrationJurisdiction              String?
+  vestingDate                           DateTime? // trusts
+  perpetuityPeriod                      String? // trusts
+  deedDate                              DateTime? // trusts
+  lastVariationDate                     DateTime? // trusts
+  trustProperLawJurisdiction            String? // trusts
+  estateAdministrationStatus            String? // DECEASED_ESTATE only — EARLY / PARTLY / FULLY_ADMINISTERED / FINAL_DISTRIBUTION_COMPLETE
+  regulatoryStatus                      String[] // ACNC_REGISTERED_CHARITY / DGR / INCOME_TAX_EXEMPT / NFP / REGISTERED_FOREIGN_BODY / AFSL_HOLDER / RESPONSIBLE_ENTITY
+  unsupportedStructure                  Boolean         @default(false) // true when type = OTHER
+  structuralState                       StructuralState @default(VALID) // §6.1 three-state classification
+  accountantVerified                    Boolean         @default(false) // §9 provenance flag
 
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -600,11 +642,239 @@ model LegalEntity {
   // prior 2 years' tax paid. See PHASE_41E_REFORM_2026_27.md §10.5.
   companyTaxHistory CompanyTaxHistory[]
 
+  // Phase 44 — Entity Graph reverse relations.
+  relationshipsFrom EntityRelationship[] @relation("RelationshipsFrom")
+  relationshipsTo   EntityRelationship[] @relation("RelationshipsTo")
+  ownershipStakes   OwnershipStake[]
+
   @@index([userId])
   @@index([type])
   @@index([parentEntityId])
   @@index([trustType]) // Phase 41E — Measure 3 dispatch reads DISCRETIONARY trusts
   @@map("legal_entities")
+}
+
+// =============================================================================
+// PHASE 44 — ENTITY GRAPH & STRUCTURE MODELLING (Part 1a — schema)
+// Design contract: docs/blueprint/PHASE_44_ENTITY_GRAPH.md.
+// The typed, directed, time-bounded relationship graph Phase 41 deferred.
+// PURE DATA LAYER — all validity logic lives in lib/entity-graph/ (§8.4);
+// all tax / financial computation stays in the existing engines (§8.3).
+// Additive throughout — no destructive change to Phase 41.
+// =============================================================================
+
+// One enum for every relationship type — adding a type never needs a
+// migration (§3). Directionality + legal meaning: PHASE_44 §5.
+enum EntityRelationshipType {
+  TRUSTEE_OF
+  APPOINTOR_OF
+  GUARDIAN_OF // guardian / protector
+  POWER_HOLDER_OF // veto / consent / direction power
+  SETTLOR_OF
+  BENEFICIARY_OF
+  EXECUTOR_OF // deceased estate (with a will)
+  ADMINISTRATOR_OF // deceased estate (intestate)
+  LEGAL_PERSONAL_REPRESENTATIVE_FOR // SMSF exception cases — death / incapacity / minor / EPOA
+  UNITHOLDER_OF
+  SHAREHOLDER_OF
+  DIRECTOR_OF
+  SECRETARY_OF
+  PUBLIC_OFFICER_OF
+  MEMBER_OF
+  PARTNER_OF
+  OPERATES_AS_SOLE_TRADER
+  FAMILY_MEMBER_OF // Div 7A associate / SMSF related-party input
+  ASSOCIATE_OF // accountant-confirmed association override
+}
+
+enum BeneficiaryClass {
+  PRIMARY
+  GENERAL
+  DEFAULT
+  NAMED
+  RESIDUARY // deceased estate / testamentary
+  SPECIFIC_GIFT // deceased estate / testamentary
+  LIFE_TENANT // deceased estate / testamentary
+  REMAINDERMAN // deceased estate / testamentary
+}
+
+// Three-state structural classification (PHASE_44 §6.1). Only
+// IMPOSSIBLE_SYSTEM_ERROR is rejected at write time; legal non-compliance
+// is recorded + flagged (never erased) so Monitrax stays a faithful twin.
+enum StructuralState {
+  VALID
+  NON_COMPLIANT_BUT_RECORDED
+  IMPOSSIBLE_SYSTEM_ERROR
+}
+
+enum ShareClass {
+  ORDINARY
+  PREFERENCE
+  REDEEMABLE_PREFERENCE
+  A_CLASS
+  B_CLASS
+  C_CLASS
+  OTHER
+}
+
+enum EquityKind {
+  SHARE // company shares
+  UNIT // unit-trust units
+}
+
+enum TenancyType {
+  SOLE
+  JOINT_TENANTS // survivorship applies — interest does NOT pass through the deceased estate
+  TENANTS_IN_COMMON // fixed fractional ownership
+  OTHER
+}
+
+enum BeneficialOwnershipBasis {
+  BARE_TRUST
+  NOMINEE
+  CUSTODIAN
+  RESULTING_TRUST
+  OTHER
+}
+
+enum CompanySubtype {
+  PROPRIETARY // Pty Ltd — has shareholders
+  PUBLIC // Ltd — has shareholders
+  LIMITED_BY_GUARANTEE // has members, no share capital (typical NFP)
+  UNLIMITED
+  NO_LIABILITY // NL company (mining)
+}
+
+// `EntityRelationship` — one typed, directed, time-bounded edge in the
+// entity graph. Equity detail is first-class in `ShareParcel`, never JSON.
+model EntityRelationship {
+  id           String                 @id @default(uuid())
+  userId       String // tenancy scope — every edge belongs to one user's structure
+  fromEntityId String
+  toEntityId   String
+  type         EntityRelationshipType
+
+  // Time-bounding — a director resigns, shares are sold, a trust vests.
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime? // null = current
+
+  // Edge-specific metadata (small, structured).
+  beneficiaryClass     BeneficiaryClass? // BENEFICIARY_OF
+  partnerInterestPct   Decimal?          @db.Decimal(9, 6) // PARTNER_OF — a change closes this edge + opens a new one
+  partnerCapitalAmount Decimal?          @db.Decimal(19, 4) // PARTNER_OF
+  familyRelation       String? // FAMILY_MEMBER_OF — SPOUSE / DE_FACTO / CHILD / PARENT / SIBLING / OTHER_RELATIVE
+  lprReason            String? // LEGAL_PERSONAL_REPRESENTATIVE_FOR — DEATH / INCAPACITY / MINOR / EPOA / OTHER
+  appointorPower       String[] // APPOINTOR_OF — CAN_REMOVE_TRUSTEE / CAN_APPOINT_TRUSTEE / ...
+  powerType            String? // POWER_HOLDER_OF — VETO / CONSENT / DIRECTION / OTHER
+  powerSubject         String? // POWER_HOLDER_OF — DISTRIBUTION / CAPITAL / TRUSTEE_CHANGE / DEED_AMENDMENT / ...
+  tfnQuoted            Boolean? // BENEFICIARY_OF / SHAREHOLDER_OF / UNITHOLDER_OF — TFN-withholding fact; never the TFN itself
+  sourceDocumentId     String?
+  notes                String?
+
+  // Three-state classification + provenance (§6.1, §9).
+  structuralState    StructuralState @default(VALID)
+  accountantVerified Boolean         @default(false)
+  verifiedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromEntity   LegalEntity   @relation("RelationshipsFrom", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntity     LegalEntity   @relation("RelationshipsTo", fields: [toEntityId], references: [id], onDelete: Cascade)
+  shareParcels ShareParcel[]
+
+  @@index([userId])
+  @@index([fromEntityId])
+  @@index([toEntityId])
+  @@index([type])
+  @@map("entity_relationships")
+}
+
+// `ShareParcel` — first-class equity detail (company shares AND unit-trust
+// units). Hangs off a SHAREHOLDER_OF / UNITHOLDER_OF edge. Decimal
+// throughout — CGT cost base depends on exact figures.
+model ShareParcel {
+  id             String     @id @default(uuid())
+  relationshipId String
+  kind           EquityKind
+  shareClass     ShareClass @default(ORDINARY)
+  quantity       Decimal    @db.Decimal(24, 8) // fractional units exist
+  paidPerUnit    Decimal    @db.Decimal(19, 6) // CGT cost-base input
+  unpaidPerUnit  Decimal    @default(0) @db.Decimal(19, 6) // partly-paid shares — calls outstanding
+  acquiredAt     DateTime // CGT acquisition date
+  disposedAt     DateTime? // null = still held
+
+  relationship EntityRelationship @relation(fields: [relationshipId], references: [id], onDelete: Cascade)
+
+  @@index([relationshipId])
+  @@map("share_parcels")
+}
+
+// `OwnershipGroup` + `OwnershipStake` — joint / shared ownership of an
+// owned object (PHASE_44 §7, Q1). Layered BESIDE `ownerEntityId` (which
+// stays the primary / legal-title owner). Joint tenancy carries
+// survivorship; tenants-in-common carry fixed fractions.
+model OwnershipGroup {
+  id              String      @id @default(uuid())
+  userId          String
+  ownedObjectType String // 'property' | 'loan' | 'account' | 'investmentAccount' | 'asset'
+  ownedObjectId   String
+  tenancyType     TenancyType
+  effectiveFrom   DateTime    @default(now())
+  effectiveTo     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stakes OwnershipStake[]
+
+  @@index([userId])
+  @@index([ownedObjectType, ownedObjectId])
+  @@map("ownership_groups")
+}
+
+model OwnershipStake {
+  id                  String   @id @default(uuid())
+  ownershipGroupId    String
+  entityId            String
+  sharePct            Decimal? @db.Decimal(9, 6) // required for TENANTS_IN_COMMON (sum 100); optional/reporting-only for JOINT_TENANTS
+  survivorshipApplies Boolean  @default(false) // true for JOINT_TENANTS — estate engine must NOT pass the interest through the deceased estate
+  notes               String?
+
+  group  OwnershipGroup @relation(fields: [ownershipGroupId], references: [id], onDelete: Cascade)
+  entity LegalEntity    @relation(fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@index([ownershipGroupId])
+  @@index([entityId])
+  @@map("ownership_stakes")
+}
+
+// `BeneficialOwnershipOverride` — asset-scoped record that legal title and
+// beneficial ownership differ (nominee / bare trust / custodian). Replaces
+// the too-broad entity-to-entity NOMINEE_FOR edge (PHASE_44 §5, §7). Entity
+// refs are plain FKs — the lib/entity-graph/ service validates them.
+model BeneficialOwnershipOverride {
+  id                      String                   @id @default(uuid())
+  userId                  String
+  legalOwnerEntityId      String // who holds legal title
+  beneficialOwnerEntityId String // who is economically entitled
+  ownedObjectType         String // asset / shareParcel / ownershipStake / investmentHolding
+  ownedObjectId           String
+  basis                   BeneficialOwnershipBasis
+  effectiveFrom           DateTime                 @default(now())
+  effectiveTo             DateTime?
+  sourceDocumentId        String?
+  accountantVerified      Boolean                  @default(false)
+  verifiedAt              DateTime?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([ownedObjectType, ownedObjectId])
+  @@map("beneficial_ownership_overrides")
 }
 
 // =============================================================================
@@ -787,6 +1057,12 @@ model User {
   // PERSONAL_NAME entity is created during onboarding and backfilled for
   // existing users by migration `20260504130000_add_legal_entity`).
   legalEntities LegalEntity[]
+
+  // Phase 44: Entity Graph — the relationship edges, ownership groups, and
+  // beneficial-ownership overrides in this user's structure.
+  entityRelationships          EntityRelationship[]
+  ownershipGroups              OwnershipGroup[]
+  beneficialOwnershipOverrides BeneficialOwnershipOverride[]
 
   // Phase 41f: bookkeeping integrations the user has connected for any of
   // their LegalEntities (USER_ENTITY scope). Cascades on user delete via
