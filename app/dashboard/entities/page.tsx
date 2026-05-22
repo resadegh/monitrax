@@ -26,6 +26,7 @@ import {
   Lock,
   Loader2,
   TreePine,
+  Users,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -66,6 +67,7 @@ import {
   formatAcn,
 } from '@/lib/utils/auValidators';
 import { useAuth } from '@/lib/context/AuthContext';
+import { OwnershipGroupsDialog } from '@/components/entities/OwnershipGroupsDialog';
 
 // Phase 44 Part 1c — the entity-structure canvas (§11A). Dynamically
 // imported with SSR disabled: React Flow needs the DOM, and the canvas +
@@ -339,6 +341,9 @@ export default function EntitiesPage() {
   // canvas (which fetches its own graph) refetches after add / edit / remove.
   const [canvasReload, setCanvasReload] = useState(0);
 
+  // Phase 44 Part 1c (Q1) — the joint-ownership manager dialog.
+  const [ownershipOpen, setOwnershipOpen] = useState(false);
+
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Entity | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -550,6 +555,16 @@ export default function EntitiesPage() {
             mapped to the right structure.
           </p>
         </header>
+
+        {/* Phase 44 Part 1c (Q1) — joint / shared ownership entry point. */}
+        {!loading && !error && (
+          <div>
+            <Button variant="outline" size="sm" onClick={() => setOwnershipOpen(true)}>
+              <Users className="mr-1.5 h-4 w-4" />
+              Joint &amp; shared ownership
+            </Button>
+          </div>
+        )}
 
         {/* Loading state */}
         {loading && (
@@ -1010,6 +1025,14 @@ export default function EntitiesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Phase 44 Part 1c (Q1) — joint / shared ownership manager. */}
+      <OwnershipGroupsDialog
+        open={ownershipOpen}
+        onClose={() => setOwnershipOpen(false)}
+        token={token ?? ''}
+        entities={entities.map((e) => ({ id: e.id, name: e.name }))}
+      />
     </DashboardLayout>
   );
 }
