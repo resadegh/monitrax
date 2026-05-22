@@ -571,6 +571,19 @@ Phase 41 (§10) modelled entity *types*. Phase 44 adds the *relationship* layer 
 
 The legacy `LegalEntity.parentEntityId` (the single trustee→trust self-FK) is **frozen read-only** — the Part 1a migration converts every non-null `parentEntityId` into a `TRUSTEE_OF` edge. Calculations repoint to the graph in Part 1b. `parentEntityId` is dropped in a later cleanup once nothing reads it. `ownerEntityId` on owned objects is untouched.
 
+### New models (Part 2a — money-flow & transactions)
+
+> **Full design contract:** `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md`. **Part 2a (schema)** shipped via migration `20260522100000_phase_44_part_2a_money_flow` — purely additive (new tables / enums only). The "what actually happened in an income year" layer the Part 2c fact-assembler feeds to the tax engine. Pure data — no tax computation lives in these models (§8.3). All money / percentage fields `Decimal`. Entity references are plain-string FKs validated by the service layer (the `BeneficialOwnershipOverride` precedent).
+
+| Model | Purpose |
+|---|---|
+| `DistributionResolution` + `DistributionAllocation` | A trust's per-FY resolution → feeds `EntityTaxFacts.trustDistribution`. Carries `trustNetIncome` (s 95 — a tax concept) and `distributableIncome` (trust-law income) separately — the Bamford proportionate model; each allocation's `presentlyEntitledShare` is a fraction. Streaming pools (`frankedDividendPool` / `capitalGainPool`) + per-beneficiary streamed amounts feed Div 6E / Subdiv 115-C / 207-B. |
+| `DividendDistribution` + `DividendPayment` | An actual company dividend → feeds the Div 207 imputation computation. Franking (`frankingPercentage`, `frankingCreditsTotal`) recorded explicitly, never inferred. `declaredDate` vs `paymentDate` — entitlement ≠ cash. |
+| `PrivateCompanyBenefit` | A Div 7A benefit (loan / payment / debt-forgiveness / UPE / sub-trust). The engine computes the `LOAN` limb; others are recorded and returned `UNCOMPUTED` (UPE / sub-trust treatment is legally contested — the engine never auto-deems a Div 7A dividend). |
+| `TrustDeedRule` | Structured, queryable deed-derived facts — the typed promotion of `TrustDeedExtractedRules`' JSON columns; the SSOT the tax engine reads. `TrustDeedExtractedRules` is retained as the raw PDF-extraction provenance record. |
+
+Three enums added: `ResolutionStatus` (`DRAFT` / `CONFIRMED`), `PrivateCompanyBenefitType`, `TrustDeedRuleType`. `User` gains four back-relations. No change to any existing model's columns — additive throughout.
+
 ---
 
 # **4. Frequency Enum (Global)**
