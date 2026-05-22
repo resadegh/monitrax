@@ -553,4 +553,52 @@ export async function listRelationships(
   }));
 }
 
+// =============================================================================
+// ACCOUNTANT VERIFICATION (§9 — the accountant-review share-pass, Q4)
+// =============================================================================
+
+/**
+ * Flip a relationship's `accountantVerified` provenance flag and stamp
+ * `verifiedAt`. The accountant-review share-pass turns this flag into a
+ * professional sign-off (PHASE_44_ENTITY_GRAPH.md §9): the user hands
+ * their accountant the structure report, the accountant confirms, the
+ * user marks the confirmed edges verified.
+ *
+ * This changes provenance only — never structure — so the §6 validity
+ * classification is not re-run. No tax arithmetic (§8.3).
+ */
+export async function setRelationshipAccountantVerified(
+  userId: string,
+  relationshipId: string,
+  verified: boolean,
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<void> {
+  const existing = await prisma.entityRelationship.findFirst({
+    where: { id: relationshipId, userId },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new RelationshipValidationError(
+      'RELATIONSHIP_NOT_FOUND',
+      'Relationship not found or not owned by you.',
+    );
+  }
+  // §12.11 — composite `where` confines the write to the caller's edge;
+  // only the provenance columns (`accountantVerified` + `verifiedAt`) are
+  // written. Neither is user-entered financial data.
+  await prisma.entityRelationship.update({
+    where: { id: relationshipId, userId },
+    data: { accountantVerified: verified, verifiedAt: verified ? new Date() : null },
+  });
+
+  void logCRUD({
+    userId,
+    action: 'UPDATE',
+    entityType: 'EntityRelationship',
+    entityId: relationshipId,
+    metadata: { accountantVerified: verified },
+    ...requestMeta,
+  }).catch(() => {});
+}
+
 export { windowsOverlap as _windowsOverlapForTest };

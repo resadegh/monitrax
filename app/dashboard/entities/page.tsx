@@ -29,6 +29,7 @@ import {
   Users,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -556,12 +557,19 @@ export default function EntitiesPage() {
           </p>
         </header>
 
-        {/* Phase 44 Part 1c (Q1) — joint / shared ownership entry point. */}
+        {/* Phase 44 Part 1c — joint-ownership (Q1) + accountant-review (Q4)
+            entry points. */}
         {!loading && !error && (
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setOwnershipOpen(true)}>
               <Users className="mr-1.5 h-4 w-4" />
               Joint &amp; shared ownership
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/entities/accountant-review">
+                <ShieldCheck className="mr-1.5 h-4 w-4" />
+                Accountant review
+              </Link>
             </Button>
           </div>
         )}

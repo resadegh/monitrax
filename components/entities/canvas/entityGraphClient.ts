@@ -177,3 +177,35 @@ export async function deleteRelationshipRequest(
   });
   if (!res.ok) throw new Error(await readError(res, 'Failed to delete the relationship.'));
 }
+
+// =============================================================================
+// WRITE — accountant verification (§9 — the accountant-review share-pass)
+// =============================================================================
+
+/** Flip a relationship's `accountantVerified` provenance flag (§9). */
+export async function verifyRelationshipRequest(
+  token: string,
+  relationshipId: string,
+  verified: boolean,
+): Promise<void> {
+  const res = await fetch(`/api/entities/relationships/${relationshipId}/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ verified }),
+  });
+  if (!res.ok) throw new Error(await readError(res, 'Failed to update verification.'));
+}
+
+/** Flip an entity's `accountantVerified` provenance flag (§9). */
+export async function verifyEntityRequest(
+  token: string,
+  entityId: string,
+  verified: boolean,
+): Promise<void> {
+  const res = await fetch(`/api/entities/${entityId}/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ verified }),
+  });
+  if (!res.ok) throw new Error(await readError(res, 'Failed to update verification.'));
+}
