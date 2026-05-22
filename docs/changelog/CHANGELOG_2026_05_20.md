@@ -67,3 +67,40 @@ Reza's brief: enrich the entity function to capture complex AU legal structures 
 ### Next
 
 Reza reviews `PHASE_44_ENTITY_GRAPH.md` — ideally with an accountant sanity-check of the node/edge/validity-matrix model. No Phase 44 code until that review. Build then proceeds Part 1a → 1d.
+
+---
+
+## Session 3 — Phase 44 design doc: two adversarial reviews incorporated (v2 → v3)
+
+**Type:** doc-only — design-doc hardening. No code.
+
+### Review #1 — internal adversarial review agent
+
+A source-verified (ATO/ASIC) adversarial review agent stress-tested the v1 design doc. Found 4 critical issues + gaps + tax-fact errors — all incorporated into **v2**: single-member SMSF un-representable + bidirectional member↔trustee rule wrong (C1); `parentEntityId` "read-through cache" fallacy (C2); `TRUSTEE_OF.from` excluding Trust unexplained (C3); no ownership-cycle rule (C4); company-limited-by-guarantee shareholder bug; missing testamentary trust / guardian / nominee / unlimited+NL company types; §8.1 tax-fact errors. Doc §14 records it.
+
+### Review #2 — external AI review (ChatGPT), incorporated → v3
+
+Reza commissioned a second independent AI review (prompt supplied by Claude). It found v2 still had substantial issues — all now incorporated into **v3**, a near-complete revision of the design doc:
+
+- **§3 over-claim corrected** — "ANY Australian structure" → "combination-complete for the *supported grammar*" with explicit out-of-scope exclusions.
+- **NEW §3A** — legal title / beneficial ownership / control are three *separate* dimensions; the model must never infer one from another. This was the deepest conceptual correction.
+- **§6.3 SMSF rule corrected** — for a corporate-trustee SMSF, members and directors must be the *same set, both directions*; exceptions only via a new `LEGAL_PERSONAL_REPRESENTATIVE_FOR` edge (death/incapacity/minor/EPOA).
+- **§6.1 three-state model** — `VALID` / `NON_COMPLIANT_BUT_RECORDED` / `IMPOSSIBLE_SYSTEM_ERROR`, replacing the binary accept/reject (a 7-member SMSF is recorded + flagged, not refused).
+- **§6.5 cycle handling** — circular cross-shareholdings are *detected + recorded*, not blanket-rejected; attribution returns `UNCOMPUTED` until resolved.
+- **Appointor** downgraded from "controls the trust" to "strong control *indicator*"; not expected on SMSFs.
+- **Deceased estates** properly modelled — `EXECUTOR_OF`/`ADMINISTRATOR_OF` edges, `estateAdministrationStatus`, present-entitlement logic.
+- **Joint tenancy** — `OwnershipGroup`+`OwnershipStake` split; survivorship modelled (a joint tenant's interest does not pass through the deceased estate).
+- **Nominee** — the broad entity-to-entity `NOMINEE_FOR` edge removed; replaced with the asset-scoped `BeneficialOwnershipOverride` model.
+- **`Decimal` not `Float`** for all Phase 44 financial fields; codebase-wide `Float`→`Decimal` migration logged as new Open Question **Q-DEC**.
+- **Franking + Div 7A** — graph = eligibility, transactions = what actually happened; `DividendDistribution` + `PrivateCompanyBenefit` deferred to Part 2 (§8.2 heading corrected).
+- Added entity types (foreign company, incorporated association, co-operative, strata body corporate, custodian platform) + `regulatoryStatus`; `FAMILY_MEMBER_OF` / `ASSOCIATE_OF` edges for Div 7A; residency + jurisdiction + vesting metadata; tax corrections (trust s98/s99/s99A, testamentary asset-source tracking, SMSF ECPI).
+- New **§14.1** — 10 combination-completeness acceptance tests; new **§15** — pre-build acceptance checklist.
+
+### Files
+
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — v3, comprehensively revised.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44 workstream phases updated (both reviews logged); new Open Question Q-DEC (codebase-wide Float→Decimal).
+
+### Next
+
+Reza reviews the **v3** doc. No Phase 44 code until that review. The §15 acceptance checklist is the implementer's pre-flight gate.
