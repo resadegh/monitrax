@@ -59,7 +59,15 @@ fi
 # Build full URL with optional team scoping. Vercel API endpoints under
 # `?teamId=...` operate on team-scoped resources; personal-account
 # endpoints don't need it.
+#
+# An optional leading `--max-time <seconds>` bounds the read — required
+# for streaming endpoints (runtime-logs) that hold the connection open.
 curl_api() {
+  local max_time=""
+  if [[ "${1:-}" == "--max-time" ]]; then
+    max_time="$2"
+    shift 2
+  fi
   local path="$1"
   local full_url="$VERCEL_API$path"
   if [[ -n "${VERCEL_TEAM_ID:-}" ]]; then
@@ -67,7 +75,11 @@ curl_api() {
     [[ "$path" == *"?"* ]] && sep="&"
     full_url="${full_url}${sep}teamId=${VERCEL_TEAM_ID}"
   fi
-  curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" "$full_url"
+  if [[ -n "$max_time" ]]; then
+    curl -sS --max-time "$max_time" -H "Authorization: Bearer $VERCEL_TOKEN" "$full_url"
+  else
+    curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" "$full_url"
+  fi
 }
 
 # Aligns tab-separated stdin into padded columns. Portable replacement
@@ -140,23 +152,38 @@ case "$cmd" in
       echo "Error: could not resolve project ID for '${PROJECT_NAME}'. Token scope wrong?" >&2
       exit 2
     fi
-    # Runtime-log retention: Hobby 1h, Pro 1d, Enterprise 3d (Observability
-    # Plus → 30d). Empty results outside the retention window are EXPECTED,
-    # not an error — see community thread linked in the runbook.
-    curl_api "/v1/projects/${project_id}/deployments/${deployment}/runtime-logs?limit=200" \
-      | jq -r '
-          if length == 0 then
-            "(no runtime logs in retention window — Pro plan = 1 day; check if the deploy is too old)"
-          else
-            .[] |
+    # The runtime-logs endpoint STREAMS NDJSON — one JSON object per line —
+    # and holds the connection open waiting for new events; `?limit=200`
+    # caps the event count but does NOT close an idle connection. So:
+    #   - `--max-time` bounds the read (curl exit 28 on timeout is expected
+    #     and benign — `|| true` keeps `set -e` happy; the partial body
+    #     received so far is kept);
+    #   - each line is one log object, processed DIRECTLY — NOT via `.[]`.
+    #     `.[]` on a per-line object iterates its *values*, and the next
+    #     `.timestampInMs` on a value-string throws "Cannot index string
+    #     with string". The old code only ever returned because that crash
+    #     killed the pipe early; on a real NDJSON stream it would hang.
+    # Runtime-log retention: Hobby 1h, Pro 1d, Enterprise 3d. An empty
+    # window (no recent traffic, or the deploy is too old) is EXPECTED,
+    # not an error.
+    runtime_raw=$(
+      curl_api --max-time 25 \
+        "/v1/projects/${project_id}/deployments/${deployment}/runtime-logs?limit=200" || true
+    )
+    if [[ -z "${runtime_raw//[[:space:]]/}" ]]; then
+      echo "(no runtime logs in the retention window — no recent traffic, or the deploy is too old)"
+    else
+      printf '%s\n' "$runtime_raw" \
+        | jq -r '
+            select(type == "object") |
             [
               ((.timestampInMs // 0) | (./1000) | strftime("%H:%M:%S")),
               (.level // "?"),
               (.source // "?"),
               (.message // .requestPath // "")
-            ] | @tsv
-          end' \
-      | align_tsv
+            ] | @tsv' \
+        | align_tsv
+    fi
     ;;
 
   latest-runtime)
