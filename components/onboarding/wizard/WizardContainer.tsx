@@ -33,6 +33,7 @@ import { WelcomeStep } from './steps/WelcomeStep';
 import { HouseholdStep } from './steps/HouseholdStep';
 // Phase 41b: "How is your wealth held?" — entity layer step
 import { EntitiesStep } from './steps/EntitiesStep';
+import { RelationshipsStep } from './steps/RelationshipsStep';
 import { PropertiesStep } from './steps/PropertiesStep';
 // PR 3b: new conditional step for non-property loans
 import { DebtsStep } from './steps/DebtsStep';
@@ -288,8 +289,11 @@ export function WizardContainer({
     return getStepsForProfile(effectiveProfile, {
       housing: data.housing,
       debtCategories: data.debtCategories,
+      // Phase 44 Part 1d — the relationship skeleton step is shown only
+      // when there is a structure to wire (≥1 non-personal entity).
+      hasStructureEntities: data.entities.some((e) => e.type !== 'PERSONAL_NAME'),
     });
-  }, [data.profileType, data.housing, data.debtCategories]);
+  }, [data.profileType, data.housing, data.debtCategories, data.entities]);
 
   const currentStep = steps[currentStepIndex];
   const isFirstStep = currentStepIndex === 0;
@@ -501,6 +505,23 @@ export function WizardContainer({
              * it on Continue / Back / progress-jump.
              */}
             <EntitiesStep
+              data={data}
+              onUpdate={handleUpdate}
+              registerStepCommit={registerStepCommit}
+            />
+          </div>
+        );
+      case 'entity-relationships':
+        return (
+          <div key={currentStep.id} className={animationClass}>
+            {/*
+             * Phase 44 Part 1d: the relationship-skeleton sub-step. Shown
+             * only when the user has ≥1 non-personal entity. Persists the
+             * load-bearing edges to the real EntityRelationship table via
+             * the Part 1c route — registers an async commit, awaited on
+             * Continue / Back / progress-jump.
+             */}
+            <RelationshipsStep
               data={data}
               onUpdate={handleUpdate}
               registerStepCommit={registerStepCommit}

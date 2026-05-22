@@ -17,6 +17,7 @@ export type WizardStepId =
   | 'welcome'
   | 'household'  // Phase 29: Household setup step (first after welcome)
   | 'entities'   // Phase 41b: "How is your wealth held?" — entity layer
+  | 'entity-relationships' // Phase 44 Part 1d: the relationship skeleton sub-step
   | 'properties'
   | 'debts'      // Phase 12 PR 3b: non-property loans (CAR/STUDENT/PERSONAL/BUSINESS)
   | 'accounts'
@@ -60,6 +61,19 @@ export const WIZARD_STEPS: WizardStep[] = [
     title: 'Your structure',
     description: 'How is your wealth held?',
     icon: '🏛️',
+    isOptional: true,
+    profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
+  },
+  // Phase 44 Part 1d: the relationship skeleton sub-step. Sits straight
+  // after the entity step. Conditionally shown — `getStepsForProfile`
+  // hides it unless the user has at least one non-personal entity (a
+  // personal-name-only user has no structure to wire, so they never see
+  // it). Optional + finishable later in My Structure (PHASE_44 §11, Q3).
+  {
+    id: 'entity-relationships',
+    title: 'Who runs what',
+    description: 'Map the people behind your structures',
+    icon: '🔗',
     isOptional: true,
     profiles: ['STARTER', 'HOMEOWNER', 'INVESTOR', 'MIXED'],
   },
@@ -203,6 +217,34 @@ export interface EntityInput {
     | 'SPECIAL_DISABILITY'
     | 'OTHER';
   isForeignResident?: boolean;
+}
+
+// =============================================================================
+// RELATIONSHIP SKELETON (Phase 44 Part 1d)
+// =============================================================================
+
+// The load-bearing edge types the onboarding skeleton captures — a subset
+// of the full Prisma `EntityRelationshipType`. The rest of the graph is
+// refined later in My Structure (PHASE_44_ENTITY_GRAPH.md §11, Q3).
+export type WizardRelationshipType =
+  | 'TRUSTEE_OF'
+  | 'DIRECTOR_OF'
+  | 'SHAREHOLDER_OF'
+  | 'BENEFICIARY_OF'
+  | 'UNITHOLDER_OF'
+  | 'MEMBER_OF'
+  | 'PARTNER_OF'
+  | 'OPERATES_AS_SOLE_TRADER';
+
+// One captured-during-wizard relationship edge. `from`/`to` point at
+// `EntityInput.id`. By the time the relationship step runs, the entity
+// step has already persisted its entities — so these ids are real DB
+// ids, not temp ids (the relationship sync POSTs them directly).
+export interface RelationshipInput {
+  id: string;
+  fromEntityTempId: string; // the controller / owner
+  toEntityTempId: string;   // the structure
+  type: WizardRelationshipType;
 }
 
 // =============================================================================
@@ -651,6 +693,11 @@ export interface WizardData {
   // bulk-create creates on demand for new registrations).
   entities: EntityInput[];
 
+  // Phase 44 Part 1d: the relationship skeleton — the load-bearing edges
+  // (trustee / director / shareholder / beneficiary / member / …) wired
+  // in the entity-relationships step. Empty when the user skips it.
+  relationships: RelationshipInput[];
+
   // Step 3: Properties (with inline loans)
   properties: PropertyInput[];
 
@@ -691,6 +738,7 @@ export const INITIAL_WIZARD_DATA: WizardData = {
   householdPets: [],
   carsCount: 0,
   entities: [],
+  relationships: [],
   properties: [],
   debts: [],
   accounts: [],
@@ -758,7 +806,17 @@ export type StepCommitFn = () => Promise<void>;
  */
 export function getStepsForProfile(
   profile: OnboardingProfileType,
-  context?: { housing?: HousingSituation | null; debtCategories?: DebtCategory[] }
+  context?: {
+    housing?: HousingSituation | null;
+    debtCategories?: DebtCategory[];
+    /**
+     * Phase 44 Part 1d — true when the user has at least one non-personal
+     * entity (a trust / SMSF / company / partnership). The relationship
+     * skeleton step is hidden otherwise: a personal-name-only user has no
+     * structure to wire.
+     */
+    hasStructureEntities?: boolean;
+  }
 ): WizardStep[] {
   return WIZARD_STEPS.filter((step) => {
     // Profile gate — always applied
@@ -777,10 +835,16 @@ export function getStepsForProfile(
       ) {
         return false;
       }
+      // Phase 44 Part 1d — relationship skeleton: only when there is a
+      // structure to wire.
+      if (step.id === 'entity-relationships' && !context.hasStructureEntities) {
+        return false;
+      }
     } else {
-      // Legacy behaviour (no context supplied): hide the Debts step by
-      // default so PR 3a tests that don't know about it still pass.
+      // Legacy behaviour (no context supplied): hide the conditional
+      // steps by default so older tests that don't know about them pass.
       if (step.id === 'debts') return false;
+      if (step.id === 'entity-relationships') return false;
     }
 
     return true;
