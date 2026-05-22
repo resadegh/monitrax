@@ -521,6 +521,18 @@ The DB-writing services for the typed entity graph — the **only** writers of t
 
 These services perform no tax or financial arithmetic (§8.3) — they write the graph and read the pure `lib/entity-graph/` rules engine. API routes + UI consume them in Part 1c.
 
+### The money-flow layer + the fact-assembler — Phase 44 Part 2
+
+Part 2 is a **data-layer build, not an engine rewrite** (`PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md`): the 45-module tax engine is mature and pure; the gap was the data feeding it. Part 2 adds the persisted "what actually happened" models + the canonical assembler:
+
+| Service | Responsibility |
+|---|---|
+| `distributionResolutionService` / `dividendDistributionService` / `privateCompanyBenefitService` / `trustDeedRuleService` | The sole writers of the Part 2a money-flow models (`DistributionResolution`, `DividendDistribution`, `PrivateCompanyBenefit`, `TrustDeedRule`). Digital-twin warn-not-reject; §12.11-compliant; no tax arithmetic. |
+| `lib/services/entityTaxFactsAssembler.ts` | **The single SSOT for building `EntityTaxFacts`** — the contract the tax engine consumes. Given `(userId, entityId, fy)` it reads the entity's income / expense rows + the persisted money-flow models + the entity graph, and assembles a fully-populated facts object. `GET /api/tax/entity` calls it — so a trust / company with persisted data returns real numbers, not `UNCOMPUTED`. It performs no tax arithmetic — it assembles inputs; the engine applies the law. |
+| `lib/tax-engine/super/smsfIncomeTax.ts` | The one new tax-engine *compute* module Part 2 adds — SMSF fund-earnings income tax (Div 295). It *completes* the one engine (a genuine gap), never duplicates one — the §8.3 exception. |
+
+`LegalEntity.parentEntityId` is confirmed inert for tax and is no longer read by the tax route (Part 2c-ii) — the assembler derives trustee/ownership facts from the graph.
+
 ## **§13.2 Architectural rules across the B2B2C surface**
 
 Documented in full in `docs/architecture/03_DATA_MODEL.md` §11.7 and `docs/architecture/07_API_STANDARDS.md` §15.1-15.7. Summary:

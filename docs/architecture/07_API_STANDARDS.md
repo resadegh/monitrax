@@ -864,3 +864,20 @@ POST / PATCH / DELETE.
 **Response shape.** Success → `{ data, _meta? }`; error → `{ error: { code, message } }`. Service `*ValidationError`s map to a 4xx with the service's own code (`ENTITY_NOT_FOUND` / `*_NOT_FOUND` → 404; `BAD_REQUEST` / `NO_ALLOCATIONS` / `NO_PAYMENTS` / `SAME_ENTITY` / `INVALID_RULE_VALUE` → 400).
 
 **Digital-twin write semantics.** Create routes return `{ data: { …id, warnings: string[] } }` — soft data-quality problems (allocation shares not summing to 100%, a payee not recorded as a shareholder, a beneficiary not in the graph) are RECORDED and surfaced as `warnings`, never rejected (PHASE_44 §6.1). Only data-model-impossible cases (an entity not owned by the caller) are hard 4xx-rejected.
+## **15.11 `/api/tax/entity/[entityId]` — assembler repoint (Phase 44 Part 2c-ii, 2026-05-22)**
+
+`GET /api/tax/entity/[entityId]` now builds its `EntityTaxFacts` through
+the canonical `entityTaxFactsAssembler` (`PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md`
+§6) instead of hand-assembling bare facts. The **response shape is
+unchanged** (`{ success, data: { entityPosition, boundary } }`) — what
+changed is the *content*: a trust with a `CONFIRMED` `DistributionResolution`,
+or a company with `PrivateCompanyBenefit` `LOAN` rows, now returns **real
+computed numbers** where it previously returned `UNCOMPUTED`. An entity
+with no persisted money-flow data still returns `UNCOMPUTED` (honest —
+never false numbers).
+
+`POST /api/tax/entity/[entityId]` is retained as the explicit
+caller-supplied-dispatch path (scenario modelling + testing) — it now
+also accepts an `smsfIncomeTax` body (Part 2c-i). The dead
+`parentEntityId` read is gone from both handlers — no engine module
+consumed it.
