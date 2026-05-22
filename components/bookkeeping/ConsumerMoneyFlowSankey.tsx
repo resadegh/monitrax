@@ -106,6 +106,9 @@ export function projectSnapshotToMoneyFlow(snapshot: MinimalSnapshot): MoneyFlow
         'Essential expenses': essential,
         Discretionary: discretionary,
         'Loan repayments': loans,
+        // A consumer collapses to one synthetic entity — there are no
+        // inter-entity distributions to record (Phase 44 Part 2d).
+        Distributions: 0,
         Surplus: surplus,
       },
     },
@@ -140,6 +143,8 @@ export function projectSnapshotToMoneyFlow(snapshot: MinimalSnapshot): MoneyFlow
     entities,
     outflows,
     edges,
+    // Consumer view has no inter-entity distributions (Phase 44 Part 2d).
+    distributions: [],
     isEmpty,
   };
 }

@@ -570,3 +570,51 @@ This is the step that makes the Part 2 rewire deliver its payoff: `GET /api/tax/
 ### Next
 
 2d — the `MoneyFlowSankey` upgrade to actual entitlement flows. Part 2c (the tax-engine rewire) is complete.
+
+---
+
+## Session: Phase 44 Part 2d — Money Flow Sankey distributions upgrade
+
+Branch: `claude/phase-44-part-2d-money-flow-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (service + UI) — Phase 44 Part 2d, the money-flow Sankey upgrade.
+- **Scope**: `getMoneyFlow()` gains a `Distributions` outflow column fed by the Part 2a money-flow models; the Sankey + the consumer wrapper render it. No tax arithmetic — distribution amounts are read straight off `CONFIRMED` resolutions/dividends; the per-recipient split applies the recorded `presentlyEntitledShare` (Bamford proportionate). Not an engine change (§8.3 holds).
+- **Design contract**: `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` §6.4.
+
+The §11A money-flow lens previously stopped at four heuristic outflows (Tax / Essential / Discretionary / Loan repayments) + Surplus. Part 2d adds a fifth — **Distributions** — so a trust that distributes to its beneficiaries, or a company that pays a dividend to its shareholders, shows that money actually leaving the source entity rather than landing in an overstated "Surplus".
+
+### Files Created / Modified
+
+- `lib/services/moneyFlowService.ts` — added the `Distributions` outflow label; `MoneyFlowDistribution` / `RawResolutionForFlow` / `RawDividendForFlow` types; the pure exported mapper `buildDistributionDetail()` (CONFIRMED resolutions + dividends → per-recipient detail); a `distributions` field on `MoneyFlowResult`. `getMoneyFlow()` now loads `distributionResolution` + `dividendDistribution` (CONFIRMED only) in the same `Promise.all`, aggregates per source entity, recomputes surplus net of distributions, and keeps a distributing trust/company's row even when it has no `Income` rows (warn-not-reject, CLAUDE.md §6.1).
+- `components/entities/MoneyFlowSankey.tsx` — added the indigo `Distributions` outflow colour + legend swatch + headline chip; a per-recipient "Recorded distributions" detail list below the chart; an entitlement-not-cash caveat sentence (external law review §13-F22) shown when distributions are present.
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — `projectSnapshotToMoneyFlow()` updated for the widened `MoneyFlowResult` shape (`Distributions: 0` on the synthetic entity, `distributions: []`) — a consumer collapses to one entity, so there are no inter-entity distributions.
+- `tests/entity-graph/moneyFlowDistribution.test.ts` — **new**. 6 tests pinning `buildDistributionDetail()`.
+
+### Decisions baked in
+
+- **CONFIRMED only.** `DRAFT` resolutions/dividends are working notes — they never feed the visual.
+- **Trust column = `trustNetIncome` (s95).** Per-beneficiary amount = `presentlyEntitledShare × trustNetIncome` (Bamford proportionate model). Company column = the declared `totalAmount`; per-shareholder amounts are the recorded `DividendPayment.amount`.
+- **`SuperContribution` (member → SMSF) deferred.** A super contribution is an entity → entity flow that risks double-counting against the member's income/surplus — it needs its own design pass (a Part 2 follow-up), not the `Distributions` column.
+
+### §12.11 / §12.12 / §12.14
+
+- §12.11 — N/A. No Prisma writes (`getMoneyFlow()` is read-only).
+- §12.12 — N/A. No `prisma/schema.prisma` change (Part 2a shipped the models).
+- §12.14 — N/A. No financial calculation: distribution amounts are read from the persisted models verbatim; the per-recipient split applies a recorded fraction. No tax-engine module touched, no reform interaction.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes.
+- [x] `npx vitest run tests/entity-graph/moneyFlowDistribution.test.ts tests/bookkeeping/consumerSankeyProjection.test.ts tests/entity-graph/part2bServices.test.ts` — 25/25 passing.
+
+### Documentation Updated
+
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — §6.4 "as built" detail + the `SuperContribution` deferral; §10 build sequence: 2d marked built.
+- `docs/IMPLEMENTATION_PLAN.md` — 2d → 🟡 SHIPPING; Part 2 status → build complete; Part 2 follow-ups updated with the `SuperContribution` limb.
+
+### Next
+
+Part 2 build is complete (2a–2d). Remaining: the non-blocking Part 2 follow-ups (`SuperContribution` money-flow limb, `smsfIncomeTax` GET-feed, `trustMinimumTax`→`TrustDeedRule` consumption, `PartnershipDistribution`, non-loan Div 7A limbs, `s99`, per-asset CGT-event assembly).

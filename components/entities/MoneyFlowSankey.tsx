@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * MoneyFlowSankey — Phase 41d
+ * MoneyFlowSankey — Phase 41d, extended Phase 44 Part 2d
  *
  * Time-bounded Sankey of where the user's money actually goes.
  * Three columns:
@@ -12,7 +12,15 @@
  *   Rental               OPERATING (Pty Ltd)          Essential expenses
  *   Investment           HOLDING (Trust)              Discretionary
  *   Other                SUPERANNUATION (SMSF)        Loan repayments
- *                        INVESTMENT (Unit Trust)      Surplus
+ *                        INVESTMENT (Unit Trust)      Distributions
+ *                                                     Surplus
+ *
+ * Phase 44 Part 2d adds the `Distributions` outflow — recorded
+ * inter-entity transfers (a trust's CONFIRMED `DistributionResolution`
+ * to its beneficiaries, a company's CONFIRMED `DividendDistribution` to
+ * its shareholders). These are declared *entitlements*, not necessarily
+ * cash moved in the year — surfaced honestly in the caveat + the
+ * per-recipient detail list below the chart.
  *
  * Powered by recharts `<Sankey>` (already in deps; zero new dependencies)
  * and the `getMoneyFlow()` service. The component is purely
@@ -67,6 +75,7 @@ const OUTFLOW_COLOURS: Record<MoneyFlowOutflowLabel, string> = {
   'Essential expenses': '#f97316', // orange-500 — fixed costs
   Discretionary: '#f59e0b',        // amber-500 — choice
   'Loan repayments': '#a855f7',    // purple-500 — debt service
+  Distributions: '#6366f1',        // indigo-500 — structural transfer to beneficiaries
   Surplus: '#10b981',              // emerald-500 — what's left (positive)
 };
 
@@ -303,8 +312,12 @@ export function MoneyFlowSankey({ flow }: MoneyFlowSankeyProps) {
       0,
     );
     const loans = flow.entities.reduce((s, e) => s + e.outflows['Loan repayments'], 0);
+    const distributions = flow.entities.reduce(
+      (s, e) => s + e.outflows.Distributions,
+      0,
+    );
     const surplus = flow.entities.reduce((s, e) => s + e.outflows.Surplus, 0);
-    return { income, tax, essential, discretionary, loans, surplus };
+    return { income, tax, essential, discretionary, loans, distributions, surplus };
   }, [flow]);
 
   if (flow.isEmpty || nodes.length === 0 || links.length === 0) {
@@ -357,6 +370,11 @@ export function MoneyFlowSankey({ flow }: MoneyFlowSankeyProps) {
         {headline.loans > 0 && (
           <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-purple-700 dark:bg-purple-900/40 dark:text-purple-200">
             Loans {formatCurrency(headline.loans, { abbreviate: true })}
+          </span>
+        )}
+        {headline.distributions > 0 && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-100 px-2 py-0.5 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200">
+            Distributions {formatCurrency(headline.distributions, { abbreviate: true })}
           </span>
         )}
         <span
@@ -413,15 +431,69 @@ export function MoneyFlowSankey({ flow }: MoneyFlowSankeyProps) {
             <span className="inline-block h-2 w-2 rounded-full bg-purple-500" /> Loans
           </span>
           <span className="inline-flex items-center gap-1">
+            <span className="inline-block h-2 w-2 rounded-full bg-indigo-500" /> Distributions
+          </span>
+          <span className="inline-flex items-center gap-1">
             <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" /> Surplus
           </span>
         </div>
       </div>
 
-      {/* Honest caveat — v1 tax allocation is proportional, not Div 6/6E-correct */}
+      {/* Distribution detail — per-recipient breakdown of recorded
+          trust resolutions + company dividends (Phase 44 Part 2d). */}
+      {flow.distributions.length > 0 && (
+        <div className="rounded-2xl border border-indigo-200/60 bg-indigo-50/40 p-4 dark:border-indigo-800/40 dark:bg-indigo-950/30">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">
+            Recorded distributions
+          </h4>
+          <ul className="space-y-2.5">
+            {flow.distributions.map((dist, i) => (
+              <li key={`${dist.fromEntityId}-${dist.kind}-${i}`} className="text-xs">
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className="font-medium text-slate-800 dark:text-slate-100">
+                    {dist.fromEntityName}
+                    <span className="ml-1.5 rounded bg-indigo-100 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                      {dist.kind === 'TRUST_DISTRIBUTION' ? 'Trust' : 'Dividend'}
+                    </span>
+                  </span>
+                  <span className="font-semibold tabular-nums text-slate-700 dark:text-slate-200">
+                    {formatCurrency(dist.amount, { abbreviate: false })}
+                  </span>
+                </div>
+                {dist.recipients.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 border-l border-indigo-200/70 pl-3 dark:border-indigo-800/50">
+                    {dist.recipients.map((r, j) => (
+                      <li
+                        key={`${r.name}-${j}`}
+                        className="flex items-baseline justify-between gap-2 text-slate-500 dark:text-slate-400"
+                      >
+                        <span>{r.name}</span>
+                        <span className="tabular-nums">
+                          {formatCurrency(r.amount, { abbreviate: false })}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Honest caveat — v1 tax allocation is proportional, not Div 6/6E-correct;
+          distributions are declared entitlements, not necessarily cash paid. */}
       <p className="px-2 text-center text-[10px] italic text-slate-500 dark:text-slate-400">
         Annual reference period. Tax allocated proportionally across entities;
         exact Div 6/6E trust distribution math lands with Phase 41e.
+        {flow.distributions.length > 0 && (
+          <>
+            {' '}
+            Distributions show declared entitlements (a beneficiary can be
+            presently entitled with no cash moved) — only confirmed
+            resolutions and dividends are counted.
+          </>
+        )}
       </p>
     </motion.div>
   );
