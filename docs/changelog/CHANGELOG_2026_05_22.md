@@ -235,3 +235,31 @@ User confirmation: **NOT REQUIRED** — provenance flags only, no user data at r
 ### Next
 
 Part 1d — the onboarding wizard relationship sub-step.
+
+---
+
+## Session: fix(tooling) — vercel-logs.sh runtime command (streaming endpoint)
+
+Branch: `claude/fix-vercel-logs-runtime-ndjson-ONspp`
+
+### Changes Made
+
+- **Type**: Fix (tooling) — the live-production-monitoring helper script.
+- **Scope**: `scripts/vercel-logs.sh` — the `runtime` / `latest-runtime` commands.
+- **Root cause**: surfaced during the Phase 44 Part 1c (PR #867) post-merge §17.2 verification. `./scripts/vercel-logs.sh latest-runtime` failed with `jq: Cannot index string with string "timestampInMs"`. The Vercel `/v1/.../runtime-logs` endpoint **streams NDJSON** (one JSON object per line) and holds the connection open — it does not return a finite JSON array. The script (a) parsed it as an array (`jq '.[]'`) — `.[]` on a per-line object iterates its *values*, so the next `.timestampInMs` hit a string; and (b) had no `--max-time`, so against a real stream it would hang. The command only ever "returned" because `jq` crashed early and killed the pipe.
+- **Solution**: `curl_api` gained an optional leading `--max-time <seconds>`. The `runtime` command now calls it with `--max-time 25` (curl exit 28 on timeout is expected + benign — `|| true` keeps `set -e` happy; the partial body is kept), processes each NDJSON line **directly** (no `.[]`), and reports a friendly "no runtime logs" message when the window is empty.
+
+### Files Modified
+
+- `scripts/vercel-logs.sh` — `curl_api` optional `--max-time`; the `runtime` command rewritten for the streaming NDJSON shape.
+- `docs/operational/runbooks/12_CLAUDE_CODE_MCP_SETUP.md` — "Plan-related retention caveats" updated: documents the streaming behaviour, the ~25 s bounded read, and the benign `curl (28)` notice (CLAUDE.md §16.3 — operational lesson → runbook).
+
+### Build Status
+
+- [x] `bash -n scripts/vercel-logs.sh` — syntax clean.
+- [x] `jq` filter unit-tested with sample NDJSON (2 lines → 2 aligned rows) and an empty body (→ "no logs" message).
+- [x] `./scripts/vercel-logs.sh runtime dpl_37wjGEos2FjGAEg6Nr1TJWAFXoE9` — runs, bounds at 25 s, reports the empty window cleanly (exit 0). This also completed the PR #867 §17.2 post-merge runtime-log check: the production deploy has no runtime errors.
+
+### Documentation Updated
+
+- `docs/operational/runbooks/12_CLAUDE_CODE_MCP_SETUP.md` — see above.

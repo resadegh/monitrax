@@ -80,7 +80,9 @@ Vercel runtime-log retention depends on plan:
 - **Enterprise:** 3 days
 - **Observability Plus add-on:** up to 30 days
 
-Calls outside the retention window return an empty array (NOT an error) — the script surfaces that as a friendly message. For older logs you need the GCP Cloud Logging path (§Long-term, below).
+The runtime-logs endpoint **streams** NDJSON (one JSON object per line) and holds the connection open waiting for new events — it does NOT return a finite array. The `runtime` / `latest-runtime` commands therefore bound the read with `curl --max-time` (~25 s): a deploy with recent traffic prints its log lines and returns; a quiet deploy, or one outside the retention window, waits the full ~25 s and then reports a friendly "no runtime logs" message. A `curl: (28) Operation timed out` notice on stderr in that case is **expected and benign** — it is how a bounded read of an idle stream ends. For older logs you need the GCP Cloud Logging path (§Long-term, below).
+
+> **Fixed 2026-05-22.** The `runtime` command originally parsed the response as a JSON array (`jq '.[]'`) and had no `--max-time`. It only ever returned because `jq` crashed on the NDJSON shape and killed the pipe; against a real stream it would hang. Now: `curl --max-time` bounds the read and each NDJSON line is processed directly.
 
 ### What the agent gets
 
