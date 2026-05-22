@@ -86,7 +86,7 @@ Current `LegalEntityType`: `PERSONAL_NAME`, `COMPANY`, `DISCRETIONARY_TRUST`, `U
 |---|---|---|---|
 | `INDIVIDUAL` **NEW** | A natural person as a legal actor — can be a director, shareholder, beneficiary, trustee, member. | TFN (encrypted), DOB | Replaces the overloaded `PERSONAL_NAME` as the *person node*. May optionally link to a `User` and/or a `HouseholdMember`, or stand alone (non-user persons). |
 | `PERSONAL_NAME` | **Retained for migration safety** — the existing "assets in my own name" bucket. Post-migration, semantically an `INDIVIDUAL` that is the primary user. | TFN | Kept so the Phase 41a backfill and every `ownerEntityId` pointer stays valid. New UI presents it as the user's `INDIVIDUAL` node. |
-| `COMPANY` | Pty Ltd or public Ltd. | ABN, ACN | Sub-type via `companySubtype` (**NEW** field): `PROPRIETARY` / `PUBLIC` / `LIMITED_BY_GUARANTEE`. A "corporate trustee" is *not* a type — it is a `COMPANY` with a `TRUSTEE_OF` edge (§5). |
+| `COMPANY` | A registered company. | ABN, ACN | Sub-type via `companySubtype` (**NEW** field): `PROPRIETARY` (Pty Ltd) / `PUBLIC` (Ltd) / `LIMITED_BY_GUARANTEE` (has **members, not shareholders** — typical NFP) / `UNLIMITED` / `NO_LIABILITY` (mining). **The sub-type changes the §6 validity rule** — a company limited by guarantee must satisfy a members rule, not a shareholders rule. A "corporate trustee" is *not* a type — it is a `COMPANY` with a `TRUSTEE_OF` edge (§5). |
 | `DISCRETIONARY_TRUST` | Family / discretionary trust — trustee distributes at discretion each FY. | ABN, TFN | `trustType` already exists (Phase 41E). Subject to the 30% minimum-tax measure. |
 | `UNIT_TRUST` | Fixed-entitlement trust — distributes by unit holding. | ABN, TFN | Uses `UNITHOLDER_OF` edges (§5), not discretionary `BENEFICIARY_OF`. |
 | `FIXED_TRUST` / `HYBRID_TRUST` **NEW** | Other trust shapes — fixed (non-unit) and hybrid (discretionary + unit features). | ABN, TFN | `trustType` enum already covers `FIXED`; add `HYBRID`. Keeps the engine honest rather than forcing every trust into discretionary/unit. |
@@ -95,6 +95,7 @@ Current `LegalEntityType`: `PERSONAL_NAME`, `COMPANY`, `DISCRETIONARY_TRUST`, `U
 | `PARTNERSHIP` | General or limited partnership. | ABN, TFN | Partners via `PARTNER_OF` edges carrying interest % + capital account. |
 | `SOLE_TRADER` | ABN-registered individual operating a business. | ABN | Always an extension of one `INDIVIDUAL`; modelled as a role, linked 1:1 to the person. |
 | `DECEASED_ESTATE` **NEW** | Estate of a deceased person, administered before distribution. | TFN | `trustType` enum already has `DECEASED_ESTATE`; promote to a node type for estate-planning structures. |
+| `TESTAMENTARY_TRUST` **NEW** | A trust created **by a will**, taking effect on death — distinct from the deceased estate itself. | ABN, TFN | **Tax-significant — must not be mistyped.** Income distributed to *minor* beneficiaries of a testamentary trust is "excepted trust income", taxed at ordinary adult marginal rates rather than the punitive Div 6AA minor rates. Mistyping it as `DISCRETIONARY_TRUST` silently loses that concession and produces wrong tax for any minor beneficiary. `trustType` gains `TESTAMENTARY`. |
 
 `LegalEntityRole` (HOLDING / OPERATING / INVESTMENT / SUPERANNUATION / PERSONAL) is retained and gains **`CORPORATE_TRUSTEE`** **NEW** — a company whose function is purely to be a trustee (the "Trustee Company Only" / "Superfund Trustee Company Only" in the worked example). Note: role is a *UX / framing* convenience; the *authoritative* fact that a company is a trustee is the `TRUSTEE_OF` edge. Role must never be the thing a calculation depends on — edges are.
 
@@ -107,7 +108,8 @@ One enum, `EntityRelationshipType`. Each edge is `from` → `to`, directed, time
 | Type | Direction (from → to) | Legal meaning | Money / control / tax consequence |
 |---|---|---|---|
 | `TRUSTEE_OF` | Company **or** Individual → Trust / SMSF / Bare Trust | Legal owner of the trust's assets; administers the trust. "ATF" = *as trustee for*. | The trust's assets are *legally* the trustee's but *beneficially* the trust's. Income is taxed in beneficiaries' hands (Div 6). The trustee files the trust return. |
-| `APPOINTOR_OF` **(critical, currently unmodelled)** | Individual (usually) or Company → Trust | Can hire and fire the trustee. | **This is who actually controls the trust.** Control tests (Div 7A associate, land-tax grouping, s100A) turn on the appointor, not the trustee or beneficiaries. Omitting it makes "who controls this structure" wrong. |
+| `APPOINTOR_OF` **(critical, currently unmodelled)** | Individual (usually) or Company → any Trust or SMSF | Can hire and fire the trustee. | **This is who actually controls the trust.** Control tests (Div 7A associate, land-tax grouping, s100A) turn on the appointor, not the trustee or beneficiaries. Omitting it makes "who controls this structure" wrong. Unit-trust and SMSF deeds carry an equivalent role — the edge is valid against **all** trust types and SMSFs, not discretionary trusts only. |
+| `GUARDIAN_OF` **NEW** | Individual or Company → any Trust | A role in many modern deeds (also called *Protector*) whose **consent** the trustee must obtain before certain distributions or before amending the deed. Distinct from — and additional to — the appointor. | A second control lever. s100A and any control determination must consider the guardian alongside the appointor. One edge type covers guardian / protector — deed terminology varies. |
 | `SETTLOR_OF` | Individual → Trust | Created (settled) the trust with a nominal sum; then arm's-length. | Must **not** be a beneficiary — if the settlor benefits, adverse tax consequences. Modelled so the system can *warn* if settlor also appears as beneficiary. |
 | `BENEFICIARY_OF` | Individual / Company / Trust → Discretionary / Hybrid / Bare Trust, or SMSF | May receive distributions / benefits. Carries a `beneficiaryClass`: `PRIMARY` / `GENERAL` / `DEFAULT` / `NAMED`. | Discretionary trust income flows along these edges *at the trustee's annual discretion* — the split is a per-FY decision, never a fixed %. SMSF benefits flow to member-beneficiaries. |
 | `UNITHOLDER_OF` | Any entity → Unit Trust | Holds units — a *fixed* proportional entitlement. | Distributions follow unit % exactly. Carries unit parcels (count, class, paid price, acquisition date) — needed for CGT on unit disposal. |
@@ -117,8 +119,11 @@ One enum, `EntityRelationshipType`. Each edge is `from` → `to`, directed, time
 | `PUBLIC_OFFICER_OF` | Individual → Company / Trust | The ATO-facing officer. | No money flow; needed so the digital twin matches the ATO record. |
 | `MEMBER_OF` | Individual → SMSF; Individual → Company-limited-by-guarantee | A member of the fund / guarantee company. | SMSF: contributions flow *in* per member; pensions flow *out* per member; the contribution-cap and TBC engine is per-member. Every SMSF member **must** also be a trustee (individual structure) or a director of the corporate trustee — §6 enforces this. |
 | `PARTNER_OF` | Any entity → Partnership | A partner. Carries interest % + capital-account balance. | Partnership income/loss flows to partners by interest %. Partnership is a flow-through (lodges a return, pays no tax itself). |
+| `NOMINEE_FOR` **NEW** | Any entity → Any entity | The `from` entity holds an asset, shareholding, or unit-holding **as nominee / bare trustee** for the `to` entity — legal title in one name, *beneficial* ownership in another. | Critical for correct attribution. CGT, dividends, distributions, and net worth follow **beneficial** ownership, not legal title. Without this edge a nominee shareholding is silently attributed to the legal-title holder — wrong entity, wrong tax. |
 
 Each edge type also carries: `effectiveFrom`, `effectiveTo?`, `accountantVerified` (§9), and a typed `metadata` payload (e.g. `beneficiaryClass`, `partnerInterestPct`, `directorAppointmentDate`). Equity detail (share / unit parcels) is **first-class**, not JSON — see §7.
+
+> **Why a trust cannot be the `from` of `TRUSTEE_OF`.** A trust is not a legal person — it cannot hold legal title or be appointed to an office. The trustee of a trust is *always* ultimately a company or one-or-more individuals. A layered "trust acts as trustee for another trust" arrangement is therefore modelled at the legal-person level: the company or individuals who are trustee of Trust A simply also hold a `TRUSTEE_OF` edge to Trust B. `TRUSTEE_OF.from` is deliberately restricted to `Company | Individual` — this is legally correct, not a modelling limitation.
 
 > **What the example was missing.** Reza's adviser diagram shows trustee, director, secretary, shareholder, beneficiary, member — but **not the appointor**. That is normal (appointors live in the deed, not the org chart) and exactly why Monitrax must prompt for it: the appointor is the single most control-significant node and the most commonly forgotten.
 
@@ -132,28 +137,38 @@ This is the heart of "all combinations, captured *correctly*." A relationship is
 
 | Edge | Allowed `from` | Allowed `to` | Cardinality / constraints |
 |---|---|---|---|
-| `TRUSTEE_OF` | Company, Individual | Discretionary/Unit/Fixed/Hybrid/Bare Trust, SMSF, Deceased Estate | A trust has ≥1 trustee. An SMSF has *either* a corporate trustee (1 Company) *or* all-individual trustees. No mixing. |
-| `APPOINTOR_OF` | Individual, Company | Discretionary/Hybrid/Fixed Trust | 0..n (some deeds have joint appointors). Warn if absent — a trust with no appointor is unusual. |
-| `SETTLOR_OF` | Individual | Discretionary/Unit/Fixed/Hybrid Trust | 0..1. **Validation warning** if the settlor also has a `BENEFICIARY_OF` edge to the same trust. |
-| `BENEFICIARY_OF` | Individual, Company, Trust | Discretionary/Hybrid/Bare Trust, SMSF | 0..n. SMSF beneficiaries must also be `MEMBER_OF`. |
-| `UNITHOLDER_OF` | Any entity | Unit Trust | ≥1 for a valid unit trust. Unit %s across all holders should sum to 100. |
-| `SHAREHOLDER_OF` | Any entity except the target company | Company | ≥1 for a valid company. Issued shares across all holders define 100% — the matrix flags over/under-issue. |
-| `DIRECTOR_OF` | Individual | Company | **A company must have ≥1 director** (Pty Ltd: ≥1; public: ≥3). Invalid below the floor. |
-| `SECRETARY_OF` | Individual | Company | 0..n (Pty Ltd may have none; public must have ≥1). |
+| `TRUSTEE_OF` | Company, Individual (never a Trust — see the §5 note) | Any Trust, Testamentary Trust, Bare Trust, SMSF, Deceased Estate | A trust has ≥1 trustee. SMSF trustee arrangement: see the SMSF entity-validity rule below. |
+| `APPOINTOR_OF` | Individual, Company | Any Trust, SMSF | 0..n (some deeds have joint appointors). Warn if absent. |
+| `GUARDIAN_OF` | Individual, Company | Any Trust | 0..n. |
+| `SETTLOR_OF` | Individual | Any Trust | 0..1. **Validation warning** if the settlor also has a `BENEFICIARY_OF` edge to the same trust. |
+| `BENEFICIARY_OF` | Individual, Company, Trust | Discretionary / Hybrid / Testamentary / Bare Trust, SMSF | 0..n. An SMSF beneficiary must also be `MEMBER_OF` that fund. |
+| `UNITHOLDER_OF` | Any entity | Unit Trust | ≥1 for a valid unit trust. Unit %s across all holders should sum to 100 (warn, with float tolerance). |
+| `SHAREHOLDER_OF` | Any entity except the target company | Company — **except `LIMITED_BY_GUARANTEE`** (no share capital) | ≥1 for a valid share-capital company. Issued shares across holders define 100% (warn on over/under-issue, float tolerance). |
+| `DIRECTOR_OF` | Individual | Company | A company must have ≥1 director (proprietary: ≥1; public: ≥3). |
+| `SECRETARY_OF` | Individual | Company | 0..n (proprietary may have none; public must have ≥1). |
 | `PUBLIC_OFFICER_OF` | Individual | Company, Trust, SMSF, Partnership | 0..1. |
-| `MEMBER_OF` | Individual | SMSF, Company-ltd-by-guarantee | **SMSF: 1..6 members.** Each SMSF member **must** also be `TRUSTEE_OF` the fund (individual structure) *or* `DIRECTOR_OF` the fund's corporate trustee. The matrix enforces this cross-edge rule. |
-| `PARTNER_OF` | Any entity | Partnership | ≥2 partners. Interest %s sum to 100. |
+| `MEMBER_OF` | Individual | SMSF, Company-`LIMITED_BY_GUARANTEE` | SMSF: 1..6. **Member ⇒ trustee/director is one-directional** — see the SMSF entity-validity rule below. |
+| `PARTNER_OF` | Any entity (never the partnership itself) | Partnership | ≥2 partners. Interest %s sum to 100. |
+| `NOMINEE_FOR` | Any entity | Any entity (≠ itself) | 0..n. Subject to the ownership-cycle rule below. |
 
 **Entity-validity rules** (an entity is structurally complete only if):
 
-- **Company** → ≥1 `DIRECTOR_OF` (in), ≥1 `SHAREHOLDER_OF` (in).
-- **Discretionary/Hybrid Trust** → ≥1 `TRUSTEE_OF` (in); ≥1 `BENEFICIARY_OF` (in); `APPOINTOR_OF` present (warn if not).
+- **Company — the rule branches on `companySubtype`:**
+  - `PROPRIETARY` / `PUBLIC` / `UNLIMITED` / `NO_LIABILITY` → ≥1 `DIRECTOR_OF` (in) **and** ≥1 `SHAREHOLDER_OF` (in). Public: ≥3 directors **and** ≥1 secretary.
+  - `LIMITED_BY_GUARANTEE` → ≥1 `DIRECTOR_OF` (in) **and** ≥1 `MEMBER_OF` (in), **and zero `SHAREHOLDER_OF`** — it has no share capital. A guarantee company carrying shareholders is invalid.
+- **Discretionary / Hybrid / Testamentary Trust** → ≥1 `TRUSTEE_OF` (in); ≥1 `BENEFICIARY_OF` (in); `APPOINTOR_OF` present (warn if not).
 - **Unit Trust** → ≥1 `TRUSTEE_OF` (in); ≥1 `UNITHOLDER_OF` (in).
-- **SMSF** → 1..6 `MEMBER_OF` (in); a trustee arrangement (corporate or all-individual); every member↔trustee/director rule satisfied.
+- **SMSF** (SIS Act s17A — *the rule the design review corrected; C1*):
+  - 1..6 `MEMBER_OF` (in).
+  - **Trustee arrangement — exactly one of:** (a) **corporate trustee** — exactly one `COMPANY` with a `TRUSTEE_OF` edge in; OR (b) **individual trustees** — **≥2** individuals with `TRUSTEE_OF` edges in. The two arrangements never mix.
+  - **Member ⇒ trustee/director, strictly one-directional.** Every member must *also* be `TRUSTEE_OF` the fund (individual-trustee structure) **or** `DIRECTOR_OF` the corporate trustee. **The converse is NOT required** — a trustee or corporate-trustee director need not be a member.
+  - **Single-member SMSF with individual trustees** — a single-member fund using individual trustees must have **exactly one additional non-member individual trustee** (SIS Act mandates ≥2 individual trustees). That non-member trustee must **not** carry a `MEMBER_OF` edge. A single-member fund with a corporate trustee may have a sole director.
 - **Partnership** → ≥2 `PARTNER_OF` (in).
-- **Cycle / depth rules** (carried over from Phase 41): no entity is its own ancestor through `TRUSTEE_OF`; control-chain depth ≤ 10.
+- **Acyclicity — two distinct sub-graphs, both checked (*C4*):**
+  - **Control chain** — no entity is its own ancestor through `TRUSTEE_OF`; depth ≤ 10.
+  - **Ownership chain** *(NEW)* — no cycle through the ownership sub-graph (`SHAREHOLDER_OF` + `UNITHOLDER_OF` + `BENEFICIARY_OF` + `PARTNER_OF` + `NOMINEE_FOR`); depth ≤ 10. Without this, a circular cross-shareholding (Co A → Co B → Co A) makes every per-entity net-worth and tax attribution non-terminating or double-counted. Load-bearing for calculation correctness, not a nicety.
 
-Validity is **graded, not gating** (psychology + product lenses, CLAUDE.md §14.3): Monitrax surfaces "this trust has no appointor recorded" as a gentle completeness nudge — it never blocks the user from saving. The structure is the user's reality; Monitrax records it and *flags*, it does not refuse.
+Validity is **graded, not gating** (psychology + product lenses, CLAUDE.md §14.3): Monitrax surfaces "this trust has no appointor recorded" as a gentle completeness nudge — it never blocks the user from saving. **One exception:** edges that are *legally impossible* (a shareholder on a guarantee company; an SMSF with 7 members) are rejected at write time — recording a structure that cannot exist is not "the user's reality", it is a data error that would poison every downstream calculation.
 
 ---
 
@@ -166,6 +181,7 @@ New + changed Prisma models. **Additive throughout** — no destructive change t
 enum EntityRelationshipType {
   TRUSTEE_OF
   APPOINTOR_OF
+  GUARDIAN_OF        // guardian / protector — review-added
   SETTLOR_OF
   BENEFICIARY_OF
   UNITHOLDER_OF
@@ -175,6 +191,7 @@ enum EntityRelationshipType {
   PUBLIC_OFFICER_OF
   MEMBER_OF
   PARTNER_OF
+  NOMINEE_FOR        // legal title held bare for a beneficial owner — review-added
 }
 
 enum BeneficiaryClass { PRIMARY  GENERAL  DEFAULT  NAMED }
@@ -193,7 +210,7 @@ model EntityRelationship {
   // Typed, edge-specific metadata. Kept small + structured; equity detail
   // is first-class below, NOT in here.
   beneficiaryClass     BeneficiaryClass?  // BENEFICIARY_OF only
-  partnerInterestPct   Float?             // PARTNER_OF only
+  partnerInterestPct   Float?             // PARTNER_OF only — a CHANGE in partnership interest is recorded by closing this edge (set `effectiveTo`) and opening a new one, exactly as a share sale closes a parcel. The edge is the point-in-time interest; the history is the chain of edges.
   partnerCapitalAmount Float?             // PARTNER_OF only
   tfnQuoted            Boolean?           // BENEFICIARY_OF / SHAREHOLDER_OF / UNITHOLDER_OF — has the `from` entity quoted its TFN to the `to` entity? (Q2, 2026-05-20.) Drives TFN-withholding: a beneficiary who has not quoted a TFN means the trustee must withhold at the top marginal rate; a shareholder without a quoted TFN triggers dividend withholding. The TFN *value* lives once-per-entity in `LegalEntity.tfnEncrypted` — this is ONLY the per-relationship "quoted?" fact, never the number.
   notes                String?
@@ -214,6 +231,13 @@ model EntityRelationship {
   @@index([fromEntityId])
   @@index([toEntityId])
   @@index([type])
+  // Duplicate-edge guard. A naive `@@unique([fromEntityId, toEntityId, type])`
+  // is too strict — the same director can resign and be re-appointed, which
+  // is two legitimate edges. The service layer (`entityRelationshipService.ts`)
+  // instead rejects a new edge whose [from, to, type] matches an existing edge
+  // with an OVERLAPPING [effectiveFrom, effectiveTo] window. Without this,
+  // duplicate edges silently inflate every §6 cardinality count
+  // ("≥1 director" passes with two copies of one director).
   @@map("entity_relationships")
 }
 
@@ -244,7 +268,7 @@ model LegalEntity {
   //     tfnEncrypted, tradingName, establishedDate, trustType,
   //     isForeignResident, parentEntityId — see §10 on parentEntityId) ...
 
-  companySubtype  CompanySubtype?   // NEW — PROPRIETARY / PUBLIC / LIMITED_BY_GUARANTEE
+  companySubtype  CompanySubtype?   // NEW — see CompanySubtype enum below (drives the §6 Company validity branch)
   dateOfBirth     DateTime?         // NEW — INDIVIDUAL nodes only
   directorIdEncrypted String?       // NEW — Director ID. Q2 decided 2026-05-20: store the VALUE (not just presence). Sensitive identifier — encrypted at rest via `lib/security/tfnEncryption.ts` (the same swap-point as TFN; upgrades to CMEK when CMEK lands). Never logged, never sent to AI, never returned by default API responses. Read only inside an authorisation boundary.
   householdMemberId String?         // NEW — optional link: this INDIVIDUAL is a known household member
@@ -255,7 +279,13 @@ model LegalEntity {
   relationshipsTo   EntityRelationship[] @relation("RelationshipsTo")
 }
 
-enum CompanySubtype { PROPRIETARY  PUBLIC  LIMITED_BY_GUARANTEE }
+enum CompanySubtype {
+  PROPRIETARY          // Pty Ltd — has shareholders
+  PUBLIC               // Ltd — has shareholders
+  LIMITED_BY_GUARANTEE // has MEMBERS, no shareholders, no share capital (typical NFP)
+  UNLIMITED            // unlimited liability company — has shareholders
+  NO_LIABILITY         // NL company (mining) — has shareholders
+}
 ```
 
 **Joint / shared ownership of owned objects** — **Q1 decided 2026-05-20: included in Part 1c, and not limited to 50/50 — *any* split across *any* number of co-owners.** Today `Property.ownerEntityId` (and the six siblings) is a *single* FK, so a property co-owned cannot be represented at all. Part 1 keeps the single FK (zero disruption to the 11 files that read it); Part 1c adds an **`OwnershipStake`** junction layered *beside* it:
@@ -281,6 +311,8 @@ model OwnershipStake {
 
 `ownerEntityId` becomes the "primary / legal-title" owner; `OwnershipStake` rows carry the full beneficial split — e.g. 70/20/10 across three entities, two individuals as joint tenants, or a person + their family trust as tenants-in-common. The validity check warns when stakes for one object do not sum to 100%. Calculations migrate to read `OwnershipStake` when present, falling back to `ownerEntityId` for single-owner objects (the common case stays a single row).
 
+> **The boundary between `OwnershipStake` and `EntityRelationship` — two different ownership questions, never overlapping.** `OwnershipStake` answers *"who owns this **asset**?"* — a property, a loan, a bank account, an investment account (the financial objects with an `ownerEntityId`). `EntityRelationship` (specifically `SHAREHOLDER_OF` / `UNITHOLDER_OF`) answers *"who owns this **entity**?"* — equity in a company or unit trust. A share *is* equity in a legal entity, so it lives on the relationship graph with first-class `ShareParcel`s; a rental property *is* an asset, so it lives on `OwnershipStake`. They never describe the same thing, so there is no SSOT conflict (§8.3) — but the build (Part 1b/1c) must keep the line crisp: never record a shareholding as an `OwnershipStake`, never record real-estate co-ownership as an `EntityRelationship`.
+
 ---
 
 ## §8 — Tax treatment by structure, money-flow & the single-engine SSOT commitment
@@ -292,14 +324,16 @@ The reason these structures exist is tax. Each entity type operates under a diff
 | Structure | Tax regime (AU, current law) | What the graph must supply for a correct number |
 |---|---|---|
 | **Individual** | Progressive marginal rates + Medicare levy; tax-free threshold; CGT 50% discount on assets held >12 months (being reshaped by Phase 41E Measure 2); negative gearing (Phase 41E Measure 1). | The person node + their `ownerEntityId` holdings + inbound `BENEFICIARY_OF` / `SHAREHOLDER_OF` / `PARTNER_OF` flows. |
-| **Company (Pty Ltd / Ltd)** | Flat company tax — **25%** base-rate entity (aggregated turnover < $50M and ≤80% passive income), else **30%**. Dividends carry **franking credits**. **No CGT discount.** Div 7A — loans/payments to shareholders or their associates are *deemed dividends* unless on complying terms. Loss carry-forward + Phase 41E Measure 5 carry-back. | `SHAREHOLDER_OF` edges + `ShareParcel` (franking distribution, CGT cost base); `DIRECTOR_OF` + `SHAREHOLDER_OF` (Div 7A associate test); inter-entity `Loan` rows. |
+| **Company (Pty Ltd / Ltd)** | Flat company tax — **25%** for a *base-rate entity*, else **30%**. A company is a base-rate entity for an FY if **aggregated turnover < $50M** AND **its base-rate-entity passive income is no more than 80% of its assessable income** (ATO test — *not* "must have passive income"). Dividends carry **franking credits** (the franking rate follows the company's tax rate). **No CGT discount for companies.** Div 7A — loans/payments to shareholders or their associates are *deemed dividends* unless on complying terms (max 7-year unsecured / 25-year secured loan, ATO benchmark interest rate, minimum yearly repayment). Loss carry-forward + Phase 41E Measure 5 carry-back. | `SHAREHOLDER_OF` edges + `ShareParcel` (franking distribution, CGT cost base); `DIRECTOR_OF` + `SHAREHOLDER_OF` (Div 7A associate test); inter-entity `Loan` rows. |
 | **Discretionary trust** | **Flow-through.** Pays no tax itself *if* all income is distributed; income taxed in beneficiaries' hands at their rates (Div 6). Undistributed income → trustee taxed at the **top marginal rate** (s99A). Can **stream** franked dividends + capital gains to chosen beneficiaries (Div 6E). s100A anti-avoidance on reimbursement agreements. **Phase 41E Measure 3** — 30% minimum tax on discretionary-trust taxable income from FY 2028-29. | `BENEFICIARY_OF` edges + the per-FY `DistributionResolution` (Part 2); `trustType = DISCRETIONARY` (already on `LegalEntity`); `APPOINTOR_OF` (s100A control test). |
 | **Unit trust** | Flow-through; distributes strictly by **unit holding %** (fixed entitlement, Div 6). | `UNITHOLDER_OF` edges + unit `ShareParcel`s — the % is computed, not discretionary. |
-| **SMSF** | Concessional **15%** on contributions + accumulation-phase earnings; **0%** on earnings supporting a retirement-phase pension (subject to the Transfer Balance Cap); effective **10%** on discounted capital gains. Div 293 adds 15% for high earners. Contribution caps per member. | `MEMBER_OF` edges (per-member caps, TBC, Div 293); `TRUSTEE_OF` (corporate vs individual trustee — compliance, not rate); `BARE_TRUST` node for any LRBA-held property. |
+| **SMSF** | Concessional **15%** on contributions + accumulation-phase earnings; **0%** on earnings (income *and* capital gains) supporting a retirement-phase pension, subject to the Transfer Balance Cap. Capital gains on accumulation-phase assets held **>12 months** get a **one-third CGT discount** → effective **10%**; assets held <12 months are taxed at the full 15%; pension-phase gains are 0%. Div 293 adds 15% for high earners. Contribution caps per member. | `MEMBER_OF` edges (per-member caps, TBC, Div 293); `TRUSTEE_OF` (corporate vs individual trustee — compliance, not rate); `BARE_TRUST` node for any LRBA-held property. |
 | **Partnership** | Flow-through — no tax at partnership level; each partner taxed on their share of net income. | `PARTNER_OF` edges + `partnerInterestPct`. |
 | **Sole trader** | Taxed inside the individual's return at marginal rates; ABN-level GST/BAS separate. | The `SOLE_TRADER` ↔ `INDIVIDUAL` 1:1 link. |
 
 The recurring theme: **a wrong edge produces a wrong number.** Model a trust distribution as personal income → wrong marginal calc. Miss a `SHAREHOLDER_OF` edge → franking credits vanish. Mistype a trust → the Phase 41E Measure 3 dispatch fires (or fails to). The graph is not cosmetic; it is the tax engine's input contract.
+
+> **Phase 41E reform measures are gated, not live.** The Measure 3 30%-min-tax line above commences **1 Jul 2028 (FY 2028-29)** and every other reform measure has its own date. Per CLAUDE.md §12.14 FW-2, none of them apply until the relevant `commencementVerified` flag in `taxYearConfig.ts` is set (post-Royal-Assent). The table states the *announced* law for completeness — the engine must keep returning the pre-reform number behind each gate until verified. Phase 44 supplies the graph inputs; it never flips a reform gate.
 
 ### §8.2 — Money-flow is derived from the graph, not separately stored
 
@@ -339,7 +373,7 @@ Reza's concern — *"it might cause legal issues if we get this wrong"* — is c
 2. **`accountantVerified` is first-class** — on `LegalEntity` and on every `EntityRelationship`. The UI renders verified vs draft state plainly. An unverified structure is shown as "you've told us this — confirm with your accountant." This is the single most important risk control: it makes the provenance of every node and edge explicit.
 3. **Every entity-level tax number is an estimate** — conservative, traceable to a canonical engine (CLAUDE.md §6.1, §12.2), explicitly labelled, and never presented as the filing position. Where the engine cannot be confident it returns an `UNCOMPUTED` flag (the existing Phase 41E pattern), never a guessed number.
 4. **The structural AFSL / TPB / NCCP boundary is reused, not re-invented.** Phase 41 already enforces it structurally via the tool registry (not prompt disclaimers). Phase 44 entity data flows through the same boundary — the AI Guide may *explain* a structure ("a discretionary trust distributes at the trustee's discretion") but never *advise* on one ("you should distribute to X"). This is the `Q-PRA-1` decision.
-5. **An accountant review path.** A `SharePackage`-style share-pass lets the user send their captured structure to their accountant to confirm — turning `accountantVerified` from a self-assertion into a professional one. (Build deferred to Part 1c; the flag exists from Part 1a.)
+5. **An accountant review path.** A share-pass — reusing the *pattern* of the existing `SharePackage` model (opaque-token public link, expiry, revocation), **not** the `SharePackage` model itself (that one is scoped to document bundles) — lets the user send their captured structure to their accountant to confirm, turning `accountantVerified` from a self-assertion into a professional one. (Build deferred to Part 1c; the flag exists from Part 1a.)
 6. **Conservative by default.** Where a relationship is ambiguous (is this person a beneficiary or just a potential beneficiary?), the model captures the conservative reading and flags it for confirmation rather than assuming the favourable one.
 
 Net: Monitrax becomes a *record-keeping, organisation and estimation* tool with explicit provenance and explicit deferral to the professional — which is defensible — rather than an *authoritative tax engine*, which is not.
@@ -348,7 +382,7 @@ Net: Monitrax becomes a *record-keeping, organisation and estimation* tool with 
 
 ## §10 — Migration & backwards compatibility
 
-- **`parentEntityId` → `TRUSTEE_OF` edge.** The migration reads every `LegalEntity` with a non-null `parentEntityId` and writes one `EntityRelationship` of type `TRUSTEE_OF` (`from` = the parent/trustee, `to` = the child/trust). `parentEntityId` is **retained, not dropped**, in Part 1 — kept as a read-through cache so the existing `EntityTree` and `validateParentChain` keep working until Part 1c migrates them to the graph. Dropped only in a later cleanup once nothing reads it.
+- **`parentEntityId` → `TRUSTEE_OF` edge.** The migration reads every `LegalEntity` with a non-null `parentEntityId` and writes one `EntityRelationship` of type `TRUSTEE_OF` (`from` = the parent/trustee, `to` = the child/trust). **`parentEntityId` is then FROZEN read-only — it is NOT a cache.** (Design-review correction, C2: it is a *single* self-FK and physically cannot represent one corporate trustee serving multiple trusts — the moment a second trust shares a trustee, a "read-through cache" would be wrong for at least one trust. A field that cannot hold the data is not a cache.) From Part 1b onward: no code writes `parentEntityId`; `EntityTree` and every calculation read the `TRUSTEE_OF` edges; `validateParentChain` is replaced by the §6 acyclicity check on the graph. `parentEntityId` is retained only as a dormant historical column and dropped in a later cleanup once Part 1b confirms nothing reads it.
 - **`ownerEntityId` untouched.** All 11 files that read `ownerEntityId` for calculations are unaffected by Part 1. `OwnershipStake` (joint ownership) layers beside it (§7) and is opt-in per object.
 - **`PERSONAL_NAME` entities preserved.** Every user's existing `PERSONAL_NAME` entity stays — semantically it becomes their `INDIVIDUAL` node. The Phase 41a backfill promise (`getDefaultLegalEntityId`) is unchanged.
 - **Phase 41E reform fields untouched.** `trustType` / `isForeignResident` stay on `LegalEntity`; the reform dispatch is unaffected. New trust sub-types (`HYBRID_TRUST`, etc.) extend `LegalEntityType` additively.
@@ -362,7 +396,7 @@ Net: Monitrax becomes a *record-keeping, organisation and estimation* tool with 
 **Part 1 — the structural graph (review-gated; ~2-3 PRs).**
 
 - **1a — Schema + migration.** `EntityRelationship` + `EntityRelationshipType` + `BeneficiaryClass`; `ShareParcel` + `ShareClass` + `EquityKind`; `LegalEntity` field additions; `LegalEntityType` / `LegalEntityRole` extensions; the `parentEntityId` → `TRUSTEE_OF` data migration. Additive only.
-- **1b — Service layer.** `entityRelationshipService.ts` — CRUD + the §6 edge-validity matrix + cross-edge rules (SMSF member↔trustee, company director floor) + cycle/depth detection, all inside the write transaction. Pure functions, SSOT, `logCRUD` audit with sanitised metadata. Plus `OwnershipStake` service if §12 Q1 says yes.
+- **1b — Service layer + migrate calculations off `parentEntityId`.** `entityRelationshipService.ts` — CRUD + the §6 edge-validity matrix + cross-edge rules (SMSF member⇒trustee one-directional, company director floor, the guarantee-company branch) + the duplicate-edge overlap guard + the two acyclicity checks (control chain + ownership chain), all inside the write transaction. Pure functions, SSOT, `logCRUD` audit with sanitised metadata. Plus the `OwnershipStake` service (Q1 = yes). **Critically — and corrected from the original sequencing per design-review C2 — every calculation that currently reads `parentEntityId` is repointed to the `TRUSTEE_OF` edges in *this* step, not 1c.** `parentEntityId` cannot represent a shared corporate trustee, so leaving calculations on it until 1c would produce wrong attribution the moment a real shared-trustee structure is entered.
 - **1c — Entity-section UI.** Upgrade `EntityTree` (`components/entities/`) from a `parentEntityId` tree to a true multi-edge graph — edge style/colour per relationship type, the control sub-graph emphasised. Entity-detail view lists all in/out relationships. The accountant-review share-pass.
 - **1d — Onboarding wizard.** Extend `EntitiesStep` — after entities are created, a relationship sub-step ("who directs / owns / controls / benefits from each"), kept psychologically light: smart defaults, progressive disclosure, the structure can be finished later in the entity section (the wizard captures the skeleton, not every edge).
 
@@ -388,3 +422,22 @@ Net: Monitrax becomes a *record-keeping, organisation and estimation* tool with 
 On build, per CLAUDE.md §16: Part 1a updates `03_DATA_MODEL.md` (new §3.10 Entity Graph) + the matching migration (§12.12); Part 1b/1c/1d update `07_API_STANDARDS.md`, `06_UI_UX_FOUNDATION.md`, and this doc's checklist; every PR updates `IMPLEMENTATION_PLAN.md` (§15) and a daily `CHANGELOG`. The §12.14 Phase 41E trigger fires (schema columns on entity-related models) — each PR carries the §12.14 block. The graph touches CDR-relevant data only at the existing TFN boundary (§13) — no new sensitive surface beyond the encrypted-TFN pattern already in place, plus the Director-ID decision (Q2).
 
 **This document is the Part 1 design contract.** No Phase 44 code is written until Reza reviews it — and, given the legal weight, ideally has the structural model (§4 node types, §5 edges, §6 validity matrix) sanity-checked by his accountant. That review *is* the first risk control.
+
+---
+
+## §14 — Design-review record (2026-05-20)
+
+Before this doc went to Reza, an independent adversarial review agent stress-tested it against authoritative ATO + ASIC sources. It found real defects — all now incorporated above. Recorded here for traceability:
+
+| Finding | Severity | Resolution in this doc |
+|---|---|---|
+| Single-member SMSF with individual trustees was un-representable; the member↔trustee rule was wrongly bidirectional and would reject valid funds | **Critical (C1)** | §6 SMSF rule rewritten — member ⇒ trustee/director is one-directional; ≥2 individual trustees required; single-member fund needs exactly one non-member trustee. |
+| `parentEntityId` framed as a "read-through cache" — but a single self-FK cannot hold a corporate trustee shared across multiple trusts | **Critical (C2)** | §10 — `parentEntityId` is FROZEN read-only, explicitly not a cache; §11 — calculations repointed to `TRUSTEE_OF` edges in Part 1b, not 1c. |
+| `TRUSTEE_OF.from` excluded `Trust` with no explanation | **Critical (C3)** | §5 — explicit legal justification added: a trust is not a legal person; layered trustee arrangements are modelled at the company/individual level. |
+| No acyclicity rule on the *ownership* sub-graph — circular cross-shareholdings would break net-worth / tax attribution | **Critical (C4)** | §6 — second acyclicity check added for `SHAREHOLDER_OF` + `UNITHOLDER_OF` + `BENEFICIARY_OF` + `PARTNER_OF` + `NOMINEE_FOR`. |
+| Company-limited-by-guarantee has members, not shareholders — but the Company validity rule required a shareholder | Gap (validity bug) | §4 + §6 — Company validity rule branches on `companySubtype`; guarantee company requires members + zero shareholders. |
+| Missing: testamentary trust (minor-beneficiary excepted income), guardian/protector role, nominee/beneficial-owner edge, `UNLIMITED` / `NO_LIABILITY` company subtypes | Gaps | §4 `TESTAMENTARY_TRUST` node + `companySubtype` extended; §5 `GUARDIAN_OF` + `NOMINEE_FOR` edges added. |
+| §8.1 base-rate-entity test ambiguous; SMSF "10% on gains" imprecise; reform measures stated without the `commencementVerified` gate | Errors | §8.1 — BRE test reworded to the exact ATO test; SMSF CGT precision added; a `commencementVerified` caveat note added. |
+| `EntityRelationship` had no duplicate-edge guard; `partnerInterestPct` history treatment inconsistent with `ShareParcel`; `OwnershipStake` vs `EntityRelationship` boundary unstated; §9.5 contradicted §1 on `SharePackage` | Consistency | §7 — overlap guard documented; `partnerInterestPct` history rule added; the two-ownership-models boundary stated; §9.5 clarified ("pattern, not the model"). |
+
+**Combination-completeness stress-test:** the review ran 9 hard real-world structures (corporate trustee shared across trusts, trust-as-unitholder, single-member SMSF, LRBA bare trust, testamentary trust, company owned by two trusts, partnership of two companies, etc.). With the fixes above incorporated, all 9 are now representable. The §3 "combination-complete by construction" thesis holds — *after* this review, not before it. A second independent AI review and/or an accountant sanity-check of §4–§6 remains recommended (§13) — the AI review verified the grammar; the accountant verifies the grammar matches Reza's actual deeds.
