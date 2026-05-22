@@ -355,3 +355,19 @@ So Part 2 is a **data-layer build, not an engine rewrite**: four new "what actua
 ### Next
 
 Reza review of `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` (+ an external second-eye review). Part 2a (schema) begins only after approval.
+
+### Update — Part 2 design doc v2 (external law review incorporated)
+
+The Part 2 design document was put through an external Australian-tax-law conformance review (ChatGPT, scoped strictly to law — not design). 23 findings returned; **only the law-alignment findings were adopted**, each translated into the doc by the Monitrax architect against the actual codebase — no technical/design direction taken from the review (per Reza directive).
+
+Net effect — no structural change (the central finding stood: engine built, gap is the data layer); the review's value was law precision. Changes folded into `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` v2:
+
+- The "built + correct" overclaim softened throughout — the doc now states the engine *exists and dispatches*, never that it is *certified legally correct* (F1, F11).
+- New §7.1 engine law-precision gaps with `UNCOMPUTED` gates: G-S99 (s99 vs s99A), G-DIV7A (non-loan limbs), G-UPE (the TD 2022/11 vs *Bendel* contest — engine never auto-deems a UPE a Div 7A dividend), G-PARTNERSHIP, G-RESIDENCY, G-ASSETSRC.
+- Law-precision notes added to §4.1 (Bamford proportionate model; streaming = deed power + specific entitlement, Subdiv 115-C/207-B; trust-type mechanics), §4.2 (Div 207 imputation), §4.3 (Div 7A breadth + the UPE contest).
+- §5 — assembler/engine returns `UNCOMPUTED` on inconsistent allocation shares (the service still records — digital twin).
+- §6.4 — the money-flow lens labelled "entitlements & declared distributions", not cash.
+- New §13 records the review + a full F1–F23 disposition table.
+- New open questions: Q-UPE, Q-PARTNERSHIP, Q-DISTINCOME, Q-RESOLUTION-AMEND.
+
+`PHASE_44_ENTITY_GRAPH.md` §11 + `IMPLEMENTATION_PLAN.md` updated to reflect v2. PR #870 carries the revision; build of Part 2a remains blocked on Reza's approval of the v2 doc.
