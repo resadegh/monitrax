@@ -1,5 +1,5 @@
 /**
- * Money Flow service — Phase 41d.
+ * Money Flow service — Phase 41d, extended Phase 44 Part 2d.
  *
  * Returns the per-entity flow shape consumed by the Money Flow Sankey
  * (`components/entities/MoneyFlowSankey.tsx`) on `/dashboard/entities`.
@@ -13,6 +13,9 @@
  *      ↓  Essential expenses (Expense.ownerEntityId + isEssential)
  *      ↓  Discretionary expenses
  *      ↓  Loan repayments
+ *      ↓  Distributions (Phase 44 Part 2d — CONFIRMED trust resolutions
+ *         + company dividends sourced from this entity; declared
+ *         entitlements, not necessarily cash paid)
  *      ↓  Surplus (the residual — what's actually left)
  *
  * SSOT discipline:
@@ -32,7 +35,12 @@
  *     aggregate.
  *   - Loan repayments use `minRepayment` annualised — actual interest
  *     vs. principal split lands in the entity-aware tax engine.
- *   - The "Surplus" bucket is the arithmetic residual after the four
+ *   - Distributions are the trust's `trustNetIncome` (s95) / the
+ *     company's declared `totalAmount`. They represent declared
+ *     entitlements — a beneficiary can be presently entitled with no
+ *     cash moved (an unpaid present entitlement). Only CONFIRMED rows
+ *     count; DRAFT resolutions are working notes.
+ *   - The "Surplus" bucket is the arithmetic residual after the five
  *     other outflows. Negative residuals (deficit) clamp to 0 for the
  *     Sankey layout (recharts can't draw negative-width links).
  */
@@ -55,7 +63,26 @@ export type MoneyFlowOutflowLabel =
   | 'Essential expenses'
   | 'Discretionary'
   | 'Loan repayments'
+  | 'Distributions'
   | 'Surplus';
+
+/**
+ * Phase 44 Part 2d — a recorded inter-entity distribution: a trust's
+ * `DistributionResolution` (trust → beneficiaries) or a company's
+ * `DividendDistribution` (company → shareholders). These are
+ * **entitlements / declared distributions**, not necessarily cash paid
+ * (a beneficiary can be presently entitled with no cash moved — an
+ * unpaid present entitlement; a dividend can be declared then paid in a
+ * different year). PHASE_44_PART_2 §6.4 + law-review §13-F22.
+ */
+export interface MoneyFlowDistribution {
+  fromEntityId: string;
+  fromEntityName: string;
+  kind: 'TRUST_DISTRIBUTION' | 'DIVIDEND';
+  /** Total distributed / declared for the FY. */
+  amount: number;
+  recipients: Array<{ name: string; amount: number }>;
+}
 
 export interface MoneyFlowSource {
   label: MoneyFlowSourceLabel;
@@ -98,9 +125,80 @@ export interface MoneyFlowResult {
   entities: MoneyFlowEntity[];
   outflows: MoneyFlowOutflow[];
   edges: MoneyFlowEdge[];
+  /**
+   * Phase 44 Part 2d — the recorded inter-entity distributions
+   * (CONFIRMED `DistributionResolution` + `DividendDistribution`). The
+   * `Distributions` outflow column is the per-entity aggregate of these;
+   * this array carries the per-recipient detail (trust → which
+   * beneficiary, company → which shareholder).
+   */
+  distributions: MoneyFlowDistribution[];
   /** True when the user has zero entities, zero income or zero expenses — the
    *  Sankey shouldn't render. The page falls back to a friendlier message. */
   isEmpty: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Distribution-detail builder (Phase 44 Part 2d) — pure, exported for tests
+// ---------------------------------------------------------------------------
+
+/** Normalised resolution row for `buildDistributionDetail` (Decimal → number). */
+export interface RawResolutionForFlow {
+  trustEntityId: string;
+  trustNetIncome: number;
+  allocations: Array<{ beneficiaryEntityId: string; presentlyEntitledShare: number }>;
+}
+
+/** Normalised dividend row for `buildDistributionDetail` (Decimal → number). */
+export interface RawDividendForFlow {
+  companyEntityId: string;
+  totalAmount: number;
+  payments: Array<{ shareholderEntityId: string; amount: number }>;
+}
+
+/**
+ * Build the per-recipient distribution detail from CONFIRMED trust
+ * resolutions + company dividends. Pure — no I/O. A trust distribution's
+ * recipient amount is the beneficiary's `presentlyEntitledShare`
+ * (a fraction 0..1) applied to `trustNetIncome` — the Bamford
+ * proportionate model.
+ */
+export function buildDistributionDetail(
+  resolutions: readonly RawResolutionForFlow[],
+  dividends: readonly RawDividendForFlow[],
+  nameById: ReadonlyMap<string, string>,
+): MoneyFlowDistribution[] {
+  const out: MoneyFlowDistribution[] = [];
+
+  for (const r of resolutions) {
+    if (r.trustNetIncome <= 0) continue;
+    out.push({
+      fromEntityId: r.trustEntityId,
+      fromEntityName: nameById.get(r.trustEntityId) ?? r.trustEntityId,
+      kind: 'TRUST_DISTRIBUTION',
+      amount: r.trustNetIncome,
+      recipients: r.allocations.map((a) => ({
+        name: nameById.get(a.beneficiaryEntityId) ?? a.beneficiaryEntityId,
+        amount: a.presentlyEntitledShare * r.trustNetIncome,
+      })),
+    });
+  }
+
+  for (const d of dividends) {
+    if (d.totalAmount <= 0) continue;
+    out.push({
+      fromEntityId: d.companyEntityId,
+      fromEntityName: nameById.get(d.companyEntityId) ?? d.companyEntityId,
+      kind: 'DIVIDEND',
+      amount: d.totalAmount,
+      recipients: d.payments.map((p) => ({
+        name: nameById.get(p.shareholderEntityId) ?? p.shareholderEntityId,
+        amount: p.amount,
+      })),
+    });
+  }
+
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +221,7 @@ export async function getMoneyFlow(
   client: PrismaTxOrClient = prisma,
 ): Promise<MoneyFlowResult> {
   // Load everything we need in parallel.
-  const [entities, incomes, expenses, loans] = await Promise.all([
+  const [entities, incomes, expenses, loans, resolutions, dividends] = await Promise.all([
     client.legalEntity.findMany({
       where: { userId },
       orderBy: { createdAt: 'asc' },
@@ -157,6 +255,27 @@ export async function getMoneyFlow(
         repaymentFrequency: true,
       },
     }),
+    // Phase 44 Part 2d — recorded inter-entity distributions. Only
+    // CONFIRMED rows feed the visual; DRAFT resolutions/dividends are
+    // working notes, not declared entitlements.
+    client.distributionResolution.findMany({
+      where: { userId, status: 'CONFIRMED' },
+      select: {
+        trustEntityId: true,
+        trustNetIncome: true,
+        allocations: {
+          select: { beneficiaryEntityId: true, presentlyEntitledShare: true },
+        },
+      },
+    }),
+    client.dividendDistribution.findMany({
+      where: { userId, status: 'CONFIRMED' },
+      select: {
+        companyEntityId: true,
+        totalAmount: true,
+        payments: { select: { shareholderEntityId: true, amount: true } },
+      },
+    }),
   ]);
 
   if (entities.length === 0 || (incomes.length === 0 && expenses.length === 0)) {
@@ -168,8 +287,41 @@ export async function getMoneyFlow(
       entities: [],
       outflows: [],
       edges: [],
+      distributions: [],
       isEmpty: true,
     };
+  }
+
+  // ---------------------------------------------------------------------
+  // Distributions (Phase 44 Part 2d) — recorded trust resolutions +
+  // company dividends. The per-recipient detail is built once here; the
+  // per-entity aggregate feeds the `Distributions` outflow column below.
+  // ---------------------------------------------------------------------
+  const nameById = new Map(entities.map((e) => [e.id, e.name]));
+  const distributions = buildDistributionDetail(
+    resolutions.map((r) => ({
+      trustEntityId: r.trustEntityId,
+      trustNetIncome: Number(r.trustNetIncome),
+      allocations: r.allocations.map((a) => ({
+        beneficiaryEntityId: a.beneficiaryEntityId,
+        presentlyEntitledShare: Number(a.presentlyEntitledShare),
+      })),
+    })),
+    dividends.map((d) => ({
+      companyEntityId: d.companyEntityId,
+      totalAmount: Number(d.totalAmount),
+      payments: d.payments.map((p) => ({
+        shareholderEntityId: p.shareholderEntityId,
+        amount: Number(p.amount),
+      })),
+    })),
+    nameById,
+  );
+
+  const distributionsByEntity: Record<string, number> = {};
+  for (const dist of distributions) {
+    distributionsByEntity[dist.fromEntityId] =
+      (distributionsByEntity[dist.fromEntityId] ?? 0) + dist.amount;
   }
 
   // ---------------------------------------------------------------------
@@ -263,6 +415,7 @@ export async function getMoneyFlow(
   let totalDiscretionary = 0;
   let totalLoans = 0;
   let totalTax = 0;
+  let totalDistributions = 0;
   let totalSurplus = 0;
 
   for (const e of entities) {
@@ -272,10 +425,23 @@ export async function getMoneyFlow(
     const essential = essentialByEntity[e.id] ?? 0;
     const discretionary = discretionaryByEntity[e.id] ?? 0;
     const loanRep = loanRepaymentsByEntity[e.id] ?? 0;
-    const surplus = Math.max(0, incomeIn - tax - essential - discretionary - loanRep);
+    const distributed = distributionsByEntity[e.id] ?? 0;
+    const surplus = Math.max(
+      0,
+      incomeIn - tax - essential - discretionary - loanRep - distributed,
+    );
 
     // Skip entities with zero everything — they'd render as empty hairlines.
-    if (incomeIn === 0 && essential === 0 && discretionary === 0 && loanRep === 0) {
+    // A recorded distribution alone keeps the row: a trust/company that
+    // declared a distribution belongs in the picture even if its income
+    // isn't captured as Income rows (warn-not-reject — CLAUDE.md §6.1).
+    if (
+      incomeIn === 0 &&
+      essential === 0 &&
+      discretionary === 0 &&
+      loanRep === 0 &&
+      distributed === 0
+    ) {
       continue;
     }
 
@@ -290,6 +456,7 @@ export async function getMoneyFlow(
         'Essential expenses': essential,
         Discretionary: discretionary,
         'Loan repayments': loanRep,
+        Distributions: distributed,
         Surplus: surplus,
       },
     });
@@ -299,6 +466,7 @@ export async function getMoneyFlow(
     totalEssential += essential;
     totalDiscretionary += discretionary;
     totalLoans += loanRep;
+    totalDistributions += distributed;
     totalSurplus += surplus;
   }
 
@@ -344,6 +512,7 @@ export async function getMoneyFlow(
       'Essential expenses',
       'Discretionary',
       'Loan repayments',
+      'Distributions',
       'Surplus',
     ] as MoneyFlowOutflowLabel[]
   )
@@ -357,12 +526,20 @@ export async function getMoneyFlow(
               ? totalDiscretionary
               : l === 'Loan repayments'
                 ? totalLoans
-                : totalSurplus;
+                : l === 'Distributions'
+                  ? totalDistributions
+                  : totalSurplus;
       return { label: l, amount: total };
     })
     .filter((o) => o.amount > 0);
 
-  const totalOutflow = totalTax + totalEssential + totalDiscretionary + totalLoans + totalSurplus;
+  const totalOutflow =
+    totalTax +
+    totalEssential +
+    totalDiscretionary +
+    totalLoans +
+    totalDistributions +
+    totalSurplus;
 
   return {
     period: 'annual',
@@ -372,6 +549,7 @@ export async function getMoneyFlow(
     entities: flowEntities,
     outflows,
     edges,
+    distributions,
     isEmpty: flowEntities.length === 0 || incomeSources.length === 0,
   };
 }
