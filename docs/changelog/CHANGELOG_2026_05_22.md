@@ -168,3 +168,70 @@ User confirmation: **NOT REQUIRED** — every write is PK-scoped to the caller's
 ### Next
 
 Part 1c — entity-section UI (the multi-edge, multi-lens entity-structure canvas, §11A) + the API routes that expose these services + the accountant-review share-pass.
+
+---
+
+## Session: Phase 44 Part 1c — Entity-section UI (the entity-structure canvas)
+
+Branch: `claude/phase-44-part-1c-entity-canvas-ONspp`
+
+### Changes Made
+
+- **Type**: Feature (UI + API routes) — Phase 44 Part 1c, the §11A entity-structure canvas + the routes exposing the Part 1b-ii service layer.
+- **Scope**: `components/entities/*` (the canvas + dialogs), `app/api/entities/*` (7 new route surfaces), `app/dashboard/entities/*` (page rewire + the accountant-review report), the two graph-write service files (one read + one verify function each).
+- **Design contract**: `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` §11A (canvas), §3A / §6.1 (lenses + badges), §9 (accountant-review share-pass), §7 / Q1 (joint ownership), §8.3 / §8.4 (presentational-only SSOT rule).
+- **Library**: React Flow (`@xyflow/react` 12.10.2) + `@dagrejs/dagre` 3.0.0 — choice presented and **confirmed with Reza** before build. Both pure client-side, MIT, 0 critical / 0 high `npm audit` findings; added to the §13.8 dependency surface.
+
+Built in four reviewable sub-parts on the one designated branch:
+
+- **1c-i — API routes.** `GET /api/entities/graph` (the canvas-ready graph in one round-trip); `/relationships` + `/relationships/[id]` (create / end / delete); `/ownership-groups` + `/ownership-groups/[id]` (Q1); `/beneficial-ownership` + `/beneficial-ownership/[id]`. Thin handlers, `withPermission()`-gated, input validated at the boundary; every graph write goes through the canonical services. Added `getEntityGraphView()` to `entityRelationshipService`.
+- **1c-ii — the canvas.** `EntityCanvas` — Control / Ownership / Money-flow / All lens toggle; role-coloured Apple-glass boxes (own node component, `EntityCanvasNode`); §6.1 three-state badges; layered dagre auto-layout + localStorage-persisted manual nudge; click-through `EntityDetailDialog` (lists every relationship, add / end / delete, live `classifyEdge` validity preview) + `RelationshipDetailDialog`. The money-flow lens folds in the existing `MoneyFlowSankey` — the separate Money Flow tab is removed from `/dashboard/entities`.
+- **1c-iii — joint-ownership UI (Q1).** `OwnershipGroupsDialog` — records joint tenancy (survivorship) vs tenants-in-common (fixed shares, live 100% total) for any owned object, any co-owner count.
+- **1c-iv — accountant-review share-pass (Q4).** `/dashboard/entities/accountant-review` — a print-friendly structure report with per-entity / per-relationship verify toggles + a verification-progress meter + an accountant sign-off block; `POST .../verify` routes + the `set*AccountantVerified` service writers. The `SharePackage` *pattern* (an owner-controlled export), deliberately not a public token link (§9 — the entity structure is CDR-adjacent).
+
+### Files Modified / Created
+
+- `lib/services/entityRelationshipService.ts` — `getEntityGraphView()` (canvas read) + `setRelationshipAccountantVerified()`.
+- `lib/services/legalEntityService.ts` — `setEntityAccountantVerified()`.
+- `app/api/entities/graph/route.ts`, `relationships/route.ts`, `relationships/[id]/route.ts`, `relationships/[id]/verify/route.ts`, `[id]/verify/route.ts`, `ownership-groups/route.ts`, `ownership-groups/[id]/route.ts`, `beneficial-ownership/route.ts`, `beneficial-ownership/[id]/route.ts` — new.
+- `components/entities/EntityCanvas.tsx`, `EntityDetailDialog.tsx`, `RelationshipDetailDialog.tsx`, `OwnershipGroupsDialog.tsx`, `canvas/{graphMeta,layout,entityGraphClient,EntityCanvasNode}.{ts,tsx}` — new.
+- `app/dashboard/entities/page.tsx` — rewired to render `EntityCanvas` (was `EntityTree`); Money Flow tab removed; joint-ownership + accountant-review entry points added.
+- `app/dashboard/entities/accountant-review/page.tsx` — new.
+- `tests/entity-graph/canvasMeta.test.ts` — 12 new tests (lens filter, dagre layout, error parsing).
+- `EntityTree.tsx` / `MoneyFlowSankey.tsx` — retained (still used by the accountant portal client view + other surfaces); not dead code.
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- `entityRelationshipService.ts` `setRelationshipAccountantVerified` — `prisma.entityRelationship.update`
+- `legalEntityService.ts` `setEntityAccountantVerified` — `prisma.legalEntity.update`
+
+1. **`where` clause matches:** exactly one row — composite `{ id, userId }`; `id` is the `@id`. Nothing else can match.
+2. **Columns overwritten:** `accountantVerified` (and `verifiedAt` on the edge) — system-owned provenance fields, never user-entered financial data.
+3. **Guard:** composite `{ id, userId }` `where` on every write, preceded by a `findFirst` existence check; both columns are owned exclusively by the verify code path.
+
+User confirmation: **NOT REQUIRED** — provenance flags only, no user data at risk; same justification as the existing 1b-ii `structuralState` write.
+
+### §12.12 / §12.14
+
+- §12.12 — N/A. No `prisma/schema.prisma` change (Part 1c is UI + routes; `parentEntityId` stays frozen).
+- §12.14 — N/A. No `lib/tax-engine/` change, no financial calculation, no schema column, no AI tool. The canvas/accountant-review surfaces display structural state — not a per-asset tax position — so FW-5 does not apply.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — clean.
+- [x] `npm run build` — passes (✓ Compiled successfully; all 9 new routes + the accountant-review page registered).
+- [x] `npx vitest run tests/entity-graph` — 42/42 passing (21 rules-engine + 9 service-helper + 12 new canvas).
+- [x] `npm audit --audit-level=critical` — 0 critical (the 2 pre-existing `xlsx` high findings are unrelated; React Flow + dagre add none).
+- Full `vitest run`: 1663 passing; 58 pre-existing failures across 7 DB-integration / JSX-runtime test files unrelated to Part 1c (`npm install` added only new packages — no test-tooling version shifted).
+
+### Documentation Updated
+
+- `docs/architecture/07_API_STANDARDS.md` — new §15.9 "Phase 44 entity-graph routes".
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new "Entity-structure canvas" section.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — §11 1c build-progress note.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 44: Part 1b-ii → ✅ MERGED (#866); Part 1c → 🟡 SHIPPING.
+
+### Next
+
+Part 1d — the onboarding wizard relationship sub-step.

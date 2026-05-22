@@ -818,3 +818,26 @@ Applied in **Track G G.3a** (2026-05-21) for the legal-entities domain:
 
 ---
 
+## **15.9 Phase 44 entity-graph routes (Part 1c, 2026-05-22)**
+
+The Part 1c routes expose the Phase 44 entity-graph service layer
+(`PHASE_44_ENTITY_GRAPH.md` §11A). They are **thin handlers** — every
+graph write goes through the canonical services (`entityRelationshipService`
+/ `ownershipService` / `beneficialOwnershipService`, the only writers,
+§8.4); no route contains business logic or tax arithmetic (§8.3).
+
+| Route | Methods | Permission | Purpose |
+|---|---|---|---|
+| `/api/entities/graph` | GET | `entity.read` | The canvas-ready graph — nodes (display + structural metadata) + typed, time-bounded edges, in one round-trip. NOT a duplicate of `/api/entities` (a flat list) — different shape (the relational graph); same two-SSOT rationale as master-snapshot vs portfolio/snapshot. |
+| `/api/entities/relationships` | GET, POST | `entity.read` / `entity.write` | List / create `EntityRelationship` edges. The service classifies the edge against the §6 validity matrix inside the write txn — an `IMPOSSIBLE_SYSTEM_ERROR` edge is rejected (400), a `NON_COMPLIANT` one is recorded + flagged (§6.1). |
+| `/api/entities/relationships/[id]` | PATCH, DELETE | `entity.write` / `entity.delete` | PATCH ends an edge (`effectiveTo`, history kept); DELETE hard-deletes a mistaken entry. |
+| `/api/entities/relationships/[id]/verify` | POST | `entity.write` | Flip the edge's `accountantVerified` provenance flag (Q4 share-pass). |
+| `/api/entities/[id]/verify` | POST | `entity.write` | Flip an entity's `accountantVerified` provenance flag (Q4 share-pass). |
+| `/api/entities/ownership-groups` | GET, POST | `entity.read` / `entity.write` | List / create `OwnershipGroup` + `OwnershipStake` (joint / shared ownership of an owned object — Q1). `?ownedObjectType=&ownedObjectId=` filters the GET. |
+| `/api/entities/ownership-groups/[id]` | PATCH, DELETE | `entity.write` / `entity.delete` | End / hard-delete an ownership group (stakes cascade). |
+| `/api/entities/beneficial-ownership` | GET, POST | `entity.read` / `entity.write` | List / create `BeneficialOwnershipOverride` (asset-scoped legal-title ≠ beneficial-owner records — §3A). |
+| `/api/entities/beneficial-ownership/[id]` | PATCH, DELETE | `entity.write` / `entity.delete` | End / hard-delete an override. |
+
+**Response shape.** Success → `{ data, _meta? }`; error → `{ error: { code, message, details? } }` (CLAUDE.md §6.6). Service `*ValidationError`s map to a 4xx with the service's own error code: `ENTITY_NOT_FOUND` / `RELATIONSHIP_NOT_FOUND` / `GROUP_NOT_FOUND` / `OVERRIDE_NOT_FOUND` → 404, `DUPLICATE_EDGE` → 409, `IMPOSSIBLE_EDGE` / `BAD_REQUEST` → 400.
+
+**Why a dedicated `/graph` endpoint and not `/api/entities` + `/relationships`.** The canvas needs nodes *and* typed edges *and* the full structural metadata (`companySubtype`, `trustType`, `structuralState`, …) in one shape it can feed straight into the pure `lib/entity-graph/` rules engine. `/api/entities` returns a flat `LegalEntitySummary` list with neither edges nor that metadata. One graph endpoint = one round-trip (CLAUDE.md §12.10) and is not a §12.4 duplicate — it answers a different question (the relational graph, not the entity list).

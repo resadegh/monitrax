@@ -29,6 +29,133 @@ import { logCRUD } from '@/lib/security/auditLog';
 import type { EntityGraph, GraphNode, GraphEdge, ValidityResult } from '@/lib/entity-graph/types';
 import { classifyEdge, classifyGraph } from '@/lib/entity-graph/validityMatrix';
 
+// =============================================================================
+// CANVAS GRAPH-VIEW READ — the single read the Part 1c entity-structure
+// canvas consumes (PHASE_44_ENTITY_GRAPH.md §11A). One round-trip: nodes
+// (with the display fields the role-coloured boxes need) + edges (with the
+// metadata the relationship-detail panel reads). The canvas re-runs the
+// pure `lib/entity-graph/` rules engine over this shape (§8.4) — it never
+// re-aggregates and performs no tax/financial arithmetic (§8.3).
+// =============================================================================
+
+/** A canvas node — the pure `GraphNode` plus the box's display essentials. */
+export interface EntityGraphViewNode extends GraphNode {
+  abn: string | null;
+  acn: string | null;
+  hasTfn: boolean;
+}
+
+/** A canvas edge — the pure `GraphEdge` plus both entity names + detail-panel metadata. */
+export interface EntityGraphViewEdge extends GraphEdge {
+  fromEntityName: string;
+  toEntityName: string;
+  partnerInterestPct: number | null;
+  notes: string | null;
+  verifiedAt: Date | null;
+}
+
+export interface EntityGraphView {
+  nodes: EntityGraphViewNode[];
+  edges: EntityGraphViewEdge[];
+}
+
+/**
+ * Load a user's entity graph in the canvas-ready shape. This is NOT a
+ * duplicate of `/api/entities` (a flat list) — it returns the relational
+ * graph (nodes + typed edges + structural metadata) the §11A canvas
+ * renders. Tenancy-scoped to the calling user.
+ */
+export async function getEntityGraphView(
+  userId: string,
+  client: PrismaTxOrClient = prisma,
+): Promise<EntityGraphView> {
+  const [entities, relationships] = await Promise.all([
+    client.legalEntity.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        id: true,
+        type: true,
+        role: true,
+        name: true,
+        abn: true,
+        acn: true,
+        tfnEncrypted: true,
+        companySubtype: true,
+        trustType: true,
+        estateAdministrationStatus: true,
+        structuralState: true,
+        accountantVerified: true,
+        unsupportedStructure: true,
+      },
+    }),
+    client.entityRelationship.findMany({
+      where: { userId },
+      orderBy: { effectiveFrom: 'desc' },
+      select: {
+        id: true,
+        fromEntityId: true,
+        toEntityId: true,
+        type: true,
+        effectiveFrom: true,
+        effectiveTo: true,
+        beneficiaryClass: true,
+        partnerInterestPct: true,
+        familyRelation: true,
+        lprReason: true,
+        appointorPower: true,
+        powerType: true,
+        powerSubject: true,
+        notes: true,
+        structuralState: true,
+        accountantVerified: true,
+        verifiedAt: true,
+        fromEntity: { select: { name: true } },
+        toEntity: { select: { name: true } },
+      },
+    }),
+  ]);
+
+  return {
+    nodes: entities.map((e) => ({
+      id: e.id,
+      type: e.type,
+      role: e.role,
+      name: e.name,
+      abn: e.abn,
+      acn: e.acn,
+      hasTfn: e.tfnEncrypted != null && e.tfnEncrypted.length > 0,
+      companySubtype: e.companySubtype,
+      trustType: e.trustType,
+      estateAdministrationStatus: e.estateAdministrationStatus,
+      structuralState: e.structuralState,
+      accountantVerified: e.accountantVerified,
+      unsupportedStructure: e.unsupportedStructure,
+    })),
+    edges: relationships.map((r) => ({
+      id: r.id,
+      fromEntityId: r.fromEntityId,
+      toEntityId: r.toEntityId,
+      fromEntityName: r.fromEntity.name,
+      toEntityName: r.toEntity.name,
+      type: r.type,
+      effectiveFrom: r.effectiveFrom,
+      effectiveTo: r.effectiveTo,
+      beneficiaryClass: r.beneficiaryClass,
+      partnerInterestPct: r.partnerInterestPct === null ? null : Number(r.partnerInterestPct),
+      familyRelation: r.familyRelation,
+      lprReason: r.lprReason,
+      appointorPower: r.appointorPower,
+      powerType: r.powerType,
+      powerSubject: r.powerSubject,
+      notes: r.notes,
+      structuralState: r.structuralState,
+      accountantVerified: r.accountantVerified,
+      verifiedAt: r.verifiedAt,
+    })),
+  };
+}
+
 type PrismaTxOrClient = PrismaClient | Prisma.TransactionClient;
 
 // =============================================================================
@@ -424,6 +551,54 @@ export async function listRelationships(
     structuralState: r.structuralState,
     accountantVerified: r.accountantVerified,
   }));
+}
+
+// =============================================================================
+// ACCOUNTANT VERIFICATION (§9 — the accountant-review share-pass, Q4)
+// =============================================================================
+
+/**
+ * Flip a relationship's `accountantVerified` provenance flag and stamp
+ * `verifiedAt`. The accountant-review share-pass turns this flag into a
+ * professional sign-off (PHASE_44_ENTITY_GRAPH.md §9): the user hands
+ * their accountant the structure report, the accountant confirms, the
+ * user marks the confirmed edges verified.
+ *
+ * This changes provenance only — never structure — so the §6 validity
+ * classification is not re-run. No tax arithmetic (§8.3).
+ */
+export async function setRelationshipAccountantVerified(
+  userId: string,
+  relationshipId: string,
+  verified: boolean,
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<void> {
+  const existing = await prisma.entityRelationship.findFirst({
+    where: { id: relationshipId, userId },
+    select: { id: true },
+  });
+  if (!existing) {
+    throw new RelationshipValidationError(
+      'RELATIONSHIP_NOT_FOUND',
+      'Relationship not found or not owned by you.',
+    );
+  }
+  // §12.11 — composite `where` confines the write to the caller's edge;
+  // only the provenance columns (`accountantVerified` + `verifiedAt`) are
+  // written. Neither is user-entered financial data.
+  await prisma.entityRelationship.update({
+    where: { id: relationshipId, userId },
+    data: { accountantVerified: verified, verifiedAt: verified ? new Date() : null },
+  });
+
+  void logCRUD({
+    userId,
+    action: 'UPDATE',
+    entityType: 'EntityRelationship',
+    entityId: relationshipId,
+    metadata: { accountantVerified: verified },
+    ...requestMeta,
+  }).catch(() => {});
 }
 
 export { windowsOverlap as _windowsOverlapForTest };

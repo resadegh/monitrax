@@ -565,3 +565,37 @@ export async function deleteEntity(
     where: { id: entityId, userId },
   });
 }
+
+/**
+ * Phase 44 Part 1c (Q4) — flip an entity's `accountantVerified` flag.
+ *
+ * The accountant-review share-pass (PHASE_44_ENTITY_GRAPH.md §9) turns
+ * this provenance flag into a professional sign-off: the user hands
+ * their accountant the structure report, the accountant confirms the
+ * entity is recorded correctly, the user marks it verified.
+ *
+ * Returns `false` if the entity is not found / not owned by the caller.
+ * The route layer audits the change (this file's convention — route
+ * handlers own the audit log for LegalEntity writes).
+ *
+ * §12.11: composite `where: { id, userId }` confines the write to the
+ * caller's own entity; `accountantVerified` is a provenance flag owned
+ * exclusively by this code path, never user-entered financial data.
+ */
+export async function setEntityAccountantVerified(
+  userId: string,
+  entityId: string,
+  verified: boolean,
+  client: PrismaTxOrClient = prisma,
+): Promise<boolean> {
+  const existing = await client.legalEntity.findFirst({
+    where: { id: entityId, userId },
+    select: { id: true },
+  });
+  if (!existing) return false;
+  await client.legalEntity.update({
+    where: { id: entityId, userId },
+    data: { accountantVerified: verified },
+  });
+  return true;
+}

@@ -26,10 +26,11 @@ import {
   Lock,
   Loader2,
   TreePine,
+  Users,
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
-import { EntityTree } from '@/components/entities/EntityTree';
-import type { HouseholdMember } from '@/components/entities/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,8 +68,17 @@ import {
   formatAcn,
 } from '@/lib/utils/auValidators';
 import { useAuth } from '@/lib/context/AuthContext';
-import { MoneyFlowSankey } from '@/components/entities/MoneyFlowSankey';
-import type { MoneyFlowResult } from '@/lib/services/moneyFlowService';
+import { OwnershipGroupsDialog } from '@/components/entities/OwnershipGroupsDialog';
+
+// Phase 44 Part 1c — the entity-structure canvas (§11A). Dynamically
+// imported with SSR disabled: React Flow needs the DOM, and the canvas +
+// its graph libraries should not weigh on other routes' bundles. The
+// money-flow Sankey is folded into the canvas as a lens — there is no
+// longer a separate Money Flow tab on this page.
+const EntityCanvas = dynamic(
+  () => import('@/components/entities/EntityCanvas').then((m) => m.EntityCanvas),
+  { ssr: false },
+);
 
 // =============================================================================
 // LOCAL TYPES — mirror the LegalEntitySummary shape from the service
@@ -325,19 +335,15 @@ export default function EntitiesPage() {
   // /dashboard/balances and every other working dashboard page.
   const { token } = useAuth();
   const [entities, setEntities] = useState<Entity[]>([]);
-  const [members, setMembers] = useState<HouseholdMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Phase 41d: tab state + Money Flow data. The Money Flow tab is a
-  // dedicated visualisation surface ("where does the money actually
-  // go?") sitting alongside the Phase 41c Structure tree. Both tabs
-  // share the same /dashboard/entities URL — we render whichever is
-  // active. Default tab is Structure (the canonical entity view).
-  const [tab, setTab] = useState<'structure' | 'flow'>('structure');
-  const [flow, setFlow] = useState<MoneyFlowResult | null>(null);
-  const [flowLoading, setFlowLoading] = useState(false);
-  const [flowError, setFlowError] = useState<string | null>(null);
+  // Phase 44 Part 1c — bumped whenever the entity list mutates, so the
+  // canvas (which fetches its own graph) refetches after add / edit / remove.
+  const [canvasReload, setCanvasReload] = useState(0);
+
+  // Phase 44 Part 1c (Q1) — the joint-ownership manager dialog.
+  const [ownershipOpen, setOwnershipOpen] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Entity | null>(null);
@@ -360,16 +366,10 @@ export default function EntitiesPage() {
     }
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      // Phase 41c: fetch entities + household members in parallel so the
-      // tree can render People → Entities edges in one round-trip.
-      const [entitiesRes, membersRes] = await Promise.all([
-        fetch('/api/entities', { headers }),
-        fetch('/api/household-members', { headers }).catch(() => null),
-      ]);
+      const entitiesRes = await fetch('/api/entities', { headers });
       if (!entitiesRes.ok) {
         // Phase 41c resilience: surface the actual server response so the
-        // error block can tell the user (and Reza) WHY the API failed —
-        // a generic "Failed to load entities" makes the issue invisible.
+        // error block can tell the user WHY the API failed.
         // `extractErrorMessage` handles both the canonical
         // `{ error: { code, message } }` shape and the simple
         // `{ error: 'string' }` shape (CLAUDE.md §6.6 + ad-hoc routes).
@@ -385,21 +385,6 @@ export default function EntitiesPage() {
       }
       const entitiesJson = await entitiesRes.json();
       setEntities(entitiesJson.data ?? []);
-
-      // Household members are best-effort — if the endpoint 401s for
-      // some reason we still render the tree with a generic "You" anchor
-      // (handled inside EntityTree).
-      if (membersRes && membersRes.ok) {
-        const membersJson = await membersRes.json();
-        const raw =
-          (membersJson?.data?.members as HouseholdMember[] | undefined) ??
-          (membersJson?.members as HouseholdMember[] | undefined) ??
-          (Array.isArray(membersJson?.data) ? (membersJson.data as HouseholdMember[]) : []) ??
-          [];
-        setMembers(raw);
-      } else {
-        setMembers([]);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -410,51 +395,6 @@ export default function EntitiesPage() {
   useEffect(() => {
     fetchEntities();
   }, [fetchEntities]);
-
-  // Phase 41d: fetch Money Flow lazily — only when the user activates
-  // the tab. Refetch when entities change (the entity list mutation
-  // affects the flow's nodes), and when token arrives. Same Bearer-
-  // token pattern as the entities fetch.
-  const fetchFlow = useCallback(async () => {
-    if (!token) return;
-    setFlowLoading(true);
-    setFlowError(null);
-    try {
-      const res = await fetch('/api/money-flow', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) {
-        let body: unknown = null;
-        try {
-          body = await res.json();
-        } catch {
-          /* not JSON */
-        }
-        throw new Error(
-          extractErrorMessage(body, res.status, res.statusText || 'Failed to load money flow'),
-        );
-      }
-      const json = await res.json();
-      setFlow(json.data ?? null);
-    } catch (err) {
-      setFlowError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setFlowLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (tab === 'flow' && !flow && !flowLoading && !flowError) {
-      fetchFlow();
-    }
-  }, [tab, flow, flowLoading, flowError, fetchFlow]);
-
-  // Invalidate the flow cache whenever entities change (after add /
-  // edit / remove from the Structure tab).
-  useEffect(() => {
-    setFlow(null);
-    setFlowError(null);
-  }, [entities]);
 
   const openAdd = () => {
     setEditing(null);
@@ -556,6 +496,7 @@ export default function EntitiesPage() {
         throw new Error(extractErrorMessage(err, res.status, 'Failed to save entity'));
       }
       await fetchEntities();
+      setCanvasReload((n) => n + 1);
       setFormOpen(false);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unknown error');
@@ -582,6 +523,7 @@ export default function EntitiesPage() {
         throw new Error(extractErrorMessage(err, res.status, 'Failed to remove entity'));
       }
       await fetchEntities();
+      setCanvasReload((n) => n + 1);
       setRemoveTarget(null);
     } catch (err) {
       setRemoveError(err instanceof Error ? err.message : 'Unknown error');
@@ -615,42 +557,20 @@ export default function EntitiesPage() {
           </p>
         </header>
 
-        {/* Phase 41d: tab toggle — Structure (the 41c tree) and Money Flow
-            (the 41d Sankey) live on the same /dashboard/entities URL.
-            Default tab is Structure; the second wow moment in the
-            lighthouse pitch (Step 4) is one click away. */}
+        {/* Phase 44 Part 1c — joint-ownership (Q1) + accountant-review (Q4)
+            entry points. */}
         {!loading && !error && (
-          <div
-            role="tablist"
-            aria-label="My Structure views"
-            className="inline-flex items-center gap-1 rounded-full border border-slate-200/70 bg-white/70 p-1 text-sm shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-sm dark:border-slate-700/50 dark:bg-slate-900/70"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'structure'}
-              onClick={() => setTab('structure')}
-              className={`rounded-full px-3.5 py-1.5 transition ${
-                tab === 'structure'
-                  ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-              }`}
-            >
-              Structure
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === 'flow'}
-              onClick={() => setTab('flow')}
-              className={`rounded-full px-3.5 py-1.5 transition ${
-                tab === 'flow'
-                  ? 'bg-slate-900 text-white shadow-sm dark:bg-slate-100 dark:text-slate-900'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-slate-100'
-              }`}
-            >
-              Money Flow
-            </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOwnershipOpen(true)}>
+              <Users className="mr-1.5 h-4 w-4" />
+              Joint &amp; shared ownership
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/dashboard/entities/accountant-review">
+                <ShieldCheck className="mr-1.5 h-4 w-4" />
+                Accountant review
+              </Link>
+            </Button>
           </div>
         )}
 
@@ -691,28 +611,22 @@ export default function EntitiesPage() {
           </div>
         )}
 
-        {/* Phase 41c: Entity Tree — interactive, live, navigable
-            visualisation of the user's LegalEntity graph. Replaces the
-            previous list view per Reza directive 2026-05-04. The tree
-            renders People (top) → Entities (middle, role-coloured) with
-            owned-objects chips inline; SVG connectors show ownership +
-            dashed corporate-trustee links. Clicking any tile opens the
-            EntityFormDialog (edit); the embedded "Add" affordance opens
-            the same dialog in create mode.
+        {/* Phase 44 Part 1c: the entity-structure canvas (§11A) — a
+            multi-edge, multi-lens React Flow graph of the user's
+            LegalEntity relationship graph (Control / Ownership / Money
+            flow / All lenses; role-coloured boxes; §6.1 state badges;
+            click-through to detail). The money-flow Sankey is folded in
+            as a lens — there is no longer a separate Money Flow tab.
 
-            Phase 41c hotfix: not everyone has a structure. A user whose
-            only entity is the auto-created PERSONAL_NAME (Phase 41a
-            backfill) doesn't see "their structure" as an entity tree —
-            they see a simpler "your wealth is held in your personal
-            name" hero. The tree only fires when there's REAL structure
-            to render: any non-PERSONAL_NAME entity, OR multiple
-            PERSONAL_NAME entities (joint households). Reza directive
-            2026-05-05: *"not everyone has one of these entities, so
-            there should be an option for user to have none."*
-
-            Phase 41d: gated by `tab === 'structure'`. The Money Flow
-            tab renders the Sankey instead. */}
-        {!loading && !error && tab === 'structure' && (() => {
+            Not everyone has a structure. A user whose only entity is the
+            auto-created PERSONAL_NAME (Phase 41a backfill) sees a simpler
+            "your wealth is held in your personal name" hero instead. The
+            canvas only renders when there is REAL structure: any
+            non-PERSONAL_NAME entity, OR multiple PERSONAL_NAME entities
+            (joint households). Reza directive 2026-05-05: *"not everyone
+            has one of these entities, so there should be an option for
+            user to have none."* */}
+        {!loading && !error && (() => {
           const personalEntities = entities.filter((e) => e.type === 'PERSONAL_NAME');
           const realEntities = entities.filter((e) => e.type !== 'PERSONAL_NAME');
           const hasRealStructure =
@@ -720,11 +634,13 @@ export default function EntitiesPage() {
 
           if (hasRealStructure) {
             return (
-              <EntityTree
-                entities={entities}
-                members={members}
-                onEntityClick={openEdit}
-                onAdd={openAdd}
+              <EntityCanvas
+                reloadSignal={canvasReload}
+                onAddEntity={openAdd}
+                onEditEntity={(id) => {
+                  const target = entities.find((e) => e.id === id);
+                  if (target) openEdit(target);
+                }}
               />
             );
           }
@@ -771,41 +687,6 @@ export default function EntitiesPage() {
           );
         })()}
 
-        {/* Phase 41d: Money Flow tab — recharts <Sankey> showing income
-            sources → entities → outflows. Lazy-fetched the first time
-            the user activates the tab; cache is invalidated when
-            entities mutate (the entity list change affects the
-            Sankey's nodes). Loading + error + empty states handled
-            inline so the user sees what's happening. */}
-        {!loading && !error && tab === 'flow' && (
-          <div>
-            {flowLoading && (
-              <div className="flex items-center justify-center rounded-2xl border border-slate-200/70 bg-white/60 p-12 dark:border-slate-700/50 dark:bg-slate-900/60">
-                <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
-              </div>
-            )}
-            {!flowLoading && flowError && (
-              <div className="rounded-2xl border border-rose-200/70 bg-rose-50 p-4 dark:border-rose-900/50 dark:bg-rose-950/30">
-                <div className="flex items-start gap-2 text-sm text-rose-700 dark:text-rose-300">
-                  <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-                  <div>
-                    <p className="font-medium">Couldn&rsquo;t load your money flow.</p>
-                    <p className="mt-1 text-xs opacity-80">{flowError}</p>
-                  </div>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3"
-                  onClick={fetchFlow}
-                >
-                  Try again
-                </Button>
-              </div>
-            )}
-            {!flowLoading && !flowError && flow && <MoneyFlowSankey flow={flow} />}
-          </div>
-        )}
       </div>
 
       {/* Form dialog (add/edit) */}
@@ -1152,6 +1033,14 @@ export default function EntitiesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Phase 44 Part 1c (Q1) — joint / shared ownership manager. */}
+      <OwnershipGroupsDialog
+        open={ownershipOpen}
+        onClose={() => setOwnershipOpen(false)}
+        token={token ?? ''}
+        entities={entities.map((e) => ({ id: e.id, name: e.name }))}
+      />
     </DashboardLayout>
   );
 }

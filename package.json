@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
+    "@dagrejs/dagre": "^3.0.0",
     "@google-cloud/cloud-sql-connector": "^1.10.0",
     "@google-cloud/error-reporting": "^3.0.5",
     "@google-cloud/logging": "^11.2.1",
@@ -56,6 +57,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vercel/functions": "^3.5.0",
+    "@xyflow/react": "^12.10.2",
     "bcryptjs": "^2.4.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
