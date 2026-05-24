@@ -42,7 +42,11 @@ import { getCurrentDocumentVersion } from '@/lib/legal/content';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { extractRequestMeta } from '@/lib/audit/logger';
 
-const SIGNUP_CONSENT_SOURCES = ['SIGNUP', 'OAUTH_SIGNUP'] as const;
+// Acceptable consent sources for THIS endpoint. SETTINGS_UPDATE and
+// VERSION_REACCEPT are also valid `ConsentSource` enum values but they're
+// captured via different (lower-friction) routes — keeping this endpoint
+// narrowly scoped to signup-style flows + the migration modal.
+const SIGNUP_CONSENT_SOURCES = ['SIGNUP', 'OAUTH_SIGNUP', 'EXISTING_USER_MIGRATION'] as const;
 
 const BodySchema = z.object({
   termsAccepted: z.literal(true, {
