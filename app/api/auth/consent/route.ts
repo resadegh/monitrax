@@ -84,8 +84,8 @@ export async function POST(request: NextRequest) {
     }
 
     const meta = extractRequestMeta(request);
-    const ipAddressHash = meta.ip && meta.ip !== 'unknown' ? hashIp(meta.ip) : null;
-    const userAgent = meta.userAgent ? meta.userAgent.slice(0, 500) : null;
+    const ipAddressHash = meta.ip && meta.ip !== 'unknown' ? hashIp(meta.ip) : undefined;
+    const userAgent = meta.userAgent ? meta.userAgent.slice(0, 500) : undefined;
 
     const tosVersion = getCurrentDocumentVersion('TERMS_OF_SERVICE');
     const privacyVersion = getCurrentDocumentVersion('PRIVACY_POLICY');
