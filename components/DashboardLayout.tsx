@@ -46,6 +46,7 @@ import {
 import { MobileTabBar } from '@/components/shell/MobileTabBar';
 import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
 import { MoreSheet } from '@/components/shell/MoreSheet';
+import { ConsentMigrationModal } from '@/components/auth/ConsentMigrationModal';
 
 // =============================================================================
 // TRAIL SIDEBAR — items defined in lib/navigation/trailNav.tsx (SSOT).
@@ -322,6 +323,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <BasiqGateProvider>
+    {/* Phase 47 PR 2 — Existing-user consent migration modal.
+        Fires for any authenticated user lacking current-version Terms /
+        Privacy / AFSL acceptance (typically: signed up before Phase 47 PR 1
+        shipped the consent flow). Non-dismissible until accepted; fail-safe
+        on API trouble (skips modal, retries next page load). */}
+    <ConsentMigrationModal />
     <div className="min-h-screen bg-background">
       {/* Phase 9.5 - Global Warning Ribbon */}
       {syncState.warningRibbon.show && (

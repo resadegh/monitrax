@@ -373,7 +373,7 @@
 
 ### 0g. Phase 47 — Signup consent + legal-document foundation (compliance bedrock)
 
-- **Status:** 🟡 PR 1 SHIPPING in this session (schema + migration + 3 draft docs + public route + register-page consent block + signup capture API). PR 2 queued (existing-user migration modal + OAuth legacy-flow gate + settings page).
+- **Status:** ✅ PR 1 SHIPPED 2026-05-24 (PR #876 merged — schema + migration + 3 draft docs + public route + register-page consent block + signup capture API). 🟡 PR 2 SHIPPING this session (existing-user migration modal — closes the friendlies-backfill gap). PR 3 queued (OAuth legacy-flow gate + settings page + version-bump middleware).
 - **Started:** 2026-05-24
 - **Owner:** Reza (direction + lawyer engagement + document copy review) + Claude (build, draft docs, schema)
 - **Last touched:** 2026-05-24
@@ -388,11 +388,15 @@
   - [x] **API** `POST /api/auth/consent` — `withAuth`-gated; Zod-validated; idempotent (skips inserts for already-current-version rows); writes 3 `UserConsent` rows + 3–4 `AuditLog` rows (one per `CONSENT_*` action); IP hashed (SHA-256), user-agent truncated to 500 chars.
   - [x] **Register flow integration** — `handleSubmit` + `handleGoogleSignUp` call `captureConsent()` immediately after Firebase signup; if consent POST fails, the user sees an error and can retry (the API is idempotent). Legacy OAuth (redirect) path defers to PR 2's migration modal — documented inline.
   - [x] **Cross-link sweep** — `app/signin/page.tsx` + `components/marketing/Footer.tsx` updated from dead `/legal/terms` + `/legal/privacy` to the new live routes + AFSL added.
-- **PR 2 queue (separate session):**
-  - [ ] **Existing-user migration modal** — on next login, if user has no current-version `UserConsent` row, render a blocking modal: "Our terms have been updated. Please review and accept to continue." Records via the same `POST /api/auth/consent` endpoint with `consentSource: 'EXISTING_USER_MIGRATION'`. **Critical because friendlies invited pre-PR1 have no consent record.**
-  - [ ] **Legacy-OAuth-redirect consent gate** — for `/api/auth/oauth/google` (non-GCP-Identity legacy path), capture consent state via URL param survival or interstitial step; right now this path silently bypasses consent.
+- **PR 2 deliverables (this session — friendlies-backfill gap closed):**
+  - [x] **`GET /api/auth/consent/status`** — read-only endpoint returning `requiresConsent` + `needed` array + `currentVersions` + per-doc `accepted` versions. Privacy-safe (flags + version strings only).
+  - [x] **`<ConsentMigrationModal />`** at `components/auth/ConsentMigrationModal.tsx` — non-dismissible blocking modal (preventDefault on `onPointerDownOutside` / `onEscapeKeyDown` / `onInteractOutside`) with same two-tick UX as register page. Fail-safe: API trouble → skip modal, retry next page load (prefer letting the user through over locking them out on a flaky API).
+  - [x] **Mounted in `DashboardLayout`** inside `BasiqGateProvider` so it fires for any authenticated user reaching any `/dashboard/*` route. Same component covers both the friendlies-pre-PR1 case AND the future version-bump case (the status endpoint compares accepted-version to current-version, so a re-acceptance ask is one line of doc-frontmatter away).
+  - [x] **`POST /api/auth/consent`** Zod enum extended to accept `'EXISTING_USER_MIGRATION'` as a valid `consentSource` (was `SIGNUP | OAUTH_SIGNUP` only). Endpoint idempotency unchanged — partial-state users (e.g. accepted ToS but not Privacy from a previous failed run) handled cleanly.
+- **PR 3 queue (separate session):**
+  - [ ] **Legacy-OAuth-redirect consent gate** — for `/api/auth/oauth/google` (non-GCP-Identity legacy path), capture consent state via URL param survival or interstitial step. **Reduced-priority now**: the migration modal in PR 2 catches users who go through this path on their next dashboard load (so the gap exists for the duration of the post-OAuth → dashboard navigation, but is closed once the dashboard renders). For pure compliance hygiene, the interstitial is still the right pattern, but PR 2 made it non-blocking.
   - [ ] **Settings → Legal page** at `app/dashboard/settings/legal/page.tsx` — surfaces user's current consent state per document + version + acceptance date; revoke-marketing button; download "my consent record" button (Privacy Act APP 12 access right).
-  - [ ] **Version-bump re-prompt** — when a document's frontmatter `version` is updated, force re-acceptance on next login via the same modal. Implement as middleware-level check reading `getCurrentDocumentVersion()` against the user's latest `UserConsent` row per type.
+  - [ ] **Version-bump re-prompt** — already structurally supported by PR 2 (the migration modal fires whenever `getCurrentDocumentVersion()` ≠ `accepted.<type>`, which automatically catches a bumped doc version). What remains for PR 3: the operator playbook ("how to bump a document version — update the frontmatter `version` field, write a brief Phase doc changelog entry, redeploy; the modal does the rest").
   - [ ] **Friendlies remediation email** — once PR 2 lands, send the invited friendlies a heads-up that the next login will prompt them to accept the updated documents. Reza-side comms.
 - **Risk:**
   - **PR 1 is half a flow without PR 2.** Existing friendlies who signed up before PR 1 ships will not be caught until PR 2's migration modal lands. This is intentional sequencing (PR 1 = new signups secured; PR 2 = backfill) but the gap window matters — ship PR 2 within ~1 week of PR 1.
