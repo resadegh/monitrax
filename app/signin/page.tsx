@@ -263,12 +263,16 @@ export default function SignInPage() {
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
             By signing in you agree to our{' '}
-            <Link href="/legal/terms" className="text-primary hover:underline">
+            <Link href="/legal/terms-of-service" className="text-primary hover:underline">
               Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/legal/privacy" className="text-primary hover:underline">
+            </Link>
+            ,{' '}
+            <Link href="/legal/privacy-policy" className="text-primary hover:underline">
               Privacy Policy
+            </Link>
+            , and{' '}
+            <Link href="/legal/afsl-boundary-disclosure" className="text-primary hover:underline">
+              AFSL Boundary Disclosure
             </Link>
           </p>
         </div>
