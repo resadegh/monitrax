@@ -14,7 +14,7 @@ summary: How Monitrax collects, uses, stores, and protects your personal informa
 
 **Effective from:** 2026-05-24
 
-This Privacy Policy explains how **ReNew Group Pty Ltd** (ACN [TO BE INSERTED]), trading as **Monitrax**, handles your personal information when you use the Monitrax service ("we", "us", "our").
+This Privacy Policy explains how **ReNew Holding Company Pty Ltd** (ACN 675 267 311), trading as **Monitrax**, handles your personal information when you use the Monitrax service ("we", "us", "our").
 
 We are bound by the **Australian Privacy Principles (APPs)** in the **Privacy Act 1988 (Cth)**. Where we handle Consumer Data Right (CDR) data, we are also bound by the **CDR Privacy Safeguards** in the **Competition and Consumer Act 2010 (Cth)** and the **CDR Rules**.
 
@@ -158,7 +158,7 @@ Under the Privacy Act and these Terms, you can:
 - **Export** your data from the app at any time (account settings)
 - **Delete** your account — this triggers a 30-day cancellable grace period, after which your CDR data and personal information are deleted or de-identified per our **CDR Data Lifecycle** process and the right-to-erasure protocol (CLAUDE.md §13.2)
 
-To exercise any of these rights, contact us at **privacy@monitrax.com.au**. We will respond within 30 days.
+To exercise any of these rights, contact us at **admin@monitrax.com.au**. We will respond within 30 days.
 
 Some information may need to be retained after deletion to comply with legal obligations (for example, tax-recordkeeping under the Income Tax Assessment Act, or transaction records for AML purposes). Retained information is the minimum required and access is restricted.
 
@@ -174,7 +174,7 @@ You can clear cookies in your browser at any time. If you do, you will need to s
 
 ## 10. Children
 
-Monitrax is not directed at children under 18. If you believe a child has provided personal information to us, contact us at **privacy@monitrax.com.au** and we will delete the information.
+Monitrax is not directed at children under 18. If you believe a child has provided personal information to us, contact us at **admin@monitrax.com.au** and we will delete the information.
 
 ---
 
@@ -190,7 +190,7 @@ We may update this Policy from time to time. When we make a material change:
 
 ## 12. Complaints
 
-If you believe we have breached the APPs, the CDR Privacy Safeguards, or this Policy, please contact us first at **privacy@monitrax.com.au**. We will acknowledge within 5 business days and aim to resolve within 30 days.
+If you believe we have breached the APPs, the CDR Privacy Safeguards, or this Policy, please contact us first at **admin@monitrax.com.au**. We will acknowledge within 5 business days and aim to resolve within 30 days.
 
 If you are not satisfied with our response you may refer the matter to the **Office of the Australian Information Commissioner (OAIC)** at [oaic.gov.au](https://www.oaic.gov.au) (Privacy Act and CDR matters), or the **Australian Financial Complaints Authority (AFCA)** at [afca.org.au](https://www.afca.org.au) where the complaint relates to a financial service or product.
 
@@ -199,10 +199,10 @@ If you are not satisfied with our response you may refer the matter to the **Off
 ## 13. Contact
 
 **Privacy Officer**
-ReNew Group Pty Ltd
-ACN: [TO BE INSERTED]
-Email: privacy@monitrax.com.au
-Postal: [TO BE INSERTED]
+ReNew Holding Company Pty Ltd
+ACN: 675 267 311
+Email: admin@monitrax.com.au
+Postal: 10 Fairview St, Guildford NSW 2161, Australia
 
 ---
 

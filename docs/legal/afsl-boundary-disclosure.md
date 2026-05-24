@@ -77,7 +77,7 @@ Monitrax includes AI-powered features. Where AI is used:
 - The AI uses only **fact-lookup** and **scenario-modelling** tools — it is structurally restricted from recommending a course of action or a specific product;
 - AI outputs are general information; the same boundary above applies.
 
-If an AI response in Monitrax appears to be giving you personal advice, that is a system error — please report it to **support@monitrax.com.au** and do not act on it.
+If an AI response in Monitrax appears to be giving you personal advice, that is a system error — please report it to **admin@monitrax.com.au** and do not act on it.
 
 ---
 
@@ -89,7 +89,7 @@ Decisions you make based on information in Monitrax — including budget decisio
 
 ## Contact
 
-If you are unsure whether something in Monitrax is general information or personal advice, contact us at **support@monitrax.com.au** and we will clarify.
+If you are unsure whether something in Monitrax is general information or personal advice, contact us at **admin@monitrax.com.au** and we will clarify.
 
 ---
 

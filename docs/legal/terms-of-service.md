@@ -14,7 +14,7 @@ summary: The agreement between you and Monitrax when you use the service.
 
 **Effective from:** 2026-05-24
 
-**These Terms apply to your use of the Monitrax service** ("**Monitrax**", "we", "us", "our") operated by ReNew Group Pty Ltd (ACN [TO BE INSERTED]) in Australia.
+**These Terms apply to your use of the Monitrax service** ("**Monitrax**", "we", "us", "our") operated by ReNew Holding Company Pty Ltd (ACN 675 267 311) in Australia.
 
 By creating an account or using Monitrax you agree to these Terms. If you do not agree, do not use the service.
 
@@ -78,7 +78,7 @@ You can cancel a subscription at any time from your account settings; cancellati
 
 ## 6. Intellectual property
 
-Monitrax (and the underlying software, designs, content, and trademarks) is owned by ReNew Group Pty Ltd and its licensors. You get a limited, non-exclusive, non-transferable right to use the service while these Terms are in effect.
+Monitrax (and the underlying software, designs, content, and trademarks) is owned by ReNew Holding Company Pty Ltd and its licensors. You get a limited, non-exclusive, non-transferable right to use the service while these Terms are in effect.
 
 The information you enter into Monitrax — your own financial data — remains yours. We do not claim ownership of your data.
 
@@ -147,16 +147,16 @@ On termination, you can export your data for 30 days before it is permanently de
 
 These Terms are governed by the laws of New South Wales, Australia. You and we submit to the non-exclusive jurisdiction of the courts of New South Wales.
 
-If you have a complaint, please contact us first at **support@monitrax.com.au**. We aim to acknowledge complaints within 5 business days and resolve them within 30 days. For unresolved disputes, you may have rights to refer the matter to the Australian Financial Complaints Authority (AFCA), the Office of the Australian Information Commissioner (OAIC), or another relevant body — see the **Privacy Policy** and our **CDR Complaints Policy** for the relevant pathways.
+If you have a complaint, please contact us first at **admin@monitrax.com.au**. We aim to acknowledge complaints within 5 business days and resolve them within 30 days. For unresolved disputes, you may have rights to refer the matter to the Australian Financial Complaints Authority (AFCA), the Office of the Australian Information Commissioner (OAIC), or another relevant body — see the **Privacy Policy** and our **CDR Complaints Policy** for the relevant pathways.
 
 ---
 
 ## 14. Contact
 
-ReNew Group Pty Ltd
-ACN: [TO BE INSERTED]
-Email: support@monitrax.com.au
-Postal: [TO BE INSERTED]
+ReNew Holding Company Pty Ltd
+ACN: 675 267 311
+Email: admin@monitrax.com.au
+Postal: 10 Fairview St, Guildford NSW 2161, Australia
 
 ---
 

@@ -39,6 +39,7 @@ import {
   HeartHandshake,
   Sparkles,
   Link as LinkIcon,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -129,6 +130,12 @@ const settingsNavGroups: SettingsNavGroup[] = [
         href: '/dashboard/settings/privacy',
         icon: Lock,
         description: 'Consent, data export, right to erasure',
+      },
+      {
+        name: 'Legal',
+        href: '/dashboard/settings/legal',
+        icon: FileText,
+        description: 'Documents you accepted + consent record',
       },
     ],
   },
