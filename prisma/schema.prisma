@@ -412,6 +412,18 @@ enum AuditAction {
   ASSET_CREATED
   ASSET_UPDATED
   ASSET_DELETED
+
+  // Phase 47: Signup consent + legal-document acceptance.
+  // Every consent tick + revocation captured as an immutable audit row.
+  // CLAUDE.md §13.3 — metadata field-names only (documentType + documentVersion +
+  // consentSource); never the raw IP (we store a SHA-256 hash on UserConsent
+  // for forensic correlation without exposing the principal directly).
+  CONSENT_TERMS_ACCEPTED
+  CONSENT_PRIVACY_ACCEPTED
+  CONSENT_AFSL_ACKNOWLEDGED
+  CONSENT_MARKETING_OPTED_IN
+  CONSENT_MARKETING_OPTED_OUT
+  CONSENT_DOCUMENT_VERSION_REACCEPTED
 }
 
 enum AuditStatus {
@@ -1162,6 +1174,9 @@ model User {
   debtPlans          DebtPlan[]
   investmentAccounts InvestmentAccount[]
   assets             Asset[] // Phase 21: Personal assets
+
+  // Phase 47: Signup consent + legal-document acceptance (CLAUDE.md §13, Privacy Act APP 5)
+  consents           UserConsent[]
 
   // Phase 10: Auth & Security
   organizationMemberships OrganizationMember[]
@@ -6576,3 +6591,72 @@ model CalcAuditFinding {
   @@index([resolution, severity])
   @@map("calc_audit_findings")
 }
+
+// ============================================================================
+// Phase 47 — Signup consent + legal-document acceptance
+// ----------------------------------------------------------------------------
+// Tracks every legal-document acceptance + marketing opt-in. One row per
+// (user, documentType, documentVersion, acceptedAt). History is preserved on
+// re-acceptance after a version bump (the prior row is NOT updated; a new row
+// is inserted) so the audit trail is point-in-time correct for any ASIC/OAIC
+// later request. Marketing consent is the only revocable type — non-marketing
+// consents (ToS / Privacy / AFSL acknowledgement) cannot be revoked while the
+// user continues to use the service (deletion is the only revocation path,
+// handled via the §13.2 right-to-erasure flow).
+//
+// Privacy Act APP 5 + CDR Privacy Safeguard 5 alignment: at the point of
+// collection, the user accepts the linked documents; the version pinned here
+// is the version of the doc the user saw at the moment of consent.
+//
+// IP address is stored as SHA-256 hash, not raw. Allows forensic
+// correlation against access logs without holding the principal.
+// User-agent is truncated to the leading 500 chars.
+//
+// CLAUDE.md §13.3 audit-everything rule: every consent row + revocation
+// also writes an AuditLog row with the matching CONSENT_* AuditAction.
+// ============================================================================
+
+model UserConsent {
+  id              String              @id @default(uuid())
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentType    ConsentDocumentType
+  documentVersion String // e.g., "v1.0-2026-05-24" — pinned to the version the user saw
+  acceptedAt      DateTime            @default(now())
+  ipAddressHash   String? // SHA-256 of the IP; never the raw IP
+  userAgent       String? // leading 500 chars max
+  consentSource   ConsentSource
+
+  // Revocation lifecycle — only meaningful for MARKETING_COMMUNICATIONS.
+  // ToS / Privacy / AFSL acknowledgements remain valid for the document
+  // version pinned above; a "revocation" of those = the user must delete
+  // their account (handled via deletionRequestedAt on User).
+  revokedAt     DateTime?
+  revokedReason String? // free-text user-supplied reason; truncated 500 chars
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, documentType])
+  @@index([acceptedAt])
+  @@index([documentType, documentVersion])
+  @@map("user_consents")
+}
+
+enum ConsentDocumentType {
+  TERMS_OF_SERVICE
+  PRIVACY_POLICY
+  AFSL_BOUNDARY_DISCLOSURE
+  MARKETING_COMMUNICATIONS
+  // CDR_DATA_COLLECTION is intentionally NOT collected at signup — CDR Rules
+  // require explicit, granular, time-limited consent at the bank-connection
+  // moment (CDRConsent model already handles this).
+}
+
+enum ConsentSource {
+  SIGNUP // tick captured during email/password registration form submit
+  OAUTH_SIGNUP // tick captured before OAuth redirect (Google / Apple / etc.)
+  EXISTING_USER_MIGRATION // captured via the next-login modal when an existing user has no current consent row
+  SETTINGS_UPDATE // user toggled an opt-in setting from /dashboard/settings/legal
+  VERSION_REACCEPT // captured via the version-bump re-prompt
+}
+

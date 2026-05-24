@@ -12,8 +12,9 @@ const footerLinks = {
     { label: 'Changelog', href: '/changelog' },
   ],
   legal: [
-    { label: 'Terms', href: '/legal/terms' },
-    { label: 'Privacy', href: '/legal/privacy' },
+    { label: 'Terms', href: '/legal/terms-of-service' },
+    { label: 'Privacy', href: '/legal/privacy-policy' },
+    { label: 'AFSL', href: '/legal/afsl-boundary-disclosure' },
     { label: 'Security', href: '/security' },
   ],
   company: [

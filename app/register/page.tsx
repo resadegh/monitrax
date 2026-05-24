@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { getAuth } from 'firebase/auth';
 
 interface AvailableProviders {
   google: boolean;
@@ -22,6 +24,13 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Phase 47 — Signup consent (CLAUDE.md §13, Privacy Act APP 5, Spam Act).
+  // Mandatory bundle: Terms + Privacy + AFSL Boundary acknowledgement.
+  // Optional: marketing communications (Spam Act requires explicit, unbundled
+  // opt-in; default OFF).
+  const [acceptedBundle, setAcceptedBundle] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [availableProviders, setAvailableProviders] = useState<AvailableProviders>({
     google: false,
     facebook: false,
@@ -54,9 +63,48 @@ export default function RegisterPage() {
     }
   }, [isGCPEnabled]);
 
+  /**
+   * Phase 47 — POST consent to /api/auth/consent immediately after a
+   * successful Firebase signup. The Firebase user must exist (currentUser
+   * non-null) for this to succeed; the API endpoint is idempotent so a
+   * retried call after a network blip is safe.
+   */
+  const captureConsent = async (consentSource: 'SIGNUP' | 'OAUTH_SIGNUP') => {
+    const fbUser = getAuth().currentUser;
+    if (!fbUser) {
+      // Should not happen — Firebase signup just succeeded — but if it does,
+      // surface so the user re-tries rather than silently bypassing consent.
+      throw new Error('Authentication state not ready — please retry.');
+    }
+    const idToken = await fbUser.getIdToken();
+    const res = await fetch('/api/auth/consent', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        termsAccepted: true,
+        privacyAccepted: true,
+        afslAcknowledged: true,
+        marketingOptIn,
+        consentSource,
+      }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({} as { error?: { message?: string } }));
+      throw new Error(body.error?.message ?? 'Could not record your consent — please retry.');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!acceptedBundle) {
+      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL Boundary Disclosure.');
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
@@ -72,6 +120,7 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, name);
+      await captureConsent('SIGNUP');
       router.push('/dashboard');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -82,14 +131,23 @@ export default function RegisterPage() {
 
   const handleGoogleSignUp = async () => {
     setError('');
+
+    if (!acceptedBundle) {
+      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL Boundary Disclosure.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       if (isGCPEnabled) {
         await loginWithGoogle();
+        await captureConsent('OAUTH_SIGNUP');
         router.push('/dashboard');
       } else {
-        // Legacy: redirect to server-side OAuth
+        // Legacy: redirect to server-side OAuth.
+        // Note: consent capture deferred — the legacy flow doesn't return to
+        // this page after OAuth. Migration prompt (PR 2) will catch this case.
         window.location.href = '/api/auth/oauth/google';
       }
     } catch (err) {
@@ -163,7 +221,8 @@ export default function RegisterPage() {
               variant="outline"
               className="w-full mb-4"
               onClick={handleGoogleSignUp}
-              disabled={isLoading}
+              disabled={isLoading || !acceptedBundle}
+              title={!acceptedBundle ? 'Confirm the legal documents below first' : undefined}
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -241,7 +300,51 @@ export default function RegisterPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            {/* Phase 47 — Signup consent block (CLAUDE.md §13, Privacy Act APP 5, Spam Act).
+              * Mandatory bundle: gates BOTH the email/password submit AND the OAuth button above.
+              * Optional marketing opt-in: separate tick (Spam Act unbundling rule), default OFF.
+              * Acceptance is captured server-side via POST /api/auth/consent (audit-trailed).
+              */}
+            <div className="space-y-3 rounded-lg border border-stone-200 bg-stone-50 p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  id="acceptedBundle"
+                  checked={acceptedBundle}
+                  onCheckedChange={(v) => setAcceptedBundle(v === true)}
+                  disabled={isLoading}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-stone-700 leading-relaxed">
+                  I have read and agree to Monitrax's{' '}
+                  <Link href="/legal/terms-of-service" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Terms of Service
+                  </Link>
+                  ,{' '}
+                  <Link href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    Privacy Policy
+                  </Link>
+                  , and{' '}
+                  <Link href="/legal/afsl-boundary-disclosure" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    AFSL Boundary Disclosure
+                  </Link>
+                  . I understand Monitrax does not hold an AFSL and does not provide personal financial advice.
+                </span>
+              </label>
+              <label className="flex items-start gap-3 cursor-pointer">
+                <Checkbox
+                  id="marketingOptIn"
+                  checked={marketingOptIn}
+                  onCheckedChange={(v) => setMarketingOptIn(v === true)}
+                  disabled={isLoading}
+                  className="mt-0.5"
+                />
+                <span className="text-sm text-stone-600 leading-relaxed">
+                  Optional — send me occasional emails about new features, tips, and Australian financial updates. You can unsubscribe any time.
+                </span>
+              </label>
+            </div>
+
+            <Button type="submit" className="w-full" disabled={isLoading || !acceptedBundle}>
               {isLoading ? (
                 <>
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
@@ -254,14 +357,11 @@ export default function RegisterPage() {
           </form>
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            By creating an account you agree to our{' '}
-            <Link href="/legal/terms" className="text-primary hover:underline">
-              Terms of Service
-            </Link>{' '}
-            and{' '}
-            <Link href="/legal/privacy" className="text-primary hover:underline">
+            Your information is collected and handled in accordance with our{' '}
+            <Link href="/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
               Privacy Policy
-            </Link>
+            </Link>{' '}
+            (Privacy Act 1988 APPs + CDR Privacy Safeguards where applicable).
           </p>
         </div>
       </div>
