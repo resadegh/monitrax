@@ -41,6 +41,7 @@ import { prisma } from '@/lib/db';
 import { getCurrentDocumentVersion } from '@/lib/legal/content';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { extractRequestMeta } from '@/lib/audit/logger';
+import { emitFriendliesEvent } from '@/lib/webhooks/n8n';
 
 // Acceptable consent sources for THIS endpoint. SETTINGS_UPDATE and
 // VERSION_REACCEPT are also valid `ConsentSource` enum values but they're
@@ -206,6 +207,27 @@ export async function POST(request: NextRequest) {
           metadata: { documentVersion: marketingVersion, consentSource: body.consentSource },
         }).catch(() => undefined);
         created.push('MARKETING_COMMUNICATIONS');
+      }
+    }
+
+    // Phase 47.66 — Emit user.signup to n8n friendlies-tracker workflow on
+    // the actual signup flows only (NOT existing-user migration prompts).
+    // Fire-and-forget; never blocks the API response. The n8n workflow
+    // looks up the email against Airtable Contacts, and if tagged `friendly`,
+    // advances Friendly stage Invited → Signed up + writes an Activity row.
+    if (
+      (body.consentSource === 'SIGNUP' || body.consentSource === 'OAUTH_SIGNUP') &&
+      created.includes('TERMS_OF_SERVICE') // only on first signup, not re-acceptance
+    ) {
+      const userEmail = authReq.user?.email;
+      if (userEmail) {
+        emitFriendliesEvent({
+          event: 'user.signup',
+          userId,
+          email: userEmail,
+          timestamp: new Date().toISOString(),
+          metadata: { consentSource: body.consentSource },
+        });
       }
     }
 
