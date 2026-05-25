@@ -63,6 +63,7 @@ export default async function LegalDocumentPage({ params }: PageProps) {
             <Link href="/legal/terms-of-service" className="hover:text-stone-900">Terms</Link>
             <Link href="/legal/privacy-policy" className="hover:text-stone-900">Privacy</Link>
             <Link href="/legal/afsl-credit-tax-boundary-disclosure" className="hover:text-stone-900">AFSL</Link>
+            <Link href="/legal" className="hover:text-stone-900 font-medium">All documents →</Link>
           </nav>
         </div>
       </header>

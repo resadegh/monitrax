@@ -72,6 +72,27 @@ const LEGAL_DOCS: LegalDoc[] = [
   },
 ];
 
+/**
+ * Supporting policy documents — not consent-captured but incorporated by
+ * reference in the Terms. Mirrors the `supporting` entries in
+ * `lib/legal/content.ts` LEGAL_DOCUMENTS. Hardcoded here because this is
+ * a client component and the loader is server-only; the list rarely
+ * changes and getting out of sync only affects link presentation
+ * (no functional dependency).
+ */
+const SUPPORTING_DOCS: Array<{ slug: string; label: string; summary: string }> = [
+  { slug: 'cdr-policy', label: 'Consumer Data Right Policy', summary: 'How Monitrax handles CDR data when Open Banking features are enabled.' },
+  { slug: 'cdr-consent-collection-notice-template', label: 'CDR Consent Collection Notice', summary: 'Website and in-app copy for the bank connection consent step.' },
+  { slug: 'subscription-and-billing-terms', label: 'Subscription and Billing Terms', summary: 'Subscription, billing, trial, cancellation, refund, and payment terms.' },
+  { slug: 'ai-use-disclosure', label: 'AI Use Disclosure', summary: 'How Monitrax uses AI-assisted features and what to understand before relying on AI outputs.' },
+  { slug: 'cookie-notice', label: 'Cookie Notice', summary: 'How Monitrax uses cookies and similar technologies.' },
+  { slug: 'complaints-policy', label: 'Complaints Policy', summary: 'How to make complaints about Monitrax — privacy, CDR, billing, or service.' },
+  { slug: 'professional-marketplace-terms', label: 'Professional Marketplace Terms', summary: 'Terms when Monitrax connects you with third-party professionals.' },
+  { slug: 'data-retention-and-deletion-schedule', label: 'Data Retention and Deletion Schedule', summary: 'How Monitrax retains, deletes, and de-identifies data.' },
+  { slug: 'security-statement', label: 'Security Statement', summary: 'High-level summary of Monitrax\'s security approach.' },
+  { slug: 'acceptable-use-policy', label: 'Website Acceptable Use Policy', summary: 'Rules for using Monitrax website, platform, messaging, marketplace, and community features.' },
+];
+
 export default function SettingsLegalPage() {
   const { token } = useAuth();
   const [status, setStatus] = useState<ConsentStatus | null>(null);
@@ -266,6 +287,40 @@ export default function SettingsLegalPage() {
             onCheckedChange={(v) => toggleMarketing(v === true)}
           />
         </div>
+      </section>
+
+      {/* Supporting policies */}
+      <section>
+        <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground/70 mb-3">
+          Other policies
+        </h3>
+        <p className="text-sm text-stone-600 mb-3">
+          These documents form part of how Monitrax operates and are incorporated by reference in the Terms of Service. Some apply only when you use a specific feature (Open Banking, paid subscription, marketplace, etc.).
+        </p>
+        <div className="rounded-lg border border-stone-200 bg-stone-50 divide-y divide-stone-200">
+          {SUPPORTING_DOCS.map((doc) => (
+            <Link
+              key={doc.slug}
+              href={`/legal/${doc.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-start justify-between gap-4 p-4 hover:bg-stone-100 transition-colors"
+            >
+              <div className="flex-1">
+                <div className="font-medium text-stone-900">{doc.label}</div>
+                <p className="text-sm text-stone-600 mt-1">{doc.summary}</p>
+              </div>
+              <ExternalLink className="h-4 w-4 text-stone-400 flex-shrink-0 mt-1" />
+            </Link>
+          ))}
+        </div>
+        <p className="text-xs text-stone-500 mt-3">
+          See all documents at{' '}
+          <Link href="/legal" target="_blank" rel="noopener noreferrer" className="underline">
+            /legal
+          </Link>
+          .
+        </p>
       </section>
 
       {/* Download record */}
