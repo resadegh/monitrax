@@ -221,7 +221,13 @@ export async function POST(request: NextRequest) {
     ) {
       const userEmail = authReq.user?.email;
       if (userEmail) {
-        emitFriendliesEvent({
+        // Awaited (not fire-and-forget) — Vercel serverless functions kill
+        // the process when the response returns, which silently drops
+        // in-flight fetches. The helper's 4s timeout caps the worst-case
+        // response latency; typical case is sub-second because n8n's
+        // responseMode is 'onReceived' (returns 200 immediately, processes
+        // async).
+        await emitFriendliesEvent({
           event: 'user.signup',
           userId,
           email: userEmail,
