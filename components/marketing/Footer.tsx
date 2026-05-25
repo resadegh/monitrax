@@ -38,7 +38,7 @@ export function Footer() {
                 <span className="text-xl font-bold text-white">Monitrax</span>
               </Link>
               <p className="mt-4 text-sm text-white/60">
-                The Australian wealth operating system for property investors and wealth builders.
+                Australian financial software for wealth-builders who want to see the whole picture.
               </p>
             </div>
 

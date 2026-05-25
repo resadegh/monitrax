@@ -176,11 +176,11 @@ export default function RegisterPage() {
             <span className="text-2xl font-bold">Monitrax</span>
           </Link>
           <h1 className="text-3xl font-bold mb-4">
-            Start building your wealth today.
+            See the full picture behind your wealth.
           </h1>
           <p className="text-muted-foreground text-lg">
-            Track properties, loans, investments and cash in one place.
-            Make smarter decisions with Australian-aware forecasts.
+            Property, loans, super, investments and cashflow in one clear
+            view — so the next move is informed, not guessed.
           </p>
         </div>
       </div>
