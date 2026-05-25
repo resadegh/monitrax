@@ -54,12 +54,21 @@ export type N8nFriendliesEvent =
 const WEBHOOK_TIMEOUT_MS = 4000;
 
 /**
- * Fire-and-forget signed webhook to n8n.
+ * Fire-on-stack signed webhook to n8n.
  *
- * Returns immediately. Errors are logged but not thrown — the helper exists
- * to emit signals, not to block user-facing flows on n8n availability.
+ * Awaits the fetch so the underlying Vercel serverless function stays
+ * alive until n8n responds. Without this, the function returns the API
+ * response, Vercel kills the process, and the in-flight fetch is
+ * silently dropped — the original fire-and-forget design was incompatible
+ * with serverless lifecycle. Trade-off: adds ~300-500ms to the calling
+ * API response in the success case (n8n's `responseMode: 'onReceived'`
+ * returns 200 almost instantly), up to 4s worst-case (timeout). For
+ * signup + feedback flows this latency is imperceptible.
+ *
+ * Errors are logged but never thrown — the caller's flow must not depend
+ * on n8n availability.
  */
-export function emitFriendliesEvent(event: N8nFriendliesEvent): void {
+export async function emitFriendliesEvent(event: N8nFriendliesEvent): Promise<void> {
   const url = process.env.N8N_WEBHOOK_URL;
   const secret = process.env.N8N_WEBHOOK_SECRET;
 
@@ -74,39 +83,42 @@ export function emitFriendliesEvent(event: N8nFriendliesEvent): void {
   // helper unless the env vars are explicitly set.
   if (!url || !secret) return;
 
-  // Build the signed payload synchronously so we don't await anything before
-  // returning to the caller.
+  // Build the signed payload.
   const body = JSON.stringify(event);
   const signature = crypto.createHmac('sha256', secret).update(body).digest('hex');
 
-  // Fire-and-forget. Promise floats; .catch swallows.
+  // Await the fetch with a 4-second hard timeout. Vercel's serverless
+  // function lifetime extends to cover this; we don't need waitUntil/
+  // unstable_after because the caller awaits us.
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), WEBHOOK_TIMEOUT_MS);
 
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Monitrax-Event': event.event,
-      'X-Monitrax-Signature': signature,
-    },
-    body,
-    signal: controller.signal,
-  })
-    .then((res) => {
-      clearTimeout(timeout);
-      if (!res.ok) {
-        // Don't throw; just log. The caller's flow must not depend on this.
-        console.warn(
-          `[n8n-webhook] ${event.event} → ${res.status} ${res.statusText} (user ${event.userId})`
-        );
-      }
-    })
-    .catch((err: unknown) => {
-      clearTimeout(timeout);
-      console.warn(
-        `[n8n-webhook] ${event.event} → error (user ${event.userId}):`,
-        err instanceof Error ? err.message : err
-      );
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Monitrax-Event': event.event,
+        'X-Monitrax-Signature': signature,
+      },
+      body,
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.warn(
+        `[n8n-webhook] ${event.event} → ${res.status} ${res.statusText} (user ${event.userId})`
+      );
+    } else {
+      console.log(
+        `[n8n-webhook] ${event.event} → ${res.status} OK (user ${event.userId})`
+      );
+    }
+  } catch (err: unknown) {
+    clearTimeout(timeout);
+    console.warn(
+      `[n8n-webhook] ${event.event} → error (user ${event.userId}):`,
+      err instanceof Error ? err.message : err
+    );
+  }
 }
