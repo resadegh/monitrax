@@ -143,3 +143,44 @@ https://claude.ai/code/session_01Hg6AjgrLHPuKEQGbfmEqBw
 4. **n8n UI fixes (Reza-side, ~1 min):** Email-wipe + Feedback Given casing — see Tech Debt #24.
 
 https://claude.ai/code/session_01Hg6AjgrLHPuKEQGbfmEqBw
+
+---
+
+## Session: stitch-skills auto-install in cloud sessions
+
+### Changes Made
+
+- **Type:** Chore (operational tooling)
+- **Scope:** `.claude/hooks/session-start.sh`
+- **Root Cause:** Project `.claude/settings.json` declares the `google-labs-code/stitch-skills` marketplace + `enabledPlugins`, but every fresh cloud container starts with an empty `~/.claude/plugins/cache/`. Claude Code on the web doesn't auto-fetch the plugin payload from `extraKnownMarketplaces` alone — without the cached SKILL.md files, the `/stitch-*` slash commands silently don't register. Result: cold cloud sessions never see Stitch skills, even though the config implies they should.
+- **Solution:** Extended the existing SessionStart hook to run `npx plugins add google-labs-code/stitch-skills --scope project --target claude-code` when `~/.claude/plugins/cache/google-labs-code-stitch-skills` is missing. Idempotent (skips on session resume when the dir exists). Non-fatal on failure (logs and continues — never blocks session startup). Also restructured the hook so MCP registration and skills install are sequential independent blocks rather than a single fail-early `set -e` chain.
+
+### Files Modified
+
+- `.claude/hooks/session-start.sh` — added stitch-skills install block; restructured MCP block to be skip-on-failure consistent with the new block.
+
+### Trade-offs
+
+- Cold cloud sessions add ~10–30s for the `npx plugins add` fetch on first start. Warm/resume sessions skip via the directory existence check.
+- Runs npm-fetched third-party code (`plugins` package + `google-labs-code/stitch-skills` clone) on every cold container. Low risk (Google org, public repo), but it is execution at startup — documented here so future operators know what the hook does and why.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (cold-container plugin-cache gap; hook now hydrates it)
+- [ ] strategic decision
+
+Docs updated in this commit:
+- `docs/changelog/CHANGELOG_2026_05_25.md` — this entry
+- `.claude/hooks/session-start.sh` — file-header now documents both responsibilities + the cold-container rationale (the operational note for future sessions reading the hook)
+
+### Verification
+
+- `bash -n .claude/hooks/session-start.sh` — syntax OK
+- Runtime verification deferred to next cold cloud session (Reza confirms `/stitch-design:*`, `/stitch-build:*`, `/stitch-utilities:*` appear in the available-skills list)
