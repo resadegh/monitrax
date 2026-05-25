@@ -5,7 +5,7 @@
  *
  * Mounted in `DashboardLayout` so it fires for any authenticated user who
  * lacks current-version consent for the mandatory bundle (Terms / Privacy /
- * AFSL Boundary Disclosure). Typical case: a friendly who signed up before
+ * AFSL, Credit and Tax Boundary Disclosure). Typical case: a friendly who signed up before
  * Phase 47 PR 1 shipped the consent flow.
  *
  * Behaviour:
@@ -85,7 +85,7 @@ export function ConsentMigrationModal() {
   const handleSubmit = async () => {
     if (!token) return;
     if (!acceptedBundle) {
-      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL Boundary Disclosure.');
+      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL, Credit and Tax Boundary Disclosure.');
       return;
     }
     setSubmitting(true);
@@ -157,8 +157,8 @@ export function ConsentMigrationModal() {
                   Privacy Policy
                 </Link>
                 , and{' '}
-                <Link href="/legal/afsl-boundary-disclosure" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                  AFSL Boundary Disclosure
+                <Link href="/legal/afsl-credit-tax-boundary-disclosure" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  AFSL, Credit and Tax Boundary Disclosure
                 </Link>
                 . I understand Monitrax does not hold an AFSL and does not provide personal financial advice.
               </span>

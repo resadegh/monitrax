@@ -56,7 +56,7 @@ const BodySchema = z.object({
     errorMap: () => ({ message: 'You must accept the Privacy Policy to proceed.' }),
   }),
   afslAcknowledged: z.literal(true, {
-    errorMap: () => ({ message: 'You must acknowledge the AFSL Boundary Disclosure to proceed.' }),
+    errorMap: () => ({ message: 'You must acknowledge the AFSL, Credit and Tax Boundary Disclosure to proceed.' }),
   }),
   marketingOptIn: z.boolean().default(false),
   consentSource: z.enum(SIGNUP_CONSENT_SOURCES).default('SIGNUP'),

@@ -38,22 +38,106 @@ export interface LegalDocument {
  * Canonical registry of public-facing legal documents.
  * Maps the URL slug → markdown filename in `docs/legal/`.
  *
- * The `consentDocumentType` aligns to the Prisma `ConsentDocumentType` enum
- * — used by the signup consent capture endpoint to record acceptance against
- * the right enum value.
+ * Two categories:
+ *   - `mandatory` — the 3 documents the user MUST tick at signup
+ *     (Terms / Privacy / AFSL). Each has a `consentDocumentType` mapped
+ *     to the Prisma `ConsentDocumentType` enum so signup capture +
+ *     migration-modal version-comparison work.
+ *   - `supporting` — additional policies that exist to be readable +
+ *     linkable but are NOT consent-captured at signup. The Terms of
+ *     Service incorporates them by reference ("These Terms should be
+ *     read together with our: Privacy Policy; AFSL...; CDR Policy;
+ *     any subscription, trial, pricing, or plan terms"). Some of them
+ *     attach to situational moments (CDR Policy → bank-connect flow;
+ *     Subscription & Billing Terms → checkout; Marketplace Terms →
+ *     marketplace use; AI Use Disclosure → AI advisor surface). Linking
+ *     them just-in-time from those surfaces is the right pattern;
+ *     bundling 13 ticks at signup is a conversion + UX failure.
+ *
+ * Adding a NEW supporting doc:
+ *   1. Drop the markdown file under `docs/legal/`.
+ *   2. Add an entry below with `category: 'supporting'` and `consentDocumentType: null`.
+ *   3. The `/legal/<slug>` route auto-generates; the `/legal` index page
+ *      auto-lists it under "Other policies".
+ *
+ * Adding a NEW mandatory doc (rare — changes consent UX):
+ *   1. Add a new Prisma `ConsentDocumentType` enum value + migration.
+ *   2. Add an entry below with the matching `consentDocumentType` +
+ *      `category: 'mandatory'`.
+ *   3. Update the register page + ConsentMigrationModal copy to include
+ *      the new doc in the bundled tick label.
+ *   4. Update `app/api/auth/consent/route.ts` to write a row for the
+ *      new type + emit a matching audit event.
  */
+
 export const LEGAL_DOCUMENTS = {
+  // ── Mandatory (consent-captured at signup) ──────────────────────────
   'terms-of-service': {
     file: 'terms-of-service.md',
     consentDocumentType: 'TERMS_OF_SERVICE' as const,
+    category: 'mandatory' as const,
   },
   'privacy-policy': {
     file: 'privacy-policy.md',
     consentDocumentType: 'PRIVACY_POLICY' as const,
+    category: 'mandatory' as const,
   },
-  'afsl-boundary-disclosure': {
-    file: 'afsl-boundary-disclosure.md',
+  'afsl-credit-tax-boundary-disclosure': {
+    file: 'afsl-credit-tax-boundary-disclosure.md',
     consentDocumentType: 'AFSL_BOUNDARY_DISCLOSURE' as const,
+    category: 'mandatory' as const,
+  },
+
+  // ── Supporting (public + readable; not consent-captured) ────────────
+  'cdr-policy': {
+    file: '04_cdr_policy.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'cdr-consent-collection-notice-template': {
+    file: '05_cdr_consent_notice_template.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'subscription-and-billing-terms': {
+    file: '06_subscription_and_billing_terms.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'ai-use-disclosure': {
+    file: '07_ai_use_disclosure.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'cookie-notice': {
+    file: '08_cookie_notice.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'complaints-policy': {
+    file: '09_complaints_policy.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'professional-marketplace-terms': {
+    file: '10_professional_marketplace_terms.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'data-retention-and-deletion-schedule': {
+    file: '11_data_retention_and_deletion_schedule.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'security-statement': {
+    file: '12_security_statement.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
+  },
+  'acceptable-use-policy': {
+    file: '13_website_acceptable_use_policy.md',
+    consentDocumentType: null,
+    category: 'supporting' as const,
   },
 } as const;
 
@@ -103,6 +187,22 @@ export function listLegalDocuments(): Array<{ slug: LegalSlug; frontmatter: Lega
     if (!doc) throw new Error(`Missing legal document: ${slug}`);
     return { slug, frontmatter: doc.frontmatter };
   });
+}
+
+/**
+ * Returns the documents grouped into `mandatory` (the 3 signup-tick docs)
+ * and `supporting` (the rest). Used by the `/legal` index page and the
+ * Settings → Legal "Other policies" section.
+ */
+export function listLegalDocumentsByCategory(): {
+  mandatory: Array<{ slug: LegalSlug; frontmatter: LegalDocumentFrontmatter }>;
+  supporting: Array<{ slug: LegalSlug; frontmatter: LegalDocumentFrontmatter }>;
+} {
+  const all = listLegalDocuments();
+  return {
+    mandatory: all.filter((d) => LEGAL_DOCUMENTS[d.slug].category === 'mandatory'),
+    supporting: all.filter((d) => LEGAL_DOCUMENTS[d.slug].category === 'supporting'),
+  };
 }
 
 /**

@@ -102,7 +102,7 @@ export default function RegisterPage() {
     setError('');
 
     if (!acceptedBundle) {
-      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL Boundary Disclosure.');
+      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL, Credit and Tax Boundary Disclosure.');
       return;
     }
 
@@ -133,7 +133,7 @@ export default function RegisterPage() {
     setError('');
 
     if (!acceptedBundle) {
-      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL Boundary Disclosure.');
+      setError('Please confirm you have read and agree to the Terms, Privacy Policy, and AFSL, Credit and Tax Boundary Disclosure.');
       return;
     }
 
@@ -324,8 +324,8 @@ export default function RegisterPage() {
                     Privacy Policy
                   </Link>
                   , and{' '}
-                  <Link href="/legal/afsl-boundary-disclosure" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                    AFSL Boundary Disclosure
+                  <Link href="/legal/afsl-credit-tax-boundary-disclosure" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                    AFSL, Credit and Tax Boundary Disclosure
                   </Link>
                   . I understand Monitrax does not hold an AFSL and does not provide personal financial advice.
                 </span>

@@ -13,7 +13,7 @@ Run this playbook whenever you need to publish a **material change** to any of t
 
 - `docs/legal/terms-of-service.md`
 - `docs/legal/privacy-policy.md`
-- `docs/legal/afsl-boundary-disclosure.md`
+- `docs/legal/afsl-credit-tax-boundary-disclosure.md`
 
 A "material change" is anything that:
 
