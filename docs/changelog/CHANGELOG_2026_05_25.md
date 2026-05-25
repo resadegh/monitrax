@@ -76,3 +76,70 @@ A third item is also tracked: **HMAC verification disabled** in the workflow's C
 6. **Future hardening:** re-enable HMAC verification when SSH access to Hetzner is acquired.
 
 https://claude.ai/code/session_01Hg6AjgrLHPuKEQGbfmEqBw
+
+---
+
+## Session: Phase 46 PR 1 — /wealth-check pre-signup hook
+
+### Changes Made
+
+- **Type:** Feature (new public-facing surface — anonymous + traffic-OFF until gates)
+- **Scope:** New route `app/wealth-check/*`, new `lib/wealthCheck/*` engine module, new `lib/marketing/benchmarks.ts` SSOT, new Phase 46 design doc.
+- **Why:** Reza directive (2026-05-24, Up Next #68) — `/wealth-check` is the "make or break" public funnel surface. Three-input estimator (age + household income + net-worth band) returns dollar-specific retirement-gap + ABS percentile + one named lever, in under 30 seconds.
+
+### Files Created
+
+- `docs/blueprint/PHASE_46_WEALTH_CHECK_HOOK.md` — full 14-section design spec covering purpose, calc algorithm, benchmark SSOT, lever logic, AFSL boundary, traffic-on gates, and the 4-PR sequence.
+- `lib/marketing/benchmarks.ts` — public-benchmark SSOT. Four canonical sources (ASFA, ABS, ATO, APRA) with citations + last-refresh dates + next-refresh triggers. Yearly minimum refresh trigger: new ASFA Q2 release.
+- `lib/wealthCheck/types.ts` — shared types for the calc + lever + page.
+- `lib/wealthCheck/calculator.ts` — pure-function calc engine. 12-step algorithm: bucket age → estimate current super (ATO median, clamped) → project both super + non-super to 67 → compare against ASFA baseline AND 70%-income-replacement lifestyle target → return gap + percentile + surfaced assumptions.
+- `lib/wealthCheck/lever.ts` — age-band branched lever selector with AFSL discipline (no product names, mechanism-only framing, "speak to your accountant" handoff for catch-up).
+- `app/wealth-check/page.tsx` — client component, 3-input form ↔ result page with `AnimatePresence` transition. Form uses sliders for age/income + radio-band picker for net worth. Result shows hero gap → percentile context → ONE lever → assumptions panel (collapsed) → CTA → AFSL boundary footer.
+- `app/wealth-check/layout.tsx` — `robots: noindex, nofollow` metadata until traffic-on gates land (PHASE_46 §10).
+
+### Key Architectural Decisions (captured in PHASE_46 doc)
+
+1. **Lever logic = branch by age band** (Reza pick): <40 salary-sacrifice; 40-54 super+debt; 55+ catch-up with eligibility check against $500k TSB threshold + s292-85.
+2. **Benchmark SSOT = JSON-in-TS file** (Reza pick): yearly refresh trigger documented inline; same pattern as `lib/tax-engine/config/taxYearConfig.ts`.
+3. **Email capture deferred to PR 3** (Reza pick): PR 1 ships scaffold + calc only.
+4. **PR scope = full PR 1** (Reza pick): doc + page + calc + lever + benchmarks in one PR.
+
+### Calc Sanity-Check (5 archetype cases run via tsx)
+
+| Case | Projected at 67 | Lifestyle target | Gap | Lever |
+|---|---|---|---|---|
+| 38yo, $145k single, $200-500k NW | $3.25m | $2.54m | $0 (on track) | "Set your own target" frame |
+| 28yo, $80k single, <$50k NW | $1.99m | $1.40m | $0 (SG-only is enough) | "Set your own target" frame |
+| 48yo, $200k couple, $500k-1m NW | $2.78m | $3.50m | **$725k** | Super top-up + debt paydown |
+| 58yo, $180k couple, $1m-2m NW | $2.61m | $3.15m | **$537k** | Catch-up contributions (~$30k FY) |
+| 45yo, $300k couple, $2m+ NW | $10.65m | $5.25m | $0 (way past) | "Set your own target" frame |
+
+**Key insight surfaced by the sanity check:** ASFA "comfortable" ($595k single / $690k couple) is so easily met by the AU compulsory super system over 30+ year horizons that the wealth-builder ICP sails past it. The meaningful gap for this audience is against **70% income-replacement × 25** (4% safe-withdrawal rule). ASFA is shown as context only ("comfortable is in the bag"). This is the honest product wedge: "what does it take to MAINTAIN your lifestyle, not just be 'comfortable'?"
+
+### Build Status
+
+- [x] TypeScript: PASS (only pre-existing TS6 baseUrl deprecation warning)
+- [x] Spot-check via 5 archetype cases: PASS
+
+### Traffic-On Gates (PHASE_46 §10) — Still OFF
+
+- ✅ Gate A — PR 1 lands (this PR)
+- ⏳ Gate B — Friendlies cohort retention signal (workstream 0f) — ~2–4 weeks
+- ⏳ Gate C — Lawyer pass on result-page copy (Q-HOOK-AFSL) — ~2 weeks lead, runs in parallel with B
+- ⏳ Gate D — Q-DEC resolution if Phase 45 What If? composes same engines
+- ⏳ Gate E — PR 2 (analytics + sitemap) + PR 3 (email capture) + PR 4 (flip `robots` to index,follow)
+
+### Documentation Updated
+
+- `docs/IMPLEMENTATION_PLAN.md` — row #68 marked PR 1 SHIPPING with PR 2/3/4 sequence + traffic-on gates.
+- `docs/blueprint/PHASE_46_WEALTH_CHECK_HOOK.md` — new (this PR is the canonical spec).
+- `docs/changelog/CHANGELOG_2026_05_25.md` — this session entry (append).
+
+### What's Left After This Session
+
+1. **PR 2 (Phase 46) — analytics + shareable URL + SEO** (~1 day). 5 metrics from PHASE_46 §11; `?ref=<name>` personalisation; meta tags.
+2. **PR 3 (Phase 46) — email capture + Resend + PDF** (~1-2 days). Requires Q-HOOK-EMAIL resolved (Resend key live).
+3. **PR 4 (Phase 46) — traffic-on** (~1 day). Gated on Gate B + Gate C.
+4. **n8n UI fixes (Reza-side, ~1 min):** Email-wipe + Feedback Given casing — see Tech Debt #24.
+
+https://claude.ai/code/session_01Hg6AjgrLHPuKEQGbfmEqBw
