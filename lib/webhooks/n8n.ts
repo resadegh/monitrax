@@ -72,13 +72,6 @@ export async function emitFriendliesEvent(event: N8nFriendliesEvent): Promise<vo
   const url = process.env.N8N_WEBHOOK_URL;
   const secret = process.env.N8N_WEBHOOK_SECRET;
 
-  // DEBUG (Phase 47.66 — remove once env vars confirmed live in prod) — logs
-  // whether the helper was called and whether env vars are visible to the
-  // running build. Truthy "set" or "MISSING"; never logs the secret value.
-  console.log(
-    `[n8n-webhook] ${event.event} invoked. url=${url ? 'set(' + url.slice(0, 30) + ')' : 'MISSING'} secret=${secret ? 'set(' + secret.length + ' chars)' : 'MISSING'} userId=${event.userId}`
-  );
-
   // No-op when not configured. Local dev + tests are unaffected by this
   // helper unless the env vars are explicitly set.
   if (!url || !secret) return;
