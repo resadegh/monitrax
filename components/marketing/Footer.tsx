@@ -14,7 +14,7 @@ const footerLinks = {
   legal: [
     { label: 'Terms', href: '/legal/terms-of-service' },
     { label: 'Privacy', href: '/legal/privacy-policy' },
-    { label: 'AFSL', href: '/legal/afsl-boundary-disclosure' },
+    { label: 'AFSL', href: '/legal/afsl-credit-tax-boundary-disclosure' },
     { label: 'Security', href: '/security' },
   ],
   company: [

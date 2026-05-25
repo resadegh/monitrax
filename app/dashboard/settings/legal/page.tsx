@@ -66,9 +66,9 @@ const LEGAL_DOCS: LegalDoc[] = [
   },
   {
     key: 'afsl',
-    label: 'AFSL Boundary Disclosure',
-    slug: 'afsl-boundary-disclosure',
-    description: 'What Monitrax is — and importantly, what it is not — under Australian financial-services law.',
+    label: 'AFSL, Credit and Tax Boundary Disclosure',
+    slug: 'afsl-credit-tax-boundary-disclosure',
+    description: 'What Monitrax is — and importantly, what it is not — under Australian financial-services, credit, and tax-agent-services law.',
   },
 ];
 
@@ -298,7 +298,7 @@ export default function SettingsLegalPage() {
         </h3>
         <div className="rounded-lg border border-stone-200 bg-stone-50 p-4">
           <p className="text-sm text-stone-700">
-            To withdraw acceptance of the mandatory documents (Terms of Service / Privacy Policy / AFSL Boundary Disclosure), you'll need to delete your account. We handle deletion in accordance with our Privacy Policy and the CDR data lifecycle — there's a 30-day cancellable grace period.
+            To withdraw acceptance of the mandatory documents (Terms of Service / Privacy Policy / AFSL, Credit and Tax Boundary Disclosure), you'll need to delete your account. We handle deletion in accordance with our Privacy Policy and the CDR data lifecycle — there's a 30-day cancellable grace period.
           </p>
           <Link
             href="/dashboard/settings/security"

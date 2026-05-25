@@ -2,7 +2,7 @@
  * Phase 47 — Public legal-document page.
  *
  * Route: `/legal/<slug>` where slug ∈ {terms-of-service, privacy-policy,
- * afsl-boundary-disclosure}.
+ * afsl-credit-tax-boundary-disclosure}.
  *
  * Anonymous, no auth, statically generated at build. Linked from the
  * registration consent block + the in-app Settings → Legal page (PR 2).
@@ -62,7 +62,7 @@ export default async function LegalDocumentPage({ params }: PageProps) {
           <nav className="flex items-center gap-4 text-sm text-stone-500">
             <Link href="/legal/terms-of-service" className="hover:text-stone-900">Terms</Link>
             <Link href="/legal/privacy-policy" className="hover:text-stone-900">Privacy</Link>
-            <Link href="/legal/afsl-boundary-disclosure" className="hover:text-stone-900">AFSL</Link>
+            <Link href="/legal/afsl-credit-tax-boundary-disclosure" className="hover:text-stone-900">AFSL</Link>
           </nav>
         </div>
       </header>

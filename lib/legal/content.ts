@@ -51,8 +51,8 @@ export const LEGAL_DOCUMENTS = {
     file: 'privacy-policy.md',
     consentDocumentType: 'PRIVACY_POLICY' as const,
   },
-  'afsl-boundary-disclosure': {
-    file: 'afsl-boundary-disclosure.md',
+  'afsl-credit-tax-boundary-disclosure': {
+    file: 'afsl-credit-tax-boundary-disclosure.md',
     consentDocumentType: 'AFSL_BOUNDARY_DISCLOSURE' as const,
   },
 } as const;

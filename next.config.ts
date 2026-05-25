@@ -28,6 +28,18 @@ const nextConfig: NextConfig = {
   // Proxy Firebase Auth handler through our domain so Google sign-in popup
   // shows "www.monitrax.com.au" instead of "monitrax-479700.firebaseapp.com".
   // Requires NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=www.monitrax.com.au in env.
+  // Phase 47 — Legal-doc slug renamed when v1.0 published 2026-05-24.
+  // 301 keeps old bookmarks + any externally cached links working.
+  async redirects() {
+    return [
+      {
+        source: '/legal/afsl-boundary-disclosure',
+        destination: '/legal/afsl-credit-tax-boundary-disclosure',
+        permanent: true,
+      },
+    ];
+  },
+
   async rewrites() {
     return [
       {

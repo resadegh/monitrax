@@ -271,8 +271,8 @@ export default function SignInPage() {
               Privacy Policy
             </Link>
             , and{' '}
-            <Link href="/legal/afsl-boundary-disclosure" className="text-primary hover:underline">
-              AFSL Boundary Disclosure
+            <Link href="/legal/afsl-credit-tax-boundary-disclosure" className="text-primary hover:underline">
+              AFSL, Credit and Tax Boundary Disclosure
             </Link>
           </p>
         </div>
