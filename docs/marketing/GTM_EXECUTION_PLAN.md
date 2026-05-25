@@ -224,9 +224,9 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 - **Goal:** A 4-email sequence that gets replies, not eye-rolls.
 - **Time:** 2 hours.
 - **Action:** Draft (Claude assists):
-  - **Email 1 (Day 0):** Pattern-interrupt opener referencing their brokerage by name + the specific pain (client database going cold between deals). One question. No pitch.
-  - **Email 2 (Day 3):** The wedge — *"What if your borrowers had an app that actually opened — branded to you — that told you the moment they were ready to refinance?"* One paragraph. Loom link.
-  - **Email 3 (Day 7):** Social proof + concrete pilot offer (free 60-day pilot with N of their clients, no contract, you do the onboarding heavy-lifting).
+  - **Email 1 (Day 0):** Pattern-interrupt opener referencing their brokerage by name + the specific pain (established wealth-builder clients going cold between deals — the people most likely to refinance, get a second IP, or restructure). One question. No pitch.
+  - **Email 2 (Day 3):** The wedge — *"What if your wealth-builder clients had a financial app they actually used — branded to you — and you knew the moment they were ready to refinance, restructure, or move?"* One paragraph. Loom link.
+  - **Email 3 (Day 7):** Social proof + concrete pilot offer (free 60-day pilot with N of their established clients, no contract, you do the onboarding heavy-lifting).
   - **Email 4 (Day 12):** Breakup email — *"Should I close the file?"* Highest reply-rate email in B2B by far.
   - All emails ≤120 words, plaintext, one CTA, real unsubscribe in footer.
 - **Done when:** Four emails reviewed, in Instantly as a sequence template.
@@ -329,7 +329,7 @@ Until then, Monitrax operates on **manual data entry / CSV import**. Brokers + R
 ### Step 4.1 — Broker landing page
 - **Goal:** A dedicated page at `/for-brokers` selling the wedge.
 - **Time:** 2 hours.
-- **Action:** Hero ("Keep your client database warm. Know when they're ready to refinance. Branded to you."), 3-point value prop (engagement, refinance triggers, retention), the pilot offer (60 days, no contract, you handle onboarding), a "book a 20-min call" CTA → Cal.com.
+- **Action:** Hero ("Your wealth-builder clients, finally with one clear picture. Branded to you. You see when they're ready to refinance, restructure, or move."), 3-point value prop (better-informed clients = better conversations, refinance triggers fired automatically, retention via continuous value not annual calls), the pilot offer (60 days, no contract, you handle onboarding), a "book a 20-min call" CTA → Cal.com. The pitch lands on the broker's wealth-builder clients specifically — established borrowers with property, super, structure — not first-home-buyer leads.
 - **Done when:** Live. Tested on mobile. Loom demo embedded.
 - **Gotcha:** Don't put pricing on the page yet — the pilot is the offer. Pricing conversation happens after the pilot proves value.
 
