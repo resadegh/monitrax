@@ -77,19 +77,20 @@ That view becomes your weekend-coffee dashboard for the cohort.
 
 ### Step 1 — Pick the friendlies (~30 min thinking, your decision)
 
-Quality > headcount. Aim for **5–10 people**, spread across TRAIL stages so feedback covers the whole product surface:
+Quality > headcount. Aim for **5–10 people**, spread across realistic wealth-builder profiles so feedback covers the full product surface:
 
-- Someone with credit-card debt (Track / Reduce stage)
-- Someone with mortgage + investment property (Invest stage)
-- Someone close to retirement (Live stage)
-- A small-business owner / contractor (different cashflow shape)
-- Someone just-starting financially (pre-everything)
+- Someone with a PPOR + an investment property (the core ICP)
+- Someone with a discretionary trust or family company (entity-aware ICP)
+- A self-managed super fund (SMSF) member, or someone with multiple super funds
+- A small-business owner / contractor (different cashflow + tax shape)
+- Someone late-career, closer to "what does my retirement actually look like"
 - Wild-card: someone you know who's *brutally honest* and not afraid to tell you it sucks
 
 **Avoid:**
 - People who'll be politely supportive but not use it (no real feedback)
 - People who are clients-of-other-things (potential AFSL boundary confusion)
-- Anyone in active financial crisis (they need real advice, not a beta)
+- Anyone in active financial crisis (they need licensed advice, not a beta)
+- Pure beginners with no real financial complexity (wrong ICP — Monitrax is not built for them)
 
 ### Step 2 — Add each friendly to Airtable (~5 min total)
 
@@ -181,12 +182,14 @@ Hey [Name],
 [PERSONALISE THIS FIRST LINE — say something specific to your relationship.
 Examples: "I know you've been wrestling with the property/investment trade-off
 lately — wanted to ask you something specific." / "Remember last year when we
-talked about how messy keeping track of money across accounts is?"]
+talked about how messy keeping track of money across accounts, super and
+property gets?"]
 
 I've spent the last [X] months building Monitrax — a financial app for
-Australians who don't want a financial adviser yet but want a clearer
-picture of their own money. It's at the point where it works end-to-end
-but only people I trust have seen it.
+Australians who've got moving parts: property, loans, super, investments,
+maybe a trust or business — and want a clearer picture of their own money
+without adding another adviser to the mix. It's at the point where it
+works end-to-end but only people I trust have seen it.
 
 You're on a short list of about [N] people I want feedback from before
 broader launch — picked you because you'd actually use this and you'll
@@ -334,8 +337,9 @@ Hope you're still finding Monitrax useful. Quick thought, no obligation:
 
 I'm starting to think about people beyond the immediate beta cohort —
 specifically [target description: "people who'd be a good fit for the
-broker side of the business" / "people running their finances solo with
-no adviser" / etc.].
+broker side of the business" / "Australians with property and structure
+who already have an accountant but no integrated picture across their
+finances" / etc.].
 
 Anyone come to mind in your circle who might be a good fit? Happy to
 either:
