@@ -230,3 +230,51 @@ Docs updated in this PR:
 - `bash -n .claude/hooks/session-start.sh` — syntax OK
 - Live in-session: running `npx --yes skills add google-labs-code/stitch-skills --global --all` immediately surfaced all 14 Stitch skills in the system-reminder skill list.
 - Runtime verification on next cold cloud session — Reza confirms `/stitch-generate-design`, `/react-components`, etc. appear when opening a new session against `main` post-merge.
+
+---
+
+## Session: stitch-skills — vendor SKILL.md files (eliminate cold-start race)
+
+### Changes Made
+
+- **Type:** Fix (third follow-up; final fix for the stitch-skills install path)
+- **Scope:** `.claude/skills/` (vendored 13 third-party skill directories), `.claude/hooks/session-start.sh` (removed redundant npx step), `.claude/skills/VENDORED_SKILLS.md` (new attribution doc)
+- **Root Cause:** PR #888's `npx skills add --global --all` does land SKILL.md files in the right place (`~/.claude/skills/` symlinks), and Reza's diagnostic from a fresh cloud session confirmed the symlinks DO exist after the hook runs. But the session's available-skills system-reminder is computed **before** the SessionStart hook's `npx skills add` completes (~10–30s clone + install). Every new session = new cold container = race repeats. The skills are installed but invisible to the session that triggered the install.
+- **Fix:** Vendor the SKILL.md files (+ scripts/resources) directly into the monitrax repo's `.claude/skills/<name>/`. They're present at clone time, before the scanner runs, so they appear in the first session's available-skills list — no npx, no race, no waiting.
+- **Live-verified in this session:** after copying the 13 vendored directories into `.claude/skills/`, the system-reminder skill list immediately refreshed and now shows each Stitch skill twice (once from project `.claude/skills/`, once from user-global `~/.claude/skills/`) — confirming project-level discovery works at scan time.
+
+### Files Modified / Added
+
+- `.claude/skills/{design-md,enhance-prompt,react-components,remotion,shadcn-ui,stitch-code-to-design,stitch-extract-design-md,stitch-extract-static-html,stitch-generate-design,stitch-loop,stitch-manage-design-system,stitch-upload-to-stitch,taste-design}/` — vendored from upstream `google-labs-code/stitch-skills` (Apache 2.0). 13 directories, ~652KB, 62 files.
+- `.claude/skills/VENDORED_SKILLS.md` — new attribution doc: source repo, license, vendored-vs-authored breakdown, refresh procedure.
+- `.claude/hooks/session-start.sh` — removed the `npx skills add` block (now redundant with vendoring); rewrote file-header to document why the step was removed and where vendored skills live; hook is now single-purpose (Stitch MCP registration).
+
+### Trade-offs
+
+- ~652KB / 62 third-party files committed to the repo. Negligible vs the repo's existing size.
+- Updates to upstream now require an explicit `git commit` (procedure documented in `VENDORED_SKILLS.md`) instead of "automatic on next session start." Acceptable tradeoff for deterministic, race-free behaviour.
+- **Scope:** this only fixes monitrax cloud sessions. Other projects in Claude Code on the web won't see Stitch skills unless they vendor too. Reza's "all projects" goal is fundamentally incompatible with the cloud-container model (every project's cold container starts empty); the only durable cross-project path is running Claude Code CLI locally on his Mac (where the install persists across sessions).
+- Cold-start is now FASTER — no longer waits for ~10–30s npx clone + install.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (corrected lesson: cloud-session skill-discovery scan happens before SessionStart hook completes; for vendored-by-the-project skills, copy SKILL.md files into `.claude/skills/` rather than relying on a hook-driven install)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_05_25.md` — this entry
+- `.claude/skills/VENDORED_SKILLS.md` — new attribution doc, refresh procedure, vendored-vs-authored breakdown
+- `.claude/hooks/session-start.sh` — file-header documents why the npx step was removed + points at VENDORED_SKILLS.md
+
+### Verification
+
+- `bash -n .claude/hooks/session-start.sh` — syntax OK
+- Live mid-session: after `cp -rL ~/.agents/skills/{...} .claude/skills/`, the system-reminder skill list refreshed and now shows all 13 Stitch skills sourced from the project path.
+- Cold-container verification: deferred to Reza opening a fresh Claude Code on the web session against `main` post-merge — the vendored files will be present at clone time, no race, instant availability.

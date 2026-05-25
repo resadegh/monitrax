@@ -1,17 +1,22 @@
 #!/bin/bash
 # Session-start bootstrap for Claude Code on the web (cloud containers
-# that are ephemeral and lose ~/.claude state on reclaim):
-#   1. Registers the Stitch MCP server (needs $STITCH_API_KEY).
-#   2. Installs google-labs-code/stitch-skills via `npx skills add` so
-#      the cloud session sees /stitch-generate-design, /react-components,
-#      /shadcn-ui, /remotion, /taste-design, etc. in its available-skills
-#      list. The skills CLI symlinks SKILL.md files into ~/.claude/skills/,
-#      which is the path the web sandbox scans for skill discovery (the
-#      "plugins" CLI is for the local Claude Code CLI only and is ignored
-#      in the web sandbox).
+# that are ephemeral and lose ~/.claude state on reclaim).
 #
-# All steps are idempotent and skip-on-failure: a missing API key or
-# a network blip never blocks the session from starting.
+# Single responsibility now: register the Stitch MCP server with
+# the running session if $STITCH_API_KEY is provided.
+#
+# History note (skills): earlier revisions of this hook ran
+# `npx skills add google-labs-code/stitch-skills --global --all` here
+# to bootstrap the Stitch skill suite. That step has been removed
+# because the cloud session's skill-discovery scan runs BEFORE the
+# SessionStart hook completes — so the npx install (10-30s) finished
+# too late to be visible to the session that triggered it, and the
+# next session was a fresh cold container that hit the same race.
+# Skills are now vendored under `.claude/skills/` directly so they
+# are present at clone time. See `.claude/skills/VENDORED_SKILLS.md`.
+#
+# Step is idempotent and skip-on-failure: a missing API key or
+# network blip never blocks the session from starting.
 
 set -euo pipefail
 
@@ -34,21 +39,6 @@ else
     >/dev/null 2>&1 \
     && echo "[session-start] Stitch MCP registered." >&2 \
     || echo "[session-start] Stitch MCP registration failed." >&2
-fi
-
-# ── 2. Stitch skills (google-labs-code/stitch-skills) ─────────────────────
-# Uses `npx skills add` (NOT `npx plugins add`). The "skills" CLI writes
-# real SKILL.md files to ~/.agents/skills/<name>/ and symlinks them into
-# ~/.claude/skills/<name>/ — the path Claude Code on the web's
-# skill-discovery actually scans. The earlier `plugins add` approach only
-# populated ~/.claude/plugins/cache/ + the enabledPlugins registry, which
-# the web sandbox does not read, so the /stitch-* commands never appeared.
-# --global = user scope (works for all projects). --all = every skill,
-# every agent target.
-if [ ! -L "$HOME/.claude/skills/stitch-generate-design" ]; then
-  npx --yes skills add google-labs-code/stitch-skills --global --all >/dev/null 2>&1 \
-    && echo "[session-start] Stitch skills installed (user-global, all agents)." >&2 \
-    || echo "[session-start] Stitch skills install failed (non-fatal)." >&2
 fi
 
 exit 0
