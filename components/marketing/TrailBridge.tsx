@@ -13,7 +13,7 @@ export function TrailBridge() {
           >
             What if your money
             <br />
-            <span className="text-amber-600">had a guide?</span>
+            <span className="text-amber-600">had one view?</span>
           </h2>
         </Reveal>
 
@@ -22,9 +22,9 @@ export function TrailBridge() {
             className="mx-auto mt-6 max-w-xl text-lg text-stone-500 dark:text-stone-400"
             style={{ lineHeight: 1.7 }}
           >
-            Not another app that shows you charts and leaves you to figure it
-            out. A personal financial guide that walks beside you — from
-            confusion to confidence, one step at a time.
+            Not another app that shows you charts. A clearer view of property,
+            super, investments, cashflow, tax and entities — together — so you
+            can see what changes when you adjust the levers.
           </p>
         </Reveal>
       </div>

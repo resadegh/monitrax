@@ -14,7 +14,7 @@ const stages = [
     letter: 'T',
     name: 'Track',
     tagline: 'See your full picture',
-    body: 'Connect your bank in 60 seconds. See every account, every loan, every dollar — all in one place. The unknown is always scarier than the known.',
+    body: 'Bring properties, loans, super, investments and cashflow into one view. Manual entry and CSV import today; live bank connections in development. The first step is making the picture visible enough to manage.',
     icon: Eye,
     color: 'text-amber-500',
     bg: 'bg-amber-500/10',
@@ -23,8 +23,8 @@ const stages = [
   {
     letter: 'R',
     name: 'Reduce',
-    tagline: 'Fix the leaks',
-    body: 'Your Guide finds the waste: forgotten subscriptions, impulse spending, debt that\'s costing you. Fix the leaks before you fill the bucket.',
+    tagline: 'Stop the hidden leaks',
+    body: 'Duplicate insurance. Lazy cash sitting next to non-deductible debt. Subscriptions you forgot. Loan settings that no longer match the plan. The small inefficiencies that compound when your financial life is spread too thin.',
     icon: Scissors,
     color: 'text-orange-500',
     bg: 'bg-orange-500/10',
@@ -33,8 +33,8 @@ const stages = [
   {
     letter: 'A',
     name: 'Anchor',
-    tagline: 'Build your safety net',
-    body: 'Build an emergency fund so one unexpected bill doesn\'t send you backward. Three months of expenses. That\'s your anchor.',
+    tagline: 'Confirm the safety net is real',
+    body: 'Offset, redraw, cash reserve, equity — see your buffer against your actual loans, rental costs and household commitments. Not "do you have one"; whether it is the right size for your structure.',
     icon: Anchor,
     color: 'text-emerald-500',
     bg: 'bg-emerald-500/10',
@@ -43,8 +43,8 @@ const stages = [
   {
     letter: 'I',
     name: 'Invest',
-    tagline: 'Grow your wealth',
-    body: 'Properties. Shares. Super. Assets. Track them all. Watch your net worth climb. Compound growth is how wealth is built.',
+    tagline: 'Model the next move with context',
+    body: 'Another property, switching debt, salary-sacrificing super, selling shares — each moves cashflow, tax position and liquidity together. See what changes across the whole picture before you decide.',
     icon: TrendingUp,
     color: 'text-sky-500',
     bg: 'bg-sky-500/10',
@@ -53,8 +53,8 @@ const stages = [
   {
     letter: 'L',
     name: 'Live',
-    tagline: 'On your terms',
-    body: 'Your money works for you. Your Guide shifts from triage to optimisation. You make choices from abundance, not stress.',
+    tagline: 'Decide from the full picture',
+    body: 'When the picture is clean, decisions get faster and quieter. Travel, sabbatical, helping family, scaling the business — fewer "can we afford this" moments, more "what does it change".',
     icon: Sun,
     color: 'text-yellow-500',
     bg: 'bg-yellow-500/10',
@@ -75,9 +75,9 @@ export function TrailJourney() {
               className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl"
               style={{ letterSpacing: '-0.02em', lineHeight: 1.1 }}
             >
-              Five steps. One trail.
+              Five steps. One picture.
               <br />
-              Your financial freedom.
+              A cleaner way to run your wealth.
             </h2>
           </div>
         </Reveal>

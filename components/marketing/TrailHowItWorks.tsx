@@ -7,20 +7,20 @@ const steps = [
   {
     number: '1',
     icon: Smartphone,
-    title: 'Connect your bank',
-    description: 'Secure Open Banking. Automatic. 60 seconds.',
+    title: 'Add your picture',
+    description: 'Manual entry or CSV import. Property, loans, super, investments, cashflow. Live bank connections in development.',
   },
   {
     number: '2',
     icon: BarChart3,
-    title: 'Discover your TRAIL stage',
-    description: 'We analyse your finances and show you where you are.',
+    title: 'See where you stand',
+    description: 'Net worth, cashflow, debt, buffers and asset position — together, not in five tabs.',
   },
   {
     number: '3',
     icon: Compass,
-    title: "Follow your Guide's advice",
-    description: 'Personalised recommendations. One step at a time.',
+    title: 'Model the levers',
+    description: 'Adjust assumptions and see what changes across the whole picture. We show the scenarios. You decide.',
   },
 ];
 
@@ -34,7 +34,7 @@ export function TrailHowItWorks() {
               className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100 sm:text-4xl"
               style={{ letterSpacing: '-0.02em' }}
             >
-              Your guide in three taps
+              Three steps to one clean picture
             </h2>
           </div>
         </Reveal>

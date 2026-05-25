@@ -39,7 +39,7 @@ export function TrailHero() {
           {/* Eyebrow */}
           <motion.div variants={fadeUp(reduced)} className="mb-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm font-medium text-stone-400">
-              Your personal financial guide — built for Australians
+              Australian financial software for wealth-builders
             </span>
           </motion.div>
 
@@ -49,9 +49,9 @@ export function TrailHero() {
             className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl text-white"
             style={{ letterSpacing: '-0.03em', lineHeight: 1.08 }}
           >
-            Stop stressing about money.
+            See the full picture
             <br />
-            <span className="text-amber-500">Start following the TRAIL.</span>
+            <span className="text-amber-500">behind your wealth.</span>
           </motion.h1>
 
           {/* Subheadline */}
@@ -60,8 +60,8 @@ export function TrailHero() {
             className="mx-auto mt-6 max-w-2xl text-lg text-stone-400 sm:text-xl"
             style={{ lineHeight: 1.6 }}
           >
-            Monitrax connects your bank accounts, tracks everything, and
-            guides you step by step to financial freedom.
+            Property, loans, super, investments, cashflow, tax and entities —
+            in one clear view, so you can model the next move with better context.
           </motion.p>
 
           {/* CTA */}
@@ -70,13 +70,13 @@ export function TrailHero() {
               href="/register"
               className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500 to-amber-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-amber-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
             >
-              Start your TRAIL — it&apos;s free
+              Start free — see your picture
             </Link>
             <Link
               href="/trail-check"
               className="inline-flex items-center gap-2 text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors"
             >
-              Or take the free TRAIL Check — 60 seconds
+              Or take the 60-second TRAIL Check
               <span aria-hidden="true">&rarr;</span>
             </Link>
           </motion.div>

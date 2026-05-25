@@ -3,9 +3,9 @@
 import { Reveal, StaggerContainer, StaggerItem } from './animations';
 
 const painPoints = [
-  'You have 4 bank accounts, 2 credit cards, and a mortgage. None of them talk to each other.',
-  'You check your balance and wonder where $3,000 went last month.',
-  "You know you should be doing better. You just don't know where to start.",
+  'Your accountant sees one slice of your finances, once a year. The other 364 days, you are holding the picture in your head.',
+  'Your mortgage, super, broker, ETFs and rental property each live in a different login. None of them know about each other.',
+  'You could probably guess your net worth within 20%. You could not prove it tonight without an hour of spreadsheets.',
 ];
 
 export function TrailProblem() {
@@ -17,10 +17,10 @@ export function TrailProblem() {
             className="text-3xl font-bold tracking-tight text-stone-900 dark:text-stone-100 sm:text-4xl lg:text-5xl"
             style={{ letterSpacing: '-0.02em', lineHeight: 1.1 }}
           >
-            You&apos;re not bad with money.
+            You don&apos;t have a money problem.
             <br />
             <span className="text-stone-500 dark:text-stone-400">
-              You just don&apos;t have a path.
+              You have a picture problem.
             </span>
           </h2>
         </Reveal>
@@ -41,10 +41,13 @@ export function TrailProblem() {
         </StaggerContainer>
 
         <Reveal delay={0.4}>
-          <p className="mt-12 text-base text-stone-500 dark:text-stone-400">
-            <span className="text-2xl font-bold text-stone-900 dark:text-stone-100">72%</span>{' '}
-            of Australians feel stressed about money.{' '}
-            <span className="text-amber-600 font-medium">You&apos;re not alone.</span>
+          <p className="mt-12 text-base text-stone-500 dark:text-stone-400 max-w-2xl mx-auto" style={{ lineHeight: 1.7 }}>
+            When you&apos;ve got more than three moving parts, the picture
+            starts living across five tabs, two portals and your
+            accountant&apos;s head.{' '}
+            <span className="text-amber-600 font-medium">
+              That&apos;s the problem Monitrax exists to solve.
+            </span>
           </p>
         </Reveal>
       </div>
