@@ -31,6 +31,7 @@
 import 'server-only';
 import { prisma } from '@/lib/db';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { emitFriendliesEvent } from '@/lib/webhooks/n8n';
 import type {
   FeedbackThread,
   FeedbackMessage,
@@ -162,6 +163,37 @@ export async function createThread(input: CreateThreadInput): Promise<FeedbackTh
       isFirstMessage: true,
     },
   });
+
+  // Phase 47.66 — Emit feedback.submitted to n8n friendlies-tracker workflow.
+  // The workflow looks up the user's email against Airtable Contacts and, if
+  // tagged `friendly`, advances their stage to `Feedback given` + writes an
+  // Activity row. Fire-and-forget; never blocks the createThread response.
+  // We look up the user's email here because the webhook contract needs it
+  // and `input` only carries `userId`.
+  void (async () => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: input.userId },
+        select: { email: true },
+      });
+      if (user?.email) {
+        emitFriendliesEvent({
+          event: 'feedback.submitted',
+          userId: input.userId,
+          email: user.email,
+          timestamp: new Date().toISOString(),
+          metadata: {
+            threadId: thread.id,
+            subject,
+            surfaceTag: input.surfaceTag,
+            severity: input.severity ?? 'MEDIUM',
+          },
+        });
+      }
+    } catch {
+      // Never fail the createThread response over a webhook lookup
+    }
+  })();
 
   return thread;
 }
