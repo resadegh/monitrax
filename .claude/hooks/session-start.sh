@@ -2,12 +2,13 @@
 # Session-start bootstrap for Claude Code on the web (cloud containers
 # that are ephemeral and lose ~/.claude state on reclaim):
 #   1. Registers the Stitch MCP server (needs $STITCH_API_KEY).
-#   2. Installs the google-labs-code/stitch-skills plugins so the
-#      /stitch-design:*, /stitch-build:*, /stitch-utilities:* slash
-#      commands are available. The repo's .claude/settings.json
-#      already declares the marketplace + enabledPlugins, but the
-#      plugin payload still has to land in ~/.claude/plugins/cache/
-#      on each cold container — that's what step 2 does.
+#   2. Installs google-labs-code/stitch-skills via `npx skills add` so
+#      the cloud session sees /stitch-generate-design, /react-components,
+#      /shadcn-ui, /remotion, /taste-design, etc. in its available-skills
+#      list. The skills CLI symlinks SKILL.md files into ~/.claude/skills/,
+#      which is the path the web sandbox scans for skill discovery (the
+#      "plugins" CLI is for the local Claude Code CLI only and is ignored
+#      in the web sandbox).
 #
 # All steps are idempotent and skip-on-failure: a missing API key or
 # a network blip never blocks the session from starting.
@@ -35,12 +36,18 @@ else
     || echo "[session-start] Stitch MCP registration failed." >&2
 fi
 
-# ── 2. Stitch skills plugins (google-labs-code/stitch-skills) ─────────────
-STITCH_PLUGIN_CACHE="$HOME/.claude/plugins/cache/google-labs-code-stitch-skills"
-if [ ! -d "$STITCH_PLUGIN_CACHE" ]; then
-  npx --yes plugins add google-labs-code/stitch-skills \
-      --scope project --target claude-code >/dev/null 2>&1 \
-    && echo "[session-start] Stitch skills installed." >&2 \
+# ── 2. Stitch skills (google-labs-code/stitch-skills) ─────────────────────
+# Uses `npx skills add` (NOT `npx plugins add`). The "skills" CLI writes
+# real SKILL.md files to ~/.agents/skills/<name>/ and symlinks them into
+# ~/.claude/skills/<name>/ — the path Claude Code on the web's
+# skill-discovery actually scans. The earlier `plugins add` approach only
+# populated ~/.claude/plugins/cache/ + the enabledPlugins registry, which
+# the web sandbox does not read, so the /stitch-* commands never appeared.
+# --global = user scope (works for all projects). --all = every skill,
+# every agent target.
+if [ ! -L "$HOME/.claude/skills/stitch-generate-design" ]; then
+  npx --yes skills add google-labs-code/stitch-skills --global --all >/dev/null 2>&1 \
+    && echo "[session-start] Stitch skills installed (user-global, all agents)." >&2 \
     || echo "[session-start] Stitch skills install failed (non-fatal)." >&2
 fi
 

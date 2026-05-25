@@ -184,3 +184,49 @@ Docs updated in this commit:
 
 - `bash -n .claude/hooks/session-start.sh` — syntax OK
 - Runtime verification deferred to next cold cloud session (Reza confirms `/stitch-design:*`, `/stitch-build:*`, `/stitch-utilities:*` appear in the available-skills list)
+
+---
+
+## Session: stitch-skills — fix install path (skills CLI, not plugins CLI)
+
+### Changes Made
+
+- **Type:** Bug fix (follow-up to PR #887)
+- **Scope:** `.claude/hooks/session-start.sh`
+- **Root Cause:** PR #887 used `npx plugins add ...` to bootstrap Stitch in cold cloud containers. That command IS valid — but it targets the local Claude Code **CLI** plugin registry (`enabledPlugins` + `~/.claude/plugins/cache/`). **Claude Code on the web does NOT scan that registry for skill discovery.** It only reads `~/.claude/skills/<name>/SKILL.md` and the project's `.claude/skills/<name>/SKILL.md`. So after PR #887 merged, fresh cloud sessions on `main` still showed no `/stitch-*` commands in their available-skills list — Reza confirmed by opening a new session post-merge and seeing the same incomplete list.
+- **Diagnostic:** Inside the cloud container, `~/.claude/plugins/cache/google-labs-code-stitch-skills/` was populated correctly with all SKILL.md files, and `~/.claude/settings.json` had `enabledPlugins: true` — but the session-start system reminder still didn't surface them. Confirmed the web sandbox's discovery path is `~/.claude/skills/` (where `architect-mode` and `pr-prep-checklist` already live), not the plugin cache.
+- **Solution:** Replaced the install command with `npx --yes skills add google-labs-code/stitch-skills --global --all`. The `skills` CLI (a sibling tool to `plugins` from the same upstream package family) writes real SKILL.md files to `~/.agents/skills/<name>/` and symlinks them into `~/.claude/skills/<name>/` — the path the web sandbox actually reads. `--global` makes them user-scope (every project, every session, not just monitrax). `--all` installs every skill in the package for every agent target.
+- **Live-verified:** the system-reminder refreshed mid-session after running the new command, and all 14 stitch skills (`stitch-generate-design`, `stitch-code-to-design`, `react-components`, `shadcn-ui`, `remotion`, `taste-design`, `design-md`, `enhance-prompt`, `stitch-loop`, etc.) appeared immediately.
+- **Idempotency:** The hook guards with `[ ! -L "$HOME/.claude/skills/stitch-generate-design" ]` — skips on session resume when the symlink already exists.
+
+### Files Modified
+
+- `.claude/hooks/session-start.sh` — replaced `plugins add` block with `skills add --global --all`; updated file-header comment to document the discovery-path distinction.
+
+### Trade-offs
+
+- Same cold-start cost (~10–30s) as PR #887 — `npx skills add` fetches the same upstream repo, just to a different destination.
+- `--global` writes to user-scope (`~/.agents/skills/`), so every project's cloud session in this account gets Stitch skills, not just monitrax. The user explicitly requested this ("for all projects and sessions").
+- The leftover `enabledPlugins` + `extraKnownMarketplaces` entries in `.claude/settings.json` are now functionally unused in cloud sessions, but they're harmless and would still work for anyone running Claude Code CLI locally on monitrax. Left in place to avoid breaking the local-CLI path.
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (corrected lesson: web sandbox reads `~/.claude/skills/`, NOT `~/.claude/plugins/cache/`; use `skills add` not `plugins add` for cloud sessions)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_05_25.md` — this entry (corrects the prior entry's stale assumption that `plugins add` was sufficient)
+- `.claude/hooks/session-start.sh` — file-header now states the discovery-path distinction explicitly so future operators know why `skills add` is the right CLI for web sessions
+
+### Verification
+
+- `bash -n .claude/hooks/session-start.sh` — syntax OK
+- Live in-session: running `npx --yes skills add google-labs-code/stitch-skills --global --all` immediately surfaced all 14 Stitch skills in the system-reminder skill list.
+- Runtime verification on next cold cloud session — Reza confirms `/stitch-generate-design`, `/react-components`, etc. appear when opening a new session against `main` post-merge.
