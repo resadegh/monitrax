@@ -1,6 +1,7 @@
-# The TRAIL to Financial Freedom — Website Copy
+# The TRAIL to Financial Picture — Website Copy
 
 **For use on monitrax.com.au**
+
 **Version:** 2.0 | **Created:** 2026-04-17 | **Replaces:** REACH_WEBSITE_COPY.md
 
 ---
@@ -8,151 +9,173 @@
 ## Hero Section
 
 ### Headline
-**Follow the TRAIL to Financial Freedom**
+
+**See the full picture behind your wealth.**
 
 ### Subheadline
-Monitrax guides you from "where does my money go?" to "I live life on my terms" — in five proven steps backed by financial science.
+
+Monitrax helps Australian wealth-builders bring property, loans, super, investments, cashflow, tax position and entity structures into one clear view, so you can model the next move with better context.
 
 ### Hero CTA
-**Start Your TRAIL** | **See Where You Stand**
+
+**See Your Picture** | **Take the TRAIL Check**
 
 ---
 
 ## The Problem Section
 
 ### Headline
-**Money stress is real. You're not alone.**
+
+**You do not have a money problem.
+You have a picture problem.**
 
 ### Body
-72% of people feel stressed about money. Not because they're bad with money — because nobody showed them a clear path forward.
 
-You know you should be doing better. You've tried spreadsheets, apps, even ignoring it completely. But the stress doesn't go away.
+When you have more than three moving parts, your financial life starts living across five tabs, two portals, a broker spreadsheet and your accountant's head. Your mortgage position sits in one place. Your super and investments sit somewhere else. Your property costs, cashflow, tax impact and entity structure rarely get viewed together.
 
-What if there was a trail to follow — not just another tool, but a guide that walks beside you, step by step?
+You are earning, investing and building. The issue is not effort. The issue is that the full picture is hard to prove when every professional, platform and statement only shows one slice.
 
-There is. It's called TRAIL.
+Monitrax gives you a cleaner way to see what you have built, where money is leaking, and what changes if you adjust the levers yourself.
 
 ---
 
 ## The Framework Section
 
 ### Section Headline
-**Five steps. One trail. Your financial freedom.**
+
+**Five steps. One picture.
+A cleaner way to run your wealth.**
 
 ### Intro
-TRAIL is Monitrax's proven financial journey framework. It's based on the same principles used by Australia's Barefoot Investor, financial therapists, and the world's most successful money methodologies — simplified into five steps anyone can follow.
+
+TRAIL is Monitrax's five-stage financial clarity framework: Track, Reduce, Anchor, Invest, Live. It is designed for Australian wealth-builders who have moved beyond basic budgeting and now need a joined-up view across cashflow, property, debt, super, investments, tax and structures.
 
 ---
 
 #### T — Track
+
 **Track your full picture**
 
-Connect your bank accounts and see everything in one place — your accounts, loans, income, spending, and recurring charges.
+Bring your key financial moving parts into one place: properties, loans, accounts, income, spending, super, investments, assets and entities. Manual entry and CSV import are available now, with live bank connections in development.
 
-Most people avoid looking at their finances because they're afraid of what they'll find. But here's the truth: the unknown is always scarier than the known. Once you can see it, you can change it.
+The first step is not about confronting bad habits. It is about making the picture visible enough to manage.
 
-> "I didn't realise I was spending $340 a month on subscriptions I'd forgotten about."
+> *"I can see the property, loan, offset, super and investment picture together, instead of rebuilding it every time I need to make a decision."*
 
-**What Monitrax does:** Connects to your bank via secure Open Banking, automatically imports your accounts, loans, and transactions, and shows you your complete financial picture in under 60 seconds.
+**What Monitrax does:** Helps you organise your financial position across personal assets, property, loans, super, investments, cashflow and entity structures, using manual entry and CSV import today. Live bank connections are planned for a later release.
 
 ---
 
 #### R — Reduce
-**Reduce the waste, fix the leaks**
 
-Now that you can see where your money goes, it's time to fix the leaks. Cut wasteful spending. Set a budget. Start paying down debt — smallest first, so you build momentum fast.
+**Reduce the hidden leaks**
 
-You can't fill a bucket with a hole in it. Fix the hole first.
+Once the picture is visible, the leaks become easier to see. That might mean duplicate insurance, an underused subscription, lazy cash, recurring costs across properties, or loan and tax settings that deserve closer review.
 
-> "I cut $520/month in subscriptions and impulse spending. That's $6,240 a year I didn't know I was losing."
+This is not about cutting coffee. It is about finding the small inefficiencies that compound quietly when your financial life is spread across too many places.
 
-**What Monitrax does:** Budget tracking with smart alerts, cashflow forecasting, AI-powered debt freedom planning (we recommend the strategy YOU'LL actually stick to), and Australian tax optimisation.
+> *"I did not need another budget lecture. I needed to see where the little leaks were hiding across the whole picture."*
+
+**What Monitrax does:** Shows your spending, recurring costs, cashflow patterns, loan position and property expenses in context, so you can decide which areas are worth reviewing.
 
 ---
 
 #### A — Anchor
+
 **Anchor your safety net**
 
-Now that you're spending less than you earn, build your safety net. An emergency fund that covers 3 months of expenses means one unexpected car repair or medical bill won't send you back into debt.
+For wealth-builders, the question is often not whether a safety net exists. It is whether it is real, liquid, accessible and sized properly for your actual life.
 
-29% of Australian households can't raise $2,000 in a week for an emergency. Don't be one of them. Anchor yourself.
+A healthy offset balance, cash reserve, redraw position or emergency buffer can look strong in isolation. Monitrax helps you view it against your loans, household costs, investment commitments and property obligations.
 
-> "For the first time in my life, I have 3 months saved. I can actually sleep at night."
+> *"I thought we had plenty of buffer. Seeing it against our actual monthly commitments made the picture much clearer."*
 
-**What Monitrax does:** Tracks your emergency fund progress, shows how many months of expenses you've covered, and nudges you toward your 3-month target with personalised recommendations.
+**What Monitrax does:** Helps you view liquidity, buffers, cash reserves, offsets and commitments together, so you can understand how resilient your position looks under different assumptions.
 
 ---
 
 #### I — Invest
-**Invest in your future**
 
-With your foundation solid, it's time to grow. Track your property portfolio, investments, super, and assets — all growing together. Einstein reportedly called compound interest the eighth wonder of the world. Now it's working for you.
+**Invest with the full context**
 
-> "Watching my net worth grow from $180K to $420K over 18 months — with real numbers, not guesses — changed how I think about money."
+The next move is easier to assess when you can see the whole field. Property, super, investments, cashflow, tax position and debt structure all interact.
 
-**What Monitrax does:** Property tracking (equity, LVR, rental yield, depreciation), investment portfolio management, asset tracking, and net worth monitoring — all updated in real time.
+Monitrax does not tell you what to buy or which product to choose. It shows what changes if you test different assumptions, so you can discuss options with the right professionals and decide with better context.
+
+> *"Instead of asking whether we could afford the next move, we could finally see what it changed across the whole household position."*
+
+**What Monitrax does:** Helps you track property, investments, super, assets, liabilities and net worth, and model how different decisions may affect your broader financial picture.
 
 ---
 
 #### L — Live
-**Live on your terms**
 
-This is the destination. Your passive income approaches your expenses. Your Financial Health score is high. Your debts are minimal or gone. You make money decisions from abundance, not stress.
+**Live from the full picture**
 
-This isn't retirement. It's freedom. Freedom to choose how you spend your time and your money.
+The point of clarity is not to stare at a spreadsheet forever. It is to know what you can comfortably say yes to, what needs more thought, and what is not worth the trade-off.
 
-> "My Guide told me I'm 7 years from financial independence. I've never had a number before. Now I have a target."
+When the picture is clean, decisions feel less reactive. You can plan travel, lifestyle, business, family and future choices from a position of visibility rather than guesswork.
 
-**What Monitrax does:** Your personal financial guide tracks your Financial Health score, surfaces your top 3 actions each week, forecasts your path to financial independence, and celebrates your progress.
+> *"It changed the conversation from 'Can we afford this?' to 'What does this change, and is it worth it?'"*
+
+**What Monitrax does:** Gives you a structured view of your financial position, progress and scenarios, so you can make lifestyle and wealth decisions with clearer information.
 
 ---
 
 ## How It Works Section
 
 ### Headline
-**Your guide through the wilderness of money**
 
-1. **Connect your bank** — Secure, instant, Open Banking. See everything in 60 seconds.
-2. **Discover your TRAIL stage** — Monitrax analyses your finances and tells you where you are.
-3. **Follow your Guide's guidance** — Personalised, AI-powered recommendations matched to your stage.
-4. **Watch your progress** — Your Financial Health score improves. Your net worth grows. Your debt shrinks.
-5. **Live on your terms** — The trail is yours. We just make sure you never walk it alone.
+**Your guide for the full financial picture**
+
+1. **Add your picture** — Enter your key details manually or import CSVs. Bank connections are in development.
+2. **Discover your TRAIL stage** — See where your current position sits across Track, Reduce, Anchor, Invest and Live.
+3. **Model the levers** — Explore what changes if you adjust income, debt, property, investments, buffers or spending assumptions.
+4. **Watch the picture update** — Track net worth, cashflow, debt, buffers and asset position as your life changes.
+5. **Decide with context** — Monitrax shows the information and scenarios. You decide what to do next.
 
 ---
 
 ## Trust Section
 
 ### Headline
-**Built on science. Trusted by Australians.**
 
-TRAIL isn't something we invented from scratch. It's the convergent conclusion of every major financial methodology:
+**Built for Australian wealth-builders who need the whole picture.**
 
-- **The Barefoot Investor** (2M+ Australian readers) — Our Guide engine applies Barefoot principles with AI personalisation
-- **Dave Ramsey's Baby Steps** (10M+ participants) — Our debt freedom strategy uses the proven snowball method
-- **CFPB Financial Well-Being Framework** (US Government) — Our health score aligns with their validated model
-- **Maslow's Financial Hierarchy** — TRAIL stages follow the evidence-based hierarchy
-- **Behavioural Science** — Self-efficacy, progressive disclosure, stage-matched interventions
+TRAIL is not a budgeting gimmick. It is a structured way to view a more complex financial life, especially when personal, property, investment, super, tax and entity layers all interact.
+
+- **Australian wealth-builder focus** — Built around the reality of property, loans, super, investments, tax position and family wealth decisions.
+- **Factual information and modelling** — Monitrax helps you see scenarios and trade-offs. It does not provide financial, credit or tax advice.
+- **Manual entry today, bank feeds in development** — The current product supports manual entry and CSV import. Live bank connections are planned through the Consumer Data Right pathway.
+- **Designed for integrated decisions** — See cashflow, net worth, debt, buffers, property and investments together, instead of treating each part as a separate island.
+- **TRAIL framework** — Track, Reduce, Anchor, Invest, Live gives the product a simple structure without pretending your financial life is simple.
 
 ---
 
 ## CTA Section
 
 ### Headline
-**Ready to start your TRAIL?**
+
+**Ready to see the full picture?**
 
 ### Subheadline
-Join thousands of Australians who stopped stressing about money and started living.
+
+Start with what you already have: property, loans, super, investments, cashflow and the decisions you are trying to make next.
 
 ### CTA
-**Start Free** | **See How It Works**
+
+**Start Free** | **Take the TRAIL Check**
 
 ### Closing
-*Your trail to financial freedom starts with one step: seeing where you stand.*
+
+*Your TRAIL starts with one practical step: seeing what you have built in one place.*
 
 ---
 
 ## SEO Metadata
 
-**Title:** The TRAIL to Financial Freedom | Monitrax — Your Personal Guide
-**Description:** Follow the TRAIL: Track, Reduce, Anchor, Invest, Live. Monitrax guides you from financial stress to financial freedom in 5 proven steps. Start free today.
-**Keywords:** personal finance Australia, financial freedom, personal Guide, Barefoot Investor app, budget tracker Australia, debt payoff planner, net worth tracker, open banking Australia
+**Title:** TRAIL Financial Picture Framework | Monitrax Australia
+
+**Description:** Follow the TRAIL: Track, Reduce, Anchor, Invest, Live. Monitrax helps Australian wealth-builders see property, loans, super, investments, cashflow, tax position and entities in one clearer financial picture.
+
+**Keywords:** wealth tracking Australia, net worth tracker Australia, property portfolio tracker, investment tracker Australia, super tracking, cashflow modelling Australia, financial picture, personal finance software Australia, wealth builder app, TRAIL framework
