@@ -1,7 +1,7 @@
 # Monitrax — Public Website (Stitch Project)
 
 > **Stitch project ID:** _(to be populated after first `mcp__stitch__create_project` call — see `.stitch/metadata.json`)_
-> **Phase:** Phase 47 — Public Website Redesign
+> **Phase:** Phase 48 — Public Website Redesign
 > **Started:** 2026-05-26
 > **Owner:** Reza (direction) + Claude (build)
 > **Status:** 🟡 Active — bootstrapping
@@ -73,8 +73,8 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 - `/portal/*` — Org Portal (Phase 32B design language)
 - `/admin/*` — Admin Portal (Linear/GCP-Console style)
 - `/onboarding/*` — internal onboarding wizard
-- `/trail-check`, `/trail-method`, `/wealth-check` — secondary public pages (inherit new chrome in Phase 47.7, after the main redesign)
-- `/legal/*` — legal docs (Phase 47.8, low priority)
+- `/trail-check`, `/trail-method`, `/wealth-check` — secondary public pages (inherit new chrome in Phase 48.7, after the main redesign)
+- `/legal/*` — legal docs (Phase 48.8, low priority)
 
 ---
 
@@ -95,8 +95,8 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 ## 6. Creative Freedom (ideas backlog — picked from when roadmap is empty)
 
 - **Editorial serif accent.** A single phrase per hero in serif italic (à la Stripe) — Tiempos or GT Sectra candidates. Currently parked; revisit once Inter-only direction has bedded in.
-- **Dark mode variant.** Public site is light-mode-first. A dark mode variant for visitors with system preference set to dark could ship as Phase 47.2.
-- **Wealth-builder testimonial section.** Currently using trust blocks (Phase 47 ICP rewrite). When real consenting customer stories exist, swap back to a testimonial format with proper ACL s18 compliance.
+- **Dark mode variant.** Public site is light-mode-first. A dark mode variant for visitors with system preference set to dark could ship as Phase 48.2.
+- **Wealth-builder testimonial section.** Currently using trust blocks (Phase 48 ICP rewrite). When real consenting customer stories exist, swap back to a testimonial format with proper ACL s18 compliance.
 - **TRAIL Check teaser.** The 60-second TRAIL Check is a strong conversion gem — explore an inline mini-version on the landing page (one question + result preview) instead of a separate-page CTA.
 - **Comparison table** vs. spreadsheets / vs. other tools. Only after enough product depth to make the comparison honest — premature comparison reads as defensive.
 
@@ -151,4 +151,4 @@ Pre-existing site used stone-950 + amber-500 as primary brand. Decided to demote
 - TRAIL stage hues SSOT: `lib/navigation/trailNav.tsx` → `TRAIL_STAGE_TONES`
 - Canonical motion: `components/shell/motion.ts`
 - AFSL boundary copy: `lib/tax-engine/boundaries/index.ts`
-- Phase 47 ICP positioning: `IMPLEMENTATION_PLAN.md` Open Question Q-ICP-1 (decided 2026-05-24)
+- Phase 48 ICP positioning: `IMPLEMENTATION_PLAN.md` Open Question Q-ICP-1 (decided 2026-05-24)
