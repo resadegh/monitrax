@@ -1,10 +1,25 @@
 'use client';
 
-import { motion, useInView, useReducedMotion } from 'framer-motion';
-import { appleEase } from '@/components/shell/motion';
-import { useRef, ReactNode } from 'react';
+/**
+ * Public-marketing scroll-reveal primitives.
+ *
+ * Phase 48 PR 3 (2026-05-26): refactored to compose `components/shell/motion.ts`
+ * primitives instead of inline timing constants. Pure refactor — the
+ * exported API (`Reveal`, `StaggerContainer`, `StaggerItem`) and their
+ * props are unchanged, so the 9 existing consumers in
+ * `components/marketing/Trail*.tsx`, `app/wealth-check/page.tsx`,
+ * `app/welcome/page.tsx`, `app/trail-method/page.tsx` continue to work
+ * without modification. CLAUDE.md §12.2 SSOT: motion vocabulary lives in
+ * one place (`motion.ts`), surfaces compose from there.
+ */
 
+import { motion, useInView, type Variants } from 'framer-motion';
+import { useRef, type ReactNode } from 'react';
+import { appleEase, useReducedMotionSafe } from '@/components/shell/motion';
 
+/**
+ * Single-element reveal on scroll. Fades + rises 32px once visible.
+ */
 export function Reveal({
   children,
   className,
@@ -16,25 +31,26 @@ export function Reveal({
 }) {
   const ref = useRef(null);
   const isInView = useInView(ref, { once: true, margin: '-80px' });
-  const prefersReducedMotion = useReducedMotion();
+  const reduced = useReducedMotionSafe();
 
   return (
     <motion.div
       ref={ref}
       className={className}
-      initial={prefersReducedMotion ? {} : { opacity: 0, y: 32 }}
+      initial={reduced ? {} : { opacity: 0, y: 32 }}
       animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={
-        prefersReducedMotion
-          ? { duration: 0 }
-          : { duration: 0.7, ease: appleEase, delay }
-      }
+      transition={reduced ? { duration: 0 } : { duration: 0.7, ease: appleEase, delay }}
     >
       {children}
     </motion.div>
   );
 }
 
+/**
+ * Stagger orchestrator. Pair with `<StaggerItem>` children — each child
+ * animates in 150ms after the previous one once the container scrolls
+ * into view.
+ */
 export function StaggerContainer({
   children,
   className,
@@ -61,6 +77,10 @@ export function StaggerContainer({
   );
 }
 
+/**
+ * Child of `<StaggerContainer>`. Fades + rises 24px when its parent
+ * triggers the staggered transition.
+ */
 export function StaggerItem({
   children,
   className,
@@ -68,20 +88,19 @@ export function StaggerItem({
   children: ReactNode;
   className?: string;
 }) {
-  const prefersReducedMotion = useReducedMotion();
+  const reduced = useReducedMotionSafe();
+
+  const variants: Variants = {
+    hidden: reduced ? {} : { opacity: 0, y: 24 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.6, ease: appleEase },
+    },
+  };
 
   return (
-    <motion.div
-      className={className}
-      variants={{
-        hidden: prefersReducedMotion ? {} : { opacity: 0, y: 24 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          transition: { duration: 0.6, ease: appleEase },
-        },
-      }}
-    >
+    <motion.div className={className} variants={variants}>
       {children}
     </motion.div>
   );

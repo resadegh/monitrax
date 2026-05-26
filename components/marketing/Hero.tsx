@@ -1,143 +1,181 @@
+'use client';
+
+/**
+ * Public-site marketing hero — dark Deep Cosmos.
+ *
+ * Phase 48 PR 3 (2026-05-26). Replaces the v1 ivory-era `TrailHero`.
+ * Built from the locked Stitch canonical screen (`.stitch/SITE.md` §7 v4):
+ * project `1859462351962811110`, screen `42730aaf...` "Monitrax Hero —
+ * Symbolic 3D Icons". Six floating 3D icons baked locally to
+ * `public/marketing/hero/*.png` so we don't depend on Stitch's Google
+ * CDN URLs (which can rotate). Each icon represents one wealth structure:
+ *   property · super · trust · company · investments · cashflow
+ * aligned with the in-app `components/wealth/wealthGlyphs.tsx` vocabulary.
+ *
+ * Motion composition (per CLAUDE.md §0 architect lens):
+ *   - `useReducedMotionSafe()` from `components/shell/motion.ts` — the
+ *     canonical hook, never re-define locally.
+ *   - `heroEnter` transition for the centred copy block.
+ *   - `tileEnter(index)` for staggered floating-icon entrance.
+ *   - Pure-CSS `cosmos-glow-center` for the radial emerald breath glow
+ *     behind the headline (utility class from PR 1).
+ *   - Floating idle motion: a `cosmos-float` keyframe gated by
+ *     `prefers-reduced-motion`.
+ *
+ * Accessibility:
+ *   - `alt=""` on decorative icons (announced via the visible text alone).
+ *   - `aria-label` on the section.
+ *   - All motion respects `prefers-reduced-motion`.
+ *   - 44px tap target on CTA.
+ *
+ * LCP optimisation:
+ *   - All 6 icon images use `<Image>` with `priority` so they fetch as
+ *     soon as the hero mounts — they're above the fold.
+ *   - Icons hidden on mobile (`hidden lg:block`) — the centred copy reads
+ *     cleaner without competing visuals at narrow widths.
+ */
+
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import Image from 'next/image';
+import { motion } from 'framer-motion';
+import { heroEnter, tileEnter, useReducedMotionSafe } from '@/components/shell/motion';
+
+type FloatingIcon = {
+  src: string;
+  label: string;
+  className: string;
+  style: React.CSSProperties;
+};
+
+const FLOATING_ICONS: readonly FloatingIcon[] = [
+  {
+    src: '/marketing/hero/property.png',
+    label: 'Property',
+    className: 'w-[200px] xl:w-[240px]',
+    style: { top: '15%', left: '8%', transform: 'rotate(-15deg)' },
+  },
+  {
+    src: '/marketing/hero/super.png',
+    label: 'Super / SMSF',
+    className: 'w-[170px] xl:w-[200px]',
+    style: { top: '18%', right: '8%', transform: 'rotate(12deg)' },
+  },
+  {
+    src: '/marketing/hero/trust.png',
+    label: 'Trust',
+    className: 'w-[150px] xl:w-[180px]',
+    style: { bottom: '26%', left: '6%', transform: 'rotate(-10deg)' },
+  },
+  {
+    src: '/marketing/hero/company.png',
+    label: 'Company',
+    className: 'w-[140px] xl:w-[160px]',
+    style: { bottom: '14%', right: '12%', transform: 'rotate(-20deg)' },
+  },
+  {
+    src: '/marketing/hero/investments.png',
+    label: 'Investments',
+    className: 'w-[180px] xl:w-[220px]',
+    style: { top: '60%', left: '15%', transform: 'rotate(5deg)' },
+  },
+  {
+    src: '/marketing/hero/cashflow.png',
+    label: 'Cashflow',
+    className: 'w-[230px] xl:w-[280px]',
+    style: { top: '50%', right: '4%', transform: 'rotate(18deg)' },
+  },
+] as const;
 
 export function Hero() {
+  const reduced = useReducedMotionSafe();
+
   return (
-    <section className="relative overflow-hidden bg-brand-primary">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="py-16 sm:py-24 lg:py-32">
-          <div className="grid gap-12 lg:grid-cols-2 lg:gap-8 items-center">
-            {/* Left column - Copy */}
-            <div className="max-w-2xl">
-              {/* Pill badge */}
-              <div className="inline-flex items-center rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-sm font-medium mb-6 text-white/90">
-                <span className="text-brand-secondary">Australian wealth OS</span>
-                <span className="mx-2 text-white/50">•</span>
-                <span className="text-white/70">Forecasts</span>
-                <span className="mx-2 text-white/50">•</span>
-                <span className="text-white/70">Strategy</span>
-              </div>
-
-              {/* Headline */}
-              <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl text-white">
-                Know where your wealth is{' '}
-                <span className="text-brand-secondary">heading</span>, not just where it&apos;s been.
-              </h1>
-
-              {/* Subheadline */}
-              <p className="mt-6 text-lg text-white/70 sm:text-xl">
-                Monitrax brings your properties, loans, investments and cash together with
-                Australian-aware forecasts and an AI strategy engine.
-              </p>
-
-              {/* CTAs */}
-              <div className="mt-8 flex flex-col sm:flex-row gap-4">
-                <Button size="lg" className="bg-brand-secondary hover:bg-brand-secondary/90 text-white" asChild>
-                  <Link href="/pricing">See plans & pricing</Link>
-                </Button>
-                <Button size="lg" variant="outline" className="bg-transparent border-white/30 text-white hover:bg-white/10 hover:text-white" asChild>
-                  <Link href="/signin">Sign in</Link>
-                </Button>
-              </div>
-
-              {/* Trust icons */}
-              <div className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-white/60">
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-brand-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                  Property
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-brand-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                  </svg>
-                  Investments
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-brand-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Tax
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="h-5 w-5 text-brand-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Cashflow
-                </div>
-              </div>
-            </div>
-
-            {/* Right column - App preview */}
-            <div className="relative lg:pl-8">
-              <div className="relative rounded-2xl border border-white/10 bg-white/5 p-2 shadow-2xl backdrop-blur-sm">
-                <div className="rounded-xl bg-neutral-900/80 p-6">
-                  {/* Mock dashboard preview */}
-                  <div className="space-y-4">
-                    {/* Header */}
-                    <div className="flex items-center justify-between">
-                      <div className="h-6 w-32 rounded bg-white/10" />
-                      <div className="h-8 w-8 rounded-full bg-white/10" />
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                        <div className="h-3 w-16 rounded bg-white/10 mb-2" />
-                        <div className="h-6 w-24 rounded bg-brand-secondary/30" />
-                      </div>
-                      <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                        <div className="h-3 w-16 rounded bg-white/10 mb-2" />
-                        <div className="h-6 w-20 rounded bg-brand-secondary/20" />
-                      </div>
-                      <div className="rounded-lg bg-white/5 p-3 border border-white/10">
-                        <div className="h-3 w-16 rounded bg-white/10 mb-2" />
-                        <div className="h-6 w-24 rounded bg-sky-500/20" />
-                      </div>
-                    </div>
-
-                    {/* Chart placeholder */}
-                    <div className="rounded-lg bg-white/5 p-4 border border-white/10">
-                      <div className="h-3 w-24 rounded bg-white/10 mb-4" />
-                      <div className="flex items-end gap-1 h-32">
-                        {[40, 65, 45, 80, 55, 90, 70, 85, 60, 95, 75, 88].map((height, i) => (
-                          <div
-                            key={i}
-                            className="flex-1 rounded-t bg-brand-secondary/60"
-                            style={{ height: `${height}%` }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* List items */}
-                    <div className="space-y-2">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center gap-3 rounded-lg bg-white/5 p-3 border border-white/10">
-                          <div className="h-8 w-8 rounded bg-white/10" />
-                          <div className="flex-1">
-                            <div className="h-3 w-24 rounded bg-white/10 mb-1" />
-                            <div className="h-2 w-16 rounded bg-white/5" />
-                          </div>
-                          <div className="h-4 w-16 rounded bg-white/10" />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Decorative elements */}
-              <div className="absolute -top-4 -right-4 h-72 w-72 rounded-full bg-brand-secondary/10 blur-3xl" />
-              <div className="absolute -bottom-8 -left-8 h-72 w-72 rounded-full bg-brand-secondary/5 blur-3xl" />
-            </div>
+    <section
+      aria-label="Monitrax — Australian Wealth Operating System"
+      className="cosmos-glow-center relative isolate flex min-h-[88vh] w-full items-center justify-center overflow-hidden bg-cosmos pt-20 md:pt-24 lg:min-h-screen"
+    >
+      {/* Floating 3D icons — decorative, desktop only */}
+      {FLOATING_ICONS.map((icon, i) => (
+        <motion.div
+          key={icon.src}
+          aria-hidden="true"
+          className={`pointer-events-none absolute z-10 hidden drop-shadow-[0_20px_50px_rgba(0,0,0,0.6)] lg:block ${icon.className}`}
+          style={icon.style}
+          initial={reduced ? false : { opacity: 0, scale: 0.85 }}
+          animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+          transition={tileEnter(i + 1)}
+        >
+          <div className={reduced ? '' : 'cosmos-float'}>
+            <Image
+              src={icon.src}
+              alt=""
+              width={400}
+              height={400}
+              priority
+              className="h-auto w-full select-none"
+              draggable={false}
+            />
           </div>
-        </div>
-      </div>
+        </motion.div>
+      ))}
 
-      {/* Bottom fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent" />
+      {/* Centred copy block */}
+      <motion.div
+        initial={reduced ? false : { opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={heroEnter}
+        className="relative z-20 mx-auto flex max-w-4xl flex-col items-center px-6 text-center"
+      >
+        {/* Eyebrow chip */}
+        <div className="cosmos-glass mb-8 rounded-full px-4 py-1.5">
+          <span className="text-[11px] font-medium uppercase tracking-[0.2em] text-cosmos-soft">
+            Australian Wealth Operating System
+          </span>
+        </div>
+
+        {/* Headline */}
+        <h1 className="mb-8 text-balance text-5xl font-bold leading-[1.05] tracking-tight text-cosmos sm:text-6xl lg:text-7xl xl:text-[96px]">
+          Your wealth,
+          <br />
+          <span className="bg-gradient-to-r from-cosmos-action-soft to-cosmos-action bg-clip-text text-transparent">
+            fully integrated.
+          </span>
+        </h1>
+
+        {/* Subtitle */}
+        <p className="mb-12 max-w-xl text-base leading-relaxed text-cosmos-soft sm:text-lg">
+          Property, super, investments, trusts, cashflow and tax — read by one engine,
+          in one calm view. So the next move is obvious before you make it.
+        </p>
+
+        {/* CTA + reassurance */}
+        <div className="flex flex-col items-center gap-4">
+          <Link
+            href="/register"
+            className="cosmos-cta inline-flex min-h-[44px] items-center justify-center rounded-full px-10 py-4 text-lg font-bold"
+          >
+            Start free
+          </Link>
+          <span className="text-sm text-cosmos-muted">
+            Built for Australian wealth-builders. No credit card.
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Scroll affordance */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-8 left-1/2 z-20 -translate-x-1/2 text-cosmos-faint"
+      >
+        <svg
+          className={`h-6 w-6 ${reduced ? '' : 'animate-bounce'}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </div>
     </section>
   );
 }
