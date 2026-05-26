@@ -2,6 +2,91 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48 Public Website Redesign — PR 5 (FAQ + FinalCTA — landing page complete)
+
+- **Type**: UI redesign (visual replacement)
+- **Scope**: Two new dark Deep Cosmos sections (FAQ + FinalCTA) that close out the landing page. Replaces the last v1 holdout `TrailCTA`. Pricing **deferred** to Phase 6 per IMPLEMENTATION_PLAN.md §0e (Monetisation, decided 2026-05-12).
+- **Why**: PR 5 of the Phase 48 6-PR sequence. After this PR the landing page is **fully Deep Cosmos canonical** — every section is the new design, no v1 holdouts. Only PR 6 (auth surfaces) remains.
+
+### Strategic decision: Pricing deferred
+
+The Stitch `pricing` screen has 3 tiers (Track Free · Reduce $24/mo · Anchor $49/mo) and a monthly/annual toggle. **NOT shipped in this PR.**
+
+Reason: `IMPLEMENTATION_PLAN.md` §0e Monetisation workstream (Reza directive 2026-05-12) explicitly states:
+
+> *"a **consumer pricing page** waits for Phase 6 (don't commit publicly to numbers that'll change). Indicative consumer pricing ~AU$9–14/mo or ~$79–129/yr, TBD."*
+
+Stitch's $24/$49 numbers don't match the planned ~$9-14/mo range. Shipping them would publicly commit to prices the team hasn't finalised. The Stitch design remains in `.stitch/designs/pricing.{html,png}` for reference; when Phase 6 begins (post-Basiq go-live), the final consumer pricing page can be built from that design with the correct numbers.
+
+If Reza wants a "coming soon" pricing teaser before Phase 6, that's a separate small PR — not a 0e violation.
+
+### New components
+
+| File | Role |
+|---|---|
+| `components/marketing/FAQ.tsx` | "Honest answers" — 6 native `<details>` accordions covering regulation / data / bank connections / scope / cancellation / data location |
+| `components/marketing/FinalCTA.tsx` | "Ready to see the picture?" — last conversion surface with emerald `cosmos-cta` CTA + `cosmos-glow-center` background |
+
+### Deleted
+
+| File | Replacement |
+|---|---|
+| `TrailCTA.tsx` | `FinalCTA.tsx` (this PR) |
+
+After this delete, **all v1 `Trail*` marketing components are gone**. The marketing folder now contains only:
+- The new Deep Cosmos canon (Header · Footer · Hero · ProofStrip · OnePicture · FiveCapabilities · HowItWorks · FAQ · FinalCTA)
+- The shared `animations.tsx`
+- The legacy v0 components (SocialProof / ValuePillars / FeatureGrid / ForecastSection / Testimonials / SecuritySection) — kept until a final cleanup PR confirms no consumers
+
+### Strategic decisions (financial-adviser + security/compliance lens)
+
+**1. AFSL boundary copy preserved verbatim in FAQ Q1.** "Monitrax is a financial information service, not a licensed adviser. We surface the maths and the mechanisms, not personal advice." Locked language per Phase 46 §9 + `.stitch/SITE.md` §6.2.
+
+**2. Security claim softened in FAQ Q6.** Stitch source said: *"Google Cloud in Sydney. Encrypted at rest with customer-managed keys."* Shipped as: *"Google Cloud in Sydney. Encrypted at rest."* Reason: CMEK (Cloud KMS customer-managed keys) is listed as **P1** (planned, not yet deployed) in CLAUDE.md §13.9. Advertising security controls we haven't shipped is misleading + compliance risk. Documented inline in FAQ JSDoc.
+
+**3. CDR status framed accurately in FAQ Q3.** "Not yet. Consumer Data Right accreditation is in progress." Matches the IMPLEMENTATION_PLAN.md state — Basiq accreditation queued.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/marketing/FAQ.tsx` | NEW — 6-Q accordion section |
+| `components/marketing/FinalCTA.tsx` | NEW — final conversion section |
+| `components/marketing/TrailCTA.tsx` | DELETED |
+| `components/marketing/index.ts` | Re-grouped — new exports, removed TrailCTA, doc'd Pricing deferral |
+| `app/page.tsx` | Renders FAQ + FinalCTA (replaces TrailCTA) |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | PR 5 entry prepended |
+| `docs/IMPLEMENTATION_PLAN.md` | PR 5 ticked, PR 4 marked merged |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no new errors
+- [x] No business / logic / functional code touched
+- [x] No remaining imports of deleted `TrailCTA` (only JSDoc references — updated)
+
+### Documentation Updated
+
+- File-header JSDoc on each new component
+- Pricing deferral decision documented in PR description + this CHANGELOG + `components/marketing/index.ts` header
+
+### Testing
+
+- [x] Build passes (TypeScript)
+- [x] No new lint warnings
+- [ ] Vercel preview deploy `READY`
+- [ ] Preview: FAQ accordions open/close, focus visible, keyboard accessible
+- [ ] Preview: FinalCTA emerald glow + CTA hover state
+- [ ] Preview: landing page reads as fully Deep Cosmos canonical end-to-end
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+---
+
 ### Phase 48 Public Website Redesign — PR 4 (Body sections — ProofStrip · OnePicture · FiveCapabilities · HowItWorks)
 
 - **Type**: UI redesign (visual replacement, no behaviour change)

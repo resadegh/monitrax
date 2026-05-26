@@ -11,7 +11,8 @@ import {
   OnePicture,
   FiveCapabilities,
   HowItWorks,
-  TrailCTA,
+  FAQ,
+  FinalCTA,
 } from '@/components/marketing';
 
 export default function LandingPage() {
@@ -37,12 +38,11 @@ export default function LandingPage() {
   // single frame before the useEffect above redirects them — acceptable
   // tradeoff for LCP, and authenticated users typically arrive at
   // /dashboard directly anyway.
-  // Phase 48 PR 4 (2026-05-26): IA largely complete. New section primitives
-  // (ProofStrip / OnePicture / FiveCapabilities / HowItWorks) replace the
-  // v1 TrailJourney + TrailHowItWorks. Only TrailCTA remains as a
-  // transitional placeholder until PR 5 replaces it with the new Pricing +
-  // FAQ + Final CTA family. All v1 problem-framing / bridge / testimonials
-  // components have been deleted (no consumers).
+  // Phase 48 PR 5 (2026-05-26): landing page now fully Deep Cosmos canonical.
+  // FAQ + FinalCTA ship in this PR, replacing the last v1 TrailCTA.
+  // Pricing intentionally deferred to Phase 6 per IMPLEMENTATION_PLAN.md
+  // §0e (Monetisation, decided 2026-05-12) — consumer pricing waits for
+  // Basiq go-live, do not commit publicly to numbers that'll change.
   return (
     <div className="flex min-h-screen flex-col bg-cosmos">
       <Header />
@@ -52,7 +52,8 @@ export default function LandingPage() {
         <OnePicture />
         <FiveCapabilities />
         <HowItWorks />
-        <TrailCTA />
+        <FAQ />
+        <FinalCTA />
       </main>
       <Footer />
     </div>
