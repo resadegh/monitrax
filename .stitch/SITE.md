@@ -95,12 +95,31 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 
 ---
 
-## 7. Reversed / parked decisions (do NOT re-attempt)
+## 7. Direction history + parked decisions (do NOT re-attempt)
 
-- **Amber as primary brand colour** — decided 2026-05-26 to demote amber to TRAIL-R-accent-only. Navy + emerald + ivory is the new identity. Do not propose amber-led hero variants.
-- **Stone-950 / warm-black backgrounds** — replaced by warm-ivory `#FAFAF7` light surfaces + deep navy `#0B1220` dark surfaces. Do not use stone-950 as a page background.
-- **Hero with abstract illustrations or 3D blobs** — explicitly rejected. Product-glimpse imagery only.
-- **100dvh heroes** — banned. Hero is 70-80vh, scroll-encouraged.
+### v3 — Copilot-Money-inspired dark hero (current, 2026-05-26 ~01:00 UTC)
+
+After 5 generations on the warm-ivory direction (hero v1+v2, below-hero v1+v2, five-and-how), Reza shared Copilot Money's landing page as the theme reference he prefers. Pivoting to:
+- **Dark near-black hero background** (~#0A0A14 — NOT pure black)
+- **Massive centred display typography** (Inter 700 or heavier, white, letter-spacing -0.04em)
+- **Floating UI tile decoration** around the headline — but with WEALTH-BUILDER content (mini Net Worth card, mini Property card, mini SMSF card, mini Money Story card, etc.) — NOT Copilot's lifestyle-category emoji pills (Date Night/Groceries/Wedding/Baby — those are budget-app vocabulary, antithetical to Monitrax's wealth-builder ICP)
+- **Singular emerald pill CTA** centred
+- **Wealth-builder content preserved verbatim** — the floating tiles are wealth instruments, not lifestyle categories. THIS IS THE KEY DISTINCTION.
+
+### v2 — warm-ivory + product-glimpse (deprecated 2026-05-26 ~01:00 UTC, preserved in `.stitch/designs/` as `-v1`/`-v2` files)
+
+Strong structural direction: warm-ivory background, navy primary, emerald CTAs, Mercury/Stripe-shape. Reza wanted more visual presence and impact — pivoted to Copilot dark direction. The warm-ivory work is preserved (DON'T delete) and may be the right baseline for the AUTH pages even if the landing hero goes dark.
+
+### v1 — amber-led dark hero (deprecated 2026-05-26 ~00:00 UTC)
+
+Pre-existing site used stone-950 + amber-500 as primary brand. Decided to demote amber to TRAIL-R-accent only (it's the Reduce-stage hue in the SSOT). Do NOT re-attempt amber as primary brand colour.
+
+### Permanently parked
+
+- **Pure black backgrounds (`#000000`)** — even in dark mode, use `#0A0A14` or `#020617` to avoid OLED-burn / harshness.
+- **Lifestyle-spending category objects (Date Night, Groceries, Wedding, Baby)** — those are budget-app DNA. Monitrax floats wealth structures (Property, SMSF, Trust, Investments, Super, Company, Cashflow, Tax).
+- **Cartoon mascots / faces / character-led AI imagery** — Monitrax AI is presence (PresenceOrb), not persona.
+- **100dvh heroes** — hero is 75-85vh, scroll-encouraged.
 
 ---
 
