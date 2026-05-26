@@ -1,0 +1,195 @@
+{
+  "name": "projects/1859462351962811110",
+  "projectId": "1859462351962811110",
+  "title": "Monitrax — Public Website Redesign (Phase 47)",
+  "visibility": "PRIVATE",
+  "createTime": "2026-05-26T00:27:19.415110Z",
+  "updateTime": "2026-05-26T00:39:00.000000Z",
+  "projectType": "PROJECT_DESIGN",
+  "origin": "STITCH",
+  "designTheme": {
+    "colorMode": "LIGHT",
+    "font": "INTER",
+    "roundness": "ROUND_EIGHT",
+    "customColor": "#16a34a",
+    "designSystemId": "assets/b5e2247671954bfc80efeed2bc604aa3"
+  },
+  "screens": {
+    "index": {
+      "id": "f533d6d2e2c44ac789ee327009b63cd9",
+      "sourceScreen": "projects/1859462351962811110/screens/f533d6d2e2c44ac789ee327009b63cd9",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Brand Corrected",
+      "generatedAt": "2026-05-26T00:43:00.000000Z",
+      "scope": "Hero only — v2. Brand-corrected: warm-ivory #FAFAF7 page bg, true emerald #16A34A on all CTAs + highlight word + Saved segment, warm indigo/sky/emerald mesh on product card, Lucide-style inline SVG icons (Material Symbols dependency removed). Sections 2-3 (proof strip + One Picture) deferred.",
+      "previousVersion": "a7c90975d65f40909f69e5d12f55e67d"
+    },
+    "index-v1": {
+      "id": "a7c90975d65f40909f69e5d12f55e67d",
+      "sourceScreen": "projects/1859462351962811110/screens/a7c90975d65f40909f69e5d12f55e67d",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Refined Design (v1, palette drift)",
+      "generatedAt": "2026-05-26T00:39:00.000000Z",
+      "scope": "Hero only — v1. First generation; Stitch's design system overrode the warm-ivory request with cool blue #f8f9ff and emerald drifted to Material #006b2c. Superseded by v2 (index)."
+    },
+    "below-hero": {
+      "id": "c42ad8575af24a5ab41b63bf1599ed1f",
+      "sourceScreen": "projects/1859462351962811110/screens/c42ad8575af24a5ab41b63bf1599ed1f",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2274,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (v2, integration-debt caption added)",
+      "generatedAt": "2026-05-26T00:54:00.000000Z",
+      "previousVersion": "d97a4dc3ddc84fcfb86365b06c626215",
+      "scope": "Sections 2-3 v2 with the integration-debt italic caption (Phase 46 / THE_TRAIL_METHOD.md positioning DNA) added under the One Picture headline."
+    },
+    "below-hero-v1": {
+      "id": "d97a4dc3ddc84fcfb86365b06c626215",
+      "sourceScreen": "projects/1859462351962811110/screens/d97a4dc3ddc84fcfb86365b06c626215",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2274,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (v1)",
+      "generatedAt": "2026-05-26T00:48:00.000000Z",
+      "scope": "First proof strip + One Picture generation. Superseded by below-hero (v2) which added the integration-debt caption."
+    },
+    "five-and-how": {
+      "id": "e0cb904a7b0949f7b8e6dc62db66ab97",
+      "sourceScreen": "projects/1859462351962811110/screens/e0cb904a7b0949f7b8e6dc62db66ab97",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 5208,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 4 & 5 (Five Capabilities + How It Works)",
+      "generatedAt": "2026-05-26T00:59:00.000000Z",
+      "scope": "Sections 4-5 of the landing IA. THE FIVE (TRAIL capability cards with canonical stage hues: T sky / R amber / A indigo / I emerald / L violet, each as a single tonal badge accent — never a card-bg fill) + HOW IT WORKS (3 numbered steps with faded slate-300 numerals, typographic no-shadow cards). Warm-ivory throughout."
+    },
+    "dark-hero": {
+      "id": "42730aaf80ed4fcf822278e642d476a9",
+      "sourceScreen": "projects/1859462351962811110/screens/42730aaf80ed4fcf822278e642d476a9",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2362,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Symbolic 3D Icons",
+      "generatedAt": "2026-05-26T01:55:00.000000Z",
+      "previousVersion": "9043b37418f547e19fe3179beac15945",
+      "scope": "v2 — labelled wealth pills replaced with 6 symbolic 3D icons (house/columns/shield/$/upward-arrow/bank) per Reza directive 2026-05-26 ~01:48 UTC. Same headline, CTA, nav, background, composition. Emerald dollar sign $ serves as the hero icon, matching the brand CTA accent. Aligned with the in-app components/wealth/wealthGlyphs.tsx filled-silhouette vocabulary, rendered 3D-glossy for marketing."
+    },
+    "dark-hero-pills": {
+      "id": "9043b37418f547e19fe3179beac15945",
+      "sourceScreen": "projects/1859462351962811110/screens/9043b37418f547e19fe3179beac15945",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2362,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Dark Hero - 3D Pillars (v1, labelled pills)",
+      "generatedAt": "2026-05-26T01:16:00.000000Z",
+      "scope": "Original Copilot-style dark hero with 6 labelled wealth pills. Superseded by symbolic icons version (dark-hero key)."
+    },
+    "pricing": {
+      "id": "131a10110ae34e269e67753222c7ac8a",
+      "sourceScreen": "projects/1859462351962811110/screens/131a10110ae34e269e67753222c7ac8a",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2738,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Pricing - Deep Cosmos Dark Mode",
+      "generatedAt": "2026-05-26T02:10:00.000000Z",
+      "scope": "Section 8 — pricing. 3 glass-tile tiers (Track Free / Reduce $24/mo Recommended / Anchor $49/mo). Annual toggle. Restraint over manipulation. Note: first 2 attempts failed silently (content moderation?); third with abstract framing succeeded."
+    },
+    "closing": {
+      "id": "882af1ad41754955a7f367e8760a36a5",
+      "sourceScreen": "projects/1859462351962811110/screens/882af1ad41754955a7f367e8760a36a5",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4284,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing - FAQ & Footer",
+      "generatedAt": "2026-05-26T02:13:00.000000Z",
+      "scope": "Sections 9-10-11 — FAQ accordion (6 honest questions, AFSL boundary copy preserved) + Final CTA ('Ready to see the picture?' with centred emerald glow) + 5-column footer on darker #08080F."
+    },
+    "signin": {
+      "id": "1d6a272620ba4db88f6868d32d1fa51f",
+      "sourceScreen": "projects/1859462351962811110/screens/1d6a272620ba4db88f6868d32d1fa51f",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Sign In - Deep Cosmos Theme",
+      "generatedAt": "2026-05-26T02:08:00.000000Z",
+      "scope": "Auth — sign-in. Centred 440px form on dark background with subtle emerald radial glow. Email/password + remember me + Google/Apple OAuth. Apple-ID/Mercury-shape (no split-screen template)."
+    },
+    "register": {
+      "id": "613fdfae5ab040ecb335c3f400d46ad4",
+      "sourceScreen": "projects/1859462351962811110/screens/613fdfae5ab040ecb335c3f400d46ad4",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2554,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Sign Up - Deep Cosmos Theme",
+      "generatedAt": "2026-05-26T02:15:00.000000Z",
+      "scope": "Auth — sign-up/register. Matches sign-in chrome. Full name + email + password (with emerald strength meter) + optional postcode + 2 unchecked-by-default consent boxes. AFSL reassurance microcopy footer."
+    },
+    "security-and-ai": {
+      "id": "134afb0289bd49d19de9b9f4c8fe0ce5",
+      "sourceScreen": "projects/1859462351962811110/screens/134afb0289bd49d19de9b9f4c8fe0ce5",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4258,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Security & AI",
+      "generatedAt": "2026-05-26T01:27:00.000000Z",
+      "scope": "Sections 6-7 (Security + AI) on dark theme matching hero. Stitch named its design system 'Deep Cosmos OS'. 4-pillar security grid (encryption / CDR / no-trackers / audit-logged) + AI positioning paragraph ('Intelligence, not advice'). First generation with the new free-creative-latitude prompt doctrine (no 'forbidden' lists, only strategic + content invariants)."
+    },
+    "below-hero-dark": {
+      "id": "576da1f5461442c1be23a62b6debfabe",
+      "sourceScreen": "projects/1859462351962811110/screens/576da1f5461442c1be23a62b6debfabe",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2706,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (Dark)",
+      "generatedAt": "2026-05-26T01:32:00.000000Z",
+      "scope": "Regen of sections 2-3 on Deep Cosmos dark to match hero direction. Proof Strip (6 frosted-glass wealth-structure chips) + One Picture (integration debt headline + before→engine→decision vertical flow with emerald decision card). Ivory v2 preserved as below-hero-ivory.{html,png} for auth-page reference."
+    },
+    "five-and-how-dark": {
+      "id": "d51c4876e7464a10800eaa82bd2b969b",
+      "sourceScreen": "projects/1859462351962811110/screens/d51c4876e7464a10800eaa82bd2b969b",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4256,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 4 & 5 (Dark)",
+      "generatedAt": "2026-05-26T01:34:00.000000Z",
+      "scope": "Regen of sections 4-5 on Deep Cosmos dark. THE FIVE capability cards (each TRAIL stage's canonical hue as surgical accent — sky/amber/indigo/emerald/violet) + HOW IT WORKS 3-step editorial. Ivory v1 preserved as five-and-how-ivory.{html,png}."
+    }
+  },
+  "failedGenerations": {
+    "dark-hero-variants-3-explore-pro": {
+      "attempted": "2026-05-26T01:20:00.000000Z",
+      "source": "9043b37418f547e19fe3179beac15945",
+      "request": "generate_variants with variantCount=3 + creativeRange=EXPLORE + GEMINI_3_1_PRO + LAYOUT/COLOR_SCHEME/IMAGES/TEXT_CONTENT aspects",
+      "result": "60s MCP timeout. 5-min poll of get_project never detected new screen IDs in the project response. Variants may exist in Stitch web UI (https://stitch.withgoogle.com/projects/1859462351962811110) but not retrievable via this MCP session. To retry: use variantCount=1 + GEMINI_3_FLASH, run sequentially."
+    }
+  },
+  "deferredEdits": {
+    "hero-v3-wealth-check-cta": {
+      "screenId": "f533d6d2e2c44ac789ee327009b63cd9",
+      "attempted": "2026-05-26T00:52:00.000000Z",
+      "status": "DEFERRED — Stitch edit_screens applied DOM patches but did not persist to the canonical exportable asset (asset URL unchanged after edit). Three pending changes to apply at React-conversion / hand-polish time: (1) replace secondary CTA text 'Take the 60-second TRAIL Check →' with 'See your retirement gap in 30 seconds →' and href /trail-check → /wealth-check; (2) replace microcopy 'No credit card. No commitment. Just clarity.' with two-line stack (italic 'For households the budget apps stopped fitting.' + existing line); (3) verify integration-debt caption rendered correctly in below-hero v2."
+    }
+  },
+  "metadata": {
+    "userRole": "OWNER"
+  }
+}
+

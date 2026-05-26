@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Kinetic Perimeter</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#302f3b",
+                        "background": "#12121d",
+                        "on-secondary-container": "#b0b2ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-surface": "#e4e1f0",
+                        "inverse-surface": "#e4e1f0",
+                        "outline": "#879485",
+                        "surface-dim": "#12121d",
+                        "surface-container-high": "#292934",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "on-secondary-fixed": "#07006c",
+                        "on-secondary": "#1000a9",
+                        "on-background": "#e4e1f0",
+                        "surface-bright": "#393844",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-container": "#3131c0",
+                        "on-primary-fixed": "#002109",
+                        "on-tertiary-fixed": "#001e2f",
+                        "on-primary-fixed-variant": "#005320",
+                        "secondary": "#c0c1ff",
+                        "tertiary-container": "#009ada",
+                        "surface-container-lowest": "#0d0d17",
+                        "primary-fixed": "#7ffc97",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#34343f",
+                        "primary-container": "#1ca64d",
+                        "tertiary": "#89ceff",
+                        "surface": "#12121d",
+                        "on-primary": "#003914",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-tertiary-container": "#002d43",
+                        "on-tertiary": "#00344d",
+                        "inverse-primary": "#006e2d",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1f1f29",
+                        "primary": "#62df7d",
+                        "tertiary-fixed": "#c9e6ff",
+                        "on-surface-variant": "#bdcaba",
+                        "secondary-fixed": "#e1e0ff",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-error": "#690005",
+                        "on-primary-container": "#003111",
+                        "surface-variant": "#34343f",
+                        "surface-tint": "#62df7d",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "gutter": "24px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+                        "display-lg": ["80px", { "lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(41, 41, 52, 0.4);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .hero-gradient {
+            background: radial-gradient(circle at 50% -20%, rgba(28, 166, 77, 0.15) 0%, rgba(49, 49, 192, 0.05) 40%, rgba(18, 18, 29, 1) 100%);
+        }
+
+        .kinetic-pill {
+            animation: float 8s ease-in-out infinite;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.5));
+        }
+
+        .kinetic-pill-1 { animation-delay: 0s; transform: translate(0, 0) rotate(-15deg); }
+        .kinetic-pill-2 { animation-delay: -2s; transform: translate(0, 0) rotate(25deg); }
+        .kinetic-pill-3 { animation-delay: -4s; transform: translate(0, 0) rotate(-10deg); }
+        .kinetic-pill-4 { animation-delay: -6s; transform: translate(0, 0) rotate(15deg); }
+        
+        .kinetic-pill-blur {
+            animation: pulse-blur 4s infinite alternate;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px) rotate(var(--r, 0deg)); }
+            50% { transform: translateY(-20px) rotate(calc(var(--r, 0deg) + 5deg)); }
+            100% { transform: translateY(0px) rotate(var(--r, 0deg)); }
+        }
+        
+        @keyframes pulse-blur {
+            0% { filter: blur(0px); opacity: 1; }
+            100% { filter: blur(4px); opacity: 0.8; }
+        }
+
+        .text-glow {
+            text-shadow: 0 0 40px rgba(228, 225, 240, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen flex flex-col overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- Top Navigation (Shared Component) -->
+<nav class="fixed top-0 w-full z-50 bg-[#0a0a1499] dark:bg-[#0a0a1499] backdrop-blur-xl border-b border-transparent transition-all duration-300" id="main-nav">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<!-- Brand -->
+<a class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2 group style_interactions" href="#">
+<span class="material-symbols-outlined text-primary group-hover:rotate-90 transition-transform duration-500" data-weight="fill">monetization_on</span>
+                Monitrax
+            </a>
+<!-- Desktop Links -->
+<div class="hidden md:flex items-center gap-8">
+<a class="text-on-surface-variant font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="text-on-surface-variant font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="text-on-surface-variant font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="text-on-surface font-semibold font-body-md text-body-md hover:text-on-surface transition-colors duration-200 relative after:content-[''] after:absolute after:-bottom-1 after:left-0 after:w-full after:h-0.5 after:bg-primary after:rounded-t-full" href="#">The TRAIL</a>
+</div>
+<!-- Actions -->
+<div class="flex items-center gap-4">
+<a class="hidden md:block font-body-md text-body-md text-on-surface-variant hover:text-on-surface transition-colors duration-200 font-medium" href="#">Sign in</a>
+<a class="glass-panel px-6 py-2 rounded-full font-label-md text-label-md text-on-surface border border-outline hover:border-primary hover:bg-surface-container-high transition-all duration-300 shadow-[0_0_15px_rgba(28,166,77,0)] hover:shadow-[0_0_15px_rgba(28,166,77,0.2)]" href="#">
+                    Get started
+                </a>
+</div>
+</div>
+</nav>
+<!-- Main Content -->
+<main class="flex-grow relative w-full pt-24 pb-12 hero-gradient min-h-[90vh] flex items-center justify-center overflow-hidden">
+<!-- Background decorative elements -->
+<div class="absolute inset-0 pointer-events-none overflow-hidden">
+<div class="absolute top-1/4 left-1/4 w-[800px] h-[800px] bg-primary/5 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[600px] h-[600px] bg-secondary-container/10 rounded-full blur-[100px] translate-x-1/2 translate-y-1/2"></div>
+</div>
+<!-- 3D Pills (Absolute positioned around perimeter) -->
+<div class="absolute inset-0 pointer-events-none z-10">
+<!-- Top Left - Cashflow -->
+<div class="absolute top-[15%] left-[5%] md:left-[10%] kinetic-pill kinetic-pill-1" style="--r: -15deg;">
+<div class="kinetic-pill-blur">
+<img alt="Cashflow indicator pill" class="w-48 md:w-64 opacity-90 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0ugfuYbNatiRo3-BN92lE1tLB0FxW7Ifn7ETL1Du33g-E-hf_vRw72v_D0dbfq18ci5fREv1wTmh8K_dVWqHuhFjdxiK7FHkK5O_tWXyO2QA4WYPbGNeUarztoMAy8S7yQuKj5OPNVFvBlN2bgeOo2pGX3Sgi-ledP5RwC8Q_cGMBuVQZ_q2UKs3b_FlLZUVEiGZju9vMn4EZS85z9W1lXAye3hKIXAoIiFJArj7Gg4jr7oHHT5BqkwK5g"/>
+</div>
+</div>
+<!-- Top Right - Property -->
+<div class="absolute top-[20%] right-[-5%] md:right-[5%] kinetic-pill kinetic-pill-2" style="--r: 25deg;">
+<div class="kinetic-pill-blur" style="animation-delay: -1s;">
+<img alt="Property asset pill" class="w-56 md:w-72 opacity-85 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0ui4MG_GeCGDBHMYsE4tKvH5fMokZtxO0_TqhI5x4LGlOXLDPsFdr2yMCSEzCqat1qwYCC_-CsMFq3uBfbq5X_NsoccQwqIVAHz5jIbpHImfgXY-Zf5vSUQMPc_uBTsyTy2_SB07J1BMASmnUrkkwzHeNS7ttHo7vWKY40K8fzO7s0oa9UIDibhWX4h5qCdY8uEKXv_Xjy5--r_adWk0fWzTVaeE6zs7ZaIzUbkUafbD3ERa3i-IUtJ38zc"/>
+</div>
+</div>
+<!-- Bottom Left - Offset -->
+<div class="absolute bottom-[20%] left-[-10%] md:left-[5%] kinetic-pill kinetic-pill-3" style="--r: -10deg;">
+<img alt="Offset account pill" class="w-60 md:w-80 opacity-95 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0ugfbWAcqoH4C46VncfeDi6OQ_IsspqtypPAV17mgbQAC6Pin0tb0OEho4k-A44aSDM81_J4txkTyQ5ew1bEBz4o_YBza-vM3EBRrahOkFdqXJ5Do8H6CvDrE4h0bA6PbtVF4vKGu0wu9KYCWGwbzTn--8F4aP3iPAOJ933vfThtvaKYiFqazF2tcV9V2RKFvQZRzYDOweP9DivtRVg8LQOtp1diIF3TLFbc4SS38AxjH4pghhTcR0lhlQ"/>
+</div>
+<!-- Bottom Right - SMSF -->
+<div class="absolute bottom-[15%] right-[5%] md:right-[15%] kinetic-pill kinetic-pill-4" style="--r: 15deg;">
+<img alt="SMSF entity pill" class="w-52 md:w-64 opacity-90 drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0uhxITiLIqrLqtAMyTuXbxPr_pTelk4fs1fLRkm49hRKvFYIPvE2P2yOlbtq1Nd7Xul6aYW8gomFxUpAlL23Vky-P6a9h2qeNw1AHBzq6p3gROOAyQavzGiMDdmnSwNKHv0uvqMQeFAc1hd4LPWWcFcTPVF1-u_x6XeLctcebKEEo3tcMe9WPAMPDniAwN0z6_wYomcqGsLcDAvJ1rL_2hBPQrNEde7635qSbonukj3eduNhi_o-G759P0c"/>
+</div>
+</div>
+<!-- Hero Content (Centered) -->
+<div class="relative z-20 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop flex flex-col items-center text-center mt-12 md:mt-0">
+<div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-outline-variant bg-surface-container/50 backdrop-blur-md mb-8">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Kinetic Perimeter Active</span>
+</div>
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-6 max-w-4xl tracking-tight text-glow mix-blend-screen">
+                THE COMPLETE <br class="hidden md:block"/>
+<span class="text-transparent bg-clip-text bg-gradient-to-r from-on-surface via-primary-fixed to-tertiary-fixed">VIEW.</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-12">
+                Moving from passive tracking to active decision-making across all your entities.
+            </p>
+<button class="group glass-panel relative overflow-hidden rounded-full px-8 py-4 flex items-center gap-3 transition-all duration-300 hover:scale-105 hover:border-primary shadow-[0_0_30px_rgba(28,166,77,0.1)] hover:shadow-[0_0_40px_rgba(28,166,77,0.25)] before:absolute before:inset-0 before:bg-gradient-to-b before:from-white/5 before:to-transparent before:opacity-0 hover:before:opacity-100">
+<span class="font-label-md text-label-md font-semibold text-on-surface relative z-10">Initialize Workspace</span>
+<span class="material-symbols-outlined text-primary relative z-10 group-hover:translate-x-1 transition-transform duration-300" style="font-variation-settings: 'FILL' 1;">arrow_forward</span>
+<div class="absolute inset-0 border border-primary opacity-50 rounded-full blur-[2px] group-hover:opacity-100 transition-opacity"></div>
+</button>
+</div>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="bg-surface-container-lowest dark:bg-surface-container-lowest w-full border-t border-white/10 relative z-30">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-12 max-w-container-max mx-auto gap-8 md:gap-0">
+<!-- Brand -->
+<div class="font-headline-md text-[24px] font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-primary" data-weight="fill">monetization_on</span>
+                Monitrax
+            </div>
+<!-- Links -->
+<div class="flex flex-wrap justify-center gap-6 md:gap-8">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Financial Services Guide</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Contact</a>
+</div>
+<!-- Copyright -->
+<div class="font-body-sm text-[12px] text-on-surface-variant opacity-60">
+                © 2024 Monitrax. Australian Wealth Operating System.
+            </div>
+</div>
+</footer>
+<script>
+        // Simple nav scroll effect
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('main-nav');
+            if (window.scrollY > 20) {
+                nav.classList.add('shadow-[0_4px_30px_rgba(0,0,0,0.5)]', 'border-white/5');
+                nav.classList.remove('border-transparent');
+            } else {
+                nav.classList.remove('shadow-[0_4px_30px_rgba(0,0,0,0.5)]', 'border-white/5');
+                nav.classList.add('border-transparent');
+            }
+        });
+    </script>
+</body></html>

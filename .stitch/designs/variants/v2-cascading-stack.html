@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - The Cascading Stack</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "inverse-on-surface": "#302f3b",
+                        "background": "#12121d",
+                        "on-secondary-container": "#b0b2ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-surface": "#e4e1f0",
+                        "inverse-surface": "#e4e1f0",
+                        "outline": "#879485",
+                        "surface-dim": "#12121d",
+                        "surface-container-high": "#292934",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "on-secondary-fixed": "#07006c",
+                        "on-secondary": "#1000a9",
+                        "on-background": "#e4e1f0",
+                        "surface-bright": "#393844",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-container": "#3131c0",
+                        "on-primary-fixed": "#002109",
+                        "on-tertiary-fixed": "#001e2f",
+                        "on-primary-fixed-variant": "#005320",
+                        "secondary": "#c0c1ff",
+                        "tertiary-container": "#009ada",
+                        "surface-container-lowest": "#0d0d17",
+                        "primary-fixed": "#7ffc97",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#34343f",
+                        "primary-container": "#1ca64d",
+                        "tertiary": "#89ceff",
+                        "surface": "#12121d",
+                        "on-primary": "#003914",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-tertiary-container": "#002d43",
+                        "on-tertiary": "#00344d",
+                        "inverse-primary": "#006e2d",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1f1f29",
+                        "primary": "#62df7d",
+                        "tertiary-fixed": "#c9e6ff",
+                        "on-surface-variant": "#bdcaba",
+                        "secondary-fixed": "#e1e0ff",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-error": "#690005",
+                        "on-primary-container": "#003111",
+                        "surface-variant": "#34343f",
+                        "surface-tint": "#62df7d",
+                        "error-container": "#93000a"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "gutter": "24px",
+                        "unit": "8px"
+                    },
+                    fontFamily: {
+                        "headline-xl": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-xl": ["40px", { lineHeight: "48px", letterSpacing: "-0.02em", fontWeight: "500" }],
+                        "display-lg": ["80px", { lineHeight: "88px", letterSpacing: "-0.04em", fontWeight: "600" }],
+                        "display-lg-mobile": ["48px", { lineHeight: "52px", letterSpacing: "-0.03em", fontWeight: "600" }],
+                        "label-sm": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "body-md": ["16px", { lineHeight: "24px", letterSpacing: "0em", fontWeight: "400" }],
+                        "label-md": ["14px", { lineHeight: "20px", letterSpacing: "0.02em", fontWeight: "500" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.02em", fontWeight: "500" }],
+                        "body-lg": ["18px", { lineHeight: "28px", letterSpacing: "0em", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(41, 41, 52, 0.2);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.5);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .atmospheric-glow {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(22, 163, 74, 0.08) 0%, rgba(18, 18, 29, 0) 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .btn-primary-emerald {
+            background: linear-gradient(180deg, #1ca64d 0%, #168a3e 100%);
+            box-shadow: inset 0px 1px 1px rgba(255, 255, 255, 0.3), 0px 2px 4px rgba(0, 0, 0, 0.4);
+        }
+        .cascade-img-wrapper {
+            transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        .cascade-img-wrapper:hover {
+            transform: translateY(-8px) scale(1.02);
+            z-index: 10;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-sans antialiased min-h-screen flex flex-col selection:bg-primary-container selection:text-on-primary-container relative overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#0a0a1499] dark:bg-[#0a0a1499] backdrop-blur-xl border-b border-transparent transition-all duration-300">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined font-[FILL] text-primary" style="font-variation-settings: 'FILL' 1;">hexagon</span>
+                Monitrax
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-on-surface/70 font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="text-on-surface/70 font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="text-on-surface/70 font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="text-on-surface/70 font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">The TRAIL</a>
+</div>
+<div class="flex items-center gap-4">
+<a class="hidden md:block text-on-surface/70 font-medium font-body-md text-body-md hover:text-on-surface transition-colors duration-200" href="#">Sign in</a>
+<button class="btn-primary-emerald text-on-primary-container font-label-md text-label-md px-6 py-2.5 rounded-full scale-95 active:scale-90 transition-transform">
+                    Get started
+                </button>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="flex-grow pt-32 pb-24 relative z-10 flex items-center">
+<div class="atmospheric-glow"></div>
+<div class="max-w-container-max mx-auto w-full px-margin-mobile md:px-margin-desktop grid grid-cols-1 lg:grid-cols-12 gap-gutter relative z-10">
+<!-- Left Column: Copy -->
+<div class="lg:col-span-6 flex flex-col justify-center mb-16 lg:mb-0">
+<h1 class="font-display-lg-mobile lg:font-display-lg text-display-lg-mobile lg:text-display-lg text-on-surface mb-6 leading-tight tracking-tight">
+                    One OS for your <br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-on-surface to-on-surface-variant/50">entire structure.</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-xl mb-10">
+                    Consolidate property, loans, super, and trusts into a single, cohesive timeline. A sophisticated financial engine built for absolute clarity.
+                </p>
+<div class="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+<button class="btn-primary-emerald text-on-primary-container font-label-md text-label-md px-8 py-4 rounded-full flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-[0_0_20px_rgba(28,166,77,0.2)]">
+                        Initialize Structure
+                        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+<button class="glass-panel text-on-surface font-label-md text-label-md px-8 py-4 rounded-full hover:bg-surface-container-highest/30 transition-colors">
+                        View Sandbox
+                    </button>
+</div>
+</div>
+<!-- Right Column: Cascading Stack -->
+<div class="lg:col-span-6 relative h-[600px] flex justify-center items-center">
+<!-- Stack Container -->
+<div class="relative w-full max-w-[400px] h-full">
+<!-- Capsule 1 (Back) -->
+<div class="cascade-img-wrapper absolute top-[10%] right-[15%] w-[80%] z-10 opacity-60">
+<img alt="3D Glossy SMSF Capsule" class="w-full h-auto drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0uibEqwDnXue0LMiGsRicf8gAQ6EaJdE8wkSKUiLucIcwNkBxMnWKzghaL9WlrtaoTRSER17NpSkPRm7tw8mGHA3MB4d-4PgtG6DeFnz8zTc5oo3aPmA5Eb8Fmb0ZPueaPjpMsmC1iGDoWBy3y-5qgbhlZUD8DWU-GmaypuZOVFXrhRn5CR4_PiBOdPGFS0P-t_4h1fzsg7d8X3P6hhHFPAhYcbwzmrKit_W9qzuSlVubWgcSqoD5UzTU7g"/>
+</div>
+<!-- Capsule 2 -->
+<div class="cascade-img-wrapper absolute top-[30%] right-[25%] w-[85%] z-20 opacity-80">
+<img alt="3D Glossy Trust Capsule" class="w-full h-auto drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0uix2JD4xhm-p9RzeobHj-gHXaXJKp6ekuJRmRZenByRcMVmNwWamMRipD2kTdhjQTuisFwfz5_78dPGCSBHw7kZUSoUjJCt6q0CdaNPQ0e24aTlBgwlfs6mK_xI3KUfLhn61Dx3mHklh3oiIhlJRwlWs0j0v3eDdJU5uiy6LTEGGeQiWqAQ4DJt2wE0VDKPhIR696BmAtgvGGU7kcSb7uPEl6__OHXj6WkjAoFUlM_RiNVHm8vQ3fABxeI"/>
+</div>
+<!-- Capsule 3 -->
+<div class="cascade-img-wrapper absolute top-[50%] right-[35%] w-[90%] z-30 opacity-90">
+<img alt="3D Glossy Property Capsule" class="w-full h-auto drop-shadow-2xl" src="https://lh3.googleusercontent.com/aida/ADBb0ugfbWAcqoH4C46VncfeDi6OQ_IsspqtypPAV17mgbQAC6Pin0tb0OEho4k-A44aSDM81_J4txkTyQ5ew1bEBz4o_YBza-vM3EBRrahOkFdqXJ5Do8H6CvDrE4h0bA6PbtVF4vKGu0wu9KYCWGwbzTn--8F4aP3iPAOJ933vfThtvaKYiFqazF2tcV9V2RKFvQZRzYDOweP9DivtRVg8LQOtp1diIF3TLFbc4SS38AxjH4pghhTcR0lhlQ"/>
+</div>
+<!-- Capsule 4 (Front) -->
+<div class="cascade-img-wrapper absolute top-[70%] right-[45%] w-[95%] z-40">
+<img alt="3D Glossy Super Capsule" class="w-full h-auto drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)]" src="https://lh3.googleusercontent.com/aida/ADBb0ui4MG_GeCGDBHMYsE4tKvH5fMokZtxO0_TqhI5x4LGlOXLDPsFdr2yMCSEzCqat1qwYCC_-CsMFq3uBfbq5X_NsoccQwqIVAHz5jIbpHImfgXY-Zf5vSUQMPc_uBTsyTy2_SB07J1BMASmnUrkkwzHeNS7ttHo7vWKY40K8fzO7s0oa9UIDibhWX4h5qCdY8uEKXv_Xjy5--r_adWk0fWzTVaeE6zs7ZaIzUbkUafbD3ERa3i-IUtJ38zc"/>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-white/10 z-20 relative">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-12 max-w-container-max mx-auto gap-8">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">
+                Monitrax
+            </div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-on-surface-variant font-body-sm text-body-sm hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant font-body-sm text-body-sm hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="text-on-surface-variant font-body-sm text-body-sm hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Financial Services Guide</a>
+<a class="text-on-surface-variant font-body-sm text-body-sm hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Contact</a>
+</div>
+<div class="text-on-surface-variant font-body-sm text-body-sm">
+                © 2024 Monitrax. Australian Wealth Operating System.
+            </div>
+</div>
+</footer>
+</body></html>

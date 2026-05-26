@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign In | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#7ffc97",
+                        "on-tertiary-fixed": "#001e2f",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#302f3b",
+                        "error": "#ffb4ab",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "background": "#0A0A14",
+                        "surface-dim": "#12121d",
+                        "on-background": "#e4e1f0",
+                        "surface-variant": "#34343f",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-error": "#690005",
+                        "on-primary-container": "#003111",
+                        "surface-container-lowest": "#0d0d17",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "surface-container": "#1f1f29",
+                        "secondary": "#c0c1ff",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "inverse-primary": "#006e2d",
+                        "surface-container-low": "#1b1b25",
+                        "surface": "#12121d",
+                        "primary": "#16A34A",
+                        "on-tertiary": "#00344d",
+                        "outline": "#879485",
+                        "inverse-surface": "#e4e1f0",
+                        "tertiary": "#89ceff",
+                        "on-surface": "#e4e1f0",
+                        "secondary-container": "#3131c0",
+                        "tertiary-fixed": "#c9e6ff",
+                        "error-container": "#93000a",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#002d43",
+                        "on-secondary-fixed": "#07006c",
+                        "secondary-fixed": "#e1e0ff",
+                        "on-secondary-container": "#b0b2ff",
+                        "tertiary-container": "#009ada",
+                        "on-secondary": "#1000a9",
+                        "surface-container-highest": "#34343f",
+                        "surface-bright": "#393844",
+                        "surface-container-high": "#292934",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-primary-fixed": "#002109",
+                        "primary-container": "#1ca64d",
+                        "surface-tint": "#62df7d",
+                        "on-primary": "#ffffff",
+                        "on-surface-variant": "#bdcaba"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "unit": "8px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A14;
+            color: #e4e1f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(22, 22, 30, 0.6);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        }
+        .emerald-glow {
+            background: radial-gradient(circle at center, rgba(22, 163, 74, 0.08) 0%, rgba(10, 10, 20, 0) 70%);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 1000px;
+            height: 1000px;
+            pointer-events: none;
+            z-index: 0;
+        }
+        .input-surface {
+            background-color: #16161E;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+        .input-surface:focus {
+            border-color: #16A34A;
+            outline: none;
+            box-shadow: 0 0 0 1px #16A34A;
+        }
+        .btn-emerald {
+            background: linear-gradient(180deg, #16A34A 0%, #15803d 100%);
+            box-shadow: 0 4px 14px 0 rgba(22, 163, 74, 0.3);
+            transition: transform 0.1s ease, box-shadow 0.2s ease;
+        }
+        .btn-emerald:active {
+            transform: scale(0.98);
+        }
+        .btn-ghost {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: background 0.2s ease;
+        }
+        .btn-ghost:hover {
+            background: rgba(255, 255, 255, 0.06);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center relative">
+<div class="emerald-glow"></div>
+<main class="w-full max-w-[440px] px-6 py-12 relative z-10">
+<!-- Brand Header -->
+<header class="flex flex-col items-center mb-10">
+<div class="flex items-center gap-3 mb-2">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary font-bold" style="font-variation-settings: 'FILL' 1;">deployed_code</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg font-bold tracking-tight text-white">Monitrax</h1>
+</div>
+<p class="font-body-md text-body-md text-white/50">Welcome back.</p>
+</header>
+<!-- Login Form -->
+<section class="glass-panel rounded-2xl p-8 md:p-10">
+<div class="mb-8">
+<h2 class="font-headline-lg text-headline-lg text-white mb-2">Sign in to your account</h2>
+<p class="font-label-md text-label-md">
+<span class="text-white/50">Or</span>
+<a class="text-primary hover:underline ml-1" href="#">create an account →</a>
+</p>
+</div>
+<form class="space-y-6">
+<!-- Email Field -->
+<div class="space-y-2">
+<label class="block font-label-sm text-label-sm text-white/70 uppercase tracking-widest" for="email">Email Address</label>
+<input class="w-full h-[48px] px-4 rounded-xl input-surface text-white font-body-md placeholder:text-white/20" id="email" placeholder="name@company.com" type="email"/>
+</div>
+<!-- Password Field -->
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<label class="block font-label-sm text-label-sm text-white/70 uppercase tracking-widest" for="password">Password</label>
+</div>
+<input class="w-full h-[48px] px-4 rounded-xl input-surface text-white font-body-md placeholder:text-white/20" id="password" placeholder="••••••••" type="password"/>
+</div>
+<!-- Remember & Forgot -->
+<div class="flex items-center justify-between">
+<label class="flex items-center gap-2 cursor-pointer group">
+<div class="relative flex items-center">
+<input class="peer h-5 w-5 cursor-pointer appearance-none rounded border border-white/20 bg-white/5 checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-white opacity-0 peer-checked:opacity-100 left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-[16px] font-bold">check</span>
+</div>
+<span class="font-label-md text-label-md text-white/50 group-hover:text-white transition-colors">Keep me signed in</span>
+</label>
+<a class="font-label-md text-label-md text-primary hover:text-primary-fixed transition-colors" href="#">Forgot password?</a>
+</div>
+<!-- Submit -->
+<button class="w-full h-[48px] btn-emerald rounded-xl text-white font-label-md flex items-center justify-center gap-2" type="submit">
+                    Sign in
+                </button>
+<!-- Divider -->
+<div class="relative py-2">
+<div class="absolute inset-0 flex items-center">
+<div class="w-full border-t border-white/10"></div>
+</div>
+<div class="relative flex justify-center text-xs uppercase">
+<span class="bg-[#16161E]/80 px-2 text-white/30 backdrop-blur-sm">Or continue with</span>
+</div>
+</div>
+<!-- OAuth -->
+<div class="grid grid-cols-2 gap-4">
+<button class="h-[48px] btn-ghost rounded-xl flex items-center justify-center gap-2 font-label-md text-white" type="button">
+<span class="material-symbols-outlined text-[20px]">google</span>
+                        Google
+                    </button>
+<button class="h-[48px] btn-ghost rounded-xl flex items-center justify-center gap-2 font-label-md text-white" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">ios</span>
+                        Apple
+                    </button>
+</div>
+</form>
+</section>
+<!-- Footer -->
+<footer class="mt-12 flex flex-col items-center gap-4">
+<div class="flex items-center gap-6 font-label-sm text-label-sm text-white/40">
+<a class="hover:text-white transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-white transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-white transition-colors" href="#">AFSL</a>
+</div>
+<p class="font-label-sm text-label-sm text-white/30">© 2024 Monitrax. All rights reserved.</p>
+</footer>
+</main>
+<script>
+        // Subtle micro-interaction for the radial glow
+        document.addEventListener('mousemove', (e) => {
+            const glow = document.querySelector('.emerald-glow');
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            // Gently move the glow towards the cursor but keep it centered-ish
+            const moveX = (x - window.innerWidth / 2) * 0.05;
+            const moveY = (y - window.innerHeight / 2) * 0.05;
+            
+            glow.style.transform = `translate(calc(-50% + ${moveX}px), calc(-50% + ${moveY}px))`;
+        });
+    </script>
+</body></html>

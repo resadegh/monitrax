@@ -19,31 +19,25 @@ export default function LandingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
-  // Redirect authenticated users to dashboard
+  // Phase 48 PR 1 (2026-05-26): redirect authenticated users to /dashboard
+  // AFTER first paint. The previous implementation gated the entire marketing
+  // page behind an `if (isLoading) return <Loading />` block which forced
+  // every cold visitor + every search-engine crawler + every social-preview
+  // bot to see a "Loading..." spinner as the LCP — undermining the premium
+  // first impression of the redesigned site. The redirect still happens on
+  // every page load for authenticated users; it just happens via this
+  // useEffect after React paints the marketing surface, instead of as a
+  // pre-paint render gate. Auth functionality is unchanged.
   useEffect(() => {
     if (!isLoading && user) {
       router.push('/dashboard');
     }
   }, [user, isLoading, router]);
 
-  // Show loading state while checking auth
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If authenticated, show nothing while redirecting
-  if (user) {
-    return null;
-  }
-
-  // Show landing page for unauthenticated users
+  // Marketing page paints immediately. Authenticated users see it for a
+  // single frame before the useEffect above redirects them — acceptable
+  // tradeoff for LCP, and authenticated users typically arrive at
+  // /dashboard directly anyway.
   return (
     <div className="min-h-screen flex flex-col">
       <Header />

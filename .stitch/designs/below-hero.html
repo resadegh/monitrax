@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Australian Wealth Operating System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+        .emerald-glow {
+            background: radial-gradient(circle at 0% 0%, rgba(22, 163, 74, 0.08) 0%, transparent 50%);
+        }
+        .cosmos-bg {
+            background-color: #0A0A14;
+        }
+        .chiseled-border-top {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#3131c0",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "secondary": "#c0c1ff",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#292934",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#002109",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-container": "#003111",
+                        "on-secondary": "#1000a9",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#009ada",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-secondary-container": "#b0b2ff",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "surface": "#12121d",
+                        "inverse-surface": "#e4e1f0",
+                        "tertiary-fixed": "#c9e6ff",
+                        "primary": "#62df7d",
+                        "on-background": "#e4e1f0",
+                        "surface-bright": "#393844",
+                        "primary-container": "#1ca64d",
+                        "surface-tint": "#62df7d",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "surface-container": "#1f1f29",
+                        "on-surface": "#e4e1f0",
+                        "error": "#ffb4ab",
+                        "outline": "#879485",
+                        "on-tertiary-fixed": "#001e2f",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-highest": "#34343f",
+                        "inverse-primary": "#006e2d",
+                        "surface-dim": "#12121d",
+                        "surface-container-lowest": "#0d0d17",
+                        "surface-variant": "#34343f",
+                        "on-secondary-fixed": "#07006c",
+                        "primary-fixed": "#7ffc97",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#002d43",
+                        "on-surface-variant": "#bdcaba",
+                        "background": "#12121d",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary": "#00344d",
+                        "tertiary": "#89ceff",
+                        "on-primary": "#003914",
+                        "inverse-on-surface": "#302f3b"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "unit": "8px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "display-lg": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="cosmos-bg text-on-surface selection:bg-primary/30">
+<!-- NAVIGATION (Based on Shared Components JSON) -->
+<header class="fixed top-0 w-full z-50 bg-[#0a0a1499] backdrop-blur-xl">
+<nav class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2">
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+                Monitrax
+            </div>
+<div class="hidden md:flex items-center gap-8 font-body-md text-body-md">
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">The TRAIL</a>
+</div>
+<div class="flex items-center gap-6">
+<a class="font-body-md text-body-md text-on-surface/70 hover:text-on-surface transition-colors" href="#">Sign in</a>
+<button class="px-6 py-2 bg-primary text-on-primary font-label-md text-label-md rounded-lg scale-95 active:scale-90 transition-transform">
+                    Get started
+                </button>
+</div>
+</nav>
+</header>
+<main>
+<!-- SECTION 2: PROOF STRIP -->
+<section class="cosmos-bg py-20 border-y border-white/5 relative overflow-hidden">
+<div class="max-w-container-max mx-auto px-margin-desktop text-center">
+<p class="font-label-sm text-label-sm tracking-[0.2em] text-on-surface-variant/60 uppercase mb-8">
+                    BUILT FOR AUSTRALIAN STRUCTURES
+                </p>
+<div class="flex flex-wrap justify-center items-center gap-4">
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">domain</span>
+<span class="font-label-md text-label-md text-on-surface">Property</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">account_balance</span>
+<span class="font-label-md text-label-md text-on-surface">SMSF</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">show_chart</span>
+<span class="font-label-md text-label-md text-on-surface">Investments</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">account_tree</span>
+<span class="font-label-md text-label-md text-on-surface">Trust</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">corporate_fare</span>
+<span class="font-label-md text-label-md text-on-surface">Company</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">savings</span>
+<span class="font-label-md text-label-md text-on-surface">Super</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: ONE PICTURE -->
+<section class="cosmos-bg py-32 emerald-glow relative">
+<div class="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-2 gap-gutter items-center">
+<!-- Left Column -->
+<div class="space-y-6 max-w-xl">
+<div class="flex items-center gap-3">
+<div class="h-[1px] w-8 bg-primary"></div>
+<span class="font-label-sm text-label-sm tracking-widest text-primary uppercase">ONE VIEW · NO SWIVEL-CHAIRING</span>
+</div>
+<h2 class="font-headline-xl text-[48px] leading-[1.1] tracking-tight font-medium text-on-surface">
+                        Your financial life lives across five tabs, two portals, and your accountant's head.
+                    </h2>
+<p class="font-body-md text-body-md italic text-on-surface-variant/70 leading-relaxed border-l-2 border-primary/20 pl-6">
+                        "That's integration debt — the cost of running more moving parts than any single view can hold."
+                    </p>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+                        Monitrax brings them together. Property, loans, super, investments, cashflow, and tax — read by one engine, in one calm view, with the relationships between them already mapped. The picture you've been holding in your head, finally written down.
+                    </p>
+<div class="pt-4">
+<button class="group flex items-center gap-3 font-label-md text-label-md text-primary hover:text-primary-fixed-dim transition-colors">
+                            Discover the Engine
+                            <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Right Column (Visualization) -->
+<div class="relative min-h-[600px] flex flex-col items-center justify-between py-8">
+<!-- BEFORE State -->
+<div class="relative w-full h-48 flex justify-center">
+<div class="absolute -top-4 font-label-sm text-label-sm text-on-surface-variant/40 tracking-[0.2em] uppercase">BEFORE</div>
+<!-- Scattered Cards -->
+<div class="glass-card absolute top-10 left-10 p-3 rounded-xl rotate-[-12deg] opacity-60">
+<span class="material-symbols-outlined text-on-surface/40">account_balance</span>
+</div>
+<div class="glass-card absolute top-6 right-20 p-3 rounded-xl rotate-[15deg] opacity-50">
+<span class="material-symbols-outlined text-on-surface/40">description</span>
+</div>
+<div class="glass-card absolute top-24 left-1/2 p-3 rounded-xl rotate-[-5deg] opacity-70">
+<span class="material-symbols-outlined text-on-surface/40">monitoring</span>
+</div>
+<div class="glass-card absolute top-12 left-1/4 p-3 rounded-xl rotate-[8deg] opacity-40">
+<span class="material-symbols-outlined text-on-surface/40">table_chart</span>
+</div>
+<div class="glass-card absolute top-28 right-10 p-3 rounded-xl rotate-[-20deg] opacity-60">
+<span class="material-symbols-outlined text-on-surface/40">gate</span>
+</div>
+</div>
+<!-- ENGINE node -->
+<div class="relative w-full flex items-center justify-center my-12">
+<div class="w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent absolute"></div>
+<div class="glass-card px-10 py-4 rounded-full border-primary/30 flex items-center gap-4 relative z-10 bg-surface">
+<span class="material-symbols-outlined text-primary animate-pulse" data-weight="fill">hub</span>
+<span class="font-label-md text-label-md tracking-widest text-on-surface uppercase">MONITRAX ENGINE</span>
+</div>
+</div>
+<!-- AFTER State -->
+<div class="relative w-full flex flex-col items-center">
+<div class="mb-6 font-label-sm text-label-sm text-primary/60 tracking-[0.2em] uppercase">NOW YOU CAN DECIDE</div>
+<!-- High Fidelity Decision Card -->
+<div class="max-w-[380px] w-full p-8 rounded-2xl bg-primary/5 border border-primary/50 backdrop-blur-3xl shadow-[0_0_40px_rgba(22,163,74,0.15)] relative group transition-all duration-500 hover:scale-[1.02]">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-primary text-[24px]">verified</span>
+</div>
+<h4 class="font-label-md text-label-md text-primary mb-4">Strategic Simulation</h4>
+<p class="font-body-lg text-body-lg text-on-surface leading-tight font-medium">
+                                "Sell the brokerage holdings, pay down the offset, or salary-sacrifice $200/mo to super?"
+                            </p>
+<div class="mt-8 flex justify-between items-center border-t border-primary/20 pt-6">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant/60">Net Impact</span>
+<span class="text-primary font-bold text-lg">+$14,280/yr</span>
+</div>
+<div class="px-4 py-1.5 bg-primary rounded-lg text-on-primary font-label-sm text-label-sm">Execute</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- FOOTER (Based on Shared Components JSON) -->
+<footer class="w-full border-t border-white/10 bg-surface-container-lowest py-12">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto gap-8">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+<div class="flex flex-wrap justify-center gap-6 font-body-sm text-body-sm text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Financial Services Guide</a>
+<a class="hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant/60">© 2024 Monitrax. Australian Wealth Operating System.</p>
+</div>
+</footer>
+<script>
+        // Micro-interaction for the Scattered Cards
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.glass-card.absolute');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            cards.forEach((card, i) => {
+                const depth = (i + 1) * 10;
+                const moveX = (x - 0.5) * depth;
+                const moveY = (y - 0.5) * depth;
+                card.style.transform = `translate(${moveX}px, ${moveY}px) rotate(${card.dataset.rotate || '0deg'})`;
+            });
+        });
+
+        // Initialize rotation for cards
+        document.querySelectorAll('.glass-card.absolute').forEach(card => {
+            const currentRotation = window.getComputedStyle(card).getPropertyValue('transform');
+            // Store original state if needed
+        });
+    </script>
+</body></html>

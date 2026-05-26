@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Orbital Constellation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#302f3b",
+                        "background": "#12121d",
+                        "on-secondary-container": "#b0b2ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-surface": "#e4e1f0",
+                        "inverse-surface": "#e4e1f0",
+                        "outline": "#879485",
+                        "surface-dim": "#12121d",
+                        "surface-container-high": "#292934",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "on-secondary-fixed": "#07006c",
+                        "on-secondary": "#1000a9",
+                        "on-background": "#e4e1f0",
+                        "surface-bright": "#393844",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-container": "#3131c0",
+                        "on-primary-fixed": "#002109",
+                        "on-tertiary-fixed": "#001e2f",
+                        "on-primary-fixed-variant": "#005320",
+                        "secondary": "#c0c1ff",
+                        "tertiary-container": "#009ada",
+                        "surface-container-lowest": "#0d0d17",
+                        "primary-fixed": "#7ffc97",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#34343f",
+                        "primary-container": "#1ca64d",
+                        "tertiary": "#89ceff",
+                        "surface": "#12121d",
+                        "on-primary": "#003914",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-tertiary-container": "#002d43",
+                        "on-tertiary": "#00344d",
+                        "inverse-primary": "#006e2d",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1f1f29",
+                        "primary": "#62df7d",
+                        "tertiary-fixed": "#c9e6ff",
+                        "on-surface-variant": "#bdcaba",
+                        "secondary-fixed": "#e1e0ff",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-error": "#690005",
+                        "on-primary-container": "#003111",
+                        "surface-variant": "#34343f",
+                        "surface-tint": "#62df7d",
+                        "error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "gutter": "24px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+                        "display-lg": ["80px", { "lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600" }],
+                        "display-lg-mobile": ["48px", { "lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+                        "body-lg": ["18px", { "lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A14; /* Deep Cosmos Base */
+            color: #e4e1f0; /* on-surface */
+            overflow-x: hidden;
+        }
+        .glass-panel {
+            background: rgba(41, 41, 52, 0.15); /* surface-container-high with opacity */
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .glow-primary {
+            background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.05) 0%, transparent 70%);
+        }
+        .bg-gradient-radial {
+            background: radial-gradient(circle, var(--tw-gradient-stops));
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative">
+<!-- Ambient Background Glow -->
+<div class="fixed inset-0 z-0 pointer-events-none">
+<div class="absolute inset-0 bg-gradient-radial from-[#1a1a3a] via-transparent to-transparent opacity-40 blur-3xl" style="transform: translate(0, -20%);"></div>
+</div>
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-[#0a0a1499] dark:bg-[#0a0a1499] backdrop-blur-xl bg-transparent">
+<div class="flex justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+                Monitrax
+            </div>
+<div class="hidden md:flex gap-6 items-center">
+<a class="font-body-md text-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="font-body-md text-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="font-body-md text-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="font-body-md text-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">The TRAIL</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="hidden md:block font-body-md text-body-md text-on-surface hover:text-on-surface transition-colors duration-200">Sign in</button>
+<button class="font-body-md text-body-md bg-primary-container text-on-primary-container px-4 py-2 rounded-full font-medium scale-95 active:scale-90 transition-transform">Get started</button>
+</div>
+</div>
+</nav>
+<!-- Main Content: Orbital Constellation -->
+<main class="flex-grow flex flex-col items-center justify-center relative z-10 pt-24 pb-16 px-margin-mobile md:px-margin-desktop min-h-[80vh]">
+<div class="max-w-container-max mx-auto w-full relative flex flex-col items-center justify-center min-h-[600px]">
+<!-- Headline Cluster -->
+<div class="text-center z-20 max-w-3xl mb-12">
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface tracking-tight mb-6">
+                    Your wealth, orchestrated.
+                </h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto mb-10">
+                    Property, super, trusts, and entities — one view for complex wealth.
+                </p>
+<button class="font-label-md text-label-md bg-[#16A34A] text-white px-8 py-4 rounded-full font-semibold hover:bg-emerald-500 transition-colors shadow-[0_0_20px_rgba(22,163,74,0.3)]">
+                    Explore Capabilities
+                </button>
+</div>
+<!-- Orbital Pills (Absolute Positioning for Constellation Effect) -->
+<div class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center">
+<!-- Top Left: Property -->
+<div class="absolute top-[10%] left-[15%] md:left-[25%] transform -translate-x-1/2 -translate-y-1/2" style="filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));">
+<img alt="" class="w-32 md:w-48 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uibEqwDnXue0LMiGsRicf8gAQ6EaJdE8wkSKUiLucIcwNkBxMnWKzghaL9WlrtaoTRSER17NpSkPRm7tw8mGHA3MB4d-4PgtG6DeFnz8zTc5oo3aPmA5Eb8Fmb0ZPueaPjpMsmC1iGDoWBy3y-5qgbhlZUD8DWU-GmaypuZOVFXrhRn5CR4_PiBOdPGFS0P-t_4h1fzsg7d8X3P6hhHFPAhYcbwzmrKit_W9qzuSlVubWgcSqoD5UzTU7g"/>
+</div>
+<!-- Top Right: Super (Blurred slightly for depth) -->
+<div class="absolute top-[20%] right-[10%] md:right-[20%] transform translate-x-1/2 -translate-y-1/2 opacity-90 blur-[1px]" style="filter: drop-shadow(0 15px 30px rgba(0,0,0,0.4));">
+<img alt="" class="w-28 md:w-40 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uix2JD4xhm-p9RzeobHj-gHXaXJKp6ekuJRmRZenByRcMVmNwWamMRipD2kTdhjQTuisFwfz5_78dPGCSBHw7kZUSoUjJCt6q0CdaNPQ0e24aTlBgwlfs6mK_xI3KUfLhn61Dx3mHklh3oiIhlJRwlWs0j0v3eDdJU5uiy6LTEGGeQiWqAQ4DJt2wE0VDKPhIR696BmAtgvGGU7kcSb7uPEl6__OHXj6WkjAoFUlM_RiNVHm8vQ3fABxeI"/>
+</div>
+<!-- Bottom Left: Trust (Blurred slightly for depth) -->
+<div class="absolute bottom-[25%] left-[5%] md:left-[20%] transform -translate-x-1/2 translate-y-1/2 opacity-85 blur-[2px]" style="filter: drop-shadow(0 20px 40px rgba(0,0,0,0.3));">
+<img alt="" class="w-36 md:w-56 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uhxITiLIqrLqtAMyTuXbxPr_pTelk4fs1fLRkm49hRKvFYIPvE2P2yOlbtq1Nd7Xul6aYW8gomFxUpAlL23Vky-P6a9h2qeNw1AHBzq6p3gROOAyQavzGiMDdmnSwNKHv0uvqMQeFAc1hd4LPWWcFcTPVF1-u_x6XeLctcebKEEo3tcMe9WPAMPDniAwN0z6_wYomcqGsLcDAvJ1rL_2hBPQrNEde7635qSbonukj3eduNhi_o-G759P0c"/>
+</div>
+<!-- Bottom Right: SMSF -->
+<div class="absolute bottom-[15%] right-[15%] md:right-[25%] transform translate-x-1/2 translate-y-1/2" style="filter: drop-shadow(0 10px 20px rgba(0,0,0,0.5));">
+<img alt="" class="w-32 md:w-48 object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0ugfuYbNatiRo3-BN92lE1tLB0FxW7Ifn7ETL1Du33g-E-hf_vRw72v_D0dbfq18ci5fREv1wTmh8K_dVWqHuhFjdxiK7FHkK5O_tWXyO2QA4WYPbGNeUarztoMAy8S7yQuKj5OPNVFvBlN2bgeOo2pGX3Sgi-ledP5RwC8Q_cGMBuVQZ_q2UKs3b_FlLZUVEiGZju9vMn4EZS85z9W1lXAye3hKIXAoIiFJArj7Gg4jr7oHHT5BqkwK5g"/>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="w-full bg-surface-container-lowest dark:bg-surface-container-lowest border-t border-white/10 z-10 relative">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-mobile md:px-margin-desktop py-12 max-w-container-max mx-auto gap-6 md:gap-0">
+<div class="font-headline-md text-[24px] font-bold text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined" data-weight="fill" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+                Monitrax
+            </div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Financial Services Guide</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100" href="#">Contact</a>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant text-center md:text-right">
+                © 2024 Monitrax. Australian Wealth Operating System.
+            </div>
+</div>
+</footer>
+</body></html>

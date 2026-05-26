@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pricing | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-bright": "#393844",
+                        "tertiary-fixed": "#c9e6ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-surface-variant": "#bdcaba",
+                        "on-surface": "#e4e1f0",
+                        "surface": "#12121d",
+                        "on-primary": "#003914",
+                        "secondary-container": "#3131c0",
+                        "inverse-on-surface": "#302f3b",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "primary-container": "#1ca64d",
+                        "surface-variant": "#34343f",
+                        "secondary": "#c0c1ff",
+                        "primary": "#62df7d",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-container": "#b0b2ff",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-error-container": "#ffdad6",
+                        "outline": "#879485",
+                        "tertiary": "#89ceff",
+                        "on-tertiary-container": "#002d43",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-primary-container": "#003111",
+                        "on-background": "#e4e1f0",
+                        "inverse-surface": "#e4e1f0",
+                        "primary-fixed": "#7ffc97",
+                        "surface-container-highest": "#34343f",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-tint": "#62df7d",
+                        "on-secondary": "#1000a9",
+                        "surface-container-low": "#1b1b25",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-lowest": "#0d0d17",
+                        "error-container": "#93000a",
+                        "on-tertiary": "#00344d",
+                        "surface-container": "#1f1f29",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "on-tertiary-fixed": "#001e2f",
+                        "surface-container-high": "#292934",
+                        "background": "#12121d",
+                        "tertiary-container": "#009ada",
+                        "surface-dim": "#12121d",
+                        "error": "#ffb4ab",
+                        "on-error": "#690005",
+                        "inverse-primary": "#006e2d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "container-max": "1440px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "display-lg": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A14;
+            color: #e4e1f0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(40px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.3);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+        }
+
+        .glow-emerald {
+            background: radial-gradient(circle at top left, rgba(22, 163, 74, 0.08) 0%, transparent 70%);
+        }
+
+        .toggle-active {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 0 10px rgba(255, 255, 255, 0.05);
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .cosmos-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: radial-gradient(circle at 50% -20%, #1a1a2e 0%, #0A0A14 60%);
+        }
+
+        .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body class="dark min-h-screen">
+<div class="cosmos-bg" id="star-container"></div>
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm h-20">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-desktop h-full">
+<div class="text-headline-lg font-headline-lg font-bold text-on-surface tracking-tighter">Monitrax</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">The TRAIL</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Capabilities</a>
+<a class="font-label-md text-label-md text-primary font-bold border-b-2 border-primary pb-1" href="#">Pricing</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors" href="#">Security</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface px-4 py-2 transition-all duration-300">Login</button>
+<button class="font-label-md text-label-md bg-primary-container text-on-primary-container px-6 py-2.5 rounded-full font-bold hover:opacity-90 active:scale-95 transition-all">Get Started</button>
+</div>
+</div>
+</nav>
+<main class="pt-40 pb-24 max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<!-- Header Section -->
+<header class="text-center mb-16 max-w-3xl mx-auto">
+<p class="font-label-sm text-label-sm text-white/50 tracking-[0.18em] uppercase mb-6">PRICING</p>
+<h1 class="font-semibold text-[56px] leading-tight text-white mb-6">Simple. Honest. No tricks.</h1>
+<p class="font-body-lg text-body-lg text-white/60">Start free. Upgrade when you want more visibility. Cancel anytime.</p>
+</header>
+<!-- Billing Toggle -->
+<div class="flex justify-center mb-16">
+<div class="bg-surface-container-high p-1 rounded-full flex items-center border border-white/5">
+<button class="px-8 py-2 rounded-full font-label-md text-label-md transition-all duration-300 toggle-active text-white" id="monthlyBtn">Monthly</button>
+<button class="px-8 py-2 rounded-full font-label-md text-label-md transition-all duration-300 text-on-surface-variant hover:text-white" id="annualBtn">Annual</button>
+</div>
+</div>
+<!-- Pricing Cards Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter items-stretch">
+<!-- Track Plan (Free) -->
+<div class="glass-card rounded-2xl p-10 flex flex-col transition-transform duration-500 hover:-translate-y-2 group">
+<div class="mb-8">
+<h3 class="font-headline-lg text-headline-lg text-white mb-2">Track</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">The Essentials</p>
+</div>
+<div class="mb-8">
+<span class="font-display-lg text-[48px] text-white">Free</span>
+</div>
+<div class="flex-grow space-y-5 mb-10">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Entity tracking</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Manual entry</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Net worth overview</p>
+</div>
+</div>
+<button class="w-full py-4 rounded-xl border border-white/10 font-label-md text-label-md text-white hover:bg-white/5 transition-all active:scale-95">Get Started</button>
+</div>
+<!-- Reduce Plan (Recommended) -->
+<div class="glass-card rounded-2xl p-10 flex flex-col relative glow-emerald transition-transform duration-500 hover:-translate-y-2 scale-105 z-10 border-primary/20">
+<div class="absolute -top-4 left-1/2 -translate-x-1/2 bg-[#16A34A] text-white font-label-sm text-[10px] px-4 py-1 rounded-full tracking-widest uppercase font-bold">RECOMMENDED</div>
+<div class="mb-8">
+<h3 class="font-headline-lg text-headline-lg text-white mb-2">Reduce</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Wealth Maximization</p>
+</div>
+<div class="mb-8">
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-[48px] text-white">$24</span>
+<span class="font-label-md text-label-md text-on-surface-variant">/mo</span>
+</div>
+</div>
+<div class="flex-grow space-y-5 mb-10">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Everything in Track</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Budgeting</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Debt freedom plan</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Tax forecasting</p>
+</div>
+</div>
+<button class="w-full py-4 rounded-full bg-[#16A34A] font-label-md text-label-md text-white font-bold hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-emerald-900/20">Start with Reduce</button>
+</div>
+<!-- Anchor Plan (Premium) -->
+<div class="glass-card rounded-2xl p-10 flex flex-col transition-transform duration-500 hover:-translate-y-2">
+<div class="mb-8">
+<h3 class="font-headline-lg text-headline-lg text-white mb-2">Anchor</h3>
+<p class="font-label-md text-label-md text-on-surface-variant">Institutional Grade</p>
+</div>
+<div class="mb-8">
+<div class="flex items-baseline gap-1">
+<span class="font-display-lg text-[48px] text-white">$49</span>
+<span class="font-label-md text-label-md text-on-surface-variant">/mo</span>
+</div>
+</div>
+<div class="flex-grow space-y-5 mb-10">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface font-semibold">Everything in Reduce</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Entity-aware tax modelling</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">SMSF tracking</p>
+</div>
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-[#16A34A] text-[20px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<p class="font-body-md text-body-md text-on-surface">Professional sharing</p>
+</div>
+</div>
+<button class="w-full py-4 rounded-xl border border-white/10 font-label-md text-label-md text-white hover:bg-white/5 transition-all active:scale-95">Start with Anchor</button>
+</div>
+</div>
+<div class="mt-20 text-center">
+<p class="font-label-md text-label-md text-white/40 italic">Bank connections via CDR included on all paid tiers once accreditation lands.</p>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-container-lowest w-full py-12 border-t border-white/5">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="flex flex-col gap-2">
+<div class="text-label-md font-label-md font-bold text-on-surface">Monitrax</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant opacity-80">© 2024 Monitrax. Australian Financial Services Licensee.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Regulatory Disclosure</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Security Architecture</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<script>
+        // Toggle interaction
+        const monthlyBtn = document.getElementById('monthlyBtn');
+        const annualBtn = document.getElementById('annualBtn');
+
+        monthlyBtn.addEventListener('click', () => {
+            monthlyBtn.classList.add('toggle-active', 'text-white');
+            monthlyBtn.classList.remove('text-on-surface-variant');
+            annualBtn.classList.remove('toggle-active', 'text-white');
+            annualBtn.classList.add('text-on-surface-variant');
+        });
+
+        annualBtn.addEventListener('click', () => {
+            annualBtn.classList.add('toggle-active', 'text-white');
+            annualBtn.classList.remove('text-on-surface-variant');
+            monthlyBtn.classList.remove('toggle-active', 'text-white');
+            monthlyBtn.classList.add('text-on-surface-variant');
+        });
+
+        // Background Star Effect
+        const starContainer = document.getElementById('star-container');
+        const starCount = 100;
+
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            const size = Math.random() * 2 + 1;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.opacity = Math.random();
+            star.style.animation = `pulse ${Math.random() * 3 + 2}s infinite ease-in-out`;
+            starContainer.appendChild(star);
+        }
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes pulse {
+                0%, 100% { opacity: 0.3; transform: scale(1); }
+                50% { opacity: 0.8; transform: scale(1.2); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+    </script>
+</body></html>

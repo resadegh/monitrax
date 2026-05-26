@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Australian Wealth Operating System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error": "#690005",
+                        "secondary": "#4de082",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#252c24",
+                        "on-secondary-fixed-variant": "#005227",
+                        "secondary-container": "#00b55d",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "surface": "#0e150f",
+                        "inverse-surface": "#dde5d9",
+                        "tertiary-fixed": "#ffd9de",
+                        "primary": "#62df7d",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-secondary-container": "#003e1c",
+                        "tertiary-container": "#ec6284",
+                        "on-secondary": "#003919",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error-container": "#ffdad6",
+                        "on-primary-fixed": "#002109",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-container": "#003111",
+                        "surface-container-highest": "#30372f",
+                        "secondary-fixed": "#6dfe9c",
+                        "outline": "#879485",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-surface": "#dde5d9",
+                        "surface-container": "#1b211a",
+                        "surface-bright": "#343b33",
+                        "primary-container": "#1ca64d",
+                        "on-background": "#dde5d9",
+                        "surface-tint": "#62df7d",
+                        "on-tertiary": "#660027",
+                        "on-primary": "#003914",
+                        "inverse-on-surface": "#2b322b",
+                        "tertiary": "#ffb2bf",
+                        "surface-container-low": "#171d16",
+                        "primary-fixed": "#7ffc97",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#5a0022",
+                        "on-surface-variant": "#bdcaba",
+                        "background": "#0e150f",
+                        "surface-variant": "#30372f",
+                        "surface-container-lowest": "#09100a",
+                        "on-secondary-fixed": "#00210c",
+                        "inverse-primary": "#006e2d",
+                        "surface-dim": "#0e150f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-hero": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-hero-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0e150f;
+            color: #dde5d9;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .hero-glow {
+            background: radial-gradient(circle at center, rgba(98, 223, 125, 0.05) 0%, rgba(14, 21, 15, 0) 70%);
+        }
+        .pill-float {
+            animation: float 6s ease-in-out infinite;
+            filter: drop-shadow(0 20px 40px rgba(0,0,0,0.4));
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(var(--rot)); }
+            50% { transform: translateY(-20px) rotate(calc(var(--rot) + 2deg)); }
+        }
+        .text-gradient-emerald {
+            background: linear-gradient(135deg, #16A34A 0%, #6EE7B7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+        }
+    </style>
+</head>
+<body class="dark selection:bg-primary selection:text-on-primary">
+<nav class="fixed top-0 w-full z-50 bg-[#0a0a1499] backdrop-blur-xl">
+<div class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2 cursor-pointer">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+                Monitrax
+            </div>
+<div class="hidden md:flex gap-8 items-center">
+<a class="font-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="font-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="font-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="font-body-md text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">The TRAIL</a>
+</div>
+<div class="flex items-center gap-6">
+<button class="font-body-md text-on-surface/70 font-medium hover:text-on-surface scale-95 active:scale-90 transition-all">Sign in</button>
+<button class="bg-on-surface text-background px-6 py-2.5 rounded-full font-body-md font-semibold scale-95 active:scale-90 transition-all">Get started</button>
+</div>
+</div>
+</nav>
+<main class="relative min-h-screen flex flex-col items-center justify-center pt-24 overflow-hidden">
+<div class="absolute inset-0 hero-glow z-0"></div>
+<img alt="Property" class="absolute pill-float hidden lg:block z-10 w-[240px]" src="https://lh3.googleusercontent.com/aida/ADBb0uh9A7s8r8qN2NYbvPHZxiCkNGslG_49EtnnyU4zUu5iNg603IxRi48gstllASoCQYIy3Qb-_xu064b3megEigH7u41jGfY1kyux-FVNbsR38CFG45Ylr8_gXoHz_GtqBIESeprhVPZYyzlb4hGr6H69nMlsT56BWjNKV2z56K2ADMx795fQWcqAlS7PIP1nw8Fs0Bwh0Zhim0SxAauFYFda2eAuJmHo9WAQc3mu8T803-MAdKbL0jzmvPw" style="top: 15%; left: 10%; --rot: -15deg; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.6));"/>
+<img alt="Super" class="absolute pill-float hidden lg:block z-10 w-[200px]" src="https://lh3.googleusercontent.com/aida/ADBb0uhrUqe1W5CzzssQLiavMu_q-oFf0Q_nKKwzCdAtQdgzb-JQwKvhjSIGMovAbh1fO2xdg7fhAs6KWAjUe53Y0EaYhcGvJE9k3NDYksNKxP-I1IUBLr0eh3ou6zR_IG12tpQ06I6IrJX8rAM09EYq_ICHiSv9imYRR0iK-lJs3dkI7VVvMFuCRU7i5bylhVAuKIU5t2PmLIURNxzckZjxjdoQfvD933JEwR5r7tmjMTLq5xvsCTpL7Hivxw" style="top: 18%; right: 10%; --rot: 12deg; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.6));"/>
+<img alt="Trust" class="absolute pill-float hidden lg:block z-10 w-[180px]" src="https://lh3.googleusercontent.com/aida/ADBb0ui4eVfpvYQGqekZ2W18nm06PSwoCVYLZRj9LG0MmKdz8C7L2XHvU5QP4S6clZZ-ANnjbROkPxK6PF2ctSZ-GQNxMJZPqbmv1a1oMOY14mFvxBMEmDNrswFTcz7XBFDYeZ-QRHkjuLvLs9hW0hkukzgGoEOngEMWCol3fq74E7HrGcdfGvEYBf0wtRFuCwFelRctY7U4Sb62yCZNUDCZ7jrRHyQu9AJnSo6RReuIZCLo7gZzZqqFZmjjGbY" style="bottom: 25%; left: 8%; --rot: -10deg; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.6));"/>
+<img alt="Company" class="absolute pill-float hidden lg:block z-10 w-[160px]" src="https://lh3.googleusercontent.com/aida/ADBb0uhTQH7htYrJR7iCH6QKktleXpHujnlovldsDTGTHhrY446cO-MCptGG1wRnMO52xPaP25lkO4vLZsGPAV-g_vZmOiO2aeZazG9sVB2gcSDhPzu7LqOR7MXP62qma7JqmZTMihPFqUdP8gDnS0tXcjaytGMMwvAjwuIFJWKClUIoWyZI8q7VoEUryNM577I-mQZyPNE8Lfq_x9tJm7gpP5HcG_boW_1W6bJAJ3l0aS8p4k0FgaI--VXekDI" style="bottom: 12%; right: 15%; --rot: -20deg; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.6));"/>
+<img alt="Investments" class="absolute pill-float hidden lg:block z-10 w-[220px]" src="https://lh3.googleusercontent.com/aida/ADBb0uh93hibVH8VwFLjVgTPMVeMaeOuaKJw30FMmfebwes7Yn8tU3LXOcY8ijOxtiSw0d7by6ggOdSI8lF6XW6G18gYQMDM3cIhp-Q0vdNCCXGcTeg3d5pyhHdGIc1u4wlyyTqx4eSMMjYNxCeEbD80059Xjv_VLUCsNOLARyEpZIO0k7875Bt0RghT2rn8iXqgSZeASagRXdJIDgkTWXDsmVVCT1VbEUPv5JE95-JXv4qJP244XJXmnDC5qYY" style="top: 65%; left: 18%; --rot: 5deg; filter: drop-shadow(0 20px 50px rgba(0,0,0,0.6));"/>
+<img alt="Cashflow" class="absolute pill-float hidden lg:block z-20 w-[280px]" src="https://lh3.googleusercontent.com/aida/ADBb0uh-kYY9qtcxLn7p195kWs1EDzUMEiZsLkDr7PgjiPOXfZvJzS_0t8Hc_oz0_cLVlcZbAgvvgu72jH941mMgkc6yueRdKTmdZfuKEGthOH2H7JAlb4VmbEaYGiPlSlZSgcsDChBKByUcysJj98A0uIqaITMa2CoXMNRGuTTgGdwN1ef8v-nXYKtLg1b2MMLvLfNLdWXTqqdMlKe8L08_u8U7k2tzZ8g3EV_-JTFmjdxakqHWghaQgKCxK2Y" style="top: 52%; right: 6%; --rot: 18deg; filter: drop-shadow(0 30px 60px rgba(22,163,74,0.3));"/>
+<div class="relative z-20 text-center px-margin-mobile md:px-0 flex flex-col items-center max-w-4xl">
+<div class="glass-pill px-4 py-1.5 rounded-full mb-8">
+<span class="font-label-caps text-[11px] tracking-[0.2em] text-on-surface/50 uppercase">Australian Wealth Operating System</span>
+</div>
+<h1 class="font-display-hero-mobile md:font-display-hero text-display-hero-mobile md:text-display-hero text-on-surface mb-8">
+                Your wealth, <br/> <span class="text-gradient-emerald">fully integrated.</span>
+</h1>
+<p class="font-body-lg text-body-lg text-on-surface/60 max-w-[560px] mb-12">Property, super, investments, trusts, cashflow and tax — read by one engine, in one calm view. So the next move is obvious before you make it.</p>
+<div class="flex flex-col items-center gap-4">
+<button class="bg-[#16A34A] hover:bg-[#15803d] text-white px-10 py-5 rounded-full font-body-md font-bold text-lg shadow-[0px_10px_30px_rgba(22,163,74,0.3)] transition-all transform hover:scale-105 active:scale-95">
+                    Start free
+                </button>
+<span class="font-body-sm text-body-sm text-on-surface/40">Built for Australian wealth-builders. No credit card.</span>
+</div>
+</div>
+<div class="absolute bottom-12 w-full flex flex-col items-center gap-4 text-on-surface/20 pointer-events-none">
+<span class="material-symbols-outlined animate-bounce">expand_more</span>
+</div>
+</main>
+<footer class="w-full bg-surface-container-lowest border-t border-white/5 relative z-30">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-desktop py-12 max-w-container-max mx-auto gap-8">
+<div class="flex flex-col gap-2">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant/70 italic">Modern wealth, orchestrated.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-8">
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">FSG</a>
+<a class="font-body-sm text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant opacity-60">
+                © 2024 Monitrax. Australian Wealth Operating System.
+            </div>
+</div>
+</footer>
+<script>
+        document.addEventListener('mousemove', (e) => {
+            const pills = document.querySelectorAll('.pill-float');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            pills.forEach((pill, index) => {
+                const speed = (index + 1) * 15;
+                const xOffset = (x - 0.5) * speed;
+                const yOffset = (y - 0.5) * speed;
+                pill.style.transform = `translate(${xOffset}px, ${yOffset}px) rotate(var(--rot))`;
+            });
+        });
+
+        // Ambient glow follow
+        const glow = document.querySelector('.hero-glow');
+        document.addEventListener('mousemove', (e) => {
+            const x = e.clientX;
+            const y = e.clientY;
+            glow.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(98, 223, 125, 0.08) 0%, rgba(14, 21, 15, 0) 60%)`;
+        });
+    </script>
+</body></html>
