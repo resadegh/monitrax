@@ -81,7 +81,26 @@
       "modelId": "GEMINI_3_FLASH",
       "title": "Monitrax Dark Hero - 3D Pillars",
       "generatedAt": "2026-05-26T01:16:00.000000Z",
-      "scope": "Direction pivot v3 — Copilot-energy dark hero with 6 Stitch-rendered 3D wealth pills (Property/Super/Trust/Offset/SMSF/Cashflow) using {{DATA:IMAGE:*}} placeholders. Headline 'Your wealth, fully integrated.' at Inter 700 96px on #0A0A14 background. Single emerald 'Start free' pill CTA. Note: per Reza directive 2026-05-26 ~01:18 UTC, all subsequent generations DROP the 'forbidden' lists and give Stitch creative latitude. Only strategic invariants (wealth-builder content, AFSL boundary) remain enforced. This screen will be forked into variants via generate_variants EXPLORE."
+      "scope": "Direction pivot v3 — Copilot-energy dark hero with 6 Stitch-rendered 3D wealth pills (Property/Super/Trust/Offset/SMSF/Cashflow) using {{DATA:IMAGE:*}} placeholders. Headline 'Your wealth, fully integrated.' at Inter 700 96px on #0A0A14 background. Single emerald 'Start free' pill CTA. Note: per Reza directive 2026-05-26 ~01:18 UTC, all subsequent generations DROP the 'forbidden' lists and give Stitch creative latitude. Only strategic invariants (wealth-builder content, AFSL boundary) remain enforced."
+    },
+    "security-and-ai": {
+      "id": "134afb0289bd49d19de9b9f4c8fe0ce5",
+      "sourceScreen": "projects/1859462351962811110/screens/134afb0289bd49d19de9b9f4c8fe0ce5",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4258,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Security & AI",
+      "generatedAt": "2026-05-26T01:27:00.000000Z",
+      "scope": "Sections 6-7 (Security + AI) on dark theme matching hero. Stitch named its design system 'Deep Cosmos OS'. 4-pillar security grid (encryption / CDR / no-trackers / audit-logged) + AI positioning paragraph ('Intelligence, not advice'). First generation with the new free-creative-latitude prompt doctrine (no 'forbidden' lists, only strategic + content invariants)."
+    }
+  },
+  "failedGenerations": {
+    "dark-hero-variants-3-explore-pro": {
+      "attempted": "2026-05-26T01:20:00.000000Z",
+      "source": "9043b37418f547e19fe3179beac15945",
+      "request": "generate_variants with variantCount=3 + creativeRange=EXPLORE + GEMINI_3_1_PRO + LAYOUT/COLOR_SCHEME/IMAGES/TEXT_CONTENT aspects",
+      "result": "60s MCP timeout. 5-min poll of get_project never detected new screen IDs in the project response. Variants may exist in Stitch web UI (https://stitch.withgoogle.com/projects/1859462351962811110) but not retrievable via this MCP session. To retry: use variantCount=1 + GEMINI_3_FLASH, run sequentially."
     }
   },
   "deferredEdits": {
