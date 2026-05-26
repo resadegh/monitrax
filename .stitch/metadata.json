@@ -4,12 +4,31 @@
   "title": "Monitrax — Public Website Redesign (Phase 47)",
   "visibility": "PRIVATE",
   "createTime": "2026-05-26T00:27:19.415110Z",
-  "updateTime": "2026-05-26T00:27:19.415110Z",
+  "updateTime": "2026-05-26T00:39:00.000000Z",
   "projectType": "PROJECT_DESIGN",
   "origin": "STITCH",
-  "designTheme": {},
-  "screens": {},
+  "designTheme": {
+    "colorMode": "LIGHT",
+    "font": "INTER",
+    "roundness": "ROUND_EIGHT",
+    "customColor": "#16a34a",
+    "designSystemId": "assets/b5e2247671954bfc80efeed2bc604aa3"
+  },
+  "screens": {
+    "index": {
+      "id": "a7c90975d65f40909f69e5d12f55e67d",
+      "sourceScreen": "projects/1859462351962811110/screens/a7c90975d65f40909f69e5d12f55e67d",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Refined Design",
+      "generatedAt": "2026-05-26T00:39:00.000000Z",
+      "scope": "Hero only (sections 2-3 deferred — proof strip + One Picture to be generated in subsequent iterations)"
+    }
+  },
   "metadata": {
     "userRole": "OWNER"
   }
 }
+
