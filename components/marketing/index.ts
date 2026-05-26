@@ -1,12 +1,16 @@
 /**
  * Public marketing components barrel.
  *
- * Phase 48 PR 4 (2026-05-26): old v1 Trail* components deleted now that
- * their dark Deep Cosmos replacements ship in `app/page.tsx`. Only
- * `TrailCTA` remains pending PR 5's Pricing + FAQ + Final CTA family.
+ * Phase 48 PR 5 (2026-05-26): landing page now fully Deep Cosmos canonical.
+ * FAQ + FinalCTA ship in this PR, replacing the last v1 `TrailCTA`. All
+ * v1 Trail* components are now deleted. After this PR the landing page
+ * is composed entirely of dark Deep Cosmos primitives.
+ *
+ * Pricing is NOT exported here — deferred to Phase 6 per
+ * IMPLEMENTATION_PLAN.md §0e Monetisation workstream.
  */
 
-// Phase 48 — canonical Deep Cosmos surfaces
+// Phase 48 — canonical Deep Cosmos surfaces (full landing page)
 export { Header } from './Header';
 export { Footer } from './Footer';
 export { Hero } from './Hero';
@@ -14,10 +18,8 @@ export { ProofStrip } from './ProofStrip';
 export { OnePicture } from './OnePicture';
 export { FiveCapabilities } from './FiveCapabilities';
 export { HowItWorks } from './HowItWorks';
-
-// Phase 48 transitional — kept until PR 5 replaces with the new
-// Pricing + FAQ + Final CTA section family.
-export { TrailCTA } from './TrailCTA';
+export { FAQ } from './FAQ';
+export { FinalCTA } from './FinalCTA';
 
 // Legacy v0 / pre-redesign components (no current consumers, kept until
 // the full Phase 48 sequence completes and an explicit cleanup PR can
