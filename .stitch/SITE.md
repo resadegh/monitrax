@@ -97,7 +97,20 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 
 ## 7. Direction history + parked decisions (do NOT re-attempt)
 
-### v3 — Copilot-Money-inspired dark hero (current, 2026-05-26 ~01:00 UTC)
+### v4 — LOCKED 2026-05-26 ~02:00 UTC — Dark Deep Cosmos + symbolic 3D icons
+
+**This is the locked direction. All subsequent surfaces (auth pages, secondary public pages, future redesigns) MUST match this.**
+
+- **Background:** Deep Cosmos `#0A0A14` (never pure black). Stitch named its design system "Deep Cosmos OS" / "Monitrax Core" and these stay the canonical visual language.
+- **Hero canonical screen:** `42730aaf80ed4fcf822278e642d476a9` titled "Monitrax Hero - Symbolic 3D Icons".
+- **Hero objects:** 6 floating 3D symbolic icons (no text labels) — house (Property, sky) · 3 columns (Super/SMSF, indigo) · shield (Trust, violet) · **$ (Cashflow, emerald — hero icon matching brand CTA)** · upward chart (Investments, amber) · bank building (Company, sky). Aligned with the in-app `components/wealth/wealthGlyphs.tsx` filled-silhouette vocabulary, rendered 3D-glossy for marketing.
+- **Headline:** `Your wealth, fully integrated.` (Inter 700, 96px, emerald gradient highlight on line 2).
+- **CTA:** Single `Start free` — emerald `#16A34A` rounded-full pill, soft emerald shadow.
+- **Typography rule:** Inter 700 for hero display ONLY; Inter 600 semibold for section headlines; Inter 500 for eyebrows + labels; Inter 400 for body.
+- **TRAIL stage hues stay canonical SSOT** (T sky · R amber · A indigo · I emerald · L violet) per `lib/navigation/trailNav.tsx`.
+- **Prompt doctrine:** drop "forbidden" lists. Brand essence + content invariants only. Stitch's creative latitude is the design strength.
+
+### v3 — Copilot-Money-inspired dark hero (superseded 2026-05-26 ~01:48 UTC)
 
 After 5 generations on the warm-ivory direction (hero v1+v2, below-hero v1+v2, five-and-how), Reza shared Copilot Money's landing page as the theme reference he prefers. Pivoting to:
 - **Dark near-black hero background** (~#0A0A14 — NOT pure black)
