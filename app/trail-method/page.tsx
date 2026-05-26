@@ -16,11 +16,11 @@ import {
 const ease: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
 const stages = [
-  { letter: 'T', name: 'Track', icon: Eye, color: 'text-amber-500', bg: 'bg-amber-500/10', border: 'border-amber-500/20' },
-  { letter: 'R', name: 'Reduce', icon: Scissors, color: 'text-orange-500', bg: 'bg-orange-500/10', border: 'border-orange-500/20' },
-  { letter: 'A', name: 'Anchor', icon: Anchor, color: 'text-emerald-500', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
-  { letter: 'I', name: 'Invest', icon: TrendingUp, color: 'text-sky-500', bg: 'bg-sky-500/10', border: 'border-sky-500/20' },
-  { letter: 'L', name: 'Live', icon: Sun, color: 'text-yellow-500', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
+  { letter: 'T', name: 'Track', icon: Eye, color: 'text-cosmos-track', bg: 'bg-cosmos-track/10', border: 'border-cosmos-track/20' },
+  { letter: 'R', name: 'Reduce', icon: Scissors, color: 'text-cosmos-reduce', bg: 'bg-cosmos-reduce/10', border: 'border-cosmos-reduce/20' },
+  { letter: 'A', name: 'Anchor', icon: Anchor, color: 'text-cosmos-anchor', bg: 'bg-cosmos-anchor/10', border: 'border-cosmos-anchor/20' },
+  { letter: 'I', name: 'Invest', icon: TrendingUp, color: 'text-cosmos-invest', bg: 'bg-cosmos-invest/10', border: 'border-cosmos-invest/20' },
+  { letter: 'L', name: 'Live', icon: Sun, color: 'text-cosmos-live', bg: 'bg-cosmos-live/10', border: 'border-cosmos-live/20' },
 ];
 
 function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -30,7 +30,7 @@ function Section({ children, className = '' }: { children: React.ReactNode; clas
 function Heading({ children }: { children: React.ReactNode }) {
   return (
     <Reveal>
-      <h2 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-stone-100 sm:text-3xl lg:text-4xl mb-6" style={{ letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+      <h2 className="text-2xl font-bold tracking-tight text-cosmos sm:text-3xl lg:text-4xl mb-6" style={{ letterSpacing: '-0.02em', lineHeight: 1.15 }}>
         {children}
       </h2>
     </Reveal>
@@ -40,7 +40,7 @@ function Heading({ children }: { children: React.ReactNode }) {
 function Body({ children }: { children: React.ReactNode }) {
   return (
     <Reveal delay={0.1}>
-      <div className="text-base text-stone-600 dark:text-stone-400 space-y-5" style={{ lineHeight: 1.8 }}>
+      <div className="text-base text-cosmos-soft space-y-5" style={{ lineHeight: 1.8 }}>
         {children}
       </div>
     </Reveal>
@@ -51,28 +51,28 @@ export default function TrailMethodPage() {
   const reduced = useReducedMotion();
 
   return (
-    <div className="min-h-screen flex flex-col bg-white dark:bg-stone-950">
+    <div className="min-h-screen flex flex-col bg-cosmos">
       <Header />
 
       {/* Hero */}
-      <section className="bg-stone-950 px-6 py-20 sm:py-32 text-center">
+      <section className="bg-cosmos px-6 py-20 sm:py-32 text-center">
         <motion.div
           initial={reduced ? {} : { opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease }}
           className="mx-auto max-w-3xl"
         >
-          <p className="text-sm font-semibold uppercase tracking-widest text-amber-500 mb-4">The TRAIL Method</p>
+          <p className="text-sm font-semibold uppercase tracking-widest text-cosmos-action mb-4">The TRAIL Method</p>
           <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl" style={{ letterSpacing: '-0.03em', lineHeight: 1.08 }}>
             Your Path from Financial Stress{' '}
-            <span className="text-amber-500">to Financial Freedom</span>
+            <span className="text-cosmos-action">to Financial Freedom</span>
           </h1>
-          <p className="mt-5 text-lg text-stone-400 italic">A guide for anyone who&apos;s ever felt lost with money</p>
+          <p className="mt-5 text-lg text-cosmos-soft italic">A guide for anyone who&apos;s ever felt lost with money</p>
         </motion.div>
       </section>
 
       {/* The Problem */}
-      <Section className="bg-stone-50 dark:bg-stone-900">
+      <Section className="bg-cosmos-deeper/40">
         <Heading>You&apos;re Not Bad With Money. You Just Don&apos;t Have a Path.</Heading>
         <Body>
           <p><strong>72% of people feel stressed about money.</strong> Not some of the time — most of the time. Money is the number one source of stress in Australia, ahead of health, work, and relationships.</p>
@@ -107,14 +107,14 @@ export default function TrailMethodPage() {
           </div>
         </Reveal>
         <Reveal delay={0.3}>
-          <p className="mt-8 text-stone-600 dark:text-stone-400" style={{ lineHeight: 1.8 }}>
+          <p className="mt-8 text-cosmos-soft" style={{ lineHeight: 1.8 }}>
             It&apos;s not a budget. It&apos;s not a course. It&apos;s not a set of rules you&apos;ll follow for two weeks and then abandon. It&apos;s a trail. A path through the wilderness of money. And like any good trail, it has a beginning, markers along the way, and a destination.
           </p>
         </Reveal>
       </Section>
 
       {/* Where TRAIL Comes From */}
-      <Section className="bg-stone-50 dark:bg-stone-900">
+      <Section className="bg-cosmos-deeper/40">
         <Heading>Where TRAIL Comes From</Heading>
         <Body>
           <p>We didn&apos;t invent the TRAIL method from nothing. We studied every major financial methodology in the world and found something remarkable: <strong>they all follow the same journey.</strong></p>
@@ -128,7 +128,7 @@ export default function TrailMethodPage() {
       <Section>
         <Heading>Step 1: Track</Heading>
         <Body>
-          <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">&ldquo;You can&apos;t change what you can&apos;t see.&rdquo;</p>
+          <p className="text-lg font-semibold text-cosmos">&ldquo;You can&apos;t change what you can&apos;t see.&rdquo;</p>
           <p>The first step is the hardest — and the most important. It&apos;s simply this: look at your finances. All of them. In one place.</p>
           <p>Most people don&apos;t know exactly how much they owe, exactly where their money goes each month, or what their net worth actually is. This isn&apos;t because they&apos;re irresponsible. It&apos;s because looking at your finances triggers anxiety, and your brain&apos;s natural response to anxiety is avoidance.</p>
           <p>But here&apos;s what the research also shows: <strong>the unknown is always scarier than the known.</strong> When people finally look at their full financial picture, the most common reaction isn&apos;t despair. It&apos;s relief.</p>
@@ -137,10 +137,10 @@ export default function TrailMethodPage() {
       </Section>
 
       {/* Step 2: Reduce */}
-      <Section className="bg-stone-50 dark:bg-stone-900">
+      <Section className="bg-cosmos-deeper/40">
         <Heading>Step 2: Reduce</Heading>
         <Body>
-          <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">&ldquo;Fix the leaks before you fill the bucket.&rdquo;</p>
+          <p className="text-lg font-semibold text-cosmos">&ldquo;Fix the leaks before you fill the bucket.&rdquo;</p>
           <p>Now that you can see where your money goes, something will jump out at you. It always does. Maybe it&apos;s the $340/month in subscriptions you forgot you were paying. Maybe it&apos;s the $800/month in takeaway that felt like $200.</p>
           <p>There&apos;s an important reason REDUCE comes before building a safety net: <strong>you can&apos;t save if you&apos;re bleeding money.</strong> Telling someone who spends more than they earn to &ldquo;build an emergency fund&rdquo; is like asking them to fill a bucket with a hole in it. Fix the hole first.</p>
           <p>Research from Northwestern University&apos;s Kellogg School found that people who pay off small debts first are more likely to eliminate ALL their debt — even though paying the highest interest rate first saves more money mathematically. The reason? <strong>Momentum.</strong></p>
@@ -152,7 +152,7 @@ export default function TrailMethodPage() {
       <Section>
         <Heading>Step 3: Anchor</Heading>
         <Body>
-          <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">&ldquo;An anchor keeps you stable when storms hit.&rdquo;</p>
+          <p className="text-lg font-semibold text-cosmos">&ldquo;An anchor keeps you stable when storms hit.&rdquo;</p>
           <p>Life is unpredictable. Cars break down. People get sick. Without a safety net, one unexpected expense can undo months of progress and send you right back into debt.</p>
           <p>The target: <strong>3 months of living expenses</strong> in a separate account you only touch in genuine emergencies. That might sound like a lot. But remember: you&apos;ve already fixed the leaks in Step 2. That surplus — even if it&apos;s $200/month — goes into your safety net.</p>
           <p>And here&apos;s what happens psychologically when you have an emergency fund: <strong>you stop making decisions from fear.</strong> With a safety net, you can think clearly. You can make choices from stability, not survival.</p>
@@ -161,10 +161,10 @@ export default function TrailMethodPage() {
       </Section>
 
       {/* Step 4: Invest */}
-      <Section className="bg-stone-50 dark:bg-stone-900">
+      <Section className="bg-cosmos-deeper/40">
         <Heading>Step 4: Invest</Heading>
         <Body>
-          <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">&ldquo;Compound interest is the eighth wonder of the world.&rdquo;</p>
+          <p className="text-lg font-semibold text-cosmos">&ldquo;Compound interest is the eighth wonder of the world.&rdquo;</p>
           <p>Now something beautiful happens. Your leaks are fixed. Your cashflow is positive. Your safety net is built. For the first time, you&apos;re not in survival mode. You&apos;re ready to grow.</p>
           <p>This is where property, investments, and superannuation come in. The Barefoot Investor recommends getting your super to 15%. Even small additional contributions compound dramatically over decades.</p>
           <p>The key insight: <strong>you don&apos;t need to be rich to start investing.</strong> You need to be stable. Even $50/week into an index fund, starting today, can grow to hundreds of thousands over 20-30 years.</p>
@@ -176,7 +176,7 @@ export default function TrailMethodPage() {
       <Section>
         <Heading>Step 5: Live</Heading>
         <Body>
-          <p className="text-lg font-semibold text-stone-900 dark:text-stone-100">&ldquo;Financial freedom isn&apos;t about being rich. It&apos;s about having choices.&rdquo;</p>
+          <p className="text-lg font-semibold text-cosmos">&ldquo;Financial freedom isn&apos;t about being rich. It&apos;s about having choices.&rdquo;</p>
           <p>This is the destination. Not a yacht. Not a mansion. Just this: <strong>the freedom to choose how you spend your time and your money.</strong></p>
           <p>Financial freedom is the point where your passive income approaches or exceeds your living expenses. At this stage, work becomes optional. Not that you stop working — many people love what they do. But the <strong>choice</strong> is yours.</p>
           <p><strong>The milestone:</strong> &ldquo;I make financial decisions from abundance, not fear. I live on my terms.&rdquo;</p>
@@ -184,7 +184,7 @@ export default function TrailMethodPage() {
       </Section>
 
       {/* Why TRAIL Works */}
-      <Section className="bg-stone-50 dark:bg-stone-900">
+      <Section className="bg-cosmos-deeper/40">
         <Heading>Why TRAIL Works (The Science)</Heading>
         <Body>
           <p>TRAIL isn&apos;t built on opinion. It&apos;s built on decades of behavioural science research.</p>
@@ -207,14 +207,14 @@ export default function TrailMethodPage() {
       </Section>
 
       {/* CTA */}
-      <section className="bg-stone-950 px-6 py-20 sm:py-28 text-center">
+      <section className="bg-cosmos px-6 py-20 sm:py-28 text-center">
         <Reveal>
           <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl" style={{ letterSpacing: '-0.02em' }}>
             Start Your TRAIL Today
           </h2>
         </Reveal>
         <Reveal delay={0.1}>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-stone-400" style={{ lineHeight: 1.6 }}>
+          <p className="mx-auto mt-4 max-w-xl text-lg text-cosmos-soft" style={{ lineHeight: 1.6 }}>
             You don&apos;t need to see the whole path. You just need to take the first step.
           </p>
         </Reveal>
@@ -222,17 +222,17 @@ export default function TrailMethodPage() {
           <div className="mt-8 flex flex-col items-center gap-4">
             <Link
               href="/trail-check"
-              className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500 to-amber-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-amber-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
+              className="cosmos-cta inline-flex items-center justify-center rounded-full px-8 py-4 text-lg font-semibold"
             >
               Take the free TRAIL Check
             </Link>
-            <Link href="/register" className="inline-flex items-center gap-2 text-sm font-medium text-stone-400 hover:text-amber-400 transition-colors">
+            <Link href="/register" className="inline-flex items-center gap-2 text-sm font-medium text-cosmos-soft hover:text-cosmos-action transition-colors">
               Or start your TRAIL now <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           </div>
         </Reveal>
         <Reveal delay={0.3}>
-          <p className="mt-12 text-sm text-stone-600 italic">
+          <p className="mt-12 text-sm text-cosmos-muted italic">
             Your trail to financial freedom starts with one step: seeing where you stand.
           </p>
         </Reveal>

@@ -2,6 +2,68 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48.7 — Secondary public pages → Deep Cosmos
+
+- **Type**: UI redesign — token migration on the secondary public surfaces left over from the Phase 48 scope.
+- **Scope**: `/trail-method` + `/wealth-check` + `/trail-check`. **No business logic touched.** Pure visual: v1 stone/amber/orange/yellow colour vocabulary → Deep Cosmos cosmos-* tokens. TRAIL stage SSOT corrected on the trail-method + trail-check pages.
+- **Why**: Reza spotted that after Phase 48 PR 6 landed, these two pages still rendered with their old v1 ivory bodies + amber accents — making the new dark Deep Cosmos `<Header>`/`<Footer>` sit awkwardly on top of legacy content (mismatch caught on 2026-05-26 ~17:00 AEST visual check). Phase 48 doc §5 had originally queued these as "Phase 48.x follow-up after the main 6 PRs land + are validated" — this is that follow-up.
+
+### What changed
+
+**`/trail-method` (244 lines):**
+- TRAIL stage colours were drifted from the canonical SSOT (`lib/navigation/trailNav.tsx` → `TRAIL_STAGE_TONES`). Hard-coded as: T amber · R orange · A emerald · I sky · L yellow. Migrated to the canonical: **T sky · R amber · A indigo · I emerald · L violet** via the `text-cosmos-track/reduce/anchor/invest/live` tokens introduced in Phase 48 PR 1.
+- Page wrapper: `bg-white dark:bg-stone-950` → `bg-cosmos`.
+- Alternating section bands: `bg-stone-50 dark:bg-stone-900` → `bg-cosmos-deeper/40`.
+- Body text: `text-stone-600 dark:text-stone-400` → `text-cosmos-soft`. Headings: `text-stone-900 dark:text-stone-100` → `text-cosmos`.
+- Hero brand accent ("to Financial Freedom" + "The TRAIL Method" eyebrow): `text-amber-500` → `text-cosmos-action` (locked v4 brand emerald).
+- CTA button: amber gradient pill → `cosmos-cta` rounded-full emerald.
+
+**`/wealth-check` (496 lines):**
+- Heavy amber accents → emerald `text-cosmos-action` across slider values, percentile highlights, selected-band rings, result-card heading.
+- Form / card surfaces: `bg-stone-900/50` → `bg-cosmos-surface/50`; `border-stone-800/80` → `border-cosmos-hairline`.
+- Range slider `accent-amber-500` → `accent-cosmos-action`.
+- Primary CTA gradient → `cosmos-cta`.
+- All stone-* text colours → cosmos-* vocabulary (soft / muted / faint).
+- Result-card highlight gradient: `from-amber-500/10 to-amber-600/5` → `from-cosmos-action/10 to-cosmos-action/5`.
+
+### Strategic notes (architect lens)
+
+**1. TRAIL stage SSOT corrected.** This was a real drift — `/trail-method` had hard-coded the wrong stage hues (likely from an earlier draft before `lib/navigation/trailNav.tsx` became the SSOT). The migration to `text-cosmos-track/reduce/anchor/invest/live` makes the SSOT structurally enforced because those tokens read from `app/globals.css` which reads from one canonical block.
+
+**2. Form logic preserved verbatim.** `/wealth-check` has a non-trivial state machine (age slider · income slider · net-worth band selector · computation → result + lever surface). NONE of the calc functions, hooks, or framer-motion animation logic were touched. Pure presentational token swap.
+
+**3. Mechanical migration via `sed`** — every replacement was a 1:1 token swap with no semantic change. Easier to audit (just check for any remaining `amber|stone-[0-9]` in the diff — verified clean).
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/trail-method/page.tsx` | v1 stone/amber → cosmos-* tokens; TRAIL hue SSOT corrected |
+| `app/wealth-check/page.tsx` | v1 stone/amber → cosmos-* tokens |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | Phase 48.7 entry prepended |
+| `docs/IMPLEMENTATION_PLAN.md` | Phase 48.7 noted, "secondary public surfaces" follow-up cleared |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes
+- [x] No business logic touched (verified by file diff — only className strings changed)
+- [x] No remaining v1 `amber-*` / `stone-[0-9]` Tailwind classes on the modified pages
+
+### Testing
+
+- [x] Build passes (TypeScript)
+- [ ] Vercel preview: `/trail-method` reads as full Deep Cosmos end-to-end with correct TRAIL hues
+- [ ] Vercel preview: `/wealth-check` reads as full Deep Cosmos; sliders + result card use emerald
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+---
+
 ### Phase 48 Public Website Redesign — PR 6 (Auth surfaces — final PR)
 
 - **Type**: UI redesign (visual replacement, ZERO auth-logic change)

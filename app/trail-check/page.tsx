@@ -95,7 +95,7 @@ const stageResults: Record<string, StageResult> = {
       'Calculate your net worth: what you own minus what you owe. Just knowing the number is a breakthrough.',
       'Track your spending for one month — no judgment, just awareness. Where is the money actually going?',
     ],
-    color: 'amber',
+    color: 'track',
   },
   R: {
     letter: 'R',
@@ -108,7 +108,7 @@ const stageResults: Record<string, StageResult> = {
       'Start a debt paydown plan: list your debts smallest to largest, attack the smallest first for quick wins',
       'Set up a simple budget: income minus essentials = what you have left. No spreadsheet needed.',
     ],
-    color: 'orange',
+    color: 'reduce',
   },
   A: {
     letter: 'A',
@@ -121,7 +121,7 @@ const stageResults: Record<string, StageResult> = {
       'Keep your emergency fund in a separate bank account — out of sight, out of mind',
       'Make sure all bills are on automatic payment — no late fees, no stress, no surprises',
     ],
-    color: 'emerald',
+    color: 'anchor',
   },
   I: {
     letter: 'I',
@@ -134,7 +134,7 @@ const stageResults: Record<string, StageResult> = {
       'Consider a diversified index fund if you haven\'t started investing — start small, stay consistent',
       'Track your net worth quarterly — watching it grow is the most powerful motivator there is',
     ],
-    color: 'sky',
+    color: 'invest',
   },
   L: {
     letter: 'L',
@@ -147,7 +147,7 @@ const stageResults: Record<string, StageResult> = {
       'Consider estate planning — protect what you\'ve built for the people you love',
       'Review and optimise your tax position — at this stage, smart tax planning can save thousands annually',
     ],
-    color: 'yellow',
+    color: 'live',
   },
 };
 
@@ -192,11 +192,11 @@ export default function TrailCheckPage() {
 
   if (showResults && result) {
     return (
-      <div className="min-h-screen bg-stone-950 flex flex-col">
+      <div className="min-h-screen bg-cosmos flex flex-col">
         {/* Header */}
         <header className="border-b border-white/[0.06] px-6 py-4">
           <Link href="/" className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b cosmos-cta shadow-sm">
               <span className="text-lg font-bold text-white">M</span>
             </div>
             <span className="text-xl font-bold text-white tracking-tight">Monitrax</span>
@@ -212,7 +212,7 @@ export default function TrailCheckPage() {
           >
             {/* Stage badge */}
             <div className="text-center mb-8">
-              <p className="text-sm font-semibold uppercase tracking-widest text-amber-500 mb-3">
+              <p className="text-sm font-semibold uppercase tracking-widest text-cosmos-action mb-3">
                 Your TRAIL Stage
               </p>
               <h1
@@ -221,7 +221,7 @@ export default function TrailCheckPage() {
               >
                 {result.name}
               </h1>
-              <p className="mt-2 text-lg text-stone-400">{result.tagline}</p>
+              <p className="mt-2 text-lg text-cosmos-soft">{result.tagline}</p>
             </div>
 
             {/* TRAIL progress indicator */}
@@ -231,8 +231,8 @@ export default function TrailCheckPage() {
                   <div
                     className={`flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full text-xs sm:text-sm font-bold transition-colors ${
                       i <= stageIndex
-                        ? 'bg-amber-500 text-white'
-                        : 'bg-stone-800 text-stone-500'
+                        ? 'bg-cosmos-action text-white'
+                        : 'bg-cosmos-elevated text-cosmos0'
                     }`}
                   >
                     {i < stageIndex ? (
@@ -244,7 +244,7 @@ export default function TrailCheckPage() {
                   {i < allStages.length - 1 && (
                     <div
                       className={`w-8 sm:w-12 h-0.5 ${
-                        i < stageIndex ? 'bg-amber-500' : 'bg-stone-800'
+                        i < stageIndex ? 'bg-cosmos-action' : 'bg-cosmos-elevated'
                       }`}
                     />
                   )}
@@ -253,24 +253,24 @@ export default function TrailCheckPage() {
             </div>
 
             {/* Description */}
-            <div className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 sm:p-8 mb-8">
-              <p className="text-stone-300" style={{ lineHeight: 1.7 }}>
+            <div className="rounded-2xl border border-cosmos-hairline bg-cosmos-surface/50 p-6 sm:p-8 mb-8">
+              <p className="text-cosmos-soft" style={{ lineHeight: 1.7 }}>
                 {result.description}
               </p>
             </div>
 
             {/* Tips */}
-            <div className="rounded-2xl border border-stone-800 bg-stone-900/50 p-6 sm:p-8 mb-8">
-              <h2 className="text-sm font-semibold uppercase tracking-widest text-amber-500 mb-4">
+            <div className="rounded-2xl border border-cosmos-hairline bg-cosmos-surface/50 p-6 sm:p-8 mb-8">
+              <h2 className="text-sm font-semibold uppercase tracking-widest text-cosmos-action mb-4">
                 3 things to focus on
               </h2>
               <div className="space-y-4">
                 {result.tips.map((tip, i) => (
                   <div key={i} className="flex gap-3">
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 text-xs font-bold text-amber-500">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cosmos-action/10 text-xs font-bold text-cosmos-action">
                       {i + 1}
                     </span>
-                    <p className="text-stone-300 text-sm" style={{ lineHeight: 1.6 }}>
+                    <p className="text-cosmos-soft text-sm" style={{ lineHeight: 1.6 }}>
                       {tip}
                     </p>
                   </div>
@@ -280,16 +280,16 @@ export default function TrailCheckPage() {
 
             {/* CTA */}
             <div className="text-center">
-              <p className="text-stone-400 mb-4">
+              <p className="text-cosmos-soft mb-4">
                 Want a personal Guide to walk you through this?
               </p>
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500 to-amber-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-amber-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
+                className="cosmos-cta inline-flex items-center justify-center rounded-full px-8 py-4 text-lg font-semibold"
               >
                 Start your TRAIL — it&apos;s free
               </Link>
-              <p className="mt-3 text-sm text-stone-500">
+              <p className="mt-3 text-sm text-cosmos0">
                 No credit card. Takes 3 minutes to set up.
               </p>
             </div>
@@ -302,24 +302,24 @@ export default function TrailCheckPage() {
   const q = questions[currentStep];
 
   return (
-    <div className="min-h-screen bg-stone-950 flex flex-col">
+    <div className="min-h-screen bg-cosmos flex flex-col">
       {/* Header */}
       <header className="border-b border-white/[0.06] px-6 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b from-amber-500 to-amber-600 shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-b cosmos-cta shadow-sm">
             <span className="text-lg font-bold text-white">M</span>
           </div>
           <span className="text-xl font-bold text-white tracking-tight">Monitrax</span>
         </Link>
-        <span className="text-sm text-stone-500">
+        <span className="text-sm text-cosmos0">
           {currentStep + 1} of {questions.length}
         </span>
       </header>
 
       {/* Progress bar */}
-      <div className="h-1 bg-stone-800">
+      <div className="h-1 bg-cosmos-elevated">
         <motion.div
-          className="h-full bg-gradient-to-r from-amber-500 to-amber-600"
+          className="h-full bg-gradient-to-r cosmos-cta"
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3, ease }}
         />
@@ -337,8 +337,8 @@ export default function TrailCheckPage() {
             >
               {/* Stage indicator */}
               <div className="mb-6">
-                <span className="inline-flex items-center gap-2 rounded-full bg-stone-800 px-3 py-1 text-xs font-semibold text-stone-400">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-amber-500 text-[10px] font-bold">
+                <span className="inline-flex items-center gap-2 rounded-full bg-cosmos-elevated px-3 py-1 text-xs font-semibold text-cosmos-soft">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cosmos-action/15 text-cosmos-action text-[10px] font-bold">
                     {q.stageLetter}
                   </span>
                   {q.stage}
@@ -363,8 +363,8 @@ export default function TrailCheckPage() {
                       onClick={() => selectAnswer(q.id, option.score)}
                       className={`w-full text-left rounded-xl border px-5 py-4 text-sm font-medium transition-all duration-200 ${
                         isSelected
-                          ? 'border-amber-500 bg-amber-500/10 text-amber-400'
-                          : 'border-stone-700 bg-stone-900/50 text-stone-300 hover:border-stone-600 hover:bg-stone-800/50'
+                          ? 'border-cosmos-action bg-cosmos-action/10 text-cosmos-action'
+                          : 'border-cosmos-hairline-strong bg-cosmos-surface/50 text-cosmos-soft hover:border-cosmos-hairline-strong hover:bg-cosmos-elevated/50'
                       }`}
                     >
                       {option.label}
@@ -377,7 +377,7 @@ export default function TrailCheckPage() {
               {currentStep > 0 && (
                 <button
                   onClick={() => setCurrentStep((s) => s - 1)}
-                  className="mt-6 flex items-center gap-1.5 text-sm text-stone-500 hover:text-stone-300 transition-colors"
+                  className="mt-6 flex items-center gap-1.5 text-sm text-cosmos0 hover:text-cosmos-soft transition-colors"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back
