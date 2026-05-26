@@ -37,6 +37,17 @@
       "title": "Monitrax Hero - Refined Design (v1, palette drift)",
       "generatedAt": "2026-05-26T00:39:00.000000Z",
       "scope": "Hero only — v1. First generation; Stitch's design system overrode the warm-ivory request with cool blue #f8f9ff and emerald drifted to Material #006b2c. Superseded by v2 (index)."
+    },
+    "below-hero": {
+      "id": "d97a4dc3ddc84fcfb86365b06c626215",
+      "sourceScreen": "projects/1859462351962811110/screens/d97a4dc3ddc84fcfb86365b06c626215",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2274,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (Proof Strip + One Picture)",
+      "generatedAt": "2026-05-26T00:48:00.000000Z",
+      "scope": "Sections 2-3 of the landing IA. Proof strip (6 wealth-structure pills: Property/SMSF/Investments/Trust/Company/Super) + One Picture (BEFORE→MONITRAX→NOW YOU CAN DECIDE explainer with TRAIL 4-segment bar). Warm-ivory throughout (no band change between sections)."
     }
   },
   "metadata": {
