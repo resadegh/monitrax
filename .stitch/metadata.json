@@ -39,15 +39,34 @@
       "scope": "Hero only — v1. First generation; Stitch's design system overrode the warm-ivory request with cool blue #f8f9ff and emerald drifted to Material #006b2c. Superseded by v2 (index)."
     },
     "below-hero": {
+      "id": "c42ad8575af24a5ab41b63bf1599ed1f",
+      "sourceScreen": "projects/1859462351962811110/screens/c42ad8575af24a5ab41b63bf1599ed1f",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2274,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (v2, integration-debt caption added)",
+      "generatedAt": "2026-05-26T00:54:00.000000Z",
+      "previousVersion": "d97a4dc3ddc84fcfb86365b06c626215",
+      "scope": "Sections 2-3 v2 with the integration-debt italic caption (Phase 46 / THE_TRAIL_METHOD.md positioning DNA) added under the One Picture headline."
+    },
+    "below-hero-v1": {
       "id": "d97a4dc3ddc84fcfb86365b06c626215",
       "sourceScreen": "projects/1859462351962811110/screens/d97a4dc3ddc84fcfb86365b06c626215",
       "deviceType": "DESKTOP",
       "width": 2560,
       "height": 2274,
       "modelId": "GEMINI_3_FLASH",
-      "title": "Monitrax Landing Page - Sections 2 & 3 (Proof Strip + One Picture)",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (v1)",
       "generatedAt": "2026-05-26T00:48:00.000000Z",
-      "scope": "Sections 2-3 of the landing IA. Proof strip (6 wealth-structure pills: Property/SMSF/Investments/Trust/Company/Super) + One Picture (BEFORE→MONITRAX→NOW YOU CAN DECIDE explainer with TRAIL 4-segment bar). Warm-ivory throughout (no band change between sections)."
+      "scope": "First proof strip + One Picture generation. Superseded by below-hero (v2) which added the integration-debt caption."
+    }
+  },
+  "deferredEdits": {
+    "hero-v3-wealth-check-cta": {
+      "screenId": "f533d6d2e2c44ac789ee327009b63cd9",
+      "attempted": "2026-05-26T00:52:00.000000Z",
+      "status": "DEFERRED — Stitch edit_screens applied DOM patches but did not persist to the canonical exportable asset (asset URL unchanged after edit). Three pending changes to apply at React-conversion / hand-polish time: (1) replace secondary CTA text 'Take the 60-second TRAIL Check →' with 'See your retirement gap in 30 seconds →' and href /trail-check → /wealth-check; (2) replace microcopy 'No credit card. No commitment. Just clarity.' with two-line stack (italic 'For households the budget apps stopped fitting.' + existing line); (3) verify integration-debt caption rendered correctly in below-hero v2."
     }
   },
   "metadata": {
