@@ -1,297 +1,295 @@
 <!DOCTYPE html>
 
-<html class="scroll-smooth" lang="en"><head>
+<html class="dark" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Monitrax | Australian Wealth Operating System</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-      tailwind.config = {
-        darkMode: "class",
-        theme: {
-          extend: {
-            "colors": {
-                    "secondary": "#585e6f",
-                    "primary-fixed-dim": "#62df7d",
-                    "on-secondary-fixed": "#151b2a",
-                    "inverse-on-surface": "#eaf1ff",
-                    "primary-fixed": "#7ffc97",
-                    "primary-container": "#00873a",
-                    "on-background": "#0b1c30",
-                    "on-tertiary-fixed-variant": "#454745",
-                    "surface-container": "#e5eeff",
-                    "outline": "#6e7b6c",
-                    "tertiary-fixed-dim": "#c6c7c4",
-                    "surface-variant": "#d3e4fe",
-                    "surface-dim": "#cbdbf5",
-                    "on-surface": "#0b1c30",
-                    "on-error": "#ffffff",
-                    "surface-tint": "#006e2d",
-                    "on-tertiary-fixed": "#1a1c1b",
-                    "on-secondary-container": "#5c6274",
-                    "on-primary-fixed-variant": "#005320",
-                    "tertiary-container": "#737573",
-                    "on-primary-container": "#f7fff2",
-                    "tertiary": "#5b5c5a",
-                    "error": "#ba1a1a",
-                    "surface-container-highest": "#d3e4fe",
-                    "surface-bright": "#f8f9ff",
-                    "tertiary-fixed": "#e2e3e0",
-                    "surface": "#f8f9ff",
-                    "surface-container-low": "#eff4ff",
-                    "on-secondary": "#ffffff",
-                    "on-primary-fixed": "#002109",
-                    "error-container": "#ffdad6",
-                    "on-tertiary": "#ffffff",
-                    "secondary-container": "#d9dff4",
-                    "background": "#f8f9ff",
-                    "secondary-fixed": "#dce2f6",
-                    "secondary-fixed-dim": "#c0c6da",
-                    "surface-container-lowest": "#ffffff",
-                    "surface-container-high": "#dce9ff",
-                    "outline-variant": "#bdcaba",
-                    "inverse-surface": "#213145",
-                    "on-surface-variant": "#3e4a3d",
-                    "on-secondary-fixed-variant": "#404757",
-                    "inverse-primary": "#62df7d",
-                    "on-error-container": "#93000a",
-                    "on-tertiary-container": "#fdfdfa",
-                    "primary": "#006b2c",
-                    "on-primary": "#ffffff",
-                    "warm-ivory": "#FAFAF7",
-                    "deep-navy": "#0B1220"
-            },
-            "borderRadius": {
-                    "DEFAULT": "0.25rem",
-                    "lg": "0.5rem",
-                    "xl": "0.75rem",
-                    "full": "9999px"
-            },
-            "spacing": {
-                    "margin-mobile": "20px",
-                    "margin-desktop": "48px",
-                    "unit": "4px",
-                    "gutter": "24px",
-                    "container-max": "1280px"
-            },
-            "fontFamily": {
-                    "headline-sm": ["Inter"],
-                    "headline-md": ["Inter"],
-                    "body-sm": ["Inter"],
-                    "headline-lg": ["Inter"],
-                    "display-lg": ["Inter"],
-                    "body-md": ["Inter"],
-                    "headline-lg-mobile": ["Inter"],
-                    "eyebrow": ["Inter"],
-                    "body-lg": ["Inter"],
-                    "label-md": ["Inter"]
-            },
-            "fontSize": {
-                    "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
-                    "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
-                    "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
-                    "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
-                    "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
-                    "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
-                    "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
-                    "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
-                    "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
-                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}]
-            }
-          },
-        },
-      }
-    </script>
 <style>
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-            font-size: 20px;
         }
-        body {
-            background-color: #FAFAF7;
-            font-family: 'Inter', sans-serif;
-            color: #0B1220;
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
         }
-        .editorial-shadow {
-            box-shadow: 0 4px 16px rgba(11, 18, 32, 0.04);
+        .emerald-glow {
+            background: radial-gradient(circle at 0% 0%, rgba(22, 163, 74, 0.08) 0%, transparent 50%);
+        }
+        .cosmos-bg {
+            background-color: #0A0A14;
+        }
+        .chiseled-border-top {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.3);
         }
     </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-container": "#3131c0",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "secondary": "#c0c1ff",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#292934",
+                        "on-error": "#690005",
+                        "on-primary-fixed": "#002109",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-container": "#003111",
+                        "on-secondary": "#1000a9",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#009ada",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-secondary-container": "#b0b2ff",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "surface": "#12121d",
+                        "inverse-surface": "#e4e1f0",
+                        "tertiary-fixed": "#c9e6ff",
+                        "primary": "#62df7d",
+                        "on-background": "#e4e1f0",
+                        "surface-bright": "#393844",
+                        "primary-container": "#1ca64d",
+                        "surface-tint": "#62df7d",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "surface-container": "#1f1f29",
+                        "on-surface": "#e4e1f0",
+                        "error": "#ffb4ab",
+                        "outline": "#879485",
+                        "on-tertiary-fixed": "#001e2f",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container-highest": "#34343f",
+                        "inverse-primary": "#006e2d",
+                        "surface-dim": "#12121d",
+                        "surface-container-lowest": "#0d0d17",
+                        "surface-variant": "#34343f",
+                        "on-secondary-fixed": "#07006c",
+                        "primary-fixed": "#7ffc97",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#002d43",
+                        "on-surface-variant": "#bdcaba",
+                        "background": "#12121d",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary": "#00344d",
+                        "tertiary": "#89ceff",
+                        "on-primary": "#003914",
+                        "inverse-on-surface": "#302f3b"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "unit": "8px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "16px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "display-lg": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
 </head>
-<body class="antialiased text-deep-navy">
-<!-- TopNavBar from Shared Components -->
-<nav class="fixed top-0 w-full z-50 bg-background/80 dark:bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm transition-all duration-200">
-<div class="flex items-center justify-between px-margin-desktop h-20 max-w-container-max mx-auto">
-<span class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface">Monitrax</span>
-<div class="hidden md:flex items-center gap-8">
-<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">The TRAIL</a>
-<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Capabilities</a>
-<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Pricing</a>
-<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Security</a>
+<body class="cosmos-bg text-on-surface selection:bg-primary/30">
+<!-- NAVIGATION (Based on Shared Components JSON) -->
+<header class="fixed top-0 w-full z-50 bg-[#0a0a1499] backdrop-blur-xl">
+<nav class="flex justify-between items-center w-full px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-md text-[18px] font-semibold text-on-surface flex items-center gap-2">
+<span class="w-2 h-2 bg-primary rounded-full"></span>
+                Monitrax
+            </div>
+<div class="hidden md:flex items-center gap-8 font-body-md text-body-md">
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Capabilities</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Pricing</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">Security</a>
+<a class="text-on-surface/70 font-medium hover:text-on-surface transition-colors duration-200" href="#">The TRAIL</a>
 </div>
-<div class="flex items-center gap-4">
-<button class="px-5 py-2 text-label-md font-medium text-secondary hover:text-primary transition-colors">Sign In</button>
-<button class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md hover:opacity-90 active:scale-95 transition-all">Start Free</button>
-</div>
+<div class="flex items-center gap-6">
+<a class="font-body-md text-body-md text-on-surface/70 hover:text-on-surface transition-colors" href="#">Sign in</a>
+<button class="px-6 py-2 bg-primary text-on-primary font-label-md text-label-md rounded-lg scale-95 active:scale-90 transition-transform">
+                    Get started
+                </button>
 </div>
 </nav>
+</header>
 <main>
 <!-- SECTION 2: PROOF STRIP -->
-<section class="w-full py-12 bg-warm-ivory border-t border-[#F4F3EE] mt-20">
-<div class="flex flex-col items-center">
-<span class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-[0.18em]">BUILT FOR AUSTRALIAN STRUCTURES</span>
-<div class="mt-6 flex flex-wrap justify-center gap-3 px-margin-mobile">
-<!-- Pill 1: Property -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        Property
-                    </div>
-<!-- Pill 2: SMSF -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M6 22V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v18Z"></path><path d="M6 18H2v2c0 1.1.9 2 2 2h2Z"></path><path d="M18 22h4v-2c0-1.1-.9-2-2-2h-2Z"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path></svg>
-                        SMSF
-                    </div>
-<!-- Pill 3: Investments -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-                        Investments
-                    </div>
-<!-- Pill 4: Trust -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Trust
-                    </div>
-<!-- Pill 5: Company -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><rect height="14" rx="2" ry="2" width="20" x="2" y="7"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
-                        Company
-                    </div>
-<!-- Pill 6: Super -->
-<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
-<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
-                        Super
-                    </div>
+<section class="cosmos-bg py-20 border-y border-white/5 relative overflow-hidden">
+<div class="max-w-container-max mx-auto px-margin-desktop text-center">
+<p class="font-label-sm text-label-sm tracking-[0.2em] text-on-surface-variant/60 uppercase mb-8">
+                    BUILT FOR AUSTRALIAN STRUCTURES
+                </p>
+<div class="flex flex-wrap justify-center items-center gap-4">
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">domain</span>
+<span class="font-label-md text-label-md text-on-surface">Property</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">account_balance</span>
+<span class="font-label-md text-label-md text-on-surface">SMSF</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">show_chart</span>
+<span class="font-label-md text-label-md text-on-surface">Investments</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">account_tree</span>
+<span class="font-label-md text-label-md text-on-surface">Trust</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">corporate_fare</span>
+<span class="font-label-md text-label-md text-on-surface">Company</span>
+</div>
+<div class="glass-card px-8 py-3 rounded-full flex items-center gap-3">
+<span class="material-symbols-outlined text-[20px] text-primary">savings</span>
+<span class="font-label-md text-label-md text-on-surface">Super</span>
+</div>
 </div>
 </div>
 </section>
 <!-- SECTION 3: ONE PICTURE -->
-<section class="py-24 bg-warm-ivory">
-<div class="max-w-6xl mx-auto px-8 grid grid-cols-1 md:grid-cols-[40%_60%] gap-16 items-start">
-<!-- LEFT COLUMN -->
-<div class="flex flex-col">
-<span class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-[0.18em]">ONE VIEW · NO SWIVEL-CHAIRING</span>
-<h2 class="mt-4 font-display-lg text-[48px] font-semibold tracking-[-0.025em] leading-[1.05]">
-<span class="text-deep-navy">Your financial life lives across</span>
-<span class="text-slate-500"> five tabs, two portals, and your accountant's head.</span>
-</h2><p class="mt-3 font-['Inter'] font-normal text-[14px] italic text-slate-500 max-w-[52ch] leading-1.6">That's integration debt — the cost of running more moving parts than any single view can hold.</p>
-<p class="mt-6 text-slate-500 font-body-md text-body-md leading-[1.65]">
+<section class="cosmos-bg py-32 emerald-glow relative">
+<div class="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-2 gap-gutter items-center">
+<!-- Left Column -->
+<div class="space-y-6 max-w-xl">
+<div class="flex items-center gap-3">
+<div class="h-[1px] w-8 bg-primary"></div>
+<span class="font-label-sm text-label-sm tracking-widest text-primary uppercase">ONE VIEW · NO SWIVEL-CHAIRING</span>
+</div>
+<h2 class="font-headline-xl text-[48px] leading-[1.1] tracking-tight font-medium text-on-surface">
+                        Your financial life lives across five tabs, two portals, and your accountant's head.
+                    </h2>
+<p class="font-body-md text-body-md italic text-on-surface-variant/70 leading-relaxed border-l-2 border-primary/20 pl-6">
+                        "That's integration debt — the cost of running more moving parts than any single view can hold."
+                    </p>
+<p class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
                         Monitrax brings them together. Property, loans, super, investments, cashflow, and tax — read by one engine, in one calm view, with the relationships between them already mapped. The picture you've been holding in your head, finally written down.
                     </p>
-<a class="mt-6 flex items-center gap-2 text-[14px] font-medium text-slate-700 hover:text-primary transition-colors group" href="#">
-                        See how it works
-                        <svg class="transform group-hover:translate-x-1 transition-transform" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-</a>
-</div>
-<!-- RIGHT COLUMN -->
-<div class="flex flex-col items-center w-full">
-<!-- Row 1: BEFORE -->
-<div class="w-full">
-<p class="text-[14px] text-slate-500 font-medium mb-4">BEFORE</p>
-<div class="flex flex-wrap gap-4 justify-start">
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-2">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M6 22V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v18Z"></path><path d="M6 18H2v2c0 1.1.9 2 2 2h2Z"></path><path d="M18 22h4v-2c0-1.1-.9-2-2-2h-2Z"></path></svg>
-</div>
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-3">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
-</div>
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-4">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-</div>
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-4">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-</div>
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-1">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" width="20" x="2" y="4"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
-</div>
-<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-2">
-<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="20" rx="2" width="16" x="4" y="2"></rect><line x1="8" x2="16" y1="6" y2="6"></line><line x1="8" x2="16" y1="10" y2="10"></line><line x1="8" x2="16" y1="14" y2="14"></line><line x1="8" x2="16" y1="18" y2="18"></line></svg>
+<div class="pt-4">
+<button class="group flex items-center gap-3 font-label-md text-label-md text-primary hover:text-primary-fixed-dim transition-colors">
+                            Discover the Engine
+                            <span class="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</button>
 </div>
 </div>
+<!-- Right Column (Visualization) -->
+<div class="relative min-h-[600px] flex flex-col items-center justify-between py-8">
+<!-- BEFORE State -->
+<div class="relative w-full h-48 flex justify-center">
+<div class="absolute -top-4 font-label-sm text-label-sm text-on-surface-variant/40 tracking-[0.2em] uppercase">BEFORE</div>
+<!-- Scattered Cards -->
+<div class="glass-card absolute top-10 left-10 p-3 rounded-xl rotate-[-12deg] opacity-60">
+<span class="material-symbols-outlined text-on-surface/40">account_balance</span>
 </div>
-<!-- Connector 1 -->
-<div class="my-6">
-<svg fill="none" height="20" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="12" x2="12" y1="5" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+<div class="glass-card absolute top-6 right-20 p-3 rounded-xl rotate-[15deg] opacity-50">
+<span class="material-symbols-outlined text-on-surface/40">description</span>
 </div>
-<!-- Row 2: MONITRAX CARD -->
-<div class="w-full">
-<p class="text-[14px] text-slate-700 font-medium mb-4">MONITRAX</p>
-<div class="bg-white rounded-2xl border border-stone-200 p-6 editorial-shadow">
-<div class="flex justify-between items-baseline mb-4">
-<span class="text-slate-500 text-sm font-medium">Estimated Net Worth</span>
-<span class="text-deep-navy text-[20px] font-semibold tracking-tight">$1,424,800</span>
+<div class="glass-card absolute top-24 left-1/2 p-3 rounded-xl rotate-[-5deg] opacity-70">
+<span class="material-symbols-outlined text-on-surface/40">monitoring</span>
 </div>
-<!-- Segmented Bar -->
-<div class="w-full h-2 rounded-full overflow-hidden flex mb-6">
-<div class="h-full bg-sky-400" style="width: 25%"></div>
-<div class="h-full bg-amber-400" style="width: 20%"></div>
-<div class="h-full bg-indigo-500" style="width: 25%"></div>
-<div class="h-full bg-emerald-500" style="width: 30%"></div>
+<div class="glass-card absolute top-12 left-1/4 p-3 rounded-xl rotate-[8deg] opacity-40">
+<span class="material-symbols-outlined text-on-surface/40">table_chart</span>
 </div>
-<!-- TRAIL Framework Labels -->
-<div class="flex justify-between text-[11px] text-slate-400 font-bold tracking-[0.1em]">
-<span>TRACK</span>
-<span>REDUCE</span>
-<span>ANCHOR</span>
-<span>INVEST</span>
+<div class="glass-card absolute top-28 right-10 p-3 rounded-xl rotate-[-20deg] opacity-60">
+<span class="material-symbols-outlined text-on-surface/40">gate</span>
 </div>
 </div>
+<!-- ENGINE node -->
+<div class="relative w-full flex items-center justify-center my-12">
+<div class="w-full h-[1px] bg-gradient-to-r from-transparent via-primary/30 to-transparent absolute"></div>
+<div class="glass-card px-10 py-4 rounded-full border-primary/30 flex items-center gap-4 relative z-10 bg-surface">
+<span class="material-symbols-outlined text-primary animate-pulse" data-weight="fill">hub</span>
+<span class="font-label-md text-label-md tracking-widest text-on-surface uppercase">MONITRAX ENGINE</span>
 </div>
-<!-- Connector 2 -->
-<div class="my-6">
-<svg fill="none" height="20" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="12" x2="12" y1="5" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
 </div>
-<!-- Row 3: DECIDE -->
-<div class="w-full">
-<p class="text-[14px] text-emerald-600 font-medium mb-4">NOW YOU CAN DECIDE</p>
-<div class="bg-emerald-50/50 rounded-2xl border border-emerald-100 p-6">
-<p class="text-deep-navy text-[16px] font-medium leading-relaxed">
+<!-- AFTER State -->
+<div class="relative w-full flex flex-col items-center">
+<div class="mb-6 font-label-sm text-label-sm text-primary/60 tracking-[0.2em] uppercase">NOW YOU CAN DECIDE</div>
+<!-- High Fidelity Decision Card -->
+<div class="max-w-[380px] w-full p-8 rounded-2xl bg-primary/5 border border-primary/50 backdrop-blur-3xl shadow-[0_0_40px_rgba(22,163,74,0.15)] relative group transition-all duration-500 hover:scale-[1.02]">
+<div class="absolute top-0 right-0 p-4">
+<span class="material-symbols-outlined text-primary text-[24px]">verified</span>
+</div>
+<h4 class="font-label-md text-label-md text-primary mb-4">Strategic Simulation</h4>
+<p class="font-body-lg text-body-lg text-on-surface leading-tight font-medium">
                                 "Sell the brokerage holdings, pay down the offset, or salary-sacrifice $200/mo to super?"
                             </p>
+<div class="mt-8 flex justify-between items-center border-t border-primary/20 pt-6">
+<div class="flex flex-col">
+<span class="text-[10px] uppercase tracking-widest text-on-surface-variant/60">Net Impact</span>
+<span class="text-primary font-bold text-lg">+$14,280/yr</span>
+</div>
+<div class="px-4 py-1.5 bg-primary rounded-lg text-on-primary font-label-sm text-label-sm">Execute</div>
+</div>
 </div>
 </div>
 </div>
 </div>
 </section>
 </main>
-<!-- Footer from Shared Components -->
-<footer class="w-full py-12 bg-surface-container-low dark:bg-surface-dim border-t border-outline-variant/20 transition-all duration-300">
-<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
-<div class="flex flex-col items-center md:items-start gap-2">
-<span class="font-headline-sm text-headline-sm font-bold text-primary">Monitrax</span>
-<p class="font-body-sm text-body-sm text-on-surface dark:text-on-surface opacity-70">© 2024 Monitrax. A premium Australian wealth operating system.</p>
+<!-- FOOTER (Based on Shared Components JSON) -->
+<footer class="w-full border-t border-white/10 bg-surface-container-lowest py-12">
+<div class="flex flex-col md:flex-row justify-between items-center w-full px-margin-desktop max-w-container-max mx-auto gap-8">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+<div class="flex flex-wrap justify-center gap-6 font-body-sm text-body-sm text-on-surface-variant">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Financial Services Guide</a>
+<a class="hover:text-primary transition-colors" href="#">Contact</a>
 </div>
-<div class="flex flex-wrap justify-center gap-6">
-<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Privacy Policy</a>
-<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Terms of Service</a>
-<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Financial Services Guide</a>
-<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Contact</a>
-</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant/60">© 2024 Monitrax. Australian Wealth Operating System.</p>
 </div>
 </footer>
 <script>
-        // Micro-interactions
-        document.querySelectorAll('.flex.items-center.gap-2.px-4.py-2').forEach(pill => {
-            pill.addEventListener('mouseenter', () => {
-                pill.style.transform = 'translateY(-2px)';
-                pill.style.borderColor = '#006b2c';
-                pill.style.transition = 'all 0.2s ease';
+        // Micro-interaction for the Scattered Cards
+        document.addEventListener('mousemove', (e) => {
+            const cards = document.querySelectorAll('.glass-card.absolute');
+            const x = e.clientX / window.innerWidth;
+            const y = e.clientY / window.innerHeight;
+            
+            cards.forEach((card, i) => {
+                const depth = (i + 1) * 10;
+                const moveX = (x - 0.5) * depth;
+                const moveY = (y - 0.5) * depth;
+                card.style.transform = `translate(${moveX}px, ${moveY}px) rotate(${card.dataset.rotate || '0deg'})`;
             });
-            pill.addEventListener('mouseleave', () => {
-                pill.style.transform = 'translateY(0)';
-                pill.style.borderColor = '#E8E6E0';
-            });
+        });
+
+        // Initialize rotation for cards
+        document.querySelectorAll('.glass-card.absolute').forEach(card => {
+            const currentRotation = window.getComputedStyle(card).getPropertyValue('transform');
+            // Store original state if needed
         });
     </script>
 </body></html>

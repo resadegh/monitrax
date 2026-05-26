@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Australian Wealth Operating System</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary": "#585e6f",
+                    "primary-fixed-dim": "#62df7d",
+                    "on-secondary-fixed": "#151b2a",
+                    "inverse-on-surface": "#eaf1ff",
+                    "primary-fixed": "#7ffc97",
+                    "primary-container": "#00873a",
+                    "on-background": "#0b1c30",
+                    "on-tertiary-fixed-variant": "#454745",
+                    "surface-container": "#e5eeff",
+                    "outline": "#6e7b6c",
+                    "tertiary-fixed-dim": "#c6c7c4",
+                    "surface-variant": "#d3e4fe",
+                    "surface-dim": "#cbdbf5",
+                    "on-surface": "#0b1c30",
+                    "on-error": "#ffffff",
+                    "surface-tint": "#006e2d",
+                    "on-tertiary-fixed": "#1a1c1b",
+                    "on-secondary-container": "#5c6274",
+                    "on-primary-fixed-variant": "#005320",
+                    "tertiary-container": "#737573",
+                    "on-primary-container": "#f7fff2",
+                    "tertiary": "#5b5c5a",
+                    "error": "#ba1a1a",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-bright": "#f8f9ff",
+                    "tertiary-fixed": "#e2e3e0",
+                    "surface": "#f8f9ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-secondary": "#ffffff",
+                    "on-primary-fixed": "#002109",
+                    "error-container": "#ffdad6",
+                    "on-tertiary": "#ffffff",
+                    "secondary-container": "#d9dff4",
+                    "background": "#f8f9ff",
+                    "secondary-fixed": "#dce2f6",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-container-high": "#dce9ff",
+                    "outline-variant": "#bdcaba",
+                    "inverse-surface": "#213145",
+                    "on-surface-variant": "#3e4a3d",
+                    "on-secondary-fixed-variant": "#404757",
+                    "inverse-primary": "#62df7d",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-container": "#fdfdfa",
+                    "primary": "#006b2c",
+                    "on-primary": "#ffffff",
+                    "warm-ivory": "#FAFAF7",
+                    "deep-navy": "#0B1220"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "margin-desktop": "48px",
+                    "unit": "4px",
+                    "gutter": "24px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "eyebrow": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            color: #0B1220;
+        }
+        .editorial-shadow {
+            box-shadow: 0 4px 16px rgba(11, 18, 32, 0.04);
+        }
+    </style>
+</head>
+<body class="antialiased text-deep-navy">
+<!-- TopNavBar from Shared Components -->
+<nav class="fixed top-0 w-full z-50 bg-background/80 dark:bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm transition-all duration-200">
+<div class="flex items-center justify-between px-margin-desktop h-20 max-w-container-max mx-auto">
+<span class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface">Monitrax</span>
+<div class="hidden md:flex items-center gap-8">
+<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">The TRAIL</a>
+<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Capabilities</a>
+<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Pricing</a>
+<a class="font-body-md text-body-md text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors" href="#">Security</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-5 py-2 text-label-md font-medium text-secondary hover:text-primary transition-colors">Sign In</button>
+<button class="px-6 py-2.5 bg-primary text-on-primary rounded-full font-label-md hover:opacity-90 active:scale-95 transition-all">Start Free</button>
+</div>
+</div>
+</nav>
+<main>
+<!-- SECTION 2: PROOF STRIP -->
+<section class="w-full py-12 bg-warm-ivory border-t border-[#F4F3EE] mt-20">
+<div class="flex flex-col items-center">
+<span class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-[0.18em]">BUILT FOR AUSTRALIAN STRUCTURES</span>
+<div class="mt-6 flex flex-wrap justify-center gap-3 px-margin-mobile">
+<!-- Pill 1: Property -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        Property
+                    </div>
+<!-- Pill 2: SMSF -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M6 22V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v18Z"></path><path d="M6 18H2v2c0 1.1.9 2 2 2h2Z"></path><path d="M18 22h4v-2c0-1.1-.9-2-2-2h-2Z"></path><path d="M10 6h4"></path><path d="M10 10h4"></path><path d="M10 14h4"></path><path d="M10 18h4"></path></svg>
+                        SMSF
+                    </div>
+<!-- Pill 3: Investments -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+                        Investments
+                    </div>
+<!-- Pill 4: Trust -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Trust
+                    </div>
+<!-- Pill 5: Company -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><rect height="14" rx="2" ry="2" width="20" x="2" y="7"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        Company
+                    </div>
+<!-- Pill 6: Super -->
+<div class="flex items-center gap-2 px-4 py-2 bg-warm-ivory border border-[#E8E6E0] rounded-full text-[14px] font-medium text-slate-700">
+<svg fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"></path><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"></path></svg>
+                        Super
+                    </div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: ONE PICTURE -->
+<section class="py-24 bg-warm-ivory">
+<div class="max-w-6xl mx-auto px-8 grid grid-cols-1 md:grid-cols-[40%_60%] gap-16 items-start">
+<!-- LEFT COLUMN -->
+<div class="flex flex-col">
+<span class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-[0.18em]">ONE VIEW · NO SWIVEL-CHAIRING</span>
+<h2 class="mt-4 font-display-lg text-[48px] font-semibold tracking-[-0.025em] leading-[1.05]">
+<span class="text-deep-navy">Your financial life lives across</span>
+<span class="text-slate-500"> five tabs, two portals, and your accountant's head.</span>
+</h2><p class="mt-3 font-['Inter'] font-normal text-[14px] italic text-slate-500 max-w-[52ch] leading-1.6">That's integration debt — the cost of running more moving parts than any single view can hold.</p>
+<p class="mt-6 text-slate-500 font-body-md text-body-md leading-[1.65]">
+                        Monitrax brings them together. Property, loans, super, investments, cashflow, and tax — read by one engine, in one calm view, with the relationships between them already mapped. The picture you've been holding in your head, finally written down.
+                    </p>
+<a class="mt-6 flex items-center gap-2 text-[14px] font-medium text-slate-700 hover:text-primary transition-colors group" href="#">
+                        See how it works
+                        <svg class="transform group-hover:translate-x-1 transition-transform" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="16" xmlns="http://www.w3.org/2000/svg"><line x1="5" x2="19" y1="12" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+</a>
+</div>
+<!-- RIGHT COLUMN -->
+<div class="flex flex-col items-center w-full">
+<!-- Row 1: BEFORE -->
+<div class="w-full">
+<p class="text-[14px] text-slate-500 font-medium mb-4">BEFORE</p>
+<div class="flex flex-wrap gap-4 justify-start">
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-2">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="M6 22V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2v18Z"></path><path d="M6 18H2v2c0 1.1.9 2 2 2h2Z"></path><path d="M18 22h4v-2c0-1.1-.9-2-2-2h-2Z"></path></svg>
+</div>
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-3">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>
+</div>
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-4">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+</div>
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-4">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
+</div>
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform -rotate-1">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" width="20" x="2" y="4"></rect><line x1="2" x2="22" y1="10" y2="10"></line></svg>
+</div>
+<div class="w-12 h-12 flex items-center justify-center bg-stone-100 border border-stone-200 rounded-lg transform rotate-2">
+<svg fill="none" height="20" stroke="#94a3b8" stroke-width="1.5" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><rect height="20" rx="2" width="16" x="4" y="2"></rect><line x1="8" x2="16" y1="6" y2="6"></line><line x1="8" x2="16" y1="10" y2="10"></line><line x1="8" x2="16" y1="14" y2="14"></line><line x1="8" x2="16" y1="18" y2="18"></line></svg>
+</div>
+</div>
+</div>
+<!-- Connector 1 -->
+<div class="my-6">
+<svg fill="none" height="20" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="12" x2="12" y1="5" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+</div>
+<!-- Row 2: MONITRAX CARD -->
+<div class="w-full">
+<p class="text-[14px] text-slate-700 font-medium mb-4">MONITRAX</p>
+<div class="bg-white rounded-2xl border border-stone-200 p-6 editorial-shadow">
+<div class="flex justify-between items-baseline mb-4">
+<span class="text-slate-500 text-sm font-medium">Estimated Net Worth</span>
+<span class="text-deep-navy text-[20px] font-semibold tracking-tight">$1,424,800</span>
+</div>
+<!-- Segmented Bar -->
+<div class="w-full h-2 rounded-full overflow-hidden flex mb-6">
+<div class="h-full bg-sky-400" style="width: 25%"></div>
+<div class="h-full bg-amber-400" style="width: 20%"></div>
+<div class="h-full bg-indigo-500" style="width: 25%"></div>
+<div class="h-full bg-emerald-500" style="width: 30%"></div>
+</div>
+<!-- TRAIL Framework Labels -->
+<div class="flex justify-between text-[11px] text-slate-400 font-bold tracking-[0.1em]">
+<span>TRACK</span>
+<span>REDUCE</span>
+<span>ANCHOR</span>
+<span>INVEST</span>
+</div>
+</div>
+</div>
+<!-- Connector 2 -->
+<div class="my-6">
+<svg fill="none" height="20" stroke="#cbd5e1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg"><line x1="12" x2="12" y1="5" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+</div>
+<!-- Row 3: DECIDE -->
+<div class="w-full">
+<p class="text-[14px] text-emerald-600 font-medium mb-4">NOW YOU CAN DECIDE</p>
+<div class="bg-emerald-50/50 rounded-2xl border border-emerald-100 p-6">
+<p class="text-deep-navy text-[16px] font-medium leading-relaxed">
+                                "Sell the brokerage holdings, pay down the offset, or salary-sacrifice $200/mo to super?"
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer from Shared Components -->
+<footer class="w-full py-12 bg-surface-container-low dark:bg-surface-dim border-t border-outline-variant/20 transition-all duration-300">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="flex flex-col items-center md:items-start gap-2">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">Monitrax</span>
+<p class="font-body-sm text-body-sm text-on-surface dark:text-on-surface opacity-70">© 2024 Monitrax. A premium Australian wealth operating system.</p>
+</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Privacy Policy</a>
+<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Terms of Service</a>
+<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Financial Services Guide</a>
+<a class="font-body-sm text-body-sm text-secondary-fixed-variant hover:text-primary hover:underline underline-offset-4 transition-all duration-300" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('.flex.items-center.gap-2.px-4.py-2').forEach(pill => {
+            pill.addEventListener('mouseenter', () => {
+                pill.style.transform = 'translateY(-2px)';
+                pill.style.borderColor = '#006b2c';
+                pill.style.transition = 'all 0.2s ease';
+            });
+            pill.addEventListener('mouseleave', () => {
+                pill.style.transform = 'translateY(0)';
+                pill.style.borderColor = '#E8E6E0';
+            });
+        });
+    </script>
+</body></html>

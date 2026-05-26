@@ -93,6 +93,28 @@
       "title": "Monitrax Landing Page - Security & AI",
       "generatedAt": "2026-05-26T01:27:00.000000Z",
       "scope": "Sections 6-7 (Security + AI) on dark theme matching hero. Stitch named its design system 'Deep Cosmos OS'. 4-pillar security grid (encryption / CDR / no-trackers / audit-logged) + AI positioning paragraph ('Intelligence, not advice'). First generation with the new free-creative-latitude prompt doctrine (no 'forbidden' lists, only strategic + content invariants)."
+    },
+    "below-hero-dark": {
+      "id": "576da1f5461442c1be23a62b6debfabe",
+      "sourceScreen": "projects/1859462351962811110/screens/576da1f5461442c1be23a62b6debfabe",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2706,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 2 & 3 (Dark)",
+      "generatedAt": "2026-05-26T01:32:00.000000Z",
+      "scope": "Regen of sections 2-3 on Deep Cosmos dark to match hero direction. Proof Strip (6 frosted-glass wealth-structure chips) + One Picture (integration debt headline + before→engine→decision vertical flow with emerald decision card). Ivory v2 preserved as below-hero-ivory.{html,png} for auth-page reference."
+    },
+    "five-and-how-dark": {
+      "id": "d51c4876e7464a10800eaa82bd2b969b",
+      "sourceScreen": "projects/1859462351962811110/screens/d51c4876e7464a10800eaa82bd2b969b",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4256,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 4 & 5 (Dark)",
+      "generatedAt": "2026-05-26T01:34:00.000000Z",
+      "scope": "Regen of sections 4-5 on Deep Cosmos dark. THE FIVE capability cards (each TRAIL stage's canonical hue as surgical accent — sky/amber/indigo/emerald/violet) + HOW IT WORKS 3-step editorial. Ivory v1 preserved as five-and-how-ivory.{html,png}."
     }
   },
   "failedGenerations": {
