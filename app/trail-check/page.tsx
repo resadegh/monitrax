@@ -316,17 +316,48 @@ export default function TrailCheckPage() {
         </span>
       </header>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-cosmos-elevated">
-        <motion.div
-          className="h-full bg-gradient-to-r cosmos-cta"
-          animate={{ width: `${progress}%` }}
-          transition={{ duration: 0.3, ease }}
-        />
-      </div>
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+        {/* TRAIL CHECK hero — eyebrow + headline (per Stitch screen 7a1600d4) */}
+        <div className="cosmos-glow-center relative isolate mb-12 text-center">
+          <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-cosmos-action">
+            TRAIL Check
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight text-cosmos sm:text-4xl lg:text-5xl">
+            What stage are you on?
+          </h1>
+          <p className="mt-4 text-base text-cosmos-soft sm:text-lg">
+            Sixty seconds. Five questions. One personalised path.
+          </p>
+        </div>
 
-      <main className="flex-1 flex items-center justify-center px-6 py-12">
-        <div className="w-full max-w-xl">
+        {/* 5 TRAIL stage progress dots (replaces linear progress bar) */}
+        <div className="mb-12 flex items-center gap-3" aria-label={`Question ${currentStep + 1} of ${questions.length}`}>
+          {[
+            { tone: 'track', color: 'cosmos-track' },
+            { tone: 'reduce', color: 'cosmos-reduce' },
+            { tone: 'anchor', color: 'cosmos-anchor' },
+            { tone: 'invest', color: 'cosmos-invest' },
+            { tone: 'live', color: 'cosmos-live' },
+          ].map((dot, i) => {
+            const filled = i <= currentStep;
+            const colorClass = `bg-${dot.color}`;
+            const borderClass = `border-${dot.color}`;
+            return (
+              <div
+                key={dot.tone}
+                className={`h-3 w-3 rounded-full transition-all ${
+                  filled
+                    ? `${colorClass} shadow-[0_0_12px_-2px_hsl(var(--${dot.color})/0.5)]`
+                    : `border ${borderClass} bg-transparent opacity-50`
+                }`}
+                aria-hidden="true"
+              />
+            );
+          })}
+        </div>
+
+        {/* Question card — cosmos-glass per Stitch design */}
+        <div className="w-full max-w-2xl">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentStep}
@@ -334,26 +365,24 @@ export default function TrailCheckPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={reduced ? {} : { opacity: 0, x: -30 }}
               transition={{ duration: 0.3, ease }}
+              className="cosmos-glass relative overflow-hidden rounded-2xl p-8 md:p-12"
             >
-              {/* Stage indicator */}
-              <div className="mb-6">
-                <span className="inline-flex items-center gap-2 rounded-full bg-cosmos-elevated px-3 py-1 text-xs font-semibold text-cosmos-soft">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cosmos-action/15 text-cosmos-action text-[10px] font-bold">
-                    {q.stageLetter}
-                  </span>
-                  {q.stage}
-                </span>
-              </div>
+              {/* Subtle corner glow */}
+              <div
+                aria-hidden="true"
+                className="pointer-events-none absolute -right-16 -top-16 h-32 w-32 rounded-full bg-cosmos-action/5 blur-3xl"
+              />
 
-              {/* Question */}
+              <p className="mb-3 text-sm font-medium text-cosmos-action">
+                Question {currentStep + 1} of {questions.length}
+              </p>
+
               <h2
-                className="text-2xl font-bold text-white sm:text-3xl mb-8"
-                style={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}
+                className="mb-8 text-2xl font-semibold leading-tight tracking-tight text-cosmos sm:text-3xl"
               >
                 {q.question}
               </h2>
 
-              {/* Options */}
               <div className="space-y-3">
                 {q.options.map((option) => {
                   const isSelected = answers[q.id] === option.score;
@@ -361,23 +390,29 @@ export default function TrailCheckPage() {
                     <button
                       key={option.label}
                       onClick={() => selectAnswer(q.id, option.score)}
-                      className={`w-full text-left rounded-xl border px-5 py-4 text-sm font-medium transition-all duration-200 ${
+                      className={`group flex w-full items-center justify-between rounded-xl border px-5 py-4 text-left text-sm font-medium transition-all duration-200 active:scale-[0.99] ${
                         isSelected
-                          ? 'border-cosmos-action bg-cosmos-action/10 text-cosmos-action'
-                          : 'border-cosmos-hairline-strong bg-cosmos-surface/50 text-cosmos-soft hover:border-cosmos-hairline-strong hover:bg-cosmos-elevated/50'
+                          ? 'border-cosmos-action bg-cosmos-action/10 text-cosmos'
+                          : 'border-cosmos-hairline bg-cosmos-surface/40 text-cosmos-soft hover:border-cosmos-action/30 hover:bg-cosmos-surface/70 hover:text-cosmos'
                       }`}
                     >
-                      {option.label}
+                      <span>{option.label}</span>
+                      <ArrowRight
+                        className={`h-4 w-4 transition-opacity ${
+                          isSelected
+                            ? 'opacity-100 text-cosmos-action'
+                            : 'opacity-0 group-hover:opacity-100 text-cosmos-soft'
+                        }`}
+                      />
                     </button>
                   );
                 })}
               </div>
 
-              {/* Back button */}
               {currentStep > 0 && (
                 <button
                   onClick={() => setCurrentStep((s) => s - 1)}
-                  className="mt-6 flex items-center gap-1.5 text-sm text-cosmos0 hover:text-cosmos-soft transition-colors"
+                  className="mt-6 flex items-center gap-1.5 text-sm text-cosmos-muted hover:text-cosmos-soft transition-colors"
                 >
                   <ArrowLeft className="h-3.5 w-3.5" />
                   Back
@@ -386,6 +421,10 @@ export default function TrailCheckPage() {
             </motion.div>
           </AnimatePresence>
         </div>
+
+        <p className="mt-6 text-xs italic text-cosmos-muted">
+          Your answers stay on your device.
+        </p>
       </main>
     </div>
   );

@@ -1640,6 +1640,96 @@ The agent's session changelog should contain log excerpts as evidence — not ju
 
 ---
 
+## PART 18: UI/UX DESIGN-CHANGE WORKFLOW — STITCH-FIRST (MANDATORY)
+
+> **All non-trivial UI/UX design changes MUST begin in Stitch (design first), not in code (build first).** This protocol exists because Reza explicitly stated (2026-05-26, after Phase 48.7 shipped as a token-swap-only migration that bypassed Stitch):
+>
+> *"every UI UX design changes should be using stitch skill and MCP. this should be added to the critical instructions"*
+>
+> Stitch is the canonical design surface for Monitrax public + auth UI work. Skipping Stitch produces code that matches the colour palette without matching the design vocabulary — exactly what Phase 48.7 did, and what this rule prevents going forward.
+
+### 18.1 The rule
+
+Before writing any React code for a UI/UX change covered by §18.2, the agent MUST:
+
+1. **Check `.stitch/metadata.json`** for an existing canonical screen that covers the surface. If one exists, work from that screen.
+2. **If no canonical screen exists**, generate one via Stitch MCP (`mcp__stitch__generate_screen_from_text` or via the `stitch-generate-design` / `stitch-loop` skills) BEFORE writing React.
+3. **Iterate the design in Stitch first** — prompt refinement, variant generation, design-system pass — until the visual direction is approved by Reza.
+4. **Download the locked HTML + PNG** to `.stitch/designs/<name>.{html,png}` so the design is committed alongside the code.
+5. **Only then** convert to React using the `react-components` skill or by composing existing Deep Cosmos primitives.
+
+### 18.2 What counts as a "non-trivial UI/UX change"
+
+The Stitch-first rule applies to:
+
+| Change type | Stitch-first? |
+|---|---|
+| New public page / route | ✅ YES |
+| Full rebuild of an existing public page | ✅ YES |
+| New hero / section primitive | ✅ YES |
+| New shared component pattern (auth shell, card pattern, modal layout) | ✅ YES |
+| New visual identity / design system token | ✅ YES (Stitch design system pass, then code) |
+| Significant layout restructure of an existing page (>50% composition change) | ✅ YES |
+| Adding a non-trivial section to an existing page | ✅ YES |
+
+The rule does NOT apply to (these can ship without Stitch):
+
+| Change type | Stitch-first? |
+|---|---|
+| Token / colour swap on an existing implementation | ❌ no (e.g. amber → cosmos-action) |
+| Single text / copy edit | ❌ no |
+| Accessibility fix (aria labels, focus rings, contrast) | ❌ no |
+| Bug fix in existing component | ❌ no |
+| Adding a missing dead-link target route (functional, not visual) | ❌ no |
+| Internal app (`/dashboard/*`) — uses internal design system per `08_BRAND_UI_DESIGN.md`, NOT Stitch's | ❌ no (unless the agent is told otherwise) |
+| Org Portal (`/portal/*`), Admin (`/admin/*`) — separate design systems | ❌ no |
+
+When in doubt, ask Reza.
+
+### 18.3 The Stitch toolset
+
+| Tool / skill | Purpose |
+|---|---|
+| `mcp__stitch__list_projects` | Discover what Stitch projects exist |
+| `mcp__stitch__create_project` | New project (e.g. for a redesign workstream) |
+| `mcp__stitch__generate_screen_from_text` | Generate a new screen from a prompt |
+| `mcp__stitch__edit_screens` | Iterate on an existing screen |
+| `mcp__stitch__generate_variants` | Explore alternative directions |
+| `mcp__stitch__get_screen` | Pull the HTML + PNG download URLs |
+| `mcp__stitch__list_screens` | Enumerate all screens in a project |
+| Skill `stitch-generate-design` | High-level prompt enhancement + variant generation |
+| Skill `stitch-loop` | Iterative baton-passing for multi-screen websites |
+| Skill `stitch-code-to-design` | Save existing React to Stitch (migrating prior work) |
+| Skill `react-components` | Convert downloaded Stitch HTML to React components |
+| Skill `taste-design` / `enhance-prompt` / `design-md` | Prompt + design-system quality helpers |
+
+The canonical Monitrax Stitch project ID is `1859462351962811110` (the project that drove Phase 48). New design workstreams may create their own project — when they do, record the project ID in the workstream's Phase doc + `.stitch/metadata.json`.
+
+### 18.4 The minimum Stitch pass
+
+For every covered change, the workflow is:
+
+1. **Locate or create the Stitch screen.** Surface its screen ID in the workstream's Phase doc.
+2. **Iterate in Stitch with Reza.** Show preview PNGs. Capture brand-essence + content invariants in the prompt. Avoid faithful transcription of internal app screens (those have their own design system).
+3. **Download HTML + PNG to `.stitch/designs/<screen-name>.{html,png}`.** Commit alongside the code.
+4. **Convert to React using cosmos-* tokens + canonical primitives** — never re-introduce v1 tokens (amber-*, stone-*) on public surfaces.
+5. **Document the Stitch screen ID in the file-header JSDoc** of the converted React component.
+6. **Update `.stitch/SITE.md`** §4 Sitemap with the screen entry.
+
+### 18.5 Reviewer enforcement
+
+A reviewer (human or future-Claude in a follow-up session) MUST reject any PR that:
+
+1. Adds a new public-side page or section component without a corresponding `.stitch/designs/<name>.{html,png}` artefact and a documented Stitch screen ID in the file-header JSDoc.
+2. Does a full rebuild of an existing public-side page without consulting Stitch first.
+3. Token-swaps an existing implementation and claims it's a "redesign" — token swap is a token swap, not a redesign.
+
+### 18.6 Past misses (this protocol exists to prevent these)
+
+- **Phase 48.7 (2026-05-26):** `/trail-method`, `/wealth-check`, `/trail-check` were "redesigned" via a sed-based token migration that bypassed Stitch. The pages now match the cosmos palette but retain v1 structural composition (long-form text bands, slider-card stacks, quiz steppers) instead of the cosmos design vocabulary (glass cards, hero patterns, motion choreography). Reza caught this and corrected it — this protocol is the structural fix so it can't recur. The proper Stitch-designed rebuilds ship as Phase 48.7.1 / the workstream that follows.
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -1661,5 +1751,5 @@ The agent's session changelog should contain log excerpts as evidence — not ju
 
 ---
 
-*Last Updated: 2026-05-20*
-*Protocol Version: 2.0 — Part 17 added (Live Production Monitoring Discipline: session-startup Vercel access check + post-merge log-verification + PR subscription protocol) + Pre/Post-Change + new Post-Merge checklist in Part 9. Driven by the 2026-05-20 firefight where the operator screenshotted Vercel logs to the agent for hours during a Cloud SQL TLS-handshake + connection-pool exhaustion debug — fixed structurally via `scripts/vercel-logs.sh` (PR #822) and this protocol making its use non-optional. Previous: 1.9 (Part 0 Advisory Mindset + Part 16 Doc-Sync, 2026-05-02).*
+*Last Updated: 2026-05-26*
+*Protocol Version: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY). Driven by Phase 48.7 (2026-05-26) where `/trail-method`, `/wealth-check`, `/trail-check` were "redesigned" via a sed-based token migration that bypassed Stitch — pages matched the palette but retained v1 structural composition. Reza directive 2026-05-26: "every UI UX design changes should be using stitch skill and MCP. this should be added to the critical instructions." Part 18 makes this structurally enforceable. Previous: 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*

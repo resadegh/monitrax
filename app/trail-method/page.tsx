@@ -1,242 +1,414 @@
 'use client';
 
+/**
+ * /trail-method — long-form editorial guide to the TRAIL framework.
+ *
+ * Phase 48.7.1 (2026-05-26): rebuilt from Stitch screen
+ * `bb39a804cde54ee7b35c31cfd601f288` ("The TRAIL Method - Editorial Guide").
+ * Per CLAUDE.md §18, this is a Stitch-first redesign — `.stitch/designs/
+ * trail-method.{html,png}` is the canonical source. The React conversion
+ * preserves the canonical TRAIL stage names (Track / Reduce / Anchor /
+ * Invest / Live) from the in-app SSOT (`lib/navigation/trailNav.tsx`),
+ * NOT the hallucinated Stitch variants ("Automate" / "Legacy") that
+ * appeared in the generation output.
+ */
+
 import Link from 'next/link';
-import { motion, useReducedMotion } from 'framer-motion';
 import { Header, Footer } from '@/components/marketing';
-import { Reveal } from '@/components/marketing/animations';
-import {
-  Eye,
-  Scissors,
-  Anchor,
-  TrendingUp,
-  Sun,
-  ArrowRight,
-} from 'lucide-react';
+import { Reveal, StaggerContainer, StaggerItem } from '@/components/marketing/animations';
 
-const ease: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
+const STAGES = [
+  { letter: 'T', name: 'Track', tone: 'track' },
+  { letter: 'R', name: 'Reduce', tone: 'reduce' },
+  { letter: 'A', name: 'Anchor', tone: 'anchor' },
+  { letter: 'I', name: 'Invest', tone: 'invest' },
+  { letter: 'L', name: 'Live', tone: 'live' },
+] as const;
 
-const stages = [
-  { letter: 'T', name: 'Track', icon: Eye, color: 'text-cosmos-track', bg: 'bg-cosmos-track/10', border: 'border-cosmos-track/20' },
-  { letter: 'R', name: 'Reduce', icon: Scissors, color: 'text-cosmos-reduce', bg: 'bg-cosmos-reduce/10', border: 'border-cosmos-reduce/20' },
-  { letter: 'A', name: 'Anchor', icon: Anchor, color: 'text-cosmos-anchor', bg: 'bg-cosmos-anchor/10', border: 'border-cosmos-anchor/20' },
-  { letter: 'I', name: 'Invest', icon: TrendingUp, color: 'text-cosmos-invest', bg: 'bg-cosmos-invest/10', border: 'border-cosmos-invest/20' },
-  { letter: 'L', name: 'Live', icon: Sun, color: 'text-cosmos-live', bg: 'bg-cosmos-live/10', border: 'border-cosmos-live/20' },
-];
+const STAGE_DEEP_DIVE = [
+  {
+    letter: 'T',
+    name: 'Track',
+    tone: 'track',
+    quote: 'Awareness is the first step toward sovereignty.',
+    body:
+      'You move from blind spending to radical visibility. By observing where every cent goes without judgment, you reclaim the data of your own life.',
+    milestone: 'I can see my complete financial picture.',
+    insightTitle: 'The Ostrich Effect',
+    insightStat: '42%',
+    insightBody:
+      "of people avoid checking their bank balances when they know they've overspent. Real-time tracking neutralises this anxiety.",
+  },
+  {
+    letter: 'R',
+    name: 'Reduce',
+    tone: 'reduce',
+    quote: 'Fix the leaks before you fill the bucket.',
+    body:
+      "Now that you can see where your money goes, something will jump out. Maybe it's the $340/month in subscriptions you forgot you were paying. Maybe it's the $800/month in takeaway that felt like $200.",
+    milestone: 'I spend less than I earn. I have a plan for my debt.',
+    insightTitle: 'Snowball over avalanche',
+    insightStat: 'Momentum',
+    insightBody:
+      'Northwestern’s Kellogg School found that people who pay off small debts first are more likely to eliminate ALL their debt — even though the math favours highest-interest-first.',
+  },
+  {
+    letter: 'A',
+    name: 'Anchor',
+    tone: 'anchor',
+    quote: 'An anchor keeps you stable when storms hit.',
+    body:
+      "Without a safety net, one unexpected expense can undo months of progress. The target: 3 months of living expenses in a separate account you only touch in genuine emergencies.",
+    milestone: 'I have 3 months saved. I can handle a financial shock.',
+    insightTitle: 'Decisions from stability',
+    insightStat: '3mo',
+    insightBody:
+      'With a safety net, you stop making decisions from fear. You think clearly. You make choices from stability, not survival.',
+  },
+  {
+    letter: 'I',
+    name: 'Invest',
+    tone: 'invest',
+    quote: 'Compound interest is the eighth wonder of the world.',
+    body:
+      "Your leaks are fixed. Your cashflow is positive. Your safety net is built. For the first time, you're not in survival mode — you're ready to grow.",
+    milestone: "My net worth is growing. I'm investing regularly.",
+    insightTitle: 'Start small, stay consistent',
+    insightStat: '$50/wk',
+    insightBody:
+      'Even $50/week into an index fund, starting today, can grow to hundreds of thousands over 20–30 years. You don’t need to be rich to start investing — you need to be stable.',
+  },
+  {
+    letter: 'L',
+    name: 'Live',
+    tone: 'live',
+    quote: "Financial freedom isn't about being rich — it's about having choices.",
+    body:
+      "This is the destination. Not a yacht. Not a mansion. Just the freedom to choose how you spend your time and your money.",
+    milestone: 'I make financial decisions from abundance, not fear.',
+    insightTitle: 'Work becomes optional',
+    insightStat: 'Choice',
+    insightBody:
+      'Financial freedom is the point where your passive income approaches or exceeds your living expenses. Work becomes a choice, not an obligation.',
+  },
+] as const;
 
-function Section({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <section className={`px-6 py-16 sm:py-24 ${className}`}><div className="mx-auto max-w-3xl">{children}</div></section>;
-}
+const ORIGIN_CARDS = [
+  {
+    title: 'Barefoot Investor',
+    body: "We adopt the structural simplicity of automated buckets for daily resilience. Australia's most trusted money guide, 2M+ copies sold.",
+  },
+  {
+    title: "Dave Ramsey's Baby Steps",
+    body: "We utilise the psychological momentum of the 'Snowball' method for debt elimination. 10M+ people worldwide have followed the steps.",
+  },
+  {
+    title: 'Behavioural Economics',
+    body: 'We bridge intent and action through choice architecture and nudges. Bandura self-efficacy + Thaler "Save More Tomorrow" + Prochaska stage-matched intervention.',
+  },
+] as const;
 
-function Heading({ children }: { children: React.ReactNode }) {
-  return (
-    <Reveal>
-      <h2 className="text-2xl font-bold tracking-tight text-cosmos sm:text-3xl lg:text-4xl mb-6" style={{ letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-        {children}
-      </h2>
-    </Reveal>
-  );
-}
+const SCIENCE_CARDS = [
+  {
+    author: 'Bandura',
+    year: '1977',
+    finding: 'Self-efficacy is the strongest predictor of behaviour change.',
+    use: 'Each TRAIL stage has a clear, achievable milestone.',
+  },
+  {
+    author: 'Prochaska',
+    year: '1983',
+    finding: 'People at different stages need different interventions.',
+    use: "TRAIL's stage-matched guidance means you always get what you need.",
+  },
+  {
+    author: 'Thaler',
+    year: '2004',
+    finding: '"Save More Tomorrow" raised savings from 3.5% → 13.6% by automating.',
+    use: "TRAIL connects your accounts and lets the system do the work.",
+  },
+  {
+    author: 'Mani et al.',
+    year: '2013',
+    finding: 'Financial worry consumes mental bandwidth equivalent to 13 IQ points.',
+    use: 'A clear picture reduces the cognitive tax of money decisions.',
+  },
+] as const;
 
-function Body({ children }: { children: React.ReactNode }) {
-  return (
-    <Reveal delay={0.1}>
-      <div className="text-base text-cosmos-soft space-y-5" style={{ lineHeight: 1.8 }}>
-        {children}
-      </div>
-    </Reveal>
-  );
-}
+const STAGE_TONE_CLASSES: Record<string, { bg: string; border: string; text: string; quoteBorder: string; bigLetterBg: string; shadow: string }> = {
+  track: {
+    bg: 'bg-cosmos-track/15',
+    border: 'border-cosmos-track',
+    text: 'text-cosmos-track',
+    quoteBorder: 'border-cosmos-track',
+    bigLetterBg: 'text-cosmos-track/10',
+    shadow: 'shadow-[0_0_24px_-4px_hsl(var(--cosmos-track)/0.4)]',
+  },
+  reduce: {
+    bg: 'bg-cosmos-reduce/15',
+    border: 'border-cosmos-reduce',
+    text: 'text-cosmos-reduce',
+    quoteBorder: 'border-cosmos-reduce',
+    bigLetterBg: 'text-cosmos-reduce/10',
+    shadow: 'shadow-[0_0_24px_-4px_hsl(var(--cosmos-reduce)/0.4)]',
+  },
+  anchor: {
+    bg: 'bg-cosmos-anchor/15',
+    border: 'border-cosmos-anchor',
+    text: 'text-cosmos-anchor',
+    quoteBorder: 'border-cosmos-anchor',
+    bigLetterBg: 'text-cosmos-anchor/10',
+    shadow: 'shadow-[0_0_24px_-4px_hsl(var(--cosmos-anchor)/0.4)]',
+  },
+  invest: {
+    bg: 'bg-cosmos-invest/15',
+    border: 'border-cosmos-invest',
+    text: 'text-cosmos-invest',
+    quoteBorder: 'border-cosmos-invest',
+    bigLetterBg: 'text-cosmos-invest/10',
+    shadow: 'shadow-[0_0_24px_-4px_hsl(var(--cosmos-invest)/0.4)]',
+  },
+  live: {
+    bg: 'bg-cosmos-live/15',
+    border: 'border-cosmos-live',
+    text: 'text-cosmos-live',
+    quoteBorder: 'border-cosmos-live',
+    bigLetterBg: 'text-cosmos-live/10',
+    shadow: 'shadow-[0_0_24px_-4px_hsl(var(--cosmos-live)/0.4)]',
+  },
+};
 
 export default function TrailMethodPage() {
-  const reduced = useReducedMotion();
-
   return (
-    <div className="min-h-screen flex flex-col bg-cosmos">
+    <div className="flex min-h-screen flex-col bg-cosmos">
       <Header />
 
-      {/* Hero */}
-      <section className="bg-cosmos px-6 py-20 sm:py-32 text-center">
-        <motion.div
-          initial={reduced ? {} : { opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease }}
-          className="mx-auto max-w-3xl"
-        >
-          <p className="text-sm font-semibold uppercase tracking-widest text-cosmos-action mb-4">The TRAIL Method</p>
-          <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl lg:text-5xl" style={{ letterSpacing: '-0.03em', lineHeight: 1.08 }}>
-            Your Path from Financial Stress{' '}
-            <span className="text-cosmos-action">to Financial Freedom</span>
-          </h1>
-          <p className="mt-5 text-lg text-cosmos-soft italic">A guide for anyone who&apos;s ever felt lost with money</p>
-        </motion.div>
-      </section>
+      <main className="flex-1">
+        {/* Hero */}
+        <section className="cosmos-glow-center relative isolate flex min-h-[80vh] flex-col items-center justify-center overflow-hidden px-6 py-24 text-center">
+          <Reveal>
+            <p className="mb-6 text-[11px] font-semibold uppercase tracking-[0.2em] text-cosmos-action">
+              The TRAIL Method
+            </p>
+            <h1 className="mx-auto mb-6 max-w-3xl text-balance text-4xl font-semibold leading-[1.1] tracking-tight text-cosmos sm:text-5xl lg:text-6xl xl:text-[64px]">
+              Your path from financial stress
+              <br />
+              <span className="bg-gradient-to-r from-cosmos-action-soft to-cosmos-action bg-clip-text text-transparent">
+                to financial freedom.
+              </span>
+            </h1>
+            <p className="text-lg italic text-cosmos-soft sm:text-xl">
+              A guide for households outgrowing budget apps.
+            </p>
+          </Reveal>
+          <div aria-hidden="true" className="pointer-events-none absolute bottom-10 text-cosmos-faint">
+            <svg className="h-6 w-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </section>
 
-      {/* The Problem */}
-      <Section className="bg-cosmos-deeper/40">
-        <Heading>You&apos;re Not Bad With Money. You Just Don&apos;t Have a Path.</Heading>
-        <Body>
-          <p><strong>72% of people feel stressed about money.</strong> Not some of the time — most of the time. Money is the number one source of stress in Australia, ahead of health, work, and relationships.</p>
-          <p>And here&apos;s what makes it worse: the stress itself makes you worse with money. A landmark study from Harvard and Princeton published in <em>Science</em> found that financial worry reduces your cognitive ability by the equivalent of 13 IQ points. That&apos;s like losing a full night&apos;s sleep — every single day.</p>
-          <p>So you&apos;re not bad with money. Your brain is just so consumed by financial worry that it can&apos;t think clearly about finances. It&apos;s a cruel cycle: stress makes you avoid your finances, avoidance makes your finances worse, worse finances create more stress.</p>
-          <p>The problem isn&apos;t information. The problem is that nobody showed you a clear path.</p>
-          <p><strong>Until now.</strong></p>
-        </Body>
-      </Section>
+        {/* Problem — asymmetric pull-quote + 3 stat cards */}
+        <section className="mx-auto max-w-7xl px-6 py-24 md:py-32">
+          <div className="flex flex-col items-center gap-12 md:flex-row">
+            <Reveal className="md:w-3/5">
+              <div className="border-l-2 border-cosmos-action py-4 pl-8">
+                <blockquote className="text-2xl font-medium italic leading-relaxed text-cosmos sm:text-3xl">
+                  "You're not <span className="text-cosmos-action">bad with money</span>. You just don't have a path."
+                </blockquote>
+                <p className="mt-6 text-base leading-relaxed text-cosmos-soft">
+                  Most financial tools are designed to keep you in reactive decision-making. TRAIL is built to break the cycle.
+                </p>
+              </div>
+            </Reveal>
 
-      {/* What Is TRAIL */}
-      <Section>
-        <Heading>What Is the TRAIL Method?</Heading>
-        <Body>
-          <p>TRAIL is a five-step financial journey that takes you from wherever you are right now — confused, overwhelmed, stressed, avoidant — to a place where money works for you instead of against you.</p>
-        </Body>
-        <Reveal delay={0.2}>
-          <div className="mt-8 space-y-3">
-            {stages.map((s) => {
-              const Icon = s.icon;
+            <Reveal delay={0.1} className="flex w-full flex-col gap-4 md:w-2/5">
+              <div className="cosmos-glass rounded-xl p-6">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-cosmos-action">Psychological burden</div>
+                <div className="text-3xl font-bold text-cosmos">72%</div>
+                <div className="mt-1 text-sm text-cosmos-soft">of adults report feeling stressed about money in the last month.</div>
+              </div>
+              <div className="cosmos-glass rounded-xl p-6">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-cosmos-anchor">Cognitive cost</div>
+                <div className="text-3xl font-bold text-cosmos">&minus;13 IQ points</div>
+                <div className="mt-1 text-sm text-cosmos-soft">The mental bandwidth lost to financial scarcity (Mani et al., <em>Science</em> 2013).</div>
+              </div>
+              <div className="cosmos-glass rounded-xl p-6">
+                <div className="mb-2 text-xs font-medium uppercase tracking-wider text-cosmos-track">Fragmented tools</div>
+                <div className="text-3xl font-bold text-cosmos">1 in 3</div>
+                <div className="mt-1 text-sm text-cosmos-soft">Australians still rely on manual spreadsheets or nothing at all.</div>
+              </div>
+            </Reveal>
+          </div>
+        </section>
+
+        {/* Origin */}
+        <section className="bg-cosmos-deeper/40 py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-6">
+            <Reveal>
+              <h2 className="mb-12 text-center text-3xl font-semibold tracking-tight text-cosmos sm:text-4xl">
+                Where TRAIL comes from
+              </h2>
+            </Reveal>
+            <StaggerContainer className="grid gap-6 md:grid-cols-3">
+              {ORIGIN_CARDS.map((card) => (
+                <StaggerItem key={card.title}>
+                  <div className="cosmos-glass flex h-full flex-col items-center rounded-xl p-8 text-center">
+                    <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-cosmos-action/10">
+                      <svg className="h-6 w-6 text-cosmos-action" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2l9 4v6c0 5-3.5 9-9 11-5.5-2-9-6-9-11V6z" />
+                      </svg>
+                    </div>
+                    <h3 className="mb-3 font-semibold text-cosmos">{card.title}</h3>
+                    <p className="text-sm leading-relaxed text-cosmos-soft">{card.body}</p>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          </div>
+        </section>
+
+        {/* The Five — connected nodes */}
+        <section id="trail" className="overflow-hidden py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-6">
+            <Reveal>
+              <h2 className="mb-16 text-center text-4xl font-semibold tracking-tight text-cosmos sm:text-5xl lg:text-[56px]">
+                The Five Stages
+              </h2>
+            </Reveal>
+
+            <div className="relative">
+              <div
+                aria-hidden="true"
+                className="absolute left-0 top-1/2 hidden h-px w-full -translate-y-1/2 bg-gradient-to-r from-transparent via-cosmos-hairline-strong to-transparent md:block"
+              />
+              <StaggerContainer className="relative z-10 flex flex-col items-center justify-between gap-12 md:flex-row md:gap-4">
+                {STAGES.map((stage) => {
+                  const t = STAGE_TONE_CLASSES[stage.tone];
+                  return (
+                    <StaggerItem key={stage.letter}>
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full border text-2xl font-bold ${t.bg} ${t.border} ${t.text} ${t.shadow}`}
+                        >
+                          {stage.letter}
+                        </div>
+                        <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${t.text}`}>
+                          {stage.name}
+                        </span>
+                      </div>
+                    </StaggerItem>
+                  );
+                })}
+              </StaggerContainer>
+            </div>
+          </div>
+        </section>
+
+        {/* Deep Dives — 5 alternating sections */}
+        <section className="py-24 md:py-32">
+          <div className="mx-auto max-w-7xl space-y-32 px-6">
+            {STAGE_DEEP_DIVE.map((stage, i) => {
+              const t = STAGE_TONE_CLASSES[stage.tone];
               return (
-                <div key={s.letter} className={`flex items-center gap-4 rounded-xl border ${s.border} ${s.bg} p-4`}>
-                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${s.bg} border ${s.border}`}>
-                    <Icon className={`h-5 w-5 ${s.color}`} />
+                <Reveal key={stage.letter}>
+                  <div
+                    className={`flex flex-col items-center gap-12 ${i % 2 === 1 ? 'md:flex-row-reverse' : 'md:flex-row'}`}
+                  >
+                    <div className="md:w-1/2">
+                      <div
+                        className={`mb-[-60px] text-[120px] font-black leading-none ${t.bigLetterBg}`}
+                        aria-hidden="true"
+                      >
+                        {stage.letter}
+                      </div>
+                      <h3 className="mb-6 text-3xl font-semibold tracking-tight text-cosmos sm:text-4xl">
+                        Stage {i + 1}: {stage.name}
+                      </h3>
+                      <blockquote className={`mb-6 border-l-2 pl-6 text-lg italic text-cosmos ${t.quoteBorder}`}>
+                        "{stage.quote}"
+                      </blockquote>
+                      <p className="mb-6 text-base leading-relaxed text-cosmos-soft">{stage.body}</p>
+                      <p className="text-sm font-medium text-cosmos">
+                        <span className="text-cosmos-muted">The milestone: </span>
+                        &ldquo;{stage.milestone}&rdquo;
+                      </p>
+                    </div>
+                    <div className="w-full md:w-1/2">
+                      <div className="cosmos-glass relative rounded-2xl p-8">
+                        <div className="mb-4 flex items-center gap-3">
+                          <span className={`inline-flex h-2 w-2 rounded-full ${t.bg}`} aria-hidden="true" />
+                          <span className="text-xs font-medium uppercase tracking-[0.18em] text-cosmos-muted">
+                            {stage.insightTitle}
+                          </span>
+                        </div>
+                        <p className={`mb-3 text-3xl font-bold ${t.text}`}>{stage.insightStat}</p>
+                        <p className="text-sm leading-relaxed text-cosmos-soft">{stage.insightBody}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <span className={`text-xs font-bold uppercase tracking-widest ${s.color}`}>{s.letter} — {s.name}</span>
-                  </div>
-                </div>
+                </Reveal>
               );
             })}
           </div>
-        </Reveal>
-        <Reveal delay={0.3}>
-          <p className="mt-8 text-cosmos-soft" style={{ lineHeight: 1.8 }}>
-            It&apos;s not a budget. It&apos;s not a course. It&apos;s not a set of rules you&apos;ll follow for two weeks and then abandon. It&apos;s a trail. A path through the wilderness of money. And like any good trail, it has a beginning, markers along the way, and a destination.
-          </p>
-        </Reveal>
-      </Section>
+        </section>
 
-      {/* Where TRAIL Comes From */}
-      <Section className="bg-cosmos-deeper/40">
-        <Heading>Where TRAIL Comes From</Heading>
-        <Body>
-          <p>We didn&apos;t invent the TRAIL method from nothing. We studied every major financial methodology in the world and found something remarkable: <strong>they all follow the same journey.</strong></p>
-          <p><strong>The Barefoot Investor</strong> — Australia&apos;s most trusted money guide, with over 2 million copies sold — teaches: see your finances, set up a system, attack your debt, build your safety net, then invest and grow.</p>
-          <p><strong>Dave Ramsey&apos;s Baby Steps</strong> — used by over 10 million people worldwide — teaches: save a small emergency fund, pay off debt smallest first, build a full emergency fund, then invest.</p>
-          <p>Every framework arrives at the same conclusion. The path is always the same. TRAIL simply names it, orders it correctly, and builds it into a living system that guides you every step of the way.</p>
-        </Body>
-      </Section>
-
-      {/* Step 1: Track */}
-      <Section>
-        <Heading>Step 1: Track</Heading>
-        <Body>
-          <p className="text-lg font-semibold text-cosmos">&ldquo;You can&apos;t change what you can&apos;t see.&rdquo;</p>
-          <p>The first step is the hardest — and the most important. It&apos;s simply this: look at your finances. All of them. In one place.</p>
-          <p>Most people don&apos;t know exactly how much they owe, exactly where their money goes each month, or what their net worth actually is. This isn&apos;t because they&apos;re irresponsible. It&apos;s because looking at your finances triggers anxiety, and your brain&apos;s natural response to anxiety is avoidance.</p>
-          <p>But here&apos;s what the research also shows: <strong>the unknown is always scarier than the known.</strong> When people finally look at their full financial picture, the most common reaction isn&apos;t despair. It&apos;s relief.</p>
-          <p><strong>The milestone:</strong> &ldquo;I can see my complete financial picture.&rdquo;</p>
-        </Body>
-      </Section>
-
-      {/* Step 2: Reduce */}
-      <Section className="bg-cosmos-deeper/40">
-        <Heading>Step 2: Reduce</Heading>
-        <Body>
-          <p className="text-lg font-semibold text-cosmos">&ldquo;Fix the leaks before you fill the bucket.&rdquo;</p>
-          <p>Now that you can see where your money goes, something will jump out at you. It always does. Maybe it&apos;s the $340/month in subscriptions you forgot you were paying. Maybe it&apos;s the $800/month in takeaway that felt like $200.</p>
-          <p>There&apos;s an important reason REDUCE comes before building a safety net: <strong>you can&apos;t save if you&apos;re bleeding money.</strong> Telling someone who spends more than they earn to &ldquo;build an emergency fund&rdquo; is like asking them to fill a bucket with a hole in it. Fix the hole first.</p>
-          <p>Research from Northwestern University&apos;s Kellogg School found that people who pay off small debts first are more likely to eliminate ALL their debt — even though paying the highest interest rate first saves more money mathematically. The reason? <strong>Momentum.</strong></p>
-          <p><strong>The milestone:</strong> &ldquo;I spend less than I earn. I have a plan for my debt.&rdquo;</p>
-        </Body>
-      </Section>
-
-      {/* Step 3: Anchor */}
-      <Section>
-        <Heading>Step 3: Anchor</Heading>
-        <Body>
-          <p className="text-lg font-semibold text-cosmos">&ldquo;An anchor keeps you stable when storms hit.&rdquo;</p>
-          <p>Life is unpredictable. Cars break down. People get sick. Without a safety net, one unexpected expense can undo months of progress and send you right back into debt.</p>
-          <p>The target: <strong>3 months of living expenses</strong> in a separate account you only touch in genuine emergencies. That might sound like a lot. But remember: you&apos;ve already fixed the leaks in Step 2. That surplus — even if it&apos;s $200/month — goes into your safety net.</p>
-          <p>And here&apos;s what happens psychologically when you have an emergency fund: <strong>you stop making decisions from fear.</strong> With a safety net, you can think clearly. You can make choices from stability, not survival.</p>
-          <p><strong>The milestone:</strong> &ldquo;I have 3 months saved. I can handle a financial shock.&rdquo;</p>
-        </Body>
-      </Section>
-
-      {/* Step 4: Invest */}
-      <Section className="bg-cosmos-deeper/40">
-        <Heading>Step 4: Invest</Heading>
-        <Body>
-          <p className="text-lg font-semibold text-cosmos">&ldquo;Compound interest is the eighth wonder of the world.&rdquo;</p>
-          <p>Now something beautiful happens. Your leaks are fixed. Your cashflow is positive. Your safety net is built. For the first time, you&apos;re not in survival mode. You&apos;re ready to grow.</p>
-          <p>This is where property, investments, and superannuation come in. The Barefoot Investor recommends getting your super to 15%. Even small additional contributions compound dramatically over decades.</p>
-          <p>The key insight: <strong>you don&apos;t need to be rich to start investing.</strong> You need to be stable. Even $50/week into an index fund, starting today, can grow to hundreds of thousands over 20-30 years.</p>
-          <p><strong>The milestone:</strong> &ldquo;My net worth is growing. I&apos;m investing regularly.&rdquo;</p>
-        </Body>
-      </Section>
-
-      {/* Step 5: Live */}
-      <Section>
-        <Heading>Step 5: Live</Heading>
-        <Body>
-          <p className="text-lg font-semibold text-cosmos">&ldquo;Financial freedom isn&apos;t about being rich. It&apos;s about having choices.&rdquo;</p>
-          <p>This is the destination. Not a yacht. Not a mansion. Just this: <strong>the freedom to choose how you spend your time and your money.</strong></p>
-          <p>Financial freedom is the point where your passive income approaches or exceeds your living expenses. At this stage, work becomes optional. Not that you stop working — many people love what they do. But the <strong>choice</strong> is yours.</p>
-          <p><strong>The milestone:</strong> &ldquo;I make financial decisions from abundance, not fear. I live on my terms.&rdquo;</p>
-        </Body>
-      </Section>
-
-      {/* Why TRAIL Works */}
-      <Section className="bg-cosmos-deeper/40">
-        <Heading>Why TRAIL Works (The Science)</Heading>
-        <Body>
-          <p>TRAIL isn&apos;t built on opinion. It&apos;s built on decades of behavioural science research.</p>
-          <p><strong>Small wins build confidence.</strong> Psychologist Albert Bandura&apos;s research on self-efficacy (1977) showed that successfully completing a task is the strongest way to build belief in your ability. Each TRAIL stage has a clear, achievable milestone.</p>
-          <p><strong>Meeting people where they are.</strong> The Stages of Change model (Prochaska, 1983) shows that people at different stages need different interventions. Someone who hasn&apos;t looked at their finances needs awareness, not a budget. TRAIL&apos;s stage-matched guidance means you always get what you need.</p>
-          <p><strong>Automation beats willpower.</strong> Richard Thaler&apos;s &ldquo;Save More Tomorrow&rdquo; program (2004) increased savings from 3.5% to 13.6% by making saving automatic. TRAIL&apos;s philosophy is the same: connect your bank, let the system do the work.</p>
-          <p><strong>Knowledge alone doesn&apos;t change behaviour.</strong> A meta-analysis of 168 studies found that financial education explains only 0.1% of the variance in actual behaviour. What DOES change behaviour? Self-efficacy, just-in-time guidance, and simplification. TRAIL builds all three into its design.</p>
-        </Body>
-      </Section>
-
-      {/* The Monitrax Difference */}
-      <Section>
-        <Heading>The Monitrax Difference</Heading>
-        <Body>
-          <p>The Barefoot Investor is a brilliant book. TRAIL stands on its shoulders. But a book gives you a plan and then leaves you on your own. Monitrax is different:</p>
-          <p><strong>It&apos;s always on.</strong> Monitrax connects to your bank via secure Open Banking and updates automatically. Your accounts, transactions, income, spending, and net worth — all visible, all the time.</p>
-          <p><strong>It&apos;s personalised.</strong> Your Guide gives you advice based on YOUR actual numbers. Not &ldquo;save 20%&rdquo; but &ldquo;based on your income and expenses, here&apos;s exactly where to find $400/month you didn&apos;t know you had.&rdquo;</p>
-          <p><strong>It knows where you are.</strong> Monitrax knows your TRAIL stage and adapts everything — the recommendations, the focus areas, the milestones — to where you actually are in your journey.</p>
-        </Body>
-      </Section>
-
-      {/* CTA */}
-      <section className="bg-cosmos px-6 py-20 sm:py-28 text-center">
-        <Reveal>
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl" style={{ letterSpacing: '-0.02em' }}>
-            Start Your TRAIL Today
-          </h2>
-        </Reveal>
-        <Reveal delay={0.1}>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-cosmos-soft" style={{ lineHeight: 1.6 }}>
-            You don&apos;t need to see the whole path. You just need to take the first step.
-          </p>
-        </Reveal>
-        <Reveal delay={0.2}>
-          <div className="mt-8 flex flex-col items-center gap-4">
-            <Link
-              href="/trail-check"
-              className="cosmos-cta inline-flex items-center justify-center rounded-full px-8 py-4 text-lg font-semibold"
-            >
-              Take the free TRAIL Check
-            </Link>
-            <Link href="/register" className="inline-flex items-center gap-2 text-sm font-medium text-cosmos-soft hover:text-cosmos-action transition-colors">
-              Or start your TRAIL now <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+        {/* Science */}
+        <section className="bg-cosmos-deeper/40 py-24 md:py-32">
+          <div className="mx-auto max-w-7xl px-6">
+            <Reveal>
+              <div className="mb-16">
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-cosmos-action">
+                  The Science
+                </p>
+                <h2 className="max-w-3xl text-3xl font-semibold tracking-tight text-cosmos sm:text-4xl">
+                  TRAIL isn't built on opinion. It's built on decades of behavioural research.
+                </h2>
+              </div>
+            </Reveal>
+            <StaggerContainer className="grid gap-6 md:grid-cols-2">
+              {SCIENCE_CARDS.map((card) => (
+                <StaggerItem key={card.author}>
+                  <div className="cosmos-glass h-full rounded-xl p-8">
+                    <div className="mb-3 flex items-baseline gap-3">
+                      <span className="text-lg font-semibold text-cosmos">{card.author}</span>
+                      <span className="text-xs font-medium tracking-wider text-cosmos-muted">{card.year}</span>
+                    </div>
+                    <p className="mb-3 text-base text-cosmos">{card.finding}</p>
+                    <p className="text-sm text-cosmos-soft">
+                      <span className="text-cosmos-muted">How TRAIL uses it: </span>
+                      {card.use}
+                    </p>
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
           </div>
-        </Reveal>
-        <Reveal delay={0.3}>
-          <p className="mt-12 text-sm text-cosmos-muted italic">
-            Your trail to financial freedom starts with one step: seeing where you stand.
-          </p>
-        </Reveal>
-      </section>
+        </section>
+
+        {/* Final CTA */}
+        <section className="cosmos-glow-center relative overflow-hidden px-6 py-32 md:py-40">
+          <Reveal>
+            <div className="relative z-10 mx-auto max-w-4xl text-center">
+              <h2 className="mb-8 text-4xl font-semibold leading-tight tracking-tight text-cosmos sm:text-5xl lg:text-6xl">
+                Ready to find your path?
+              </h2>
+              <p className="mx-auto mb-12 max-w-md text-lg leading-relaxed text-cosmos-soft">
+                Sixty seconds. Five questions. Your personalised path.
+              </p>
+              <Link
+                href="/trail-check"
+                className="cosmos-cta inline-flex min-h-[44px] items-center justify-center rounded-full px-10 py-4 text-base font-semibold"
+              >
+                Take the free TRAIL Check
+              </Link>
+              <p className="mt-6 text-sm text-cosmos-muted">
+                No credit card. No account required.
+              </p>
+            </div>
+          </Reveal>
+        </section>
+      </main>
 
       <Footer />
     </div>

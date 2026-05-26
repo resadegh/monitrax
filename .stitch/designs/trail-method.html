@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The TRAIL Method | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            background-color: #051424; /* surface-dim from config, matching requested #0A0A14 foundation */
+            color: #d4e4fa; /* on-surface */
+            overflow-x: hidden;
+        }
+        .glass-card {
+            backdrop-filter: blur(24px);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+        }
+        .radial-glow {
+            background: radial-gradient(circle at center, rgba(98, 223, 125, 0.15) 0%, transparent 70%);
+        }
+        .stage-node {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .stage-node:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#1c2b3c",
+                        "surface-container-low": "#0d1c2d",
+                        "secondary": "#c0c1ff",
+                        "surface-container": "#122131",
+                        "on-surface": "#d4e4fa",
+                        "outline-variant": "#3e4a3d",
+                        "surface-variant": "#273647",
+                        "primary-fixed-dim": "#62df7d",
+                        "primary-fixed": "#7ffc97",
+                        "secondary-fixed": "#e1e0ff",
+                        "outline": "#879485",
+                        "on-tertiary-container": "#5a0022",
+                        "tertiary-container": "#ec6284",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "surface-dim": "#051424",
+                        "on-primary-container": "#003111",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-tertiary": "#660027",
+                        "background": "#051424",
+                        "secondary-container": "#3131c0",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "tertiary-fixed": "#ffd9de",
+                        "primary-container": "#1ca64d",
+                        "tertiary": "#ffb2bf",
+                        "on-primary-fixed": "#002109",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-surface-variant": "#bdcaba",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-secondary": "#1000a9",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-bright": "#2c3a4c",
+                        "inverse-on-surface": "#233143",
+                        "primary": "#62df7d",
+                        "on-error": "#690005",
+                        "on-secondary-container": "#b0b2ff",
+                        "inverse-primary": "#006e2d",
+                        "surface-container-highest": "#273647",
+                        "on-primary": "#003914",
+                        "surface-container-lowest": "#010f1f",
+                        "surface": "#051424",
+                        "on-background": "#d4e4fa",
+                        "surface-tint": "#62df7d",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "inverse-surface": "#d4e4fa"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "prose-max": "720px",
+                        "stack-sm": "8px",
+                        "section-v-space": "80px",
+                        "stack-lg": "32px",
+                        "gutter": "24px",
+                        "container-max": "1200px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "pull-quote": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "technical-mono": ["JetBrains Mono"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.75", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-md": ["30px", {"lineHeight": "1.3", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "pull-quote": ["24px", {"lineHeight": "1.6", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                        "display-lg-mobile": ["36px", {"lineHeight": "1.2", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.6", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "technical-mono": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1.0", "letterSpacing": "0.1em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="selection:bg-primary/30">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-white/10">
+<div class="flex justify-between items-center h-20 px-gutter max-w-container-max mx-auto">
+<div class="flex items-center gap-2">
+<img alt="Monitrax Logo" class="h-8 w-auto" src="https://lh3.googleusercontent.com/aida/ADBb0uisnhCnLreDuIKoOdM6wUOPeBgEOTyksjMjzi37xez-1a9-uE1zwOzYNL0WBYmbWrLMQy63VBstSqIMBsVFvnJqWXiCu7yQVHX03GCbM4Ni7oKSyQ6lfNVV8ORlWB45NtHMeMkeGbabUAcbJCH2IgzeN8zz7S46Qcg0ZxcGBZq2Td-ksI17plE2-_MRwKUZ2tMlXpcDISK2lodaEYVMQS6_CYEHdCPrU5ypOJT_Me1GjjHXLt6qwMZiO7I"/>
+<span class="font-display-lg-mobile text-display-lg-mobile font-bold text-on-surface tracking-tighter">Monitrax</span>
+</div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-body-md text-body-md" href="#">Methodology</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-300 font-body-md text-body-md" href="#">Insights</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-300 font-body-md text-body-md" href="#">Network</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors duration-300 font-body-md text-body-md" href="#">About</a>
+</div>
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-lg font-bold hover:opacity-80 transition-opacity">
+                Get Started
+            </button>
+</div>
+</nav>
+<main class="pt-20">
+<!-- Hero Section -->
+<section class="relative min-h-[80vh] flex flex-col items-center justify-center text-center px-gutter radial-glow">
+<div class="max-w-prose-max mx-auto">
+<span class="font-label-caps text-label-caps text-primary tracking-[0.18em] block mb-4">THE TRAIL METHOD</span>
+<h1 class="font-display-lg text-display-lg md:text-[64px] mb-6">
+                    Your path from financial stress <br/>
+<span class="bg-gradient-to-r from-primary via-primary-fixed to-primary-fixed-dim bg-clip-text text-transparent">to financial freedom.</span>
+</h1>
+<p class="font-pull-quote text-pull-quote text-on-surface-variant italic opacity-80">
+                    A guide for households outgrowing budget apps.
+                </p>
+</div>
+<div class="absolute bottom-10 animate-bounce">
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</div>
+</section>
+<!-- Problem Section -->
+<section class="py-section-v-space max-w-container-max mx-auto px-gutter">
+<div class="flex flex-col md:flex-row gap-12 items-center">
+<div class="md:w-3/5 border-l-2 border-primary pl-8 py-4">
+<blockquote class="font-pull-quote text-pull-quote italic text-on-surface">
+                        "You're not <span class="text-primary">bad with money</span>. You just don't have a path."
+                    </blockquote>
+<p class="mt-4 font-body-md text-body-md text-on-surface-variant">The current financial system is designed to keep you in a cycle of reactive decision-making. We're breaking the cycle.</p>
+</div>
+<div class="md:w-2/5 flex flex-col gap-4 w-full">
+<div class="glass-card p-6 rounded-xl">
+<div class="font-technical-mono text-primary mb-2">Psychological Burden</div>
+<div class="text-3xl font-bold">72%</div>
+<div class="text-sm text-on-surface-variant">of adults report feeling stressed about money in the last month.</div>
+</div>
+<div class="glass-card p-6 rounded-xl">
+<div class="font-technical-mono text-tertiary mb-2">Cognitive Cost</div>
+<div class="text-3xl font-bold">-13 IQ Points</div>
+<div class="text-sm text-on-surface-variant">The mental bandwidth lost to financial scarcity (Mani et al., Science).</div>
+</div>
+<div class="glass-card p-6 rounded-xl">
+<div class="font-technical-mono text-secondary mb-2">Fragmented Tools</div>
+<div class="text-3xl font-bold">1 in 3</div>
+<div class="text-sm text-on-surface-variant">Australians still rely on manual spreadsheets or nothing at all.</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Origin Section -->
+<section class="py-section-v-space bg-surface-container-lowest/50">
+<div class="max-w-container-max mx-auto px-gutter">
+<h2 class="font-headline-md text-headline-md mb-12 text-center">Where TRAIL comes from</h2>
+<div class="grid md:grid-cols-3 gap-6">
+<div class="glass-card p-8 rounded-xl flex flex-col items-center text-center">
+<div class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary">account_balance</span>
+</div>
+<h3 class="font-bold mb-2">Barefoot Investor</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">We adopt the structural simplicity of automated buckets for daily resilience.</p>
+</div>
+<div class="glass-card p-8 rounded-xl flex flex-col items-center text-center">
+<div class="w-12 h-12 rounded-full bg-tertiary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-tertiary">trending_up</span>
+</div>
+<h3 class="font-bold mb-2">Dave Ramsey</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">We utilize the psychological momentum of the 'Snowball' method for debt elimination.</p>
+</div>
+<div class="glass-card p-8 rounded-xl flex flex-col items-center text-center">
+<div class="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary">psychology</span>
+</div>
+<h3 class="font-bold mb-2">Behavioural Economics</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">We bridge the gap between intent and action through choice architecture and nudges.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- The Five Centerpiece -->
+<section class="py-section-v-space overflow-hidden">
+<div class="max-w-container-max mx-auto px-gutter relative">
+<h2 class="font-display-lg text-display-lg text-center mb-16">The Five Stages</h2>
+<!-- Connection Line -->
+<div class="absolute top-1/2 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-y-1/2 hidden md:block"></div>
+<div class="flex flex-col md:flex-row justify-between items-center relative z-10 gap-12 md:gap-4">
+<!-- T -->
+<div class="stage-node flex flex-col items-center group">
+<div class="w-16 h-16 rounded-full bg-sky-500/20 border border-sky-400 flex items-center justify-center font-bold text-2xl text-sky-400 shadow-[0_0_20px_rgba(56,189,248,0.3)] mb-4">T</div>
+<span class="font-label-caps text-sky-400">TRACK</span>
+</div>
+<!-- R -->
+<div class="stage-node flex flex-col items-center group">
+<div class="w-16 h-16 rounded-full bg-amber-500/20 border border-amber-400 flex items-center justify-center font-bold text-2xl text-amber-400 shadow-[0_0_20px_rgba(251,191,36,0.3)] mb-4">R</div>
+<span class="font-label-caps text-amber-400">REDUCE</span>
+</div>
+<!-- A -->
+<div class="stage-node flex flex-col items-center group">
+<div class="w-16 h-16 rounded-full bg-indigo-500/20 border border-indigo-400 flex items-center justify-center font-bold text-2xl text-indigo-400 shadow-[0_0_20px_rgba(129,140,248,0.3)] mb-4">A</div>
+<span class="font-label-caps text-indigo-400">AUTOMATE</span>
+</div>
+<!-- I -->
+<div class="stage-node flex flex-col items-center group">
+<div class="w-16 h-16 rounded-full bg-primary/20 border border-primary flex items-center justify-center font-bold text-2xl text-primary shadow-[0_0_20px_rgba(98,223,125,0.3)] mb-4">I</div>
+<span class="font-label-caps text-primary">INVEST</span>
+</div>
+<!-- L -->
+<div class="stage-node flex flex-col items-center group">
+<div class="w-16 h-16 rounded-full bg-violet-500/20 border border-violet-400 flex items-center justify-center font-bold text-2xl text-violet-400 shadow-[0_0_20px_rgba(167,139,250,0.3)] mb-4">L</div>
+<span class="font-label-caps text-violet-400">LEGACY</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Deep Dives -->
+<section class="py-section-v-space">
+<div class="max-w-container-max mx-auto px-gutter space-y-32">
+<!-- Stage T -->
+<div class="flex flex-col md:flex-row gap-12 items-center">
+<div class="md:w-1/2">
+<div class="text-[120px] font-black text-sky-400/10 leading-none mb-[-60px]">T</div>
+<h3 class="font-headline-md text-headline-md mb-6">Stage 1: Track</h3>
+<blockquote class="border-l-2 border-sky-400 pl-6 mb-6 font-pull-quote text-lg text-on-surface italic">
+                            "Awareness is the first step toward sovereignty."
+                        </blockquote>
+<p class="font-body-md text-body-md text-on-surface-variant">We move from blind spending to radical visibility. By observing where every cent goes without judgment, we reclaim the data of our lives.</p>
+</div>
+<div class="md:w-1/2 w-full">
+<div class="glass-card p-8 rounded-2xl relative">
+<div class="flex items-center gap-4 mb-4">
+<span class="material-symbols-outlined text-sky-400">visibility</span>
+<span class="font-technical-mono">Insight #01</span>
+</div>
+<p class="text-xl font-bold mb-2">The Ostrich Effect</p>
+<p class="text-on-surface-variant">42% of people avoid checking their bank balances when they know they've overspent. Real-time tracking neutralizes this anxiety.</p>
+</div>
+</div>
+</div>
+<!-- Stage R -->
+<div class="flex flex-col md:flex-row-reverse gap-12 items-center">
+<div class="md:w-1/2">
+<div class="text-[120px] font-black text-amber-400/10 leading-none mb-[-60px] text-right">R</div>
+<h3 class="font-headline-md text-headline-md mb-6">Stage 2: Reduce</h3>
+<blockquote class="border-l-2 border-amber-400 pl-6 mb-6 font-pull-quote text-lg text-on-surface italic">
+                            "Cut the noise to hear the signal."
+                        </blockquote>
+<p class="font-body-md text-body-md text-on-surface-variant">Optimization isn't about deprivation; it's about elimination of waste. We focus on the big recurring wins that compound over time.</p>
+</div>
+<div class="md:w-1/2 w-full">
+<div class="glass-card p-8 rounded-2xl">
+<div class="flex items-center gap-4 mb-4">
+<span class="material-symbols-outlined text-amber-400">cut</span>
+<span class="font-technical-mono text-amber-400">The "Leak" Metric</span>
+</div>
+<div class="text-4xl font-bold mb-2">$340<span class="text-lg font-normal text-on-surface-variant">/mo</span></div>
+<p class="text-on-surface-variant">The average household spend on forgotten or under-utilized subscriptions. That's $4,000/year back in your pocket.</p>
+</div>
+</div>
+</div>
+<!-- Stage A (Abbreviated for brevity in this mock) -->
+<div class="flex flex-col md:flex-row gap-12 items-center">
+<div class="md:w-1/2">
+<div class="text-[120px] font-black text-indigo-400/10 leading-none mb-[-60px]">A</div>
+<h3 class="font-headline-md text-headline-md mb-6">Stage 3: Automate</h3>
+<blockquote class="border-l-2 border-indigo-400 pl-6 mb-6 font-pull-quote text-lg text-on-surface italic">
+                            "Build systems so you don't have to rely on willpower."
+                        </blockquote>
+<p class="font-body-md text-body-md text-on-surface-variant">We architect your accounts so money flows exactly where it needs to go on payday. Zero-touch wealth creation.</p>
+</div>
+<div class="md:w-1/2 w-full">
+<div class="glass-card p-8 rounded-2xl bg-gradient-to-br from-indigo-500/5 to-transparent">
+<div class="font-label-caps text-indigo-400 mb-4">Choice Architecture</div>
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+<span>Rent/Mortgage</span>
+<span class="text-indigo-400">Auto-Pay</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+<span>Savings Goal</span>
+<span class="text-indigo-400">Direct Deposit</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-white/5 rounded-lg border border-white/5">
+<span>Daily Spending</span>
+<span class="text-indigo-400">Limited Debit</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Science Section -->
+<section class="py-section-v-space bg-surface-container">
+<div class="max-w-container-max mx-auto px-gutter">
+<div class="text-center mb-16">
+<span class="font-label-caps text-primary tracking-widest block mb-2">RESEARCH LED</span>
+<h2 class="font-headline-md text-headline-md">The Foundations of TRAIL</h2>
+</div>
+<div class="grid md:grid-cols-2 gap-6">
+<div class="glass-card p-8 rounded-xl">
+<div class="font-technical-mono text-on-surface-variant mb-4">Bandura (1977)</div>
+<h4 class="font-bold text-xl mb-3">Self-Efficacy</h4>
+<p class="text-on-surface-variant">Our stage-based approach builds "micro-wins" that fundamentally change a person's belief in their ability to manage money.</p>
+</div>
+<div class="glass-card p-8 rounded-xl">
+<div class="font-technical-mono text-on-surface-variant mb-4">Prochaska &amp; DiClemente</div>
+<h4 class="font-bold text-xl mb-3">Transtheoretical Model</h4>
+<p class="text-on-surface-variant">Most apps assume you are ready for action. TRAIL meets you where you are, from contemplation to maintenance.</p>
+</div>
+<div class="glass-card p-8 rounded-xl">
+<div class="font-technical-mono text-on-surface-variant mb-4">Richard Thaler</div>
+<h4 class="font-bold text-xl mb-3">Mental Accounting</h4>
+<p class="text-on-surface-variant">We utilize the human tendency to categorize funds to create hard boundaries that protect long-term wealth.</p>
+</div>
+<div class="glass-card p-8 rounded-xl">
+<div class="font-technical-mono text-on-surface-variant mb-4">Mani et al. (2013)</div>
+<h4 class="font-bold text-xl mb-3">Scarcity &amp; Bandwidth</h4>
+<p class="text-on-surface-variant">By reducing financial stress, we literally "give back" cognitive capacity, making you better at your job and life.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Difference Section -->
+<section class="py-section-v-space max-w-container-max mx-auto px-gutter">
+<div class="grid md:grid-cols-3 gap-8">
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">all_inclusive</span>
+</div>
+<h4 class="font-bold text-xl">Always on</h4>
+<p class="text-on-surface-variant">Not a monthly check-in. A continuous pulse on your financial health that adjusts in real-time.</p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">person_search</span>
+</div>
+<h4 class="font-bold text-xl">Personalised</h4>
+<p class="text-on-surface-variant">No generic advice. Every recommendation is filtered through your specific stage and lifestyle goals.</p>
+</div>
+<div class="flex flex-col gap-4">
+<div class="w-12 h-12 bg-primary/20 rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">stairs</span>
+</div>
+<h4 class="font-bold text-xl">Stage-aware</h4>
+<p class="text-on-surface-variant">Don't try to Invest (Stage 4) before you've Tracked (Stage 1). We ensure your foundation is solid.</p>
+</div>
+</div>
+</section>
+<!-- Final CTA -->
+<section class="py-section-v-space px-gutter relative overflow-hidden">
+<div class="absolute inset-0 radial-glow opacity-50"></div>
+<div class="max-w-prose-max mx-auto text-center relative z-10">
+<h2 class="font-display-lg text-display-lg mb-8">Ready to find your path?</h2>
+<button class="bg-[#16A34A] hover:bg-[#15803d] text-white px-10 py-5 rounded-full font-bold text-xl transition-all hover:scale-105 shadow-xl shadow-primary/20 flex items-center gap-3 mx-auto mb-6">
+                    Take the free TRAIL Check
+                    <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+<p class="text-on-surface-variant font-body-md">
+                    Sixty seconds. Five questions. Your personalised path.
+                </p>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-stack-lg border-t border-white/10 bg-surface-container-lowest">
+<div class="flex flex-col md:flex-row justify-between items-center px-gutter max-w-container-max mx-auto gap-stack-md">
+<div class="flex flex-col gap-2">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+<p class="font-technical-mono text-technical-mono text-on-surface-variant opacity-70">
+                    © 2024 Monitrax. Editorial Intelligence for Technical Analysis.
+                </p>
+</div>
+<div class="flex gap-8">
+<a class="text-on-surface-variant hover:text-primary-fixed transition-colors hover:underline font-technical-mono text-technical-mono" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-primary-fixed transition-colors hover:underline font-technical-mono text-technical-mono" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-primary-fixed transition-colors hover:underline font-technical-mono text-technical-mono" href="#">Citation Standards</a>
+<a class="text-on-surface-variant hover:text-primary-fixed transition-colors hover:underline font-technical-mono text-technical-mono" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for nodes
+        const nodes = document.querySelectorAll('.stage-node');
+        nodes.forEach(node => {
+            node.addEventListener('mouseenter', () => {
+                // Potential to trigger animations or sounds here
+            });
+        });
+
+        // Simple scroll reveal effect
+        const observerOptions = {
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('opacity-100', 'translate-y-0');
+                    entry.target.classList.remove('opacity-0', 'translate-y-10');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('section').forEach(section => {
+            section.classList.add('transition-all', 'duration-1000', 'opacity-0', 'translate-y-10');
+            observer.observe(section);
+        });
+    </script>
+</body></html>
