@@ -85,22 +85,22 @@ function InputForm({
   return (
     <Reveal className="mx-auto max-w-2xl">
       <div className="text-center">
-        <h1 className="text-4xl font-semibold tracking-tight text-stone-50 sm:text-5xl">
+        <h1 className="text-4xl font-semibold tracking-tight text-cosmos sm:text-5xl">
           Are you on track?
         </h1>
-        <p className="mt-4 text-lg text-stone-400">
+        <p className="mt-4 text-lg text-cosmos-soft">
           Three questions. Thirty seconds. A specific answer in dollars — not a grade.
         </p>
       </div>
 
-      <div className="mt-12 space-y-10 rounded-3xl border border-stone-800/80 bg-stone-900/50 p-8 shadow-2xl backdrop-blur-sm sm:p-12">
+      <div className="mt-12 space-y-10 rounded-3xl border border-cosmos-hairline bg-cosmos-surface/50 p-8 shadow-2xl backdrop-blur-sm sm:p-12">
         {/* Age */}
         <div>
           <div className="flex items-baseline justify-between">
-            <label htmlFor="age" className="text-sm font-medium text-stone-300">
+            <label htmlFor="age" className="text-sm font-medium text-cosmos-soft">
               Your age
             </label>
-            <span className="text-2xl font-semibold text-amber-400 tabular-nums">{age}</span>
+            <span className="text-2xl font-semibold text-cosmos-action tabular-nums">{age}</span>
           </div>
           <input
             id="age"
@@ -110,9 +110,9 @@ function InputForm({
             step={1}
             value={age}
             onChange={(e) => setAge(Number(e.target.value))}
-            className="mt-3 w-full accent-amber-500"
+            className="mt-3 w-full accent-cosmos-action"
           />
-          <div className="mt-1 flex justify-between text-xs text-stone-500">
+          <div className="mt-1 flex justify-between text-xs text-cosmos-muted">
             <span>25</span>
             <span>65</span>
           </div>
@@ -121,10 +121,10 @@ function InputForm({
         {/* Income */}
         <div>
           <div className="flex items-baseline justify-between">
-            <label htmlFor="income" className="text-sm font-medium text-stone-300">
+            <label htmlFor="income" className="text-sm font-medium text-cosmos-soft">
               Household income (annual, before tax)
             </label>
-            <span className="text-2xl font-semibold text-amber-400 tabular-nums">
+            <span className="text-2xl font-semibold text-cosmos-action tabular-nums">
               {income >= 400_000 ? '$400k+' : formatCurrency(income)}
             </span>
           </div>
@@ -136,9 +136,9 @@ function InputForm({
             step={10_000}
             value={income}
             onChange={(e) => setIncome(Number(e.target.value))}
-            className="mt-3 w-full accent-amber-500"
+            className="mt-3 w-full accent-cosmos-action"
           />
-          <div className="mt-1 flex justify-between text-xs text-stone-500">
+          <div className="mt-1 flex justify-between text-xs text-cosmos-muted">
             <span>$40k</span>
             <span>$400k+</span>
           </div>
@@ -146,10 +146,10 @@ function InputForm({
 
         {/* Net worth band */}
         <div>
-          <label className="text-sm font-medium text-stone-300">
+          <label className="text-sm font-medium text-cosmos-soft">
             Total net worth (everything you own, minus what you owe)
           </label>
-          <p className="mt-1 text-xs text-stone-500">
+          <p className="mt-1 text-xs text-cosmos-muted">
             Pick the band that fits. We use the midpoint — no need to be exact.
           </p>
           <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -162,14 +162,14 @@ function InputForm({
                   onClick={() => setNetWorthBand(band.value)}
                   className={`rounded-xl border px-4 py-3 text-left transition-all duration-200 ${
                     selected
-                      ? 'border-amber-500 bg-amber-500/10 ring-1 ring-amber-500/40'
-                      : 'border-stone-800 bg-stone-900/30 hover:border-stone-700 hover:bg-stone-900/50'
+                      ? 'border-cosmos-action bg-cosmos-action/10 ring-1 ring-cosmos-action/40'
+                      : 'border-cosmos-hairline bg-cosmos-surface/30 hover:border-cosmos-hairline-strong hover:bg-cosmos-surface/50'
                   }`}
                 >
-                  <div className={`text-sm font-medium ${selected ? 'text-amber-200' : 'text-stone-200'}`}>
+                  <div className={`text-sm font-medium ${selected ? 'text-cosmos-action-soft' : 'text-cosmos'}`}>
                     {band.label}
                   </div>
-                  <div className="mt-0.5 text-xs text-stone-500">{band.sublabel}</div>
+                  <div className="mt-0.5 text-xs text-cosmos-muted">{band.sublabel}</div>
                 </button>
               );
             })}
@@ -184,22 +184,22 @@ function InputForm({
             disabled={!canSubmit}
             className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-8 py-4 text-base font-semibold transition-all duration-200 sm:w-auto ${
               canSubmit
-                ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-lg shadow-amber-600/25 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30'
-                : 'cursor-not-allowed bg-stone-800 text-stone-500'
+                ? 'cosmos-cta text-white'
+                : 'cursor-not-allowed bg-cosmos-elevated text-cosmos-muted'
             }`}
           >
             Show me my number
             <ArrowRight className="h-4 w-4" />
           </button>
           {!canSubmit && (
-            <p className="mt-3 text-xs text-stone-500">
+            <p className="mt-3 text-xs text-cosmos-muted">
               Pick a net-worth band to continue.
             </p>
           )}
         </div>
       </div>
 
-      <p className="mt-8 text-center text-xs text-stone-500">
+      <p className="mt-8 text-center text-xs text-cosmos-muted">
         We don&apos;t collect anything you enter here. The calculation runs in your browser.
       </p>
     </Reveal>
@@ -234,40 +234,40 @@ function ResultPage({
     <div className="mx-auto max-w-3xl">
       {/* Hero */}
       <Reveal>
-        <p className="text-sm font-medium uppercase tracking-wider text-amber-400">
+        <p className="text-sm font-medium uppercase tracking-wider text-cosmos-action">
           Your snapshot
         </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-stone-50 sm:text-4xl">
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-cosmos sm:text-4xl">
           {gapVerdict === 'on-track' ? (
             <>
               You&apos;re tracking toward{' '}
-              <span className="text-amber-400">{formatCurrency(result.projectedTotalAt67)}</span>{' '}
+              <span className="text-cosmos-action">{formatCurrency(result.projectedTotalAt67)}</span>{' '}
               at retirement — past every standard benchmark.
             </>
           ) : (
             <>
               You&apos;re tracking toward{' '}
-              <span className="text-amber-400">{formatCurrency(result.projectedTotalAt67)}</span>{' '}
+              <span className="text-cosmos-action">{formatCurrency(result.projectedTotalAt67)}</span>{' '}
               at retirement. To maintain {formatCurrency(lifestyleAnnualSpend)}/year of lifestyle
               spending from 67, you&apos;d need around{' '}
-              <span className="text-amber-400">{formatCurrency(result.lifestyleTarget)}</span>.
+              <span className="text-cosmos-action">{formatCurrency(result.lifestyleTarget)}</span>.
             </>
           )}
         </h1>
         {gapVerdict === 'on-track' ? (
-          <p className="mt-4 text-xl text-stone-300">
+          <p className="mt-4 text-xl text-cosmos-soft">
             ASFA comfortable ({formatCurrency(result.asfaTarget)}) is well in the bag. So is
             70%-lifestyle-replacement ({formatCurrency(result.lifestyleTarget)}). The interesting
             question for someone in your position is no longer &quot;will I have enough?&quot; — it&apos;s
             &quot;what could I do with the headroom?&quot;
           </p>
         ) : (
-          <p className="mt-4 text-xl text-stone-300">
+          <p className="mt-4 text-xl text-cosmos-soft">
             That&apos;s a gap of{' '}
-            <span className="font-semibold text-stone-50">{formatCurrency(result.gap)}</span>{' '}
+            <span className="font-semibold text-cosmos">{formatCurrency(result.gap)}</span>{' '}
             in today&apos;s dollars.
             {result.beatsAsfaTarget && (
-              <span className="ml-2 text-stone-500">
+              <span className="ml-2 text-cosmos-muted">
                 (You&apos;re past ASFA comfortable — {formatCurrency(result.asfaTarget)} — but
                 that&apos;s the baseline, not the lifestyle target.)
               </span>
@@ -278,15 +278,15 @@ function ResultPage({
 
       {/* Percentile */}
       <Reveal delay={0.15}>
-        <div className="mt-10 rounded-2xl border border-stone-800/80 bg-stone-900/50 p-6 sm:p-8">
-          <p className="text-sm font-medium uppercase tracking-wider text-stone-500">
+        <div className="mt-10 rounded-2xl border border-cosmos-hairline bg-cosmos-surface/50 p-6 sm:p-8">
+          <p className="text-sm font-medium uppercase tracking-wider text-cosmos-muted">
             For context
           </p>
-          <p className="mt-2 text-lg text-stone-200">
+          <p className="mt-2 text-lg text-cosmos">
             Your net worth puts you around the{' '}
-            <span className="font-semibold text-stone-50">{formatPercentile(result.percentile)}.</span>
+            <span className="font-semibold text-cosmos">{formatPercentile(result.percentile)}.</span>
           </p>
-          <p className="mt-2 text-sm text-stone-500">
+          <p className="mt-2 text-sm text-cosmos-muted">
             Source: ABS 6523.0 Household Income and Wealth (most recent release).
           </p>
         </div>
@@ -294,19 +294,19 @@ function ResultPage({
 
       {/* Lever */}
       <Reveal delay={0.3}>
-        <div className="mt-6 rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 to-amber-600/5 p-6 sm:p-8">
-          <p className="text-sm font-medium uppercase tracking-wider text-amber-400">
+        <div className="mt-6 rounded-2xl border border-cosmos-action/30 bg-gradient-to-br from-cosmos-action/10 to-cosmos-action/5 p-6 sm:p-8">
+          <p className="text-sm font-medium uppercase tracking-wider text-cosmos-action">
             One lever
           </p>
-          <h2 className="mt-2 text-2xl font-semibold text-stone-50">{lever.title}</h2>
-          <p className="mt-4 text-base leading-relaxed text-stone-300">{lever.body}</p>
+          <h2 className="mt-2 text-2xl font-semibold text-cosmos">{lever.title}</h2>
+          <p className="mt-4 text-base leading-relaxed text-cosmos-soft">{lever.body}</p>
           {lever.gapCloseEstimate > 0 && (
-            <div className="mt-6 rounded-xl bg-stone-950/50 px-5 py-4">
-              <p className="text-xs uppercase tracking-wider text-stone-500">Estimated gap closed</p>
-              <p className="mt-1 text-3xl font-semibold tabular-nums text-amber-300">
+            <div className="mt-6 rounded-xl bg-cosmos/50 px-5 py-4">
+              <p className="text-xs uppercase tracking-wider text-cosmos-muted">Estimated gap closed</p>
+              <p className="mt-1 text-3xl font-semibold tabular-nums text-cosmos-action-soft">
                 ~{formatCurrency(lever.gapCloseEstimate)}
               </p>
-              <p className="mt-1 text-xs text-stone-500">
+              <p className="mt-1 text-xs text-cosmos-muted">
                 over {result.yearsToRetirement} years at a 5% real annual return
               </p>
             </div>
@@ -316,9 +316,9 @@ function ResultPage({
 
       {/* The hook */}
       <Reveal delay={0.45}>
-        <div className="mt-10 rounded-2xl border border-stone-800/80 bg-stone-900/30 p-6 sm:p-8">
-          <h2 className="text-xl font-semibold text-stone-50">Want the full picture?</h2>
-          <p className="mt-3 text-base text-stone-300">
+        <div className="mt-10 rounded-2xl border border-cosmos-hairline bg-cosmos-surface/30 p-6 sm:p-8">
+          <h2 className="text-xl font-semibold text-cosmos">Want the full picture?</h2>
+          <p className="mt-3 text-base text-cosmos-soft">
             This is a 3-input estimate. Monitrax shows you the real number — your real accounts, real
             super, real properties, real tax position — and the real levers that move it. The same maths,
             applied to your actual life.
@@ -326,7 +326,7 @@ function ResultPage({
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/register"
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-amber-500 to-amber-600 px-8 py-3 text-base font-semibold text-white shadow-lg shadow-amber-600/25 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-amber-600/30"
+              className="cosmos-cta inline-flex items-center justify-center gap-2 rounded-full px-8 py-3 text-base font-semibold"
             >
               Try Monitrax free
               <ArrowRight className="h-4 w-4" />
@@ -334,7 +334,7 @@ function ResultPage({
             <button
               type="button"
               onClick={onReset}
-              className="inline-flex items-center justify-center rounded-2xl border border-stone-700 px-8 py-3 text-base font-medium text-stone-300 transition-colors hover:border-stone-600 hover:bg-stone-900/50"
+              className="inline-flex items-center justify-center rounded-2xl border border-cosmos-hairline-strong px-8 py-3 text-base font-medium text-cosmos-soft transition-colors hover:border-cosmos-hairline-strong hover:bg-cosmos-surface/50"
             >
               Try different numbers
             </button>
@@ -344,21 +344,21 @@ function ResultPage({
 
       {/* Assumptions panel — collapsed by default */}
       <Reveal delay={0.6}>
-        <div className="mt-10 rounded-2xl border border-stone-800/60 bg-stone-900/30">
+        <div className="mt-10 rounded-2xl border border-cosmos-hairline/60 bg-cosmos-surface/30">
           <button
             type="button"
             onClick={() => setAssumptionsOpen((o) => !o)}
             className="flex w-full items-center justify-between gap-4 px-6 py-4 text-left"
             aria-expanded={assumptionsOpen}
           >
-            <span className="flex items-center gap-2 text-sm font-medium text-stone-300">
-              <Info className="h-4 w-4 text-stone-500" />
+            <span className="flex items-center gap-2 text-sm font-medium text-cosmos-soft">
+              <Info className="h-4 w-4 text-cosmos-muted" />
               How we calculated this
             </span>
             {assumptionsOpen ? (
-              <ChevronUp className="h-4 w-4 text-stone-500" />
+              <ChevronUp className="h-4 w-4 text-cosmos-muted" />
             ) : (
-              <ChevronDown className="h-4 w-4 text-stone-500" />
+              <ChevronDown className="h-4 w-4 text-cosmos-muted" />
             )}
           </button>
           <AnimatePresence initial={false}>
@@ -370,33 +370,33 @@ function ResultPage({
                 transition={{ duration: 0.35, ease }}
                 className="overflow-hidden"
               >
-                <div className="space-y-3 px-6 pb-6 text-sm text-stone-400">
+                <div className="space-y-3 px-6 pb-6 text-sm text-cosmos-soft">
                   <p>
-                    <strong className="text-stone-300">Return assumption:</strong>{' '}
+                    <strong className="text-cosmos-soft">Return assumption:</strong>{' '}
                     {(result.assumptions.realReturnRate * 100).toFixed(1)}% real (after inflation),
                     based on APRA&apos;s long-term balanced super fund returns.
                   </p>
                   <p>
-                    <strong className="text-stone-300">Super Guarantee:</strong>{' '}
+                    <strong className="text-cosmos-soft">Super Guarantee:</strong>{' '}
                     {(result.assumptions.sgRate * 100).toFixed(0)}% (locked from 1 July 2026).
                   </p>
                   <p>
-                    <strong className="text-stone-300">Voluntary savings rate:</strong>{' '}
+                    <strong className="text-cosmos-soft">Voluntary savings rate:</strong>{' '}
                     {(result.assumptions.estimatedSavingsRate * 100).toFixed(0)}% of household
                     income, based on HILDA/ABS HES patterns for your income band.
                   </p>
                   <p>
-                    <strong className="text-stone-300">Household shape:</strong>{' '}
+                    <strong className="text-cosmos-soft">Household shape:</strong>{' '}
                     Assumed {result.householdShape} based on household income
                     (≥$150k → couple). The ASFA target shown is for a {result.householdShape}.
                   </p>
                   <p>
-                    <strong className="text-stone-300">Target:</strong>{' '}
+                    <strong className="text-cosmos-soft">Target:</strong>{' '}
                     {result.assumptions.asfaTargetSource} ({result.assumptions.asfaTargetDate}).
                     The &quot;comfortable&quot; standard assumes you own your home outright at 67 and
                     draw down to life expectancy.
                   </p>
-                  <p className="pt-2 text-xs text-stone-500">
+                  <p className="pt-2 text-xs text-cosmos-muted">
                     This is a crude 3-input estimate. The real maths depends on your structure
                     (super fund mix, debt rates, property holdings, tax entities, partner&apos;s
                     super, contribution history). Monitrax does the real calculation when you sign up.
@@ -410,21 +410,21 @@ function ResultPage({
 
       {/* AFSL boundary footer */}
       <Reveal delay={0.75}>
-        <div className="mt-12 border-t border-stone-800/60 pt-8">
-          <p className="text-xs leading-relaxed text-stone-500">
-            <strong className="text-stone-400">Information, not advice.</strong> Monitrax is a financial
+        <div className="mt-12 border-t border-cosmos-hairline/60 pt-8">
+          <p className="text-xs leading-relaxed text-cosmos-muted">
+            <strong className="text-cosmos-soft">Information, not advice.</strong> Monitrax is a financial
             information service. We surface the maths and the mechanisms — not personal advice. For
             advice tailored to your circumstances, speak to a licensed financial adviser, mortgage
             broker, or accountant. See our{' '}
             <Link
               href="/legal/afsl-credit-tax-boundary-disclosure"
-              className="text-stone-400 underline hover:text-stone-300"
+              className="text-cosmos-soft underline hover:text-cosmos-soft"
             >
               AFSL, Credit and Tax Boundary Disclosure
             </Link>
             .
           </p>
-          <p className="mt-3 text-xs text-stone-600">
+          <p className="mt-3 text-xs text-cosmos-faint">
             Sources: ASFA Retirement Standard (Q2 2026) · ABS 6523.0 Household Income and Wealth ·
             ATO Taxation Statistics · APRA Quarterly Super Performance.
           </p>
@@ -461,7 +461,7 @@ export default function WealthCheckPage() {
   };
 
   return (
-    <div className="min-h-screen bg-stone-950 text-stone-100">
+    <div className="min-h-screen bg-cosmos text-cosmos">
       <Header />
       <main className="pb-24 pt-16 sm:pt-24">
         <div className="px-6">
