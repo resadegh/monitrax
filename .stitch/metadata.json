@@ -16,15 +16,27 @@
   },
   "screens": {
     "index": {
+      "id": "f533d6d2e2c44ac789ee327009b63cd9",
+      "sourceScreen": "projects/1859462351962811110/screens/f533d6d2e2c44ac789ee327009b63cd9",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Brand Corrected",
+      "generatedAt": "2026-05-26T00:43:00.000000Z",
+      "scope": "Hero only — v2. Brand-corrected: warm-ivory #FAFAF7 page bg, true emerald #16A34A on all CTAs + highlight word + Saved segment, warm indigo/sky/emerald mesh on product card, Lucide-style inline SVG icons (Material Symbols dependency removed). Sections 2-3 (proof strip + One Picture) deferred.",
+      "previousVersion": "a7c90975d65f40909f69e5d12f55e67d"
+    },
+    "index-v1": {
       "id": "a7c90975d65f40909f69e5d12f55e67d",
       "sourceScreen": "projects/1859462351962811110/screens/a7c90975d65f40909f69e5d12f55e67d",
       "deviceType": "DESKTOP",
       "width": 2560,
       "height": 2048,
       "modelId": "GEMINI_3_FLASH",
-      "title": "Monitrax Hero - Refined Design",
+      "title": "Monitrax Hero - Refined Design (v1, palette drift)",
       "generatedAt": "2026-05-26T00:39:00.000000Z",
-      "scope": "Hero only (sections 2-3 deferred — proof strip + One Picture to be generated in subsequent iterations)"
+      "scope": "Hero only — v1. First generation; Stitch's design system overrode the warm-ivory request with cool blue #f8f9ff and emerald drifted to Material #006b2c. Superseded by v2 (index)."
     }
   },
   "metadata": {

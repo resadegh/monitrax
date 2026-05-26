@@ -5,15 +5,17 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #FAFAF7;
+            background-color: #f8f9ff; /* Mapped from surface */
         }
         .mesh-gradient {
-            background: radial-gradient(at 0% 0%, #EEF2FF 0%, transparent 50%),
-                        radial-gradient(at 100% 0%, #F0F9FF 0%, transparent 50%),
-                        radial-gradient(at 50% 100%, #F0FDF4 0%, transparent 50%);
+            background: radial-gradient(at 0% 0%, #eff4ff 0%, transparent 50%),
+                        radial-gradient(at 100% 0%, #dce9ff 0%, transparent 50%),
+                        radial-gradient(at 100% 100%, #f7fff2 0%, transparent 50%);
         }
         .card-tilt {
             transform: rotate(-1.5deg);
@@ -21,6 +23,10 @@
         }
         .card-tilt:hover {
             transform: rotate(0deg) translateY(-4px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
         }
     </style>
 <script id="tailwind-config">
@@ -40,11 +46,11 @@
                     "outline-variant": "#bdcaba",
                     "surface-container-high": "#dce9ff",
                     "on-surface-variant": "#3e4a3d",
-                    "background": "#FAFAF7",
+                    "background": "#f8f9ff",
                     "surface-container-highest": "#d3e4fe",
                     "on-secondary-fixed-variant": "#404757",
                     "error-container": "#ffdad6",
-                    "primary-container": "#16A34A",
+                    "primary-container": "#00873a",
                     "on-secondary-fixed": "#151b2a",
                     "tertiary-fixed": "#e2e3e0",
                     "secondary-fixed-dim": "#c0c6da",
@@ -62,17 +68,17 @@
                     "on-tertiary-fixed-variant": "#454745",
                     "on-primary-fixed": "#002109",
                     "surface-container-lowest": "#ffffff",
-                    "surface": "#FAFAF7",
+                    "surface": "#f8f9ff",
                     "on-tertiary-fixed": "#1a1c1b",
                     "secondary-container": "#d9dff4",
-                    "primary": "#16A34A",
+                    "primary": "#006b2c",
                     "outline": "#6e7b6c",
                     "tertiary": "#5b5c5a",
-                    "surface-bright": "#FAFAF7",
+                    "surface-bright": "#f8f9ff",
                     "tertiary-container": "#737573",
                     "on-secondary-container": "#5c6274",
                     "on-tertiary-container": "#fdfdfa",
-                    "on-primary-container": "#ffffff",
+                    "on-primary-container": "#f7fff2",
                     "inverse-surface": "#213145",
                     "surface-dim": "#cbdbf5",
                     "surface-container": "#e5eeff"
@@ -80,7 +86,7 @@
             "borderRadius": {
                     "DEFAULT": "0.25rem",
                     "lg": "0.5rem",
-                    "xl": "12px",
+                    "xl": "0.75rem",
                     "full": "9999px"
             },
             "spacing": {
@@ -119,9 +125,9 @@
       }
     </script>
 </head>
-<body class="bg-background selection:bg-primary-fixed selection:text-on-primary-fixed">
+<body class="bg-surface selection:bg-primary-fixed selection:text-on-primary-fixed">
 <!-- Top Navigation Shell -->
-<nav class="fixed top-0 w-full z-50 bg-[#FAFAF7]/80 backdrop-blur-xl border-b border-[#E8E6E0] shadow-sm">
+<nav class="fixed top-0 w-full z-50 bg-background/80 dark:bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm">
 <div class="flex items-center justify-between px-margin-desktop h-20 max-w-container-max mx-auto">
 <!-- Brand Identity -->
 <div class="flex items-center gap-8">
@@ -130,23 +136,23 @@
 </a>
 <!-- Navigation Links - Desktop Only -->
 <div class="hidden md:flex items-center gap-8">
-<a class="text-primary font-semibold border-b-2 border-primary font-body-md text-body-md py-1" href="#">The TRAIL</a>
-<a class="text-secondary hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Capabilities</a>
-<a class="text-secondary hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Pricing</a>
-<a class="text-secondary hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Security</a>
+<a class="text-primary dark:text-primary-fixed font-semibold border-b-2 border-primary font-body-md text-body-md py-1" href="#">The TRAIL</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Capabilities</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Pricing</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md py-1" href="#">Security</a>
 </div>
 </div>
 <!-- Actions -->
 <div class="flex items-center gap-4">
 <button class="px-6 py-2.5 font-label-md text-label-md text-secondary hover:text-primary transition-all active:scale-95">Sign In</button>
-<button class="px-6 py-2.5 font-label-md text-label-md bg-[#16A34A] text-white rounded-xl hover:bg-[#16A34A]/90 transition-all active:scale-95 shadow-sm">Start Free</button>
+<button class="px-6 py-2.5 font-label-md text-label-md bg-primary-container text-on-primary-container rounded-xl hover:bg-primary transition-all active:scale-95 shadow-sm">Start Free</button>
 </div>
 </div>
 </nav>
 <!-- Main Content Canvas -->
 <main class="pt-20">
 <!-- Hero Section -->
-<section class="min-h-[75vh] flex items-center bg-[#FAFAF7] relative overflow-hidden">
+<section class="min-h-[75vh] flex items-center bg-surface relative overflow-hidden">
 <!-- Atmospheric mesh background -->
 <div class="absolute inset-0 mesh-gradient opacity-40 pointer-events-none"></div>
 <div class="max-w-container-max mx-auto px-margin-desktop grid grid-cols-1 md:grid-cols-12 gap-gutter items-center py-16 md:py-24 relative z-10">
@@ -159,18 +165,18 @@
 </div>
 <h1 class="font-display-lg text-[44px] md:text-[60px] leading-[1.05] tracking-[-0.03em] text-on-surface">
                         One view of everything <br/>
-<span class="text-[#16A34A]">you've built.</span>
+<span class="text-primary">you've built.</span>
 </h1>
 <p class="font-body-lg text-body-lg text-secondary max-w-xl">
                         Property, loans, super, investments, cashflow, tax, and entities — in one calm view. So the next move is obvious before you make it.
                     </p>
 <div class="flex flex-col sm:flex-row items-center gap-6 pt-4">
-<button class="w-full sm:w-auto px-[32px] py-[16px] bg-[#16A34A] text-white rounded-[12px] font-headline-sm text-headline-sm shadow-[0_12px_32px_rgba(22,163,74,0.18)] hover:shadow-xl transition-all active:scale-95">
+<button class="w-full sm:w-auto px-8 py-4 bg-primary text-on-primary rounded-xl font-headline-sm text-headline-sm shadow-lg hover:shadow-xl transition-all active:scale-95">
                             Start free
                         </button>
 <a class="font-label-md text-label-md text-secondary hover:text-primary flex items-center gap-2 group transition-colors" href="#">
                             Take the 60-second TRAIL Check 
-                            <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24"><path d="M5 12h14m-7-7 7 7-7 7"></path></svg>
+                            <span class="material-symbols-outlined transform group-hover:translate-x-1 transition-transform">arrow_forward</span>
 </a>
 </div>
 <p class="font-body-sm text-body-sm text-secondary-fixed-variant">
@@ -181,18 +187,15 @@
 <div class="md:col-span-5 flex justify-center md:justify-end">
 <div class="w-full max-w-md card-tilt bg-surface-container-lowest rounded-2xl p-8 shadow-[0_32px_64px_-16px_rgba(11,18,32,0.12)] border border-outline-variant/20 relative overflow-hidden group">
 <!-- Card internal mesh subtle overlay -->
-<div class="absolute top-0 right-0 w-64 h-64 bg-[#16A34A]/5 blur-[80px] rounded-full -mr-20 -mt-20"></div>
+<div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[80px] rounded-full -mr-20 -mt-20"></div>
 <div class="relative z-10 flex flex-col gap-8">
 <div>
-<div class="flex items-center justify-between mb-2">
-<p class="font-eyebrow text-eyebrow text-secondary uppercase tracking-wider">
-        Your Money Story · Last 30 Days
-    </p>
-<svg class="w-4 h-4 text-secondary opacity-60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24"><path d="M7 17L17 7m0 0H7m10 0v10"></path></svg>
-</div>
+<p class="font-eyebrow text-eyebrow text-secondary uppercase tracking-wider mb-2">
+                                    Your Money Story · Last 30 Days
+                                </p>
 <div class="flex items-baseline gap-2">
 <span class="font-display-lg text-[48px] text-on-surface tracking-tight">$8,420</span>
-<span class="font-label-md text-label-md text-[#16A34A] bg-[#16A34A]/10 px-2 py-0.5 rounded">+12%</span>
+<span class="font-label-md text-label-md text-primary bg-primary-container/10 px-2 py-0.5 rounded">+12%</span>
 </div>
 <p class="font-body-sm text-body-sm text-secondary">Kept · last month</p>
 </div>
@@ -201,12 +204,12 @@
 <div class="h-3 w-full flex rounded-full overflow-hidden bg-surface-container">
 <div class="h-full bg-secondary-fixed-dim" style="width: 24%"></div>
 <div class="h-full bg-secondary-container" style="width: 62%"></div>
-<div class="h-full bg-[#16A34A]" style="width: 14%"></div>
+<div class="h-full bg-primary" style="width: 14%"></div>
 </div>
 <div class="flex justify-between font-label-md text-[12px] text-secondary">
 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary-fixed-dim"></span> Tax 24%</span>
 <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-secondary-container"></span> Spent 62%</span>
-<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#16A34A]"></span> Saved 14%</span>
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary"></span> Saved 14%</span>
 </div>
 </div>
 <!-- KPI Grid -->
@@ -223,15 +226,15 @@
 <!-- Sub-card decorative detail -->
 <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl">
 <div class="flex items-center gap-3">
-<div class="w-10 h-10 rounded-full bg-[#16A34A]/10 flex items-center justify-center text-[#16A34A]">
-<svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24"><path d="M23 6l-9.5 9.5-5-5L1 18"></path><path d="M17 6h6v6"></path></svg>
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+<span class="material-symbols-outlined">trending_up</span>
 </div>
 <div>
 <p class="font-label-md text-[13px] text-on-surface">Projection</p>
 <p class="font-body-sm text-[11px] text-secondary">On track for 2024 goal</p>
 </div>
 </div>
-<svg class="w-5 h-5 text-secondary opacity-40" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24"><path d="m9 18 6-6-6-6"></path></svg>
+<span class="material-symbols-outlined text-secondary opacity-40">chevron_right</span>
 </div>
 </div>
 </div>
@@ -240,7 +243,7 @@
 </section>
 </main>
 <!-- Footer Shell -->
-<footer class="w-full py-12 bg-[#FAFAF7] border-t border-outline-variant/20">
+<footer class="w-full py-12 bg-surface-container-low dark:bg-surface-dim border-t border-outline-variant/20">
 <div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
 <div class="flex flex-col gap-2 items-center md:items-start">
 <span class="font-headline-sm text-headline-sm font-bold text-primary">Monitrax</span>
@@ -249,10 +252,10 @@
                 </p>
 </div>
 <div class="flex gap-8">
-<a class="text-secondary hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Privacy Policy</a>
-<a class="text-secondary hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Terms of Service</a>
-<a class="text-secondary hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Financial Services Guide</a>
-<a class="text-secondary hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Contact</a>
+<a class="text-secondary-fixed-variant hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Privacy Policy</a>
+<a class="text-secondary-fixed-variant hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Terms of Service</a>
+<a class="text-secondary-fixed-variant hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Financial Services Guide</a>
+<a class="text-secondary-fixed-variant hover:text-primary transition-all duration-300 font-body-sm text-body-sm hover:underline underline-offset-4" href="#">Contact</a>
 </div>
 </div>
 </footer>
