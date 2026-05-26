@@ -202,7 +202,22 @@
   @media (prefers-reduced-motion: reduce) {
     .cosmos-cta { transition: none !important; }
     .cosmos-cta:hover { transform: none !important; }
+    .cosmos-float { animation: none !important; }
   }
+
+  /* Slow floating idle motion for hero icons (Phase 48 PR 3).
+     ±20px vertical drift over 6s. The `transform: rotate(...)` set
+     inline on the parent is preserved because this animation only
+     touches translateY via a CSS variable. Skipped under
+     prefers-reduced-motion via the @media rule above. */
+  .cosmos-float {
+    animation: cosmos-float 6s ease-in-out infinite;
+  }
+}
+
+@keyframes cosmos-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
 }
 
 

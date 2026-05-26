@@ -2,6 +2,88 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48 Public Website Redesign — PR 3 (Hero + animations migration)
+
+- **Type**: UI redesign (visual replacement, no behaviour change)
+- **Scope**: Public-landing hero — full-screen dark Deep Cosmos hero with six floating 3D symbolic icons, locked Stitch design. Animations primitives refactored to compose `components/shell/motion.ts` SSOT. Old problem-framing sections removed from rendering.
+- **Why**: PR 3 of the Phase 48 6-PR sequence. The hero is the LCP element + first impression — replacing it is what makes the redesign legible to a cold visitor.
+
+### Changes Made
+
+**1. New `components/marketing/Hero.tsx`**
+- Full-screen `min-h-[88vh] lg:min-h-screen` dark Deep Cosmos canvas.
+- Six floating 3D symbolic icons baked locally to `public/marketing/hero/*.png` (property · super · trust · company · investments · cashflow). Hidden on mobile (`hidden lg:block`) — centred copy reads cleaner at narrow widths.
+- Each icon uses Next `<Image>` with `priority` (LCP-critical) + decorative `alt=""`.
+- Headline: "Your wealth, fully integrated." — Inter 700, 5xl→7xl→96px scale, emerald-gradient on the second line per locked direction.
+- Eyebrow chip: "AUSTRALIAN WEALTH OPERATING SYSTEM" — `cosmos-glass` pill.
+- Emerald `cosmos-cta` CTA "Start free" (44px min height) + reassurance line.
+- Subtle scroll affordance: bouncing chevron at bottom, respects `prefers-reduced-motion`.
+- Idle floating motion: new `.cosmos-float` keyframe in `globals.css`. Skipped when `prefers-reduced-motion: reduce`.
+
+**2. Icon assets baked into the repo**
+- Downloaded the 6 hero icon PNGs from Stitch's Google CDN (Stitch URLs can rotate; we need stable assets).
+- Stored at `public/marketing/hero/{property,super,trust,company,investments,cashflow}.png`.
+- Total weight: ~153KB across all six (~20-33KB each).
+
+**3. `animations.tsx` migrated to compose `motion.ts` SSOT**
+- Pure refactor — exported API (`Reveal`, `StaggerContainer`, `StaggerItem`) and props unchanged.
+- Replaced inline `useReducedMotion()` with `useReducedMotionSafe()` from `components/shell/motion.ts` (the canonical hook — never re-define locally).
+- Verified 9 existing consumers (`Trail*.tsx`, `app/welcome`, `/trail-method`, `/wealth-check`) still work — type-checked clean.
+
+**4. `app/page.tsx` IA partial re-sequence**
+- `TrailHero` swapped for new `Hero`.
+- Dropped from rendering: `TrailProblem`, `TrailBridge`, `TrailTestimonials` — v1 problem/anxiety framing that doesn't match the wealth-builder ICP (Q-ICP-1 decided 2026-05-24, Phase 48 doc §6.1). Files remain on disk for now (final delete in PR 4 once replacement primitives ship — `Reveal`-style component graveyard kept narrow).
+- Kept rendering as transitional placeholders until PR 4-5 replaces them: `TrailJourney`, `TrailHowItWorks`, `TrailCTA` (all already use dark stone-950 backgrounds, will look acceptable below the new dark hero).
+- Wrapped `<div>` in `bg-cosmos` so the page background is Deep Cosmos throughout.
+
+**5. `components/marketing/index.ts` regrouped**
+- Hero promoted from "legacy" to canonical.
+- Removed sections grouped as "transitional".
+- File-header JSDoc documents the removal/replacement plan.
+
+**6. `globals.css` — new `.cosmos-float` keyframe**
+- 6s ease-in-out infinite vertical drift (±20px). Independent of the inline `transform: rotate(...)` set on icon parents (rotate set on outer `<motion.div>`, float applied to inner `<div>` — clean separation).
+- `prefers-reduced-motion: reduce` short-circuits it.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/marketing/Hero.tsx` | Rewritten as dark Deep Cosmos full-screen hero |
+| `components/marketing/animations.tsx` | Refactored to compose `motion.ts` (pure, API preserved) |
+| `components/marketing/index.ts` | Regrouped, file-header doc |
+| `app/page.tsx` | New Hero, IA partial re-sequence, `bg-cosmos` wrapper |
+| `app/globals.css` | + `.cosmos-float` keyframe |
+| `public/marketing/hero/*.png` | 6 new icon assets (153KB total) |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no TypeScript errors introduced
+- [x] No business / logic / functional code touched (auth, calc engines, APIs, schema, dashboard, entities, tax engine ALL untouched)
+- [x] Secondary public pages (`/welcome`, `/trail-method`, `/wealth-check`) still consume `Header` + `Footer` from the barrel — verified no broken imports
+
+### Documentation Updated
+
+Per CLAUDE.md §16.3 — Hero component design rules documented inline in the file-header JSDoc. Barrel index documents the replacement plan. Phase 48 doc §4 PR 3 row will be ticked in `IMPLEMENTATION_PLAN.md`. `06_UI_UX_FOUNDATION.md` + `08_BRAND_UI_DESIGN.md` consolidated update remains scheduled for PR 4-5 (when the rest of the section primitives also land).
+
+### Testing
+
+- [x] Build passes locally (TypeScript)
+- [x] No new lint warnings
+- [ ] Vercel preview deploy `READY`
+- [ ] Preview: confirm new hero loads (dark cosmos bg, 6 floating icons, emerald gradient on "fully integrated", emerald Start free CTA)
+- [ ] Preview: confirm `prefers-reduced-motion` honoured (icons static, no bounce)
+- [ ] Preview: confirm hero icons are crisp on retina
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+---
+
 ### Phase 48 Public Website Redesign — PR 2 (Header + Footer)
 
 - **Type**: UI redesign (visual replacement, no behaviour change)
