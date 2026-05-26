@@ -60,6 +60,17 @@
       "title": "Monitrax Landing Page - Sections 2 & 3 (v1)",
       "generatedAt": "2026-05-26T00:48:00.000000Z",
       "scope": "First proof strip + One Picture generation. Superseded by below-hero (v2) which added the integration-debt caption."
+    },
+    "five-and-how": {
+      "id": "e0cb904a7b0949f7b8e6dc62db66ab97",
+      "sourceScreen": "projects/1859462351962811110/screens/e0cb904a7b0949f7b8e6dc62db66ab97",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 5208,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing Page - Sections 4 & 5 (Five Capabilities + How It Works)",
+      "generatedAt": "2026-05-26T00:59:00.000000Z",
+      "scope": "Sections 4-5 of the landing IA. THE FIVE (TRAIL capability cards with canonical stage hues: T sky / R amber / A indigo / I emerald / L violet, each as a single tonal badge accent — never a card-bg fill) + HOW IT WORKS (3 numbered steps with faded slate-300 numerals, typographic no-shadow cards). Warm-ivory throughout."
     }
   },
   "deferredEdits": {

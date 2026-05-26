@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax — Capabilities &amp; Workflow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed-variant": "#404757",
+                    "primary-container": "#00873a",
+                    "surface": "#f8f9ff",
+                    "on-secondary-container": "#5c6274",
+                    "surface-variant": "#d3e4fe",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "surface-tint": "#006e2d",
+                    "on-tertiary-fixed": "#1a1c1b",
+                    "background": "#f8f9ff",
+                    "surface-container-high": "#dce9ff",
+                    "error-container": "#ffdad6",
+                    "on-primary-fixed": "#002109",
+                    "on-primary-container": "#f7fff2",
+                    "on-primary-fixed-variant": "#005320",
+                    "inverse-on-surface": "#eaf1ff",
+                    "tertiary-container": "#737573",
+                    "secondary-fixed": "#dce2f6",
+                    "surface-container": "#e5eeff",
+                    "secondary-container": "#d9dff4",
+                    "on-primary": "#ffffff",
+                    "inverse-surface": "#213145",
+                    "surface-bright": "#f8f9ff",
+                    "surface-container-low": "#eff4ff",
+                    "on-tertiary-fixed-variant": "#454745",
+                    "tertiary-fixed": "#e2e3e0",
+                    "primary": "#006b2c",
+                    "tertiary-fixed-dim": "#c6c7c4",
+                    "outline": "#6e7b6c",
+                    "surface-container-highest": "#d3e4fe",
+                    "primary-fixed": "#7ffc97",
+                    "tertiary": "#5b5c5a",
+                    "on-error": "#ffffff",
+                    "primary-fixed-dim": "#62df7d",
+                    "outline-variant": "#bdcaba",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "on-surface-variant": "#3e4a3d",
+                    "inverse-primary": "#62df7d",
+                    "on-tertiary-container": "#fdfdfa",
+                    "on-background": "#0b1c30",
+                    "on-surface": "#0b1c30",
+                    "on-secondary-fixed": "#151b2a",
+                    "on-error-container": "#93000a",
+                    "surface-dim": "#cbdbf5",
+                    "secondary": "#585e6f",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "unit": "4px",
+                    "margin-desktop": "48px",
+                    "gutter": "24px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "eyebrow": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7; /* Warm Ivory Base */
+            color: #0b1c30;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .soft-navy-shadow {
+            box-shadow: 0 10px 30px -10px rgba(11, 18, 32, 0.08), 0 4px 10px -5px rgba(11, 18, 32, 0.04);
+        }
+        .editorial-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #e5e7eb, transparent);
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-background/80 dark:bg-background/80 backdrop-blur-md border-b border-outline-variant/30 shadow-sm h-20">
+<div class="flex items-center justify-between px-margin-desktop h-full max-w-container-max mx-auto">
+<div class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface">
+                Monitrax
+            </div>
+<div class="hidden md:flex items-center gap-8">
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md" href="#">Capabilities</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md" href="#">Pricing</a>
+<a class="text-secondary dark:text-secondary-fixed-dim hover:text-primary transition-colors font-body-md text-body-md" href="#">Security</a>
+<a class="text-primary dark:text-primary-fixed font-semibold border-b-2 border-primary font-body-md text-body-md" href="#">The TRAIL</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-secondary font-medium px-4 py-2 hover:bg-surface-container-low transition-all active:scale-95 duration-200">Sign In</button>
+<button class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold hover:opacity-90 transition-all active:scale-95 duration-200">Start Free</button>
+</div>
+</div>
+</nav>
+<main class="pt-20">
+<!-- Section 4: THE FIVE CAPABILITIES -->
+<section class="py-24 px-margin-mobile md:px-margin-desktop">
+<div class="max-w-container-max mx-auto">
+<div class="text-center mb-16 space-y-4 max-w-3xl mx-auto">
+<span class="font-eyebrow text-eyebrow text-primary uppercase tracking-[0.18em]">THE FIVE</span>
+<h2 class="font-headline-lg text-headline-lg md:text-display-lg text-on-surface">One framework. Five capabilities. The order that compounds.</h2>
+<p class="font-body-lg text-body-lg text-secondary">Track sets the picture. Reduce finds the waste. Anchor secures the base. Invest builds the engine. Live makes decisions from the full picture.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-gutter">
+<!-- Card 1: TRACK -->
+<div class="bg-white border border-slate-200 p-8 rounded-xl soft-navy-shadow flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex items-center justify-between mb-6">
+<span class="material-symbols-outlined text-sky-500 text-3xl">visibility</span>
+<span class="bg-sky-50 text-sky-600 px-3 py-1 rounded-full font-label-md text-[10px] uppercase tracking-wider font-bold">Track</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-4">Track your full picture.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Consolidate properties, trusts, and portfolios into a single authoritative source of truth.</p>
+</div>
+<div class="pt-6 border-t border-slate-50">
+<span class="font-eyebrow text-[11px] text-slate-400">30+ ENTITY TYPES</span>
+</div>
+</div>
+<!-- Card 2: REDUCE -->
+<div class="bg-white border border-slate-200 p-8 rounded-xl soft-navy-shadow flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex items-center justify-between mb-6">
+<span class="material-symbols-outlined text-amber-500 text-3xl">content_cut</span>
+<span class="bg-amber-50 text-amber-600 px-3 py-1 rounded-full font-label-md text-[10px] uppercase tracking-wider font-bold">Reduce</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-4">Reduce the leaks.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Identify hidden costs and tax inefficiencies that erode your compounding potential over time.</p>
+</div>
+<div class="pt-6 border-t border-slate-50">
+<span class="font-eyebrow text-[11px] text-slate-400">6 LEAK CATEGORIES</span>
+</div>
+</div>
+<!-- Card 3: ANCHOR -->
+<div class="bg-white border border-slate-200 p-8 rounded-xl soft-navy-shadow flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex items-center justify-between mb-6">
+<span class="material-symbols-outlined text-indigo-500 text-3xl">anchor</span>
+<span class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full font-label-md text-[10px] uppercase tracking-wider font-bold">Anchor</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-4">Anchor your safety net.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Automate cash buffers based on your specific debt structure and lifestyle requirements.</p>
+</div>
+<div class="pt-6 border-t border-slate-50">
+<span class="font-eyebrow text-[11px] text-slate-400">STRUCTURE-AWARE BUFFER</span>
+</div>
+</div>
+<!-- Card 4: INVEST -->
+<div class="bg-white border border-slate-200 p-8 rounded-xl soft-navy-shadow flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex items-center justify-between mb-6">
+<span class="material-symbols-outlined text-emerald-500 text-3xl">trending_up</span>
+<span class="bg-emerald-50 text-emerald-600 px-3 py-1 rounded-full font-label-md text-[10px] uppercase tracking-wider font-bold">Invest</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-4">Model the next move.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Simulate acquisitions or market shifts before you commit capital to ensure strategic alignment.</p>
+</div>
+<div class="pt-6 border-t border-slate-50">
+<span class="font-eyebrow text-[11px] text-slate-400">SCENARIO MODELLING</span>
+</div>
+</div>
+<!-- Card 5: LIVE -->
+<div class="bg-white border border-slate-200 p-8 rounded-xl soft-navy-shadow flex flex-col justify-between hover:translate-y-[-4px] transition-transform duration-300">
+<div>
+<div class="flex items-center justify-between mb-6">
+<span class="material-symbols-outlined text-violet-500 text-3xl">sunny</span>
+<span class="bg-violet-50 text-violet-600 px-3 py-1 rounded-full font-label-md text-[10px] uppercase tracking-wider font-bold">Live</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-4">Decide from clarity.</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-8">Eliminate manual data entry and reclaim your time. Focus on the lifestyle your wealth affords.</p>
+</div>
+<div class="pt-6 border-t border-slate-50">
+<span class="font-eyebrow text-[11px] text-slate-400">LESS SPREADSHEET FATIGUE</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 5: HOW IT WORKS -->
+<section class="py-24 px-margin-mobile md:px-margin-desktop bg-surface-container-low/30">
+<div class="max-w-5xl mx-auto border-t border-slate-200 pt-24">
+<div class="mb-16">
+<span class="font-eyebrow text-eyebrow text-secondary-fixed-variant uppercase tracking-[0.18em]">HOW IT WORKS</span>
+<h2 class="font-headline-lg text-headline-lg md:text-headline-lg text-on-surface mt-4">Three steps to one clean picture.</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-16">
+<!-- Step 1 -->
+<div class="relative group">
+<span class="font-display-lg text-[64px] text-slate-200 block mb-6 transition-colors group-hover:text-primary/20">01</span>
+<h4 class="font-headline-sm text-headline-sm mb-4">Add your picture.</h4>
+<p class="font-body-md text-body-md text-secondary leading-relaxed">Manual entry or CSV import. We provide the templates to capture your complex entity structures in minutes.</p>
+</div>
+<!-- Step 2 -->
+<div class="relative group">
+<span class="font-display-lg text-[64px] text-slate-200 block mb-6 transition-colors group-hover:text-primary/20">02</span>
+<h4 class="font-headline-sm text-headline-sm mb-4">See where you stand.</h4>
+<p class="font-body-md text-body-md text-secondary leading-relaxed">Instant visualisations of net worth, cashflow, debt levels, and safety buffers across all holding entities.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative group">
+<span class="font-display-lg text-[64px] text-slate-200 block mb-6 transition-colors group-hover:text-primary/20">03</span>
+<h4 class="font-headline-sm text-headline-sm mb-4">Model the levers.</h4>
+<p class="font-body-md text-body-md text-secondary leading-relaxed">Adjust assumptions on interest rates, growth, or spending. See exactly how today's choices impact your 10-year horizon.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Placeholder for Image Context (Bento/Hero visual) -->
+<section class="py-24 px-margin-desktop flex justify-center">
+<div class="w-full max-w-container-max rounded-3xl overflow-hidden soft-navy-shadow bg-surface-container">
+<img alt="Wealth OS Dashboard" class="w-full h-[600px] object-cover opacity-90 hover:opacity-100 transition-opacity duration-700" data-alt="A sophisticated financial analytics dashboard displayed on a high-end desktop monitor in a bright, modern Australian office space. The UI is clean and minimalist, featuring elegant data visualizations, wealth tracking charts, and entity management modules. The scene is bathed in warm, natural morning light, emphasizing a professional yet serene environment for high-net-worth wealth management. Colors are restrained, dominated by soft whites and deep navy accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwHOl5O5HmZKGO7_SD0Hsj8AY9Z1D_WBVqBTIpA2Iaez7ECRYLhTxL6NcCQCxk2BXuUuTamO_2gZ8josc-5bK_nhXFNGbpYZirhG1XK-HKmOKNc8YhgyYJB7O4FORHRjZCzExjomOxqBLX1q2YEGirbbpiBulBDhkkH5gRfOyJsje1Zkl97s8mSwioFz5BKJ5axLiwEP6ahfqxqaRmPKveMt3BWLqo-xPNFPVPr996WYlHxZWV6s5KdXACcrhNkTlh_Kng-MQnxOs"/>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="w-full py-12 bg-surface-container-low dark:bg-surface-dim border-t border-outline-variant/20">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="flex flex-col gap-2">
+<div class="font-headline-sm text-headline-sm font-bold text-primary">Monitrax</div>
+<p class="font-body-sm text-body-sm text-on-secondary-fixed-variant">© 2024 Monitrax. A premium Australian wealth operating system.</p>
+</div>
+<div class="flex flex-wrap gap-8 justify-center">
+<a class="text-secondary-fixed-variant hover:text-primary font-body-sm text-body-sm hover:underline underline-offset-4 transition-all duration-300" href="#">Privacy Policy</a>
+<a class="text-secondary-fixed-variant hover:text-primary font-body-sm text-body-sm hover:underline underline-offset-4 transition-all duration-300" href="#">Terms of Service</a>
+<a class="text-secondary-fixed-variant hover:text-primary font-body-sm text-body-sm hover:underline underline-offset-4 transition-all duration-300" href="#">Financial Services Guide</a>
+<a class="text-secondary-fixed-variant hover:text-primary font-body-sm text-body-sm hover:underline underline-offset-4 transition-all duration-300" href="#">Contact</a>
+</div>
+</div>
+</footer>
+<script>
+        // Subtle scroll reveal effect
+        document.addEventListener('DOMContentLoaded', () => {
+            const observerOptions = {
+                threshold: 0.1
+            };
+            
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('opacity-100', 'translate-y-0');
+                        entry.target.classList.remove('opacity-0', 'translate-y-10');
+                    }
+                });
+            }, observerOptions);
+
+            document.querySelectorAll('section > div > div').forEach(el => {
+                el.classList.add('transition-all', 'duration-1000', 'opacity-0', 'translate-y-10');
+                observer.observe(el);
+            });
+        });
+    </script>
+</body></html>
