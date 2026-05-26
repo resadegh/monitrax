@@ -1,11 +1,23 @@
 'use client';
 
+/**
+ * Resend-verification page.
+ *
+ * Phase 48 PR 6 (2026-05-26): visual chrome rebuilt to dark Deep Cosmos
+ * via `AuthShell`. ALL logic preserved verbatim:
+ *   - POST to `/api/auth/resend-verification`
+ *   - Success state ("Check your email") + error mapping
+ *   - Privacy-safe success message (doesn't confirm account existence)
+ */
+
 import { useState } from 'react';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Mail, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import {
+  AuthShell,
+  AuthLabel,
+  AuthSubmit,
+  AuthError,
+} from '@/components/auth/AuthShell';
 
 export default function ResendVerificationPage() {
   const [email, setEmail] = useState('');
@@ -32,86 +44,75 @@ export default function ResendVerificationPage() {
       } else {
         setSubmitted(true);
       }
-    } catch (err) {
+    } catch {
       setError('An error occurred. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-brand-primary p-6">
-      <div className="bg-card p-8 rounded-lg shadow-lg border border-border max-w-md w-full">
-        {!submitted ? (
-          <>
-            <div className="text-center mb-8">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Mail className="h-6 w-6 text-primary" />
-              </div>
-              <h1 className="text-xl font-semibold mb-2">Resend verification email</h1>
-              <p className="text-muted-foreground text-sm">
-                Enter your email address and we&apos;ll send you a new verification link.
-              </p>
-            </div>
-
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg mb-6 text-sm">
-                {error}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? (
-                  <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
-                    Sending...
-                  </>
-                ) : (
-                  'Send verification email'
-                )}
-              </Button>
-            </form>
-
-            <div className="mt-6 text-center">
-              <Link
-                href="/signin"
-                className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to sign in
-              </Link>
-            </div>
-          </>
-        ) : (
-          <div className="text-center">
-            <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-xl font-semibold mb-2">Check your email</h1>
-            <p className="text-muted-foreground text-sm mb-6">
-              If an account exists with <span className="font-medium text-foreground">{email}</span>,
-              you&apos;ll receive a verification link shortly.
-            </p>
-            <Button asChild variant="outline" className="w-full">
-              <Link href="/signin">Back to sign in</Link>
-            </Button>
+  if (submitted) {
+    return (
+      <AuthShell title="Check your email.">
+        <div className="text-center">
+          <div className="mx-auto mb-6 flex h-12 w-12 items-center justify-center rounded-full border border-cosmos-action/30 bg-cosmos-action/15">
+            <svg className="h-6 w-6 text-cosmos-action" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l9 6 9-6M3 8v8a2 2 0 002 2h14a2 2 0 002-2V8M3 8l9-5 9 5" />
+            </svg>
           </div>
-        )}
+          <p className="mb-8 text-sm leading-relaxed text-cosmos-soft">
+            If an account exists with <span className="font-medium text-cosmos">{email}</span>, you&apos;ll receive a verification link shortly.
+          </p>
+          <Link
+            href="/signin"
+            className="inline-flex h-12 w-full items-center justify-center rounded-xl border border-cosmos-hairline bg-cosmos-surface/50 text-sm font-medium text-cosmos transition-colors hover:bg-cosmos-elevated"
+          >
+            Back to sign in
+          </Link>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell
+      title="Resend verification email"
+      subtitle="Enter your email address and we'll send you a new verification link."
+    >
+      {error ? <AuthError>{error}</AuthError> : null}
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div>
+          <AuthLabel htmlFor="email">Email address</AuthLabel>
+          <input
+            id="email"
+            type="email"
+            placeholder="name@company.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            disabled={isLoading}
+            autoComplete="email"
+            className="cosmos-input"
+          />
+        </div>
+
+        <AuthSubmit isLoading={isLoading} loadingLabel="Sending...">
+          Send verification email
+        </AuthSubmit>
+      </form>
+
+      <div className="mt-6 text-center">
+        <Link
+          href="/signin"
+          className="inline-flex items-center gap-1 text-sm text-cosmos-muted transition-colors hover:text-cosmos"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to sign in
+        </Link>
       </div>
-    </div>
+    </AuthShell>
   );
 }
