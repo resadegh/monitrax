@@ -1,56 +1,89 @@
+/**
+ * Public-site marketing footer.
+ *
+ * Phase 48 PR 2 (2026-05-26): rebuilt to the dark Deep Cosmos design
+ * (`docs/blueprint/PHASE_48_PUBLIC_WEBSITE_REDESIGN.md` §4 PR2 row,
+ * `.stitch/SITE.md` §7 — locked v4 direction, Stitch `closing` screen).
+ * Composes the cosmos-* token vocabulary added in PR 1.
+ *
+ * Visual deltas vs the previous (v1):
+ *   - Background: `bg-cosmos-deeper` (#08080F) — slightly darker than the
+ *     body's `--cosmos-bg` (#0A0A14), creating a chiseled-edge delineation
+ *     between content and footer per the Stitch closing.html reference.
+ *   - Logo: refined geometric "M" — emerald-tinted square (matches Header).
+ *     Previous logo was a solid emerald block — works but less elegant.
+ *   - Trimmed dead-link columns. CLAUDE.md §12.1 zero-dead-links audit
+ *     (2026-05-26) confirmed the following routes do NOT exist:
+ *       `/about`, `/contact`, `/blog`, `/learn`, `/changelog`,
+ *       `/pricing`, `/security`
+ *     Previous footer linked to ALL of them — every click landed on a 404.
+ *     This rebuild keeps only links to routes that resolve, plus anchor
+ *     links to landing-page sections that PR 3-5 will add (`/#trail`,
+ *     `/#pricing`, `/#security`). The "Company" column is removed entirely
+ *     because every entry there was dead.
+ *   - ACN displayed (per the Phase 47 legal docs — ReNew Holding Company
+ *     Pty Ltd, ACN 675 267 311, 10 Fairview St Guildford NSW 2161). ABN
+ *     omitted until confirmed.
+ *   - Social icons removed for now — the previous placeholder URLs went to
+ *     `linkedin.com` and `twitter.com` (provider home pages, not Monitrax
+ *     accounts). Will return in a follow-up PR once real handles exist.
+ */
+
 import Link from 'next/link';
 
-const footerLinks = {
-  app: [
-    { label: 'Features', href: '/#features' },
-    { label: 'Pricing', href: '/pricing' },
-    { label: 'Sign In', href: '/signin' },
-  ],
-  resources: [
-    { label: 'Blog', href: '/blog' },
-    { label: 'Learn', href: '/learn' },
-    { label: 'Changelog', href: '/changelog' },
-  ],
-  legal: [
-    { label: 'Terms', href: '/legal/terms-of-service' },
-    { label: 'Privacy', href: '/legal/privacy-policy' },
-    { label: 'AFSL, Credit & Tax', href: '/legal/afsl-credit-tax-boundary-disclosure' },
-    { label: 'All legal documents', href: '/legal' },
-  ],
-  company: [
-    { label: 'About', href: '/about' },
-    { label: 'Contact', href: '/contact' },
-  ],
-};
+const PRODUCT_LINKS = [
+  { label: 'Sign in', href: '/signin' },
+  { label: 'Start free', href: '/register' },
+  { label: 'The TRAIL', href: '/#trail' },
+] as const;
+
+const EXPLORE_LINKS = [
+  { label: 'TRAIL Check', href: '/trail-check' },
+  { label: 'Wealth Check', href: '/wealth-check' },
+  { label: 'The TRAIL Method', href: '/trail-method' },
+] as const;
+
+const LEGAL_LINKS = [
+  { label: 'Terms of Service', href: '/legal/terms-of-service' },
+  { label: 'Privacy Policy', href: '/legal/privacy-policy' },
+  { label: 'AFSL · Credit · Tax Boundary', href: '/legal/afsl-credit-tax-boundary-disclosure' },
+  { label: 'CDR Policy', href: '/legal/cdr-policy' },
+  { label: 'All legal documents', href: '/legal' },
+] as const;
 
 export function Footer() {
   return (
-    <footer className="border-t border-white/10 bg-brand-primary">
+    <footer className="border-t border-cosmos-hairline bg-cosmos-deeper" aria-label="Site footer">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="py-12 md:py-16">
-          <div className="grid grid-cols-2 gap-8 md:grid-cols-5">
-            {/* Logo and tagline */}
+        <div className="py-16 md:py-20">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-12 md:grid-cols-4 lg:gap-x-12">
+            {/* Brand column */}
             <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-secondary">
-                  <span className="text-lg font-bold text-white">M</span>
+              <Link href="/" className="inline-flex items-center gap-2.5" aria-label="Monitrax — home">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cosmos-action/30 bg-cosmos-action/15">
+                  <span className="text-lg font-bold tracking-tight text-cosmos-action">M</span>
                 </div>
-                <span className="text-xl font-bold text-white">Monitrax</span>
+                <span className="text-lg font-semibold tracking-tight text-cosmos">Monitrax</span>
               </Link>
-              <p className="mt-4 text-sm text-white/60">
-                Australian financial software for wealth-builders who want to see the whole picture.
+              <p className="mt-6 max-w-xs text-sm leading-relaxed text-cosmos-soft">
+                Australian wealth operating system for households outgrowing spreadsheets.
+              </p>
+              <p className="mt-6 text-[11px] uppercase leading-loose tracking-[0.18em] text-cosmos-faint">
+                ReNew Holding Company Pty Ltd
+                <br />
+                ACN 675 267 311
               </p>
             </div>
 
-            {/* App links */}
+            {/* Product column */}
             <div>
-              <h3 className="text-sm font-semibold text-white">App</h3>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.app.map((link) => (
+              <h3 className="text-sm font-semibold text-cosmos">Product</h3>
+              <ul className="mt-5 space-y-3">
+                {PRODUCT_LINKS.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/60 hover:text-white transition-colors"
+                      className="text-sm text-cosmos-soft transition-colors hover:text-cosmos"
                     >
                       {link.label}
                     </Link>
@@ -59,15 +92,15 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Resources links */}
+            {/* Explore column */}
             <div>
-              <h3 className="text-sm font-semibold text-white">Resources</h3>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.resources.map((link) => (
+              <h3 className="text-sm font-semibold text-cosmos">Explore</h3>
+              <ul className="mt-5 space-y-3">
+                {EXPLORE_LINKS.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/60 hover:text-white transition-colors"
+                      className="text-sm text-cosmos-soft transition-colors hover:text-cosmos"
                     >
                       {link.label}
                     </Link>
@@ -76,32 +109,15 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Legal links */}
+            {/* Legal column */}
             <div>
-              <h3 className="text-sm font-semibold text-white">Legal</h3>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.legal.map((link) => (
+              <h3 className="text-sm font-semibold text-cosmos">Legal</h3>
+              <ul className="mt-5 space-y-3">
+                {LEGAL_LINKS.map((link) => (
                   <li key={link.href}>
                     <Link
                       href={link.href}
-                      className="text-sm text-white/60 hover:text-white transition-colors"
-                    >
-                      {link.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Company links */}
-            <div>
-              <h3 className="text-sm font-semibold text-white">Company</h3>
-              <ul className="mt-4 space-y-3">
-                {footerLinks.company.map((link) => (
-                  <li key={link.href}>
-                    <Link
-                      href={link.href}
-                      className="text-sm text-white/60 hover:text-white transition-colors"
+                      className="text-sm text-cosmos-soft transition-colors hover:text-cosmos"
                     >
                       {link.label}
                     </Link>
@@ -112,37 +128,11 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-white/10 py-6">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-sm text-white/50">
-              © {new Date().getFullYear()} Monitrax. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://linkedin.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/50 hover:text-white transition-colors"
-                aria-label="LinkedIn"
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-                </svg>
-              </a>
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-white/50 hover:text-white transition-colors"
-                aria-label="X (Twitter)"
-              >
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                </svg>
-              </a>
-            </div>
-          </div>
+        {/* Bottom bar — chiseled hairline divider + copyright */}
+        <div className="border-t border-cosmos-hairline py-8">
+          <p className="text-xs text-cosmos-faint">
+            © {new Date().getFullYear()} Monitrax. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>

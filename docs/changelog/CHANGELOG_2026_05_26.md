@@ -2,6 +2,85 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48 Public Website Redesign — PR 2 (Header + Footer)
+
+- **Type**: UI redesign (visual replacement, no behaviour change)
+- **Scope**: Public-marketing Header + Footer chrome rebuilt to dark Deep Cosmos visual identity. Composes the cosmos-* tokens added in PR 1.
+- **Why**: PR 2 of the Phase 48 6-PR sequence. First user-visible PR of the redesign — replaces the v1 ivory-era chrome that sits on top of every public page (`/`, `/wealth-check`, `/trail-method`, `/welcome`).
+
+### Changes Made
+
+**1. `components/marketing/Header.tsx` — rebuilt**
+- Background: `bg-cosmos-deeper/80 backdrop-blur-xl` + `border-b border-cosmos-hairline` (was `bg-stone-950/90`)
+- Logo: refined geometric "M" — emerald-tinted square (`bg-cosmos-action/15` + `border border-cosmos-action/30`) with bold emerald "M". v1's amber gradient pill removed per SITE.md §7 lock.
+- Wordmark: `text-lg font-semibold tracking-tight text-cosmos` (was `text-xl font-bold`)
+- Nav trimmed from 4 → 3 items: **The TRAIL** (`/#trail`), **Method** (`/trail-method`), **Wealth Check** (`/wealth-check`). Removed `/pricing` and `/security` — neither route exists (CLAUDE.md §12.1 dead-link audit, see below).
+- Sign in: ghost text link (was Button component)
+- Start free CTA: `cosmos-cta` emerald pill with soft glow (was amber gradient Button)
+- Mobile menu: stone-elevated hover, cosmos-hairline divider, same toggle UX preserved
+- All behaviour preserved: sticky top, mobile menu state, accessible labels (added `aria-label`, `aria-expanded` where missing)
+
+**2. `components/marketing/Footer.tsx` — rebuilt**
+- Background: `bg-cosmos-deeper` (#08080F) — slightly darker than body cosmos-bg, creating chiseled-edge delineation per Stitch closing.html reference (was `bg-brand-primary`)
+- Logo: matches new Header logo (emerald-tinted square + "M") — brand consistency
+- Column count: 4 (was 5 — "Company" column removed entirely because every entry was a dead link)
+- ACN displayed: "ReNew Holding Company Pty Ltd · ACN 675 267 311" per Phase 47 legal-doc registration. ABN omitted until confirmed.
+- Social icons removed: previous LinkedIn / Twitter links pointed to provider home pages (`linkedin.com`, `twitter.com`) not real Monitrax accounts — placeholder pollution. Will return in a follow-up PR once real handles exist.
+- Bottom bar simplified: copyright only, no social row.
+
+**3. Dead-link audit (CLAUDE.md §12.1 enforcement)**
+
+Routes the previous Header/Footer linked to but do NOT exist in `app/`:
+| Route | In Header? | In Footer? | Action |
+|---|---|---|---|
+| `/pricing` | ✓ | ✓ | Removed both. Will return as `/#pricing` anchor in PR 5. |
+| `/security` | ✓ | — | Removed from Header. Will return as `/#security` anchor in PR 4. |
+| `/about` | — | ✓ | Removed. No replacement planned. |
+| `/contact` | — | ✓ | Removed. No replacement planned. |
+| `/blog` | — | ✓ | Removed. No replacement planned. |
+| `/learn` | — | ✓ | Removed. No replacement planned. |
+| `/changelog` | — | ✓ | Removed. No replacement planned. |
+
+Routes that DO exist and are now properly linked: `/`, `/signin`, `/register`, `/trail-method`, `/trail-check`, `/wealth-check`, `/legal`, `/legal/terms-of-service`, `/legal/privacy-policy`, `/legal/afsl-credit-tax-boundary-disclosure`, `/legal/cdr-policy`.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/marketing/Header.tsx` | Rebuilt — Deep Cosmos chrome, refined M mark, emerald CTA, dead-link trim |
+| `components/marketing/Footer.tsx` | Rebuilt — Deep Cosmos chrome, 4-column grid, ACN line, dead-link trim |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | THIS PR entry prepended |
+| `docs/IMPLEMENTATION_PLAN.md` | Phase 48 workstream PR 2 checkbox ticked |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no TypeScript errors introduced
+- [x] Full `npm run build` runs on Vercel post-merge per §17
+- [x] No business / logic / functional code touched (auth, calc engines, APIs, schema, dashboard, entities, tax engine ALL untouched)
+- [x] No new imports of internal-app primitives — header/footer remain self-contained marketing components
+
+### Documentation Updated
+
+Per CLAUDE.md §16.3 — the design-system additions (new shared component patterns: dark Deep Cosmos header + footer chrome) are captured inline in the file-header JSDoc on each component. The Phase 48 doc serves as the canonical narrative pointer. `06_UI_UX_FOUNDATION.md` and `08_BRAND_UI_DESIGN.md` will receive their consolidated update in PR 3 (when the hero + section primitives also land — a single coordinated update is cleaner than five tiny ones).
+
+### Testing
+
+- [x] Build passes
+- [x] Lint passes (no new warnings introduced)
+- [ ] Manual: visit `monitrax.com.au` after merge → header + footer should be Deep Cosmos dark, no longer have amber pill logo or amber CTA
+- [ ] Manual: click each Header nav item → all should resolve (no 404)
+- [ ] Manual: click each Footer link → all should resolve (no 404)
+- [ ] Manual: mobile menu toggle works
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD on creation
+- Status: Pending creation
+
+---
+
 ### Phase 48 Public Website Redesign — PR 1 (Foundation)
 
 - **Type**: Feature (foundation work for multi-PR redesign)
