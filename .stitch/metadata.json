@@ -73,15 +73,27 @@
       "scope": "Sections 4-5 of the landing IA. THE FIVE (TRAIL capability cards with canonical stage hues: T sky / R amber / A indigo / I emerald / L violet, each as a single tonal badge accent — never a card-bg fill) + HOW IT WORKS (3 numbered steps with faded slate-300 numerals, typographic no-shadow cards). Warm-ivory throughout."
     },
     "dark-hero": {
+      "id": "42730aaf80ed4fcf822278e642d476a9",
+      "sourceScreen": "projects/1859462351962811110/screens/42730aaf80ed4fcf822278e642d476a9",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2362,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Hero - Symbolic 3D Icons",
+      "generatedAt": "2026-05-26T01:55:00.000000Z",
+      "previousVersion": "9043b37418f547e19fe3179beac15945",
+      "scope": "v2 — labelled wealth pills replaced with 6 symbolic 3D icons (house/columns/shield/$/upward-arrow/bank) per Reza directive 2026-05-26 ~01:48 UTC. Same headline, CTA, nav, background, composition. Emerald dollar sign $ serves as the hero icon, matching the brand CTA accent. Aligned with the in-app components/wealth/wealthGlyphs.tsx filled-silhouette vocabulary, rendered 3D-glossy for marketing."
+    },
+    "dark-hero-pills": {
       "id": "9043b37418f547e19fe3179beac15945",
       "sourceScreen": "projects/1859462351962811110/screens/9043b37418f547e19fe3179beac15945",
       "deviceType": "DESKTOP",
       "width": 2560,
       "height": 2362,
       "modelId": "GEMINI_3_FLASH",
-      "title": "Monitrax Dark Hero - 3D Pillars",
+      "title": "Monitrax Dark Hero - 3D Pillars (v1, labelled pills)",
       "generatedAt": "2026-05-26T01:16:00.000000Z",
-      "scope": "Direction pivot v3 — Copilot-energy dark hero with 6 Stitch-rendered 3D wealth pills (Property/Super/Trust/Offset/SMSF/Cashflow) using {{DATA:IMAGE:*}} placeholders. Headline 'Your wealth, fully integrated.' at Inter 700 96px on #0A0A14 background. Single emerald 'Start free' pill CTA. Note: per Reza directive 2026-05-26 ~01:18 UTC, all subsequent generations DROP the 'forbidden' lists and give Stitch creative latitude. Only strategic invariants (wealth-builder content, AFSL boundary) remain enforced."
+      "scope": "Original Copilot-style dark hero with 6 labelled wealth pills. Superseded by symbolic icons version (dark-hero key)."
     },
     "security-and-ai": {
       "id": "134afb0289bd49d19de9b9f4c8fe0ce5",
