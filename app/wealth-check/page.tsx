@@ -84,11 +84,14 @@ function InputForm({
 
   return (
     <Reveal className="mx-auto max-w-2xl">
-      <div className="text-center">
-        <h1 className="text-4xl font-semibold tracking-tight text-cosmos sm:text-5xl">
+      <div className="cosmos-glow-center relative isolate text-center">
+        <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-cosmos-action">
+          Wealth Check
+        </p>
+        <h1 className="text-4xl font-semibold tracking-tight text-cosmos sm:text-5xl lg:text-[64px]">
           Are you on track?
         </h1>
-        <p className="mt-4 text-lg text-cosmos-soft">
+        <p className="mt-6 text-lg text-cosmos-soft sm:text-xl">
           Three questions. Thirty seconds. A specific answer in dollars — not a grade.
         </p>
       </div>

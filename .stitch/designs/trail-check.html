@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cosmos Assessment | Wealth Quiz</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-variant": "#34343f",
+                        "surface-container-low": "#1b1b25",
+                        "primary-fixed": "#7ffc97",
+                        "surface-dim": "#12121d",
+                        "secondary-container": "#00a2e6",
+                        "on-primary": "#003914",
+                        "primary": "#62df7d",
+                        "secondary": "#89ceff",
+                        "surface-container": "#1f1f29",
+                        "on-secondary-container": "#00344e",
+                        "surface-container-high": "#292934",
+                        "surface-bright": "#393844",
+                        "on-tertiary": "#660027",
+                        "surface-container-lowest": "#0d0d17",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "outline": "#879485",
+                        "on-secondary": "#00344d",
+                        "on-primary-container": "#003111",
+                        "on-surface": "#e4e1f0",
+                        "tertiary": "#ffb2bf",
+                        "on-surface-variant": "#bdcaba",
+                        "surface-container-highest": "#34343f",
+                        "secondary-fixed-dim": "#89ceff",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffd9de",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "primary-container": "#1ca64d",
+                        "on-secondary-fixed": "#001e2f",
+                        "tertiary-container": "#ec6284",
+                        "secondary-fixed": "#c9e6ff",
+                        "on-background": "#e4e1f0",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "on-tertiary-container": "#5a0022",
+                        "inverse-surface": "#e4e1f0",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-fixed": "#002109",
+                        "surface": "#12121d",
+                        "background": "#12121d",
+                        "inverse-primary": "#006e2d",
+                        "inverse-on-surface": "#302f3b",
+                        "surface-tint": "#62df7d",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-fixed-variant": "#004c6e"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "stack-lg": "32px",
+                        "stack-md": "16px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "stack-sm": "8px",
+                        "stack-xl": "64px",
+                        "container-max": "1200px",
+                        "margin-desktop": "64px"
+                    },
+                    "fontFamily": {
+                        "display-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg-mobile": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["30px", {"lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-sm": ["24px", {"lineHeight": "32px", "letterSpacing": "0em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A14;
+            color: #e4e1f0;
+            font-family: 'Inter', sans-serif;
+        }
+        .cosmos-glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .cosmos-glass-hover:hover {
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(98, 223, 125, 0.3);
+        }
+        .emerald-glow {
+            box-shadow: 0 0 20px rgba(98, 223, 125, 0.15);
+        }
+        .indigo-glow {
+            text-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+        }
+        .trail-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+<!-- Desktop Side Nav -->
+<aside class="hidden md:flex flex-col fixed left-0 top-0 h-full w-64 border-r border-[#FFFFFF15] bg-surface-container-low/90 backdrop-blur-3xl z-50">
+<div class="p-8 flex flex-col gap-2">
+<h1 class="font-headline-xl text-headline-xl text-primary font-bold">Cosmos</h1>
+<div class="flex items-center gap-3 mt-4">
+<div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="quiz">quiz</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface font-bold">Wealth Quiz</p>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant">Institutional Grade</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 mt-8">
+<a class="flex items-center gap-4 px-8 py-4 text-primary border-r-2 border-primary bg-primary/5 font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="quiz">quiz</span> Assessment
+            </a>
+<a class="flex items-center gap-4 px-8 py-4 text-on-surface-variant hover:bg-white/5 transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span> Insights
+            </a>
+<a class="flex items-center gap-4 px-8 py-4 text-on-surface-variant hover:bg-white/5 transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span> Portfolio
+            </a>
+<a class="flex items-center gap-4 px-8 py-4 text-on-surface-variant hover:bg-white/5 transition-colors font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined" data-icon="key">key</span> Vault
+            </a>
+</nav>
+</aside>
+<!-- Top AppBar Mobile -->
+<header class="fixed top-0 w-full flex justify-between items-center px-margin-mobile md:px-margin-desktop h-16 w-full max-w-container-max mx-auto bg-background/80 backdrop-blur-3xl border-b border-[#FFFFFF15] z-40 md:hidden">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-primary">Cosmos Assessment</h2>
+<span class="material-symbols-outlined text-primary" data-icon="account_balance_wallet">account_balance_wallet</span>
+</header>
+<main class="md:ml-64 pt-24 md:pt-16 px-6 md:px-12 pb-32 max-w-5xl mx-auto">
+<!-- STATE 1: QUIZ SECTION -->
+<section class="mb-stack-xl flex flex-col items-center text-center" id="quiz-state">
+<div class="mb-stack-md">
+<span class="text-[#16A34A] font-bold tracking-[0.2em] text-label-sm font-label-sm">TRAIL CHECK</span>
+</div>
+<h2 class="font-display-lg text-display-lg mb-stack-sm md:text-display-lg text-display-lg-mobile">What stage are you on?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-stack-lg">Sixty seconds. Five questions. One personalised path.</p>
+<!-- Progress Indicator -->
+<div class="flex items-center gap-3 mb-stack-xl">
+<div class="trail-dot bg-[#0EA5E9]"></div> <!-- Sky -->
+<div class="trail-dot bg-[#F59E0B]"></div> <!-- Amber -->
+<div class="trail-dot bg-[#6366F1]"></div> <!-- Indigo -->
+<div class="trail-dot border border-[#16A34A] bg-transparent"></div> <!-- Emerald -->
+<div class="trail-dot border border-[#8B5CF6] bg-transparent"></div> <!-- Violet -->
+</div>
+<!-- Question Card -->
+<div class="cosmos-glass rounded-xl p-8 md:p-12 w-full max-w-2xl text-left relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -mr-16 -mt-16"></div>
+<p class="text-primary font-label-md text-label-md mb-4">Question 3 of 5</p>
+<h3 class="font-headline-md text-headline-md mb-stack-lg">How is your debt situation?</h3>
+<div class="space-y-4">
+<button class="w-full text-left p-6 rounded-lg cosmos-glass cosmos-glass-hover transition-all flex items-center justify-between group active:scale-[0.98]">
+<span class="font-body-md text-body-md">High-interest debt is overwhelming</span>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full text-left p-6 rounded-lg cosmos-glass cosmos-glass-hover transition-all flex items-center justify-between group active:scale-[0.98]">
+<span class="font-body-md text-body-md">Managing monthly payments comfortably</span>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity" data-icon="chevron_right">chevron_right</span>
+</button>
+<!-- SELECTED STATE -->
+<button class="w-full text-left p-6 rounded-lg cosmos-glass border-primary/50 emerald-glow transition-all flex items-center justify-between group active:scale-[0.98] bg-primary/5">
+<span class="font-body-md text-body-md text-primary font-bold">Debt-free or low-interest strategic debt only</span>
+<span class="material-symbols-outlined text-primary" data-icon="check_circle" data-weight="fill" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="w-full text-left p-6 rounded-lg cosmos-glass cosmos-glass-hover transition-all flex items-center justify-between group active:scale-[0.98]">
+<span class="font-body-md text-body-md">I use debt to leverage large investments</span>
+<span class="material-symbols-outlined opacity-0 group-hover:opacity-100 transition-opacity" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<div class="flex justify-between mt-stack-lg">
+<button class="px-6 py-3 rounded-lg border border-white/10 hover:bg-white/5 transition-colors font-label-md text-label-md flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span> Back
+                    </button>
+<button class="px-8 py-3 rounded-lg bg-primary text-on-primary font-bold font-label-md text-label-md hover:opacity-90 transition-opacity active:scale-95">
+                        Continue
+                    </button>
+</div>
+</div>
+</section>
+<!-- Divider -->
+<div class="w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent my-stack-xl"></div>
+<!-- STATE 2: RESULT SECTION -->
+<section class="flex flex-col items-center" id="result-state">
+<div class="mb-stack-md">
+<span class="text-on-surface-variant font-bold tracking-[0.2em] text-label-sm font-label-sm">YOUR STAGE</span>
+</div>
+<!-- Big Visual Anchor -->
+<div class="relative mb-stack-lg">
+<div class="absolute inset-0 bg-indigo-500/20 blur-[100px] rounded-full"></div>
+<span class="text-[200px] font-black text-indigo-400 indigo-glow select-none leading-none">A</span>
+</div>
+<h2 class="font-display-lg text-display-lg mb-stack-sm text-center md:text-display-lg text-display-lg-mobile">You're on the ANCHOR stage.</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant text-center max-w-xl mb-stack-xl">You're past survival mode. Time to build the safety net that keeps you stable.</p>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter w-full mb-stack-xl">
+<!-- What this means -->
+<div class="cosmos-glass p-8 rounded-xl">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-indigo-400" data-icon="info">info</span>
+<h4 class="font-headline-sm text-headline-sm">What this means</h4>
+</div>
+<ul class="space-y-4">
+<li class="flex gap-4 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2.5 shrink-0"></span>
+<p class="font-body-md text-body-md text-on-surface/80">You have stable income but limited surplus for aggressive growth.</p>
+</li>
+<li class="flex gap-4 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2.5 shrink-0"></span>
+<p class="font-body-md text-body-md text-on-surface/80">Protection of current assets is your primary psychological driver.</p>
+</li>
+<li class="flex gap-4 items-start">
+<span class="w-1.5 h-1.5 rounded-full bg-indigo-400 mt-2.5 shrink-0"></span>
+<p class="font-body-md text-body-md text-on-surface/80">Your risk appetite is moderate-low, favoring long-term bonds or ETFs.</p>
+</li>
+</ul>
+</div>
+<!-- Your next 3 moves -->
+<div class="cosmos-glass p-8 rounded-xl">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-primary" data-icon="rocket_launch">rocket_launch</span>
+<h4 class="font-headline-sm text-headline-sm">Your next 3 moves</h4>
+</div>
+<div class="space-y-6">
+<div class="flex gap-5">
+<span class="font-display-lg text-display-lg-mobile text-primary/20 leading-none">01</span>
+<div>
+<p class="font-label-md text-label-md text-primary mb-1">CASH RESERVE</p>
+<p class="font-body-md text-body-md text-on-surface/80">Solidify 6 months of expenses in a High Yield Savings Account.</p>
+</div>
+</div>
+<div class="flex gap-5">
+<span class="font-display-lg text-display-lg-mobile text-primary/20 leading-none">02</span>
+<div>
+<p class="font-label-md text-label-md text-primary mb-1">PROTECTION</p>
+<p class="font-body-md text-body-md text-on-surface/80">Review term life and disability insurance to anchor your family.</p>
+</div>
+</div>
+<div class="flex gap-5">
+<span class="font-display-lg text-display-lg-mobile text-primary/20 leading-none">03</span>
+<div>
+<p class="font-label-md text-label-md text-primary mb-1">AUTOMATION</p>
+<p class="font-body-md text-body-md text-on-surface/80">Set up a recurring $500/mo contribution to a diversified index fund.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- CTA -->
+<button class="bg-[#16A34A] text-white px-12 py-5 rounded-full font-bold text-body-lg shadow-xl shadow-green-900/20 hover:scale-[1.02] transition-transform flex items-center gap-3 active:scale-95 group">
+                Start your trail with Monitrax 
+                <span class="material-symbols-outlined transition-transform group-hover:translate-x-1" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</section>
+</main>
+<!-- Bottom Nav Mobile -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-surface-container-highest/80 backdrop-blur-3xl border-t border-[#FFFFFF15] flex justify-around items-center h-16 px-4">
+<a class="flex flex-col items-center justify-center text-primary active:scale-90 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="assignment">assignment</span>
+<span class="font-label-sm text-label-sm">Assessment</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="font-label-sm text-label-sm">History</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined" data-icon="support_agent">support_agent</span>
+<span class="font-label-sm text-label-sm">Advisory</span>
+</a>
+</nav>
+<!-- Atmospheric elements -->
+<div class="fixed bottom-0 right-0 w-[50vw] h-[50vw] bg-primary/5 blur-[150px] -z-10 rounded-full pointer-events-none"></div>
+<div class="fixed top-0 left-0 w-[30vw] h-[30vw] bg-secondary/5 blur-[120px] -z-10 rounded-full pointer-events-none"></div>
+<script>
+        // Soft hover glow effect for cards
+        document.querySelectorAll('.cosmos-glass-hover').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body></html>

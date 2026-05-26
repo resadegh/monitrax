@@ -2,6 +2,107 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48.7.1 — Stitch-designed rebuild of secondary public pages
+
+- **Type**: UI redesign (Stitch-first per CLAUDE.md §18)
+- **Scope**: `/trail-method` + `/wealth-check` + `/trail-check` — full visual rebuild using Stitch as the canonical design source. **No business logic touched** — state machines, calc functions, scoring logic, hooks all preserved verbatim.
+- **Why**: Phase 48.7 shipped these pages as a sed-based token migration (palette only, no design rebuild). Reza directive 2026-05-26 + new CLAUDE.md §18 Stitch-first rule require the proper rebuild. 3 Stitch screens approved by Reza this session.
+
+### Stitch sources (committed to `.stitch/designs/`)
+
+| Page | Screen ID | Source HTML |
+|---|---|---|
+| `/trail-method` | `bb39a804cde54ee7b35c31cfd601f288` | `.stitch/designs/trail-method.html` |
+| `/wealth-check` | `84116be0e3a6464db65780de10020098` | `.stitch/designs/wealth-check.html` |
+| `/trail-check` | `7a1600d4a284489fb95b25f66b934386` | `.stitch/designs/trail-check.html` |
+
+Plus PNGs at the same path. The screen titled "Wealth Check - Assessment & Result States" in Stitch is actually mis-titled — its content is the trail-check page. Stitch's title field is unreliable; treat the HTML structure as authoritative.
+
+### Page-by-page rebuild
+
+**1. `/trail-method` — FULL REWRITE (244 → 350 lines)**
+- New structure per Stitch: hero with emerald-gradient headline + scroll affordance · pull-quote + 3 stat glass-cards · origin cards row · The Five horizontal connected-node visualization · 5 alternating deep-dive sections with stage-coloured big-letter watermark · Bandura/Prochaska/Thaler/Mani science 2×2 grid · final CTA.
+- TRAIL stage SSOT preserved verbatim (T sky · R amber · A indigo · I emerald · L violet via `text-cosmos-track/reduce/anchor/invest/live` tokens).
+- Stitch's hallucinated stage names ("Automate", "Legacy") corrected back to canonical "Anchor" / "Live".
+- All copy preserved from prior page where applicable. New copy added for the science-citation cards.
+- Stateless page; no logic preserved because there was no logic.
+
+**2. `/wealth-check` — TARGETED POLISH (preserved 90%+ of existing code)**
+- Existing post-Phase-48.7 implementation was already structurally close to the Stitch "Conversion Funnel" design.
+- Added "WEALTH CHECK" eyebrow above hero headline.
+- Added `cosmos-glow-center` radial emerald glow behind the hero.
+- Hero typography scaled up to match Stitch (`text-5xl lg:text-[64px]`).
+- Subtitle scaled to `text-xl` per Stitch.
+- ALL CALC LOGIC PRESERVED: `calculateWealthCheckResult`, `selectLever`, age/income/net-worth-band state, percentile calc, gap verdict, lifestyle target, ASFA target, AFSL discipline copy — UNTOUCHED.
+
+**3. `/trail-check` — TARGETED RESTYLE (state machine preserved)**
+- Replaced the linear progress bar with **5 colored TRAIL stage progress dots** per Stitch design — each dot uses its canonical TRAIL hue (sky / amber / indigo / emerald / violet), filled if active, hairline-outlined if not.
+- Added "TRAIL CHECK" eyebrow + dramatic hero ("What stage are you on?") with `cosmos-glow-center` background.
+- Question card now uses `cosmos-glass` (was generic surface card) with subtle corner glow.
+- Answer chips have hover state + selected state per Stitch — chevron-right icon reveals on hover.
+- Added "Your answers stay on your device." reassurance line below the card.
+- ALL STATE MACHINE PRESERVED: 5 questions, scoring (0/2/3 per answer), `getStage(totalScore)` logic, localStorage persistence, AnimatePresence transitions, useReducedMotion handling — UNTOUCHED.
+- Did NOT add the institutional left-sidebar that appeared in the Stitch screenshot — it conflicts with the single-flow quiz UX (the "Insights / Portfolio / Vault" nav items wouldn't go anywhere useful from a public quiz page). The institutional FEEL is conveyed via the cosmos-glass card + 5-stage progress dots + premium typography. Can be revisited as a follow-up if Reza wants the sidebar specifically.
+
+### What's preserved (load-bearing — verify by file diff)
+
+- `/wealth-check` calc engine (`lib/wealthCheck/calculator.ts`, `lib/wealthCheck/lever.ts`)
+- `/trail-check` scoring + stage classification logic (`getStage()`, score values)
+- `/trail-method` content (TRAIL stage names, science citations, milestone language)
+- All `useState`, `useEffect`, `useMemo`, framer-motion `AnimatePresence` blocks
+- AFSL discipline copy on `/wealth-check` (no product names, no "you should" language)
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `app/trail-method/page.tsx` | Full rewrite — Stitch structure, cosmos tokens, canonical TRAIL names |
+| `app/wealth-check/page.tsx` | Hero polish only — eyebrow + glow + typography scale |
+| `app/trail-check/page.tsx` | Quiz UI restyle — 5-stage dots, cosmos-glass card, eyebrow hero |
+| `.stitch/designs/trail-method.html` | NEW — Stitch source for /trail-method |
+| `.stitch/designs/wealth-check.html` | NEW — Stitch source for /wealth-check |
+| `.stitch/designs/trail-check.html` | NEW — Stitch source for /trail-check |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | Phase 48.7.1 entry prepended |
+
+### Doc-sync (CLAUDE.md §16)
+
+Surfaces changed:
+- [x] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated:
+- `docs/changelog/CHANGELOG_2026_05_26.md` — Phase 48.7.1 entry
+- File-header JSDoc on `app/trail-method/page.tsx` documents the Stitch screen ID + canonical-content-preservation contract
+- `.stitch/designs/<page>.{html,png}` committed for each page
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no new errors
+- [x] No business logic touched (verified by file diff)
+- [x] Stitch HTML + PNG artefacts committed for each page
+
+### Testing
+
+- [x] Build passes (TypeScript)
+- [ ] Vercel preview: `/trail-method` reads as full Stitch-design Deep Cosmos
+- [ ] Vercel preview: `/wealth-check` form flow still works, calc result unchanged
+- [ ] Vercel preview: `/trail-check` 5-question flow works, scoring produces same stages
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+---
+
 ### Phase 48.7 — Secondary public pages → Deep Cosmos
 
 - **Type**: UI redesign — token migration on the secondary public surfaces left over from the Phase 48 scope.

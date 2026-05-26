@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Wealth Check</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-background": "#e4e1f0",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#62df7d",
+                        "inverse-on-surface": "#302f3b",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-lowest": "#0d0d17",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "surface-variant": "#34343f",
+                        "on-tertiary": "#00344d",
+                        "on-surface": "#e4e1f0",
+                        "tertiary-container": "#009ada",
+                        "on-secondary-container": "#b0b2ff",
+                        "tertiary": "#89ceff",
+                        "surface-bright": "#393844",
+                        "on-tertiary-fixed": "#001e2f",
+                        "secondary-container": "#3131c0",
+                        "primary": "#62df7d",
+                        "outline": "#879485",
+                        "surface": "#12121d",
+                        "surface-dim": "#12121d",
+                        "surface-container": "#1f1f29",
+                        "on-primary-container": "#003111",
+                        "inverse-surface": "#e4e1f0",
+                        "on-tertiary-container": "#002d43",
+                        "surface-container-low": "#1b1b25",
+                        "secondary-fixed": "#e1e0ff",
+                        "secondary": "#c0c1ff",
+                        "on-primary": "#003914",
+                        "outline-variant": "#3e4a3d",
+                        "surface-tint": "#62df7d",
+                        "on-error": "#690005",
+                        "inverse-primary": "#006e2d",
+                        "on-error-container": "#ffdad6",
+                        "primary-container": "#1ca64d",
+                        "on-secondary-fixed": "#07006c",
+                        "surface-container-highest": "#34343f",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#292934",
+                        "on-surface-variant": "#bdcaba",
+                        "background": "#0a0a14",
+                        "tertiary-fixed-dim": "#89ceff",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-fixed": "#7ffc97",
+                        "tertiary-fixed": "#c9e6ff",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-secondary": "#1000a9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "container-max": "1440px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-lg": ["64px", {"lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body { background-color: #0a0a14; color: #e4e1f0; font-family: 'Inter', sans-serif; }
+        .cosmos-glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .radial-glow {
+            background: radial-gradient(600px circle at 50% 50%, rgba(22, 163, 74, 0.08), transparent 70%);
+        }
+        .text-gradient-emerald {
+            background: linear-gradient(to bottom right, #62df7d, #16a34a);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #62df7d;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(98, 223, 125, 0.4);
+            transition: transform 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+<!-- TopNavBar -->
+<nav class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10">
+<div class="flex justify-between items-center px-margin-mobile md:px-margin-desktop py-4 max-w-container-max mx-auto">
+<div class="font-headline-lg-mobile text-headline-lg-mobile font-bold text-on-surface tracking-tighter">Monitrax</div>
+<div class="hidden md:flex gap-8 items-center">
+<a class="text-primary font-bold font-body-md text-body-md" href="#">Wealth Check</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Insights</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors font-body-md text-body-md" href="#">Tools</a>
+</div>
+<button class="bg-primary-container text-on-primary-container px-6 py-2 rounded-full font-label-md text-label-md hover:opacity-90 active:scale-95 duration-200 transition-all">Sign in</button>
+</div>
+</nav>
+<main class="relative pt-32 pb-24 overflow-hidden">
+<!-- Atmospheric Glows -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full radial-glow pointer-events-none"></div>
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop relative z-10">
+<!-- Hero Section -->
+<header class="text-center mb-16">
+<span class="font-label-md text-label-md text-primary tracking-[0.2em] uppercase mb-4 block">Wealth Check</span>
+<h1 class="font-display-lg text-display-lg-mobile md:text-display-lg text-on-surface mb-6 max-w-3xl mx-auto leading-tight">Are you on track?</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">Three questions. Thirty seconds. A specific answer in dollars — not a grade.</p>
+</header>
+<!-- Result Projection (Dynamic State Simulation) -->
+<div class="mb-12 text-center opacity-0 transition-opacity duration-700" id="results-display">
+<span class="font-label-md text-label-md text-on-surface-variant tracking-widest uppercase block mb-2">Your Projection</span>
+<div class="font-display-lg text-display-lg-mobile md:text-display-lg text-gradient-emerald font-black leading-none mb-4" id="projected-value">$1,420,000</div>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-lg mx-auto">You're projected to land in the <span class="text-on-surface font-semibold">top 32%</span> of households at your stage.</p>
+</div>
+<!-- Form Section -->
+<div class="cosmos-glass rounded-2xl p-8 md:p-12 max-w-4xl mx-auto shadow-2xl relative overflow-hidden">
+<!-- Decorative specular highlight -->
+<div class="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+<div class="space-y-12">
+<!-- Q1: Age -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="font-headline-lg text-headline-lg text-on-surface">Your age</label>
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary font-bold" id="age-val">38</span>
+</div>
+<input class="cursor-pointer" id="age-slider" max="65" min="25" type="range" value="38"/>
+<div class="flex justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>25</span>
+<span>65</span>
+</div>
+</div>
+<!-- Q2: Income -->
+<div class="space-y-4">
+<div class="flex justify-between items-end">
+<label class="font-headline-lg text-headline-lg text-on-surface">Household income <span class="text-on-surface-variant text-label-md">(Annual, before tax)</span></label>
+<span class="font-display-lg-mobile text-display-lg-mobile text-primary font-bold" id="income-val">$180k</span>
+</div>
+<input class="cursor-pointer" id="income-slider" max="400000" min="40000" step="10000" type="range" value="180000"/>
+<div class="flex justify-between text-on-surface-variant font-label-sm text-label-sm">
+<span>$40k</span>
+<span>$400k+</span>
+</div>
+</div>
+<!-- Q3: Net Worth -->
+<div class="space-y-6">
+<label class="font-headline-lg text-headline-lg text-on-surface block">Total net worth</label>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group" data-val="50">
+<span class="font-label-md text-label-md text-on-surface block mb-1">Under $50k</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Just getting started</span>
+</button>
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group" data-val="200">
+<span class="font-label-md text-label-md text-on-surface block mb-1">$50k–$200k</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Building momentum</span>
+</button>
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group border-primary/40 bg-primary/5" data-val="500">
+<span class="font-label-md text-label-md text-on-surface block mb-1">$200k–$500k</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Foundations in place</span>
+</button>
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group" data-val="1000">
+<span class="font-label-md text-label-md text-on-surface block mb-1">$500k–$1m</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Compound stage</span>
+</button>
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group" data-val="2000">
+<span class="font-label-md text-label-md text-on-surface block mb-1">$1m–$2m</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Established</span>
+</button>
+<button class="nw-chip text-left p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] transition-all group" data-val="2001">
+<span class="font-label-md text-label-md text-on-surface block mb-1">$2m+</span>
+<span class="font-body-md text-body-md text-on-surface-variant group-hover:text-on-surface">Wealth-builder</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Lever Cards -->
+<div class="mt-24 grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="cosmos-glass rounded-2xl p-8 group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-error/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-error" style="font-variation-settings: 'FILL' 1;">trending_down</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4">REDUCE</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Increase super contribution by 2% to lower tax liability.</p>
+<div class="pt-6 border-t border-white/5">
+<span class="font-label-sm text-label-sm text-error uppercase tracking-wider">Impact: Meaningful over 25y</span>
+</div>
+</div>
+<div class="cosmos-glass rounded-2xl p-8 group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-secondary-container/30 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">anchor</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4">ANCHOR</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Pay down non-deductible debt first to lock in guaranteed returns.</p>
+<div class="pt-6 border-t border-white/5">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider">Impact: Stability Boost</span>
+</div>
+</div>
+<div class="cosmos-glass rounded-2xl p-8 group hover:-translate-y-2 transition-transform duration-300">
+<div class="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-6">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<h3 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4">INVEST</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-6">Open a regular investment account for compounding exposure.</p>
+<div class="pt-6 border-t border-white/5">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-wider">Impact: Long-term Growth</span>
+</div>
+</div>
+</div>
+<!-- Final CTA -->
+<section class="mt-32 text-center pb-12">
+<div class="max-w-2xl mx-auto cosmos-glass rounded-full py-2 px-2 flex flex-col md:flex-row items-center gap-4 mb-8">
+<img alt="Advisor" class="w-12 h-12 rounded-full border-2 border-primary ml-2" data-alt="A professional close-up of a diverse financial advisor in a sleek, modern obsidian-toned office. Soft emerald lighting highlights the sophisticated atmosphere. The portrait is minimalist and sharp, with a focused, confident expression, fitting the institutional-grade wealth management brand." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAURkL4VKApgcr1Y8-S_5cEKWtKzTn6LqmfybWxEizuvn5_VqhNQt2gcj0YbY1kIpc3eZR_zpTFVsdYqMeOg9RrBFouPvLNDQjBF8rm5iE9L6d3KZ9Qcqd4UigDjmkM4st-nWDCnrGkRw5JxyyRLA9k9ljK34KtaeJpwxvbuqdT_Z4skd-_jyCrtFfKzVGfhWwq5NIn6YuFN-UPwYn-8MmwB-Yo6SNlB7cRB77moHjeHpC51el1XAeJk1xlE9ZcxEtjMSd9ix4rLVA"/>
+<p class="font-body-md text-body-md text-on-surface pr-8">"Your data suggests an opportunity for 4.2% higher yield."</p>
+</div>
+<h2 class="font-display-lg text-display-lg-mobile md:text-headline-xl text-on-surface mb-8">Want the full picture?</h2>
+<button class="bg-primary text-on-primary px-12 py-4 rounded-full font-headline-lg text-headline-lg-mobile md:text-headline-lg hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-primary/20">
+                    Start free →
+                </button>
+<div class="mt-8 flex flex-wrap justify-center gap-8 text-on-surface-variant font-label-md text-label-md opacity-70">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                        No credit card
+                    </div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                        No bank connection required
+                    </div>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface border-t border-white/5">
+<div class="flex flex-col gap-gutter px-margin-mobile md:px-margin-desktop py-12 max-w-container-max mx-auto">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-8">
+<div class="font-headline-sm text-headline-sm font-black text-on-surface">Monitrax</div>
+<div class="flex flex-wrap gap-6">
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">Financial Services Guide</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">Privacy Policy</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">Terms of Service</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">Target Market Determination</a>
+<a class="font-label-sm text-label-sm text-on-surface-variant hover:text-on-surface transition-colors" href="#">Regulatory Disclosures</a>
+</div>
+</div>
+<p class="font-label-sm text-label-sm text-on-surface-variant leading-relaxed max-w-4xl">
+                © 2024 Monitrax. All rights reserved. Monitrax Pty Ltd (ABN 12 345 678 910) is a corporate authorised representative of Monitrax Wealth AFSL 000000. Australian Credit Licence 000000. Tax Agent 000000. Any advice provided is general only and doesn't take into account your objectives, financial situation or needs.
+            </p>
+</div>
+</footer>
+<script>
+        // Interactive Elements
+        const ageSlider = document.getElementById('age-slider');
+        const incomeSlider = document.getElementById('income-slider');
+        const ageVal = document.getElementById('age-val');
+        const incomeVal = document.getElementById('income-val');
+        const resultsDisplay = document.getElementById('results-display');
+        const projectedValue = document.getElementById('projected-value');
+        const chips = document.querySelectorAll('.nw-chip');
+
+        let currentNW = 500;
+
+        function updateResults() {
+            const age = parseInt(ageSlider.value);
+            const income = parseInt(incomeSlider.value);
+            
+            // Simple logic simulation for demonstration
+            const factor = (income / 10) * (65 - age) * (currentNW / 250);
+            const projection = Math.round(factor * 1000);
+            
+            projectedValue.innerText = `$${(projection / 1000000).toFixed(1)}m`;
+            resultsDisplay.style.opacity = '1';
+        }
+
+        ageSlider.addEventListener('input', (e) => {
+            ageVal.innerText = e.target.value;
+            updateResults();
+        });
+
+        incomeSlider.addEventListener('input', (e) => {
+            const kVal = Math.round(e.target.value / 1000);
+            incomeVal.innerText = `$${kVal}k`;
+            updateResults();
+        });
+
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => c.classList.remove('border-primary/40', 'bg-primary/5'));
+                chip.classList.add('border-primary/40', 'bg-primary/5');
+                currentNW = parseInt(chip.dataset.val);
+                updateResults();
+            });
+        });
+
+        // Initialize with a fade in delay
+        setTimeout(() => {
+            updateResults();
+        }, 800);
+    </script>
+</body></html>
