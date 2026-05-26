@@ -213,6 +213,37 @@
   .cosmos-float {
     animation: cosmos-float 6s ease-in-out infinite;
   }
+
+  /* Cosmos input — public-side form inputs (Phase 48 PR 6).
+     Use on <input> + <textarea> + <select> in the auth shell family.
+     The shadcn <Input> component is internal-app vocabulary (light
+     theme); we don't use it on public auth surfaces so the dark
+     theme reads correctly without theme-toggle hacks. */
+  .cosmos-input {
+    width: 100%;
+    height: 48px;
+    padding: 0 1rem;
+    border-radius: 0.75rem;
+    background-color: hsl(var(--cosmos-surface) / 0.5);
+    border: 1px solid hsl(var(--cosmos-hairline));
+    color: hsl(var(--cosmos-text));
+    font-size: 0.95rem;
+    transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+  }
+  .cosmos-input::placeholder {
+    color: hsl(var(--cosmos-text) / 0.2);
+  }
+  .cosmos-input:focus,
+  .cosmos-input:focus-visible {
+    outline: none;
+    border-color: hsl(var(--cosmos-action) / 0.6);
+    box-shadow: 0 0 0 3px hsl(var(--cosmos-action) / 0.15);
+    background-color: hsl(var(--cosmos-surface) / 0.7);
+  }
+  .cosmos-input:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 }
 
 @keyframes cosmos-float {

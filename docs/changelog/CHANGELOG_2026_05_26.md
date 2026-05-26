@@ -2,6 +2,104 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48 Public Website Redesign — PR 6 (Auth surfaces — final PR)
+
+- **Type**: UI redesign (visual replacement, ZERO auth-logic change)
+- **Scope**: Auth chrome on `/signin`, `/register`, `/verify-email`, `/resend-verification` rebuilt to dark Deep Cosmos via a shared `AuthShell` wrapper. **No business / logic / functional code touched** — all hooks, handlers, AuthContext usage, MFA paths, OAuth flows, Phase 47 consent block logic preserved verbatim.
+- **Why**: PR 6 of the Phase 48 6-PR sequence. Final PR. After this lands the entire public-facing surface (landing + auth) is unified dark Deep Cosmos.
+
+### New: shared `AuthShell` primitives
+
+`components/auth/AuthShell.tsx` (new) — single-column centred form chrome shared across all auth pages. Exports:
+
+| Export | Purpose |
+|---|---|
+| `<AuthShell>` | Outer page chrome — `bg-cosmos` + `cosmos-glow-center`, brand logo header, glass-panel form area, legal-link footer |
+| `<AuthLabel>` | Uniform uppercase tracking label vocabulary |
+| `<AuthSubmit>` | Emerald `cosmos-cta` submit button with built-in loading spinner |
+| `<AuthGhostButton>` | Translucent surface OAuth/secondary button (48px to match submit) |
+| `<AuthDivider>` | "Or continue with" hairline divider |
+| `<AuthError>` | Red-tinted error banner |
+| `<AuthInfo>` | Amber-tinted info banner (e.g. session-expired) |
+
+Behavioural contract: `AuthShell` is **purely presentational**. It does not touch AuthContext, form state, MFA flow, OAuth, or any auth logic. Pages keep their state machines and pass JSX as `children`.
+
+### New CSS utility: `.cosmos-input`
+
+`app/globals.css` (additive) — `.cosmos-input` utility class for native form inputs on dark auth surfaces. The shadcn `<Input>` / `<Label>` / `<Button>` are NOT used on auth pages anymore — they're light-theme internal-app components. The auth surfaces use native HTML elements styled via this utility to avoid theme-toggle hacks.
+
+### Pages rebuilt (visual only)
+
+| Page | What changed | What was preserved |
+|---|---|---|
+| `app/signin/page.tsx` | 2-column light branding/form layout → single-column Deep Cosmos via `AuthShell`. Native inputs styled with `cosmos-input`. Removed unused shadcn `Button`/`Input`/`Label`/`Checkbox` imports. | `useAuth()`, `login()`, `loginWithGoogle()`, MFA challenge handling, `?next=` redirect, `?reason=session_expired` notice, OAuth provider availability fetch (`/api/auth/providers`), Firebase error mapping, all useState + useEffect hooks |
+| `app/register/page.tsx` | Same chrome swap. Phase 47 consent block restyled to cosmos palette (border-cosmos-hairline + bg-cosmos-surface/40) but field set + gating logic untouched. | `register()`, `loginWithGoogle()`, `captureConsent('SIGNUP' \| 'OAUTH_SIGNUP')`, `acceptedBundle` gates BOTH submit AND OAuth, `marketingOptIn` default OFF (Spam Act), password match + min-8 validation, idempotent consent POST |
+| `app/verify-email/page.tsx` | 3-state UI (verifying / success / error) rebuilt with `AuthShell` + emerald checkmark / red X iconography. | Token extraction from `useSearchParams`, POST to `/api/auth/verify-email`, `<Suspense>` boundary preserved (Next.js requirement) |
+| `app/resend-verification/page.tsx` | Form + success-state rebuilt with `AuthShell`. | POST to `/api/auth/resend-verification`, privacy-safe success message ("If an account exists with X…") |
+
+### What is NOT in this PR (intentionally)
+
+- **`/forgot-password`** — the route doesn't exist in the codebase (only linked from `/signin`). Creating it is a functional addition, not a visual rebuild. Out of PR 6 scope. Tracked as a follow-up.
+- **`/welcome`** — already consumes the marketing `<Header>` + `<Footer>` (rebuilt to Deep Cosmos in PR 2). The page body still has v1 ivory treatment but a full rebuild of that page is its own design exploration (it's not strictly an auth surface — it's the friendlies landing page from Phase 47).
+- **`/login`** — already a redirect-only file (PR 1) — nothing to redesign.
+- **`/portal/login`** — separate org-portal route, has its own Phase 32B design system, unaffected.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/auth/AuthShell.tsx` | NEW — shared auth chrome + form primitives |
+| `app/globals.css` | + `.cosmos-input` utility class |
+| `app/signin/page.tsx` | JSX rebuilt, logic preserved |
+| `app/register/page.tsx` | JSX rebuilt, logic + Phase 47 consent preserved |
+| `app/verify-email/page.tsx` | JSX rebuilt, logic preserved |
+| `app/resend-verification/page.tsx` | JSX rebuilt, logic preserved |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | PR 6 entry prepended |
+| `docs/IMPLEMENTATION_PLAN.md` | PR 6 ticked → workstream complete; PR 5 marked merged |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no new TypeScript errors
+- [x] No business / logic / functional code touched
+- [x] AuthContext, MFA paths, OAuth callbacks, Phase 47 consent capture all preserved verbatim (file-header JSDoc on each page documents what was kept)
+
+### Documentation Updated
+
+- File-header JSDoc on each rebuilt page documents the preserved-logic contract
+- `AuthShell` exports JSDoc'd individually
+- IMPLEMENTATION_PLAN.md Phase 48 workstream marked complete
+
+### Testing
+
+- [x] Build passes (TypeScript)
+- [x] No new lint warnings
+- [ ] Vercel preview: `/signin` form submits + OAuth button + "Forgot password?" link visible
+- [ ] Vercel preview: `/register` form submits with consent block working — try without ticking → error, tick → submit works
+- [ ] Vercel preview: `/verify-email?token=invalid` → error state with reset link
+- [ ] Vercel preview: `/resend-verification` form → success state
+- [ ] Vercel preview: `prefers-reduced-motion` honoured (no `cosmos-cta` hover lift, no glow pulse)
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+### 🎉 Phase 48 sequence complete after this PR merges
+
+All 6 PRs of the Phase 48 Public Website Redesign will be live:
+1. ✅ PR #891 — Foundation
+2. ✅ PR #892 — Header + Footer
+3. ✅ PR #893 — Hero + animations
+4. ✅ PR #894 — Body sections
+5. ✅ PR #895 — FAQ + FinalCTA
+6. 🟡 (this PR) — Auth surfaces
+
+The public-facing surface (landing + auth) is unified dark Deep Cosmos end-to-end.
+
+---
+
 ### Phase 48 Public Website Redesign — PR 5 (FAQ + FinalCTA — landing page complete)
 
 - **Type**: UI redesign (visual replacement)
