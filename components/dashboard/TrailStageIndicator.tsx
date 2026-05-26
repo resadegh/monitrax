@@ -16,7 +16,7 @@ import { ArrowRight, CheckCircle2 } from 'lucide-react';
  * TrailStageIndicator — Home banner v3 (premium redesign).
  *
  * Design vocabulary:
- *   - appleEase + spring physics consistent with components/marketing/TrailHero.tsx
+ *   - appleEase + spring physics from components/shell/motion.ts (SSOT)
  *   - Glassmorphic card on a stage-coloured mesh-gradient atmosphere
  *   - Hero-scale interactive letters (h-16/h-20) with springy hover
  *   - AnimatePresence cross-fades for content swaps (no snap)

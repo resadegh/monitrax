@@ -2,6 +2,98 @@
 
 ## Session: claude/hopeful-ritchie-sNIj3
 
+### Phase 48 Public Website Redesign — PR 4 (Body sections — ProofStrip · OnePicture · FiveCapabilities · HowItWorks)
+
+- **Type**: UI redesign (visual replacement, no behaviour change)
+- **Scope**: Four new dark Deep Cosmos body sections that sit between the hero and the existing TrailCTA. Replaces five v1 Trail* components (deleted). After this PR the landing page is: Hero → ProofStrip → OnePicture → FiveCapabilities → HowItWorks → TrailCTA → Footer.
+- **Why**: PR 4 of the Phase 48 6-PR sequence. Largest single PR of the redesign — covers the entire middle of the landing page from the proof strip through to the three-step "how it works" walkthrough. After this lands, only the bottom (Pricing / FAQ / Final CTA — PR 5) and the auth surfaces (PR 6) remain.
+
+### New components
+
+| File | Role |
+|---|---|
+| `components/marketing/ProofStrip.tsx` | "Built for Australian structures" — 6 glass-pill chips (Property · SMSF · Investments · Trust · Company · Super) with inline-SVG glyphs |
+| `components/marketing/OnePicture.tsx` | "One view · no swivel-chairing" — 2-column editorial + before/engine/after visualization |
+| `components/marketing/FiveCapabilities.tsx` | "The Five" — 5 capability cards mapped 1:1 to TRAIL stages with canonical hue SSOT (T sky · R amber · A indigo · I emerald · L violet) |
+| `components/marketing/HowItWorks.tsx` | "Three steps to one clean picture" — 3 numbered steps with abstract cosmos-glass visualization panels (Add → See → Model) |
+
+### Deleted v1 components (now safe — no consumers)
+
+| File | Replacement |
+|---|---|
+| `TrailHero.tsx` | `Hero.tsx` (PR 3) |
+| `TrailProblem.tsx` | No direct replacement — v1 problem-framing didn't match wealth-builder ICP |
+| `TrailBridge.tsx` | No direct replacement — bridge no longer needed |
+| `TrailJourney.tsx` | `FiveCapabilities.tsx` (this PR) |
+| `TrailHowItWorks.tsx` | `HowItWorks.tsx` (this PR) |
+| `TrailTestimonials.tsx` | No direct replacement — no real testimonials yet |
+
+Verified no broken imports — `Header`, `Footer`, `Reveal` (the only marketing exports consumed by secondary pages) all still exist.
+
+### Strategic decisions (architect lens)
+
+**1. Stock-photo replacement.** The Stitch `five-and-how` source had AI-generated stock photos for each "How it works" step (close-up dashboard, 3D data convergence, control room). Replaced with abstract cosmos-glass visualization panels (stacked tiles · converging lines · slider bars). Reasoning: (a) AI-stock-photo aesthetic doesn't match the restraint discipline — Mercury / Linear / Stripe references don't use stock photos; (b) zero asset weight added vs ~150KB for 3 images; (c) abstract panels are cheaper to iterate. Documented inline in `HowItWorks.tsx` JSDoc.
+
+**2. Number softening in OnePicture.** Stitch source had "+$14,280/yr" as the "Net Impact" line on the Strategic Simulation example card. Replaced with qualitative "Clarity before commitment" + an "Example" label badge. Per CLAUDE.md §0 financial-adviser lens — never quote numbers we can't trace to canonical data. The "Example" badge reinforces it's illustrative. Documented inline.
+
+**3. Stat softening in FiveCapabilities.** Stitch source had "30+ entity types" stat for Track. Schema currently has 20 `LegalEntityType` enum values (counted from `prisma/schema.prisma`). Softened to "Multi-entity native" (qualitative, defensible). All 5 cards now use qualitative descriptors: Multi-entity native · Cross-account aware · Structure-aware · Scenario modelling · One calm view.
+
+**4. TRAIL stage hue SSOT preserved.** All 5 capability cards use the canonical hue tokens from `app/globals.css` (`--cosmos-track`, `--cosmos-reduce`, `--cosmos-anchor`, `--cosmos-invest`, `--cosmos-live`) which match `lib/navigation/trailNav.tsx` → `TRAIL_STAGE_TONES`. Zero drift.
+
+**5. AFSL boundary in HowItWorks.** Step 3 copy verbatim from Phase 46 §9 + the locked positioning DNA: "We show the scenarios. You decide. We do not recommend products." Do not soften.
+
+### Files Modified
+
+| File | Change |
+|---|---|
+| `components/marketing/ProofStrip.tsx` | NEW — section component |
+| `components/marketing/OnePicture.tsx` | NEW — section component |
+| `components/marketing/FiveCapabilities.tsx` | NEW — section component (TRAIL stage hue SSOT) |
+| `components/marketing/HowItWorks.tsx` | NEW — section component |
+| `components/marketing/TrailHero.tsx` | DELETED |
+| `components/marketing/TrailProblem.tsx` | DELETED |
+| `components/marketing/TrailBridge.tsx` | DELETED |
+| `components/marketing/TrailJourney.tsx` | DELETED |
+| `components/marketing/TrailHowItWorks.tsx` | DELETED |
+| `components/marketing/TrailTestimonials.tsx` | DELETED |
+| `components/marketing/index.ts` | Re-grouped barrel; removed deleted exports; added new section exports |
+| `app/page.tsx` | Renders new section sequence |
+| `components/dashboard/TrailStageIndicator.tsx` | Stale JSDoc reference to deleted TrailHero updated to point at `components/shell/motion.ts` |
+| `docs/changelog/CHANGELOG_2026_05_26.md` | PR 4 entry prepended |
+| `docs/IMPLEMENTATION_PLAN.md` | PR 4 ticked, PR 3 marked merged |
+
+### Build Status
+
+- [x] `npx tsc --noEmit` passes — no new TypeScript errors (only the pre-existing baseUrl deprecation)
+- [x] No business / logic / functional code touched (auth, calc engines, APIs, schema, dashboard rendering, entities, tax engine ALL untouched)
+- [x] Codebase-wide grep confirms no remaining imports of the deleted Trail* files (only JSDoc comments now updated)
+
+### Documentation Updated
+
+- File-header JSDoc on each new component documents design rules + Stitch source + strategic decisions (per CLAUDE.md §16.4)
+- Phase 48 doc PR 4 row ticked in `IMPLEMENTATION_PLAN.md`
+- `06_UI_UX_FOUNDATION.md` + `08_BRAND_UI_DESIGN.md` consolidated update remains scheduled for PR 5 (when the Pricing/FAQ/Final-CTA family also lands — single coordinated update is cleaner than three tiny ones)
+
+### Testing
+
+- [x] Build passes locally (TypeScript)
+- [x] No new lint warnings
+- [x] No business / logic / functional code touched
+- [ ] Vercel preview deploy `READY`
+- [ ] Preview: verify all 4 new sections render in correct order
+- [ ] Preview: FiveCapabilities — 5 cards use correct stage hues (sky / amber / indigo / emerald / violet)
+- [ ] Preview: HowItWorks abstract panels render without external image requests
+- [ ] Preview: scroll-reveal animations honour `prefers-reduced-motion`
+- [ ] §17 post-merge log verification
+
+### PR
+
+- Branch: `claude/hopeful-ritchie-sNIj3`
+- PR URL: TBD
+- Status: Pending creation
+
+---
+
 ### Phase 48 Public Website Redesign — PR 3 (Hero + animations migration)
 
 - **Type**: UI redesign (visual replacement, no behaviour change)
