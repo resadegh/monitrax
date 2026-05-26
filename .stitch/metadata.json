@@ -95,6 +95,50 @@
       "generatedAt": "2026-05-26T01:16:00.000000Z",
       "scope": "Original Copilot-style dark hero with 6 labelled wealth pills. Superseded by symbolic icons version (dark-hero key)."
     },
+    "pricing": {
+      "id": "131a10110ae34e269e67753222c7ac8a",
+      "sourceScreen": "projects/1859462351962811110/screens/131a10110ae34e269e67753222c7ac8a",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2738,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Pricing - Deep Cosmos Dark Mode",
+      "generatedAt": "2026-05-26T02:10:00.000000Z",
+      "scope": "Section 8 — pricing. 3 glass-tile tiers (Track Free / Reduce $24/mo Recommended / Anchor $49/mo). Annual toggle. Restraint over manipulation. Note: first 2 attempts failed silently (content moderation?); third with abstract framing succeeded."
+    },
+    "closing": {
+      "id": "882af1ad41754955a7f367e8760a36a5",
+      "sourceScreen": "projects/1859462351962811110/screens/882af1ad41754955a7f367e8760a36a5",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 4284,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Landing - FAQ & Footer",
+      "generatedAt": "2026-05-26T02:13:00.000000Z",
+      "scope": "Sections 9-10-11 — FAQ accordion (6 honest questions, AFSL boundary copy preserved) + Final CTA ('Ready to see the picture?' with centred emerald glow) + 5-column footer on darker #08080F."
+    },
+    "signin": {
+      "id": "1d6a272620ba4db88f6868d32d1fa51f",
+      "sourceScreen": "projects/1859462351962811110/screens/1d6a272620ba4db88f6868d32d1fa51f",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Sign In - Deep Cosmos Theme",
+      "generatedAt": "2026-05-26T02:08:00.000000Z",
+      "scope": "Auth — sign-in. Centred 440px form on dark background with subtle emerald radial glow. Email/password + remember me + Google/Apple OAuth. Apple-ID/Mercury-shape (no split-screen template)."
+    },
+    "register": {
+      "id": "613fdfae5ab040ecb335c3f400d46ad4",
+      "sourceScreen": "projects/1859462351962811110/screens/613fdfae5ab040ecb335c3f400d46ad4",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2554,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax Sign Up - Deep Cosmos Theme",
+      "generatedAt": "2026-05-26T02:15:00.000000Z",
+      "scope": "Auth — sign-up/register. Matches sign-in chrome. Full name + email + password (with emerald strength meter) + optional postcode + 2 unchecked-by-default consent boxes. AFSL reassurance microcopy footer."
+    },
     "security-and-ai": {
       "id": "134afb0289bd49d19de9b9f4c8fe0ce5",
       "sourceScreen": "projects/1859462351962811110/screens/134afb0289bd49d19de9b9f4c8fe0ce5",

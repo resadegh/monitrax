@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sign Up | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#1ca64d",
+                        "surface": "#12121d",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-tertiary": "#00344d",
+                        "surface-container-lowest": "#0d0d17",
+                        "on-secondary": "#1000a9",
+                        "on-secondary-container": "#b0b2ff",
+                        "surface-variant": "#34343f",
+                        "on-primary-fixed": "#002109",
+                        "on-primary-container": "#003111",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-tint": "#62df7d",
+                        "on-tertiary-fixed": "#001e2f",
+                        "background": "#12121d",
+                        "surface-container-high": "#292934",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#302f3b",
+                        "tertiary-container": "#009ada",
+                        "secondary-fixed": "#e1e0ff",
+                        "surface-container": "#1f1f29",
+                        "secondary-container": "#3131c0",
+                        "on-primary": "#003914",
+                        "surface-bright": "#393844",
+                        "surface-container-low": "#1b1b25",
+                        "on-tertiary-fixed-variant": "#004c6e",
+                        "tertiary-fixed": "#c9e6ff",
+                        "primary": "#16A34A", /* Brand override to match prompt */
+                        "tertiary-fixed-dim": "#89ceff",
+                        "inverse-surface": "#e4e1f0",
+                        "tertiary": "#89ceff",
+                        "on-error": "#690005",
+                        "primary-fixed-dim": "#62df7d",
+                        "outline-variant": "#3e4a3d",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-surface-variant": "#bdcaba",
+                        "inverse-primary": "#006e2d",
+                        "outline": "#879485",
+                        "surface-container-highest": "#34343f",
+                        "primary-fixed": "#7ffc97",
+                        "on-error-container": "#ffdad6",
+                        "surface-dim": "#12121d",
+                        "secondary": "#c0c1ff",
+                        "error": "#ffb4ab",
+                        "on-tertiary-container": "#002d43",
+                        "on-background": "#e4e1f0",
+                        "on-surface": "#e4e1f0",
+                        "on-secondary-fixed": "#07006c",
+                        "deep-cosmos": "#0A0A14",
+                        "field-surface": "#16161E"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "16px",
+                        "unit": "8px",
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg-mobile": ["Inter"],
+                        "headline-xl": ["Inter"],
+                        "headline-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "display-lg": ["80px", {"lineHeight": "88px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500"}],
+                        "display-lg-mobile": ["48px", {"lineHeight": "52px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-xl": ["40px", {"lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #0A0A14;
+            font-family: 'Inter', sans-serif;
+            color: #e4e1f0;
+            overflow-x: hidden;
+        }
+        .glass-border {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .chiseled-border {
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .emerald-glow {
+            background: radial-gradient(circle at center, rgba(22, 163, 74, 0.03) 0%, transparent 70%);
+        }
+        .atmospheric-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            background: radial-gradient(circle at 50% -20%, rgba(22, 163, 74, 0.08) 0%, transparent 50%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input:focus {
+            outline: none;
+            border-color: rgba(22, 163, 74, 0.5) !important;
+            box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.2);
+        }
+        .cta-shadow {
+            box-shadow: 0 10px 30px -10px rgba(22, 163, 74, 0.4);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+<div class="atmospheric-bg"></div>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-4 py-12 md:py-24">
+<!-- Brand Identity -->
+<div class="mb-12 text-center animate-fade-in">
+<div class="flex items-center justify-center gap-3 mb-2">
+<div class="w-8 h-8 bg-primary rounded flex items-center justify-center shadow-lg shadow-primary/20">
+<span class="text-white font-bold text-xl">M</span>
+</div>
+<span class="text-[18px] font-semibold text-on-surface tracking-tight">Monitrax</span>
+</div>
+<p class="text-[13px] text-white/50 font-medium tracking-wide">Start your wealth-builder journey.</p>
+</div>
+<!-- Registration Card Container -->
+<div class="w-full max-w-[460px] relative">
+<!-- Subtle Radial Glow Behind Form -->
+<div class="absolute inset-0 emerald-glow -z-10 blur-3xl scale-125"></div>
+<div class="bg-surface-container-lowest/40 backdrop-blur-[40px] glass-border p-8 md:p-10 rounded-[24px] shadow-2xl">
+<!-- Header -->
+<div class="mb-8">
+<h1 class="text-[32px] font-semibold text-white leading-tight mb-2">Create your account</h1>
+<p class="text-[14px] text-white/60">
+                        Already have one? 
+                        <a class="text-primary hover:underline ml-1 font-medium transition-all" href="#">Sign in →</a>
+</p>
+</div>
+<!-- Registration Form -->
+<form class="space-y-5" onsubmit="return false;">
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold text-white/40 uppercase tracking-widest ml-1" for="name">Full Name</label>
+<input class="w-full h-12 bg-field-surface glass-border rounded-xl px-4 text-white placeholder:text-white/20 focus:ring-0 transition-all duration-200" id="name" placeholder="Enter your full name" type="text" value="Sarah Chen"/>
+</div>
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold text-white/40 uppercase tracking-widest ml-1" for="email">Email Address</label>
+<input class="w-full h-12 bg-field-surface glass-border rounded-xl px-4 text-white placeholder:text-white/20 focus:ring-0 transition-all duration-200" id="email" placeholder="sarah@example.com" type="email" value="sarah@example.com"/>
+</div>
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold text-white/40 uppercase tracking-widest ml-1" for="password">Password</label>
+<div class="relative">
+<input class="w-full h-12 bg-field-surface glass-border rounded-xl px-4 text-white placeholder:text-white/20 focus:ring-0 transition-all duration-200" id="password" placeholder="••••••••" type="password" value="password123"/>
+<button class="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
+</div>
+<!-- Strength Meter -->
+<div class="mt-2 flex gap-1 h-1 w-full px-1">
+<div class="flex-1 bg-primary rounded-full opacity-100"></div>
+<div class="flex-1 bg-primary rounded-full opacity-100"></div>
+<div class="flex-1 bg-primary rounded-full opacity-60"></div>
+<div class="flex-1 bg-white/10 rounded-full"></div>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold text-white/40 uppercase tracking-widest ml-1" for="postcode">Postcode <span class="text-white/20 lowercase font-normal">(optional)</span></label>
+<input class="w-full h-12 bg-field-surface glass-border rounded-xl px-4 text-white placeholder:text-white/20 focus:ring-0 transition-all duration-200" id="postcode" placeholder="e.g. 2010" type="text" value="2010"/>
+</div>
+<!-- Consent Checkboxes -->
+<div class="space-y-4 pt-2">
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center pt-0.5">
+<input checked="" class="peer appearance-none w-4 h-4 rounded border border-white/20 bg-transparent checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-[12px] text-white opacity-0 peer-checked:opacity-100 transition-opacity left-0.5" style="font-variation-settings: 'wght' 700">check</span>
+</div>
+<span class="text-[13px] text-white/60 leading-relaxed group-hover:text-white/80 transition-colors">
+                                I agree to the <a class="text-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary hover:underline" href="#">Privacy Policy</a>.
+                            </span>
+</label>
+<label class="flex items-start gap-3 cursor-pointer group">
+<div class="relative flex items-center pt-0.5">
+<input class="peer appearance-none w-4 h-4 rounded border border-white/20 bg-transparent checked:bg-primary checked:border-primary transition-all" type="checkbox"/>
+<span class="material-symbols-outlined absolute text-[12px] text-white opacity-0 peer-checked:opacity-100 transition-opacity left-0.5" style="font-variation-settings: 'wght' 700">check</span>
+</div>
+<span class="text-[13px] text-white/60 group-hover:text-white/80 transition-colors">Email me product updates and market insights.</span>
+</label>
+</div>
+<!-- CTA -->
+<button class="w-full h-12 bg-primary text-white font-semibold rounded-xl cta-shadow hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 mt-4" type="submit">
+                        Create account
+                    </button>
+</form>
+<!-- Divider -->
+<div class="flex items-center gap-4 my-8">
+<div class="flex-grow h-px bg-white/10"></div>
+<span class="text-[12px] font-medium text-white/30 uppercase tracking-tighter">or</span>
+<div class="flex-grow h-px bg-white/10"></div>
+</div>
+<!-- Social Auth -->
+<div class="grid grid-cols-2 gap-4">
+<button class="flex items-center justify-center gap-2 h-12 glass-border rounded-xl bg-white/05 hover:bg-white/10 transition-colors">
+<img alt="Google" class="w-5 h-5 grayscale opacity-80" data-alt="Minimalist, monochromatic Google logo rendered in white against a deep, dark glassmorphic background with subtle green neon accents." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACsj9HX5gj8bEFHU3g0aOa2E74matgFlHX8yTeViHi-NrXAJQbNPfQJKtf7-wzD3PL6O80uQBD1zID1biWMQt_TEHMYXxrZ5OXTGGok5QGFG-rhhLhhfAKl2eVUbtPabUH4boVz73Tb1UxTBxS-JdNfuZyYkQUJuN9g2DTZ82xcfU1-kFrJG7gX0yl0aixSUjX2NHm8i2UrMGgOZZkgH4aok3kiB0NJprR8tcbdOiivngKsh9utneRSix142rfLLKRQGPbqxi-Kik"/>
+<span class="text-[13px] font-medium text-white/80">Google</span>
+</button>
+<button class="flex items-center justify-center gap-2 h-12 glass-border rounded-xl bg-white/05 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[20px] text-white/80" data-weight="fill">ios</span>
+<span class="text-[13px] font-medium text-white/80">Apple</span>
+</button>
+</div>
+</div>
+<!-- Footer Text -->
+<div class="mt-12 text-center px-4 max-w-[400px] mx-auto">
+<p class="text-[11px] text-white/40 leading-relaxed">
+                    By creating an account you agree to our 
+                    <a class="underline hover:text-white/60" href="#">Terms</a> · 
+                    <a class="underline hover:text-white/60" href="#">Privacy</a> · 
+                    <a class="underline hover:text-white/60" href="#">AFSL Boundary Disclosure</a>
+</p>
+<p class="mt-6 text-[11px] italic text-white/25 leading-relaxed font-light">
+                    We're a financial information service — not a licensed adviser. Your accountant, broker, and adviser remain your primary professionals.
+                </p>
+</div>
+</div>
+</main>
+<!-- Background Decoration -->
+<div class="fixed bottom-0 left-0 w-full h-[307px] -z-20 pointer-events-none opacity-40">
+<div class="absolute bottom-0 left-1/4 w-96 h-96 bg-primary/10 blur-[120px] rounded-full"></div>
+</div>
+<script>
+        // Simple micro-interaction for input fields focus state
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.querySelector('label').style.color = '#16A34A';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.querySelector('label').style.color = 'rgba(255, 255, 255, 0.4)';
+            });
+        });
+
+        // Form submission animation effect
+        const form = document.querySelector('form');
+        const btn = form.querySelector('button[type="submit"]');
+        
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span>';
+            btn.style.opacity = '0.8';
+            
+            setTimeout(() => {
+                btn.innerHTML = '<span class="material-symbols-outlined">check_circle</span> Account Created';
+                btn.style.backgroundColor = '#16A34A';
+                btn.style.opacity = '1';
+            }, 1500);
+        });
+    </script>
+</body></html>

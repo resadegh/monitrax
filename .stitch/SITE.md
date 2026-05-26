@@ -53,12 +53,19 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 
 ### Pages in this Stitch project
 
-- [ ] **`index`** — Landing page (hero · proof strip · one picture · five capabilities · how it works · security · AI · pricing · FAQ · final CTA · footer)
-- [ ] **`signin`** — Sign-in (single-column centred form, soft warm-ivory background, geometric Monitrax mark, Google OAuth + email/password)
-- [ ] **`register`** — Sign-up (single-column centred form, same chrome as signin, with email verification messaging)
-- [ ] **`pricing`** — Pricing (transparent 3-tier or 2-tier table, no manipulative SaaS tricks, AFSL boundary footer)
-- [ ] **`security`** — Security & privacy (CDR pathway, encryption, no ad trackers, no data sales, full section not a footer)
-- [ ] **`forgot-password`** — Forgot password (same auth chrome family)
+- [x] **Landing — Hero** (`dark-hero` = `42730aaf...`) Symbolic 3D icons
+- [x] **Landing — Sections 2+3** (`below-hero-dark` = `576da1f5...`) Proof strip + One Picture
+- [x] **Landing — Sections 4+5** (`five-and-how-dark` = `d51c4876...`) Five capabilities + How it works
+- [x] **Landing — Sections 6+7** (`security-and-ai` = `134afb02...`) Security + AI
+- [x] **Landing — Section 8** (`pricing` = `131a1011...`) Pricing
+- [x] **Landing — Sections 9+10+11** (`closing` = `882af1ad...`) FAQ + Final CTA + Footer
+- [x] **`signin`** (`1d6a2726...`) Sign-in form
+- [x] **`register`** (`613fdfae...`) Sign-up form
+- [ ] **`forgot-password`** — same auth chrome family (queued)
+- [ ] **`verify-email`** — same auth chrome family (queued)
+- [ ] **`/trail-check`** — public TRAIL Check funnel (queued, refresh with dark theme)
+- [ ] **`/wealth-check`** — Phase 46 public funnel (queued, refresh with dark theme)
+- [ ] **`/trail-method`** — public method explainer (queued)
 
 ### Pages NOT in this redesign (keep current treatment)
 
