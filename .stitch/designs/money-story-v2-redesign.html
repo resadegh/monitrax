@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Freedom Horizon Variants</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-utilities">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #1a1a1a; /* Overall page background behind the split canvas */
+    }
+
+    /* Tabular Nums */
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Chart SVG Styles */
+    .chart-line {
+      stroke: #16A34A;
+      stroke-width: 1.5px;
+      fill: none;
+    }
+    .chart-area {
+      fill: rgba(22, 163, 74, 0.08); /* Emerald 8% */
+    }
+    .chart-ref-line {
+      stroke: rgba(148, 163, 184, 0.3); /* Slate 30% */
+      stroke-width: 1.5px;
+      stroke-dasharray: 4 4;
+      fill: none;
+    }
+
+    /* Pulse animation */
+    @keyframes pulse {
+      0% { transform: scale(1); opacity: 0.3; }
+      50% { transform: scale(1.5); opacity: 0.1; }
+      100% { transform: scale(1); opacity: 0.3; }
+    }
+    .pulse-dot {
+      position: relative;
+    }
+    .pulse-dot::after {
+      content: '';
+      position: absolute;
+      top: -2px; left: -2px; right: -2px; bottom: -2px;
+      background-color: #16A34A;
+      border-radius: 50%;
+      z-index: -1;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    /* Tooltip arrow */
+    .tooltip-arrow-light::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background-color: #FFFFFF;
+      border-right: 1.5px solid #E2E8F0;
+      border-bottom: 1.5px solid #E2E8F0;
+    }
+    .tooltip-arrow-dark::after {
+      content: '';
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      transform: translateX(-50%) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background-color: #0E1424;
+      border-right: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    /* Layout grid */
+    .variant-grid {
+      display: grid;
+      grid-template-columns: minmax(375px, 1fr) minmax(768px, 1fr);
+      min-height: 100vh;
+    }
+    .col-mobile {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 16px;
+      gap: 40px;
+    }
+    .col-desktop {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 24px;
+      gap: 40px;
+    }
+    
+    /* Colors specific to modes */
+    .bg-dark-canvas { background-color: #050913; }
+    .bg-light-canvas { background-color: #FAFAF7; }
+    
+    .card-dark {
+      background-color: #0E1424;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.5);
+    }
+    .card-light {
+      background-color: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      box-shadow: 0 10px 15px -3px rgba(11, 18, 32, 0.1), 0 4px 6px -4px rgba(11, 18, 32, 0.05);
+    }
+  </style>
+</head>
+<body class="antialiased">
+<!-- BEGIN: VariantGrid -->
+<div class="variant-grid">
+<!-- BEGIN: Mobile Column -->
+<div class="col-mobile" style="background: linear-gradient(to bottom, #050913 50%, #FAFAF7 50%);">
+<!-- Mobile Dark -->
+<!-- Card Container -->
+<div class="card-dark rounded-[20px] p-6 w-[343px] flex flex-col gap-6 relative mt-10">
+<!-- Header -->
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-medium tracking-[0.18em] text-[#94A3B8] uppercase">Freedom Horizon</span>
+<div class="flex bg-[rgba(255,255,255,0.05)] rounded-full p-1 border border-white/5">
+<span class="text-[11px] text-[#94A3B8] px-2 py-0.5 rounded-full cursor-default">1M</span>
+<span class="text-[11px] text-[#94A3B8] px-2 py-0.5 rounded-full cursor-default">3M</span>
+<span class="text-[11px] text-[#94A3B8] px-2 py-0.5 rounded-full cursor-default">6M</span>
+<span class="text-[11px] text-[#16A34A] bg-[#0E1424] shadow-[0_2px_4px_rgba(0,0,0,0.5)] border border-white/10 px-2 py-0.5 rounded-full cursor-default font-medium">1Y</span>
+<span class="text-[11px] text-[#94A3B8] px-2 py-0.5 rounded-full cursor-default">ALL</span>
+</div>
+</div>
+<!-- Hero Number -->
+<div>
+<div class="flex items-center gap-3">
+<span class="text-[40px] font-semibold text-white tracking-[-0.03em] tabular-nums leading-none">14.4 years</span>
+<div class="w-2 h-2 bg-[#16A34A] rounded-full pulse-dot"></div>
+</div>
+<p class="text-[14px] text-[#94A3B8] mt-1">of freedom at your current burn</p>
+</div>
+<!-- Chart Section -->
+<div class="h-[120px] relative -mx-6 w-[calc(100%+48px)] overflow-hidden">
+<svg class="w-full h-full preserve-aspect-ratio=" none"="" viewbox="0 0 343 120">
+<!-- Reference Line -->
+<path class="chart-ref-line" d="M0 40 Q 80 30, 170 60 T 343 20"></path>
+<!-- Area Fill -->
+<path class="chart-area" d="M0 60 Q 80 50, 170 80 T 343 30 L 343 120 L 0 120 Z"></path>
+<!-- Main Curve -->
+<path class="chart-line" d="M0 60 Q 80 50, 170 80 T 343 30"></path>
+<!-- Vertical Leader Line -->
+<line stroke="rgba(148, 163, 184, 0.5)" stroke-dasharray="2 2" stroke-width="2" x1="260" x2="260" y1="40" y2="70"></line>
+</svg>
+<!-- Tooltip Dark -->
+<div class="absolute top-2 left-[260px] -translate-x-1/2 bg-[#0E1424] border border-white/10 rounded-[12px] p-2.5 shadow-xl min-w-[120px] tooltip-arrow-dark z-10">
+<div class="text-[10px] text-[#94A3B8] font-medium tracking-wider uppercase mb-1.5">AUG '26</div>
+<div class="flex justify-between items-center mb-1">
+<span class="text-[12px] text-[#94A3B8]">Earned</span>
+<span class="text-[13px] text-white font-medium tabular-nums">$8,400</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[12px] text-[#94A3B8]">Kept</span>
+<div class="flex items-center gap-1.5">
+<span class="text-[13px] text-[#16A34A] font-medium tabular-nums">$6,392</span>
+<span class="text-[9px] text-[#16A34A] bg-[#16A34A]/10 px-1 py-0.5 rounded font-medium">+12%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI Chips -->
+<div class="flex justify-between gap-2 border-t border-white/5 pt-5">
+<!-- Stack 1 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Earned</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-white tabular-nums">$8,233</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+4.2%</span>
+</div>
+<!-- Stack 2 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Kept</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-white tabular-nums">$6,392</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+11.1%</span>
+</div>
+<!-- Stack 3 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Margin</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-white tabular-nums">78%</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+3pp</span>
+</div>
+</div>
+<!-- Interaction Hint -->
+<div class="flex justify-end items-center gap-1 mt-2 text-[#94A3B8]">
+<span class="text-[12px]">Tap any KPI to focus the chart</span>
+<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><line x1="7" x2="17" y1="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+</div>
+</div>
+<!-- Mobile Light -->
+<div class="card-light rounded-[20px] p-6 w-[343px] flex flex-col gap-6 relative mt-20">
+<!-- Header -->
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-medium tracking-[0.18em] text-[#64748B] uppercase">Freedom Horizon</span>
+<div class="flex bg-[#F8FAFC] rounded-full p-1 border border-[#E2E8F0]">
+<span class="text-[11px] text-[#64748B] px-2 py-0.5 rounded-full cursor-default">1M</span>
+<span class="text-[11px] text-[#64748B] px-2 py-0.5 rounded-full cursor-default">3M</span>
+<span class="text-[11px] text-[#64748B] px-2 py-0.5 rounded-full cursor-default">6M</span>
+<span class="text-[11px] text-[#0B1220] bg-white shadow-sm border border-[#E2E8F0] px-2 py-0.5 rounded-full cursor-default font-medium">1Y</span>
+<span class="text-[11px] text-[#64748B] px-2 py-0.5 rounded-full cursor-default">ALL</span>
+</div>
+</div>
+<!-- Hero Number -->
+<div>
+<div class="flex items-center gap-3">
+<span class="text-[40px] font-semibold text-[#0B1220] tracking-[-0.03em] tabular-nums leading-none">14.4 years</span>
+<div class="w-2 h-2 bg-[#16A34A] rounded-full pulse-dot"></div>
+</div>
+<p class="text-[14px] text-[#64748B] mt-1">of freedom at your current burn</p>
+</div>
+<!-- Chart Section -->
+<div class="h-[120px] relative -mx-6 w-[calc(100%+48px)] overflow-hidden">
+<svg class="w-full h-full preserve-aspect-ratio=" none"="" viewbox="0 0 343 120">
+<!-- Reference Line -->
+<path class="chart-ref-line" d="M0 40 Q 80 30, 170 60 T 343 20"></path>
+<!-- Area Fill -->
+<path class="chart-area" d="M0 60 Q 80 50, 170 80 T 343 30 L 343 120 L 0 120 Z"></path>
+<!-- Main Curve -->
+<path class="chart-line" d="M0 60 Q 80 50, 170 80 T 343 30"></path>
+<!-- Vertical Leader Line -->
+<line stroke="rgba(100, 116, 139, 0.3)" stroke-dasharray="2 2" stroke-width="2" x1="260" x2="260" y1="40" y2="70"></line>
+</svg>
+<!-- Tooltip Light -->
+<div class="absolute top-2 left-[260px] -translate-x-1/2 bg-white border-[1.5px] border-[#E2E8F0] rounded-[12px] p-2.5 shadow-[0_4px_12px_rgba(11,18,32,0.08)] min-w-[120px] tooltip-arrow-light z-10">
+<div class="text-[10px] text-[#64748B] font-medium tracking-wider uppercase mb-1.5">AUG '26</div>
+<div class="flex justify-between items-center mb-1">
+<span class="text-[12px] text-[#64748B]">Earned</span>
+<span class="text-[13px] text-[#0B1220] font-medium tabular-nums">$8,400</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[12px] text-[#64748B]">Kept</span>
+<div class="flex items-center gap-1.5">
+<span class="text-[13px] text-[#16A34A] font-medium tabular-nums">$6,392</span>
+<span class="text-[9px] text-[#16A34A] bg-[#16A34A]/10 px-1 py-0.5 rounded font-medium">+12%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI Chips -->
+<div class="flex justify-between gap-2 border-t border-[#E2E8F0] pt-5">
+<!-- Stack 1 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Earned</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">$8,233</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+4.2%</span>
+</div>
+<!-- Stack 2 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Kept</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">$6,392</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+11.1%</span>
+</div>
+<!-- Stack 3 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Margin</span>
+<div class="flex items-baseline gap-1.5">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">78%</span>
+</div>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 w-max px-1.5 py-0.5 rounded-full font-medium">+3pp</span>
+</div>
+</div>
+<!-- Interaction Hint -->
+<div class="flex justify-end items-center gap-1 mt-2 text-[#64748B]">
+<span class="text-[12px]">Tap any KPI to focus the chart</span>
+<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><line x1="7" x2="17" y1="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+</div>
+</div>
+</div>
+<!-- END: Mobile Column -->
+<!-- BEGIN: Desktop Column -->
+<div class="col-desktop" style="background: linear-gradient(to bottom, #050913 50%, #FAFAF7 50%);">
+<!-- Desktop Dark -->
+<div class="card-dark rounded-[20px] p-6 w-[720px] flex flex-col gap-6 relative mt-10">
+<!-- Header -->
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-medium tracking-[0.18em] text-[#94A3B8] uppercase">Freedom Horizon</span>
+<div class="flex bg-[rgba(255,255,255,0.05)] rounded-full p-1 border border-white/5">
+<span class="text-[11px] text-[#94A3B8] px-3 py-1 rounded-full cursor-default">1M</span>
+<span class="text-[11px] text-[#94A3B8] px-3 py-1 rounded-full cursor-default">3M</span>
+<span class="text-[11px] text-[#94A3B8] px-3 py-1 rounded-full cursor-default">6M</span>
+<span class="text-[11px] text-[#16A34A] bg-[#0E1424] shadow-[0_2px_4px_rgba(0,0,0,0.5)] border border-white/10 px-3 py-1 rounded-full cursor-default font-medium">1Y</span>
+<span class="text-[11px] text-[#94A3B8] px-3 py-1 rounded-full cursor-default">ALL</span>
+</div>
+</div>
+<div class="flex gap-8">
+<!-- Left Content -->
+<div class="flex flex-col justify-between flex-1">
+<!-- Hero Number -->
+<div>
+<div class="flex items-center gap-3">
+<span class="text-[48px] font-semibold text-white tracking-[-0.03em] tabular-nums leading-none">14.4 years</span>
+<div class="w-2 h-2 bg-[#16A34A] rounded-full pulse-dot"></div>
+</div>
+<p class="text-[14px] text-[#94A3B8] mt-2">of freedom at your current burn</p>
+</div>
+<!-- KPI Chips -->
+<div class="flex gap-8 border-t border-white/5 pt-5 mt-8">
+<!-- Stack 1 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Earned</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-white tabular-nums">$8,233</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+4.2%</span>
+</div>
+</div>
+<!-- Stack 2 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Kept</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-white tabular-nums">$6,392</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+11.1%</span>
+</div>
+</div>
+<!-- Stack 3 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#94A3B8]">Margin</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-white tabular-nums">78%</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+3pp</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Content (Chart) -->
+<div class="flex-1 relative border-l border-white/5 pl-8">
+<div class="h-[140px] relative w-full overflow-visible">
+<svg class="w-full h-full preserve-aspect-ratio=" none"="" viewbox="0 0 320 140">
+<!-- Reference Line -->
+<path class="chart-ref-line" d="M0 50 Q 80 40, 160 70 T 320 30"></path>
+<!-- Area Fill -->
+<path class="chart-area" d="M0 80 Q 80 60, 160 100 T 320 40 L 320 140 L 0 140 Z"></path>
+<!-- Main Curve -->
+<path class="chart-line" d="M0 80 Q 80 60, 160 100 T 320 40"></path>
+<!-- Vertical Leader Line -->
+<line stroke="rgba(148, 163, 184, 0.5)" stroke-dasharray="2 2" stroke-width="2" x1="240" x2="240" y1="50" y2="85"></line>
+</svg>
+<!-- Tooltip Dark -->
+<div class="absolute top-2 left-[240px] -translate-x-1/2 bg-[#0E1424] border border-white/10 rounded-[12px] p-3 shadow-xl min-w-[140px] tooltip-arrow-dark z-10">
+<div class="text-[11px] text-[#94A3B8] font-medium tracking-wider uppercase mb-2">AUG '26</div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="text-[12px] text-[#94A3B8]">Earned</span>
+<span class="text-[13px] text-white font-medium tabular-nums">$8,400</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[12px] text-[#94A3B8]">Kept</span>
+<div class="flex items-center gap-1.5">
+<span class="text-[13px] text-[#16A34A] font-medium tabular-nums">$6,392</span>
+<span class="text-[9px] text-[#16A34A] bg-[#16A34A]/10 px-1 py-0.5 rounded font-medium">+12%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interaction Hint -->
+<div class="absolute bottom-0 right-0 flex items-center gap-1 text-[#94A3B8]">
+<span class="text-[12px]">Tap any KPI to focus the chart</span>
+<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><line x1="7" x2="17" y1="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+</div>
+</div>
+</div>
+</div>
+<!-- Desktop Light -->
+<div class="card-light rounded-[20px] p-6 w-[720px] flex flex-col gap-6 relative mt-16">
+<!-- Header -->
+<div class="flex justify-between items-center">
+<span class="text-[11px] font-medium tracking-[0.18em] text-[#64748B] uppercase">Freedom Horizon</span>
+<div class="flex bg-[#F8FAFC] rounded-full p-1 border border-[#E2E8F0]">
+<span class="text-[11px] text-[#64748B] px-3 py-1 rounded-full cursor-default">1M</span>
+<span class="text-[11px] text-[#64748B] px-3 py-1 rounded-full cursor-default">3M</span>
+<span class="text-[11px] text-[#64748B] px-3 py-1 rounded-full cursor-default">6M</span>
+<span class="text-[11px] text-[#0B1220] bg-white shadow-sm border border-[#E2E8F0] px-3 py-1 rounded-full cursor-default font-medium">1Y</span>
+<span class="text-[11px] text-[#64748B] px-3 py-1 rounded-full cursor-default">ALL</span>
+</div>
+</div>
+<div class="flex gap-8">
+<!-- Left Content -->
+<div class="flex flex-col justify-between flex-1">
+<!-- Hero Number -->
+<div>
+<div class="flex items-center gap-3">
+<span class="text-[48px] font-semibold text-[#0B1220] tracking-[-0.03em] tabular-nums leading-none">14.4 years</span>
+<div class="w-2 h-2 bg-[#16A34A] rounded-full pulse-dot"></div>
+</div>
+<p class="text-[14px] text-[#64748B] mt-2">of freedom at your current burn</p>
+</div>
+<!-- KPI Chips -->
+<div class="flex gap-8 border-t border-[#E2E8F0] pt-5 mt-8">
+<!-- Stack 1 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Earned</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">$8,233</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+4.2%</span>
+</div>
+</div>
+<!-- Stack 2 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Kept</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">$6,392</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+11.1%</span>
+</div>
+</div>
+<!-- Stack 3 -->
+<div class="flex flex-col gap-1">
+<span class="text-[10px] font-medium tracking-wider uppercase text-[#64748B]">Margin</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[18px] font-semibold text-[#0B1220] tabular-nums">78%</span>
+<span class="text-[11px] text-[#16A34A] bg-[#16A34A]/10 px-1.5 py-0.5 rounded-full font-medium">+3pp</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Content (Chart) -->
+<div class="flex-1 relative border-l border-[#E2E8F0] pl-8">
+<div class="h-[140px] relative w-full overflow-visible">
+<svg class="w-full h-full preserve-aspect-ratio=" none"="" viewbox="0 0 320 140">
+<!-- Reference Line -->
+<path class="chart-ref-line" d="M0 50 Q 80 40, 160 70 T 320 30" stroke="rgba(100, 116, 139, 0.3)"></path>
+<!-- Area Fill -->
+<path class="chart-area" d="M0 80 Q 80 60, 160 100 T 320 40 L 320 140 L 0 140 Z"></path>
+<!-- Main Curve -->
+<path class="chart-line" d="M0 80 Q 80 60, 160 100 T 320 40"></path>
+<!-- Vertical Leader Line -->
+<line stroke="rgba(100, 116, 139, 0.3)" stroke-dasharray="2 2" stroke-width="2" x1="240" x2="240" y1="50" y2="85"></line>
+</svg>
+<!-- Tooltip Light -->
+<div class="absolute top-2 left-[240px] -translate-x-1/2 bg-white border-[1.5px] border-[#E2E8F0] rounded-[12px] p-3 shadow-[0_4px_12px_rgba(11,18,32,0.08)] min-w-[140px] tooltip-arrow-light z-10">
+<div class="text-[11px] text-[#64748B] font-medium tracking-wider uppercase mb-2">AUG '26</div>
+<div class="flex justify-between items-center mb-1.5">
+<span class="text-[12px] text-[#64748B]">Earned</span>
+<span class="text-[13px] text-[#0B1220] font-medium tabular-nums">$8,400</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[12px] text-[#64748B]">Kept</span>
+<div class="flex items-center gap-1.5">
+<span class="text-[13px] text-[#16A34A] font-medium tabular-nums">$6,392</span>
+<span class="text-[9px] text-[#16A34A] bg-[#16A34A]/10 px-1 py-0.5 rounded font-medium">+12%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Interaction Hint -->
+<div class="absolute bottom-0 right-0 flex items-center gap-1 text-[#64748B]">
+<span class="text-[12px]">Tap any KPI to focus the chart</span>
+<svg fill="none" height="14" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewbox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg"><line x1="7" x2="17" y1="17" y2="7"></line><polyline points="7 7 17 7 17 17"></polyline></svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: Desktop Column -->
+</div>
+<!-- END: VariantGrid -->
+</body></html>
