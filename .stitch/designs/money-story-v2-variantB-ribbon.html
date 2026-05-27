@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+
+<html class="antialiased" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Freedom Horizon - Variant B (The Ribbon)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary": "#ffffff",
+                        "inverse-surface": "#2b322b",
+                        "trail-violet": "#8B5CF6",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-container": "#00873a",
+                        "on-tertiary-container": "#fdfcff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-tertiary": "#ffffff",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-tint": "#006e2d",
+                        "outline": "#6e7b6c",
+                        "on-primary-fixed": "#002109",
+                        "on-background": "#171d16",
+                        "secondary-container": "#d9dff4",
+                        "primary-fixed": "#7ffc97",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#f4fcf0",
+                        "background": "#f4fcf0",
+                        "trail-sky": "#0EA5E9",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "trail-amber": "#F59E0B",
+                        "tertiary-container": "#66768d",
+                        "secondary-fixed": "#dce2f6",
+                        "on-error-container": "#93000a",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-variant": "#dde5d9",
+                        "inverse-primary": "#62df7d",
+                        "outline-variant": "#bdcaba",
+                        "trail-emerald": "#16A34A",
+                        "surface-container": "#e9f0e5",
+                        "on-surface-variant": "#3e4a3d",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-dim": "#F1EFE8",
+                        "on-surface": "#171d16",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container-high": "#e3eadf",
+                        "tertiary": "#4d5d73",
+                        "trail-indigo": "#6366F1",
+                        "surface": "#f4fcf0",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-container-low": "#eff6ea",
+                        "on-primary-container": "#f7fff2",
+                        "primary": "#006b2c",
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface-ivory": "#FAFAF7",
+                        "on-secondary-container": "#5c6274",
+                        "secondary": "#585e6f",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "error-container": "#ffdad6",
+                        "error-red": "#DC2626",
+                        // Custom palette for the canvas
+                        "navy-base": "#0B1220",
+                        "navy-surface": "#111827",
+                        "navy-outline": "#1F2937",
+                        "ivory-base": "#FAFAF7",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "48px",
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "unit": "4px"
+                    },
+                    fontFamily: {
+                        "headline-lg-mobile": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg-mobile": ["28px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "data-xl": ["40px", { lineHeight: "1.0", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "1.05", letterSpacing: "-0.03em", fontWeight: "600" }],
+                        "headline-sm": ["20px", { lineHeight: "1.1", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "body-lg": ["18px", { lineHeight: "1.65", letterSpacing: "0", fontWeight: "400" }],
+                        "headline-md": ["24px", { lineHeight: "1.05", letterSpacing: "-0.03em", fontWeight: "600" }],
+                        "data-lg": ["28px", { lineHeight: "1.0", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "body-md": ["16px", { lineHeight: "1.65", letterSpacing: "0", fontWeight: "400" }],
+                        "body-sm": ["14px", { lineHeight: "1.6", letterSpacing: "0", fontWeight: "400" }],
+                        "eyebrow": ["12px", { lineHeight: "1.2", letterSpacing: "0.18em", fontWeight: "500" }],
+                        "label-md": ["14px", { lineHeight: "1.2", letterSpacing: "0", fontWeight: "500" }],
+                        "display-lg": ["48px", { lineHeight: "1.05", letterSpacing: "-0.03em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        /* Stroke consistency overrides */
+        .stroke-1-5 { border-width: 1.5px; }
+        
+        /* The Ribbon SVG styles */
+        .ribbon-light { fill: #16A34A; opacity: 0.15; }
+        .ribbon-dark { fill: #16A34A; opacity: 0.25; }
+        
+        /* Subtle shadow for Light mode card */
+        .shadow-tier-1 { box-shadow: 0 1px 3px rgba(11, 18, 32, 0.04); }
+    </style>
+</head>
+<body class="bg-surface-dim font-sans text-on-surface p-margin-desktop min-h-screen flex flex-col items-center gap-section-gap">
+<div class="w-full max-w-container-max flex flex-col gap-12">
+<!-- Header -->
+<div>
+<h1 class="font-headline-lg text-headline-lg mb-2">Freedom Horizon: Variant B — The Ribbon</h1>
+<p class="font-body-md text-body-md text-on-surface-variant">Restrained Editorial Design System</p>
+</div>
+<!-- Canvas Container -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+<!-- ========================================== -->
+<!-- DESKTOP LIGHT                              -->
+<!-- ========================================== -->
+<div class="bg-ivory-base p-12 rounded-xl border border-outline-variant flex justify-center w-full">
+<!-- Card Container (720px) -->
+<div class="w-[720px] bg-surface-container-lowest rounded-xl stroke-1-5 border-outline-slate shadow-tier-1 p-6 flex flex-col gap-6">
+<!-- Header Area -->
+<div class="flex justify-between items-start">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Freedom Horizon</p>
+<div class="flex items-baseline gap-3">
+<h2 class="font-data-xl text-data-xl tabular-nums">14.4 years</h2>
+</div>
+<p class="font-body-sm text-body-sm text-outline-slate mt-1">of freedom — your kept margin widened 11 points</p>
+</div>
+<!-- Pill Selector -->
+<div class="flex bg-surface-container-highest rounded-full p-1 stroke-1-5 border-outline-variant">
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">1M</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">3M</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">6M</button>
+<button class="px-3 py-1 bg-surface-container-lowest rounded-full font-label-md text-label-md text-on-surface shadow-sm">1Y</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors">ALL</button>
+</div>
+</div>
+<!-- Chart Area (The Ribbon) -->
+<div class="h-48 relative w-full mt-4">
+<!-- Y-axis labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-outline-slate font-label-md text-[11px] tabular-nums pb-6 z-10">
+<span>$25k</span>
+<span>$15k</span>
+<span>$5k</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute inset-0 pl-10 pb-6 flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-outline-variant/30 h-0"></div>
+<div class="w-full border-t border-outline-variant/30 h-0"></div>
+<div class="w-full border-t border-outline-variant/30 h-0"></div>
+</div>
+<!-- SVG Ribbon -->
+<div class="absolute inset-0 pl-10 pb-6">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- The Ribbon Polygon (Top: Earned, Bottom: Spent) -->
+<polygon class="ribbon-light" points="0,50 10,48 20,45 30,52 40,40 50,35 60,30 70,20 80,15 90,10 100,5 100,45 90,55 80,65 70,75 60,70 50,75 40,80 30,85 20,82 10,88 0,90"></polygon>
+<!-- Top line (Earned) subtle stroke -->
+<polyline fill="none" opacity="0.5" points="0,50 10,48 20,45 30,52 40,40 50,35 60,30 70,20 80,15 90,10 100,5" stroke="#16A34A" stroke-width="0.5"></polyline>
+<!-- Bottom line (Spent) subtle stroke -->
+<polyline fill="none" opacity="0.5" points="0,90 10,88 20,82 30,85 40,80 50,75 60,70 70,75 80,65 90,55 100,45" stroke="#16A34A" stroke-width="0.5"></polyline>
+<!-- Tooltip Pin line at Month 8 (~66% width) -->
+<line stroke="#94A3B8" stroke-dasharray="2 2" stroke-width="0.5" x1="66" x2="66" y1="0" y2="100"></line>
+<circle cx="66" cy="23" fill="#16A34A" r="1.5"></circle> <!-- Earned point -->
+<circle cx="66" cy="73" fill="#16A34A" r="1.5"></circle> <!-- Spent point -->
+</svg>
+</div>
+<!-- Tooltip Box -->
+<div class="absolute top-0 left-[66%] -ml-24 bg-surface-container-lowest border stroke-1-5 border-outline-slate shadow-tier-1 rounded p-2 z-20 whitespace-nowrap">
+<p class="font-label-md text-label-md text-on-surface">Margin: 78%</p>
+<p class="font-body-sm text-[11px] text-outline-slate">widest this year</p>
+</div>
+<!-- X-axis labels -->
+<div class="absolute bottom-0 left-10 right-0 flex justify-between text-outline-slate font-label-md text-[11px] pt-2">
+<span>Jan</span>
+<span>Mar</span>
+<span>May</span>
+<span>Jul</span>
+<span>Sep</span>
+<span>Nov</span>
+</div>
+</div>
+<!-- KPI Footer -->
+<div class="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/50">
+<div class="flex gap-12">
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Earned</p>
+<p class="font-data-lg text-data-lg text-on-surface tabular-nums">$241k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Kept</p>
+<p class="font-data-lg text-data-lg text-on-surface tabular-nums">$188k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Margin</p>
+<p class="font-data-lg text-data-lg text-trail-emerald tabular-nums">78%</p>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-outline-slate italic">Tap any KPI to focus the chart</p>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- DESKTOP DARK                               -->
+<!-- ========================================== -->
+<div class="bg-navy-base p-12 rounded-xl border border-navy-outline flex justify-center w-full">
+<!-- Card Container (720px) -->
+<div class="w-[720px] bg-navy-surface rounded-xl stroke-1-5 border-navy-outline p-6 flex flex-col gap-6">
+<!-- Header Area -->
+<div class="flex justify-between items-start">
+<div>
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase mb-1">Freedom Horizon</p>
+<div class="flex items-baseline gap-3">
+<h2 class="font-data-xl text-data-xl text-white tabular-nums">14.4 years</h2>
+</div>
+<p class="font-body-sm text-body-sm text-outline-slate mt-1">of freedom — your kept margin widened 11 points</p>
+</div>
+<!-- Pill Selector -->
+<div class="flex bg-navy-base rounded-full p-1 stroke-1-5 border-navy-outline">
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-outline-slate hover:text-white transition-colors">1M</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-outline-slate hover:text-white transition-colors">3M</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-outline-slate hover:text-white transition-colors">6M</button>
+<button class="px-3 py-1 bg-navy-surface rounded-full font-label-md text-label-md text-white shadow-sm">1Y</button>
+<button class="px-3 py-1 rounded-full font-label-md text-label-md text-outline-slate hover:text-white transition-colors">ALL</button>
+</div>
+</div>
+<!-- Chart Area (The Ribbon) -->
+<div class="h-48 relative w-full mt-4">
+<!-- Y-axis labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-outline-slate font-label-md text-[11px] tabular-nums pb-6 z-10">
+<span>$25k</span>
+<span>$15k</span>
+<span>$5k</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute inset-0 pl-10 pb-6 flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-navy-outline h-0"></div>
+<div class="w-full border-t border-navy-outline h-0"></div>
+<div class="w-full border-t border-navy-outline h-0"></div>
+</div>
+<!-- SVG Ribbon -->
+<div class="absolute inset-0 pl-10 pb-6">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- The Ribbon Polygon -->
+<polygon class="ribbon-dark" points="0,50 10,48 20,45 30,52 40,40 50,35 60,30 70,20 80,15 90,10 100,5 100,45 90,55 80,65 70,75 60,70 50,75 40,80 30,85 20,82 10,88 0,90"></polygon>
+<polyline fill="none" opacity="0.6" points="0,50 10,48 20,45 30,52 40,40 50,35 60,30 70,20 80,15 90,10 100,5" stroke="#16A34A" stroke-width="0.5"></polyline>
+<polyline fill="none" opacity="0.6" points="0,90 10,88 20,82 30,85 40,80 50,75 60,70 70,75 80,65 90,55 100,45" stroke="#16A34A" stroke-width="0.5"></polyline>
+<!-- Tooltip Pin line at Month 8 -->
+<line stroke="#4B5563" stroke-dasharray="2 2" stroke-width="0.5" x1="66" x2="66" y1="0" y2="100"></line>
+<circle cx="66" cy="23" fill="#16A34A" r="1.5"></circle>
+<circle cx="66" cy="73" fill="#16A34A" r="1.5"></circle>
+</svg>
+</div>
+<!-- Tooltip Box -->
+<div class="absolute top-0 left-[66%] -ml-24 bg-navy-surface border stroke-1-5 border-navy-outline rounded p-2 z-20 whitespace-nowrap">
+<p class="font-label-md text-label-md text-white">Margin: 78%</p>
+<p class="font-body-sm text-[11px] text-outline-slate">widest this year</p>
+</div>
+<!-- X-axis labels -->
+<div class="absolute bottom-0 left-10 right-0 flex justify-between text-outline-slate font-label-md text-[11px] pt-2">
+<span>Jan</span>
+<span>Mar</span>
+<span>May</span>
+<span>Jul</span>
+<span>Sep</span>
+<span>Nov</span>
+</div>
+</div>
+<!-- KPI Footer -->
+<div class="flex items-center justify-between mt-4 pt-4 border-t border-navy-outline">
+<div class="flex gap-12">
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Earned</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$241k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Kept</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$188k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-1">Margin</p>
+<p class="font-data-lg text-data-lg text-trail-emerald tabular-nums">78%</p>
+</div>
+</div>
+<p class="font-body-sm text-body-sm text-outline-slate italic">Tap any KPI to focus the chart</p>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- MOBILE LIGHT                               -->
+<!-- ========================================== -->
+<div class="bg-ivory-base p-8 rounded-xl border border-outline-variant flex justify-center w-full">
+<!-- Card Container (343px) -->
+<div class="w-[343px] bg-surface-container-lowest rounded-xl stroke-1-5 border-outline-slate shadow-tier-1 p-4 flex flex-col gap-5">
+<!-- Header Area -->
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Freedom Horizon</p>
+<h2 class="font-data-lg text-data-lg tabular-nums">14.4 years</h2>
+</div>
+</div>
+<!-- Pill Selector Mobile -->
+<div class="flex bg-surface-container-highest rounded-full p-1 stroke-1-5 border-outline-variant justify-between w-full">
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-on-surface-variant">1M</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-on-surface-variant">3M</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-on-surface-variant">6M</button>
+<button class="flex-1 py-1 bg-surface-container-lowest rounded-full font-label-md text-label-md text-on-surface shadow-sm">1Y</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-on-surface-variant">ALL</button>
+</div>
+<p class="font-body-sm text-[12px] text-outline-slate mt-1 leading-tight">of freedom — your kept margin widened 11 points</p>
+</div>
+<!-- Chart Area (The Ribbon) -->
+<div class="h-32 relative w-full mt-2">
+<!-- Y-axis labels simplified for mobile -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-outline-slate font-label-md text-[10px] tabular-nums pb-5 z-10">
+<span>$25k</span>
+<span>$5k</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute inset-0 pl-8 pb-5 flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-outline-variant/30 h-0"></div>
+<div class="w-full border-t border-outline-variant/30 h-0"></div>
+</div>
+<!-- SVG Ribbon -->
+<div class="absolute inset-0 pl-8 pb-5">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<polygon class="ribbon-light" points="0,50 20,45 40,40 60,30 80,15 100,5 100,45 80,65 60,70 40,80 20,82 0,90"></polygon>
+<polyline fill="none" opacity="0.5" points="0,50 20,45 40,40 60,30 80,15 100,5" stroke="#16A34A" stroke-width="1"></polyline>
+<polyline fill="none" opacity="0.5" points="0,90 20,82 40,80 60,70 80,65 100,45" stroke="#16A34A" stroke-width="1"></polyline>
+</svg>
+</div>
+<!-- X-axis labels simplified -->
+<div class="absolute bottom-0 left-8 right-0 flex justify-between text-outline-slate font-label-md text-[10px] pt-1">
+<span>Jan</span>
+<span>Jun</span>
+<span>Nov</span>
+</div>
+</div>
+<!-- KPI Footer Mobile (Stacked/Wrapped) -->
+<div class="flex flex-wrap gap-x-8 gap-y-4 mt-2 pt-4 border-t border-outline-variant/50">
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Earned</p>
+<p class="font-data-lg text-headline-sm text-on-surface tabular-nums">$241k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Kept</p>
+<p class="font-data-lg text-headline-sm text-on-surface tabular-nums">$188k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Margin</p>
+<p class="font-data-lg text-headline-sm text-trail-emerald tabular-nums">78%</p>
+</div>
+</div>
+</div>
+</div>
+<!-- ========================================== -->
+<!-- MOBILE DARK                                -->
+<!-- ========================================== -->
+<div class="bg-navy-base p-8 rounded-xl border border-navy-outline flex justify-center w-full">
+<!-- Card Container (343px) -->
+<div class="w-[343px] bg-navy-surface rounded-xl stroke-1-5 border-navy-outline p-4 flex flex-col gap-5">
+<!-- Header Area -->
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div>
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase mb-1">Freedom Horizon</p>
+<h2 class="font-data-lg text-data-lg text-white tabular-nums">14.4 years</h2>
+</div>
+</div>
+<!-- Pill Selector Mobile -->
+<div class="flex bg-navy-base rounded-full p-1 stroke-1-5 border-navy-outline justify-between w-full">
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-outline-slate">1M</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-outline-slate">3M</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-outline-slate">6M</button>
+<button class="flex-1 py-1 bg-navy-surface rounded-full font-label-md text-label-md text-white shadow-sm">1Y</button>
+<button class="flex-1 py-1 rounded-full font-label-md text-label-md text-outline-slate">ALL</button>
+</div>
+<p class="font-body-sm text-[12px] text-outline-slate mt-1 leading-tight">of freedom — your kept margin widened 11 points</p>
+</div>
+<!-- Chart Area (The Ribbon) -->
+<div class="h-32 relative w-full mt-2">
+<!-- Y-axis labels simplified for mobile -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-outline-slate font-label-md text-[10px] tabular-nums pb-5 z-10">
+<span>$25k</span>
+<span>$5k</span>
+</div>
+<!-- Grid lines -->
+<div class="absolute inset-0 pl-8 pb-5 flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-navy-outline h-0"></div>
+<div class="w-full border-t border-navy-outline h-0"></div>
+</div>
+<!-- SVG Ribbon -->
+<div class="absolute inset-0 pl-8 pb-5">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<polygon class="ribbon-dark" points="0,50 20,45 40,40 60,30 80,15 100,5 100,45 80,65 60,70 40,80 20,82 0,90"></polygon>
+<polyline fill="none" opacity="0.6" points="0,50 20,45 40,40 60,30 80,15 100,5" stroke="#16A34A" stroke-width="1"></polyline>
+<polyline fill="none" opacity="0.6" points="0,90 20,82 40,80 60,70 80,65 100,45" stroke="#16A34A" stroke-width="1"></polyline>
+</svg>
+</div>
+<!-- X-axis labels simplified -->
+<div class="absolute bottom-0 left-8 right-0 flex justify-between text-outline-slate font-label-md text-[10px] pt-1">
+<span>Jan</span>
+<span>Jun</span>
+<span>Nov</span>
+</div>
+</div>
+<!-- KPI Footer Mobile (Stacked/Wrapped) -->
+<div class="flex flex-wrap gap-x-8 gap-y-4 mt-2 pt-4 border-t border-navy-outline">
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Earned</p>
+<p class="font-data-lg text-headline-sm text-white tabular-nums">$241k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Kept</p>
+<p class="font-data-lg text-headline-sm text-white tabular-nums">$188k</p>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate uppercase tracking-wider mb-0.5">Margin</p>
+<p class="font-data-lg text-headline-sm text-trail-emerald tabular-nums">78%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>
