@@ -41,3 +41,20 @@ export type { PairedMetricCardProps, PairedMetric } from './PairedMetricCard';
 
 export { EditorialMoneyStoryHero } from './EditorialMoneyStoryHero';
 export type { EditorialMoneyStoryHeroProps } from './EditorialMoneyStoryHero';
+
+// Shell primitives (Phase R2 — 2026-05-27). Desktop sidebar + topbar +
+// mobile bottom nav + the AppShell wrapper. See shell/index.ts.
+export {
+  EditorialNavRow,
+  EditorialSidebar,
+  EditorialTopBar,
+  EditorialBottomNav,
+  EditorialAppShell,
+} from './shell';
+export type {
+  EditorialNavRowProps,
+  EditorialSidebarProps,
+  EditorialTopBarProps,
+  EditorialBottomNavProps,
+  EditorialAppShellProps,
+} from './shell';

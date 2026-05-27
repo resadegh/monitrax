@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Monitrax - Mobile Home</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#585e6f",
+                        "trail-emerald": "#16A34A",
+                        "secondary-container": "#d9dff4",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-bright": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-secondary-container": "#5c6274",
+                        "surface-dim": "#F1EFE8",
+                        "background": "#f4fcf0",
+                        "trail-sky": "#0EA5E9",
+                        "on-primary": "#ffffff",
+                        "tertiary": "#4d5d73",
+                        "surface-container-high": "#e3eadf",
+                        "surface-container-low": "#eff6ea",
+                        "tertiary-container": "#66768d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "error-container": "#ffdad6",
+                        "error-red": "#DC2626",
+                        "inverse-surface": "#2b322b",
+                        "on-surface": "#171d16",
+                        "surface": "#f4fcf0",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-ivory": "#FAFAF7",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-indigo": "#6366F1",
+                        "surface-tint": "#006e2d",
+                        "on-tertiary": "#ffffff",
+                        "outline": "#6e7b6c",
+                        "surface-container-highest": "#dde5d9",
+                        "inverse-primary": "#62df7d",
+                        "outline-variant": "#bdcaba",
+                        "trail-amber": "#F59E0B",
+                        "error": "#ba1a1a",
+                        "surface-container": "#e9f0e5",
+                        "primary-fixed-dim": "#62df7d",
+                        "primary-fixed": "#7ffc97",
+                        "trail-violet": "#8B5CF6",
+                        "surface-variant": "#dde5d9",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dce2f6",
+                        "primary": "#006b2c",
+                        "on-primary-container": "#f7fff2",
+                        "outline-slate": "#94A3B8",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-background": "#171d16",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#00873a",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#ecf3e7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "container-max": "1280px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1.5px solid #E2E8F0;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory text-on-surface antialiased w-full max-w-[375px] mx-auto min-h-screen relative pb-20 overflow-x-hidden">
+<!-- Top Navigation Placeholder (Simulating App Header) -->
+<header class="sticky top-0 w-full h-[56px] bg-surface-container-lowest/90 backdrop-blur-md z-40 flex items-center justify-between px-margin-mobile border-b border-surface-container-highest">
+<div class="w-8 h-8 rounded-full bg-on-tertiary-fixed text-on-primary flex items-center justify-center font-headline-sm text-headline-sm">M</div>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant relative">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-error-red rounded-full border border-surface-container-lowest"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-secondary-container bg-cover bg-center overflow-hidden border border-surface-container-highest" data-alt="A small, circular avatar portrait of a professional individual with a modern, clean light-mode aesthetic, matching the sophisticated Monitrax UI style." style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCtcSGWL51Y0nZ5o88E7xBl9ndC9170VpOtXGjdvMSEFWtj_KrFmvCEmwqL0Wgzmd2kMLIpM6KoJlsz2obxdM6WiCliFsY6NBgGEQYwKHuGesB-xfZmJVBgY1q-cBZ0P11Eq3N9Lm43D9b5j_cimrIJpc5LnWI28bms1McKRqM2fbdVzyk2N-6CpPpdNHpaSt6vBUIZSS-xo3GB3UJtf4U3XoDiQd-NL6w01Ibfk7WJEkaGNc2bn9e5ELpuq3vmyjBOBkJHWa53IxM');"></div>
+</div>
+</header>
+<main class="px-margin-mobile pt-6 pb-8 flex flex-col gap-8">
+<!-- Section 1: Welcome -->
+<section class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-widest">WEDNESDAY · 27 MAY 2026 · AEST</span>
+</div>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-tertiary-fixed">Welcome back, Reza</h1>
+<div class="flex items-center justify-between mt-1">
+<p class="font-body-sm text-body-sm text-secondary">Your three months at a glance.</p>
+<div class="flex bg-surface-container-highest rounded-full p-1">
+<button class="px-3 py-1 text-[10px] font-semibold text-on-surface bg-surface-container-lowest rounded-full shadow-sm">30D</button>
+</div>
+</div>
+</section>
+<!-- Section 2: Actions -->
+<section>
+<button class="w-full glass-card rounded-xl p-4 flex items-center justify-between group active:scale-[0.98] transition-transform">
+<div class="flex items-center gap-3">
+<span class="w-2.5 h-2.5 rounded-full bg-trail-amber shrink-0"></span>
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-medium">3 pending actions</span>
+</div>
+<span class="material-symbols-outlined text-secondary group-hover:text-on-surface transition-colors">chevron_right</span>
+</button>
+</section>
+<!-- Section 3: Daily Pulse -->
+<section class="bg-[#FAF8F3] rounded-xl border-[1.5px] border-surface-container-highest p-4 flex justify-between items-center">
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">TODAY</span>
+<span class="font-label-md text-label-md text-trail-emerald tabular-nums">+$240</span>
+</div>
+<div class="w-px h-8 bg-surface-container-highest"></div>
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">THIS WEEK</span>
+<span class="font-label-md text-label-md text-trail-amber tabular-nums">-$92</span>
+</div>
+<div class="w-px h-8 bg-surface-container-highest"></div>
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">STREAK</span>
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-medium">4 DAYS</span>
+</div>
+</section>
+<!-- Section 4: Money Story Hero -->
+<section class="glass-card rounded-xl p-6 flex flex-col gap-6 relative overflow-hidden">
+<div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-trail-emerald/5 to-transparent rounded-bl-full pointer-events-none"></div>
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">EARNED (30D)</span>
+<div class="font-data-xl text-data-xl text-on-tertiary-fixed tabular-nums">$14,250</div>
+<span class="font-body-sm text-body-sm text-secondary">Total incoming cashflow</span>
+</div>
+<div class="h-px w-full bg-surface-container-highest"></div>
+<div class="flex flex-col gap-1 relative pl-4 border-l-[3px] border-trail-emerald">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">KEPT</span>
+<div class="font-data-lg text-data-lg text-on-tertiary-fixed tabular-nums">$3,840</div>
+<span class="font-body-sm text-body-sm text-secondary">27% savings rate</span>
+</div>
+<div class="h-px w-full bg-surface-container-highest"></div>
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase">FREE TODAY</span>
+<div class="font-data-lg text-data-lg text-on-tertiary-fixed tabular-nums">$184</div>
+<span class="font-body-sm text-body-sm text-secondary">Safe to spend</span>
+</div>
+</section>
+<!-- Section 5: Metrics Grid -->
+<section class="grid grid-cols-2 gap-3">
+<div class="glass-card rounded-xl p-4 flex flex-col gap-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase truncate">NET WORTH</span>
+<div class="font-headline-sm text-headline-sm text-on-tertiary-fixed tabular-nums truncate">$842k</div>
+<div class="inline-flex items-center gap-1 bg-trail-emerald/10 text-trail-emerald px-1.5 py-0.5 rounded text-[10px] font-medium w-fit">
+<span class="material-symbols-outlined text-[12px]">arrow_upward</span>
+                    1.2%
+                </div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col gap-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase truncate">ASSETS</span>
+<div class="font-headline-sm text-headline-sm text-on-tertiary-fixed tabular-nums truncate">$1.2M</div>
+<div class="inline-flex items-center gap-1 bg-trail-emerald/10 text-trail-emerald px-1.5 py-0.5 rounded text-[10px] font-medium w-fit">
+<span class="material-symbols-outlined text-[12px]">arrow_upward</span>
+                    0.8%
+                </div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col gap-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase truncate">DEBT</span>
+<div class="font-headline-sm text-headline-sm text-on-tertiary-fixed tabular-nums truncate">$358k</div>
+<div class="inline-flex items-center gap-1 bg-surface-container text-secondary px-1.5 py-0.5 rounded text-[10px] font-medium w-fit">
+<span class="material-symbols-outlined text-[12px]">arrow_downward</span>
+                    0.2%
+                </div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col gap-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase truncate">SUPER</span>
+<div class="font-headline-sm text-headline-sm text-on-tertiary-fixed tabular-nums truncate">$124k</div>
+<div class="inline-flex items-center gap-1 bg-trail-emerald/10 text-trail-emerald px-1.5 py-0.5 rounded text-[10px] font-medium w-fit">
+<span class="material-symbols-outlined text-[12px]">arrow_upward</span>
+                    4.1%
+                </div>
+</div>
+</section>
+<!-- Section 6: Diagnostics -->
+<section class="flex flex-col gap-4">
+<h2 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest pl-1">Diagnostics</h2>
+<div class="glass-card rounded-xl p-5 flex items-center justify-between">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-semibold">Financial Health</span>
+<span class="font-body-sm text-body-sm text-secondary">Strong standing</span>
+</div>
+<div class="w-12 h-12 rounded-full border-[4px] border-surface-container-highest border-t-trail-emerald border-r-trail-emerald flex items-center justify-center transform -rotate-45">
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-bold transform rotate-45">82</span>
+</div>
+</div>
+<div class="glass-card rounded-xl p-5 flex flex-col gap-3">
+<div class="flex justify-between items-end">
+<div class="flex flex-col gap-1">
+<span class="font-label-md text-label-md text-on-tertiary-fixed font-semibold">Emergency Fund</span>
+<span class="font-body-sm text-body-sm text-secondary">3.5 / 6 Months</span>
+</div>
+<span class="font-label-md text-label-md text-on-tertiary-fixed tabular-nums">$14,000</span>
+</div>
+<div class="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-trail-indigo w-[60%] rounded-full"></div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Shell (Monitrax) -->
+<!-- Content: Home, Wealth, TRAIL, Activity, Settings -->
+<!-- Active State: Home -->
+<nav class="fixed bottom-0 w-full bg-surface-container-lowest border-t border-white/5 md:hidden shadow-[0_-4px_24px_rgba(11,18,32,0.04)] z-50 px-2 pb-safe pt-2 h-20">
+<div class="flex justify-around items-center h-full max-w-md mx-auto">
+<!-- Active: Home -->
+<button class="flex flex-col items-center gap-1 min-w-[64px] text-primary group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="text-[10px] font-medium tracking-wide">Home</span>
+</button>
+<!-- Inactive: Wealth -->
+<button class="flex flex-col items-center gap-1 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">account_balance</span>
+<span class="text-[10px] font-medium tracking-wide">Wealth</span>
+</button>
+<!-- Inactive: TRAIL -->
+<button class="flex flex-col items-center gap-1 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">map</span>
+<span class="text-[10px] font-medium tracking-wide">TRAIL</span>
+</button>
+<!-- Inactive: Activity -->
+<button class="flex flex-col items-center gap-1 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">insights</span>
+<span class="text-[10px] font-medium tracking-wide">Activity</span>
+</button>
+<!-- Inactive: Profile -->
+<button class="flex flex-col items-center gap-1 min-w-[64px] text-on-surface-variant hover:text-primary transition-colors group">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">person</span>
+<span class="text-[10px] font-medium tracking-wide">Profile</span>
+</button>
+</div>
+</nav>
+<!-- Safe area padding for mobile browsers -->
+<style>
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+    </style>
+</body></html>
