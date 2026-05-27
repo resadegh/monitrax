@@ -23,13 +23,20 @@
 
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import type { LucideIcon } from 'lucide-react';
+import type { ComponentType } from 'react';
 import type { TrailStage } from '@/lib/cfo/trailStage';
 
 export interface EditorialNavRowProps {
   href: string;
   label: string;
-  icon: LucideIcon;
+  /**
+   * Icon component. Typed to match the loose `NavItem.icon` contract in
+   * `lib/navigation/trailNav.tsx` (SSOT) — accepts any component that
+   * takes a `className` prop, which both lucide icons and any custom
+   * icon component satisfy. Strict `LucideIcon` typing would reject the
+   * canonical nav config.
+   */
+  icon: ComponentType<{ className?: string }>;
   /** Match-active state — driven by the consumer's pathname check. */
   active?: boolean;
   /**
@@ -79,11 +86,11 @@ export function EditorialNavRow({
           className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-editorial-emerald"
         />
       )}
-      <Icon
-        className={cn('shrink-0', dense ? 'h-4 w-4' : 'h-5 w-5')}
-        strokeWidth={active ? 2 : 1.75}
-        aria-hidden
-      />
+      {/* Icon rendered without strokeWidth — the loose NavItem.icon
+          contract doesn't declare it. Active/inactive distinction is
+          carried by font weight + colour change instead, which reads
+          more cleanly on dense nav rails anyway. */}
+      <Icon className={cn('shrink-0', dense ? 'h-4 w-4' : 'h-5 w-5')} />
       <span className="flex-1 truncate">{label}</span>
       {trailStage && (
         <span
