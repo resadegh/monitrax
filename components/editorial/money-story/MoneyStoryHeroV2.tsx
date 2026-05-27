@@ -43,7 +43,8 @@ export interface MoneyStoryHeroV2Props {
   /** Percentage points the kept margin widened vs prior period. */
   marginDeltaPoints: number;
   /** Trend data — one point per period (e.g. 12 months). Used for the
-   *  ribbon chart. spent + kept = earned per point. */
+   *  ribbon chart. spent + kept = earned per point. Empty array hides
+   *  the ribbon cleanly and shows a quiet empty-state line in its place. */
   trendData: RibbonPoint[];
   /** Initially selected time period. Defaults to '1Y'. */
   defaultPeriod?: TimePeriod;
@@ -177,9 +178,12 @@ export function MoneyStoryHeroV2({
 
   const marginPct = earned > 0 ? Math.round((kept / earned) * 100) : 0;
   const deltaSign = marginDeltaPoints >= 0 ? '+' : '';
-  const subText = marginDeltaPoints >= 0
-    ? `of freedom — your kept margin widened ${marginDeltaPoints} ${marginDeltaPoints === 1 ? 'point' : 'points'}`
-    : `of freedom — your kept margin tightened ${Math.abs(marginDeltaPoints)} ${Math.abs(marginDeltaPoints) === 1 ? 'point' : 'points'}`;
+  const subText =
+    marginDeltaPoints === 0
+      ? 'of freedom at your current burn'
+      : marginDeltaPoints > 0
+        ? `of freedom — your kept margin widened ${marginDeltaPoints} ${marginDeltaPoints === 1 ? 'point' : 'points'}`
+        : `of freedom — your kept margin tightened ${Math.abs(marginDeltaPoints)} ${Math.abs(marginDeltaPoints) === 1 ? 'point' : 'points'}`;
 
   const handlePeriodChange = (next: TimePeriod) => {
     setPeriod(next);
@@ -222,13 +226,24 @@ export function MoneyStoryHeroV2({
         {subText}
       </p>
 
-      {/* The ribbon chart */}
+      {/* The ribbon chart — empty trend renders a quiet placeholder
+          line so users without enough history still see a coherent
+          tile (hero + KPIs work; no misleading flat-zero ribbon). */}
       <div className="mt-6">
-        <FreedomRibbonChart
-          data={trendData}
-          height={140}
-          animate={!reducedMotion}
-        />
+        {trendData.length >= 2 ? (
+          <FreedomRibbonChart
+            data={trendData}
+            height={140}
+            animate={!reducedMotion}
+          />
+        ) : (
+          <div
+            className="flex h-[140px] items-center justify-center rounded-lg border border-dashed border-editorial-divider bg-editorial-warm/40 px-4 text-center text-[13px] leading-relaxed text-editorial-slate"
+            aria-label="Trend chart unavailable — not enough history yet"
+          >
+            Your ribbon unlocks after 2 months of recorded activity.
+          </div>
+        )}
       </div>
 
       {/* KPI chips — Earned / Kept / Margin */}

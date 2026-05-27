@@ -20,6 +20,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
+import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
@@ -117,6 +118,19 @@ interface DashboardInsights {
     //   Earned = taxWithheld + (everything else outgoing) + surplus
     taxWithheld: number;       // PAYG-equivalent gone before the user sees it
     surplus: number;           // monthlyCashflow — true monthly surplus (the "Saved" segment)
+    // Phase R-MoneyStoryV2 (2026-05-27) — 12-month historical trend for
+    // the Freedom Horizon ribbon. Honest aggregation of transactions
+    // bucketed by month. Empty array when user has <2 months of data
+    // (the consumer hides the ribbon in that case).
+    trend: Array<{ label: string; spent: number; kept: number }>;
+    // Margin in percentage points the kept-margin has widened (positive)
+    // or tightened (negative) over the trend window. 0 when not enough
+    // history. Drives the hero sub-text.
+    marginDeltaPoints: number;
+    // Freedom horizon in years (= freeCashDays / 365.25). The headline
+    // metric on the Money Story v2 hero. Replaces the previous
+    // "5255 days of life" framing.
+    freedomYears: number;
   };
 }
 
@@ -132,6 +146,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // history OR ≥3 recurring expenses with ≥1 essential. Drives the
       // `moneyStory.enoughHistory` flag on the response below.
       const expenseMaturity = await getExpenseDataMaturity(userId);
+
+      // Phase R-MoneyStoryV2 (2026-05-27) — honest 12-month aggregation
+      // of the user's own transactions for the Freedom Horizon ribbon.
+      // Returns empty trend + marginDelta=0 when <2 months of activity
+      // (the consumer hides the ribbon cleanly in that case).
+      const moneyStoryTrend = await getMoneyStoryTrend(userId, 12);
 
       // Get health score from Financial Health Engine (same as sidebar) - Blueprint §5.1
       // This ensures Dashboard and Sidebar show the same health score
@@ -361,6 +381,9 @@ export const GET = withPermission('report.read', async (request, auth) => {
         // precision in the hero: a user with no recorded expenses gets
         // the dollar amount only, never a misleading "0 days of life".
         // taxWithheld + surplus power the Money Story Bar visualisation.
+        // Phase R-MoneyStoryV2 (2026-05-27) — adds trend + marginDelta +
+        // freedomYears for the Freedom Horizon ribbon hero. Honest
+        // transaction aggregation; empty trend when <2 months of data.
         moneyStory: {
           earned: snapshot.quickMetrics.monthlyGrossIncome,
           kept: snapshot.quickMetrics.keptAfterEssentials,
@@ -370,6 +393,9 @@ export const GET = withPermission('report.read', async (request, auth) => {
           enoughHistory: expenseMaturity.isMature,
           taxWithheld: snapshot.cashflow.monthlyPaygWithholding,
           surplus: snapshot.quickMetrics.monthlyCashflow,
+          trend: moneyStoryTrend.trend,
+          marginDeltaPoints: moneyStoryTrend.marginDeltaPoints,
+          freedomYears: snapshot.quickMetrics.freeCashDays / 365.25,
         },
       };
 
