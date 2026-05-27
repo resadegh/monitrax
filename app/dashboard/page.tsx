@@ -62,7 +62,7 @@ import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
-import { MoneyStoryHero } from '@/components/dashboard/MoneyStoryHero';
+import { EditorialMoneyStoryHero } from '@/components/editorial';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
@@ -601,21 +601,25 @@ export default function DashboardPage() {
         null
       ) : (
         <div className="space-y-6">
-          {/* Phase 43 — Money Story (Personal P&L scoreboard).
-              The orientation hero: 3 lines (Earned → Kept → Free today)
-              that map to TRAIL T → R → A. Stage emphasis rotates inside
-              the component. Self-gates when the insights endpoint hasn't
-              attached the moneyStory block (older cached responses).
-              All five values come from canonical quickMetrics (SSOT). */}
+          {/* Phase 43 → Phase R3 (2026-05-27): Money Story (Personal P&L
+              scoreboard) in Restrained Editorial vocabulary. Three lines
+              (Earned → Kept → Free today) mapping to TRAIL T → R → A;
+              the user's current stage gets a 3px emerald left-edge accent.
+              Self-gates when insights hasn't attached the moneyStory block
+              (older cached responses). Values come from canonical
+              quickMetrics (SSOT — CLAUDE.md §12.2).
+              The cosmos / glass variant `MoneyStoryHero` remains in the
+              codebase for any other surface; the dashboard now renders the
+              editorial composition. `taxWithheld` + `surplus` props are
+              not consumed here — the editorial hero omits the MoneyStoryBar
+              segmentation in favour of the cleaner three-row stack. */}
           {insights?.moneyStory && (
-            <MoneyStoryHero
+            <EditorialMoneyStoryHero
               earned={insights.moneyStory.earned}
               kept={insights.moneyStory.kept}
               keptMargin={insights.moneyStory.keptMargin}
               freeToday={insights.moneyStory.freeToday}
               freeDays={insights.moneyStory.freeDays}
-              taxWithheld={insights.moneyStory.taxWithheld}
-              surplus={insights.moneyStory.surplus}
               enoughHistory={insights.moneyStory.enoughHistory}
               trailStage={determineTrailStage({
                 hasAccounts: (snapshot.assets?.accounts?.totalValue ?? 0) > 0,
