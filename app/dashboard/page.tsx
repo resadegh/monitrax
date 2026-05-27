@@ -62,7 +62,7 @@ import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
-import { EditorialMoneyStoryHero } from '@/components/editorial';
+import { MoneyStoryHeroV2 } from '@/components/editorial/money-story';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
@@ -130,6 +130,10 @@ interface DashboardInsights {
     enoughHistory: boolean;
     taxWithheld: number;
     surplus: number;
+    // Phase R-MoneyStoryV2 (2026-05-27) — Freedom Horizon ribbon fields.
+    trend: Array<{ label: string; spent: number; kept: number }>;
+    marginDeltaPoints: number;
+    freedomYears: number;
   };
 }
 
@@ -601,33 +605,31 @@ export default function DashboardPage() {
         null
       ) : (
         <div className="space-y-6">
-          {/* Phase 43 → Phase R3 (2026-05-27): Money Story (Personal P&L
-              scoreboard) in Restrained Editorial vocabulary. Three lines
-              (Earned → Kept → Free today) mapping to TRAIL T → R → A;
-              the user's current stage gets a 3px emerald left-edge accent.
-              Self-gates when insights hasn't attached the moneyStory block
-              (older cached responses). Values come from canonical
-              quickMetrics (SSOT — CLAUDE.md §12.2).
-              The cosmos / glass variant `MoneyStoryHero` remains in the
-              codebase for any other surface; the dashboard now renders the
-              editorial composition. `taxWithheld` + `surplus` props are
-              not consumed here — the editorial hero omits the MoneyStoryBar
-              segmentation in favour of the cleaner three-row stack. */}
+          {/* Phase 43 → R3 → R-MoneyStoryV2 (2026-05-27): Money Story v2
+              "Freedom Horizon" — Variant B "The Ribbon" locked from
+              PR #908. Hero number = freedomYears (= freeCashDays /
+              365.25), framed as "N years of freedom" instead of the
+              previous "N days of life" wording. Ribbon chart = stacked
+              area of the user's own transactions bucketed by month
+              (12-month window, see `lib/calculations/moneyStoryTrend.ts`
+              — honest aggregation, NEVER simulated). Empty trend
+              gracefully degrades to a quiet placeholder; hero + KPIs
+              still work.
+              SSOT preserved: `freedomYears` derived from
+              `snapshot.quickMetrics.freeCashDays` (canonical). `trend`
+              + `marginDeltaPoints` come from the new `getMoneyStoryTrend`
+              service which reads only `prisma.transaction` (CLAUDE.md
+              §6.4 — engines accept raw data + return structured outputs).
+              The cosmos `MoneyStoryHero` and editorial-three-row
+              `EditorialMoneyStoryHero` remain in the codebase for any
+              future surface that wants them; the dashboard now ships V2. */}
           {insights?.moneyStory && (
-            <EditorialMoneyStoryHero
+            <MoneyStoryHeroV2
+              freedomYears={insights.moneyStory.freedomYears}
               earned={insights.moneyStory.earned}
               kept={insights.moneyStory.kept}
-              keptMargin={insights.moneyStory.keptMargin}
-              freeToday={insights.moneyStory.freeToday}
-              freeDays={insights.moneyStory.freeDays}
-              enoughHistory={insights.moneyStory.enoughHistory}
-              trailStage={determineTrailStage({
-                hasAccounts: (snapshot.assets?.accounts?.totalValue ?? 0) > 0,
-                monthlyCashflow: snapshot.cashflow.monthlyNetCashflow,
-                emergencyFundMonths: insights.emergencyFund.monthsCovered,
-                hasInvestments: (snapshot.investments?.totalValue ?? 0) > 0,
-                healthScore: insights.healthScore.score,
-              })}
+              marginDeltaPoints={insights.moneyStory.marginDeltaPoints}
+              trendData={insights.moneyStory.trend}
             />
           )}
 
