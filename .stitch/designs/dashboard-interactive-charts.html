@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Interactive Charts</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-error-container": "#93000a",
+                      "on-surface": "#171d16",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "error-container": "#ffdad6",
+                      "primary-container": "#00873a",
+                      "trail-violet": "#8B5CF6",
+                      "primary-fixed": "#7ffc97",
+                      "error-red": "#DC2626",
+                      "trail-amber": "#F59E0B",
+                      "on-tertiary-container": "#fdfcff",
+                      "on-primary-fixed-variant": "#005320",
+                      "on-error": "#ffffff",
+                      "on-secondary": "#ffffff",
+                      "surface-tint": "#006e2d",
+                      "primary": "#006b2c",
+                      "outline": "#6e7b6c",
+                      "outline-slate": "#94A3B8",
+                      "on-secondary-container": "#5c6274",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed-dim": "#62df7d",
+                      "surface-container-high": "#e3eadf",
+                      "on-surface-variant": "#3e4a3d",
+                      "inverse-on-surface": "#ecf3e7",
+                      "outline-variant": "#bdcaba",
+                      "surface-ivory": "#FAFAF7",
+                      "surface-container-highest": "#dde5d9",
+                      "surface-dim": "#d5dcd1",
+                      "on-primary-container": "#f7fff2",
+                      "inverse-surface": "#2b322b",
+                      "trail-indigo": "#6366F1",
+                      "secondary-container": "#d9dff4",
+                      "background": "#f4fcf0",
+                      "surface-bright": "#f4fcf0",
+                      "trail-emerald": "#16A34A",
+                      "surface-container": "#e9f0e5",
+                      "surface-container-low": "#eff6ea",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "tertiary-fixed": "#d3e4fe",
+                      "surface-variant": "#dde5d9",
+                      "tertiary-container": "#66768d",
+                      "on-tertiary": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "error": "#ba1a1a",
+                      "on-primary-fixed": "#002109",
+                      "trail-sky": "#0EA5E9",
+                      "inverse-primary": "#62df7d",
+                      "secondary-fixed": "#dce2f6",
+                      "tertiary": "#4d5d73",
+                      "surface": "#f4fcf0",
+                      "on-secondary-fixed-variant": "#404757",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "secondary": "#585e6f",
+                      "on-secondary-fixed": "#151b2a",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-background": "#171d16",
+                      "navy": "#0B1220",
+                      "slate-100": "#F1F5F9",
+                      "slate-200": "#E2E8F0",
+                      "slate-400": "#94A3B8",
+                      "slate-500": "#64748B"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "unit": "4px",
+                      "section-gap": "48px",
+                      "margin-desktop": "48px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "display-lg": ["Inter", "sans-serif"],
+                      "eyebrow": ["Inter", "sans-serif"],
+                      "data-lg": ["Inter", "sans-serif"],
+                      "headline-lg": ["Inter", "sans-serif"],
+                      "headline-md": ["Inter", "sans-serif"],
+                      "headline-lg-mobile": ["Inter", "sans-serif"],
+                      "body-md": ["Inter", "sans-serif"],
+                      "headline-sm": ["Inter", "sans-serif"],
+                      "body-lg": ["Inter", "sans-serif"],
+                      "label-md": ["Inter", "sans-serif"],
+                      "data-xl": ["Inter", "sans-serif"],
+                      "body-sm": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "axis-label": ["11px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "400"}]
+              },
+              boxShadow: {
+                  'soft-navy': '0 1px 2px 0 rgba(11, 18, 32, 0.04)',
+                  'hover-navy': '0 4px 6px -1px rgba(11, 18, 32, 0.08), 0 2px 4px -1px rgba(11, 18, 32, 0.04)',
+                  'tooltip': '0 10px 15px -3px rgba(11, 18, 32, 0.08), 0 4px 6px -2px rgba(11, 18, 32, 0.04)'
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7; /* surface-ivory */
+            color: #0B1220; /* navy */
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .card {
+            background-color: #FFFFFF;
+            border: 1.5px solid #E2E8F0;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 2px 0 rgba(11, 18, 32, 0.04);
+            padding: 24px;
+        }
+        /* Hide scrollbar for clean look */
+        ::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-margin-desktop">
+<!-- TopNavBar (Shared Component) -->
+<nav class="fixed top-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-md border-b border-white/10 shadow-soft-navy">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-desktop h-20">
+<div class="text-headline-lg font-headline-lg font-bold text-on-surface tracking-tighter">Monitrax</div>
+<div class="hidden md:flex gap-8">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors hover:bg-white/5 transition-all duration-300 font-label-md text-label-md" href="#">The TRAIL</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-label-md text-label-md" href="#">Capabilities</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors hover:bg-white/5 transition-all duration-300 font-label-md text-label-md" href="#">Pricing</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors hover:bg-white/5 transition-all duration-300 font-label-md text-label-md" href="#">Security</a>
+</div>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-navy px-4 py-2 hover:bg-slate-50 rounded-lg transition-colors">Login</button>
+<button class="font-label-md text-label-md bg-trail-emerald text-white px-4 py-2 rounded-lg font-medium hover:bg-opacity-90 transition-colors">Get Started</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="max-w-container-max mx-auto px-margin-desktop pt-32">
+<!-- Header -->
+<div class="mb-section-gap">
+<h1 class="font-display-lg text-display-lg text-navy mb-2">Capabilities</h1>
+<p class="font-body-lg text-body-lg text-slate-500 max-w-2xl">Interactive charting suite demonstrating restrained editorial aesthetics, precise tabular data, and clear semantic signaling.</p>
+</div>
+<!-- 2-Column Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter items-start">
+<!-- LEFT COLUMN -->
+<div class="flex flex-col gap-gutter w-[720px] max-w-full">
+<!-- Chart 1: NET WORTH TREND -->
+<section class="card relative h-[400px] flex flex-col justify-between">
+<div class="flex justify-between items-start z-10">
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-1">Net Worth</p>
+<h2 class="font-headline-md text-headline-md text-navy tabular-nums">$1,450,200</h2>
+<div class="flex items-center gap-2 mt-2">
+<span class="bg-trail-emerald/10 text-trail-emerald font-label-md text-label-md px-2 py-0.5 rounded flex items-center tabular-nums">
+<span class="material-symbols-outlined text-[14px] mr-1">trending_up</span> +12.4%
+                                </span>
+<span class="font-body-sm text-body-sm text-slate-500">Past 12 months</span>
+</div>
+</div>
+<!-- Segmented Control -->
+<div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200">
+<button class="px-3 py-1 text-[12px] font-medium text-slate-500 hover:text-navy rounded-md transition-colors">1W</button>
+<button class="px-3 py-1 text-[12px] font-medium text-slate-500 hover:text-navy rounded-md transition-colors">1M</button>
+<button class="px-3 py-1 text-[12px] font-medium text-slate-500 hover:text-navy rounded-md transition-colors">3M</button>
+<button class="px-3 py-1 text-[12px] font-medium text-slate-500 hover:text-navy rounded-md transition-colors">YTD</button>
+<button class="px-3 py-1 text-[12px] font-medium bg-white text-navy shadow-sm rounded-md transition-colors">1Y</button>
+<button class="px-3 py-1 text-[12px] font-medium text-slate-500 hover:text-navy rounded-md transition-colors">ALL</button>
+</div>
+</div>
+<!-- Chart Area Placeholder (SVG representation) -->
+<div class="absolute inset-0 pt-[120px] px-6 pb-8 pointer-events-none flex items-end">
+<div class="w-full h-full relative">
+<!-- Horizontal Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between">
+<div class="w-full h-[1px] bg-slate-100"></div>
+<div class="w-full h-[1px] bg-slate-100"></div>
+<div class="w-full h-[1px] bg-slate-100"></div>
+<div class="w-full h-[1px] bg-slate-100"></div>
+</div>
+<!-- Placeholder SVG for Line Chart -->
+<svg class="absolute inset-0 w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 100 100">
+<defs>
+<lineargradient id="emerald-fade" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#16A34A" stop-opacity="0.08"></stop>
+<stop offset="100%" stop-color="#16A34A" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Area -->
+<path d="M0,80 Q20,70 40,60 T70,40 T100,20 L100,100 L0,100 Z" fill="url(#emerald-fade)"></path>
+<!-- Line -->
+<path d="M0,80 Q20,70 40,60 T70,40 T100,20" fill="none" stroke="#16A34A" stroke-width="0.5" vector-effect="non-scaling-stroke"></path>
+<!-- Hover Point (May) -->
+<circle cx="40" cy="60" fill="#FFFFFF" r="1.5" stroke="#16A34A" stroke-width="0.5" vector-effect="non-scaling-stroke"></circle>
+<line stroke="#E2E8F0" stroke-dasharray="1,1" stroke-width="0.25" vector-effect="non-scaling-stroke" x1="40" x2="40" y1="60" y2="100"></line>
+</svg>
+<!-- Tooltip (Positioned relative to hover point roughly) -->
+<div class="absolute left-[30%] top-[40%] bg-white border-[1.5px] border-slate-200 shadow-tooltip rounded px-3 py-2 z-20 pointer-events-auto">
+<p class="text-[11px] font-medium text-slate-500 mb-0.5">May 2024</p>
+<p class="font-label-md text-label-md text-navy tabular-nums font-bold">$1,240,800</p>
+</div>
+<!-- X Axis Labels -->
+<div class="absolute -bottom-6 w-full flex justify-between text-[11px] text-slate-500 tabular-nums">
+<span>Jan</span>
+<span>Mar</span>
+<span>May</span>
+<span>Jul</span>
+<span>Sep</span>
+<span>Nov</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Chart 3: CASHFLOW BARS -->
+<section class="card h-[360px] flex flex-col justify-between">
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-1">Cashflow Average</p>
+<h2 class="font-headline-md text-headline-md text-navy tabular-nums">+$1,240<span class="text-[16px] text-slate-400 font-normal">/mo</span></h2>
+</div>
+<div class="w-full h-[220px] relative mt-4">
+<!-- Horizontal Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between z-0">
+<div class="w-full h-[1px] bg-slate-100 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$10k</span></div>
+<div class="w-full h-[1px] bg-slate-100 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$5k</span></div>
+<div class="w-full h-[1px] bg-slate-200 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$0</span></div>
+</div>
+<!-- Bars Container -->
+<div class="absolute inset-0 flex justify-around items-end pb-[1px] z-10 px-4">
+<!-- Month 1 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 60%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 45%;"></div>
+</div>
+<!-- Month 2 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 70%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 50%;"></div>
+</div>
+<!-- Month 3 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 65%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 80%;"></div>
+</div>
+<!-- Month 4 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 85%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 40%;"></div>
+</div>
+<!-- Month 5 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 90%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 60%;"></div>
+</div>
+<!-- Month 6 -->
+<div class="flex gap-1 h-full items-end">
+<div class="w-6 bg-trail-emerald/40 border-[1.5px] border-trail-emerald rounded-t-sm" style="height: 75%;"></div>
+<div class="w-6 bg-trail-amber/30 border-[1.5px] border-trail-amber rounded-t-sm" style="height: 55%;"></div>
+</div>
+</div>
+<!-- X Axis Labels -->
+<div class="absolute -bottom-6 w-full flex justify-around px-4 text-[11px] text-slate-500 tabular-nums">
+<span class="w-13 text-center">Jun</span>
+<span class="w-13 text-center">Jul</span>
+<span class="w-13 text-center">Aug</span>
+<span class="w-13 text-center">Sep</span>
+<span class="w-13 text-center">Oct</span>
+<span class="w-13 text-center">Nov</span>
+</div>
+</div>
+</section>
+<!-- Chart 5: SPENDING SPARKLINES -->
+<section class="card">
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-6">Spending Categories</p>
+<div class="grid grid-cols-2 gap-x-8 gap-y-6">
+<!-- Item 1 -->
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-slate-500">Groceries</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[11px] px-1.5 py-0.5 rounded font-medium">-2%</span>
+</div>
+<div class="flex justify-between items-end">
+<span class="font-data-lg text-data-lg text-navy tabular-nums">$1,240</span>
+<svg class="overflow-visible" height="20" viewbox="0 0 60 20" width="60">
+<path d="M0,15 Q10,18 20,10 T40,12 T60,5" fill="none" stroke="#16A34A" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Item 2 -->
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-slate-500">Dining</span>
+<span class="bg-trail-amber/10 text-trail-amber text-[11px] px-1.5 py-0.5 rounded font-medium">+15%</span>
+</div>
+<div class="flex justify-between items-end">
+<span class="font-data-lg text-data-lg text-navy tabular-nums">$840</span>
+<svg class="overflow-visible" height="20" viewbox="0 0 60 20" width="60">
+<path d="M0,18 Q15,10 30,15 T60,2" fill="none" stroke="#F59E0B" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Item 3 -->
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-slate-500">Transport</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[11px] px-1.5 py-0.5 rounded font-medium">-5%</span>
+</div>
+<div class="flex justify-between items-end">
+<span class="font-data-lg text-data-lg text-navy tabular-nums">$420</span>
+<svg class="overflow-visible" height="20" viewbox="0 0 60 20" width="60">
+<path d="M0,5 Q20,10 40,8 T60,15" fill="none" stroke="#16A34A" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<!-- Item 4 -->
+<div>
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-label-md text-label-md text-slate-500">Utilities</span>
+<span class="bg-slate-100 text-slate-500 text-[11px] px-1.5 py-0.5 rounded font-medium">0%</span>
+</div>
+<div class="flex justify-between items-end">
+<span class="font-data-lg text-data-lg text-navy tabular-nums">$310</span>
+<svg class="overflow-visible" height="20" viewbox="0 0 60 20" width="60">
+<path d="M0,10 L20,10 L40,12 L60,10" fill="none" stroke="#64748B" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- RIGHT COLUMN -->
+<div class="flex flex-col gap-gutter w-[696px] max-w-full">
+<!-- Chart 2: ASSET ALLOCATION DONUT -->
+<section class="card flex flex-col justify-between h-[400px]">
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-1">Asset Allocation</p>
+<div class="flex items-center justify-between h-full px-4">
+<!-- Donut Graphic Placeholder -->
+<div class="relative w-48 h-48 flex-shrink-0">
+<!-- SVG Donut Representation -->
+<svg class="w-full h-full -rotate-90" viewbox="0 0 100 100">
+<!-- Property 58% Sky -->
+<circle class="transition-all duration-500" cx="50" cy="50" fill="none" r="40" stroke="#0EA5E9" stroke-dasharray="251.2" stroke-dashoffset="105.5" stroke-width="16"></circle>
+<!-- Investments 27% Emerald -->
+<circle cx="50" cy="50" fill="none" r="40" stroke="#16A34A" stroke-dasharray="251.2" stroke-dashoffset="183.3" stroke-width="16" transform="rotate(208.8 50 50)"></circle>
+<!-- Cash 11% Indigo -->
+<circle cx="50" cy="50" fill="none" r="40" stroke="#6366F1" stroke-dasharray="251.2" stroke-dashoffset="223.5" stroke-width="16" transform="rotate(306 50 50)"></circle>
+<!-- Other 4% Slate -->
+<circle cx="50" cy="50" fill="none" r="40" stroke="#94A3B8" stroke-dasharray="251.2" stroke-dashoffset="241.1" stroke-width="16" transform="rotate(345.6 50 50)"></circle>
+</svg>
+<!-- Center Text -->
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-headline-sm text-headline-sm text-navy tabular-nums">$1.45M</span>
+<span class="text-[11px] text-slate-500 uppercase tracking-wide">Total Assets</span>
+</div>
+</div>
+<!-- Legend -->
+<div class="flex-grow ml-12 flex flex-col gap-3">
+<div class="flex justify-between items-center pb-2 border-b border-slate-100">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-trail-sky"></div>
+<span class="font-label-md text-label-md text-navy">Property</span>
+</div>
+<div class="flex gap-4 tabular-nums">
+<span class="text-slate-500 w-12 text-right">58%</span>
+<span class="font-medium text-navy w-24 text-right">$841,000</span>
+</div>
+</div>
+<div class="flex justify-between items-center pb-2 border-b border-slate-100">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-trail-emerald"></div>
+<span class="font-label-md text-label-md text-navy">Investments</span>
+</div>
+<div class="flex gap-4 tabular-nums">
+<span class="text-slate-500 w-12 text-right">27%</span>
+<span class="font-medium text-navy w-24 text-right">$391,500</span>
+</div>
+</div>
+<div class="flex justify-between items-center pb-2 border-b border-slate-100">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-trail-indigo"></div>
+<span class="font-label-md text-label-md text-navy">Cash</span>
+</div>
+<div class="flex gap-4 tabular-nums">
+<span class="text-slate-500 w-12 text-right">11%</span>
+<span class="font-medium text-navy w-24 text-right">$159,500</span>
+</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-slate-400"></div>
+<span class="font-label-md text-label-md text-navy">Other</span>
+</div>
+<div class="flex gap-4 tabular-nums">
+<span class="text-slate-500 w-12 text-right">4%</span>
+<span class="font-medium text-navy w-24 text-right">$58,000</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Chart 4: ENTITY COMPARISON -->
+<section class="card h-[360px] flex flex-col">
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-1">Entity Value Contribution</p>
+<h2 class="font-headline-md text-headline-md text-navy tabular-nums">5 Active</h2>
+</div>
+<div class="flex-grow mt-6 relative">
+<!-- Zero Line -->
+<div class="absolute top-0 bottom-0 left-[25%] w-[1px] bg-slate-200 z-0"></div>
+<!-- Horizontal Bars Layout -->
+<div class="flex flex-col justify-around h-full z-10 relative">
+<!-- Entity 1 -->
+<div class="flex items-center">
+<div class="w-[25%] pr-4 text-right">
+<span class="text-[12px] text-slate-500 truncate block">Smith Family Trust</span>
+</div>
+<div class="w-[75%] flex items-center">
+<div class="h-5 bg-trail-emerald rounded-r-sm" style="width: 80%;"></div>
+<span class="text-[11px] font-medium text-navy ml-2 tabular-nums">$620k</span>
+</div>
+</div>
+<!-- Entity 2 -->
+<div class="flex items-center">
+<div class="w-[25%] pr-4 text-right">
+<span class="text-[12px] text-slate-500 truncate block">John Smith Ind.</span>
+</div>
+<div class="w-[75%] flex items-center">
+<div class="h-5 bg-trail-emerald rounded-r-sm" style="width: 45%;"></div>
+<span class="text-[11px] font-medium text-navy ml-2 tabular-nums">$340k</span>
+</div>
+</div>
+<!-- Entity 3 -->
+<div class="flex items-center">
+<div class="w-[25%] pr-4 text-right">
+<span class="text-[12px] text-slate-500 truncate block">SmithCo Pty Ltd</span>
+</div>
+<div class="w-[75%] flex items-center">
+<div class="h-5 bg-trail-emerald rounded-r-sm" style="width: 25%;"></div>
+<span class="text-[11px] font-medium text-navy ml-2 tabular-nums">$180k</span>
+</div>
+</div>
+<!-- Entity 4 -->
+<div class="flex items-center">
+<div class="w-[25%] pr-4 text-right">
+<span class="text-[12px] text-slate-500 truncate block">Smith SMSF</span>
+</div>
+<div class="w-[75%] flex items-center">
+<div class="h-5 bg-trail-emerald rounded-r-sm" style="width: 55%;"></div>
+<span class="text-[11px] font-medium text-navy ml-2 tabular-nums">$420k</span>
+</div>
+</div>
+<!-- Entity 5 (Liability) -->
+<div class="flex items-center">
+<div class="w-[25%] pr-4 text-right">
+<span class="text-[12px] text-slate-500 truncate block">Property Trust 2</span>
+</div>
+<!-- Negative bar goes left from zero line -->
+<div class="w-[75%] relative h-5">
+<div class="absolute left-0 top-0 h-5 bg-trail-amber rounded-l-sm origin-right -translate-x-full" style="width: 15%;"></div>
+<span class="absolute left-0 -translate-x-full -ml-8 top-0.5 text-[11px] font-medium text-navy tabular-nums">-$110k</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Chart 6: DEBT FREEDOM PROJECTION -->
+<section class="card">
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 uppercase tracking-widest mb-1">Debt Freedom Horizon</p>
+<h2 class="font-headline-md text-headline-md text-navy tabular-nums">Aug 2034</h2>
+</div>
+<div class="w-full h-[180px] mt-6 relative">
+<!-- Grid -->
+<div class="absolute inset-0 flex flex-col justify-between z-0">
+<div class="w-full h-[1px] bg-slate-100 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$500k</span></div>
+<div class="w-full h-[1px] bg-slate-100 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$250k</span></div>
+<div class="w-full h-[1px] bg-slate-200 flex items-center"><span class="absolute -left-2 -translate-x-full text-[11px] text-slate-500 tabular-nums">$0</span></div>
+</div>
+<!-- Stacked Area SVG -->
+<div class="absolute inset-0 pt-4 pb-0 z-10 pointer-events-none">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- Base stack (Mortgage - Emerald) -->
+<path d="M0,40 L20,45 L40,60 L60,80 L80,100 L100,100 L0,100 Z" fill="#16A34A" fill-opacity="0.3"></path>
+<path d="M0,40 L20,45 L40,60 L60,80 L80,100" fill="none" stroke="#16A34A" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+<!-- Top stack (Other Debt - Indigo) -->
+<path d="M0,20 L20,30 L40,55 L50,100 L0,100 Z" fill="#6366F1" fill-opacity="0.3"></path>
+<path d="M0,20 L20,30 L40,55 L50,100" fill="none" stroke="#6366F1" stroke-width="1.5" vector-effect="non-scaling-stroke"></path>
+</svg>
+</div>
+<!-- Timeline labels -->
+<div class="absolute -bottom-6 w-full flex justify-between text-[11px] text-slate-500 tabular-nums px-2">
+<span>Today</span>
+<span>2028</span>
+<span>2032</span>
+<span class="font-medium text-navy">2034</span>
+</div>
+</div>
+<div class="flex gap-4 mt-8 justify-center">
+<div class="flex items-center gap-1.5">
+<div class="w-2.5 h-2.5 bg-trail-emerald/50 border border-trail-emerald rounded-sm"></div>
+<span class="text-[12px] text-slate-500">Mortgage</span>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="w-2.5 h-2.5 bg-trail-indigo/50 border border-trail-indigo rounded-sm"></div>
+<span class="text-[12px] text-slate-500">Other Debt</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Footer (Shared Component) -->
+<footer class="mt-section-gap w-full py-12 bg-surface-container-lowest border-t border-white/5">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="text-label-md font-label-md font-bold text-on-surface">Monitrax</div>
+<div class="flex flex-wrap justify-center gap-6">
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100 font-label-sm text-label-sm" href="#">Regulatory Disclosure</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100 font-label-sm text-label-sm" href="#">Privacy Policy</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100 font-label-sm text-label-sm" href="#">Terms of Service</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100 font-label-sm text-label-sm" href="#">Security Architecture</a>
+<a class="text-on-surface-variant hover:text-primary transition-colors opacity-80 hover:opacity-100 font-label-sm text-label-sm" href="#">Contact</a>
+</div>
+<div class="text-label-sm text-slate-500">
+                © 2024 Monitrax. Australian Financial Services Licensee.
+            </div>
+</div>
+</footer>
+</body></html>

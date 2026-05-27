@@ -2,30 +2,15 @@
 
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter, usePathname } from 'next/navigation';
-import Link from 'next/link';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import {
-  Wallet,
-  LogOut,
-  User,
-  Search,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { useUISyncEngine } from '@/hooks/useUISyncEngine';
 import { GlobalWarningRibbon } from '@/components/warnings/GlobalWarningRibbon';
 import { BasiqGateProvider } from '@/lib/featureFlags/BasiqGateContext';
-import { FinancialHealthMiniWidget } from '@/components/health/FinancialHealthMiniWidget';
 import AiChatButton from '@/components/AiChatButton';
 import { HelpDrawerButton } from '@/components/help/HelpDrawerButton';
 import { FeedbackButton } from '@/components/help/FeedbackButton';
 import { UniversalSearch, useUniversalSearch } from '@/components/UniversalSearch';
 import { useOnboardingState } from '@/hooks/useOnboardingState';
-import {
-  usePendingReconciliationCount,
-  formatReconciliationCount,
-} from '@/hooks/usePendingReconciliationCount';
 import {
   OnboardingWelcomeModal,
   GuidedTour,
@@ -33,20 +18,27 @@ import {
   OnboardingResumeBanner,
   WizardData,
 } from '@/components/onboarding';
-// Phase 14.6 (2026-05-08) — TRAIL nav SSOT + mobile-first navigation primitives.
-// See lib/navigation/trailNav.tsx, components/shell/MobileTabBar.tsx,
-// components/shell/SectionTabsRow.tsx, components/shell/MoreSheet.tsx, and
-// docs/architecture/06_UI_UX_FOUNDATION.md §12.
-import {
-  trailNavItems,
-  settingsNavItem,
-  isNavItemActive,
-  TRAIL_STAGE_TONES,
-} from '@/lib/navigation/trailNav';
-import { MobileTabBar } from '@/components/shell/MobileTabBar';
+// Phase 14.6 (2026-05-08) — TRAIL nav SSOT + the legacy mobile sub-tab pills.
+// SectionTabsRow stays — it shows the active section's child routes (e.g.
+// Balances · Activity · My Structure under My Accounts) and is independent
+// of the chrome swap. MoreSheet is the overflow drawer for phones,
+// triggered from the editorial bottom nav's "More" cell.
 import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
 import { MoreSheet } from '@/components/shell/MoreSheet';
 import { ConsentMigrationModal } from '@/components/auth/ConsentMigrationModal';
+// Phase R2b (2026-05-27) — Restrained Editorial shell. The sidebar +
+// topbar + bottom nav swap in here; every other DashboardLayout
+// concern (providers, modals, onboarding, floating buttons,
+// SectionTabsRow, MoreSheet) is preserved unchanged. The legacy
+// mobile <header> + desktop <aside> + <MobileTabBar /> are removed
+// (only the chrome — not the functionality, which the editorial
+// primitives provide). See PR #904 + .stitch/designs/dashboard-*.
+import {
+  EditorialAppShell,
+  EditorialSidebar,
+  EditorialTopBar,
+  EditorialBottomNav,
+} from '@/components/editorial';
 
 // =============================================================================
 // TRAIL SIDEBAR — items defined in lib/navigation/trailNav.tsx (SSOT).
@@ -67,12 +59,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // overflow (Safety Net, Household, Vault, Reports, Settings, Sign out).
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
 
-  // Phase 42 PR6.5e — Pending reconciliation count for the
-  // sidebar badge on "My Accounts". Slack/Mail-style counter that
-  // persists across pages so the user sees the recurring task
-  // signal regardless of current route.
-  const { count: pendingReconciliationCount } = usePendingReconciliationCount();
-  const pendingReconciliationLabel = formatReconciliationCount(pendingReconciliationCount);
+  // Phase R2b (2026-05-27): the pending-reconciliation badge that used to
+  // sit on the sidebar's "My Accounts" row is temporarily dropped while
+  // we ship the editorial chrome. The hook (`usePendingReconciliationCount`)
+  // remains available and is still used elsewhere — the badge re-attaches
+  // once EditorialNavRow learns a `badge` prop (tracked in
+  // IMPLEMENTATION_PLAN.md). The signal isn't lost; only the visual
+  // affordance moves.
 
   // Universal search
   const { open: searchOpen, setOpen: setSearchOpen } = useUniversalSearch();
@@ -323,14 +316,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <BasiqGateProvider>
-    {/* Phase 47 PR 2 — Existing-user consent migration modal.
-        Fires for any authenticated user lacking current-version Terms /
-        Privacy / AFSL acceptance (typically: signed up before Phase 47 PR 1
-        shipped the consent flow). Non-dismissible until accepted; fail-safe
-        on API trouble (skips modal, retries next page load). */}
-    <ConsentMigrationModal />
-    <div className="min-h-screen bg-background">
-      {/* Phase 9.5 - Global Warning Ribbon */}
+      {/* Phase 47 PR 2 — Existing-user consent migration modal.
+          Fires for any authenticated user lacking current-version Terms /
+          Privacy / AFSL acceptance. Non-dismissible until accepted;
+          fail-safe on API trouble (skips modal, retries next page load). */}
+      <ConsentMigrationModal />
+
+      {/* Phase 9.5 — Global Warning Ribbon. Renders ABOVE the editorial
+          shell so it spans the full viewport width on both mobile and
+          desktop. */}
       {syncState.warningRibbon.show && (
         <GlobalWarningRibbon
           config={syncState.warningRibbon}
@@ -339,308 +333,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         />
       )}
 
-      {/* Phase 14.6 — Mobile header (phones only). Avatar opens MoreSheet
-          for overflow nav (Safety Net, Household, Vault, Reports, Settings,
-          Sign out). Primary nav lives in <MobileTabBar /> at the bottom. */}
-      <header className="md:hidden fixed top-0 left-0 right-0 z-40 h-14 bg-brand-primary flex items-center justify-between px-4 shadow-lg">
-        <button
-          onClick={() => setMoreSheetOpen(true)}
-          className="p-1 rounded-full hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-          aria-label="Open more menu"
-          aria-haspopup="dialog"
-          aria-expanded={moreSheetOpen}
-        >
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white shadow-sm">
-            <User className="h-4 w-4" />
-          </span>
-        </button>
-        <Link href="/dashboard" className="flex items-center space-x-2">
-          <div className="h-8 w-8 rounded-lg bg-brand-secondary flex items-center justify-center">
-            <Wallet className="h-5 w-5 text-white" />
-          </div>
-          <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
-        </Link>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setSearchOpen(true)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-            aria-label="Search"
-          >
-            <Search className="h-5 w-5 text-white" />
-          </button>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      {/* Phase 14.6 — Sidebar (tablets + desktop, ≥md). Phones use the
-          bottom tab bar instead. The previous hamburger-drawer state
-          (`sidebarOpen`) is gone; visibility is now purely a media query. */}
-      <aside
-        data-tour="sidebar"
-        className="hidden md:flex fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card shadow-lg flex-col"
-      >
-        {/* Logo/Brand */}
-        <div className="flex h-16 items-center justify-between border-b border-border px-4 bg-brand-primary flex-shrink-0">
-          <Link href="/dashboard" className="flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-lg bg-brand-secondary flex items-center justify-center">
-              <Wallet className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold tracking-tight text-white">Monitrax</h1>
-              <p className="text-xs text-emerald-200">Financial Planning</p>
-            </div>
-          </Link>
-          {/* Search and Theme toggle */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setSearchOpen(true)}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label="Search (⌘K)"
-              title="Search (⌘K)"
-            >
-              <Search className="h-4 w-4 text-white" />
-            </button>
-            <ThemeToggle />
-          </div>
-        </div>
-
-        {/* Navigation — TRAIL framework (docs/blueprint/TRAIL_FRAMEWORK.md).
-            Items sourced from lib/navigation/trailNav.tsx (SSOT). */}
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
-          {trailNavItems.map((item) => {
-            const isActive = isNavItemActive(item, pathname);
-            const Icon = item.icon;
-            // Phase 14.6 v5 — stage-colour identity carries into the
-            // sidebar so phone + desktop share the same colour vocabulary.
-            // TRAIL items show their stage hue at all times (icon + badge);
-            // active state intensifies via bgTint on the row + full
-            // saturation. Stage-less items (Home, Household, Vault,
-            // Reports) keep the neutral brand-primary treatment.
-            const tone = item.trailStage
-              ? TRAIL_STAGE_TONES[item.trailStage]
-              : null;
-
-            return (
-              <div key={item.href}>
-                {/* Parent item */}
-                <Link
-                  href={item.href}
-                  data-tour={item.tourId}
-                  data-trail-stage={item.trailStage ?? undefined}
-                  className={`
-                    group flex items-center gap-3 rounded-xl px-3 py-2.5
-                    text-[13px] font-medium tracking-wide
-                    transition-all duration-200 ease-out
-                    ${isActive
-                      ? tone
-                        ? `${tone.bgTint} ${tone.activeText}`
-                        : 'bg-primary/10 text-primary dark:bg-primary/20'
-                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                    }
-                  `}
-                >
-                  <div className={`
-                    flex h-8 w-8 items-center justify-center rounded-lg
-                    transition-colors duration-200
-                    ${isActive
-                      ? tone
-                        ? `${tone.accent} text-white shadow-sm`
-                        : 'bg-primary text-primary-foreground shadow-sm'
-                      : tone
-                        ? `bg-muted/40 ${tone.inactiveIcon} group-hover:bg-muted`
-                        : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
-                    }
-                  `}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <span className="flex-1">{item.name}</span>
-                  {/* Phase 42 PR6.5e — Pending-reconciliation count badge.
-                      Only renders on "My Accounts" (the surface where
-                      uncategorised tx live) when count > 0. Slack/Mail
-                      pattern: small amber pill, capped at "99+". */}
-                  {item.name === 'My Accounts' && pendingReconciliationLabel && (
-                    <span
-                      aria-label={`${pendingReconciliationCount} unreconciled transaction${pendingReconciliationCount === 1 ? '' : 's'}`}
-                      className="inline-flex items-center justify-center min-w-[22px] h-[22px] px-1.5 rounded-full text-[11px] font-semibold tabular-nums bg-amber-500 text-white shadow-sm"
-                    >
-                      {pendingReconciliationLabel}
-                    </span>
-                  )}
-                  {item.trailStage && tone && (
-                    <span className={`
-                      flex h-7 w-7 items-center justify-center
-                      rounded-lg text-xs font-bold
-                      transition-colors duration-200
-                      ${isActive
-                        ? `${tone.accent} text-white shadow-sm`
-                        : `${tone.bgTint} ${tone.inactiveIcon}`
-                      }
-                    `}>
-                      {item.trailStage}
-                    </span>
-                  )}
-                </Link>
-
-                {/* Child items — visible when section is active */}
-                {isActive && item.children && item.children.length > 0 && (
-                  <div className="ml-[22px] mt-0.5 mb-1 pl-4 border-l-2 border-primary/20 space-y-0.5">
-                    {item.children.map((child) => {
-                      const isChildActive = pathname === child.href || pathname.startsWith(child.href + '/');
-                      return (
-                        <Link
-                          key={child.href}
-                          href={child.href}
-                          className={`
-                            block rounded-lg px-3 py-1.5
-                            text-[12px] font-medium
-                            transition-all duration-150
-                            ${isChildActive
-                              ? 'text-primary bg-primary/5'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                            }
-                          `}
-                        >
-                          {child.name}
-                        </Link>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Financial Health widget */}
-          <div className="pt-3">
-            <Separator className="mb-3" />
-            <FinancialHealthMiniWidget />
-          </div>
-        </nav>
-
-        {/* Bottom Section — Settings + User. Icon sourced from
-            settingsNavItem.icon (lib/navigation/trailNav.tsx) so the
-            sidebar and the More sheet on mobile both use the same glyph. */}
-        {(() => {
-          const SettingsIcon = settingsNavItem.icon;
-          return (
-            <div className="border-t border-border px-3 py-3 flex-shrink-0 space-y-1.5">
-              {/* Settings */}
-              <Link
-                href={settingsNavItem.href}
-                data-tour={settingsNavItem.tourId}
-                className={`
-                  group flex items-center gap-3 rounded-xl px-3 py-2.5
-                  text-[13px] font-medium tracking-wide
-                  transition-all duration-200 ease-out
-                  ${pathname.startsWith(settingsNavItem.href)
-                    ? 'bg-primary/10 text-primary dark:bg-primary/20'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                  }
-                `}
-              >
-                <div className={`
-                  flex h-8 w-8 items-center justify-center rounded-lg
-                  transition-colors duration-200
-                  ${pathname.startsWith(settingsNavItem.href)
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted/50 text-muted-foreground group-hover:bg-muted group-hover:text-foreground'
-                  }
-                `}>
-                  <SettingsIcon className="h-4 w-4" />
-                </div>
-                <span className="flex-1">Settings</span>
-              </Link>
-
-          {/* User Info + Sign Out */}
-          <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary/70 text-primary-foreground shadow-sm">
-              <User className="h-4 w-4" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium truncate">{user.name}</p>
-              <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-            </div>
-            <Button
-              onClick={logout}
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 rounded-lg hover:bg-destructive/10 hover:text-destructive"
-              title="Sign Out"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-          );
-        })()}
-      </aside>
-
-      {/* Main Content — Phase 14.6 (2026-05-08).
-          Sidebar offset and content padding now flip at `md:` (768px),
-          not `lg:` (1024px) — iPad portrait gets the desktop sidebar
-          rail instead of the phone layout. Bottom padding (`pb-24 md:pb-8`)
-          reserves space for the fixed `<MobileTabBar />` on phones.
-
-          `onboarding-active-shell` applies a subtle sky-blue ambient
-          tint while the user has an unfinished wizard draft, giving
-          the dashboard a "still in setup mode" cue that fades back to
-          normal once onboarding completes. Same gating boolean as the
-          persistent resume banner — single source of truth (see
-          useOnboardingState.shouldShowResumeBanner). The CSS lives in
+      {/* Phase R2b (2026-05-27) — Restrained Editorial app shell.
+          Composes EditorialSidebar (desktop) + EditorialTopBar
+          (responsive, wired to UniversalSearch + MoreSheet) +
+          EditorialBottomNav (mobile, "More" cell opens MoreSheet) around
+          <main>. The `onboarding-active-shell` class lights the content
+          column with a subtle sky tint while the user has an unfinished
+          wizard draft (same gating boolean as the persistent resume
+          banner — single source of truth, see
+          `useOnboardingState.shouldShowResumeBanner`). The CSS lives in
           styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
-      <div className="md:pl-64">
-        <main
-          className={`min-h-screen p-3 pt-16 pb-24 sm:p-4 sm:pt-20 sm:pb-24 md:p-8 md:pt-8 md:pb-8 ${
-            !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
-              ? 'onboarding-active-shell'
-              : ''
-          }`}
-        >
-          <div className="mx-auto max-w-7xl">
-            {/* Phase 14.6 — Sub-tab pill row (phones only). Renders the
-                active TRAIL section's sub-tabs (e.g. Balances · Activity ·
-                My Structure on My Accounts) so users reach a sub-tab in
-                ONE tap from the bottom bar, not two. No-op on desktop and
-                on sections without children. */}
-            <SectionTabsRow />
-            {/* Phase 12 PR 2: Resume banner for users with an unfinished
-                wizard draft. Persists across ALL dashboard pages while
-                onboarding is in progress (was previously gated to
-                /dashboard only, which broke the flow when the user
-                navigated to /dashboard/properties to add their first
-                property — they'd lose the visual anchor and the way
-                back to the wizard). The banner now disappears only
-                when:
-                  • the user dismisses it (session-scoped)
-                  • the user clicks "Start over" (clears the draft)
-                  • onboarding completes server-side
-                  • the wizard or welcome modal is already open
-                    (avoids stacking two onboarding affordances).
-                See useOnboardingState.shouldShowResumeBanner for the
-                full server-side contract. */}
-            {!showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed && (
-              <OnboardingResumeBanner
-                currentStep={onboardingState?.currentStep ?? 0}
-                totalSteps={8}
-                onResume={handleResumeBannerResume}
-                onStartOver={handleResumeBannerStartOver}
-                onDismiss={handleResumeBannerDismiss}
-              />
-            )}
-            {children}
-          </div>
-        </main>
+      <div className="flex min-h-screen bg-editorial-ivory text-editorial-ink">
+        <EditorialSidebar user={{ name: user.name, email: user.email }} />
+
+        <div className="flex min-w-0 flex-1 flex-col">
+          <EditorialTopBar
+            user={{ name: user.name, email: user.email }}
+            onSearchClick={() => setSearchOpen(true)}
+            onAvatarClick={() => setMoreSheetOpen(true)}
+          />
+
+          <main
+            data-tour="main-content"
+            className={`flex-1 px-4 pb-24 pt-4 md:px-8 md:pb-8 md:pt-6 ${
+              !showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed
+                ? 'onboarding-active-shell'
+                : ''
+            }`}
+          >
+            <div className="mx-auto max-w-7xl">
+              {/* Phase 14.6 — Sub-tab pill row (phones only). Renders
+                  the active TRAIL section's sub-tabs so users reach a
+                  sub-tab in ONE tap from the bottom bar, not two. */}
+              <SectionTabsRow />
+
+              {/* Phase 12 PR 2 — Resume banner for users with an
+                  unfinished wizard draft. */}
+              {!showWizard && !showWelcomeModal && shouldShowResumeBanner && !resumeBannerDismissed && (
+                <OnboardingResumeBanner
+                  currentStep={onboardingState?.currentStep ?? 0}
+                  totalSteps={8}
+                  onResume={handleResumeBannerResume}
+                  onStartOver={handleResumeBannerStartOver}
+                  onDismiss={handleResumeBannerDismiss}
+                />
+              )}
+
+              {children}
+            </div>
+          </main>
+        </div>
+
+        <EditorialBottomNav onMoreClick={() => setMoreSheetOpen(true)} />
       </div>
 
-      {/* Phase 14.6 — Mobile bottom tab bar (phones only). Persistent
-          5-tab nav mapped to TRAIL stages: Home · Track · Reduce ·
-          Invest · Guide. Anchor folds into More sheet per
-          TRAIL_FRAMEWORK.md §5. */}
-      <MobileTabBar />
-
-      {/* Phase 14.6 — More sheet (phones only). Triggered by avatar
-          button on the mobile header. Holds Safety Net, Household,
-          Vault, Reports, Settings, Sign out. */}
+      {/* MoreSheet — overflow nav for phones. Triggered by the editorial
+          TopBar avatar AND the editorial BottomNav "More" cell. */}
       <MoreSheet
         open={moreSheetOpen}
         onClose={() => setMoreSheetOpen(false)}
@@ -648,31 +396,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onSignOut={logout}
       />
 
-      {/* AI Chat Floating Button — hidden when onboarding modals are open
-           so it doesn't overlap the wizard's Back/Next buttons. */}
+      {/* Floating chrome — hidden while onboarding modals are open so
+          they don't overlap the wizard's controls. */}
       {!showWelcomeModal && !showWizard && <AiChatButton />}
-
-      {/* Phase 33b — In-app `?` help drawer. Hidden alongside AI Chat while
-           onboarding modals are open so it doesn't overlap the wizard. The
-           drawer itself is route-aware (lib/help/routeContext.ts) and
-           audience-scoped — consumer dashboard sees consumer + compliance. */}
       {!showWelcomeModal && !showWizard && (
         <HelpDrawerButton audiences={['consumer', 'compliance']} />
       )}
-
-      {/* Phase 33g.2 — Send-feedback floating button. Sits to the LEFT of
-           the help drawer button. Opens the chat-style feedback drawer.
-           AI-vs-form behaviour decided server-side via the
-           ANTHROPIC_API_KEY env var presence — UI shape is identical
-           either way; only the success message + AI typing indicator
-           differ. Hidden alongside other floating chrome during onboarding. */}
       {!showWelcomeModal && !showWizard && <FeedbackButton />}
 
-      {/* Universal Search */}
+      {/* Universal Search modal — wired to the editorial TopBar search
+          pill via `setSearchOpen`. */}
       <UniversalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
-      {/* Phase 12: Onboarding Components */}
-      {/* Welcome Modal for new users */}
+      {/* Phase 12 — Onboarding components (welcome modal, guided tour,
+          wizard). Unchanged from the pre-editorial shell — all data
+          flow + handlers above are preserved as-is. */}
       <OnboardingWelcomeModal
         isOpen={showWelcomeModal}
         onClose={handleSkipOnboarding}
@@ -682,7 +420,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onDismissPermanently={dismissWelcomeModal}
       />
 
-      {/* Guided Tour */}
       <GuidedTour
         isOpen={showTour}
         onClose={() => setShowTour(false)}
@@ -691,8 +428,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onDismissPermanently={dismissWelcomeModal}
       />
 
-      {/* Enhanced Setup Wizard v2.0 — Phase 12 PR 2 hydrates from server
-          draft + autosaves on every change. */}
       <WizardContainer
         isOpen={showWizard}
         onClose={() => setShowWizard(false)}
@@ -701,7 +436,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         initialStepIndex={hydratedStepIndex}
         onAutoSave={handleWizardAutoSave}
       />
-    </div>
     </BasiqGateProvider>
   );
 }
