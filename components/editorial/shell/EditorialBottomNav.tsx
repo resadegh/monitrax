@@ -86,10 +86,16 @@ function cellIsActive(pathname: string, cell: BottomNavCell): boolean {
 }
 
 export interface EditorialBottomNavProps {
+  /**
+   * When provided, the "More" cell calls this callback instead of
+   * navigating — used to open the existing `<MoreSheet />` drawer in
+   * `DashboardLayout`. When omitted, the cell links to `/dashboard/settings`.
+   */
+  onMoreClick?: () => void;
   className?: string;
 }
 
-export function EditorialBottomNav({ className }: EditorialBottomNavProps) {
+export function EditorialBottomNav({ onMoreClick, className }: EditorialBottomNavProps) {
   const pathname = usePathname() ?? '/dashboard';
 
   return (
@@ -105,18 +111,16 @@ export function EditorialBottomNav({ className }: EditorialBottomNavProps) {
     >
       {BOTTOM_NAV.map((cell) => {
         const active = cellIsActive(pathname, cell);
-        return (
-          <Link
-            key={cell.href}
-            href={cell.href}
-            aria-current={active ? 'page' : undefined}
-            className={cn(
-              'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
-              active
-                ? 'text-editorial-emerald'
-                : 'text-editorial-slate hover:text-editorial-ink'
-            )}
-          >
+        const isMore = cell.label === 'More';
+        const useCallback = isMore && onMoreClick;
+        const className = cn(
+          'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
+          active
+            ? 'text-editorial-emerald'
+            : 'text-editorial-slate hover:text-editorial-ink'
+        );
+        const inner = (
+          <>
             {active && (
               <span
                 aria-hidden
@@ -129,6 +133,30 @@ export function EditorialBottomNav({ className }: EditorialBottomNavProps) {
               aria-hidden
             />
             <span>{cell.label}</span>
+          </>
+        );
+
+        if (useCallback) {
+          return (
+            <button
+              key={cell.label}
+              type="button"
+              onClick={onMoreClick}
+              aria-label="Open more menu"
+              className={className}
+            >
+              {inner}
+            </button>
+          );
+        }
+        return (
+          <Link
+            key={cell.href}
+            href={cell.href}
+            aria-current={active ? 'page' : undefined}
+            className={className}
+          >
+            {inner}
           </Link>
         );
       })}

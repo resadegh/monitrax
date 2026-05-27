@@ -27,6 +27,18 @@ export interface EditorialTopBarProps {
   user?: { name: string; email?: string };
   /** Optional sticky border-on-scroll behaviour. Defaults to true. */
   borderOnScroll?: boolean;
+  /**
+   * When provided, the desktop search pill becomes a button that calls
+   * this — used to open the existing `<UniversalSearch />` modal from
+   * `DashboardLayout`. When omitted, the pill is presentational only.
+   */
+  onSearchClick?: () => void;
+  /**
+   * When provided, the mobile-side avatar tap calls this — used to open
+   * the existing `<MoreSheet />` on phones. When omitted, the avatar
+   * links to `/dashboard/settings/profile` on desktop.
+   */
+  onAvatarClick?: () => void;
   className?: string;
 }
 
@@ -53,6 +65,8 @@ function formatAestDate(d: Date): string {
 export function EditorialTopBar({
   user,
   borderOnScroll = true,
+  onSearchClick,
+  onAvatarClick,
   className,
 }: EditorialTopBarProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -94,14 +108,30 @@ export function EditorialTopBar({
 
       {/* Right cluster */}
       <div className="flex items-center gap-3">
-        {/* Search pill — desktop only */}
-        <div className="hidden h-9 w-60 items-center gap-2 rounded-full bg-editorial-warm pl-3 pr-2 text-sm text-editorial-slate ring-1 ring-editorial-divider md:flex">
-          <Search className="h-4 w-4" strokeWidth={1.75} aria-hidden />
-          <span className="flex-1 truncate">Search accounts, txns, plans…</span>
-          <kbd className="rounded bg-editorial-paper px-1.5 py-0.5 text-[11px] font-medium text-editorial-slate ring-1 ring-editorial-divider">
-            ⌘K
-          </kbd>
-        </div>
+        {/* Search pill — desktop only. Becomes a button when onSearchClick
+            is provided (wired to the existing UniversalSearch modal). */}
+        {onSearchClick ? (
+          <button
+            type="button"
+            onClick={onSearchClick}
+            aria-label="Open search"
+            className="hidden h-9 w-60 items-center gap-2 rounded-full bg-editorial-warm pl-3 pr-2 text-sm text-editorial-slate ring-1 ring-editorial-divider transition-colors hover:bg-editorial-surface hover:text-editorial-ink md:flex"
+          >
+            <Search className="h-4 w-4" aria-hidden />
+            <span className="flex-1 truncate text-left">Search accounts, txns, plans…</span>
+            <kbd className="rounded bg-editorial-paper px-1.5 py-0.5 text-[11px] font-medium text-editorial-slate ring-1 ring-editorial-divider">
+              ⌘K
+            </kbd>
+          </button>
+        ) : (
+          <div className="hidden h-9 w-60 items-center gap-2 rounded-full bg-editorial-warm pl-3 pr-2 text-sm text-editorial-slate ring-1 ring-editorial-divider md:flex">
+            <Search className="h-4 w-4" aria-hidden />
+            <span className="flex-1 truncate">Search accounts, txns, plans…</span>
+            <kbd className="rounded bg-editorial-paper px-1.5 py-0.5 text-[11px] font-medium text-editorial-slate ring-1 ring-editorial-divider">
+              ⌘K
+            </kbd>
+          </div>
+        )}
 
         {/* Bell */}
         <button
@@ -109,17 +139,29 @@ export function EditorialTopBar({
           aria-label="Notifications"
           className="flex h-10 w-10 items-center justify-center rounded-full text-editorial-slate transition-colors hover:bg-editorial-warm hover:text-editorial-ink"
         >
-          <Bell className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          <Bell className="h-5 w-5" aria-hidden />
         </button>
 
-        {/* Avatar */}
+        {/* Avatar — onAvatarClick (mobile More sheet trigger) takes
+            precedence; otherwise renders the static glyph. */}
         {user && (
-          <span
-            aria-label={user.name}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-editorial-emerald-chip text-sm font-semibold text-editorial-emerald"
-          >
-            {user.name.slice(0, 1).toUpperCase()}
-          </span>
+          onAvatarClick ? (
+            <button
+              type="button"
+              onClick={onAvatarClick}
+              aria-label={`${user.name} — open more menu`}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-editorial-emerald-chip text-sm font-semibold text-editorial-emerald transition-shadow hover:shadow-editorial-card"
+            >
+              {user.name.slice(0, 1).toUpperCase()}
+            </button>
+          ) : (
+            <span
+              aria-label={user.name}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-editorial-emerald-chip text-sm font-semibold text-editorial-emerald"
+            >
+              {user.name.slice(0, 1).toUpperCase()}
+            </span>
+          )
         )}
       </div>
     </header>

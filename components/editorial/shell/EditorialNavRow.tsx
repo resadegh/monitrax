@@ -47,6 +47,12 @@ export interface EditorialNavRowProps {
   /** Render compact 36px height for nested children rows. */
   dense?: boolean;
   onClick?: () => void;
+  /**
+   * Optional `data-tour` attribute forwarded to the rendered Link. Used
+   * by `<GuidedTour />` to anchor onboarding spotlights to specific
+   * nav rows (e.g. `data-tour="nav-accounts"`).
+   */
+  dataTour?: string;
 }
 
 const STAGE_DOT: Record<TrailStage, string> = {
@@ -65,12 +71,14 @@ export function EditorialNavRow({
   trailStage,
   dense = false,
   onClick,
+  dataTour,
 }: EditorialNavRowProps) {
   return (
     <Link
       href={href}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
+      data-tour={dataTour}
       className={cn(
         'relative flex items-center gap-3 rounded-lg pl-4 pr-3 outline-none transition-colors',
         'focus-visible:ring-2 focus-visible:ring-editorial-emerald/40 focus-visible:ring-offset-1',

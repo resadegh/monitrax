@@ -43,6 +43,7 @@ export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
 
   return (
     <aside
+      data-tour="sidebar"
       className={cn(
         'hidden h-screen w-60 shrink-0 flex-col border-r border-editorial-divider bg-editorial-paper md:flex',
         'sticky top-0',
@@ -73,6 +74,7 @@ export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
             icon={item.icon}
             active={active?.name === item.name}
             trailStage={item.trailStage}
+            dataTour={item.tourId}
           />
         ))}
       </nav>
@@ -84,6 +86,7 @@ export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
           label={settingsNavItem.name}
           icon={settingsNavItem.icon}
           active={active?.name === settingsNavItem.name}
+          dataTour={settingsNavItem.tourId}
         />
         {user && (
           <Link
