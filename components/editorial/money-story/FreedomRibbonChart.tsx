@@ -35,7 +35,6 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-  type TooltipProps,
 } from 'recharts';
 import { cn } from '@/lib/utils';
 
@@ -66,11 +65,24 @@ const CURRENCY_FMT = new Intl.NumberFormat('en-AU', {
   maximumFractionDigits: 0,
 });
 
-function RibbonTooltip({
-  active,
-  payload,
-  label,
-}: TooltipProps<number, string>) {
+/**
+ * Recharts v3 changed its exported `TooltipProps` shape (`payload` no
+ * longer typed on the public interface), so we define a minimal local
+ * type matching the runtime contract Recharts actually passes to a
+ * custom `content` function. This is the same shape that worked in v2.
+ */
+interface RibbonTooltipPayloadEntry {
+  dataKey?: string | number;
+  value?: number;
+  name?: string;
+}
+interface RibbonTooltipProps {
+  active?: boolean;
+  payload?: RibbonTooltipPayloadEntry[];
+  label?: string | number;
+}
+
+function RibbonTooltip({ active, payload, label }: RibbonTooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   const spent = payload.find((p) => p.dataKey === 'spent')?.value ?? 0;
   const kept = payload.find((p) => p.dataKey === 'kept')?.value ?? 0;
@@ -149,7 +161,6 @@ export function FreedomRibbonChart({
               strokeOpacity: 0.4,
               strokeDasharray: '2 4',
             }}
-            position={previewIndex !== undefined ? undefined : undefined}
             defaultIndex={previewIndex}
           />
 
