@@ -41,49 +41,49 @@
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 742,
+      "line": 744,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1372,
+      "line": 1374,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1380,
+      "line": 1382,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1421,
+      "line": 1423,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1429,
+      "line": 1431,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1443,
+      "line": 1445,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "expense.annualAmount / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1642,
+      "line": 1644,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1646,
+      "line": 1648,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
