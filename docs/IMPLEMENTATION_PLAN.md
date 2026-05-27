@@ -122,6 +122,35 @@
 
 > Sorted by priority. Top of list = work in flight right now.
 
+### 0·StD. Stitch Dashboard "Restrained Editorial" redesign (Home / `/dashboard`)
+
+- **Status:** 🟡 BUILDING — design system created, 3 of 14 locked sections rendered.
+- **Started:** 2026-05-27
+- **Owner:** Reza (direction, taste, lock decisions) + Claude (Stitch generation + DESIGN.md curation).
+- **Last touched:** 2026-05-27 — corrected DESIGN.md authored + uploaded; new design system asset created; Money Story Hero seed + Expanded Wealth View screen generated.
+- **Approach:** Stitch-first composition (NOT direct React rewrite). Build the visual reference in Stitch via small, isolated section seeds + iterative `edit_screens` composition, then port the approved composition into `/dashboard/page.tsx` once the entire 14-section inventory is laid out and Reza signs off.
+- **Phases:**
+  - [x] Lock the redesign brief (Restrained Editorial inspired by Mercury × Apple Wallet; warm ivory + deep navy + emerald accent + TRAIL spectrum chips for sky/amber/indigo/emerald/violet).
+  - [x] Lock the 14-section tile inventory of the current `/dashboard/page.tsx` (TRAIL stage indicator, Pending Actions banner, Daily Pulse, Money Story Hero, utility row, 6 metric tiles, Health + Emergency, Debt Quality + Entity Cashflow, Net Worth Trend + Entity Comparison, Insights + Budget, Money Bleeding + Categories, Asset Allocation + Insights, Holdings tabs).
+  - [x] Author the corrected `DESIGN.md` (warm ivory tokens replacing the cool-blue placeholder, TRAIL spectrum named colors, navy-tinted shadows, paired metric tile + Money Story Hero patterns).
+  - [x] Land the corrected DESIGN.md as a tracked artifact: `docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md`.
+  - [x] Create a new Stitch design system "Monitrax — Restrained Editorial" (asset `5eb40c25ecd946828ee9ba4d60c0662c`) — left the 4 existing design systems (Monitrax / Monitrax Core / Deep Cosmos / Deep Cosmos Editorial / Deep Cosmos OS) untouched so the 45 existing website screens don't drift.
+  - [x] First seed screen — Money Story Hero card alone (Stitch screen `81e67b3e78934fd1aad6a8e81ab2cb2a`, title "Monitrax Money Story - Dashboard Hero").
+  - [x] First edit pass — add TRAIL Stage Indicator above + 6 Metric Tiles grid below (Stitch screen `127693673f554c199966d52d3a1db8a3`, title "Monitrax Dashboard - Expanded Wealth View"). **3 of 14 sections complete.**
+  - [ ] Second edit pass — Health + Emergency pair + Debt Quality + Entity Cashflow pair. Attempted 2026-05-27 but silently failed under this session's 60s MCP cap.
+  - [ ] Third edit pass — Net Worth Trend + Entity Comparison pair.
+  - [ ] Fourth edit pass — Actionable Insights + Monthly Budget triplet.
+  - [ ] Fifth edit pass — Money Bleeding + Spending by Category pair.
+  - [ ] Sixth edit pass — Asset Allocation + Insights triplet.
+  - [ ] Seventh edit pass — Holdings tabs full-width.
+  - [ ] Eighth edit pass — wrap in app shell (sidebar + topbar + Pending Actions banner + utility row).
+  - [ ] Reza review of full 14-section composition; lock or redirect.
+  - [ ] Port to React: rewrite `/dashboard/page.tsx` against the locked composition; component-by-component map to existing TRAIL framework + tiles in `components/dashboard/`; preserve all existing data wiring (`getMasterFinancialSnapshot`, `/api/dashboard/insights`, etc.).
+  - [ ] Update canonical design system docs (`docs/architecture/06_UI_UX_FOUNDATION.md` + `08_BRAND_UI_DESIGN.md`) with the Restrained Editorial palette + Money Story Hero + paired metric tile patterns (§16.3 row "UI / design system change").
+- **Risk:** Low blast radius — visual-only iteration; nothing ships to prod until the React port lands. Stitch-side timeouts on big edits force small incremental edits, but each step is reviewable.
+- **Blocking:** none — but session-level MCP timeout (60s default) makes large `generate_screen_from_text` / `edit_screens` calls unreliable. **Fix already merged in PR #899** (raises `MCP_TOOL_TIMEOUT` to 300000ms via `.claude/settings.json` env block) — effective for sessions started AFTER the merge. Resume the remaining edit passes in a fresh session for the 5-min window.
+- **Why this matters:** the current `/dashboard/page.tsx` is functional but visually a tax-spreadsheet — paired metrics rendered as 6 disconnected stat cards, no editorial whitespace, no calm hierarchy. The Money Story Hero + restrained palette pivot is the foundation for the "this feels premium" reaction we want returning users to have — and Apple/Mercury/Linear are the calibration references. Three of 14 sections are now in the new language; remaining 11 layer in over subsequent sessions.
+
 ### 0·Φ44. Phase 44 — Entity Graph & Structure Modelling
 
 - **Status:** 🟢 BUILDING — **Part 1 complete** (1a + 1b + 1c + 1d merged). **Part 2 build complete** — 2a + 2b + 2c-i + 2c-ii merged; 2d shipping. Remaining: the non-blocking Part 2 follow-ups.
