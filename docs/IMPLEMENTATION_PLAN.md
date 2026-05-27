@@ -127,7 +127,7 @@
 - **Status:** 🟡 BUILDING — design system created, 3 of 14 locked sections rendered.
 - **Started:** 2026-05-27
 - **Owner:** Reza (direction, taste, lock decisions) + Claude (Stitch generation + DESIGN.md curation).
-- **Last touched:** 2026-05-27 — corrected DESIGN.md authored + uploaded; new design system asset created; Money Story Hero seed + Expanded Wealth View screen generated.
+- **Last touched:** 2026-05-27 — **Edit pass 2 ✅ landed** (screen `9d0d72acf1ad4a1c8b041651bab3966a`, "Monitrax Dashboard - Diagnostic Deep Dive", 4612px tall). Composition now: TRAIL Stage Indicator + Money Story Hero + 6-tile metrics + **Health Score + Emergency Fund pair (row 1)** + **Debt Quality + Entity Cashflow pair (row 2)**. **5 of 14 sections complete.** Screenshot at `.stitch/designs/dashboard-edit-pass-2.png`.
 - **Approach:** Stitch-first composition (NOT direct React rewrite). Build the visual reference in Stitch via small, isolated section seeds + iterative `edit_screens` composition, then port the approved composition into `/dashboard/page.tsx` once the entire 14-section inventory is laid out and Reza signs off.
 - **Phases:**
   - [x] Lock the redesign brief (Restrained Editorial inspired by Mercury × Apple Wallet; warm ivory + deep navy + emerald accent + TRAIL spectrum chips for sky/amber/indigo/emerald/violet).
@@ -137,10 +137,10 @@
   - [x] Create a new Stitch design system "Monitrax — Restrained Editorial" (asset `5eb40c25ecd946828ee9ba4d60c0662c`) — left the 4 existing design systems (Monitrax / Monitrax Core / Deep Cosmos / Deep Cosmos Editorial / Deep Cosmos OS) untouched so the 45 existing website screens don't drift.
   - [x] First seed screen — Money Story Hero card alone (Stitch screen `81e67b3e78934fd1aad6a8e81ab2cb2a`, title "Monitrax Money Story - Dashboard Hero").
   - [x] First edit pass — add TRAIL Stage Indicator above + 6 Metric Tiles grid below (Stitch screen `127693673f554c199966d52d3a1db8a3`, title "Monitrax Dashboard - Expanded Wealth View"). **3 of 14 sections complete.**
-  - [ ] Second edit pass — Health + Emergency pair + Debt Quality + Entity Cashflow pair. Attempted 2026-05-27 but silently failed under this session's 60s MCP cap.
-  - [ ] Third edit pass — Net Worth Trend + Entity Comparison pair.
-  - [ ] Fourth edit pass — Actionable Insights + Monthly Budget triplet.
-  - [ ] Fifth edit pass — Money Bleeding + Spending by Category pair.
+  - [x] **Second edit pass ✅ 2026-05-27** — appended Health Score + Emergency Fund pair (row 1) and Debt Quality + Entity Cashflow pair (row 2) below the 6-tile grid (Stitch screen `9d0d72acf1ad4a1c8b041651bab3966a`, title "Monitrax Dashboard - Diagnostic Deep Dive", 4612px tall). The 5-min `MCP_TOOL_TIMEOUT` from PR #899 was sufficient — edit completed first try. Restrained Editorial discipline preserved: navy text, sparing emerald, amber for the cashflow-negative SMSF entry (not red). Screenshot saved at `.stitch/designs/dashboard-edit-pass-2.png`. **5 of 14 sections complete.**
+  - [x] **Third edit pass ✅ 2026-05-27** — appended Net Worth Trend area chart + Entity Comparison horizontal bar chart pair below the Debt Quality / Entity Cashflow row (Stitch screen `b4fd60be40f64fec947fd20c660f1625`, title "Monitrax Dashboard - Wealth Trajectory Pass", 5866px tall). 280px area chart on the left with 1Y segmented selector; 4-row entity comparison on the right (Personal $412,800 / Trust $258,400 / ABC Pty Ltd $132,920 / SMSF $43,200). Screenshot saved at `.stitch/designs/dashboard-edit-pass-3.png`. **7 of 14 sections complete.**
+  - [x] **Fourth edit pass ✅ 2026-05-27** — appended Actionable Insights (8-col wide, 5 TRAIL-coloured insight rows with severity chips HIGH/WIN/MEDIUM/MEDIUM/LOW) + Monthly Budget Summary (4-col narrow, 4-row list + REMAINING block + 86% progress bar) (Stitch screen `e70424a8aa2743f6a7801aa24946e285`, title "Monitrax Dashboard - Priorities & Budgeting Pass", 7158px tall). Screenshot saved at `.stitch/designs/dashboard-edit-pass-4.png`. **9 of 14 sections complete.**
+  - [ ] Fifth edit pass — Money Bleeding + Spending by Category pair (chain off screen `e70424a8aa2743f6a7801aa24946e285`).
   - [ ] Sixth edit pass — Asset Allocation + Insights triplet.
   - [ ] Seventh edit pass — Holdings tabs full-width.
   - [ ] Eighth edit pass — wrap in app shell (sidebar + topbar + Pending Actions banner + utility row).
