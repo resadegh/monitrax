@@ -1225,3 +1225,116 @@ view (`app/portal/clients/[id]/view`) still renders the legacy
 `EntityTree` (the Phase 41c two-row SVG tree). A future PR can adopt the
 canvas there too — `EntityCanvas` is self-contained and only needs a
 graph endpoint scoped to the viewed client. Out of scope for Part 1c.
+
+---
+
+## §16.x Restrained Editorial — internal-app dashboard (workstream 0·StD, 2026-05-27, Phase R1)
+
+**Scope:** the internal `/dashboard/*` surfaces. Public-website Cosmos
+(Phase 48) + internal-app legacy brand tokens both continue to work
+alongside; the editorial-* namespace is **purely additive** and replaces
+them gradually as the dashboard restyle PRs land.
+
+**Aesthetic:** Restrained Editorial — warm ivory + deep navy + emerald
+accent, calibrated against Mercury, Apple Wallet, Linear, Stripe. Premium
+without decoration; never childish, never gamified, never anxious.
+Source of truth: `docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md`. Stitch
+project `1859462351962811110`, anchor screens
+`f723372ebbd83b197770129eff849a2` (14 content sections) +
+`2543c8240b944c8fa6b6e89d20ac8e77` (app shell).
+
+### Tokens (CSS variables + Tailwind utilities)
+
+Defined in `app/globals.css` editorial block and surfaced through
+`tailwind.config.ts` as the `editorial.*` colour family + `boxShadow`
+keys.
+
+| Token | Hex | Purpose |
+|---|---|---|
+| `editorial.ivory` | `#FAFAF7` | Page background. NEVER pure white. |
+| `editorial.paper` | `#FFFFFF` | Card surface. |
+| `editorial.warm` | `#FAF8F3` | Daily Pulse strip / surface-container-low. |
+| `editorial.surface` | `#F1EFE8` | Segmented control / surface-container. |
+| `editorial.tint` | `#F1F5F9` | Progress bar track (slate-100). |
+| `editorial.ink` | `#0B1220` | Primary text — deep navy, not pure black. |
+| `editorial.slate` | `#64748B` | Secondary text. |
+| `editorial.muted` | `#94A3B8` | Metadata + dashed-outline empty states. |
+| `editorial.divider` | `#E2E8F0` | Card border (1.5px) + 1px row dividers. |
+| `editorial.emerald` | `#16A34A` | Primary action + positive delta + chart accent. |
+| `editorial.emerald-chip` | `#DCFCE7` | Emerald 10% chip background. |
+| `editorial.amber` | `#F59E0B` | Caution + negative delta. NEVER red for "down". |
+| `editorial.sky` | `#0EA5E9` | TRAIL Track. |
+| `editorial.indigo` | `#6366F1` | TRAIL Anchor. |
+| `editorial.violet` | `#8B5CF6` | TRAIL Live. |
+| `editorial.red` | `#DC2626` | Destructive ONLY (e.g. delete confirmations). |
+
+Three shadow keys: `shadow-editorial-card`, `shadow-editorial-card-hover`,
+`shadow-editorial-popover` — all navy-tinted at low opacity (premium
+stationery feel; never neutral grey).
+
+### Typography utilities
+
+`@layer utilities` defines five canonical text classes:
+
+- `.text-eyebrow` — 12px / 500 / 0.18em / uppercase / slate-500
+- `.text-data-xl` — 40px / 600 / -0.02em / tabular-nums
+- `.text-data-lg` — 28px / 600 / -0.02em / tabular-nums
+- `.text-headline-md` — 24px / 600 / -0.03em
+- `.text-headline-sm` — 20px / 600 / -0.02em
+- `.tabular-nums-data` — `font-variant-numeric: tabular-nums` shortcut
+
+Numbers always use tabular-nums so columns of currency align cleanly.
+
+### Card primitive
+
+`.editorial-card` is the canonical white card shell (16px radius, 1.5px
+divider border, navy shadow, 24px padding). `.editorial-card-hover` adds
+a subtle 1px translate + elevated shadow on hover, with a
+`prefers-reduced-motion: reduce` fallback.
+
+### Primitive components (`components/editorial/`)
+
+| Component | What it does |
+|---|---|
+| `Eyebrow` | The signature uppercase section label. Wraps `.text-eyebrow`. |
+| `DataValue` | Tabular-nums semibold navy number. `size: 'xl' \| 'lg' \| 'md'`. |
+| `DeltaChip` | Emerald (positive) / amber (negative) / slate (neutral) pill with directional arrow. NEVER red. |
+| `EditorialCard` | The canonical white card surface. `padded` + `hover` variants. |
+| `MetricTile` | Eyebrow + data-xl value + helper line with optional `DeltaChip` + optional sparkline slot. The building block of the 6-tile metrics row. |
+| `PairedMetricCard` | Two side-by-side metrics with a vertical 1px divider (Copilot Assets / Debts pattern). Stacks on mobile. |
+| `EditorialMoneyStoryHero` | The three-line Earned · Kept · Free today dashboard hero. TRAIL-stage-aware row emphasis (3px emerald left bar on the headline row). Replaces `MoneyStoryHero` on the new composition; both coexist until full migration. |
+
+Barrel export at `components/editorial/index.ts` for clean consumer
+imports.
+
+### Where this pattern replicates next
+
+- All six existing dashboard metric tiles (`Tile.tsx`) migrate to
+  `MetricTile` — Phase R3.
+- All paired diagnostic rows (Health + Emergency, Debt + Entity Cashflow,
+  Net Worth Trend + Entity Comparison, Insights + Budget, Money Bleeding
+  + Spending by Category, Asset Allocation + Insights, Holdings tabs)
+  restyle in subsequent phases — Phase R4 onwards.
+- The `DashboardLayout` sidebar redesigns to the 8-item TRAIL nav with
+  emerald active-state in Phase R2.
+
+### Banned in editorial surfaces
+
+- Pure white backgrounds. Use `editorial.ivory` for pages,
+  `editorial.paper` for cards.
+- Red `#DC2626` as a "down" delta indicator. Use amber for negative
+  cashflow / over-budget / target-not-met; reserve red for destructive
+  confirmations only.
+- Multi-colour charts. Monochromatic emerald + one accent. TRAIL spectrum
+  permitted only for stage categorisation (donut allocations, status chips).
+- Emojis or excitement punctuation (`!`) in production UI copy.
+- 1px or 2px card borders. Always 1.5px.
+- Inline currency formatting. Use `lib/utils/formatters.ts` `formatCurrency`.
+
+### Reviewer enforcement
+
+Any PR adding a new dashboard surface MUST use the editorial primitives
+above (or extend them with a new file in `components/editorial/` + an
+update to this section + the barrel) — never inline a one-off
+`<div className="bg-white rounded-2xl shadow ...">` clone. CLAUDE.md
+§12.2 (SSOT) + §16.4 (file-header JSDoc + linked Phase doc) apply.

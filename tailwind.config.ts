@@ -83,7 +83,34 @@ const config: Config = {
   				anchor: 'hsl(var(--cosmos-anchor))',                 // indigo
   				invest: 'hsl(var(--cosmos-invest))',                 // emerald
   				live: 'hsl(var(--cosmos-live))',                     // violet
+  			},
+  			// Restrained Editorial — Internal-app dashboard tokens (workstream 0·StD,
+  			// 2026-05-27). Scope: INTERNAL `/dashboard/*` only. Lives alongside
+  			// cosmos-* (public website) + brand-* (legacy app). See globals.css
+  			// editorial block + docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md.
+  			editorial: {
+  				ivory: 'hsl(var(--editorial-ivory))',         // #FAFAF7 — page background
+  				paper: 'hsl(var(--editorial-paper))',         // #FFFFFF — card surface
+  				warm: 'hsl(var(--editorial-warm))',           // #FAF8F3 — Daily Pulse strip
+  				surface: 'hsl(var(--editorial-surface))',     // #F1EFE8 — segmented control bg
+  				tint: 'hsl(var(--editorial-tint))',           // #F1F5F9 — progress bar track
+  				ink: 'hsl(var(--editorial-ink))',             // #0B1220 — primary text
+  				slate: 'hsl(var(--editorial-slate))',         // #64748B — secondary text
+  				muted: 'hsl(var(--editorial-muted))',         // #94A3B8 — metadata
+  				divider: 'hsl(var(--editorial-divider))',     // #E2E8F0 — card border / 1px divider
+  				emerald: 'hsl(var(--editorial-emerald))',     // #16A34A — primary action / chart accent
+  				'emerald-chip': 'hsl(var(--editorial-emerald-chip))', // #DCFCE7 — emerald-10% chip bg
+  				amber: 'hsl(var(--editorial-amber))',         // #F59E0B — caution / negative delta
+  				sky: 'hsl(var(--editorial-sky))',             // #0EA5E9 — TRAIL Track
+  				indigo: 'hsl(var(--editorial-indigo))',       // #6366F1 — TRAIL Anchor
+  				violet: 'hsl(var(--editorial-violet))',       // #8B5CF6 — TRAIL Live
+  				red: 'hsl(var(--editorial-red))',             // #DC2626 — destructive ONLY
   			}
+  		},
+  		boxShadow: {
+  			'editorial-card': 'var(--editorial-shadow-card)',
+  			'editorial-card-hover': 'var(--editorial-shadow-card-hover)',
+  			'editorial-popover': 'var(--editorial-shadow-popover)',
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

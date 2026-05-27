@@ -431,3 +431,42 @@ The Monitrax AI agent has a **single visual identity** across every AI-touched s
 **Anti-references** (do not copy): Cleo's mascot, Bank of America's Erica, Charles Schwab's Schwabby, Replika. These are character-led patterns; Monitrax's is presence-led — premium *because* of restraint.
 
 The "presence, not persona" decision is pinned in `PHASE_12_CONVERSATIONAL_ONBOARDING.md` §8 risk row **E-R11** as a reviewer-reject rule against future persona drift (avatars, names, character voices, emojis in agent messages).
+
+---
+
+## Restrained Editorial — internal-app dashboard pivot (2026-05-27, workstream 0·StD)
+
+The internal `/dashboard/*` surfaces are migrating to the **Restrained
+Editorial** aesthetic — Mercury × Apple Wallet × Linear × Stripe
+calibration, anchored to a warm ivory base (`#FAFAF7`) + deep navy text
+(`#0B1220`) + emerald accent (`#16A34A`) used sparingly. Premium without
+decoration. Never childish, never gamified, never anxious.
+
+Three brand-level rules apply across every editorial surface:
+
+1. **Never pure white.** The warm ivory base is what makes the product
+   feel like premium stationery rather than a tax spreadsheet. White is
+   reserved for card surfaces sitting on the ivory ground.
+2. **Never red for "down" indicators.** Negative deltas, cashflow-negative
+   entities, over-budget categories, gaps-to-target all render in amber
+   `#F59E0B`. Red `#DC2626` is reserved for destructive confirmations only
+   (delete, revoke consent, irreversible actions). The behavioural-
+   psychology lens: red is alarm; amber is "this needs your attention,
+   not your panic."
+3. **Eyebrow on every section.** Uppercase 12px / 500 / 0.18em / slate-500
+   above every section headline + every metric label. This is the
+   signature typographic move — restrained, editorial, calm.
+
+The full token set, primitive components, typography utilities, and the
+ban-list live in `06_UI_UX_FOUNDATION.md` §16.x. The design source of
+truth is `docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md` (the
+"Monitrax — Restrained Editorial" Stitch design system, asset
+`5eb40c25ecd946828ee9ba4d60c0662c`). Stitch project `1859462351962811110`
+anchor screens `f723372ebbd83b197770129eff849a2` (14 content sections) +
+`2543c8240b944c8fa6b6e89d20ac8e77` (app shell).
+
+**Coexistence rules.** The cosmos-* namespace continues to own the
+public-website surfaces (Phase 48). The editorial-* namespace owns the
+internal app. The legacy brand-* / `--background` / `--card` tokens
+continue to work — the editorial restyle replaces them gradually, one
+phase at a time. No surface mixes the three vocabularies.

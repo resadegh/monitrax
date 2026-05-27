@@ -1,0 +1,496 @@
+<html class="light" lang="en"><head></head><body class="min-h-screen flex overflow-x-hidden">```html
+
+
+
+    <meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax · Money Story</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#ffffff",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-container-highest": "#dde5d9",
+                        "secondary-fixed": "#dce2f6",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e3eadf",
+                        "surface-tint": "#006e2d",
+                        "on-error-container": "#93000a",
+                        "on-secondary-container": "#5c6274",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#eff6ea",
+                        "on-tertiary": "#ffffff",
+                        "trail-indigo": "#6366F1",
+                        "inverse-surface": "#2b322b",
+                        "surface": "#f4fcf0",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-secondary-fixed": "#151b2a",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container": "#e9f0e5",
+                        "surface-bright": "#f4fcf0",
+                        "surface-variant": "#dde5d9",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-primary-fixed": "#002109",
+                        "background": "#f4fcf0",
+                        "outline": "#6e7b6c",
+                        "secondary": "#585e6f",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-dim": "#F1EFE8",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-primary-container": "#f7fff2",
+                        "tertiary": "#4d5d73",
+                        "inverse-primary": "#62df7d",
+                        "error-red": "#DC2626",
+                        "error-container": "#ffdad6",
+                        "primary-fixed-dim": "#62df7d",
+                        "tertiary-container": "#66768d",
+                        "on-background": "#171d16",
+                        "on-tertiary-container": "#fdfcff",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-emerald": "#16A34A",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#7ffc97",
+                        "outline-variant": "#bdcaba",
+                        "secondary-container": "#d9dff4",
+                        "primary": "#006b2c",
+                        "primary-container": "#00873a",
+                        "on-surface": "#171d16",
+                        "trail-sky": "#0EA5E9",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "trail-amber": "#F59E0B",
+                        "outline-slate": "#94A3B8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "48px",
+                        "section-gap": "48px",
+                        "container-max": "1280px",
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "margin-mobile": "20px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "eyebrow": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .card-shadow {
+            box-shadow: 0 1px 3px 0 rgba(11, 18, 32, 0.04);
+        }
+
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+
+        .divider-line {
+            border-bottom: 1px solid #E2E8F0;
+        }
+        
+        .sidebar-active {
+            background-color: rgba(22, 163, 74, 0.08);
+            color: #0B1220;
+            font-weight: 600;
+            border-left: 3px solid #16A34A;
+        }
+    </style>
+<!-- Sidebar -->
+<aside class="fixed left-0 top-0 bottom-0 w-[240px] bg-white border-r-[1.5px] border-[#E2E8F0] z-50 flex flex-col">
+<div class="h-[64px] flex items-center justify-between px-6">
+<span class="text-[20px] font-semibold text-[#0B1220] tracking-[-0.02em]">monitrax</span>
+<span class="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
+</div>
+<nav class="flex-grow py-4">
+<ul class="space-y-2 px-3">
+<li><a class="sidebar-active flex items-center h-[44px] px-4 rounded-r-md gap-3" href="#"><span class="material-symbols-outlined text-[20px]">home</span><span class="text-body-sm">Home</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">group</span><span class="text-body-sm">My Household</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">account_balance</span><span class="text-body-sm">My Accounts</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">wallet</span><span class="text-body-sm">My Budget</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">verified_user</span><span class="text-body-sm">My Safety Net</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">insights</span><span class="text-body-sm">My Wealth</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">explore</span><span class="text-body-sm">My Guide</span></a></li>
+<li><a class="flex items-center h-[44px] px-4 rounded-md gap-3 text-slate-500 hover:bg-slate-50 transition-colors" href="#"><span class="material-symbols-outlined text-[20px]">bar_chart</span><span class="text-body-sm">Reports</span></a></li>
+</ul>
+</nav>
+<div class="px-4 pb-4">
+<div class="bg-[#FAF8F3] p-4 rounded-xl mb-4">
+<p class="text-[12px] font-semibold text-[#0B1220]">Start here</p>
+<p class="text-[11px] text-slate-500 mt-0.5">Set up 2FA for security</p>
+</div>
+<div class="flex items-center gap-3 py-3 border-t border-[#E2E8F0]">
+<div class="w-8 h-8 rounded-full bg-trail-emerald/20 flex items-center justify-center text-[12px] font-bold text-trail-emerald">RS</div>
+<div class="flex-grow min-w-0">
+<p class="text-body-sm font-semibold text-[#0B1220] truncate">Reza Sadegh</p>
+<p class="text-[10px] text-slate-500 truncate">reza@monitrax.com.au</p>
+</div>
+<span class="material-symbols-outlined text-[20px] text-slate-400">more_horiz</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<div class="flex-grow ml-[240px]">
+<!-- Topbar -->
+<header class="h-[72px] bg-[#FAFAF7] border-b border-[#E2E8F0] px-8 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-eyebrow text-[10px] text-slate-500 uppercase tracking-[0.18em] leading-none mb-1">HOME</span>
+<div class="flex items-center gap-3">
+<h1 class="font-headline-md text-[#0B1220]">Welcome back, Reza</h1>
+<span class="text-[11px] text-slate-400 font-medium">27 May 2026 · 09:14 AEST</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="w-[240px] h-[40px] bg-[#F1EFE8] rounded-full px-4 flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-slate-400">search</span>
+<span class="text-body-sm text-slate-500">Search anything</span>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined text-slate-600">notifications</span>
+<div class="absolute top-0 right-0 w-2 h-2 bg-trail-emerald rounded-full border-2 border-[#FAFAF7]"></div>
+</div>
+<span class="material-symbols-outlined text-slate-600">settings</span>
+</div>
+</header>
+<!-- Page Content Scroll Area -->
+<div class="p-8 max-w-[1080px] mx-auto space-y-section-gap">
+<!-- Pending Actions Banner -->
+<div class="mt-[-32px] bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-4 flex items-center justify-between shadow-[0_1px_2px_rgba(11,18,32,0.04)]">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-[#F59E0B]">warning</span>
+<span class="text-body-sm font-medium text-[#0B1220]">3 pending actions need your attention this week</span>
+</div>
+<button class="px-4 py-2 bg-trail-emerald text-white rounded-[12px] text-label-md font-medium hover:bg-primary transition-colors">Review actions</button>
+</div>
+<!-- Daily Pulse Strip -->
+<div class="bg-[#FAF8F3] rounded-[16px] p-5 flex items-center justify-between">
+<div class="flex flex-col">
+<span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">DAILY PULSE</span>
+<p class="text-body-sm text-[#0B1220]">Yesterday: $184 left over after your grocery run. On track for your May goal.</p>
+</div>
+<button class="text-label-md font-medium text-slate-500 hover:text-[#0B1220] transition-colors border-b border-transparent hover:border-slate-500">See yesterday's spend</button>
+</div>
+<div class="mt-6 space-y-section-gap">
+<!-- Section 1: TRAIL Stage Indicator -->
+<section class="w-full bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-8">
+<header class="mb-8">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Your Trail Journey</span>
+<h2 class="font-headline-sm text-headline-sm text-[#0B1220] mt-1">Stage 2 — Reduce</h2>
+</header>
+<div class="relative flex justify-between items-center">
+<!-- Connector Lines -->
+<div class="absolute top-3 left-0 w-full h-[1.5px] bg-[#E2E8F0] -z-0">
+<div class="h-full bg-trail-emerald w-1/4"></div>
+</div>
+<!-- Pips -->
+<div class="relative flex flex-col items-center gap-3 z-10">
+<div class="w-6 h-6 rounded-full bg-trail-emerald flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[16px] font-bold">check</span>
+</div>
+<span class="text-body-sm text-outline-slate">Track</span>
+</div>
+<div class="relative flex flex-col items-center gap-3 z-10">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest border-[1.5px] border-trail-emerald"></div>
+<span class="text-body-sm font-semibold text-[#0B1220]">Reduce</span>
+</div>
+<div class="relative flex flex-col items-center gap-3 z-10">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest border-[1.5px] border-[#CBD5E1]"></div>
+<span class="text-body-sm text-outline-slate">Anchor</span>
+</div>
+<div class="relative flex flex-col items-center gap-3 z-10">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest border-[1.5px] border-[#CBD5E1]"></div>
+<span class="text-body-sm text-outline-slate">Invest</span>
+</div>
+<div class="relative flex flex-col items-center gap-3 z-10">
+<div class="w-6 h-6 rounded-full bg-surface-container-lowest border-[1.5px] border-[#CBD5E1]"></div>
+<span class="text-body-sm text-outline-slate">Live</span>
+</div>
+</div>
+</section>
+<!-- Section 2: Money Story Hero -->
+<main class="w-full bg-surface-container-lowest border border-outline-variant rounded-[16px] card-shadow p-10 relative overflow-hidden transition-all duration-500 hover:shadow-lg">
+<header class="mb-10">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Money Story · May 2026</span>
+</header>
+<div class="flex flex-col">
+<div class="grid grid-cols-[25%_40%_35%] items-center h-[100px] divider-line px-0">
+<div class="flex flex-col"><span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Earned This Month</span></div>
+<div><span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums">$12,470</span></div>
+<div class="text-right md:text-left"><span class="font-body-sm text-body-sm text-outline-slate">70% kept · gross before tax</span></div>
+</div>
+<div class="grid grid-cols-[25%_40%_35%] items-center h-[100px] divider-line relative px-0 bg-surface-ivory/30">
+<div class="absolute left-0 top-0 bottom-0 w-[3px] bg-trail-emerald"></div>
+<div class="flex flex-col pl-6"><span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Kept</span></div>
+<div><span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums">$8,729</span></div>
+<div class="text-right md:text-left"><span class="font-body-sm text-body-sm text-outline-slate">70.0% kept margin</span></div>
+</div>
+<div class="grid grid-cols-[25%_40%_35%] items-center h-[100px] px-0">
+<div class="flex flex-col"><span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Free Today</span></div>
+<div><span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums">$184</span></div>
+<div class="text-right md:text-left"><span class="font-body-sm text-body-sm text-outline-slate">for the next 18 days</span></div>
+</div>
+</div>
+<div class="w-full mt-4 h-10 overflow-visible">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 1000 40">
+<defs>
+<lineargradient id="sparklineGradientHero" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#16A34A" stop-opacity="0.1"></stop>
+<stop offset="100%" stop-color="#16A34A" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M 0 35 Q 100 32, 200 36 T 400 30 T 600 25 T 800 20 T 1000 15 V 40 H 0 Z" fill="url(#sparklineGradientHero)"></path>
+<path d="M 0 35 Q 100 32, 200 36 T 400 30 T 600 25 T 800 20 T 1000 15" fill="none" stroke="#16A34A" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+<circle cx="1000" cy="15" fill="#16A34A" r="3"></circle>
+</svg>
+</div>
+</main>
+<!-- Utility Row -->
+<div class="py-4 flex justify-between items-center">
+<div class="flex bg-[#F1EFE8] p-1 rounded-full text-[11px] font-semibold h-[36px]">
+<span class="px-3 flex items-center text-outline-slate cursor-pointer">1W</span>
+<span class="px-3 flex items-center bg-white text-[#0B1220] rounded-full shadow-sm cursor-pointer">1M</span>
+<span class="px-3 flex items-center text-outline-slate cursor-pointer">3M</span>
+<span class="px-3 flex items-center text-outline-slate cursor-pointer">YTD</span>
+<span class="px-3 flex items-center text-outline-slate cursor-pointer">1Y</span>
+<span class="px-3 flex items-center text-outline-slate cursor-pointer">ALL</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors"><span class="material-symbols-outlined text-[20px]">download</span></button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors"><span class="material-symbols-outlined text-[20px]">tune</span></button>
+<button class="w-9 h-9 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 transition-colors"><span class="material-symbols-outlined text-[20px]">fullscreen</span></button>
+</div>
+</div>
+<!-- Section 3: Six Metric Tiles Grid -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 relative flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em] mb-4">Net Worth</span>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">$847,320</span>
+<span class="font-body-sm text-body-sm text-outline-slate mt-auto">Assets $1.2M minus Debts $371K</span>
+<div class="absolute bottom-6 right-6 w-16 h-8">
+<svg class="w-full h-full" viewbox="0 0 64 32">
+<path d="M0 30 Q16 28 32 15 T64 5" fill="none" stroke="#16A34A" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 relative flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em]">Monthly Cash Flow</span>
+<div class="flex bg-[#F1F5F9] p-1 rounded-full text-[10px] font-semibold">
+<span class="px-2 py-0.5 bg-white text-[#0B1220] rounded-full shadow-sm">Monthly</span>
+<span class="px-2 py-0.5 text-outline-slate">Annual</span>
+</div>
+</div>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">$3,418</span>
+<span class="font-body-sm text-body-sm text-outline-slate">$41,016 per year</span>
+</div>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em] mb-4">Annual Income</span>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">$149,640</span>
+<span class="font-body-sm text-body-sm text-outline-slate">$12,470 per month gross</span>
+</div>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em] mb-4">Annual Outgoings</span>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">$108,624</span>
+<span class="font-body-sm text-body-sm text-outline-slate">$9,052 per month</span>
+</div>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em] mb-4">Savings Rate</span>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">27.4%</span>
+<div class="w-full bg-[#F1F5F9] h-1 rounded-full mb-3">
+<div class="bg-primary h-full rounded-full" style="width: 70%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-outline-slate">$41,016 saved this year</span>
+</div>
+<div class="bg-surface-container-lowest border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-[0.18em] mb-4">Portfolio LVR</span>
+<span class="font-data-xl text-data-xl text-[#0B1220] tabular-nums mb-2">44.2%</span>
+<div class="w-full bg-[#F1F5F9] h-1 rounded-full mb-3">
+<div class="bg-primary h-full rounded-full" style="width: 44.2%"></div>
+</div>
+<span class="font-body-sm text-body-sm text-outline-slate">Debt $371K healthy band</span>
+</div>
+</section>
+<!-- Section 4: Health + Emergency Fund -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">Financial Health</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-6">Health Score</h3>
+<div class="flex flex-col md:flex-row gap-8 items-center mb-8">
+<div class="relative w-40 h-40 flex items-center justify-center flex-shrink-0">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<circle cx="50" cy="50" fill="none" r="48" stroke="#E2E8F0" stroke-width="4"></circle>
+<circle cx="50" cy="50" fill="none" r="48" stroke="#16A34A" stroke-dasharray="301.59" stroke-dashoffset="54.28" stroke-linecap="round" stroke-width="4"></circle>
+</svg>
+<div class="absolute flex flex-col items-center">
+<span class="font-data-xl text-[#0B1220] leading-none">82</span>
+<span class="font-eyebrow text-[#64748B] text-[10px]">/100</span>
+</div>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-3 mb-2">
+<span class="font-headline-lg text-[#0B1220]">A-</span>
+<span class="px-2 py-0.5 bg-[#DCFCE7] text-[#16A34A] rounded-full text-[12px] font-semibold">Strong</span>
+</div>
+<p class="font-body-sm text-[#64748B]">Above the typical Australian household at your stage.</p>
+</div>
+</div>
+<div class="space-y-4 mt-auto">
+<div class="border-t border-[#E2E8F0] pt-4"><div class="flex justify-between items-center mb-1"><span class="text-label-md text-[#0B1220]">Cashflow</span><span class="text-body-sm tabular-nums text-[#0B1220] font-semibold">88%</span></div><div class="w-full bg-[#E2E8F0] h-2 rounded-full"><div class="bg-[#16A34A] h-full rounded-full w-[88%]"></div></div></div>
+<div class="border-t border-[#E2E8F0] pt-4"><div class="flex justify-between items-center mb-1"><span class="text-label-md text-[#0B1220]">Debt Mix</span><span class="text-body-sm tabular-nums text-[#0B1220] font-semibold">76%</span></div><div class="w-full bg-[#E2E8F0] h-2 rounded-full"><div class="bg-[#16A34A] h-full rounded-full w-[76%]"></div></div></div>
+<div class="border-t border-[#E2E8F0] pt-4"><div class="flex justify-between items-center mb-1"><span class="text-label-md text-[#0B1220]">Safety Net</span><span class="text-body-sm tabular-nums text-[#0B1220] font-semibold">92%</span></div><div class="w-full bg-[#E2E8F0] h-2 rounded-full"><div class="bg-[#16A34A] h-full rounded-full w-[92%]"></div></div></div>
+<div class="border-t border-[#E2E8F0] pt-4"><div class="flex justify-between items-center mb-1"><span class="text-label-md text-[#0B1220]">Diversification</span><span class="text-body-sm tabular-nums text-[#0B1220] font-semibold">71%</span></div><div class="w-full bg-[#E2E8F0] h-2 rounded-full"><div class="bg-[#16A34A] h-full rounded-full w-[71%]"></div></div></div>
+</div>
+</div>
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">Safety Net</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-6">Emergency Fund</h3>
+<div class="mb-8">
+<div class="flex items-baseline gap-2 mb-4"><span class="font-data-xl text-[#0B1220] tabular-nums">4.2 months</span><span class="text-[#64748B] font-body-md">covered</span></div>
+<div class="relative pt-6"><div class="w-full bg-[#F1F5F9] h-3 rounded-full overflow-hidden"><div class="bg-[#16A34A] h-full rounded-full w-[70%]"></div></div><div class="absolute top-0 right-0 border-r-2 border-[#64748B] h-6 flex flex-col items-end"><span class="text-[10px] text-[#64748B] font-semibold uppercase absolute -top-1 whitespace-nowrap">6 mo target</span></div></div>
+</div>
+<div class="grid grid-cols-3 gap-4 py-6 border-y border-[#E2E8F0] mb-6">
+<div class="flex flex-col"><span class="text-[10px] text-[#64748B] uppercase tracking-wider mb-1">Liquid Cash</span><span class="font-headline-sm text-[#0B1220] tabular-nums text-[16px]">$18,450</span></div>
+<div class="flex flex-col"><span class="text-[10px] text-[#64748B] uppercase tracking-wider mb-1">Monthly Need</span><span class="font-headline-sm text-[#0B1220] tabular-nums text-[16px]">$4,380</span></div>
+<div class="flex flex-col"><span class="text-[10px] text-[#64748B] uppercase tracking-wider mb-1">Gap to Target</span><span class="font-headline-sm text-[#F59E0B] tabular-nums text-[16px]">$7,820</span></div>
+</div>
+<p class="mt-auto text-body-sm text-[#64748B] leading-relaxed">1.8 months from your 6-month target. Boosting your savings rate by $650/mo closes the gap in 12 months.</p>
+</div>
+</div>
+<!-- Section 5: Debt Quality + Entity Cashflow -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">Debt Mix</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-6">Good debt vs bad debt</h3>
+<div class="flex justify-between items-center mb-2 font-body-sm">
+<div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-[#16A34A]"></div><span class="text-[#0B1220] font-semibold tabular-nums">$685,000</span></div>
+<div class="flex items-center gap-2"><div class="w-2 h-2 rounded-full bg-[#F59E0B]"></div><span class="text-[#0B1220] font-semibold tabular-nums">$152,000</span></div>
+</div>
+<div class="w-full h-4 flex rounded-full overflow-hidden mb-8"><div class="h-full bg-[#16A34A] w-[82%]"></div><div class="h-full bg-[#F59E0B] w-[18%]"></div></div>
+<div class="grid grid-cols-2 gap-8 mb-8">
+<div><span class="font-eyebrow text-[#64748B] block mb-3 uppercase">GOOD DEBT</span><div class="space-y-2 text-body-sm text-[#0B1220]"><div class="flex justify-between"><span>Inv Prop 1</span><span class="tabular-nums font-medium">$420k</span></div><div class="flex justify-between"><span>Inv Prop 2</span><span class="tabular-nums font-medium">$185k</span></div><div class="flex justify-between"><span>Margin loan</span><span class="tabular-nums font-medium">$80k</span></div></div></div>
+<div><span class="font-eyebrow text-[#64748B] block mb-3 uppercase">BAD DEBT</span><div class="space-y-2 text-body-sm text-[#0B1220]"><div class="flex justify-between"><span>Credit card</span><span class="tabular-nums font-medium">$4.2k</span></div><div class="flex justify-between"><span>Personal loan</span><span class="tabular-nums font-medium">$12.8k</span></div><div class="flex justify-between"><span>Car loan</span><span class="tabular-nums font-medium">$135k</span></div></div></div>
+</div>
+<p class="mt-auto pt-6 border-t border-[#E2E8F0] text-body-sm text-[#64748B]">82% of your debt is generating wealth. Paying down the car loan first frees the largest monthly cashflow.</p>
+</div>
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">By Entity</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-8">Monthly cashflow by entity</h3>
+<div class="space-y-6 relative mb-8">
+<div class="absolute left-1/2 top-0 bottom-0 w-[1px] bg-[#E2E8F0] -ml-[0.5px]"></div>
+<div class="grid grid-cols-[1fr_1fr] items-center gap-0"><span class="text-body-sm text-[#0B1220] pr-4 text-right">Personal</span><div class="flex items-center"><div class="bg-[#16A34A] h-5 rounded-r w-[60%]"></div><span class="ml-2 tabular-nums text-[12px] font-semibold text-[#16A34A]">+$3,240</span></div></div>
+<div class="grid grid-cols-[1fr_1fr] items-center gap-0"><span class="text-body-sm text-[#0B1220] pr-4 text-right">Smith Family Trust</span><div class="flex items-center"><div class="bg-[#16A34A] h-5 rounded-r w-[40%]"></div><span class="ml-2 tabular-nums text-[12px] font-semibold text-[#16A34A]">+$1,820</span></div></div>
+<div class="grid grid-cols-[1fr_1fr] items-center gap-0"><span class="text-body-sm text-[#0B1220] pr-4 text-right">ABC Pty Ltd</span><div class="flex items-center"><div class="bg-[#16A34A] h-5 rounded-r w-[15%]"></div><span class="ml-2 tabular-nums text-[12px] font-semibold text-[#16A34A]">+$640</span></div></div>
+<div class="grid grid-cols-[1fr_1fr] items-center gap-0"><div class="flex items-center justify-end pr-4"><span class="mr-2 tabular-nums text-[12px] font-semibold text-[#F59E0B]">-$480</span><div class="bg-[#F59E0B] h-5 rounded-l w-[12%]"></div></div><span class="text-body-sm text-[#0B1220] pl-4 text-left">SMSF</span></div>
+</div>
+<div class="mt-auto grid grid-cols-3 gap-2 pt-6 border-t border-[#E2E8F0]">
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">Net Inflow</span><span class="text-[14px] font-semibold text-[#16A34A] tabular-nums">$5,220</span></div>
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">Entities</span><span class="text-[14px] font-semibold text-[#0B1220] tabular-nums">4</span></div>
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">Positive</span><span class="text-[14px] font-semibold text-[#0B1220] tabular-nums">3 of 4</span></div>
+</div>
+</div>
+</div>
+<!-- Section 6: Net Worth Trend + Entity Comparison -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">WEALTH TRAJECTORY</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-6">Net worth over time</h3>
+<div class="flex justify-between items-start mb-8">
+<div class="flex flex-col"><span class="font-data-xl text-[#0B1220] tabular-nums">$847,320</span><div class="flex items-center gap-1.5 mt-1"><span class="text-[#16A34A] font-medium text-body-sm">+$42,180 (+5.2%)</span><span class="text-[#64748B] text-body-sm">12 mo</span></div></div>
+</div>
+<div class="relative h-[280px] w-full mb-8">
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="w-full border-t border-dashed border-[#E2E8F0] relative"><span class="absolute -left-2 -translate-x-full -top-2 text-[10px] text-outline-slate tabular-nums">$950k</span></div>
+<div class="w-full border-t border-dashed border-[#E2E8F0] relative"><span class="absolute -left-2 -translate-x-full -top-2 text-[10px] text-outline-slate tabular-nums">$900k</span></div>
+<div class="w-full border-t border-dashed border-[#E2E8F0] relative"><span class="absolute -left-2 -translate-x-full -top-2 text-[10px] text-outline-slate tabular-nums">$850k</span></div>
+<div class="w-full border-t border-[#E2E8F0] relative"><span class="absolute -left-2 -translate-x-full -top-2 text-[10px] text-outline-slate tabular-nums">$800k</span></div>
+</div>
+<svg class="absolute inset-0 w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 1000 280">
+<defs><lineargradient id="netWorthGradient" x1="0%" x2="0%" y1="0%" y2="100%"><stop offset="0%" stop-color="#16A34A" stop-opacity="0.08"></stop><stop offset="100%" stop-color="#16A34A" stop-opacity="0"></stop></lineargradient></defs>
+<path d="M 0 250 Q 100 240, 200 220 T 400 180 T 600 140 T 800 100 T 1000 80 V 280 H 0 Z" fill="url(#netWorthGradient)"></path>
+<path d="M 0 250 Q 100 240, 200 220 T 400 180 T 600 140 T 800 100 T 1000 80" fill="none" stroke="#16A34A" stroke-linecap="round" stroke-width="1.5"></path>
+</svg>
+<div class="absolute -bottom-6 left-0 w-full flex justify-between text-[10px] text-outline-slate uppercase"><span>Jun</span><span>Jul</span><span>Aug</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dec</span><span>Jan</span><span>Feb</span><span>Mar</span><span>Apr</span><span>May</span></div>
+</div>
+<div class="mt-auto grid grid-cols-3 gap-2 pt-6 border-t border-[#E2E8F0]">
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1 uppercase">12-MO HIGH</span><span class="text-[14px] font-semibold text-[#0B1220] tabular-nums">$852,100</span></div>
+<div class="text-center border-x border-[#E2E8F0]"><span class="block text-[10px] text-[#64748B] uppercase mb-1 uppercase">12-MO LOW</span><span class="text-[14px] font-semibold text-[#0B1220] tabular-nums">$792,450</span></div>
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">Avg Growth</span><span class="text-[14px] font-semibold text-[#16A34A] tabular-nums">+$3,515</span></div>
+</div>
+</div>
+<div class="bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">ENTITY NET WORTH</span>
+<h3 class="font-headline-sm text-[#0B1220] mb-2">Comparison by entity</h3>
+<div class="flex justify-between items-center mb-8"><p class="font-body-sm text-[#64748B]">Net worth contribution by entity</p><button class="text-[12px] font-semibold text-tertiary hover:text-[#0B1220] transition-colors">View all 4</button></div>
+<div class="space-y-6 flex-grow">
+<div class="space-y-2"><div class="flex justify-between text-body-sm"><span class="text-[#0B1220]">Personal</span><span class="tabular-nums font-semibold">$415,200</span></div><div class="w-full bg-[#F1F5F9] h-2.5 rounded-full overflow-hidden"><div class="bg-[#16A34A] h-full rounded-full w-[49%]"></div></div></div>
+<div class="space-y-2"><div class="flex justify-between text-body-sm"><span class="text-[#0B1220]">Smith Family Trust</span><span class="tabular-nums font-semibold">$245,600</span></div><div class="w-full bg-[#F1F5F9] h-2.5 rounded-full overflow-hidden"><div class="bg-[#16A34A] h-full rounded-full w-[29%]"></div></div></div>
+<div class="space-y-2"><div class="flex justify-between text-body-sm"><span class="text-[#0B1220]">ABC Pty Ltd</span><span class="tabular-nums font-semibold">$124,520</span></div><div class="w-full bg-[#F1F5F9] h-2.5 rounded-full overflow-hidden"><div class="bg-[#16A34A] h-full rounded-full w-[15%]"></div></div></div>
+<div class="space-y-2"><div class="flex justify-between text-body-sm"><span class="text-[#0B1220]">SMSF</span><span class="tabular-nums font-semibold">$62,000</span></div><div class="w-full bg-[#F1F5F9] h-2.5 rounded-full overflow-hidden"><div class="bg-[#16A34A] h-full rounded-full w-[7%]"></div></div></div>
+</div>
+<div class="mt-auto grid grid-cols-3 gap-2 pt-6 border-t border-[#E2E8F0]">
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">TOTAL</span><span class="text-[14px] font-semibold text-[#0B1220] tabular-nums">$847,320</span></div>
+<div class="text-center border-x border-[#E2E8F0]"><span class="block text-[10px] text-[#64748B] uppercase mb-1">LARGEST</span><span class="text-[14px] font-semibold text-[#0B1220]">Personal (49%)</span></div>
+<div class="text-center"><span class="block text-[10px] text-[#64748B] uppercase mb-1">ACTIVE</span><span class="text-[14px] font-semibold text-[#0B1220]">4 entities</span></div>
+</div>
+</div>
+</div>
+<!-- Section 7: Actionable Insights + Monthly Budget -->
+<div class="grid grid-cols-12 gap-6 items-stretch">
+<div class="col-span-12 md:col-span-8 bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<header class="mb-6"><span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">WHAT YOU SHOULD KNOW</span><h3 class="font-headline-sm text-[#0B1220] mb-1">Today's priorities</h3><p class="text-body-sm text-[#64748B]">Five insights, ordered by impact. Action the top one this week.</p></header>
+<div class="flex-grow">
+<div class="h-[80px] flex items-center justify-between border-b border-slate-200 gap-4"><div class="flex-grow"><div class="flex items-center gap-3 mb-1"><span class="px-2 py-0.5 bg-[#F59E0B]/10 text-[#F59E0B] rounded-full text-[10px] font-bold tracking-wider">HIGH</span><span class="text-body-sm font-semibold text-[#0B1220]">Refinance your home loan to save $4,180/year</span></div><p class="text-[12px] text-[#64748B] line-clamp-1">Your current 6.45% rate is 0.85% above the best big-4 offer. Refinancing on a $620,000 balance frees $348 per month.</p></div><button class="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline whitespace-nowrap">Review options <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div>
+<div class="h-[80px] flex items-center justify-between border-b border-slate-200 gap-4"><div class="flex-grow"><div class="flex items-center gap-3 mb-1"><span class="px-2 py-0.5 bg-[#16A34A]/10 text-[#16A34A] rounded-full text-[10px] font-bold tracking-wider">WIN</span><span class="text-body-sm font-semibold text-[#0B1220]">Your savings rate climbed to 27.4% this month</span></div><p class="text-[12px] text-[#64748B] line-clamp-1">Up from 22.1% in April. The largest contributor was a $920 drop in dining-out spend.</p></div><button class="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline whitespace-nowrap">See breakdown <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div>
+<div class="h-[80px] flex items-center justify-between border-b border-slate-200 gap-4"><div class="flex-grow"><div class="flex items-center gap-3 mb-1"><span class="px-2 py-0.5 bg-[#6366F1]/10 text-[#6366F1] rounded-full text-[10px] font-bold tracking-wider">MEDIUM</span><span class="text-body-sm font-semibold text-[#0B1220]">Your investment property is generating a 3.8% net yield</span></div><p class="text-[12px] text-[#64748B] line-clamp-1">Below the 4.5% you targeted. Three levers — review rent, refinance, or claim the depreciation schedule.</p></div><button class="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline whitespace-nowrap">Open property <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div>
+<div class="h-[80px] flex items-center justify-between border-b border-slate-200 gap-4"><div class="flex-grow"><div class="flex items-center gap-3 mb-1"><span class="px-2 py-0.5 bg-[#6366F1]/10 text-[#6366F1] rounded-full text-[10px] font-bold tracking-wider">MEDIUM</span><span class="text-body-sm font-semibold text-[#0B1220]">Your emergency fund is 1.8 months from target</span></div><p class="text-[12px] text-[#64748B] line-clamp-1">Boosting your monthly transfer to your high-interest account by $650 closes the gap by 27 March 2027.</p></div><button class="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline whitespace-nowrap">Adjust transfer <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div>
+<div class="h-[80px] flex items-center justify-between gap-4"><div class="flex-grow"><div class="flex items-center gap-3 mb-1"><span class="px-2 py-0.5 bg-[#0EA5E9]/10 text-[#0EA5E9] rounded-full text-[10px] font-bold tracking-wider">LOW</span><span class="text-body-sm font-semibold text-[#0B1220]">Three subscriptions worth $112 a month have not been used in 60 days</span></div><p class="text-[12px] text-[#64748B] line-clamp-1">Streaming and a gym membership. Cancelling all three lifts your savings rate by 0.8 points.</p></div><button class="flex items-center gap-1 text-[12px] font-semibold text-primary hover:underline whitespace-nowrap">Review subscriptions <span class="material-symbols-outlined text-[16px]">arrow_forward</span></button></div>
+</div>
+<footer class="mt-4 pt-4 border-t border-slate-100 flex items-center gap-2 text-[11px] text-[#64748B]"><span class="material-symbols-outlined text-[14px]">refresh</span><span>Updated 27 May · Refreshed by your weekly review</span></footer>
+</div>
+<div class="col-span-12 md:col-span-4 bg-white border-[1.5px] border-[#E2E8F0] rounded-[16px] p-6 shadow-[0_1px_2px_rgba(11,18,32,0.04)] flex flex-col">
+<header class="mb-8"><span class="font-eyebrow text-eyebrow text-[#64748B] uppercase tracking-[0.18em] mb-1">THIS MONTH</span><h3 class="font-headline-sm text-[#0B1220] mb-1"></h3></header></div></div></div></div></div></body></html>
