@@ -88,23 +88,28 @@ const config: Config = {
   			// 2026-05-27). Scope: INTERNAL `/dashboard/*` only. Lives alongside
   			// cosmos-* (public website) + brand-* (legacy app). See globals.css
   			// editorial block + docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md.
+  			// All editorial-* tokens use the `<alpha-value>` placeholder so
+  			// Tailwind slash-opacity utilities work (e.g. `bg-editorial-amber/10`,
+  			// `text-editorial-emerald/60`). The CSS variables store the HSL
+  			// triplet without an `hsl()` wrapper (see globals.css editorial
+  			// block) precisely to enable this.
   			editorial: {
-  				ivory: 'hsl(var(--editorial-ivory))',         // #FAFAF7 — page background
-  				paper: 'hsl(var(--editorial-paper))',         // #FFFFFF — card surface
-  				warm: 'hsl(var(--editorial-warm))',           // #FAF8F3 — Daily Pulse strip
-  				surface: 'hsl(var(--editorial-surface))',     // #F1EFE8 — segmented control bg
-  				tint: 'hsl(var(--editorial-tint))',           // #F1F5F9 — progress bar track
-  				ink: 'hsl(var(--editorial-ink))',             // #0B1220 — primary text
-  				slate: 'hsl(var(--editorial-slate))',         // #64748B — secondary text
-  				muted: 'hsl(var(--editorial-muted))',         // #94A3B8 — metadata
-  				divider: 'hsl(var(--editorial-divider))',     // #E2E8F0 — card border / 1px divider
-  				emerald: 'hsl(var(--editorial-emerald))',     // #16A34A — primary action / chart accent
-  				'emerald-chip': 'hsl(var(--editorial-emerald-chip))', // #DCFCE7 — emerald-10% chip bg
-  				amber: 'hsl(var(--editorial-amber))',         // #F59E0B — caution / negative delta
-  				sky: 'hsl(var(--editorial-sky))',             // #0EA5E9 — TRAIL Track
-  				indigo: 'hsl(var(--editorial-indigo))',       // #6366F1 — TRAIL Anchor
-  				violet: 'hsl(var(--editorial-violet))',       // #8B5CF6 — TRAIL Live
-  				red: 'hsl(var(--editorial-red))',             // #DC2626 — destructive ONLY
+  				ivory: 'hsl(var(--editorial-ivory) / <alpha-value>)',
+  				paper: 'hsl(var(--editorial-paper) / <alpha-value>)',
+  				warm: 'hsl(var(--editorial-warm) / <alpha-value>)',
+  				surface: 'hsl(var(--editorial-surface) / <alpha-value>)',
+  				tint: 'hsl(var(--editorial-tint) / <alpha-value>)',
+  				ink: 'hsl(var(--editorial-ink) / <alpha-value>)',
+  				slate: 'hsl(var(--editorial-slate) / <alpha-value>)',
+  				muted: 'hsl(var(--editorial-muted) / <alpha-value>)',
+  				divider: 'hsl(var(--editorial-divider) / <alpha-value>)',
+  				emerald: 'hsl(var(--editorial-emerald) / <alpha-value>)',
+  				'emerald-chip': 'hsl(var(--editorial-emerald-chip) / <alpha-value>)',
+  				amber: 'hsl(var(--editorial-amber) / <alpha-value>)',
+  				sky: 'hsl(var(--editorial-sky) / <alpha-value>)',
+  				indigo: 'hsl(var(--editorial-indigo) / <alpha-value>)',
+  				violet: 'hsl(var(--editorial-violet) / <alpha-value>)',
+  				red: 'hsl(var(--editorial-red) / <alpha-value>)',
   			}
   		},
   		boxShadow: {

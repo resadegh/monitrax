@@ -27,12 +27,18 @@ export interface DeltaChipProps extends HTMLAttributes<HTMLSpanElement> {
 }
 
 const TONE_CLASS: Record<DeltaTone, string> = {
+  // editorial-emerald-chip flips correctly in dark mode (see globals.css
+  // editorial-* tokens — light = #DCFCE7, dark = navy-tinted emerald 10%).
   positive: 'bg-editorial-emerald-chip text-editorial-emerald',
-  // Amber at ~10% opacity background. Tailwind's `bg-amber-100` is the
-  // closest stock value (~#FEF3C7) and reads correctly against ivory.
-  negative: 'bg-amber-100 text-editorial-amber',
-  // Slate-tone for "no change" — calm, never anxious.
-  neutral: 'bg-slate-100 text-editorial-slate',
+  // Amber 10% opacity background — `bg-editorial-amber/10` works in both
+  // light and dark (the slash-opacity utility resolves to the same
+  // editorial-amber hue at 10% alpha, contrast-safe on both ivory and
+  // navy grounds). Avoids the previous hardcoded `bg-amber-100` which
+  // was invisible against the dark editorial ground.
+  negative: 'bg-editorial-amber/10 text-editorial-amber',
+  // Slate-tone for "no change" — calm, never anxious. Same opacity
+  // technique using editorial-slate so it adapts to dark mode.
+  neutral: 'bg-editorial-slate/15 text-editorial-slate',
 };
 
 const TONE_ICON: Record<DeltaTone, typeof ArrowUpRight> = {

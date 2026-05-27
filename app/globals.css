@@ -381,6 +381,51 @@
     --editorial-shadow-card-hover: 0 4px 12px -2px hsl(220 47% 8% / 0.06), 0 2px 4px -1px hsl(220 47% 8% / 0.03);
     --editorial-shadow-popover: 0 12px 32px -4px hsl(220 47% 8% / 0.08), 0 4px 8px -2px hsl(220 47% 8% / 0.04);
   }
+
+  /* Dark-mode overrides for the editorial namespace (Phase R2c, 2026-05-27).
+     Added after Reza's 2026-05-27 audit found the editorial chrome rendered
+     as light-only — when the browser honoured `prefers-color-scheme: dark`
+     the legacy components inside pages flipped to dark while the chrome
+     stayed ivory, creating unreadable contrast. The dark palette below
+     mirrors the editorial intent (warm-anchored, deep-navy ground, emerald
+     accent) but inverted: navy ground, slate-700 surfaces, near-white text.
+     Anchored to the legacy `--background: 222 47% 2%` for visual continuity
+     across the chrome-to-legacy-content boundary. */
+  .dark {
+    /* Surfaces — deep-navy ground, navy-tinted card surfaces (never pure
+       black; preserves the "premium stationery, not OLED-burnout"
+       sensibility translated to dark mode). */
+    --editorial-ivory: 222 47% 4%;            /* #050913 — page background, deep navy */
+    --editorial-paper: 222 38% 8%;            /* #0E1424 — card surface, elevated */
+    --editorial-warm: 222 32% 11%;            /* #141A2B — surface-container-low (Daily Pulse strip) */
+    --editorial-surface: 220 28% 14%;         /* #1B2236 — segmented control bg / surface-container */
+    --editorial-tint: 217 28% 17%;            /* #232B40 — progress bar tracks (slate-700 equivalent) */
+
+    /* Text + dividers (inverted ramp) */
+    --editorial-ink: 60 25% 97%;              /* #FAFAF7 — primary text now matches the LIGHT mode's ivory */
+    --editorial-slate: 215 20% 65%;           /* #94A3B8 — slate-400, secondary text */
+    --editorial-muted: 215 16% 47%;           /* #64748B — slate-500, metadata + dashed-outline empty states */
+    --editorial-divider: 217 33% 17%;         /* #1E293B — slate-800, card borders + 1px dividers */
+
+    /* Accent + TRAIL spectrum — kept bright for visibility on dark.
+       Emerald lifts to a slightly brighter shade (emerald-400 #4ADE80
+       equivalent) for sufficient WCAG AA contrast on dark surfaces. */
+    --editorial-emerald: 142 71% 45%;         /* #22C55E — brighter emerald for dark mode */
+    --editorial-emerald-soft: 142 76% 73%;    /* same — already light enough */
+    --editorial-emerald-chip: 142 60% 14%;    /* dark emerald 10%-tint background */
+    --editorial-amber: 38 92% 55%;            /* #FBBF24 — slightly brighter for dark contrast */
+    --editorial-sky: 199 89% 55%;             /* brighter sky */
+    --editorial-indigo: 239 84% 70%;          /* brighter indigo */
+    --editorial-violet: 258 90% 70%;          /* brighter violet */
+    --editorial-red: 0 72% 55%;               /* destructive, brighter for dark */
+
+    /* Shadows — flipped to use white at very low opacity (creates a
+       subtle outer-glow / rim-light feel against the dark ground; navy
+       shadows on a navy background would be invisible). */
+    --editorial-shadow-card: 0 1px 2px 0 hsl(0 0% 0% / 0.30), 0 0 0 1px hsl(0 0% 100% / 0.04);
+    --editorial-shadow-card-hover: 0 4px 12px -2px hsl(0 0% 0% / 0.40), 0 0 0 1px hsl(0 0% 100% / 0.06);
+    --editorial-shadow-popover: 0 12px 32px -4px hsl(0 0% 0% / 0.50), 0 0 0 1px hsl(0 0% 100% / 0.08);
+  }
 }
 
 @layer utilities {
