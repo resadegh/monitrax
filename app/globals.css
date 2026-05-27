@@ -331,3 +331,139 @@
   0%, 100% { transform: scale(1); opacity: 0.4; }
   50% { transform: scale(1.8); opacity: 0; }
 }
+
+/* =============================================================================
+   Restrained Editorial — Internal-app dashboard tokens (workstream 0·StD)
+   Added 2026-05-27 per the Stitch dashboard redesign (PRs #901 + #902).
+   Scope: INTERNAL APP `/dashboard/*` only. Public-website + cosmos surfaces
+   are untouched. These are PURELY ADDITIVE — they don't mutate any existing
+   token. Old `brand-*` / `--background` / `--card` tokens continue to work
+   alongside; the editorial-* namespace replaces them gradually across the
+   dashboard restyle.
+
+   Visual reference: Stitch project 1859462351962811110, screens
+     - f723372ebbd943b197770129eff849a2  (14 content sections)
+     - 2543c8240b944c8fa6b6e89d20ac8e77  (app shell)
+   Design source of truth: docs/design/MONITRAX_STITCH_DESIGN_SYSTEM.md
+
+   Aesthetic: warm ivory + deep navy + emerald accent, Mercury x Apple x
+   Linear vocabulary. Never pure white. Never red for "down" indicators —
+   amber for negative deltas, red reserved for destructive.
+   ============================================================================= */
+
+@layer base {
+  :root {
+    /* Surface palette — warm ivory ecosystem, never pure white. */
+    --editorial-ivory: 60 25% 97%;            /* #FAFAF7 — page background */
+    --editorial-paper: 0 0% 100%;             /* #FFFFFF — card surface */
+    --editorial-warm: 36 38% 96%;             /* #FAF8F3 — Daily Pulse strip / surface-container-low */
+    --editorial-surface: 39 26% 92%;          /* #F1EFE8 — segmented control bg / surface-container */
+    --editorial-tint: 220 14% 96%;            /* #F1F5F9 — progress bar tracks (slate-100) */
+
+    /* Text + dividers */
+    --editorial-ink: 220 47% 8%;              /* #0B1220 — deep navy, primary text */
+    --editorial-slate: 215 16% 47%;           /* #64748B — slate-500, secondary text */
+    --editorial-muted: 215 20% 65%;           /* #94A3B8 — slate-400, metadata + dashed-outline empty states */
+    --editorial-divider: 214 32% 91%;         /* #E2E8F0 — outline-variant, card borders + 1px dividers */
+
+    /* Accent + TRAIL spectrum (canonical, mirrors cosmos hues) */
+    --editorial-emerald: 142 71% 37%;         /* #16A34A — primary action, positive deltas, chart accent */
+    --editorial-emerald-soft: 142 76% 73%;    /* #86EFAC — secondary tint, emerald chip text bg */
+    --editorial-emerald-chip: 142 76% 93%;    /* #DCFCE7 — emerald-10% chip background */
+    --editorial-amber: 38 92% 50%;            /* #F59E0B — caution, negative deltas (NOT red) */
+    --editorial-sky: 199 89% 48%;             /* #0EA5E9 — TRAIL Track stage */
+    --editorial-indigo: 239 84% 67%;          /* #6366F1 — TRAIL Anchor stage */
+    --editorial-violet: 258 90% 66%;          /* #8B5CF6 — TRAIL Live stage */
+    --editorial-red: 0 72% 51%;               /* #DC2626 — destructive ONLY (never default down indicator) */
+
+    /* Shadows — navy-tinted at low opacity (premium stationery feel). */
+    --editorial-shadow-card: 0 1px 2px 0 hsl(220 47% 8% / 0.04), 0 1px 1px 0 hsl(220 47% 8% / 0.02);
+    --editorial-shadow-card-hover: 0 4px 12px -2px hsl(220 47% 8% / 0.06), 0 2px 4px -1px hsl(220 47% 8% / 0.03);
+    --editorial-shadow-popover: 0 12px 32px -4px hsl(220 47% 8% / 0.08), 0 4px 8px -2px hsl(220 47% 8% / 0.04);
+  }
+}
+
+@layer utilities {
+  /* Surface utilities */
+  .bg-editorial-ivory    { background-color: hsl(var(--editorial-ivory)); }
+  .bg-editorial-paper    { background-color: hsl(var(--editorial-paper)); }
+  .bg-editorial-warm     { background-color: hsl(var(--editorial-warm)); }
+  .bg-editorial-surface  { background-color: hsl(var(--editorial-surface)); }
+  .bg-editorial-tint     { background-color: hsl(var(--editorial-tint)); }
+
+  /* Text utilities */
+  .text-editorial-ink    { color: hsl(var(--editorial-ink)); }
+  .text-editorial-slate  { color: hsl(var(--editorial-slate)); }
+  .text-editorial-muted  { color: hsl(var(--editorial-muted)); }
+  .text-editorial-emerald{ color: hsl(var(--editorial-emerald)); }
+  .text-editorial-amber  { color: hsl(var(--editorial-amber)); }
+  .text-editorial-sky    { color: hsl(var(--editorial-sky)); }
+  .text-editorial-indigo { color: hsl(var(--editorial-indigo)); }
+  .text-editorial-violet { color: hsl(var(--editorial-violet)); }
+
+  /* Border + divider utilities */
+  .border-editorial-divider { border-color: hsl(var(--editorial-divider)); }
+  .ring-editorial-divider   { --tw-ring-color: hsl(var(--editorial-divider)); }
+
+  /* Card shell — the canonical white card. */
+  .editorial-card {
+    background-color: hsl(var(--editorial-paper));
+    border: 1.5px solid hsl(var(--editorial-divider));
+    border-radius: 16px;
+    box-shadow: var(--editorial-shadow-card);
+    padding: 24px;
+  }
+  .editorial-card-hover {
+    transition: box-shadow 200ms cubic-bezier(0.2, 0, 0.2, 1),
+                transform 200ms cubic-bezier(0.2, 0, 0.2, 1);
+  }
+  .editorial-card-hover:hover {
+    box-shadow: var(--editorial-shadow-card-hover);
+    transform: translateY(-1px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .editorial-card-hover, .editorial-card-hover:hover {
+      transition: none;
+      transform: none;
+    }
+  }
+
+  /* Typography — eyebrow + tabular data sizes. */
+  .text-eyebrow {
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: hsl(var(--editorial-slate));
+  }
+  .text-data-xl {
+    font-size: 40px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-data-lg {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .text-headline-md {
+    font-size: 24px;
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+  }
+  .text-headline-sm {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+  .tabular-nums-data {
+    font-variant-numeric: tabular-nums;
+  }
+}
