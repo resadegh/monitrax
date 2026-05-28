@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Property Comparison Canvas</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-ivory": "#FAFAF7",
+                    "surface-dim": "#d5dcd1",
+                    "on-error": "#ffffff",
+                    "inverse-surface": "#2b322b",
+                    "background": "#f4fcf0",
+                    "error-container": "#ffdad6",
+                    "on-surface": "#171d16",
+                    "tertiary-fixed": "#d3e4fe",
+                    "outline-variant": "#bdcaba",
+                    "on-background": "#171d16",
+                    "trail-sky": "#0EA5E9",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "error": "#ba1a1a",
+                    "on-secondary-container": "#5c6274",
+                    "surface-variant": "#dde5d9",
+                    "on-secondary-fixed-variant": "#404757",
+                    "surface": "#f4fcf0",
+                    "primary-fixed-dim": "#62df7d",
+                    "trail-emerald": "#16A34A",
+                    "surface-container-highest": "#dde5d9",
+                    "primary": "#006b2c",
+                    "inverse-primary": "#62df7d",
+                    "trail-violet": "#8B5CF6",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-container": "#fdfcff",
+                    "surface-container-high": "#e3eadf",
+                    "on-secondary-fixed": "#151b2a",
+                    "inverse-on-surface": "#ecf3e7",
+                    "surface-container": "#e9f0e5",
+                    "surface-bright": "#f4fcf0",
+                    "on-tertiary": "#ffffff",
+                    "surface-tint": "#006e2d",
+                    "on-secondary": "#ffffff",
+                    "error-red": "#DC2626",
+                    "outline-slate": "#94A3B8",
+                    "on-error-container": "#93000a",
+                    "secondary-fixed": "#dce2f6",
+                    "secondary": "#585e6f",
+                    "primary-container": "#00873a",
+                    "on-primary-container": "#f7fff2",
+                    "trail-indigo": "#6366F1",
+                    "on-primary": "#ffffff",
+                    "surface-container-low": "#eff6ea",
+                    "on-primary-fixed": "#002109",
+                    "outline": "#6e7b6c",
+                    "tertiary-container": "#66768d",
+                    "on-primary-fixed-variant": "#005320",
+                    "on-tertiary-fixed": "#0b1c30",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "on-surface-variant": "#3e4a3d",
+                    "trail-amber": "#F59E0B",
+                    "primary-fixed": "#7ffc97",
+                    "tertiary": "#4d5d73",
+                    "secondary-container": "#d9dff4",
+                    "base-dark": "#050913",
+                    "surface-dark": "#0E1424",
+                    "surface-recessed": "#0A0F1C",
+                    "surface-elevated": "#161E33"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "container-max": "1280px",
+                    "unit": "4px",
+                    "margin-desktop": "48px",
+                    "margin-mobile": "20px",
+                    "gutter": "24px",
+                    "section-gap": "48px"
+            },
+            "fontFamily": {
+                    "headline-lg-mobile": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "eyebrow": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "data-xl": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "data-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                    "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                    "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                    "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                    "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                    "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                    "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                    "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                    "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                    "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+            }
+          }
+        }
+      }
+    </script>
+<style type="text/tailwindcss">
+        @layer utilities {
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .border-rim {
+                border-top: 1px solid rgba(255,255,255,0.06);
+            }
+        }
+    </style>
+</head>
+<body class="bg-[#050913] text-on-surface dark:text-inverse-on-surface font-body-md text-body-md antialiased selection:bg-trail-emerald selection:text-white min-h-screen">
+<!-- Top Navigation (Generated from JSON) -->
+<nav class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 dark:bg-[#050913]/80 border-b border-surface-elevated">
+<div class="flex items-center gap-4">
+<span class="font-headline-sm text-headline-sm font-semibold text-white">Monitrax</span>
+<span class="font-eyebrow text-eyebrow text-slate-500 uppercase">Property Canvas</span>
+</div>
+<div class="flex items-center gap-6">
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">notifications</span>
+</button>
+<button class="text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-2xl">settings</span>
+</button>
+<div class="h-8 w-8 rounded-full bg-surface-elevated border border-slate-700 flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-slate-400 text-sm">person</span>
+</div>
+</div>
+</nav>
+<!-- Side Navigation (Generated from JSON) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-[#050913] border-r border-surface-elevated h-full w-64 shadow-[1px_0_4px_rgba(0,0,0,0.5)]">
+<div class="p-6 border-b border-surface-elevated">
+<h1 class="font-headline-md text-headline-md font-bold text-white">Monitrax</h1>
+<p class="font-label-md text-label-md text-slate-500">Wealth OS</p>
+</div>
+<div class="flex-1 py-6 flex flex-col gap-1">
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">group</span>
+<span class="font-label-md text-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance</span>
+<span class="font-label-md text-label-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance_wallet</span>
+<span class="font-label-md text-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">health_and_safety</span>
+<span class="font-label-md text-label-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 bg-trail-sky/10 text-trail-sky font-medium border-l-4 border-trail-sky px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="font-label-md text-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">map</span>
+<span class="font-label-md text-label-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-slate-400 hover:bg-surface-elevated hover:text-white transition-colors px-4 group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+</div>
+<div class="p-4 border-t border-surface-elevated">
+<button class="w-full h-10 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md font-medium hover:bg-emerald-500 transition-colors">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-24 px-8 max-w-[1280px] mx-auto flex flex-col gap-[48px]">
+<!-- SECTION 1: PORTFOLIO SUMMARY -->
+<section class="flex flex-col gap-6">
+<h2 class="font-eyebrow text-eyebrow text-slate-500 tracking-widest">SECTION 1 — PORTFOLIO SUMMARY (FIXED WIDTH)</h2>
+<div class="w-[343px] bg-surface-dark rounded-[20px] p-6 border-rim shadow-lg shadow-black/40">
+<!-- Header -->
+<div class="flex justify-between items-center mb-6">
+<span class="font-eyebrow text-eyebrow text-slate-500">● YOUR PORTFOLIO</span>
+<div class="bg-trail-sky/10 text-trail-sky px-2.5 py-1 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">arrow_outward</span>
+<span class="font-eyebrow text-eyebrow">STAGE I — INVEST</span>
+</div>
+</div>
+<!-- Main Value -->
+<div class="mb-8">
+<h3 class="text-[36px] font-semibold leading-tight bg-gradient-to-r from-trail-sky to-blue-500 bg-clip-text text-transparent mb-1">$4,650,000</h3>
+<p class="font-body-sm text-body-sm text-slate-400">4 owned properties</p>
+</div>
+<!-- 3-Column Stats -->
+<div class="grid grid-cols-3 gap-4 mb-8">
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 mb-1">EQUITY</p>
+<p class="font-label-md text-label-md text-trail-emerald">$3,087,663</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 mb-1">LOANS</p>
+<p class="font-label-md text-label-md text-slate-400">$1,562,337</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-slate-500 mb-1">AVG LVR</p>
+<p class="font-label-md text-label-md text-trail-emerald">33.6%</p>
+</div>
+</div>
+<!-- Equity/Debt Progress Bar -->
+<div class="mb-8">
+<div class="flex justify-between text-[12px] font-medium text-slate-400 mb-2">
+<span>Equity 66.4%</span>
+<span>Debt 33.6%</span>
+</div>
+<div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-trail-emerald rounded-full" style="width: 66.4%"></div>
+</div>
+</div>
+<!-- Allocation Bar -->
+<div>
+<div class="h-2 w-full flex rounded-full overflow-hidden mb-3 gap-0.5">
+<div class="h-full bg-trail-sky" style="width: 29%"></div>
+<div class="h-full bg-trail-violet" style="width: 71%"></div>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-trail-sky"></div>
+<span class="font-body-sm text-body-sm text-slate-300">Homes 1 · $1,350,000</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-trail-violet"></div>
+<span class="font-body-sm text-body-sm text-slate-300">Investments 3 · $3,300,000</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2: PROPERTY TILE VARIANTS -->
+<section class="flex flex-col gap-6">
+<h2 class="font-eyebrow text-eyebrow text-slate-500 tracking-widest">SECTION 2 — PROPERTY TILE VARIANTS</h2>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-[1077px]">
+<!-- VARIANT A (Editorial Flat) -->
+<div class="w-full max-w-[343px] bg-surface-dark rounded-[20px] p-6 border border-slate-800/50 flex flex-col h-full shadow-lg shadow-black/20">
+<div class="flex items-start justify-between mb-4">
+<div class="bg-trail-emerald/10 p-2 rounded-lg">
+<span class="material-symbols-outlined text-trail-emerald text-[20px]" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<span class="font-eyebrow text-eyebrow text-slate-500">HOME</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-white mb-6 leading-snug">903 Boree Valley Rd<br/><span class="text-slate-400 font-medium text-[16px]">Laguna NSW 2325</span></h3>
+<div class="flex flex-col gap-4 mb-6 border-t border-b border-slate-800 py-4 flex-grow">
+<div class="flex justify-between items-baseline">
+<span class="font-body-sm text-body-sm text-slate-400">Current Value</span>
+<div class="text-right">
+<span class="font-label-md text-label-md text-white">$850,000</span>
+<span class="font-body-sm text-body-sm text-trail-emerald ml-2">+24.1%</span>
+</div>
+</div>
+<div class="flex justify-between items-baseline">
+<span class="font-body-sm text-body-sm text-slate-400">Equity</span>
+<span class="font-label-md text-label-md text-white">$850,000</span>
+</div>
+<div class="flex justify-between items-baseline">
+<span class="font-body-sm text-body-sm text-slate-400">LVR</span>
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md text-white">0.0%</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold px-1.5 py-0.5 rounded">HEALTHY</span>
+</div>
+</div>
+</div>
+<button class="w-full h-[40px] rounded-[12px] border-[1.5px] border-trail-emerald text-trail-emerald font-label-md text-label-md hover:bg-trail-emerald/10 transition-colors flex items-center justify-center gap-2">
+                        View details
+                        <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+<!-- VARIANT B (Layered Depth) -->
+<div class="w-full max-w-[343px] bg-surface-dark rounded-[20px] p-6 relative overflow-hidden shadow-lg shadow-black/40 border-t border-transparent" style="border-image: linear-gradient(to right, #0EA5E9, #8B5CF6) 1; border-image-slice: 1 0 0 0;">
+<div class="flex items-start justify-between mb-4">
+<span class="font-eyebrow text-eyebrow text-slate-500">HOME</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-white mb-6 leading-snug">903 Boree Valley Rd<br/><span class="text-slate-400 font-medium text-[16px]">Laguna NSW 2325</span></h3>
+<div class="bg-surface-recessed rounded-[16px] p-4 mb-6 shadow-inner flex-grow">
+<div class="grid grid-cols-2 gap-y-4 gap-x-2">
+<div>
+<span class="font-eyebrow text-eyebrow text-slate-500 block mb-1">CURRENT VALUE</span>
+<span class="font-label-md text-label-md text-white block">$850,000</span>
+<span class="font-body-sm text-[12px] text-trail-emerald block">+24.1%</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow text-slate-500 block mb-1">EQUITY</span>
+<span class="font-label-md text-label-md text-white block">$850,000</span>
+</div>
+<div class="col-span-2">
+<span class="font-eyebrow text-eyebrow text-slate-500 block mb-1">LVR STATUS</span>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-white">0.0%</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold px-1.5 py-0.5 rounded">HEALTHY</span>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full h-[40px] rounded-[12px] bg-gradient-to-r from-trail-sky to-blue-600 text-white font-label-md text-label-md hover:opacity-90 transition-opacity flex items-center justify-center gap-2 shadow-md">
+                        View details
+                    </button>
+</div>
+<!-- VARIANT C (Framed Media) -->
+<div class="w-full max-w-[343px] rounded-[20px] overflow-hidden flex flex-col relative bg-surface-dark border border-slate-800/50 shadow-lg shadow-black/30">
+<!-- Banner Area -->
+<div class="h-32 bg-gradient-to-br from-trail-sky/40 to-slate-900 relative flex items-start justify-end p-4">
+<span class="material-symbols-outlined absolute left-4 bottom-4 text-white/10 text-[80px] -mb-6 -ml-2" style="font-variation-settings: 'FILL' 1;">cottage</span>
+<span class="bg-black/40 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded border border-white/10 uppercase tracking-wide">Grandfathered</span>
+</div>
+<!-- Overlapping Content Card -->
+<div class="bg-surface-dark px-6 pb-6 pt-4 -mt-4 rounded-t-[16px] relative z-10 flex-grow flex flex-col">
+<span class="font-eyebrow text-eyebrow text-slate-500 mb-2 block">HOME</span>
+<h3 class="font-headline-sm text-headline-sm text-white mb-6 leading-snug">903 Boree Valley Rd<br/><span class="text-slate-400 font-medium text-[16px]">Laguna NSW 2325</span></h3>
+<div class="space-y-3 mb-6 flex-grow">
+<div class="flex justify-between items-end border-b border-slate-800/60 pb-2">
+<span class="font-body-sm text-body-sm text-slate-400">Value</span>
+<div class="text-right">
+<span class="font-label-md text-label-md text-white block">$850,000</span>
+<span class="text-[12px] text-trail-emerald">+24.1%</span>
+</div>
+</div>
+<div class="flex justify-between items-end border-b border-slate-800/60 pb-2">
+<span class="font-body-sm text-body-sm text-slate-400">Equity</span>
+<span class="font-label-md text-label-md text-white">$850,000</span>
+</div>
+<div class="flex justify-between items-center pb-1">
+<span class="font-body-sm text-body-sm text-slate-400">LVR</span>
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-white">0.0%</span>
+<span class="text-trail-emerald text-[12px] font-medium">HEALTHY</span>
+</div>
+</div>
+</div>
+<button class="w-full h-[40px] rounded-[12px] bg-surface-elevated text-white font-label-md text-label-md hover:bg-slate-700 transition-colors flex items-center justify-center border border-slate-700">
+                            View details
+                        </button>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: DETAIL MODAL TAB STRIP -->
+<section class="flex flex-col gap-6">
+<h2 class="font-eyebrow text-eyebrow text-slate-500 tracking-widest">SECTION 3 — DETAIL MODAL TAB STRIP (FIXED)</h2>
+<div class="w-full max-w-[768px] bg-surface-dark rounded-[24px] p-8 border border-slate-800/50 shadow-xl shadow-black/50">
+<!-- Contextual Header -->
+<div class="mb-6 flex items-center gap-2 text-slate-400">
+<span class="material-symbols-outlined text-[18px]">home</span>
+<span class="font-label-md text-label-md font-medium uppercase tracking-wider text-[12px]">HOME / 903 Boree Valley Rd</span>
+</div>
+<!-- Tab Strip -->
+<div class="relative w-full mb-8">
+<div class="bg-surface-elevated rounded-full h-[44px] flex items-center px-1.5 overflow-x-auto scrollbar-hide snap-x relative z-0 shadow-inner">
+<button class="snap-start flex-shrink-0 h-[36px] bg-white text-trail-emerald font-label-md text-label-md px-4 rounded-full flex items-center justify-center shadow-sm mr-2 transition-all">
+                            Details
+                        </button>
+<button class="snap-start flex-shrink-0 h-[36px] text-slate-400 hover:text-white font-label-md text-label-md px-4 rounded-full flex items-center justify-center mr-2 transition-colors">
+                            Financials
+                        </button>
+<button class="snap-start flex-shrink-0 h-[36px] text-slate-400 hover:text-white font-label-md text-label-md px-4 rounded-full flex items-center justify-center mr-2 transition-colors">
+                            Loans
+                        </button>
+<button class="snap-start flex-shrink-0 h-[36px] text-slate-400 hover:text-white font-label-md text-label-md px-4 rounded-full flex items-center justify-center mr-2 transition-colors">
+                            Strategy
+                        </button>
+<button class="snap-start flex-shrink-0 h-[36px] text-slate-400 hover:text-white font-label-md text-label-md px-4 rounded-full flex items-center justify-center mr-2 transition-colors">
+                            Linked
+                        </button>
+<button class="snap-start flex-shrink-0 h-[36px] text-slate-400 hover:text-white font-label-md text-label-md px-4 rounded-full flex items-center justify-center transition-colors">
+                            Depreciation
+                        </button>
+</div>
+<!-- Right Edge Fade Out Gradient -->
+<div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-surface-elevated to-transparent pointer-events-none rounded-r-full z-10"></div>
+</div>
+<!-- Recessed Rows Content Area -->
+<div class="bg-surface-recessed rounded-[16px] p-6 shadow-inner border border-black/20 flex flex-col gap-4">
+<div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+<span class="font-body-md text-body-md text-slate-400">Purchase Price</span>
+<span class="font-label-md text-label-md text-white">$650,000</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-slate-800/40">
+<span class="font-body-md text-body-md text-slate-400">Current Value</span>
+<div class="text-right flex items-center gap-3">
+<span class="font-label-md text-label-md text-white">$850,000</span>
+<span class="bg-trail-emerald/10 text-trail-emerald px-2 py-0.5 rounded text-[12px] font-medium">+ $200k</span>
+</div>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="font-body-md text-body-md text-slate-400">Estimated Yield</span>
+<span class="font-label-md text-label-md text-white">4.2%</span>
+</div>
+</div>
+</div>
+</section>
+</main>
+</body></html>
