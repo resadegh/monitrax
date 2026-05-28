@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Financial KPI Tile Variations</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "bg-navy": "#050913",
+                        "surface-navy": "#0E1424",
+                        "hero-text": "#FAFAF7",
+                        "slate-eyebrow": "#94A3B8",
+                        "divider-line": "#1E293B",
+                        "positive-emerald": "#22C55E",
+                        "caution-amber": "#FBBF24",
+                        "info-sky": "#0EA5E9"
+                    },
+                    fontFamily: {
+                        "inter": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913;
+            color: #FAFAF7;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-12 antialiased">
+<div class="max-w-[1100px] mx-auto">
+<header class="mb-12">
+<h1 class="text-3xl font-semibold tracking-tight text-hero-text mb-2">Financial KPI Visual Languages</h1>
+<p class="text-slate-eyebrow text-sm">Comparing three distinct approaches to data density and context.</p>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- VARIANT A: Sparkline-Forward -->
+<div class="flex flex-col gap-6 w-full max-w-[343px] mx-auto lg:mx-0">
+<h2 class="text-[14px] font-medium text-hero-text uppercase tracking-wider mb-2">Variant A — Sparkline-Forward</h2>
+<!-- Tile 1: Cash Flow -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[140px] flex flex-col justify-between border border-white/5 relative overflow-hidden">
+<div class="flex justify-between items-start z-10">
+<div>
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase">Cash Flow</span>
+<div class="text-[28px] font-semibold text-hero-text tabular-nums leading-none mt-1">-$3,523</div>
+</div>
+<div class="bg-caution-amber/10 text-caution-amber px-2 py-0.5 rounded-full text-[11px] font-medium">Negative</div>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-[60px] flex items-end">
+<svg class="w-full h-full preserve-aspect-ratio-none" viewbox="0 0 343 60">
+<path d="M0,50 L40,45 L80,55 L120,40 L160,48 L200,35 L240,42 L280,20 L343,30" fill="none" stroke="#FBBF24" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+<path d="M0,50 L40,45 L80,55 L120,40 L160,48 L200,35 L240,42 L280,20 L343,30 L343,60 L0,60 Z" fill="rgba(251, 191, 36, 0.05)"></path>
+</svg>
+<span class="absolute bottom-4 right-5 text-[11px] text-slate-eyebrow tabular-nums">-$42,275/yr</span>
+</div>
+</div>
+<!-- Tile 2: Outgoings -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[140px] flex flex-col justify-between border border-white/5 relative overflow-hidden">
+<div class="flex justify-between items-start z-10">
+<div>
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase">Outgoings</span>
+<div class="text-[28px] font-semibold text-hero-text tabular-nums leading-none mt-1">$141,300</div>
+</div>
+</div>
+<div class="absolute bottom-0 left-0 w-full h-[60px] flex items-end">
+<svg class="w-full h-full preserve-aspect-ratio-none" viewbox="0 0 343 60">
+<path d="M0,40 L50,35 L100,45 L150,25 L200,30 L250,15 L300,20 L343,10" fill="none" stroke="#FBBF24" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"></path>
+</svg>
+<span class="absolute bottom-4 right-5 text-[11px] text-slate-eyebrow tabular-nums">$11,775/mo avg</span>
+</div>
+</div>
+</div>
+<!-- VARIANT B: Paired Metric -->
+<div class="flex flex-col gap-6 w-full max-w-[343px] mx-auto lg:mx-0">
+<h2 class="text-[14px] font-medium text-hero-text uppercase tracking-wider mb-2">Variant B — Paired Metric</h2>
+<!-- Tile 1: Cash Flow -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[130px] flex flex-col border border-white/5">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase">Cash Flow</span>
+<div class="bg-caution-amber/10 text-caution-amber px-2 py-0.5 rounded-full text-[11px] font-medium">Negative</div>
+</div>
+<div class="flex-1 flex items-center">
+<div class="flex-1">
+<div class="text-[24px] font-semibold text-hero-text tabular-nums leading-none">-$3,523</div>
+<div class="text-[11px] text-slate-eyebrow mt-1">/mo</div>
+</div>
+<div class="w-[1px] h-[40px] bg-divider-line mx-4"></div>
+<div class="flex-1">
+<div class="text-[20px] font-semibold text-hero-text tabular-nums leading-none">-$42,275</div>
+<div class="text-[11px] text-slate-eyebrow mt-1">/yr</div>
+</div>
+</div>
+</div>
+<!-- Tile 2: Outgoings -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[130px] flex flex-col border border-white/5">
+<div class="flex justify-between items-center mb-3">
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase">Outgoings</span>
+</div>
+<div class="flex-1 flex items-center">
+<div class="flex-1">
+<div class="text-[24px] font-semibold text-hero-text tabular-nums leading-none">$141,300</div>
+<div class="text-[11px] text-slate-eyebrow mt-1">/yr</div>
+</div>
+<div class="w-[1px] h-[40px] bg-divider-line mx-4"></div>
+<div class="flex-1">
+<div class="text-[20px] font-semibold text-hero-text tabular-nums leading-none">$11,775</div>
+<div class="text-[11px] text-slate-eyebrow mt-1">/mo avg</div>
+</div>
+</div>
+</div>
+</div>
+<!-- VARIANT C: Band / Context -->
+<div class="flex flex-col gap-6 w-full max-w-[343px] mx-auto lg:mx-0">
+<h2 class="text-[14px] font-medium text-hero-text uppercase tracking-wider mb-2">Variant C — Band / Context</h2>
+<!-- Tile 1: Cash Flow -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[150px] flex flex-col justify-between border border-white/5">
+<div class="flex justify-between items-start">
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase mt-1">Cash Flow</span>
+<div class="bg-caution-amber/10 text-caution-amber px-2 py-0.5 rounded-full text-[11px] font-medium">Negative</div>
+</div>
+<div>
+<div class="text-[32px] font-semibold text-hero-text tabular-nums leading-none">-$3,523</div>
+<div class="text-[12px] text-slate-eyebrow mt-1">-$42,275/yr</div>
+</div>
+<div class="mt-4 relative">
+<div class="flex h-[6px] w-full rounded-full overflow-hidden">
+<div class="bg-caution-amber w-1/3 opacity-80"></div>
+<div class="bg-divider-line w-1/3"></div>
+<div class="bg-divider-line w-1/3"></div>
+</div>
+<div class="absolute top-1/2 -translate-y-1/2 left-[15%] w-3 h-3 bg-hero-text rounded-full shadow-[0_0_4px_rgba(0,0,0,0.5)]"></div>
+</div>
+</div>
+<!-- Tile 2: Portfolio LVR -->
+<div class="bg-surface-navy rounded-[20px] p-5 h-[150px] flex flex-col justify-between border border-white/5">
+<div class="flex justify-between items-start">
+<span class="text-[11px] font-medium tracking-[0.18em] text-slate-eyebrow uppercase mt-1">Portfolio LVR</span>
+<div class="bg-positive-emerald/10 text-positive-emerald px-2 py-0.5 rounded-full text-[11px] font-medium">Healthy</div>
+</div>
+<div>
+<div class="text-[32px] font-semibold text-hero-text tabular-nums leading-none">34%</div>
+<div class="text-[12px] text-slate-eyebrow mt-1">$1.6M debt / $5.3M assets</div>
+</div>
+<div class="mt-4 relative">
+<div class="flex h-[6px] w-full rounded-full overflow-hidden">
+<div class="bg-divider-line w-1/4"></div>
+<div class="bg-positive-emerald w-1/4 opacity-80"></div>
+<div class="bg-info-sky w-1/4 opacity-80"></div>
+<div class="bg-caution-amber w-1/4 opacity-80"></div>
+</div>
+<div class="absolute top-1/2 -translate-y-1/2 left-[34%] w-3 h-3 bg-hero-text rounded-full shadow-[0_0_4px_rgba(0,0,0,0.5)]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</body></html>
