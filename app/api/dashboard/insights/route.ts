@@ -428,10 +428,12 @@ export const GET = withPermission('report.read', async (request, auth) => {
           outgoingsDeltaVsAvg: moneyStoryTrend.outgoingsDeltaVsAvg,
           // Arithmetic here is fine — the surface linter only scans
           // app/dashboard, app/portal, components (not app/api).
+          // CashflowResult uses annual*/monthly* field names (the page's
+          // serialised snapshot uses total* — different type).
           outgoingsAnnual:
-            snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0),
+            snapshot.cashflow.annualExpenses + snapshot.cashflow.annualLoanRepayments,
           outgoingsMonthly:
-            (snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12,
+            snapshot.cashflow.monthlyExpenses + snapshot.cashflow.monthlyLoanRepayments,
           incomeMonthly: snapshot.quickMetrics.monthlyGrossIncome,
         },
       };
