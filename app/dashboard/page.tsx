@@ -63,6 +63,11 @@ import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator'
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
 import { MoneyStoryHeroV2 } from '@/components/editorial/money-story';
+import {
+  EditorialKpiCard,
+  SAVING_RATE_ZONES,
+  LVR_ZONES,
+} from '@/components/editorial/kpi';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
@@ -134,6 +139,19 @@ interface DashboardInsights {
     trend: Array<{ label: string; spent: number; kept: number }>;
     marginDeltaPoints: number;
     freedomYears: number;
+  };
+  // Phase KPI-tiles (2026-05-28) — sparkline series + deltas for the
+  // dashboard Cash Flow / Income / Outgoings tiles.
+  kpiTiles?: {
+    cashflowSeries: number[];
+    incomeSeries: number[];
+    outgoingsSeries: number[];
+    cashflowDeltaMonthly: number;
+    incomeDeltaPct: number;
+    outgoingsDeltaVsAvg: number;
+    outgoingsAnnual: number;
+    outgoingsMonthly: number;
+    incomeMonthly: number;
   };
 }
 
@@ -683,130 +701,103 @@ export default function DashboardPage() {
                 />
               </CalculationTooltip>
             </div>
-            <div className="relative">
-              <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
-                <CalculationTooltip
-                  title="Cash Flow Calculation"
-                  formula="Income - Expenses - Loan Repayments"
-                  components={[
-                    { label: 'Total Income', value: snapshot.cashflow.totalIncome, color: 'green' },
-                    { label: 'Total Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
-                    { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
-                  ]}
-                  result={snapshot.cashflow.annualNetCashflow}
-                  resultLabel="Annual Cash Flow"
-                >
-                  <StatCard
-                    title={cashflowPeriod === 'monthly' ? 'Monthly Cash Flow' : 'Annual Cash Flow'}
-                    value={formatCurrency(
-                      cashflowPeriod === 'monthly'
-                        ? snapshot.cashflow.monthlyNetCashflow
-                        : snapshot.cashflow.annualNetCashflow
-                    )}
-                    description={
-                      cashflowPeriod === 'monthly'
-                        ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
-                        : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
-                    }
-                    icon={snapshot.cashflow.monthlyNetCashflow >= 0 ? ArrowUpRight : ArrowDownRight}
-                    variant={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'green' : 'orange'}
-                  />
-                </CalculationTooltip>
-              </div>
-              {/* Period Toggle */}
-              <div className="absolute top-2 right-2 z-10">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setCashflowPeriod(cashflowPeriod === 'monthly' ? 'annual' : 'monthly');
-                  }}
-                  className="text-xs px-2 py-1 rounded-md bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 hover:bg-white dark:hover:bg-gray-800 transition-colors shadow-sm"
-                >
-                  {cashflowPeriod === 'monthly' ? '/mo' : '/yr'}
-                </button>
-              </div>
+            {/* Monthly Cash Flow — Variant A sparkline (R-KPI 2026-05-28).
+                Drill-down to the detail modal preserved via the onClick
+                wrapper; CalculationTooltip + period toggle dropped (the
+                sparkline IS the richer context now; the detail modal still
+                holds the full breakdown). Series + delta from the
+                transaction-based kpiTiles block (honest data); headline
+                value + tone from the canonical snapshot. */}
+            <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
+              <EditorialKpiCard
+                variant="sparkline"
+                eyebrow="Monthly cash flow"
+                value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
+                helper={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`}
+                tone={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'emerald' : 'amber'}
+                series={insights?.kpiTiles?.cashflowSeries ?? []}
+                delta={
+                  insights?.kpiTiles
+                    ? {
+                        label: `${formatCurrency(insights.kpiTiles.cashflowDeltaMonthly)} vs last mo`,
+                        tone: insights.kpiTiles.cashflowDeltaMonthly >= 0 ? 'positive' : 'negative',
+                      }
+                    : undefined
+                }
+              />
             </div>
+            {/* Annual Income — Variant A sparkline (emerald — growth positive) */}
             <div onClick={() => setSelectedDetail('income')} className="cursor-pointer">
-              <CalculationTooltip
-                title="Annual Income"
-                formula="All income sources combined"
-                components={[
-                  { label: 'Salary/Wages', value: snapshot.cashflow.totalIncome * 0.7, color: 'green' },
-                  { label: 'Rental Income', value: snapshot.cashflow.totalIncome * 0.2, color: 'blue', operator: '+' },
-                  { label: 'Other Income', value: snapshot.cashflow.totalIncome * 0.1, color: 'purple', operator: '+' },
-                ]}
-                result={snapshot.cashflow.totalIncome}
-                resultLabel="Total Annual Income"
-              >
-                <StatCard
-                  title="Annual Income"
-                  value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
-                  description={`${formatCurrency(snapshot.cashflow.totalIncome / 12)}/month`}
-                  icon={TrendingUp}
-                  variant="green"
-                />
-              </CalculationTooltip>
+              <EditorialKpiCard
+                variant="sparkline"
+                eyebrow="Annual income"
+                value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                helper={
+                  insights?.kpiTiles
+                    ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
+                    : 'Gross annual income'
+                }
+                tone="emerald"
+                series={insights?.kpiTiles?.incomeSeries ?? []}
+                delta={
+                  insights?.kpiTiles
+                    ? {
+                        label: `${insights.kpiTiles.incomeDeltaPct >= 0 ? '+' : ''}${insights.kpiTiles.incomeDeltaPct}% YoY`,
+                        tone: insights.kpiTiles.incomeDeltaPct >= 0 ? 'positive' : 'neutral',
+                      }
+                    : undefined
+                }
+              />
             </div>
+            {/* Annual Outgoings — Variant A sparkline (slate — rising spend
+                surfaced calmly, never red/alarm) */}
             <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer">
-              <CalculationTooltip
-                title="Annual Outgoings"
-                formula="Expenses + Loan Repayments"
-                components={[
-                  { label: 'Expenses', value: snapshot.cashflow.totalExpenses, color: 'red' },
-                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '+' },
-                ]}
-                result={snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)}
-                resultLabel="Total Annual Outgoings"
-              >
-                <StatCard
-                  title="Annual Outgoings"
-                  value={formatCompactCurrency(snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0))}
-                  description={`${formatCurrency((snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12)}/month`}
-                  icon={ArrowDownRight}
-                  variant="orange"
-                />
-              </CalculationTooltip>
+              <EditorialKpiCard
+                variant="sparkline"
+                eyebrow="Annual outgoings"
+                value={formatCompactCurrency(
+                  insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses
+                )}
+                helper={
+                  insights?.kpiTiles
+                    ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
+                    : 'Expenses + loan repayments'
+                }
+                tone="slate"
+                series={insights?.kpiTiles?.outgoingsSeries ?? []}
+                delta={
+                  insights?.kpiTiles
+                    ? {
+                        label: `${formatCurrency(insights.kpiTiles.outgoingsDeltaVsAvg)} vs avg`,
+                        tone: 'neutral',
+                      }
+                    : undefined
+                }
+              />
             </div>
+            {/* Savings Rate — Variant C band (AU median context) */}
             <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
-              <CalculationTooltip
-                title="Savings Rate Calculation"
-                formula="(Net Cashflow ÷ Net Income) × 100%"
-                components={[
-                  { label: 'Annual Net Income', value: snapshot.cashflow.totalIncome, color: 'green' },
-                  { label: 'Annual Expenses', value: snapshot.cashflow.totalExpenses, color: 'red', operator: '-' },
-                  { label: 'Loan Repayments', value: snapshot.cashflow.totalLoanRepayments || 0, color: 'red', operator: '-' },
-                ]}
-                result={snapshot.cashflow.annualNetCashflow}
-                resultLabel="Annual Savings"
-              >
-                <StatCard
-                  title="Savings Rate"
-                  value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
-                  description={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year saved`}
-                  icon={PiggyBank}
-                  variant="teal"
-                />
-              </CalculationTooltip>
+              <EditorialKpiCard
+                variant="band"
+                eyebrow="Saving rate"
+                value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                helper="AU median is around 24%"
+                zones={SAVING_RATE_ZONES}
+                zoneValue={snapshot.cashflow.savingsRate}
+                ticks={['0%', '15%', '25%', '50%']}
+              />
             </div>
+            {/* Portfolio LVR — Variant C band (AU mortgage health zones) */}
             <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer">
-              <CalculationTooltip
-                title="Portfolio LVR Calculation"
-                formula="(Total Debt ÷ Total Assets) × 100%"
-                components={[
-                  { label: 'Total Debt', value: snapshot.totalLiabilities, color: 'red' },
-                  { label: 'Total Assets', value: snapshot.totalAssets, color: 'green', operator: '÷' },
-                ]}
-                result={snapshot.gearing.portfolioLVR}
-                resultLabel="LVR %"
-              >
-                <StatCard
-                  title="Portfolio LVR"
-                  value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
-                  description={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
-                  icon={Percent}
-                  variant={snapshot.gearing.portfolioLVR > 80 ? 'orange' : 'blue'}
-                />
-              </CalculationTooltip>
+              <EditorialKpiCard
+                variant="band"
+                eyebrow="Portfolio LVR"
+                value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
+                helper={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
+                zones={LVR_ZONES}
+                zoneValue={snapshot.gearing.portfolioLVR}
+                ticks={['0%', '30%', '60%', '80%', '100%']}
+              />
             </div>
           </div>
 

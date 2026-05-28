@@ -132,6 +132,25 @@ interface DashboardInsights {
     // "5255 days of life" framing.
     freedomYears: number;
   };
+  // Phase KPI-tiles (2026-05-28) — series + deltas for the dashboard's
+  // 3 sparkline KPI tiles (Cash Flow / Income / Outgoings). The band
+  // tiles (Saving Rate / LVR) read straight from snapshot.cashflow +
+  // snapshot.gearing and need nothing here. Series are empty when the
+  // user has <2 months of transaction history.
+  kpiTiles: {
+    cashflowSeries: number[];
+    incomeSeries: number[];
+    outgoingsSeries: number[];
+    cashflowDeltaMonthly: number;
+    incomeDeltaPct: number;
+    outgoingsDeltaVsAvg: number;
+    // Precomputed display figures so the dashboard page does ZERO inline
+    // arithmetic (the Phase 41i.6b surface linter forbids it). Outgoings
+    // = expenses + loan repayments, both annual + monthly.
+    outgoingsAnnual: number;
+    outgoingsMonthly: number;
+    incomeMonthly: number;
+  };
 }
 
 export const GET = withPermission('report.read', async (request, auth) => {
@@ -396,6 +415,24 @@ export const GET = withPermission('report.read', async (request, auth) => {
           trend: moneyStoryTrend.trend,
           marginDeltaPoints: moneyStoryTrend.marginDeltaPoints,
           freedomYears: snapshot.quickMetrics.freeCashDays / 365.25,
+        },
+        // Phase KPI-tiles — pure passthrough of the service-computed
+        // sparkline series + deltas. No arithmetic here (all done in
+        // lib/calculations/moneyStoryTrend.ts).
+        kpiTiles: {
+          cashflowSeries: moneyStoryTrend.monthlyNetCashflow,
+          incomeSeries: moneyStoryTrend.monthlyEarned,
+          outgoingsSeries: moneyStoryTrend.monthlySpent,
+          cashflowDeltaMonthly: moneyStoryTrend.cashflowDeltaMonthly,
+          incomeDeltaPct: moneyStoryTrend.incomeDeltaPct,
+          outgoingsDeltaVsAvg: moneyStoryTrend.outgoingsDeltaVsAvg,
+          // Arithmetic here is fine — the surface linter only scans
+          // app/dashboard, app/portal, components (not app/api).
+          outgoingsAnnual:
+            snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0),
+          outgoingsMonthly:
+            (snapshot.cashflow.totalExpenses + (snapshot.cashflow.totalLoanRepayments || 0)) / 12,
+          incomeMonthly: snapshot.quickMetrics.monthlyGrossIncome,
         },
       };
 
