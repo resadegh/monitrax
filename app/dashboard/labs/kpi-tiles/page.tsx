@@ -19,8 +19,6 @@ import {
   EditorialKpiCard,
   LVR_ZONES,
   SAVING_RATE_ZONES,
-  INCOME_YOY_ZONES,
-  OUTGOINGS_YOY_ZONES,
 } from '@/components/editorial/kpi';
 
 // 12-month synthetic cashflow series (matches the screenshot Reza shared
@@ -28,6 +26,20 @@ import {
 const SYNTHETIC_CASHFLOW_SERIES = [
   -1850, -2100, -2280, -2540, -2700, -2890,
   -3050, -3180, -3300, -3420, -3490, -3523,
+];
+
+// 12-month monthly income — gentle climb to $8,233 (positive → emerald).
+const SYNTHETIC_INCOME_SERIES = [
+  8000, 8050, 8090, 8120, 8150, 8175,
+  8195, 8205, 8215, 8224, 8230, 8233,
+];
+
+// 12-month monthly outgoings — gentle climb to $11,775. Neutral slate
+// stroke (rising outgoings is a fact to surface, not alarm — per the
+// editorial "never red, calm tone" rule).
+const SYNTHETIC_OUTGOINGS_SERIES = [
+  10800, 10950, 11100, 11240, 11380, 11500,
+  11600, 11680, 11720, 11750, 11765, 11775,
 ];
 
 export default function KpiTilesLabsPage() {
@@ -69,29 +81,31 @@ export default function KpiTilesLabsPage() {
             href="/cashflow"
           />
 
-          {/* Annual Income — Variant C with YoY-growth band.
-              Value: 4.2% YoY growth (in "Growing" emerald zone). */}
+          {/* Annual Income — Variant A (sparkline). Reza 2026-05-28:
+              income + outgoings switched from band → sparkline. Emerald
+              tone — income climbing is the positive story. */}
           <EditorialKpiCard
-            variant="band"
+            variant="sparkline"
             eyebrow="Annual income"
             value="$99K"
-            helper="$8,233/month gross · +4.2% vs last year"
-            zones={INCOME_YOY_ZONES}
-            zoneValue={4.2}
-            ticks={['−10%', '0%', '+5%', '+20%']}
+            helper="$8,233/month gross"
+            tone="emerald"
+            series={SYNTHETIC_INCOME_SERIES}
+            delta={{ label: '+4.2% YoY', tone: 'positive' }}
             href="/dashboard/balances"
           />
 
-          {/* Annual Outgoings — Variant C with YoY-growth band.
-              Value: 3% YoY (in "Stable" slate zone). */}
+          {/* Annual Outgoings — Variant A (sparkline). Slate tone —
+              rising outgoings is surfaced calmly (never red, never the
+              alarm amber here since up-spend isn't intrinsically bad). */}
           <EditorialKpiCard
-            variant="band"
+            variant="sparkline"
             eyebrow="Annual outgoings"
             value="$141K"
-            helper="$11,775/month avg · +3% vs last year"
-            zones={OUTGOINGS_YOY_ZONES}
-            zoneValue={3}
-            ticks={['−10%', '0%', '+5%', '+20%']}
+            helper="$11,775/month avg"
+            tone="slate"
+            series={SYNTHETIC_OUTGOINGS_SERIES}
+            delta={{ label: '+$420 vs avg', tone: 'neutral' }}
             href="/dashboard/budget-analysis"
           />
 
@@ -130,12 +144,13 @@ export default function KpiTilesLabsPage() {
           <div className="mt-3 space-y-3 leading-relaxed">
             <p>
               <strong className="text-editorial-ink">Why mix A + C?</strong>{' '}
-              Cash flow is a <em>flow</em> metric where the shape over
-              time IS the story — a sparkline answers "is this improving
-              or bleeding?" at a glance. Income / Outgoings / Saving Rate
-              / LVR are <em>stock</em> or <em>ratio</em> metrics where
-              the question is "where do I sit?" — a band answers that
-              with one tap of judgement.
+              The three <em>flow</em> metrics — Cash Flow, Income,
+              Outgoings — are sparklines (Variant A): the shape over
+              time IS the story, answering "is this climbing or
+              shrinking?" at a glance. Saving Rate and LVR are{' '}
+              <em>ratio</em> metrics where the question is "where do I
+              sit?" — a band (Variant C) answers that with one tap of
+              judgement against a healthy range.
             </p>
             <p>
               <strong className="text-editorial-ink">Zones.</strong>{' '}

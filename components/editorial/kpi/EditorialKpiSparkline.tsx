@@ -92,7 +92,11 @@ export function EditorialKpiSparkline({
   ariaLabel,
   className,
 }: EditorialKpiSparklineProps) {
-  const gradientId = `editorial-kpi-spark-${useId().replace(/:/g, '')}`;
+  // Sanitise the useId() value to alphanumerics only. React 19's
+  // useId() can return guillemet-wrapped strings ("«r0»"); stripping
+  // only colons would leave invalid chars in the SVG fill `url(#…)`
+  // reference. Strip everything non-alphanumeric to be format-proof.
+  const gradientId = `editorial-kpi-spark-${useId().replace(/[^a-zA-Z0-9]/g, '')}`;
   const viewWidth = 100;
   const viewHeight = 40;
 
