@@ -642,9 +642,14 @@ function PropertiesPageContent() {
            block, so NO implicit-auto-grid overflow — this keeps the
            tile/portfolio width match from #916 without grid-cols-1) PLUS
            a sticky-stacking-card effect: each card is `position: sticky`
-           pinned just below the topbar with a small incremental top
-           offset, so as you scroll the NORMAL PAGE the next card slides
-           up and covers the previous one (Apple-Wallet "scroll stack").
+           pinned below the FULL mobile header stack with a small
+           incremental top offset, so as you scroll the NORMAL PAGE the
+           next card slides up and covers the previous one (Apple-Wallet
+           "scroll stack"). The pin offset is 7.5rem (= editorial topbar
+           h-14/56px + the fixed SectionTabsRow at top-14 h-14, 56px→112px
+           = 7rem, + a 0.5rem gap) so the WHOLE card top clears the
+           Properties/Investments/Assets tab strip — otherwise the card's
+           header tucks behind it (Reza 2026-05-29).
            Single page scroll — no nested scroll container (fixes the
            two-scroll feel of the earlier reel). The per-card opaque
            backing (`bg-editorial-ivory` = the page bg, theme-aware) is
@@ -671,7 +676,7 @@ function PropertiesPageContent() {
               <div
                 key={property.id}
                 className="max-md:sticky max-md:overflow-hidden max-md:rounded-[22px] max-md:bg-editorial-ivory max-md:shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.45)]"
-                style={{ top: `calc(4rem + ${idx * 0.75}rem)` }}
+                style={{ top: `calc(7.5rem + ${idx * 0.75}rem)` }}
               >
                 <PropertyTile
                   index={idx}
