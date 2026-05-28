@@ -38,6 +38,25 @@ export interface MoneyStoryTrendResult {
   baselineMargin: number;
   /** Margin delta in percentage points (currentMargin - baselineMargin). */
   marginDeltaPoints: number;
+  /**
+   * Phase KPI-tiles (2026-05-28) — raw monthly series for the dashboard
+   * KPI sparklines (Cash Flow / Income / Outgoings). One entry per month
+   * in the window, oldest first. Unlike `trend.kept` (clamped ≥ 0 for the
+   * ribbon), `monthlyNetCashflow` can go negative — the cashflow sparkline
+   * needs that. Empty arrays when <2 months of data.
+   */
+  monthlyEarned: number[];
+  monthlySpent: number[];
+  monthlyNetCashflow: number[];
+  /**
+   * Pre-computed deltas for the KPI sparkline delta-pills. All arithmetic
+   * lives here (the service layer) so the dashboard page + API route stay
+   * free of inline financial math (the Phase 41i.6b surface linter forbids
+   * it in `app/`). 0 when not enough history.
+   */
+  cashflowDeltaMonthly: number; // latest month − previous month
+  incomeDeltaPct: number;       // (latest − first) / first × 100, YoY-ish
+  outgoingsDeltaVsAvg: number;  // latest month − window average
 }
 
 /**
@@ -89,7 +108,9 @@ export async function getMoneyStoryTrend(
     else if (t.direction === 'OUT') bucket.spent += Math.abs(t.amount);
   }
 
-  const trend: RibbonPoint[] = [...buckets.entries()].map(([key, b]) => {
+  const ordered = [...buckets.entries()];
+
+  const trend: RibbonPoint[] = ordered.map(([key, b]) => {
     const monthIdx = parseInt(key.split('-')[1], 10) - 1;
     return {
       label: MONTH_LABELS[monthIdx],
@@ -98,12 +119,34 @@ export async function getMoneyStoryTrend(
     };
   });
 
+  // Raw monthly series for the KPI sparklines (chronological, oldest
+  // first). monthlyNetCashflow can be negative — that's the point for the
+  // cashflow tile.
+  const monthlyEarned = ordered.map(([, b]) => Math.round(b.earned));
+  const monthlySpent = ordered.map(([, b]) => Math.round(b.spent));
+  const monthlyNetCashflow = ordered.map(([, b]) => Math.round(b.earned - b.spent));
+
+  const emptyKpi = {
+    monthlyEarned: [] as number[],
+    monthlySpent: [] as number[],
+    monthlyNetCashflow: [] as number[],
+    cashflowDeltaMonthly: 0,
+    incomeDeltaPct: 0,
+    outgoingsDeltaVsAvg: 0,
+  };
+
   // Count months that actually have any transaction activity. If <2
   // we don't have enough history to draw a meaningful ribbon; return
   // an empty trend so the consumer hides the chart cleanly.
   const monthsWithData = trend.filter((p) => p.kept + p.spent > 0).length;
   if (monthsWithData < 2) {
-    return { trend: [], currentMargin: 0, baselineMargin: 0, marginDeltaPoints: 0 };
+    return {
+      trend: [],
+      currentMargin: 0,
+      baselineMargin: 0,
+      marginDeltaPoints: 0,
+      ...emptyKpi,
+    };
   }
 
   const last = trend[trend.length - 1];
@@ -113,10 +156,34 @@ export async function getMoneyStoryTrend(
   const currentMargin = lastEarned > 0 ? Math.round((last.kept / lastEarned) * 100) : 0;
   const baselineMargin = firstEarned > 0 ? Math.round((first.kept / firstEarned) * 100) : 0;
 
+  // KPI delta computations — all financial arithmetic stays here in the
+  // service so the dashboard surface stays linter-clean (Phase 41i.6b).
+  const cfLen = monthlyNetCashflow.length;
+  const cashflowDeltaMonthly =
+    cfLen >= 2 ? monthlyNetCashflow[cfLen - 1] - monthlyNetCashflow[cfLen - 2] : 0;
+
+  const earnedFirst = monthlyEarned.find((v) => v > 0) ?? 0;
+  const earnedLast = monthlyEarned[monthlyEarned.length - 1];
+  const incomeDeltaPct =
+    earnedFirst > 0 ? Math.round(((earnedLast - earnedFirst) / earnedFirst) * 1000) / 10 : 0;
+
+  const spentTotal = monthlySpent.reduce((a, b) => a + b, 0);
+  const spentAvg = monthlySpent.length > 0 ? spentTotal / monthlySpent.length : 0;
+  const outgoingsDeltaVsAvg =
+    monthlySpent.length > 0
+      ? Math.round(monthlySpent[monthlySpent.length - 1] - spentAvg)
+      : 0;
+
   return {
     trend,
     currentMargin,
     baselineMargin,
     marginDeltaPoints: currentMargin - baselineMargin,
+    monthlyEarned,
+    monthlySpent,
+    monthlyNetCashflow,
+    cashflowDeltaMonthly,
+    incomeDeltaPct,
+    outgoingsDeltaVsAvg,
   };
 }
