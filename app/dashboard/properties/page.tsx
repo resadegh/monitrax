@@ -884,19 +884,24 @@ function PropertiesPageContent() {
               </DialogHeader>
 
               <Tabs defaultValue="overview" className="mt-4">
-                <TabsList className="grid w-full grid-cols-6">
-                  <TabsTrigger value="overview">Details</TabsTrigger>
-                  <TabsTrigger value="cashflow">Financials</TabsTrigger>
-                  <TabsTrigger value="loans">Loans</TabsTrigger>
-                  <TabsTrigger value="strategy">
+                {/* Scrollable tab strip — was `grid grid-cols-6` which
+                    crammed 6 tabs into the modal width and clipped the
+                    longer labels (Financials / Strategy / Depreciation)
+                    on mobile. Now a horizontally-scrollable flex row with
+                    non-shrinking triggers + a right-edge fade hint. */}
+                <TabsList className="flex w-full justify-start gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
+                  <TabsTrigger value="overview" className="shrink-0">Details</TabsTrigger>
+                  <TabsTrigger value="cashflow" className="shrink-0">Financials</TabsTrigger>
+                  <TabsTrigger value="loans" className="shrink-0">Loans</TabsTrigger>
+                  <TabsTrigger value="strategy" className="shrink-0">
                     <Lightbulb className="h-3 w-3 mr-1" />
                     Strategy
                   </TabsTrigger>
-                  <TabsTrigger value="linked">
+                  <TabsTrigger value="linked" className="shrink-0">
                     <Link2 className="h-3 w-3 mr-1" />
                     Linked
                   </TabsTrigger>
-                  <TabsTrigger value="depreciation">Depr.</TabsTrigger>
+                  <TabsTrigger value="depreciation" className="shrink-0">Depreciation</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="space-y-4 mt-4">
