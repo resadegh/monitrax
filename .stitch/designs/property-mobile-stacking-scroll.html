@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Property Section</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "trail-violet": "#8B5CF6",
+                        "primary-container": "#00873a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-container": "#d9dff4",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary": "#ffffff",
+                        "trail-emerald": "#16A34A",
+                        "outline": "#6e7b6c",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-background": "#171d16",
+                        "on-tertiary-container": "#fdfcff",
+                        "inverse-surface": "#2b322b",
+                        "surface-dim": "#d5dcd1",
+                        "on-primary-fixed-variant": "#005320",
+                        "trail-indigo": "#6366F1",
+                        "trail-sky": "#0EA5E9",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-ivory": "#FAFAF7",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-primary-container": "#f7fff2",
+                        "tertiary": "#4d5d73",
+                        "surface-container-high": "#e3eadf",
+                        "primary-fixed": "#7ffc97",
+                        "on-error": "#ffffff",
+                        "primary": "#006b2c",
+                        "background": "#f4fcf0",
+                        "inverse-primary": "#62df7d",
+                        "secondary-fixed": "#dce2f6",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface": "#f4fcf0",
+                        "secondary": "#585e6f",
+                        "on-secondary-fixed": "#151b2a",
+                        "on-surface": "#171d16",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#66768d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "trail-amber": "#F59E0B",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-container-low": "#eff6ea",
+                        "surface-container-highest": "#dde5d9",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "on-primary-fixed": "#002109",
+                        "surface-tint": "#006e2d",
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface-container": "#e9f0e5",
+                        "surface-bright": "#f4fcf0",
+                        "outline-slate": "#94A3B8",
+                        "error-red": "#DC2626",
+                        "surface-variant": "#dde5d9",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-variant": "#bdcaba",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        // Custom palette overrides for this specific prompt's dark mode requirement
+                        "cosmos-bg": "#050913",
+                        "cosmos-card": "#0E1424",
+                        "cosmos-surface": "#161E33",
+                        "cosmos-inset": "#0A0F1C"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.25rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-cosmos-bg text-white font-body-md min-h-screen flex flex-col items-center py-10 space-y-12 antialiased max-w-[375px] mx-auto overflow-x-hidden relative">
+<!-- Top Navigation (Generated from Shared Components JSON) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-[20px] h-16 bg-cosmos-bg shadow-sm border-b-0">
+<div class="flex items-center gap-3 text-white">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-white tracking-tight">Monitrax</span>
+</div>
+<div>
+<div class="w-8 h-8 rounded-full bg-cosmos-surface flex items-center justify-center overflow-hidden border border-white/10">
+<span class="material-symbols-outlined text-[20px] text-outline-slate">person</span>
+</div>
+</div>
+</header>
+<div class="w-full pt-16 px-4 space-y-12">
+<!-- FRAME 1: PORTFOLIO SUMMARY -->
+<section class="flex flex-col gap-3">
+<p class="font-eyebrow text-eyebrow text-outline-slate ml-2">FRAME 1 — PORTFOLIO SUMMARY (width-matched)</p>
+<div class="w-[343px] bg-cosmos-card rounded-2xl p-6 relative overflow-hidden border-t border-white/5 shadow-[0_8px_32px_rgba(11,18,32,0.6)]">
+<!-- Top Header Row -->
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-outline-slate"></div>
+<span class="font-eyebrow text-eyebrow text-outline-slate tracking-widest uppercase">Your Portfolio</span>
+</div>
+<div class="bg-trail-sky/10 text-trail-sky px-3 py-1 rounded-full flex items-center gap-1 border border-trail-sky/20">
+<span class="material-symbols-outlined text-[14px]">north_east</span>
+<span class="font-eyebrow text-[10px] font-semibold tracking-wider">STAGE I — INVEST</span>
+</div>
+</div>
+<!-- Main Value -->
+<div class="mb-8">
+<h2 class="text-[34px] font-semibold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-trail-sky to-trail-indigo leading-none mb-1">
+                        $4,650,000
+                    </h2>
+<p class="font-body-sm text-body-sm text-outline-slate">4 owned properties</p>
+</div>
+<!-- Stats Row -->
+<div class="flex items-center justify-between font-label-md text-[11px] mb-4 tracking-wide">
+<div class="flex flex-col">
+<span class="text-outline-slate mb-1">EQUITY</span>
+<span class="text-trail-emerald font-semibold">$3,087,663</span>
+</div>
+<div class="w-[1px] h-6 bg-white/10"></div>
+<div class="flex flex-col">
+<span class="text-outline-slate mb-1">LOANS</span>
+<span class="text-outline-slate font-semibold">$1,562,337</span>
+</div>
+<div class="w-[1px] h-6 bg-white/10"></div>
+<div class="flex flex-col text-right">
+<span class="text-outline-slate mb-1">AVG LVR</span>
+<span class="text-trail-emerald font-semibold">33.6%</span>
+</div>
+</div>
+<!-- Visual Bars -->
+<div class="space-y-3 mt-6">
+<div class="w-full h-2 rounded-full bg-white/5 flex overflow-hidden">
+<div class="h-full bg-trail-emerald" style="width: 66%"></div>
+<div class="h-full bg-outline-slate/50" style="width: 34%"></div>
+</div>
+<div class="w-full h-2 rounded-full bg-gradient-to-r from-trail-sky to-trail-violet overflow-hidden opacity-90"></div>
+</div>
+</div>
+</section>
+<!-- FRAME 2: STICKY STACKING CARDS -->
+<section class="flex flex-col gap-3 relative">
+<p class="font-eyebrow text-eyebrow text-outline-slate ml-2">FRAME 2 — STICKY STACKING CARDS</p>
+<div class="w-[343px] h-[400px] relative">
+<!-- Card 1 (Back/Top) -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[315px] h-[180px] bg-cosmos-card rounded-2xl p-5 border-t border-trail-sky/40 shadow-[0_20px_40px_rgba(0,0,0,0.8)] brightness-75 transition-all duration-300 transform -translate-y-2 z-10">
+<div class="flex justify-between items-start opacity-50">
+<span class="font-eyebrow text-eyebrow text-white tracking-widest uppercase">HOME</span>
+<span class="material-symbols-outlined text-[16px] text-outline-slate">home</span>
+</div>
+</div>
+<!-- Card 2 (Middle) -->
+<div class="absolute top-[30px] left-1/2 -translate-x-1/2 w-[329px] h-[180px] bg-cosmos-card rounded-2xl p-5 border-t border-trail-indigo/60 shadow-[0_-10px_30px_rgba(0,0,0,0.5),0_20px_40px_rgba(0,0,0,0.8)] brightness-90 transition-all duration-300 z-20">
+<div class="flex justify-between items-start mb-4">
+<div>
+<span class="font-eyebrow text-eyebrow text-outline-slate tracking-widest uppercase block mb-1">INVESTMENT</span>
+<h3 class="font-headline-sm text-headline-sm text-white">Thornlands</h3>
+</div>
+<span class="material-symbols-outlined text-[20px] text-outline-slate">domain</span>
+</div>
+<div class="mt-4">
+<span class="font-data-lg text-data-lg text-white">$1,150,000</span>
+</div>
+</div>
+<!-- Card 3 (Front/Bottom) -->
+<div class="absolute top-[130px] left-1/2 -translate-x-1/2 w-[343px] h-[220px] bg-cosmos-card rounded-2xl p-5 border-t border-trail-violet/80 shadow-[0_-15px_40px_rgba(0,0,0,0.6)] z-30 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-6">
+<div>
+<span class="font-eyebrow text-eyebrow text-outline-slate tracking-widest uppercase block mb-1">INVESTMENT</span>
+<h3 class="font-headline-sm text-headline-sm text-white">Sydney CBD</h3>
+</div>
+<span class="material-symbols-outlined text-[20px] text-outline-slate">domain</span>
+</div>
+<div>
+<div class="flex items-end gap-3 mb-2">
+<span class="font-data-xl text-data-xl text-white leading-none">$1,850,000</span>
+<div class="bg-trail-emerald/10 text-trail-emerald px-2 py-0.5 rounded flex items-center gap-1 border border-trail-emerald/20 text-[10px] font-semibold mb-1">
+<span class="material-symbols-outlined text-[12px]">trending_up</span>
+                                    +4.2%
+                                </div>
+</div>
+<p class="font-body-sm text-body-sm text-outline-slate">Yield: 5.1% p.a.</p>
+</div>
+</div>
+<div class="w-10 h-1 bg-white/20 mx-auto rounded-full mt-4"></div>
+</div>
+<!-- Scroll Rail Indicator -->
+<div class="absolute right-[-12px] top-1/2 -translate-y-1/2 flex flex-col gap-1.5 opacity-40">
+<div class="w-1 h-3 bg-white rounded-full"></div>
+<div class="w-1 h-1 bg-white rounded-full"></div>
+<div class="w-1 h-1 bg-white rounded-full"></div>
+</div>
+</div>
+<p class="font-body-sm text-[12px] text-outline-slate text-center mt-2 px-6">Each card pins to the top, the next slides up to replace it — mobile only.</p>
+</section>
+<!-- FRAME 3: DETAIL MODAL TAB STRIP -->
+<section class="flex flex-col gap-3">
+<p class="font-eyebrow text-eyebrow text-outline-slate ml-2">FRAME 3 — DETAIL MODAL TAB STRIP</p>
+<div class="w-[343px] bg-cosmos-card rounded-t-[24px] rounded-b-lg border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col">
+<!-- Modal Drag Handle -->
+<div class="w-full flex justify-center py-3">
+<div class="w-12 h-1.5 bg-white/10 rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="px-6 pb-4 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px] text-outline-slate">home</span>
+</div>
+<div>
+<p class="font-eyebrow text-[10px] text-outline-slate tracking-wider uppercase mb-0.5">HOME</p>
+<h3 class="font-headline-sm text-[16px] font-semibold text-white">903 Boree Valley Rd</h3>
+</div>
+</div>
+<!-- Tab Strip Track -->
+<div class="relative w-full bg-cosmos-surface h-[44px] flex items-center">
+<div class="flex items-center gap-1 px-4 overflow-x-auto hide-scrollbar w-full h-full pb-0.5 pt-0.5 relative z-10">
+<button class="bg-white text-trail-emerald px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap shadow-sm">Details</button>
+<button class="text-outline-slate px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-white/5 transition-colors">Financials</button>
+<button class="text-outline-slate px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-white/5 transition-colors">Loans</button>
+<button class="text-outline-slate px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-white/5 transition-colors">Strategy</button>
+<button class="text-outline-slate px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-white/5 transition-colors">Linked</button>
+<button class="text-outline-slate px-4 py-1.5 rounded-full font-label-md text-label-md whitespace-nowrap hover:bg-white/5 transition-colors">Depreciation</button>
+</div>
+<!-- Right Fade Gradient -->
+<div class="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-cosmos-surface to-transparent pointer-events-none z-20"></div>
+</div>
+<!-- Content Area -->
+<div class="p-6 bg-cosmos-card space-y-3">
+<div class="bg-cosmos-inset rounded-xl p-4 flex justify-between items-center border border-white/5">
+<span class="font-body-sm text-body-sm text-outline-slate">Purchase Price</span>
+<span class="font-label-md text-label-md text-white">$685,000</span>
+</div>
+<div class="bg-cosmos-inset rounded-xl p-4 flex justify-between items-center border border-white/5">
+<span class="font-body-sm text-body-sm text-outline-slate">Current Value</span>
+<span class="font-label-md text-label-md text-white">$850,000</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Bottom padding for nav -->
+<div class="h-20 w-full"></div>
+</div>
+<!-- Bottom Navigation (Generated from Shared Components JSON) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-cosmos-bg shadow-[0_-4px_12px_rgba(11,18,32,0.4)] rounded-t-xl border-t-0">
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-md text-[10px] mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-trail-emerald font-medium scale-95 duration-150 ease-in-out" href="#">
+<span class="material-symbols-outlined text-[24px]">domain</span>
+<span class="font-label-md text-[10px] mt-1">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[24px]">query_stats</span>
+<span class="font-label-md text-[10px] mt-1">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</a>
+</nav>
+</body></html>
