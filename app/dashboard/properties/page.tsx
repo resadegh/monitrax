@@ -635,25 +635,24 @@ function PropertiesPageContent() {
         </Card>
       ) : (
         /* Tiles View — premium glassmorphic redesign (Stage I palette).
-           grid-cols-1 on mobile is REQUIRED: without an explicit column
-           track, Tailwind's bare `grid` creates an implicit `auto`-width
-           column that sizes to the card's content and overflows the
-           container — making the tiles render WIDER than the portfolio
-           hero (a plain block = 100%). `grid-cols-1` = minmax(0,1fr),
-           which constrains each tile to exactly the container width so
-           tiles + hero match.
 
-           Mobile card-reel (Reza 2026-05-28): on phones the grid becomes
-           a scoped scroll-snap container — `max-h-[78svh]` + overflow +
-           `snap-y snap-mandatory` so each property card clearly "takes
-           the stage" one at a time. svh (small viewport height) is
-           stable against iOS's collapsing URL bar; max-h (not fixed h)
-           degrades gracefully when there's only one property.
-           `overscroll-contain` stops scroll-chaining bounce at the reel
-           edges. Pure CSS, mobile-only (`max-md:`), scoped to THIS grid
-           — no document-level side effect, can't leak to other routes or
-           the page header. Desktop keeps the normal multi-column grid. */
-        <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3 max-md:max-h-[78svh] max-md:snap-y max-md:snap-mandatory max-md:overflow-y-auto max-md:scroll-py-2 max-md:[overscroll-behavior:contain] max-md:[scrollbar-width:none] max-md:[&::-webkit-scrollbar]:hidden">
+           DESKTOP: normal multi-column grid (md:grid-cols-2 xl:grid-cols-3).
+
+           MOBILE: plain block flow (no grid → each card is a full-width
+           block, so NO implicit-auto-grid overflow — this keeps the
+           tile/portfolio width match from #916 without grid-cols-1) PLUS
+           a sticky-stacking-card effect: each card is `position: sticky`
+           pinned just below the topbar with a small incremental top
+           offset, so as you scroll the NORMAL PAGE the next card slides
+           up and covers the previous one (Apple-Wallet "scroll stack").
+           Single page scroll — no nested scroll container (fixes the
+           two-scroll feel of the earlier reel). The per-card opaque
+           backing (`bg-editorial-ivory` = the page bg, theme-aware) is
+           required because PropertyTile is translucent — without it the
+           covered card would ghost through. Inline `top` only takes
+           effect on mobile (cards are `static` on desktop, so `top` is
+           ignored there). */
+        <div className="max-md:space-y-5 md:grid md:grid-cols-2 md:gap-6 xl:grid-cols-3">
           {filteredProperties.map((property, idx) => {
             const { percentage } = calculateGain(property);
             const lvr = calculateLVR(property);
@@ -671,7 +670,8 @@ function PropertiesPageContent() {
             return (
               <div
                 key={property.id}
-                className="max-md:snap-start max-md:[scroll-snap-stop:always]"
+                className="max-md:sticky max-md:overflow-hidden max-md:rounded-[22px] max-md:bg-editorial-ivory max-md:shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.45)]"
+                style={{ top: `calc(4rem + ${idx * 0.75}rem)` }}
               >
                 <PropertyTile
                   index={idx}
