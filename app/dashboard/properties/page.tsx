@@ -195,6 +195,38 @@ function PropertiesPageContent() {
     }
   }, [token]);
 
+  // Mobile-only scroll-snap (Reza 2026-05-28): on phones each property
+  // tile gently settles into view as you scroll — "each tile takes the
+  // stage" — instead of a long flat scroll. Implemented page-scoped +
+  // mobile-only by toggling `scroll-snap-type` on the document scroller
+  // (the editorial shell scrolls the document, not <main>). `proximity`
+  // (not mandatory) + `scroll-snap-stop: always` on the cards gives a
+  // deliberate one-at-a-time feel WITHOUT trapping scroll on tall cards
+  // or small viewports. Cleaned up on unmount + on breakpoint change so
+  // it never leaks to other routes or to desktop. Degrades to normal
+  // scroll where snap is unsupported.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const root = document.documentElement;
+    const apply = () => {
+      if (mq.matches) {
+        root.style.scrollSnapType = 'y proximity';
+        root.style.scrollPaddingTop = '5rem'; // clear the sticky topbar
+      } else {
+        root.style.scrollSnapType = '';
+        root.style.scrollPaddingTop = '';
+      }
+    };
+    apply();
+    mq.addEventListener('change', apply);
+    return () => {
+      mq.removeEventListener('change', apply);
+      root.style.scrollSnapType = '';
+      root.style.scrollPaddingTop = '';
+    };
+  }, []);
+
   const loadProperties = async () => {
     try {
       const response = await fetch('/api/properties', {
@@ -634,8 +666,16 @@ function PropertiesPageContent() {
           </CardContent>
         </Card>
       ) : (
-        /* Tiles View — premium glassmorphic redesign (Stage I palette) */
-        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+        /* Tiles View — premium glassmorphic redesign (Stage I palette).
+           grid-cols-1 on mobile is REQUIRED: without an explicit column
+           track, Tailwind's bare `grid` creates an implicit `auto`-width
+           column that sizes to the card's content and overflows the
+           container — making the tiles render WIDER than the portfolio
+           hero (a plain block = 100%). `grid-cols-1` = minmax(0,1fr),
+           which constrains each tile to exactly the container width so
+           tiles + hero match. Mobile scroll-snap: each card snaps to the
+           top as you scroll (mobile only; see the snap effect + wrapper). */
+        <div className="grid grid-cols-1 gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
           {filteredProperties.map((property, idx) => {
             const { percentage } = calculateGain(property);
             const lvr = calculateLVR(property);
@@ -651,36 +691,40 @@ function PropertiesPageContent() {
                 : undefined;
 
             return (
-              <PropertyTile
+              <div
                 key={property.id}
-                index={idx}
-                property={{
-                  id: property.id,
-                  name: property.name,
-                  address: property.address,
-                  type: property.type as 'HOME' | 'INVESTMENT' | 'RENTAL',
-                  purchasePrice: property.purchasePrice,
-                  currentValue: property.currentValue,
-                  loansCount: property.loans?.length || 0,
-                  incomeCount: property.income?.length || 0,
-                  expenseCount: property.expenses?.length || 0,
-                  depreciationCount: property.depreciationSchedules?.length || 0,
-                  totalRentExpense,
-                  // Phase 41E.4 — reform-aware fields for the tax-treatment badge.
-                  acquisitionContractDate: (property as { acquisitionContractDate?: string | null }).acquisitionContractDate ?? null,
-                  isNewBuild: (property as { isNewBuild?: boolean | null }).isNewBuild ?? null,
-                }}
-                metrics={{
-                  equity,
-                  lvr,
-                  gainPercentage: percentage,
-                  rentalYield,
-                  cashflow,
-                }}
-                onView={() => loadPropertyDetail(property.id)}
-                onEdit={() => handleEdit(property)}
-                onDelete={() => handleDelete(property.id)}
-              />
+                className="max-md:snap-start max-md:[scroll-snap-stop:always] max-md:scroll-mt-20"
+              >
+                <PropertyTile
+                  index={idx}
+                  property={{
+                    id: property.id,
+                    name: property.name,
+                    address: property.address,
+                    type: property.type as 'HOME' | 'INVESTMENT' | 'RENTAL',
+                    purchasePrice: property.purchasePrice,
+                    currentValue: property.currentValue,
+                    loansCount: property.loans?.length || 0,
+                    incomeCount: property.income?.length || 0,
+                    expenseCount: property.expenses?.length || 0,
+                    depreciationCount: property.depreciationSchedules?.length || 0,
+                    totalRentExpense,
+                    // Phase 41E.4 — reform-aware fields for the tax-treatment badge.
+                    acquisitionContractDate: (property as { acquisitionContractDate?: string | null }).acquisitionContractDate ?? null,
+                    isNewBuild: (property as { isNewBuild?: boolean | null }).isNewBuild ?? null,
+                  }}
+                  metrics={{
+                    equity,
+                    lvr,
+                    gainPercentage: percentage,
+                    rentalYield,
+                    cashflow,
+                  }}
+                  onView={() => loadPropertyDetail(property.id)}
+                  onEdit={() => handleEdit(property)}
+                  onDelete={() => handleDelete(property.id)}
+                />
+              </div>
             );
           })}
         </div>
