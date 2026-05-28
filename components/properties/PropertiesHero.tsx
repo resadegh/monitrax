@@ -74,7 +74,7 @@ export function PropertiesHero({
       initial={reduced ? { opacity: 1 } : { opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
       transition={reduced ? { duration: 0 } : { duration: 0.6, ease: appleEase }}
-      className="relative isolate overflow-hidden rounded-[28px] border border-sky-300/30 dark:border-sky-400/15 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)]"
+      className="relative isolate overflow-hidden rounded-[22px] border border-sky-300/30 dark:border-sky-400/15 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)]"
     >
       {/* Atmospheric mesh gradient — Stage I (Invest) palette */}
       <div
