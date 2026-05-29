@@ -7,12 +7,16 @@
  * Composition (top → bottom):
  *   1. 64px logo bar — Monitrax wordmark (or M-mark when collapsed)
  *   2. nav list — every `trailNavItem` rendered via `EditorialNavRow`,
- *      active state matched by `findActiveNavItem(pathname)`
+ *      active state matched by `findActiveNavItem(pathname)`. The active
+ *      section expands to show its `children` as indented sub-tab links —
+ *      this is the ONLY desktop path to a section's sub-pages, because
+ *      `SectionTabsRow` is mobile-only and explicitly defers desktop
+ *      sub-nav to this sidebar.
  *   3. mt-auto divider
  *   4. Settings row + Sign-out row
  *
  * Hides on mobile (md:flex on the wrapper) — mobile uses
- * `EditorialBottomNav` + `EditorialMobileDrawer`.
+ * `EditorialBottomNav` + `EditorialMobileDrawer` + `SectionTabsRow`.
  *
  * @see lib/navigation/trailNav.tsx — NavItem SSOT
  * @see Stitch screen 2543c8240b944c8fa6b6e89d20ac8e77 (app shell)
@@ -66,17 +70,50 @@ export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
 
       {/* Nav list */}
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
-        {trailNavItems.map((item) => (
-          <EditorialNavRow
-            key={item.name}
-            href={item.href}
-            label={item.name}
-            icon={item.icon}
-            active={active?.name === item.name}
-            trailStage={item.trailStage}
-            dataTour={item.tourId}
-          />
-        ))}
+        {trailNavItems.map((item) => {
+          const isActive = active?.name === item.name;
+          const children = item.children ?? [];
+          return (
+            <div key={item.name}>
+              <EditorialNavRow
+                href={item.href}
+                label={item.name}
+                icon={item.icon}
+                active={isActive}
+                trailStage={item.trailStage}
+                dataTour={item.tourId}
+              />
+              {/* Sub-tabs — shown on desktop when the section is active.
+                  SectionTabsRow (mobile-only) defers desktop sub-nav to
+                  the sidebar, so this is the ONLY desktop path to a
+                  section's sub-pages (e.g. My Wealth → Investments / Assets). */}
+              {isActive && children.length > 0 && (
+                <div className="mb-1 ml-[26px] mt-0.5 space-y-0.5 border-l border-editorial-divider pl-3">
+                  {children.map((child) => {
+                    const childActive =
+                      pathname === child.href ||
+                      pathname.startsWith(child.href + '/');
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        aria-current={childActive ? 'page' : undefined}
+                        className={cn(
+                          'block rounded-md px-3 py-1.5 text-[13px] transition-colors',
+                          childActive
+                            ? 'bg-editorial-emerald/10 font-semibold text-editorial-ink'
+                            : 'font-medium text-editorial-slate hover:bg-editorial-warm hover:text-editorial-ink'
+                        )}
+                      >
+                        {child.name}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Footer — Settings + user */}

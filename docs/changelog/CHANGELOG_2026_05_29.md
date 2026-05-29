@@ -488,3 +488,45 @@ adds no regime-dependent math; no column added to `Property`/`Investment`/`Legal
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (desktop sub-nav regression fix)
+
+### Changes Made
+- **Type**: Fix (Workstream 0·StD — editorial shell regression)
+- **Scope**: `components/editorial/shell/EditorialSidebar.tsx`
+- **Root Cause**: The Phase R2b DashboardLayout swap (PR #904) replaced the
+  legacy sidebar — which rendered each active section's `children` as indented
+  sub-tab links on desktop — with `EditorialSidebar`, which rendered only the
+  8 top-level TRAIL sections. `SectionTabsRow` (the sub-tab strip) is
+  `md:hidden` by design and explicitly defers desktop sub-nav to the sidebar.
+  Net effect: on desktop there was NO path to a section's sub-pages — e.g.
+  My Wealth opened Properties with no way to reach Investments or Assets.
+  (Mobile was unaffected — `SectionTabsRow` shows the tabs there.)
+- **Solution**: `EditorialSidebar` now expands the active section to show its
+  `children` (from the canonical `trailNavItems` SSOT) as indented sub-tab
+  links with an active-child highlight, mirroring the legacy desktop UX in the
+  editorial vocabulary (emerald active tint, divider connector). `EditorialNavRow`
+  already shipped a `dense` mode for nested rows — the sub-nav was always
+  intended, just never wired into the sidebar.
+
+### Files Modified
+- `components/editorial/shell/EditorialSidebar.tsx` — render active section's
+  child sub-tabs on desktop + JSDoc update.
+
+### Build Status
+- [x] `npm run build` — passes (exit 0)
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (sidebar sub-nav restored)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_05_29.md` — this entry
+- `docs/IMPLEMENTATION_PLAN.md` — 0·StD note (desktop sub-nav regression fixed)
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)
