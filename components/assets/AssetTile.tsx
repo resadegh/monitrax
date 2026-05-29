@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { AssetGlyph } from '@/components/wealth/wealthGlyphs';
+import { RenewalChip } from '@/components/reminders/RenewalChip';
+import type { ReminderUrgency } from '@/lib/reminders/reminderEngine';
 
 /**
  * AssetTile — Stage I (Invest) v4 tile pattern, applied to personal
@@ -59,6 +61,12 @@ export interface AssetTileData {
   depreciation: number; // positive = lost value, negative = gained value
   depreciationPercent: number;
   annualExpenses: number;
+  /**
+   * Most-urgent renewal for this asset (Phase 21.5), or undefined when none
+   * is coming up. Computed by the canonical reminder engine on the page —
+   * the tile only renders it (SSOT, CLAUDE.md §12.2).
+   */
+  renewal?: { urgency: ReminderUrgency; daysUntilDue: number; label: string };
 }
 
 export interface AssetTileProps {
@@ -257,6 +265,13 @@ export function AssetTile({ asset, index = 0, onView, onEdit, onDelete }: AssetT
                 <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${status.className}`}>
                   {status.label}
                 </span>
+              )}
+              {asset.renewal && (
+                <RenewalChip
+                  urgency={asset.renewal.urgency}
+                  daysUntilDue={asset.renewal.daysUntilDue}
+                  label={asset.renewal.label}
+                />
               )}
             </div>
           </div>

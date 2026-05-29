@@ -4104,3 +4104,28 @@ flag flips. Flag flip happens at Stage 3 (Royal Assent) ONLY AFTER
 the Stage 2 mechanic is shipped — same PR. The defensive `throw`
 in each module catches premature flips (covered by
 `tests/tax-engine/divisions/reformActivationRoundTrip.test.ts`).
+
+---
+
+## Asset — vehicle renewal dates (Phase 21.5, 2026-05-29)
+
+Six nullable columns added to `Asset` so vehicle assets can capture the dates
+that drive renewal reminders. All additive (migration
+`20260529100000_phase_21_5_vehicle_renewal_dates`), no backfill, no existing
+data touched.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `vehicleRegistrationExpiry` | `DateTime?` | Rego renewal due date |
+| `vehicleCtpProvider` | `String?` | CTP / green-slip insurer |
+| `vehicleCtpExpiry` | `DateTime?` | CTP renewal due date |
+| `vehicleInsuranceProvider` | `String?` | Comprehensive insurer |
+| `vehicleInsurancePolicyNumber` | `String?` | Comprehensive policy number |
+| `vehicleInsuranceExpiry` | `DateTime?` | Comprehensive renewal due date |
+
+Provider / policy-number are asset attributes; the **dates** are what we remind
+on. They are read (not duplicated) by the canonical reminder engine
+`lib/reminders/reminderEngine.ts` — there is no separate `Reminder` table for
+these derived reminders (the dates ARE the source of truth). The same engine
+also projects pre-existing dates: `Loan.fixedExpiry` (fixed-rate expiry),
+`BasiqConnection.consentExpiresAt` (CDR consent), and `Asset.warrantyExpiry`.

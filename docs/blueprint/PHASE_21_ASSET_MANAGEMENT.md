@@ -500,11 +500,37 @@ When adding an expense, users can optionally link it to an asset:
 - Calculate cost per kilometer
 - Track annual distance driven
 
-### 8.2 Service Reminders (Future)
+### 8.2 Service Reminders
 
+**Shipped (Phase 21.5, 2026-05-29 — Tier 1, in-app):**
+- ✅ Registration expiry reminders
+- ✅ CTP (green-slip) renewal reminders
+- ✅ Comprehensive insurance renewal reminders
+- ✅ Warranty expiry reminders (any asset type)
+
+Stored as nullable date columns on `Asset` (`vehicleRegistrationExpiry`,
+`vehicleCtpProvider` + `vehicleCtpExpiry`, `vehicleInsuranceProvider` +
+`vehicleInsurancePolicyNumber` + `vehicleInsuranceExpiry`; `warrantyExpiry`
+pre-existed). Projected into reminders by the **canonical reminder engine**
+`lib/reminders/reminderEngine.ts` (a pure, fetch-free engine per §6.4 — the
+SSOT for "what needs renewing and how urgent"). Surfaced in-app via
+`<RenewalsCard>` (self-contained island on the Assets page + Home) and a
+per-tile `<RenewalChip>`. Served by the thin `GET /api/reminders` route.
+
+**Still future:**
 - Next service due (by date or km)
-- Registration expiry alerts
-- Insurance renewal reminders
+- Email / push delivery of the above (Tier 3 — Cloud Scheduler sweep + Resend,
+  preference-gated; wires the dead `pushBillReminders` toggle)
+- An in-app notification centre / bell with snooze + dismiss state (Tier 2)
+
+**Where this pattern should be replicated next** (same engine, new producers —
+each is its own slice): Property renewals (council/water rates, land tax,
+building & contents insurance, strata, lease expiry, smoke-alarm/pool cert),
+term-deposit maturity, standalone insurance policies (health/life/income-
+protection/home/pet/travel — new model), personal documents (licence/passport/
+visa/Medicare/professional registration — new model), and the high-volume
+bank-detected bills feed (`RecurringPayment.nextExpected` — belongs with the
+Tier 2 bell because it needs snooze/dismiss state).
 
 ### 8.3 Fuel Tracking (Future Enhancement)
 
@@ -686,8 +712,8 @@ Assets used for income-producing purposes may be depreciable:
 
 ### Phase 21.5: Insights & Alerts
 - [ ] Asset-related insights rules
-- [ ] Service reminder system
-- [ ] Registration/insurance alerts
+- [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). Tier 2 (in-app bell + snooze/dismiss) and Tier 3 (email/push delivery) queued.
+- [x] Registration/insurance alerts — rego + CTP + comprehensive renewal dates on `Asset`, projected into reminders (2026-05-29). Loan fixed-rate expiry + bank/CDR consent expiry + warranty expiry also wired as producers (Tier A trio).
 
 ---
 
