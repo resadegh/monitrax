@@ -5,6 +5,8 @@ import {
   computeAllReminders,
   surfacedReminders,
   summariseReminders,
+  applyReminderStates,
+  visibleReminders,
 } from '@/lib/reminders/reminderEngine';
 
 /**
@@ -23,7 +25,7 @@ import {
  */
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
-    const [assets, properties, loans, connections] = await Promise.all([
+    const [assets, properties, loans, connections, states] = await Promise.all([
       prisma.asset.findMany({
         where: { userId: auth.userId },
         select: {
@@ -62,9 +64,15 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
         where: { userId: auth.userId, consentExpiresAt: { not: null } },
         select: { id: true, institutionName: true, consentExpiresAt: true },
       }),
+      // Tier 2: per-user snooze/dismiss/done state (CLAUDE.md §12.2 — merged by
+      // the pure engine, never re-implemented here).
+      prisma.reminderState.findMany({
+        where: { userId: auth.userId },
+        select: { reminderKey: true, dueDate: true, status: true, snoozedUntil: true },
+      }),
     ]);
 
-    const reminders = surfacedReminders(
+    const surfaced = surfacedReminders(
       computeAllReminders({
         assets,
         properties,
@@ -76,6 +84,11 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
         })),
       })
     );
+
+    // Merge user state, then keep only what's still ACTIVE (snoozed/dismissed/
+    // done are held back). The merge auto-resets state once a renewal rolls to
+    // its next cycle (engine `applyReminderStates`).
+    const reminders = visibleReminders(applyReminderStates(surfaced, states));
 
     return NextResponse.json({
       data: reminders,

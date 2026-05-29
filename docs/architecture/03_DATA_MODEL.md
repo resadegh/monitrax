@@ -4140,3 +4140,37 @@ on. They are read (not duplicated) by the canonical reminder engine
 these derived reminders (the dates ARE the source of truth). The same engine
 also projects pre-existing dates: `Loan.fixedExpiry` (fixed-rate expiry),
 `BasiqConnection.consentExpiresAt` (CDR consent), and `Asset.warrantyExpiry`.
+
+## Property — renewal dates (Phase 21.5 R3, 2026-05-29)
+
+Nine nullable columns on `Property` (migration
+`20260529110000_phase_21_5_property_renewal_dates`, additive): `councilRatesDueDate`,
+`waterRatesDueDate`, `landTaxDueDate`, `buildingInsuranceProvider`,
+`buildingInsurancePolicyNumber`, `buildingInsuranceExpiry`, `strataDueDate`,
+`leaseExpiry`, `complianceCertExpiry`. Read by the same engine
+(`computePropertyRenewals`). **§12.14 FW-3:** operational reminder inputs only —
+no CGT/reform interaction (grandfathering stays driven by
+`acquisitionContractDate`).
+
+## ReminderState — Tier 2 snooze/dismiss/done (Phase 21.5 R1 PR1, 2026-05-29)
+
+New table `reminder_states` (migration
+`20260529120000_phase_21_5_tier2_reminder_state`, additive — one enum + one
+table, no existing table touched). Per-user action on a projected reminder.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | `String` | PK (uuid) |
+| `userId` | `String` | FK → `users.id` (Cascade) |
+| `reminderKey` | `String` | Engine synthetic id (`${entityId}:${sourceType}`) |
+| `dueDate` | `DateTime` | The due-date cycle this action applies to |
+| `status` | `ReminderStatus` | `SNOOZED` / `DISMISSED` / `DONE` |
+| `snoozedUntil` | `DateTime?` | Set only when `status = SNOOZED` |
+
+`@@unique([userId, reminderKey])`, `@@index([userId])`. **Absence of a row =
+ACTIVE** (the default) — a row exists only once the user acts, so the table
+stays small. The pure `applyReminderStates()` merge ignores a state once the
+live reminder's `dueDate` moves on (renewal rolled over), so dismiss/done reset
+each cycle. No financial / CDR data lives here — synthetic key + status + dates
+only (§13.3). Mutated by `POST /api/reminders/state`; honoured by
+`GET /api/reminders`.

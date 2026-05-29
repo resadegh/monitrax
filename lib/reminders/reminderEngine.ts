@@ -19,8 +19,9 @@
  *
  * Tier 2/3 extend this engine with: (a) term-deposit maturity, standalone
  * insurance, personal-document expiry as further producers; (b) persisted
- * snooze/dismiss/done state + the high-volume bank-detected bills feed
- * (RecurringPayment.nextExpected); (c) email/push delivery gated by
+ * snooze/dismiss/done state — the pure `applyReminderStates()` merge below is
+ * shipped (R1 PR1); the in-app bell + the high-volume bank-detected bills feed
+ * (RecurringPayment.nextExpected) follow; (c) email/push delivery gated by
  * `UserPreference` via a daily Cloud Scheduler sweep.
  *
  * Where used (Tier 1):
@@ -460,4 +461,82 @@ export function renewalTimingLabel(daysUntilDue: number): string {
   if (daysUntilDue === 0) return 'Due today';
   if (daysUntilDue === 1) return 'Due tomorrow';
   return `Due in ${daysUntilDue} days`;
+}
+
+// ---------------------------------------------------------------------------
+// Tier 2 — user state (snooze / dismiss / done)
+// ---------------------------------------------------------------------------
+
+/**
+ * Persisted user action on a reminder (Phase 21.5 Tier 2). Mirrors the
+ * `ReminderState` row but stays a plain shape so this engine remains pure +
+ * Prisma-free. `reminderKey` is the engine's synthetic id
+ * (`${entityId}:${sourceType}`); `dueDate` is the cycle the action was taken
+ * against.
+ */
+export interface ReminderStateInput {
+  reminderKey: string;
+  dueDate: string | Date;
+  status: 'SNOOZED' | 'DISMISSED' | 'DONE';
+  snoozedUntil?: string | Date | null;
+}
+
+/** Live, post-merge state of a reminder for a given user + cycle. */
+export type ReminderLiveState = 'ACTIVE' | 'SNOOZED' | 'DISMISSED' | 'DONE';
+
+/** A reminder annotated with the user's current action state. */
+export interface AnnotatedReminder extends RenewalReminder {
+  state: ReminderLiveState;
+  /** ISO instant the snooze lifts, when `state === 'SNOOZED'`. */
+  snoozedUntil?: string | null;
+}
+
+/** Date-level (YYYY-MM-DD) equality — ignores time-of-day + tz drift. */
+function sameDueDay(a: string | Date | null | undefined, b: string): boolean {
+  const da = toDate(a);
+  if (!da) return false;
+  return da.toISOString().slice(0, 10) === b.slice(0, 10);
+}
+
+/**
+ * Merge persisted user state onto projected reminders (PURE — no fetch, no
+ * mutation; CLAUDE.md §6.4). A state row applies ONLY when its `dueDate`
+ * matches the live reminder's `dueDate` (date-level): so when a renewal rolls
+ * to its next cycle (the user updates the date), a prior dismiss/done/snooze
+ * naturally resets and the reminder re-surfaces. An expired snooze
+ * (`snoozedUntil` already passed) also reverts to ACTIVE. Reminders with no
+ * matching state row are ACTIVE.
+ */
+export function applyReminderStates(
+  reminders: RenewalReminder[],
+  states: ReminderStateInput[],
+  opts: { now?: Date } = {}
+): AnnotatedReminder[] {
+  const now = opts.now ?? new Date();
+  const byKey = new Map(states.map((s) => [s.reminderKey, s]));
+
+  return reminders.map((r) => {
+    const s = byKey.get(r.id);
+    // No state, or state belongs to a previous due-date cycle → ACTIVE.
+    if (!s || !sameDueDay(s.dueDate, r.dueDate)) {
+      return { ...r, state: 'ACTIVE' as const };
+    }
+    if (s.status === 'SNOOZED') {
+      const until = toDate(s.snoozedUntil);
+      if (until && until.getTime() > now.getTime()) {
+        return { ...r, state: 'SNOOZED' as const, snoozedUntil: until.toISOString() };
+      }
+      return { ...r, state: 'ACTIVE' as const }; // snooze has lapsed
+    }
+    // DISMISSED | DONE — held for this cycle.
+    return { ...r, state: s.status };
+  });
+}
+
+/**
+ * Reminders the user should see right now: ACTIVE only. Snoozed/dismissed/done
+ * are held back (the notification centre can still surface them separately).
+ */
+export function visibleReminders(annotated: AnnotatedReminder[]): AnnotatedReminder[] {
+  return annotated.filter((r) => r.state === 'ACTIVE');
 }
