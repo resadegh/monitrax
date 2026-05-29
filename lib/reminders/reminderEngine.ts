@@ -12,19 +12,22 @@
  * ARE the source of truth, and this projection reads them):
  *   - Vehicle registration / CTP / comprehensive insurance  (Asset, new cols)
  *   - Asset warranty expiry                                  (Asset.warrantyExpiry)
+ *   - Property rates / land tax / insurance / strata /
+ *     lease / compliance-cert renewals                       (Property, new cols)
  *   - Loan fixed-rate expiry                                 (Loan.fixedExpiry)
  *   - Bank-feed / CDR consent expiry                         (Account/CDRConsent.consentExpiresAt)
  *
- * Tier 2/3 extend this engine with: (a) Property renewals, term-deposit
- * maturity, standalone insurance, personal-document expiry as further
- * producers; (b) persisted snooze/dismiss/done state + the high-volume
- * bank-detected bills feed (RecurringPayment.nextExpected); (c) email/push
- * delivery gated by `UserPreference` via a daily Cloud Scheduler sweep.
+ * Tier 2/3 extend this engine with: (a) term-deposit maturity, standalone
+ * insurance, personal-document expiry as further producers; (b) persisted
+ * snooze/dismiss/done state + the high-volume bank-detected bills feed
+ * (RecurringPayment.nextExpected); (c) email/push delivery gated by
+ * `UserPreference` via a daily Cloud Scheduler sweep.
  *
  * Where used (Tier 1):
- *   - app/api/reminders/route.ts          — unified GET (assets+loans+accounts)
+ *   - app/api/reminders/route.ts          — unified GET (assets+properties+loans+accounts)
  *   - components/reminders/RenewalsCard    — self-contained "Renewals" card
  *   - app/dashboard/assets/page.tsx        — per-tile chip (vehicle + warranty)
+ *   - app/dashboard/properties/page.tsx    — per-property renewals in detail
  *
  * Doc: docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md §8.2 / §13 (Phase 21.5).
  */
@@ -44,11 +47,18 @@ export type ReminderSourceType =
   | 'VEHICLE_CTP'
   | 'VEHICLE_INSURANCE'
   | 'ASSET_WARRANTY'
+  | 'PROPERTY_COUNCIL_RATES'
+  | 'PROPERTY_WATER_RATES'
+  | 'PROPERTY_LAND_TAX'
+  | 'PROPERTY_INSURANCE'
+  | 'PROPERTY_STRATA'
+  | 'PROPERTY_LEASE'
+  | 'PROPERTY_COMPLIANCE'
   | 'LOAN_FIXED_EXPIRY'
   | 'BANK_CONSENT';
 
 /** Broad category — drives icon/colour grouping + the "act here" href. */
-export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'LOAN' | 'CONSENT';
+export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT';
 
 /**
  * Urgency tiers, ordered most→least pressing. Drives colour + sort order.
@@ -170,6 +180,23 @@ export interface ConsentRenewalSource {
 }
 
 /**
+ * Minimal property shape this engine reads. Renewal dates only — no
+ * financial values (so this stays cheap to select + safe to pass around).
+ */
+export interface PropertyRenewalSource {
+  id: string;
+  name: string;
+  councilRatesDueDate?: string | Date | null;
+  waterRatesDueDate?: string | Date | null;
+  landTaxDueDate?: string | Date | null;
+  buildingInsuranceProvider?: string | null;
+  buildingInsuranceExpiry?: string | Date | null;
+  strataDueDate?: string | Date | null;
+  leaseExpiry?: string | Date | null;
+  complianceCertExpiry?: string | Date | null;
+}
+
+/**
  * Project asset reminders: vehicle renewals (registration / CTP / insurance,
  * vehicles only) + warranty expiry (any asset type). Returns EVERY reminder
  * with a date set (including OK ones), sorted. SOLD/WRITTEN_OFF assets produce
@@ -223,6 +250,75 @@ export function computeAssetRenewals(
       );
     }
     push('ASSET_WARRANTY', 'WARRANTY', 'Warranty', asset.warrantyExpiry);
+  }
+
+  return sortReminders(out);
+}
+
+/**
+ * Project property reminders: council/water rates, land tax, building &
+ * contents insurance, strata levies, lease/rent-review, and compliance-cert
+ * expiry. Each surfaces only when its date is set, so a renter who records
+ * just a lease date gets exactly one reminder. The lease gets the longer lead
+ * window — re-letting / rent review takes time to action.
+ */
+export function computePropertyRenewals(
+  properties: PropertyRenewalSource[],
+  opts: ComputeOpts = {}
+): RenewalReminder[] {
+  const now = opts.now ?? new Date();
+  const out: RenewalReminder[] = [];
+
+  for (const property of properties) {
+    const href = '/dashboard/properties';
+
+    const push = (
+      sourceType: ReminderSourceType,
+      label: string,
+      date: string | Date | null | undefined,
+      provider?: string | null,
+      upcomingWindow?: number
+    ) => {
+      const due = toDate(date);
+      if (!due) return;
+      const daysUntilDue = daysUntil(due, now);
+      out.push({
+        id: `${property.id}:${sourceType}`,
+        entityId: property.id,
+        entityName: property.name,
+        category: 'PROPERTY',
+        sourceType,
+        label,
+        provider: provider ?? null,
+        dueDate: due.toISOString(),
+        daysUntilDue,
+        urgency: urgencyFor(
+          daysUntilDue,
+          DUE_SOON_LEAD_DAYS,
+          opts.upcomingWindow ?? upcomingWindow ?? UPCOMING_WINDOW_DAYS
+        ),
+        href,
+      });
+    };
+
+    push('PROPERTY_COUNCIL_RATES', 'Council rates', property.councilRatesDueDate);
+    push('PROPERTY_WATER_RATES', 'Water rates', property.waterRatesDueDate);
+    push('PROPERTY_LAND_TAX', 'Land tax', property.landTaxDueDate);
+    push(
+      'PROPERTY_INSURANCE',
+      'Building & contents insurance',
+      property.buildingInsuranceExpiry,
+      property.buildingInsuranceProvider
+    );
+    push('PROPERTY_STRATA', 'Strata / body corporate', property.strataDueDate);
+    push(
+      'PROPERTY_LEASE',
+      'Lease renewal',
+      property.leaseExpiry,
+      null,
+      LONG_LEAD_UPCOMING_WINDOW_DAYS
+    );
+    push('PROPERTY_COMPLIANCE', 'Compliance certificate', property.complianceCertExpiry);
   }
 
   return sortReminders(out);
@@ -305,6 +401,7 @@ export function computeConsentReminders(
 export function computeAllReminders(
   input: {
     assets?: AssetRenewalSource[];
+    properties?: PropertyRenewalSource[];
     loans?: LoanRenewalSource[];
     connections?: ConsentRenewalSource[];
   },
@@ -312,6 +409,7 @@ export function computeAllReminders(
 ): RenewalReminder[] {
   return sortReminders([
     ...computeAssetRenewals(input.assets ?? [], opts),
+    ...computePropertyRenewals(input.properties ?? [], opts),
     ...computeLoanRenewals(input.loans ?? [], opts),
     ...computeConsentReminders(input.connections ?? [], opts),
   ]);

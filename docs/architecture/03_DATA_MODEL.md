@@ -97,6 +97,17 @@ marketValue: number
 imageUrl?: string
 propertyManager?: string
 notes?: string
+# Renewal dates (Phase 21.5) — drive in-app reminders via lib/reminders/reminderEngine.ts.
+# Operational only; no Phase 41E reform/CGT interaction (CLAUDE.md §12.14 FW-3).
+councilRatesDueDate?: DateTime
+waterRatesDueDate?: DateTime
+landTaxDueDate?: DateTime
+buildingInsuranceProvider?: string
+buildingInsurancePolicyNumber?: string
+buildingInsuranceExpiry?: DateTime
+strataDueDate?: DateTime
+leaseExpiry?: DateTime
+complianceCertExpiry?: DateTime
 ```
 
 ### **Relationships**

@@ -73,6 +73,17 @@ export const POST = withPermission('property.write', async (request, auth) => {
         suburb,
         state,
         postcode,
+        // Renewal dates (Phase 21.5) — operational reminder inputs only;
+        // no reform/CGT interaction (CLAUDE.md §12.14 FW-3).
+        councilRatesDueDate,
+        waterRatesDueDate,
+        landTaxDueDate,
+        buildingInsuranceProvider,
+        buildingInsurancePolicyNumber,
+        buildingInsuranceExpiry,
+        strataDueDate,
+        leaseExpiry,
+        complianceCertExpiry,
       } = body;
 
       // `purchasePrice` / `currentValue` are validated as "present", not
@@ -130,6 +141,16 @@ export const POST = withPermission('property.write', async (request, auth) => {
           suburb: suburb || null,
           state: state || null,
           postcode: postcode || null,
+          // Renewal dates (Phase 21.5) — empty string / missing → null.
+          councilRatesDueDate: councilRatesDueDate ? new Date(councilRatesDueDate) : null,
+          waterRatesDueDate: waterRatesDueDate ? new Date(waterRatesDueDate) : null,
+          landTaxDueDate: landTaxDueDate ? new Date(landTaxDueDate) : null,
+          buildingInsuranceProvider: buildingInsuranceProvider || null,
+          buildingInsurancePolicyNumber: buildingInsurancePolicyNumber || null,
+          buildingInsuranceExpiry: buildingInsuranceExpiry ? new Date(buildingInsuranceExpiry) : null,
+          strataDueDate: strataDueDate ? new Date(strataDueDate) : null,
+          leaseExpiry: leaseExpiry ? new Date(leaseExpiry) : null,
+          complianceCertExpiry: complianceCertExpiry ? new Date(complianceCertExpiry) : null,
         },
       });
 

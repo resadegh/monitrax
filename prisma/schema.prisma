@@ -1451,6 +1451,24 @@ model Property {
   state         String? // State (e.g., NSW, VIC)
   postcode      String? // Postal code
 
+  // Property renewal dates (Phase 21.5 extension). All nullable, optional.
+  // These drive in-app renewal reminders via the canonical reminder engine
+  // (lib/reminders/reminderEngine.ts) — the dates ARE the source of truth;
+  // no derived Reminder table. Phase 41E reform note (CLAUDE.md §12.14 FW-3):
+  // these are OPERATIONAL reminder inputs (rates/insurance/strata/lease/
+  // compliance cadence). They do NOT interact with the CGT grandfathering
+  // test — that remains driven solely by `acquisitionContractDate`. No
+  // reform regime math reads these columns.
+  councilRatesDueDate           DateTime? // Council rates next due
+  waterRatesDueDate             DateTime? // Water rates next due
+  landTaxDueDate                DateTime? // Land tax assessment next due
+  buildingInsuranceProvider     String? // Building & contents insurer
+  buildingInsurancePolicyNumber String? // Building & contents policy number
+  buildingInsuranceExpiry       DateTime? // Building & contents renewal due
+  strataDueDate                 DateTime? // Strata / body-corporate levy next due
+  leaseExpiry                   DateTime? // Lease / rent-review date (rentals + tenanted investments)
+  complianceCertExpiry          DateTime? // Smoke-alarm / pool-safety / gas compliance certificate expiry
+
   // Relationships
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   ownerEntity           LegalEntity            @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)

@@ -17,8 +17,13 @@ import {
   Home, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   Landmark, DollarSign, Receipt, Calendar, Building2,
   ChevronRight, Percent, PiggyBank, FileText, Eye, Link2, Lightbulb,
-  LayoutGrid, List, KeyRound, ArrowUpRight, ArrowDownRight,
+  LayoutGrid, List, KeyRound, ArrowUpRight, ArrowDownRight, Shield,
 } from 'lucide-react';
+import { RenewalChip } from '@/components/reminders/RenewalChip';
+import {
+  computePropertyRenewals,
+  surfacedReminders,
+} from '@/lib/reminders/reminderEngine';
 import { Switch } from '@/components/ui/switch';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -107,6 +112,16 @@ interface Property {
   suburb?: string;
   state?: string;
   postcode?: string;
+  // Renewal dates (Phase 21.5) — drive in-app reminders
+  councilRatesDueDate?: string | null;
+  waterRatesDueDate?: string | null;
+  landTaxDueDate?: string | null;
+  buildingInsuranceProvider?: string | null;
+  buildingInsurancePolicyNumber?: string | null;
+  buildingInsuranceExpiry?: string | null;
+  strataDueDate?: string | null;
+  leaseExpiry?: string | null;
+  complianceCertExpiry?: string | null;
   loans?: Loan[];
   income?: Income[];
   expenses?: Expense[];
@@ -140,6 +155,29 @@ type PropertyFormData = {
   // Rental property fields
   rentAmount?: number;
   rentFrequency?: string;
+  // Renewal dates (Phase 21.5) — stored as YYYY-MM-DD strings in the form
+  councilRatesDueDate: string;
+  waterRatesDueDate: string;
+  landTaxDueDate: string;
+  buildingInsuranceProvider: string;
+  buildingInsurancePolicyNumber: string;
+  buildingInsuranceExpiry: string;
+  strataDueDate: string;
+  leaseExpiry: string;
+  complianceCertExpiry: string;
+};
+
+/** Empty renewal-field block — reused by initial state + resetForm. */
+const EMPTY_RENEWALS = {
+  councilRatesDueDate: '',
+  waterRatesDueDate: '',
+  landTaxDueDate: '',
+  buildingInsuranceProvider: '',
+  buildingInsurancePolicyNumber: '',
+  buildingInsuranceExpiry: '',
+  strataDueDate: '',
+  leaseExpiry: '',
+  complianceCertExpiry: '',
 };
 
 type ViewMode = 'tiles' | 'list';
@@ -187,6 +225,7 @@ function PropertiesPageContent() {
     purchaseDate: '',
     currentValue: 0,
     valuationDate: new Date().toISOString().split('T')[0],
+    ...EMPTY_RENEWALS,
   });
 
   useEffect(() => {
@@ -276,6 +315,7 @@ function PropertiesPageContent() {
       postcode: undefined,
       rentAmount: undefined,
       rentFrequency: 'WEEKLY',
+      ...EMPTY_RENEWALS,
     });
   };
 
@@ -315,6 +355,16 @@ function PropertiesPageContent() {
       suburb: property.suburb,
       state: property.state,
       postcode: property.postcode,
+      // Renewal dates (Phase 21.5) — ISO → YYYY-MM-DD for the date inputs
+      councilRatesDueDate: property.councilRatesDueDate?.split('T')[0] || '',
+      waterRatesDueDate: property.waterRatesDueDate?.split('T')[0] || '',
+      landTaxDueDate: property.landTaxDueDate?.split('T')[0] || '',
+      buildingInsuranceProvider: property.buildingInsuranceProvider || '',
+      buildingInsurancePolicyNumber: property.buildingInsurancePolicyNumber || '',
+      buildingInsuranceExpiry: property.buildingInsuranceExpiry?.split('T')[0] || '',
+      strataDueDate: property.strataDueDate?.split('T')[0] || '',
+      leaseExpiry: property.leaseExpiry?.split('T')[0] || '',
+      complianceCertExpiry: property.complianceCertExpiry?.split('T')[0] || '',
     });
     setEditingId(property.id);
     setShowDialog(true);
@@ -883,6 +933,138 @@ function PropertiesPageContent() {
               </>
             )}
 
+            {/* Renewals & reminders (Phase 21.5). Optional dates that drive
+                in-app renewal reminders via the canonical reminder engine.
+                Owner-paid bills (rates / land tax / strata / compliance) are
+                hidden for rentals — the landlord pays those; a renter still
+                tracks their lease + contents insurance. */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+              <h5 className="text-sm font-medium flex items-center gap-2">
+                <Shield className="h-4 w-4" /> Renewals &amp; reminders
+              </h5>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Add renewal dates and we&apos;ll remind you before they&apos;re due. All optional.
+              </p>
+
+              {formData.type !== 'RENTAL' && (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="councilRatesDueDate">Council rates due</Label>
+                      <Input
+                        id="councilRatesDueDate"
+                        type="date"
+                        value={formData.councilRatesDueDate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, councilRatesDueDate: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="waterRatesDueDate">Water rates due</Label>
+                      <Input
+                        id="waterRatesDueDate"
+                        type="date"
+                        value={formData.waterRatesDueDate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, waterRatesDueDate: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="landTaxDueDate">Land tax due</Label>
+                      <Input
+                        id="landTaxDueDate"
+                        type="date"
+                        value={formData.landTaxDueDate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, landTaxDueDate: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="strataDueDate">Strata / body corp due</Label>
+                      <Input
+                        id="strataDueDate"
+                        type="date"
+                        value={formData.strataDueDate}
+                        onChange={(e) =>
+                          setFormData({ ...formData, strataDueDate: e.target.value })
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="buildingInsuranceProvider">
+                    {formData.type === 'RENTAL' ? 'Contents insurer' : 'Building & contents insurer'}
+                  </Label>
+                  <Input
+                    id="buildingInsuranceProvider"
+                    value={formData.buildingInsuranceProvider}
+                    onChange={(e) =>
+                      setFormData({ ...formData, buildingInsuranceProvider: e.target.value })
+                    }
+                    placeholder="e.g., AAMI, Allianz"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="buildingInsuranceExpiry">Insurance renewal date</Label>
+                  <Input
+                    id="buildingInsuranceExpiry"
+                    type="date"
+                    value={formData.buildingInsuranceExpiry}
+                    onChange={(e) =>
+                      setFormData({ ...formData, buildingInsuranceExpiry: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="buildingInsurancePolicyNumber">Insurance policy number</Label>
+                <Input
+                  id="buildingInsurancePolicyNumber"
+                  value={formData.buildingInsurancePolicyNumber}
+                  onChange={(e) =>
+                    setFormData({ ...formData, buildingInsurancePolicyNumber: e.target.value })
+                  }
+                  placeholder="Optional"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="leaseExpiry">Lease renewal date</Label>
+                  <Input
+                    id="leaseExpiry"
+                    type="date"
+                    value={formData.leaseExpiry}
+                    onChange={(e) => setFormData({ ...formData, leaseExpiry: e.target.value })}
+                  />
+                </div>
+                {formData.type !== 'RENTAL' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="complianceCertExpiry">Compliance cert expiry</Label>
+                    <Input
+                      id="complianceCertExpiry"
+                      type="date"
+                      value={formData.complianceCertExpiry}
+                      onChange={(e) =>
+                        setFormData({ ...formData, complianceCertExpiry: e.target.value })
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancel
@@ -1010,6 +1192,84 @@ function PropertiesPageContent() {
                             </div>
                           </div>
                         </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Renewals & reminders (Phase 21.5). Dates shown when set;
+                      the urgency chip auto-appears when a renewal is overdue /
+                      due-soon / upcoming. Computed via the canonical engine. */}
+                  {(() => {
+                    const isRental = selectedProperty.type === 'RENTAL';
+                    const rows: Array<{
+                      key: string;
+                      sourceType: string;
+                      label: string;
+                      date: string | null | undefined;
+                      provider?: string | null;
+                      extra?: string | null;
+                    }> = [
+                      { key: 'council', sourceType: 'PROPERTY_COUNCIL_RATES', label: 'Council rates', date: selectedProperty.councilRatesDueDate },
+                      { key: 'water', sourceType: 'PROPERTY_WATER_RATES', label: 'Water rates', date: selectedProperty.waterRatesDueDate },
+                      { key: 'landtax', sourceType: 'PROPERTY_LAND_TAX', label: 'Land tax', date: selectedProperty.landTaxDueDate },
+                      {
+                        key: 'insurance',
+                        sourceType: 'PROPERTY_INSURANCE',
+                        label: isRental ? 'Contents insurance' : 'Building & contents insurance',
+                        date: selectedProperty.buildingInsuranceExpiry,
+                        provider: selectedProperty.buildingInsuranceProvider,
+                        extra: selectedProperty.buildingInsurancePolicyNumber
+                          ? `Policy ${selectedProperty.buildingInsurancePolicyNumber}`
+                          : null,
+                      },
+                      { key: 'strata', sourceType: 'PROPERTY_STRATA', label: 'Strata / body corporate', date: selectedProperty.strataDueDate },
+                      { key: 'lease', sourceType: 'PROPERTY_LEASE', label: 'Lease renewal', date: selectedProperty.leaseExpiry },
+                      { key: 'compliance', sourceType: 'PROPERTY_COMPLIANCE', label: 'Compliance certificate', date: selectedProperty.complianceCertExpiry },
+                    ];
+                    const hasAny = rows.some((r) => r.date);
+                    const detailReminders = surfacedReminders(
+                      computePropertyRenewals([selectedProperty])
+                    );
+                    const findUrgency = (sourceType: string) =>
+                      detailReminders.find((d) => d.sourceType === sourceType);
+                    return (
+                      <div className="rounded-lg border bg-muted/30 p-4">
+                        <p className="text-sm font-medium flex items-center gap-2 mb-3">
+                          <Shield className="h-4 w-4" /> Renewals &amp; reminders
+                        </p>
+                        {hasAny ? (
+                          <div className="space-y-2">
+                            {rows
+                              .filter((r) => r.date)
+                              .map((r) => {
+                                const u = findUrgency(r.sourceType);
+                                return (
+                                  <div key={r.key} className="flex items-center justify-between gap-3">
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium">{r.label}</p>
+                                      {(r.provider || r.extra) && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {[r.provider, r.extra].filter(Boolean).join(' · ')}
+                                        </p>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {u && (
+                                        <RenewalChip urgency={u.urgency} daysUntilDue={u.daysUntilDue} />
+                                      )}
+                                      <span className="text-sm tabular-nums text-muted-foreground">
+                                        {new Date(r.date!).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Add rates, insurance, strata or lease renewal dates when editing and we&apos;ll remind you before they&apos;re due.
+                          </p>
+                        )}
                       </div>
                     );
                   })()}
