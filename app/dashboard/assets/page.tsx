@@ -25,6 +25,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 import { AssetsHero, type AssetsHeroSegment } from '@/components/assets/AssetsHero';
 import { AssetTile } from '@/components/assets/AssetTile';
+import { RenewalsCard } from '@/components/reminders/RenewalsCard';
+import { RenewalChip } from '@/components/reminders/RenewalChip';
+import {
+  computeAssetRenewals,
+  surfacedReminders,
+  mostUrgentForEntity,
+  type RenewalReminder,
+} from '@/lib/reminders/reminderEngine';
 
 type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
 type AssetStatus = 'ACTIVE' | 'SOLD' | 'WRITTEN_OFF';
@@ -77,6 +85,13 @@ interface Asset {
   vehicleFuelType: VehicleFuelType | null;
   vehicleOdometer: number | null;
   vehicleVin: string | null;
+  // Vehicle renewal dates (Phase 21.5)
+  vehicleRegistrationExpiry: string | null;
+  vehicleCtpProvider: string | null;
+  vehicleCtpExpiry: string | null;
+  vehicleInsuranceProvider: string | null;
+  vehicleInsurancePolicyNumber: string | null;
+  vehicleInsuranceExpiry: string | null;
   // Depreciation
   depreciationMethod: string | null;
   depreciationRate: number | null;
@@ -117,6 +132,13 @@ interface AssetFormData {
   vehicleRegistration: string;
   vehicleFuelType: VehicleFuelType | '';
   vehicleOdometer: string;
+  // Vehicle renewal dates (Phase 21.5) — date inputs ('YYYY-MM-DD') + text
+  vehicleRegistrationExpiry: string;
+  vehicleCtpProvider: string;
+  vehicleCtpExpiry: string;
+  vehicleInsuranceProvider: string;
+  vehicleInsurancePolicyNumber: string;
+  vehicleInsuranceExpiry: string;
   // Other
   serialNumber: string;
   notes: string;
@@ -238,6 +260,12 @@ function AssetsPageContent() {
     vehicleRegistration: '',
     vehicleFuelType: '',
     vehicleOdometer: '',
+    vehicleRegistrationExpiry: '',
+    vehicleCtpProvider: '',
+    vehicleCtpExpiry: '',
+    vehicleInsuranceProvider: '',
+    vehicleInsurancePolicyNumber: '',
+    vehicleInsuranceExpiry: '',
     serialNumber: '',
     notes: '',
   });
@@ -298,6 +326,12 @@ function AssetsPageContent() {
       vehicleRegistration: '',
       vehicleFuelType: '',
       vehicleOdometer: '',
+      vehicleRegistrationExpiry: '',
+      vehicleCtpProvider: '',
+      vehicleCtpExpiry: '',
+      vehicleInsuranceProvider: '',
+      vehicleInsurancePolicyNumber: '',
+      vehicleInsuranceExpiry: '',
       serialNumber: '',
       notes: '',
     });
@@ -318,6 +352,12 @@ function AssetsPageContent() {
       vehicleRegistration: asset.vehicleRegistration || '',
       vehicleFuelType: asset.vehicleFuelType || '',
       vehicleOdometer: asset.vehicleOdometer?.toString() || '',
+      vehicleRegistrationExpiry: asset.vehicleRegistrationExpiry?.split('T')[0] || '',
+      vehicleCtpProvider: asset.vehicleCtpProvider || '',
+      vehicleCtpExpiry: asset.vehicleCtpExpiry?.split('T')[0] || '',
+      vehicleInsuranceProvider: asset.vehicleInsuranceProvider || '',
+      vehicleInsurancePolicyNumber: asset.vehicleInsurancePolicyNumber || '',
+      vehicleInsuranceExpiry: asset.vehicleInsuranceExpiry?.split('T')[0] || '',
       serialNumber: asset.serialNumber || '',
       notes: asset.notes || '',
     });
@@ -584,6 +624,12 @@ function AssetsPageContent() {
     );
   }
 
+  // Canonical reminder projection (SSOT — lib/reminders/reminderEngine.ts).
+  // Computed from the assets already loaded; the per-tile chip reads the
+  // most-urgent renewal for each asset. The aggregated RenewalsCard below
+  // fetches the unified feed (assets + loans + bank-consent) separately.
+  const assetReminders: RenewalReminder[] = computeAssetRenewals(assets);
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -635,6 +681,11 @@ function AssetsPageContent() {
             />
           );
         })()}
+
+        {/* Renewals & reminders (Phase 21.5) — self-hides when nothing is
+            coming up. Aggregates vehicle rego/CTP/insurance, warranty, loan
+            fixed-rate expiry + bank-consent expiry via the canonical engine. */}
+        <RenewalsCard />
 
         {/* View Toggle */}
         {/* Search and Filter */}
@@ -715,6 +766,12 @@ function AssetsPageContent() {
                     depreciation: computed.depreciation,
                     depreciationPercent: computed.depreciationPercent,
                     annualExpenses: computed.annualExpenses,
+                    renewal: (() => {
+                      const r = mostUrgentForEntity(assetReminders, asset.id);
+                      return r
+                        ? { urgency: r.urgency, daysUntilDue: r.daysUntilDue, label: r.label }
+                        : undefined;
+                    })(),
                   }}
                   onView={() => handleViewDetail(asset)}
                   onEdit={() => handleEdit(asset)}
@@ -899,6 +956,92 @@ function AssetsPageContent() {
                       }
                       placeholder="45000"
                     />
+                  </div>
+
+                  {/* Renewals & reminders (Phase 21.5). Optional dates that
+                      drive in-app renewal reminders. Provider / policy are
+                      stored for context; the dates are what we remind on. */}
+                  <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+                    <h5 className="text-sm font-medium flex items-center gap-2">
+                      <Shield className="h-4 w-4" /> Renewals &amp; reminders
+                    </h5>
+                    <p className="text-xs text-muted-foreground -mt-2">
+                      Add renewal dates and we&apos;ll remind you before they&apos;re due. All optional.
+                    </p>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleRegistrationExpiry">Registration renewal date</Label>
+                      <Input
+                        id="vehicleRegistrationExpiry"
+                        type="date"
+                        value={formData.vehicleRegistrationExpiry}
+                        onChange={(e) =>
+                          setFormData({ ...formData, vehicleRegistrationExpiry: e.target.value })
+                        }
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="vehicleCtpProvider">CTP insurer</Label>
+                        <Input
+                          id="vehicleCtpProvider"
+                          value={formData.vehicleCtpProvider}
+                          onChange={(e) =>
+                            setFormData({ ...formData, vehicleCtpProvider: e.target.value })
+                          }
+                          placeholder="e.g., NRMA, AAMI"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="vehicleCtpExpiry">CTP renewal date</Label>
+                        <Input
+                          id="vehicleCtpExpiry"
+                          type="date"
+                          value={formData.vehicleCtpExpiry}
+                          onChange={(e) =>
+                            setFormData({ ...formData, vehicleCtpExpiry: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="vehicleInsuranceProvider">Comprehensive insurer</Label>
+                        <Input
+                          id="vehicleInsuranceProvider"
+                          value={formData.vehicleInsuranceProvider}
+                          onChange={(e) =>
+                            setFormData({ ...formData, vehicleInsuranceProvider: e.target.value })
+                          }
+                          placeholder="e.g., Budget Direct"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="vehicleInsuranceExpiry">Comprehensive renewal date</Label>
+                        <Input
+                          id="vehicleInsuranceExpiry"
+                          type="date"
+                          value={formData.vehicleInsuranceExpiry}
+                          onChange={(e) =>
+                            setFormData({ ...formData, vehicleInsuranceExpiry: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="vehicleInsurancePolicyNumber">Comprehensive policy number</Label>
+                      <Input
+                        id="vehicleInsurancePolicyNumber"
+                        value={formData.vehicleInsurancePolicyNumber}
+                        onChange={(e) =>
+                          setFormData({ ...formData, vehicleInsurancePolicyNumber: e.target.value })
+                        }
+                        placeholder="Optional"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -1168,6 +1311,77 @@ function AssetsPageContent() {
                                 : '-'}
                             </p>
                           </div>
+
+                          {/* Renewals & reminders (Phase 21.5). Dates always
+                              shown; the urgency chip auto-appears when a
+                              renewal is overdue / due-soon / upcoming. */}
+                          {(() => {
+                            const rows: Array<{
+                              key: string;
+                              label: string;
+                              date: string | null;
+                              provider?: string | null;
+                              extra?: string | null;
+                            }> = [
+                              { key: 'rego', label: 'Registration renewal', date: selectedAsset.vehicleRegistrationExpiry },
+                              { key: 'ctp', label: 'CTP renewal', date: selectedAsset.vehicleCtpExpiry, provider: selectedAsset.vehicleCtpProvider },
+                              {
+                                key: 'comp',
+                                label: 'Comprehensive renewal',
+                                date: selectedAsset.vehicleInsuranceExpiry,
+                                provider: selectedAsset.vehicleInsuranceProvider,
+                                extra: selectedAsset.vehicleInsurancePolicyNumber
+                                  ? `Policy ${selectedAsset.vehicleInsurancePolicyNumber}`
+                                  : null,
+                              },
+                            ];
+                            const hasAny = rows.some((r) => r.date);
+                            const detailReminders = surfacedReminders(
+                              computeAssetRenewals([selectedAsset])
+                            );
+                            const findUrgency = (label: string) =>
+                              detailReminders.find((d) => d.label.startsWith(label.split(' ')[0]));
+                            return (
+                              <div className="col-span-2 mt-2 rounded-lg border bg-muted/30 p-4">
+                                <p className="text-sm font-medium flex items-center gap-2 mb-3">
+                                  <Shield className="h-4 w-4" /> Renewals &amp; reminders
+                                </p>
+                                {hasAny ? (
+                                  <div className="space-y-2">
+                                    {rows
+                                      .filter((r) => r.date)
+                                      .map((r) => {
+                                        const u = findUrgency(r.label);
+                                        return (
+                                          <div key={r.key} className="flex items-center justify-between gap-3">
+                                            <div className="min-w-0">
+                                              <p className="text-sm font-medium">{r.label}</p>
+                                              {(r.provider || r.extra) && (
+                                                <p className="text-xs text-muted-foreground truncate">
+                                                  {[r.provider, r.extra].filter(Boolean).join(' · ')}
+                                                </p>
+                                              )}
+                                            </div>
+                                            <div className="flex items-center gap-2 shrink-0">
+                                              {u && (
+                                                <RenewalChip urgency={u.urgency} daysUntilDue={u.daysUntilDue} />
+                                              )}
+                                              <span className="text-sm tabular-nums text-muted-foreground">
+                                                {formatDate(r.date!)}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-muted-foreground">
+                                    Add registration, CTP or insurance renewal dates when editing and we&apos;ll remind you before they&apos;re due.
+                                  </p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </>
                       )}
                       {selectedAsset.serialNumber && (

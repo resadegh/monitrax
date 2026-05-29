@@ -132,6 +132,13 @@ export const POST = withPermission('investment.write', async (request, auth) => 
         vehicleFuelType,
         vehicleOdometer,
         vehicleVin,
+        // Vehicle renewal dates (Phase 21.5)
+        vehicleRegistrationExpiry,
+        vehicleCtpProvider,
+        vehicleCtpExpiry,
+        vehicleInsuranceProvider,
+        vehicleInsurancePolicyNumber,
+        vehicleInsuranceExpiry,
         // Depreciation
         depreciationMethod,
         depreciationRate,
@@ -183,6 +190,13 @@ export const POST = withPermission('investment.write', async (request, auth) => 
           vehicleFuelType,
           vehicleOdometer: vehicleOdometer ? parseInt(vehicleOdometer) : null,
           vehicleVin,
+          // Vehicle renewal dates (Phase 21.5) — nullable; parse when present
+          vehicleRegistrationExpiry: vehicleRegistrationExpiry ? new Date(vehicleRegistrationExpiry) : null,
+          vehicleCtpProvider,
+          vehicleCtpExpiry: vehicleCtpExpiry ? new Date(vehicleCtpExpiry) : null,
+          vehicleInsuranceProvider,
+          vehicleInsurancePolicyNumber,
+          vehicleInsuranceExpiry: vehicleInsuranceExpiry ? new Date(vehicleInsuranceExpiry) : null,
           // Depreciation
           depreciationMethod,
           depreciationRate: depreciationRate ? parseFloat(depreciationRate) : null,

@@ -69,6 +69,7 @@ import {
   LVR_ZONES,
 } from '@/components/editorial/kpi';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
+import { RenewalsCard } from '@/components/reminders/RenewalsCard';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
@@ -592,6 +593,13 @@ export default function DashboardPage() {
           when the user has zero transactions in the current month. */}
       <div className="mb-6">
         <DailyPulseCard />
+      </div>
+
+      {/* Phase 21.5 — Renewals & reminders island. Self-contained (fetches
+          /api/reminders itself) + self-hides when nothing is coming up, so
+          it adds nothing to the dashboard's existing data flow. */}
+      <div className="mb-6">
+        <RenewalsCard />
       </div>
 
       {isLoading ? (

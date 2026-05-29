@@ -881,3 +881,43 @@ caller-supplied-dispatch path (scenario modelling + testing) — it now
 also accepts an `smsfIncomeTax` body (Part 2c-i). The dead
 `parentEntityId` read is gone from both handlers — no engine module
 consumed it.
+
+---
+
+## `GET /api/reminders` — unified renewal/reminder feed (Phase 21.5, 2026-05-29)
+
+Thin wrapper (§12.3) over the canonical reminder engine
+`lib/reminders/reminderEngine.ts`. Guarded by `withPermission('entity.read')`.
+Fetches only the date columns each producer needs (assets, FIXED loans with a
+`fixedExpiry`, `BasiqConnection`s with a `consentExpiresAt`), delegates ALL
+urgency/date logic to the engine, and returns only **surfaced** reminders
+(overdue / due-soon / upcoming — far-out "OK" ones are dropped so the feed
+stays calm).
+
+Response:
+
+```json
+{
+  "data": [
+    {
+      "id": "<entityId>:<sourceType>",
+      "entityId": "...",
+      "entityName": "Toyota Camry",
+      "category": "VEHICLE | WARRANTY | LOAN | CONSENT",
+      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | LOAN_FIXED_EXPIRY | BANK_CONSENT",
+      "label": "Registration",
+      "provider": "NRMA | null",
+      "dueDate": "2026-07-01T00:00:00.000Z",
+      "daysUntilDue": 33,
+      "urgency": "OVERDUE | DUE_SOON | UPCOMING",
+      "href": "/dashboard/assets"
+    }
+  ],
+  "summary": { "overdue": 0, "dueSoon": 1, "upcoming": 2, "total": 3 }
+}
+```
+
+**CDR (§13.3):** consent reminders carry only the institution name + expiry
+date + a generic label — never balances, transactions, or account numbers.
+Consumed by `<RenewalsCard>` (Assets page + Home). Tier 2/3 will extend the
+producer set (property/insurance/docs) + add delivery (email/push).

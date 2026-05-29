@@ -4124,6 +4124,20 @@ model Asset {
   vehicleOdometer     Int? // Current odometer reading
   vehicleVin          String? // Vehicle Identification Number
 
+  // Vehicle renewal dates (Phase 21.5 — registration/CTP/insurance reminders).
+  // Stored as the EXPIRY/renewal date the user is reminded about. The
+  // canonical reminder projection (lib/reminders/reminderEngine.ts) reads
+  // these columns — no separate Reminder table for derived reminders (SSOT;
+  // engine is a pure read-projection per CLAUDE.md §6.4). All nullable +
+  // additive. Provider / policy-number are asset attributes; the dates are
+  // what we remind on.
+  vehicleRegistrationExpiry    DateTime? // Rego renewal due date
+  vehicleCtpProvider           String? // CTP / green-slip insurer
+  vehicleCtpExpiry             DateTime? // CTP renewal due date
+  vehicleInsuranceProvider     String? // Comprehensive insurer
+  vehicleInsurancePolicyNumber String? // Comprehensive policy number
+  vehicleInsuranceExpiry       DateTime? // Comprehensive renewal due date
+
   // Images
   imageUrl String?
 
