@@ -260,6 +260,17 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
         suburb,
         state,
         postcode,
+        // Renewal dates (Phase 21.5) — operational reminder inputs only;
+        // no reform/CGT interaction (CLAUDE.md §12.14 FW-3).
+        councilRatesDueDate,
+        waterRatesDueDate,
+        landTaxDueDate,
+        buildingInsuranceProvider,
+        buildingInsurancePolicyNumber,
+        buildingInsuranceExpiry,
+        strataDueDate,
+        leaseExpiry,
+        complianceCertExpiry,
       } = body;
 
       // Verify ownership
@@ -312,6 +323,17 @@ export const PUT = withPermission<RouteContext>('property.write', async (request
           suburb: suburb !== undefined ? (suburb || null) : undefined,
           state: state !== undefined ? (state || null) : undefined,
           postcode: postcode !== undefined ? (postcode || null) : undefined,
+          // Renewal dates (Phase 21.5) — only written when the caller sent the
+          // field, so an edit that omits them leaves existing values untouched.
+          councilRatesDueDate: councilRatesDueDate !== undefined ? (councilRatesDueDate ? new Date(councilRatesDueDate) : null) : undefined,
+          waterRatesDueDate: waterRatesDueDate !== undefined ? (waterRatesDueDate ? new Date(waterRatesDueDate) : null) : undefined,
+          landTaxDueDate: landTaxDueDate !== undefined ? (landTaxDueDate ? new Date(landTaxDueDate) : null) : undefined,
+          buildingInsuranceProvider: buildingInsuranceProvider !== undefined ? (buildingInsuranceProvider || null) : undefined,
+          buildingInsurancePolicyNumber: buildingInsurancePolicyNumber !== undefined ? (buildingInsurancePolicyNumber || null) : undefined,
+          buildingInsuranceExpiry: buildingInsuranceExpiry !== undefined ? (buildingInsuranceExpiry ? new Date(buildingInsuranceExpiry) : null) : undefined,
+          strataDueDate: strataDueDate !== undefined ? (strataDueDate ? new Date(strataDueDate) : null) : undefined,
+          leaseExpiry: leaseExpiry !== undefined ? (leaseExpiry ? new Date(leaseExpiry) : null) : undefined,
+          complianceCertExpiry: complianceCertExpiry !== undefined ? (complianceCertExpiry ? new Date(complianceCertExpiry) : null) : undefined,
         },
       });
 

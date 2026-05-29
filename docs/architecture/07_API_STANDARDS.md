@@ -888,11 +888,11 @@ consumed it.
 
 Thin wrapper (§12.3) over the canonical reminder engine
 `lib/reminders/reminderEngine.ts`. Guarded by `withPermission('entity.read')`.
-Fetches only the date columns each producer needs (assets, FIXED loans with a
-`fixedExpiry`, `BasiqConnection`s with a `consentExpiresAt`), delegates ALL
-urgency/date logic to the engine, and returns only **surfaced** reminders
-(overdue / due-soon / upcoming — far-out "OK" ones are dropped so the feed
-stays calm).
+Fetches only the date columns each producer needs (assets, properties, FIXED
+loans with a `fixedExpiry`, `BasiqConnection`s with a `consentExpiresAt`),
+delegates ALL urgency/date logic to the engine, and returns only **surfaced**
+reminders (overdue / due-soon / upcoming — far-out "OK" ones are dropped so the
+feed stays calm).
 
 Response:
 
@@ -903,8 +903,8 @@ Response:
       "id": "<entityId>:<sourceType>",
       "entityId": "...",
       "entityName": "Toyota Camry",
-      "category": "VEHICLE | WARRANTY | LOAN | CONSENT",
-      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | LOAN_FIXED_EXPIRY | BANK_CONSENT",
+      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT",
+      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT",
       "label": "Registration",
       "provider": "NRMA | null",
       "dueDate": "2026-07-01T00:00:00.000Z",
@@ -919,5 +919,8 @@ Response:
 
 **CDR (§13.3):** consent reminders carry only the institution name + expiry
 date + a generic label — never balances, transactions, or account numbers.
-Consumed by `<RenewalsCard>` (Assets page + Home). Tier 2/3 will extend the
-producer set (property/insurance/docs) + add delivery (email/push).
+Consumed by `<RenewalsCard>` (Assets page + Home) + the per-property renewals
+block in the property detail dialog. Property producers (R3, 2026-05-29) cover
+council/water rates, land tax, building & contents insurance, strata, lease,
+and compliance cert. Tier 2/3 will extend the producer set (standalone
+insurance/personal docs) + add delivery (email/push).

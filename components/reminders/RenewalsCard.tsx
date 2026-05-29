@@ -24,13 +24,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BellRing, Car, ShieldCheck, Landmark, Link2, ChevronRight } from 'lucide-react';
+import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, ChevronRight } from 'lucide-react';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import type { RenewalReminder, ReminderCategory } from '@/lib/reminders/reminderEngine';
 
 const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   VEHICLE: Car,
   WARRANTY: ShieldCheck,
+  PROPERTY: Building2,
   LOAN: Landmark,
   CONSENT: Link2,
 };

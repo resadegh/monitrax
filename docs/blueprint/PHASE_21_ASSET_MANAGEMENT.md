@@ -507,15 +507,24 @@ When adding an expense, users can optionally link it to an asset:
 - ✅ CTP (green-slip) renewal reminders
 - ✅ Comprehensive insurance renewal reminders
 - ✅ Warranty expiry reminders (any asset type)
+- ✅ **Property renewals (R3 producer):** council/water rates, land tax,
+  building & contents insurance, strata/body-corp, lease renewal, compliance
+  certificate. Owner-paid bills (rates/land-tax/strata/compliance) are hidden
+  on RENTAL properties — a renter still tracks lease + contents insurance.
 
 Stored as nullable date columns on `Asset` (`vehicleRegistrationExpiry`,
 `vehicleCtpProvider` + `vehicleCtpExpiry`, `vehicleInsuranceProvider` +
 `vehicleInsurancePolicyNumber` + `vehicleInsuranceExpiry`; `warrantyExpiry`
-pre-existed). Projected into reminders by the **canonical reminder engine**
-`lib/reminders/reminderEngine.ts` (a pure, fetch-free engine per §6.4 — the
-SSOT for "what needs renewing and how urgent"). Surfaced in-app via
+pre-existed) and on `Property` (`councilRatesDueDate`, `waterRatesDueDate`,
+`landTaxDueDate`, `buildingInsuranceProvider` + `buildingInsurancePolicyNumber`
++ `buildingInsuranceExpiry`, `strataDueDate`, `leaseExpiry`,
+`complianceCertExpiry`). Projected into reminders by the **canonical reminder
+engine** `lib/reminders/reminderEngine.ts` (a pure, fetch-free engine per §6.4
+— the SSOT for "what needs renewing and how urgent"). Surfaced in-app via
 `<RenewalsCard>` (self-contained island on the Assets page + Home) and a
-per-tile `<RenewalChip>`. Served by the thin `GET /api/reminders` route.
+per-property renewals block in the property detail dialog. Served by the thin
+`GET /api/reminders` route (now fans out assets + properties + loans +
+consents).
 
 **Still future:**
 - Next service due (by date or km)
@@ -524,8 +533,7 @@ per-tile `<RenewalChip>`. Served by the thin `GET /api/reminders` route.
 - An in-app notification centre / bell with snooze + dismiss state (Tier 2)
 
 **Where this pattern should be replicated next** (same engine, new producers —
-each is its own slice): Property renewals (council/water rates, land tax,
-building & contents insurance, strata, lease expiry, smoke-alarm/pool cert),
+each is its own slice): ~~Property renewals~~ ✅ shipped 2026-05-29 (R3);
 term-deposit maturity, standalone insurance policies (health/life/income-
 protection/home/pet/travel — new model), personal documents (licence/passport/
 visa/Medicare/professional registration — new model), and the high-volume
@@ -714,6 +722,7 @@ Assets used for income-producing purposes may be depreciable:
 - [ ] Asset-related insights rules
 - [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). Tier 2 (in-app bell + snooze/dismiss) and Tier 3 (email/push delivery) queued.
 - [x] Registration/insurance alerts — rego + CTP + comprehensive renewal dates on `Asset`, projected into reminders (2026-05-29). Loan fixed-rate expiry + bank/CDR consent expiry + warranty expiry also wired as producers (Tier A trio).
+- [x] Property renewals (R3 producer) — council/water rates, land tax, building & contents insurance, strata, lease, compliance cert on `Property`, projected by the same engine + surfaced in the property detail dialog (2026-05-29).
 
 ---
 

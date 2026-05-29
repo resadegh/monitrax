@@ -23,7 +23,7 @@ import {
  */
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
-    const [assets, loans, connections] = await Promise.all([
+    const [assets, properties, loans, connections] = await Promise.all([
       prisma.asset.findMany({
         where: { userId: auth.userId },
         select: {
@@ -39,6 +39,21 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
           warrantyExpiry: true,
         },
       }),
+      prisma.property.findMany({
+        where: { userId: auth.userId },
+        select: {
+          id: true,
+          name: true,
+          councilRatesDueDate: true,
+          waterRatesDueDate: true,
+          landTaxDueDate: true,
+          buildingInsuranceProvider: true,
+          buildingInsuranceExpiry: true,
+          strataDueDate: true,
+          leaseExpiry: true,
+          complianceCertExpiry: true,
+        },
+      }),
       prisma.loan.findMany({
         where: { userId: auth.userId, rateType: 'FIXED', fixedExpiry: { not: null } },
         select: { id: true, name: true, rateType: true, fixedExpiry: true },
@@ -52,6 +67,7 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
     const reminders = surfacedReminders(
       computeAllReminders({
         assets,
+        properties,
         loans,
         connections: connections.map((c) => ({
           id: c.id,
