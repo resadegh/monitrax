@@ -903,8 +903,8 @@ Response:
       "id": "<entityId>:<sourceType>",
       "entityId": "...",
       "entityName": "Toyota Camry",
-      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT",
-      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT",
+      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT | CUSTOM",
+      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT | CUSTOM",
       "label": "Registration",
       "provider": "NRMA | null",
       "dueDate": "2026-07-01T00:00:00.000Z",
@@ -951,5 +951,17 @@ Body:
 - `dismiss` / `done` → held for this `dueDate` cycle; re-surfaces when the renewal rolls over.
 - `restore` → clears state (back to ACTIVE); `dueDate`/`snoozeDays` not required.
 
-Tier 2 remaining: in-app bell/centre (PR2) + bank-detected bills feed (PR3).
-Tier 3 (email/push delivery) = R2.
+## `POST /api/reminders/custom` — create a custom reminder (Phase 21.5 R1 PR2b)
+
+Thin wrapper (§12.3); persists a user-created reminder, which the engine
+(`computeCustomReminders`) then projects into the `GET /api/reminders` feed
+(category `CUSTOM`, synthetic id `${id}:CUSTOM` → shares the snooze/dismiss/done
+state machinery). `withPermission('entity.write')`. No financial/CDR data
+(§13.3) — title + dueDate + optional note; not audit-logged (UI content).
+
+Body: `{ "title": "Call the accountant", "dueDate": "2026-08-15", "note": "FY26" }`
+→ `201` with `{ id, title, dueDate, note }`.
+
+Edit / hard-delete / a manage view are a fast-follow (Dismiss removes from view
+in the meantime). Tier 2 remaining: bank-detected bills feed (PR3). Tier 3
+(email/push delivery) = R2.

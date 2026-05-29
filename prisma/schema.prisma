@@ -1222,6 +1222,9 @@ model User {
   // Phase 21.5 Tier 2: per-user reminder snooze/dismiss/done state
   reminderStates ReminderState[]
 
+  // Phase 21.5 Tier 2: user-created custom reminders
+  customReminders Reminder[]
+
   // Phase 28: Realistic Budget Integration
   householdProfile HouseholdProfile?
   budgetAnalyses   BudgetAnalysis[]
@@ -3129,6 +3132,26 @@ model ReminderState {
   @@unique([userId, reminderKey])
   @@index([userId])
   @@map("reminder_states")
+}
+
+/// Phase 21.5 R1 PR2b — user-created custom reminders ("remind me about X").
+/// Projected into the unified feed by `computeCustomReminders`; the synthetic
+/// id is `${id}:CUSTOM`, so snooze/dismiss/done state is shared with derived
+/// reminders via `ReminderState` (no separate state machinery). No financial /
+/// CDR data — a title, a due date, and a free-text note only (§13.3).
+model Reminder {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  dueDate   DateTime
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("reminders")
 }
 
 // =============================================================================

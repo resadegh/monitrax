@@ -541,8 +541,12 @@ consents).
 - ⏳ Bank-detected bills feed producer (`RecurringPayment.nextExpected`), gated
   by the `pushBillReminders` toggle so the high-volume feed is opt-out-able
   in-app (R1 PR3).
-- ⏳ User-created custom reminders (`Reminder` model + producer + create form) —
-  R1 PR2b.
+- ✅ **User-created custom reminders (R1 PR2b, 2026-05-29)** — new `Reminder`
+  model (title + dueDate + optional note) + `computeCustomReminders` producer +
+  `POST /api/reminders/custom`; created from the bell's "+ New" → `<AddReminderDialog>`.
+  Flow through the same feed + snooze/dismiss/done state (synthetic key
+  `${id}:CUSTOM`); rendered non-navigable (no entity page). Edit / hard-delete /
+  a dedicated manage view are a fast-follow (Dismiss removes from view for now).
 
 **Still future:**
 - Next service due (by date or km)
@@ -738,7 +742,7 @@ Assets used for income-producing purposes may be depreciable:
 
 ### Phase 21.5: Insights & Alerts
 - [ ] Asset-related insights rules
-- [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). **Tier 2 snooze/dismiss/done shipped (R1 PR1, 2026-05-29)** — `ReminderState` table + pure `applyReminderStates()` merge + `POST /api/reminders/state` + RenewalsCard action menu. **In-app notification bell shipped (R1 PR2, 2026-05-29)** — `<NotificationBell>` in `EditorialTopBar` + shared `useReminders` hook. Tier 2 remaining: bills feed (PR3) + custom reminders (PR2b). Tier 3 (email/push delivery) = R2.
+- [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). **Tier 2 snooze/dismiss/done shipped (R1 PR1, 2026-05-29)** — `ReminderState` table + pure `applyReminderStates()` merge + `POST /api/reminders/state` + RenewalsCard action menu. **In-app notification bell shipped (R1 PR2, 2026-05-29)** — `<NotificationBell>` in `EditorialTopBar` + shared `useReminders` hook. **Custom reminders shipped (R1 PR2b, 2026-05-29)** — `Reminder` model + `computeCustomReminders` + `POST /api/reminders/custom` + `<AddReminderDialog>`. Tier 2 remaining: bills feed (PR3). Tier 3 (email/push delivery) = R2.
 - [x] Registration/insurance alerts — rego + CTP + comprehensive renewal dates on `Asset`, projected into reminders (2026-05-29). Loan fixed-rate expiry + bank/CDR consent expiry + warranty expiry also wired as producers (Tier A trio).
 - [x] Property renewals (R3 producer) — council/water rates, land tax, building & contents insurance, strata, lease, compliance cert on `Property`, projected by the same engine + surfaced in the property detail dialog (2026-05-29).
 

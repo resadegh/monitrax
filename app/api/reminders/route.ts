@@ -25,7 +25,7 @@ import {
  */
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
-    const [assets, properties, loans, connections, states] = await Promise.all([
+    const [assets, properties, loans, connections, states, custom] = await Promise.all([
       prisma.asset.findMany({
         where: { userId: auth.userId },
         select: {
@@ -70,6 +70,11 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
         where: { userId: auth.userId },
         select: { reminderKey: true, dueDate: true, status: true, snoozedUntil: true },
       }),
+      // Tier 2: user-created custom reminders (R1 PR2b).
+      prisma.reminder.findMany({
+        where: { userId: auth.userId },
+        select: { id: true, title: true, dueDate: true, note: true },
+      }),
     ]);
 
     const surfaced = surfacedReminders(
@@ -82,6 +87,7 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
           name: c.institutionName,
           consentExpiresAt: c.consentExpiresAt,
         })),
+        custom,
       })
     );
 

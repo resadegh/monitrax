@@ -1353,7 +1353,14 @@ never recompute days or urgency.
 | `<RenewalChip>` | `components/reminders/RenewalChip.tsx` | Compact urgency pill (overdue/due-soon/upcoming). Auto-hides for `OK`. Used on `AssetTile`, asset detail dialog, and inside `RenewalsCard` + `NotificationBell`. |
 | `<RenewalsCard>` | `components/reminders/RenewalsCard.tsx` | Self-contained island — **self-hides while loading and when nothing is coming up**. Drop onto any page with zero data plumbing. Mounted on the Assets page + Home. Per-row action menu (snooze 7/30d · done · dismiss). |
 | `<NotificationBell>` | `components/reminders/NotificationBell.tsx` | Dashboard top-bar centre (R1 PR2). Bell + count badge + dropdown panel of surfaced reminders with inline snooze (7d) + dismiss. Built on the `DropdownMenu` primitive (no new popover dep — §12.7). Mounted in `EditorialTopBar`. |
-| `useReminders` (hook) | `hooks/useReminders.ts` | Shared SSOT for fetch + snooze/dismiss/done (§12.2/§12.3). Consumed by both `RenewalsCard` and `NotificationBell` — neither re-implements the `/api/reminders` fetch or the `POST /api/reminders/state` action. |
+| `<AddReminderDialog>` | `components/reminders/AddReminderDialog.tsx` | Create a custom reminder (R1 PR2b) — title + date + optional note. Launched from the bell's "+ New". Confirms the saved date inline so far-future reminders (not yet in the "coming up" window) still feel saved. Persists via `useReminders().createCustom`. |
+| `useReminders` (hook) | `hooks/useReminders.ts` | Shared SSOT for fetch + snooze/dismiss/done + `createCustom` (§12.2/§12.3). Consumed by both `RenewalsCard` and `NotificationBell` — neither re-implements the `/api/reminders` fetch or the `POST /api/reminders/state` / `/custom` calls. |
+
+**Custom reminders (R1 PR2b)** render with the `CUSTOM` category (Pin glyph) and
+**no destination** (empty `href`) — both row surfaces render them non-navigable
+(no link wrapper, no chevron), hide the secondary label, and show the user's
+note as the subtitle. They share the snooze/dismiss/done machinery with derived
+reminders.
 
 **Urgency colour** (warm + calm per CLAUDE.md §0 — overdue stated plainly, not
 alarmist): OVERDUE → rose, DUE_SOON → amber, UPCOMING → sky. Aligns with the
