@@ -3,29 +3,26 @@
 /**
  * RenewalsCard — self-contained "Renewals & reminders" island (Phase 21.5).
  *
- * Fetches `GET /api/reminders` itself and renders the surfaced renewal feed
- * (vehicle rego/CTP/insurance, warranty, loan fixed-rate expiry, bank-consent
+ * Renders the surfaced renewal feed (vehicle rego/CTP/insurance, warranty,
+ * property rates/insurance/strata/lease, loan fixed-rate expiry, bank-consent
  * expiry). Self-hides while loading and when there is nothing to surface, so
  * it can be dropped onto any page with zero data plumbing.
  *
- * ALL reminder logic is owned by the canonical engine
- * (`lib/reminders/reminderEngine.ts`) and served by the thin `/api/reminders`
- * route — this component is presentational (CLAUDE.md §12.2/§12.3 SSOT).
+ * Data plumbing lives in the shared `useReminders` hook (CLAUDE.md §12.2/§12.3
+ * SSOT) — also consumed by `<NotificationBell>`. ALL reminder logic is owned by
+ * the canonical engine (`lib/reminders/reminderEngine.ts`) + the thin
+ * `/api/reminders` routes; this component is presentational.
  *
  * Behaviour-psychology (§0): calm + actionable, never a wall of alarm. Overdue
  * surfaces first, every row leads somewhere (go fix it) and carries a quiet
  * action menu — snooze 7/30 days, mark done, or dismiss (Tier 2). Acting on a
  * row removes it optimistically; the card vanishes entirely when you're all
- * caught up — a quiet win, not an endless nag. State persists via
- * POST /api/reminders/state and auto-resets when a renewal rolls to its next
- * cycle (engine `applyReminderStates`).
+ * caught up — a quiet win, not an endless nag.
  *
  * Mounted on: app/dashboard/assets/page.tsx, app/dashboard/page.tsx (Home).
  */
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/lib/context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, ChevronRight, MoreHorizontal, Clock, Check, X } from 'lucide-react';
 import {
@@ -36,10 +33,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
-import type { RenewalReminder, ReminderCategory } from '@/lib/reminders/reminderEngine';
-
-/** Action accepted by POST /api/reminders/state. */
-type ReminderAction = 'snooze' | 'dismiss' | 'done';
+import { useReminders } from '@/hooks/useReminders';
+import type { ReminderCategory } from '@/lib/reminders/reminderEngine';
 
 const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   VEHICLE: Car,
@@ -62,52 +57,7 @@ export function RenewalsCard({
   limit = 6,
   className = '',
 }: RenewalsCardProps) {
-  const { token } = useAuth();
-  const [reminders, setReminders] = useState<RenewalReminder[] | null>(null);
-
-  useEffect(() => {
-    if (!token) return;
-    let active = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/reminders', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!active) return;
-        if (res.ok) {
-          const body = await res.json();
-          setReminders(Array.isArray(body?.data) ? body.data : []);
-        } else {
-          setReminders([]);
-        }
-      } catch {
-        if (active) setReminders([]);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, [token]);
-
-  // Snooze / dismiss / done — optimistically remove the row, then persist.
-  // The feed re-fetches truth on next load; a failed POST self-heals then.
-  const act = useCallback(
-    (reminder: RenewalReminder, action: ReminderAction, snoozeDays?: number) => {
-      setReminders((prev) => (prev ? prev.filter((r) => r.id !== reminder.id) : prev));
-      if (!token) return;
-      void fetch('/api/reminders/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          reminderKey: reminder.id,
-          dueDate: reminder.dueDate,
-          action,
-          ...(snoozeDays ? { snoozeDays } : {}),
-        }),
-      }).catch(() => {});
-    },
-    [token]
-  );
+  const { reminders, act } = useReminders();
 
   // Self-hide while loading and when nothing to surface.
   if (!reminders || reminders.length === 0) return null;

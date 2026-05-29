@@ -1350,19 +1350,22 @@ never recompute days or urgency.
 
 | Component | File | Role |
 |---|---|---|
-| `<RenewalChip>` | `components/reminders/RenewalChip.tsx` | Compact urgency pill (overdue/due-soon/upcoming). Auto-hides for `OK`. Used on `AssetTile`, asset detail dialog, and inside `RenewalsCard`. |
-| `<RenewalsCard>` | `components/reminders/RenewalsCard.tsx` | Self-contained island — fetches `GET /api/reminders` itself and **self-hides while loading and when nothing is coming up**. Drop onto any page with zero data plumbing. Mounted on the Assets page + Home. |
+| `<RenewalChip>` | `components/reminders/RenewalChip.tsx` | Compact urgency pill (overdue/due-soon/upcoming). Auto-hides for `OK`. Used on `AssetTile`, asset detail dialog, and inside `RenewalsCard` + `NotificationBell`. |
+| `<RenewalsCard>` | `components/reminders/RenewalsCard.tsx` | Self-contained island — **self-hides while loading and when nothing is coming up**. Drop onto any page with zero data plumbing. Mounted on the Assets page + Home. Per-row action menu (snooze 7/30d · done · dismiss). |
+| `<NotificationBell>` | `components/reminders/NotificationBell.tsx` | Dashboard top-bar centre (R1 PR2). Bell + count badge + dropdown panel of surfaced reminders with inline snooze (7d) + dismiss. Built on the `DropdownMenu` primitive (no new popover dep — §12.7). Mounted in `EditorialTopBar`. |
+| `useReminders` (hook) | `hooks/useReminders.ts` | Shared SSOT for fetch + snooze/dismiss/done (§12.2/§12.3). Consumed by both `RenewalsCard` and `NotificationBell` — neither re-implements the `/api/reminders` fetch or the `POST /api/reminders/state` action. |
 
 **Urgency colour** (warm + calm per CLAUDE.md §0 — overdue stated plainly, not
 alarmist): OVERDUE → rose, DUE_SOON → amber, UPCOMING → sky. Aligns with the
-§6.7 severity vocabulary.
+§6.7 severity vocabulary. The bell's **count badge** follows the same calm rule:
+rose only when something is overdue, amber otherwise.
 
 **Behaviour-psychology:** the card vanishes entirely when you're caught up (a
-quiet win, not an empty nag), surfaces overdue first, and every row has one
-clear action (a link to where you fix it). It deliberately does NOT ship a
-toggle that does nothing — email/push delivery + the preference toggles are
-Tier 3.
+quiet win, not an empty nag); the bell panel celebrates "You're all caught up"
+rather than nagging. Surfaces overdue first; every row leads somewhere (a link
+to where you fix it) and can be snoozed/dismissed/done (Tier 2 state, R1 PR1).
+Acting on a row removes it optimistically across both surfaces.
 
-**Where to replicate next:** new reminder producers (property renewals,
-standalone insurance, personal-document expiry) plug into the engine, not the
-UI — `RenewalsCard` renders them automatically once the engine emits them.
+**Where to replicate next:** new reminder producers (standalone insurance,
+personal-document expiry) plug into the engine, not the UI — both `RenewalsCard`
+and `NotificationBell` render them automatically once the engine emits them.

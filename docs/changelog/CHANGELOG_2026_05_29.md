@@ -267,4 +267,64 @@ N/A — no `lib/tax-engine/*` touched, no financial calculation, no column on
 
 ### PR
 - Branch: `claude/reminders-tier2-state-LFNFt`
+- Status: Merged (PR #924) — prod deploy `dpl_C4u1Evu5...` READY.
+
+---
+
+## Session: reminders-notification-bell-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R1 Tier 2, PR2 of 3)
+- **Scope**: Reminders — in-app notification bell / centre (dashboard top bar)
+- **Description**: Wires the previously-dead bell button in `<EditorialTopBar>`
+  into a real `<NotificationBell>` centre — count badge + dropdown panel of
+  surfaced reminders with inline snooze (7d) + dismiss, reusing the PR1
+  snooze/dismiss machinery. Custom user-created reminders (new `Reminder` model)
+  split out to PR2b to keep this PR focused; the bills feed is PR3.
+
+  **Architecture (§12.3 win):** extracted the fetch + snooze/dismiss/done client
+  logic into a shared `useReminders` hook, now the SSOT consumed by BOTH the
+  bell and `<RenewalsCard>` (which was refactored onto it — net code reduction,
+  no behaviour change). No new popover dependency: the panel is built on the
+  already-approved `DropdownMenu` primitive (§12.7 / §13.8), controlled-open so
+  the row link closes it while the action buttons keep it open.
+
+  **No new API or schema** — reuses `GET /api/reminders` + `POST
+  /api/reminders/state` from PR1.
+
+### Files Modified / Created
+- `hooks/useReminders.ts` — **NEW.** Shared SSOT hook (fetch feed + optimistic
+  snooze/dismiss/done + reload).
+- `components/reminders/NotificationBell.tsx` — **NEW.** Top-bar bell + badge +
+  dropdown panel + empty state.
+- `components/reminders/RenewalsCard.tsx` — refactored onto `useReminders`
+  (removed its own fetch/act; behaviour unchanged).
+- `components/editorial/shell/EditorialTopBar.tsx` — dead bell button →
+  `<NotificationBell />`; dropped the now-unused `Bell` import.
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 PR2 ✅ + §13 line.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — Renewals pattern table gains
+  `<NotificationBell>` + `useReminders`; badge-tone + behaviour notes.
+- `docs/IMPLEMENTATION_PLAN.md` — R1 PR2 ✅ (PR2b/PR3 queued).
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — no Prisma writes, no schema change. Reuses existing routes.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no tax-engine / financial calc / schema column touched.
+
+### UI/UX Stitch-first (CLAUDE.md §18)
+N/A — internal app surface (`/dashboard/*` shell), which §18.2 explicitly
+excludes from Stitch-first (uses the internal design system per
+`08_BRAND_UI_DESIGN.md`). Reused existing editorial-* tokens + `RenewalChip` +
+`DropdownMenu`; no new visual primitives.
+
+### PR
+- Branch: `claude/reminders-notification-bell-LFNFt`
 - Status: Draft (pending review)
