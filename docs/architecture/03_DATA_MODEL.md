@@ -4174,3 +4174,24 @@ live reminder's `dueDate` moves on (renewal rolled over), so dismiss/done reset
 each cycle. No financial / CDR data lives here — synthetic key + status + dates
 only (§13.3). Mutated by `POST /api/reminders/state`; honoured by
 `GET /api/reminders`.
+
+## Reminder — user-created custom reminders (Phase 21.5 R1 PR2b, 2026-05-29)
+
+New table `reminders` (migration `20260529130000_phase_21_5_custom_reminders`,
+additive — one table, no existing table touched). User-defined "remind me about
+X" entries.
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | `String` | PK (uuid) |
+| `userId` | `String` | FK → `users.id` (Cascade) |
+| `title` | `String` | What to remember (the headline) |
+| `dueDate` | `DateTime` | When |
+| `note` | `String?` | Optional free-text detail (row subtitle) |
+
+`@@index([userId])`. Projected into the unified `GET /api/reminders` feed by
+the engine `computeCustomReminders` (synthetic id `${id}:CUSTOM`, category
+`CUSTOM`, empty `href` → non-navigable). Snooze/dismiss/done is shared with
+derived reminders via `ReminderState` — no separate state machinery. No
+financial / CDR data — title + date + note only (§13.3). Created via
+`POST /api/reminders/custom`.

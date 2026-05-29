@@ -17,12 +17,16 @@
  *   - Loan fixed-rate expiry                                 (Loan.fixedExpiry)
  *   - Bank-feed / CDR consent expiry                         (Account/CDRConsent.consentExpiresAt)
  *
+ * Tier 2 also projects user-created custom reminders (`computeCustomReminders`,
+ * R1 PR2b) through the same feed + state machinery.
+ *
  * Tier 2/3 extend this engine with: (a) term-deposit maturity, standalone
  * insurance, personal-document expiry as further producers; (b) persisted
  * snooze/dismiss/done state — the pure `applyReminderStates()` merge below is
- * shipped (R1 PR1); the in-app bell + the high-volume bank-detected bills feed
- * (RecurringPayment.nextExpected) follow; (c) email/push delivery gated by
- * `UserPreference` via a daily Cloud Scheduler sweep.
+ * shipped (R1 PR1), surfaced via the in-app bell (PR2); the high-volume
+ * bank-detected bills feed (RecurringPayment.nextExpected) follows (PR3);
+ * (c) email/push delivery gated by `UserPreference` via a daily Cloud
+ * Scheduler sweep (R2).
  *
  * Where used (Tier 1):
  *   - app/api/reminders/route.ts          — unified GET (assets+properties+loans+accounts)
@@ -56,10 +60,11 @@ export type ReminderSourceType =
   | 'PROPERTY_LEASE'
   | 'PROPERTY_COMPLIANCE'
   | 'LOAN_FIXED_EXPIRY'
-  | 'BANK_CONSENT';
+  | 'BANK_CONSENT'
+  | 'CUSTOM';
 
 /** Broad category — drives icon/colour grouping + the "act here" href. */
-export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT';
+export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT' | 'CUSTOM';
 
 /**
  * Urgency tiers, ordered most→least pressing. Drives colour + sort order.
@@ -178,6 +183,15 @@ export interface ConsentRenewalSource {
   /** Display name (institution / account label). */
   name: string;
   consentExpiresAt?: string | Date | null;
+}
+
+/** User-created custom reminder (Phase 21.5 R1 PR2b). */
+export interface CustomReminderSource {
+  id: string;
+  title: string;
+  dueDate?: string | Date | null;
+  /** Optional free-text note shown as the row subtitle. */
+  note?: string | null;
 }
 
 /**
@@ -398,6 +412,41 @@ export function computeConsentReminders(
   return sortReminders(out);
 }
 
+/**
+ * Project user-created custom reminders. The title is the headline; the note
+ * (if any) becomes the row subtitle. These have no entity page, so `href` is
+ * empty — consumers render them non-navigable. Snooze/dismiss/done is shared
+ * with derived reminders via the `${id}:CUSTOM` key + `ReminderState`.
+ */
+export function computeCustomReminders(
+  reminders: CustomReminderSource[],
+  opts: ComputeOpts = {}
+): RenewalReminder[] {
+  const now = opts.now ?? new Date();
+  const out: RenewalReminder[] = [];
+
+  for (const reminder of reminders) {
+    const due = toDate(reminder.dueDate);
+    if (!due) continue;
+    const daysUntilDue = daysUntil(due, now);
+    out.push({
+      id: `${reminder.id}:CUSTOM`,
+      entityId: reminder.id,
+      entityName: reminder.title,
+      category: 'CUSTOM',
+      sourceType: 'CUSTOM',
+      label: '', // the title IS the reminder — no secondary label
+      provider: reminder.note ?? null,
+      dueDate: due.toISOString(),
+      daysUntilDue,
+      urgency: urgencyFor(daysUntilDue, DUE_SOON_LEAD_DAYS, opts.upcomingWindow),
+      href: '', // no entity destination — consumers render non-navigable
+    });
+  }
+
+  return sortReminders(out);
+}
+
 /** Merge every producer into one sorted list. */
 export function computeAllReminders(
   input: {
@@ -405,6 +454,7 @@ export function computeAllReminders(
     properties?: PropertyRenewalSource[];
     loans?: LoanRenewalSource[];
     connections?: ConsentRenewalSource[];
+    custom?: CustomReminderSource[];
   },
   opts: ComputeOpts = {}
 ): RenewalReminder[] {
@@ -413,6 +463,7 @@ export function computeAllReminders(
     ...computePropertyRenewals(input.properties ?? [], opts),
     ...computeLoanRenewals(input.loans ?? [], opts),
     ...computeConsentReminders(input.connections ?? [], opts),
+    ...computeCustomReminders(input.custom ?? [], opts),
   ]);
 }
 

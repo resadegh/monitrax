@@ -24,7 +24,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, ChevronRight, MoreHorizontal, Clock, Check, X } from 'lucide-react';
+import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, Pin, ChevronRight, MoreHorizontal, Clock, Check, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import { useReminders } from '@/hooks/useReminders';
-import type { ReminderCategory } from '@/lib/reminders/reminderEngine';
+import type { ReminderCategory, RenewalReminder } from '@/lib/reminders/reminderEngine';
 
 const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   VEHICLE: Car,
@@ -42,7 +42,28 @@ const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   PROPERTY: Building2,
   LOAN: Landmark,
   CONSENT: Link2,
+  CUSTOM: Pin,
 };
+
+/** Icon + name/label + optional subtitle + urgency chip. Shared by the
+ *  navigable (Link) and non-navigable (custom) row variants. */
+function ReminderRowBody({ reminder: r, Icon }: { reminder: RenewalReminder; Icon: typeof Car }) {
+  return (
+    <>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+        <Icon className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">
+          {r.entityName}
+          {r.label && <span className="font-normal text-muted-foreground"> · {r.label}</span>}
+        </p>
+        {r.provider && <p className="truncate text-xs text-muted-foreground">{r.provider}</p>}
+      </div>
+      <RenewalChip urgency={r.urgency} daysUntilDue={r.daysUntilDue} />
+    </>
+  );
+}
 
 export interface RenewalsCardProps {
   /** Heading; defaults to "Renewals & reminders". */
@@ -86,23 +107,19 @@ export function RenewalsCard({
               key={r.id}
               className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
             >
-              {/* Main clickable region — navigates to the entity. The action
-                  menu is a sibling (not nested) so it never triggers the link. */}
-              <Link href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <Icon className="h-4 w-4" />
+              {/* Main region — navigates to the entity when there's a
+                  destination. Custom reminders have no entity page (empty href)
+                  → non-navigable. The action menu is a sibling (not nested) so
+                  it never triggers the link. */}
+              {r.href ? (
+                <Link href={r.href} className="flex min-w-0 flex-1 items-center gap-3">
+                  <ReminderRowBody reminder={r} Icon={Icon} />
+                </Link>
+              ) : (
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <ReminderRowBody reminder={r} Icon={Icon} />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">
-                    {r.entityName}
-                    <span className="font-normal text-muted-foreground"> · {r.label}</span>
-                  </p>
-                  {r.provider && (
-                    <p className="truncate text-xs text-muted-foreground">{r.provider}</p>
-                  )}
-                </div>
-                <RenewalChip urgency={r.urgency} daysUntilDue={r.daysUntilDue} />
-              </Link>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label="Reminder actions"
@@ -126,7 +143,7 @@ export function RenewalsCard({
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              {r.href && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
             </div>
           );
         })}

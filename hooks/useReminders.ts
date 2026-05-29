@@ -22,11 +22,20 @@ import type { RenewalReminder } from '@/lib/reminders/reminderEngine';
 /** Action accepted by POST /api/reminders/state (excludes 'restore'). */
 export type ReminderAction = 'snooze' | 'dismiss' | 'done';
 
+/** Input for a user-created custom reminder (R1 PR2b). */
+export interface CustomReminderInput {
+  title: string;
+  dueDate: string;
+  note?: string;
+}
+
 export interface UseRemindersResult {
   /** Surfaced + still-ACTIVE reminders, or null while loading. */
   reminders: RenewalReminder[] | null;
   /** Snooze / dismiss / done one reminder (optimistic + persisted). */
   act: (reminder: RenewalReminder, action: ReminderAction, snoozeDays?: number) => void;
+  /** Create a custom reminder; resolves true on success, then reloads the feed. */
+  createCustom: (input: CustomReminderInput) => Promise<boolean>;
   /** Re-fetch the feed (e.g. after creating a custom reminder). */
   reload: () => void;
 }
@@ -80,5 +89,26 @@ export function useReminders(): UseRemindersResult {
     [token]
   );
 
-  return { reminders, act, reload };
+  const createCustom = useCallback(
+    async (input: CustomReminderInput): Promise<boolean> => {
+      if (!token) return false;
+      try {
+        const res = await fetch('/api/reminders/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify(input),
+        });
+        if (res.ok) {
+          reload();
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    },
+    [token, reload]
+  );
+
+  return { reminders, act, createCustom, reload };
 }

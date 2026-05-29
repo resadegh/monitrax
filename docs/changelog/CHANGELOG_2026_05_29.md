@@ -327,6 +327,81 @@ excludes from Stitch-first (uses the internal design system per
 
 ### PR
 - Branch: `claude/reminders-notification-bell-LFNFt`
+- Status: Merged (PR #925) — prod deploy `dpl_A7JSM83t...` READY.
+
+---
+
+## Session: reminders-custom-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R1 Tier 2, PR2b of the bell slice)
+- **Scope**: Reminders — user-created custom reminders
+- **Description**: Lets a user add their own reminder ("remind me to call the
+  accountant about FY26") from the notification bell's "+ New". The created
+  reminder flows through the SAME unified feed + snooze/dismiss/done state as
+  every derived reminder (synthetic key `${id}:CUSTOM`) — so it shows up in both
+  the bell and the Renewals card with zero extra surface code (the producer
+  pattern paying off).
+
+  **Scope held (architect lens):** create + display only. Edit / hard-delete /
+  a dedicated manage view are a deliberate fast-follow — Dismiss already removes
+  a custom reminder from view (ReminderState), so the create→see→clear loop is
+  complete. Custom reminders are rendered **non-navigable** (no entity page);
+  both row surfaces branch on empty `href` via a shared `ReminderRowBody`.
+
+  **Far-future feedback:** a reminder set >60 days out won't appear in the
+  "coming up" feed yet — so `<AddReminderDialog>` confirms the saved date inline
+  ("Reminder set for 15 August 2026") rather than letting it silently vanish
+  (behaviour-psychology §0).
+
+### Files Modified / Created
+- `prisma/schema.prisma` — new `Reminder` model (title/dueDate/note) +
+  `User.customReminders` back-relation.
+- `prisma/migrations/20260529130000_phase_21_5_custom_reminders/migration.sql`
+  — additive `CREATE TABLE` (matches schema, §12.12).
+- `lib/reminders/reminderEngine.ts` — `CUSTOM` category + sourceType +
+  `CustomReminderSource` + `computeCustomReminders` producer; wired into
+  `computeAllReminders`.
+- `app/api/reminders/route.ts` — feed fans out `prisma.reminder.findMany`.
+- `app/api/reminders/custom/route.ts` — **NEW.** `POST` create (entity.write).
+- `hooks/useReminders.ts` — added `createCustom()` + `CustomReminderInput`.
+- `components/reminders/AddReminderDialog.tsx` — **NEW.** Create form + inline
+  saved-confirmation.
+- `components/reminders/NotificationBell.tsx` — "+ New" button + dialog wiring;
+  extracted `NotificationRow` handling the non-navigable custom case + `CUSTOM`
+  (Pin) icon.
+- `components/reminders/RenewalsCard.tsx` — `CUSTOM` (Pin) icon, conditional
+  label, non-navigable custom rows via a shared `ReminderRowBody` helper.
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 PR2b ✅ + §13 line.
+- `docs/architecture/03_DATA_MODEL.md` — `Reminder` model.
+- `docs/architecture/07_API_STANDARDS.md` — `CUSTOM` enums + `POST /api/reminders/custom`.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — `<AddReminderDialog>` + custom-reminder note.
+- `docs/IMPLEMENTATION_PLAN.md` — R1 PR2b ✅ (PR3 = last R1 slice).
+
+### Build Status
+- [x] `prisma validate` — schema valid
+- [x] `prisma generate` — client regenerated
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully (`/api/reminders/custom` route built)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — the only Prisma write is `prisma.reminder.create` (additive, scoped to
+`auth.userId`). No update/upsert/delete on existing rows; schema change is one
+additive `CREATE TABLE`, no backfill, no `DROP`/`TRUNCATE`.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no tax-engine / financial calc / schema column on
+`Property`/`Investment`/`LegalEntity`. `Reminder` is UI content.
+
+### UI/UX Stitch-first (CLAUDE.md §18)
+N/A — internal app surface (`/dashboard/*` shell). Reused existing `Dialog` /
+`Input` / `Textarea` primitives + editorial tokens; no new visual primitives.
+
+### PR
+- Branch: `claude/reminders-custom-LFNFt`
 - Status: Draft (pending review)
 
 ---
