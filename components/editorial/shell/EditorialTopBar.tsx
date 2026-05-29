@@ -20,8 +20,9 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Bell, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { NotificationBell } from '@/components/reminders/NotificationBell';
 
 export interface EditorialTopBarProps {
   user?: { name: string; email?: string };
@@ -133,14 +134,9 @@ export function EditorialTopBar({
           </div>
         )}
 
-        {/* Bell */}
-        <button
-          type="button"
-          aria-label="Notifications"
-          className="flex h-10 w-10 items-center justify-center rounded-full text-editorial-slate transition-colors hover:bg-editorial-warm hover:text-editorial-ink"
-        >
-          <Bell className="h-5 w-5" aria-hidden />
-        </button>
+        {/* Notification centre (Phase 21.5 R1 PR2) — self-contained; fetches
+            the reminder feed + handles snooze/dismiss via the shared hook. */}
+        <NotificationBell />
 
         {/* Avatar — onAvatarClick (mobile More sheet trigger) takes
             precedence; otherwise renders the static glyph. */}
