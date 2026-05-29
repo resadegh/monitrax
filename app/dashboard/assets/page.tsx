@@ -680,8 +680,11 @@ function AssetsPageContent() {
             }}
           />
         ) : viewMode === 'tiles' ? (
-          /* Tiles — premium glassmorphic redesign (Phase 39.3, warm sub-palette) */
-          <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+          /* Tiles — premium glassmorphic redesign (Phase 39.3, warm
+             sub-palette). Mobile: block flow + sticky-stacking cards
+             (matches the Properties tab, PRs #916/#918/#919) — see the
+             className. */
+          <div className="max-md:space-y-5 md:grid md:grid-cols-2 md:gap-6 xl:grid-cols-3">
             {filteredAssets.map((asset, idx) => {
               const computed = asset._computed || {
                 annualExpenses: 0,
@@ -689,8 +692,12 @@ function AssetsPageContent() {
                 depreciationPercent: 0,
               } as NonNullable<Asset['_computed']>;
               return (
-                <AssetTile
+                <div
                   key={asset.id}
+                  className="max-md:sticky max-md:overflow-hidden max-md:rounded-[22px] max-md:bg-editorial-ivory max-md:shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.45)]"
+                  style={{ top: `calc(7.5rem + ${idx * 0.75}rem)` }}
+                >
+                <AssetTile
                   index={idx}
                   asset={{
                     id: asset.id,
@@ -713,6 +720,7 @@ function AssetsPageContent() {
                   onEdit={() => handleEdit(asset)}
                   onDelete={() => handleDelete(asset.id)}
                 />
+                </div>
               );
             })}
           </div>
