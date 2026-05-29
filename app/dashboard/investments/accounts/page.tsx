@@ -501,13 +501,26 @@ function InvestmentAccountsPageContent() {
           </CardContent>
         </Card>
       ) : (
-        /* Tiles View — premium glassmorphic redesign (Stage I palette) */
-        <div className="grid gap-5 sm:gap-6 md:grid-cols-2 xl:grid-cols-3">
+        /* Tiles View — premium glassmorphic redesign (Stage I palette).
+           Mobile: block flow + sticky-stacking cards (matches the
+           Properties tab, PRs #916/#918/#919). md:grid for desktop.
+           Block flow on mobile avoids the implicit-auto-grid overflow
+           (width match); each card is `position: sticky` pinned at
+           7.5rem (topbar 56px + SectionTabsRow 56px + 0.5rem gap) so its
+           full top clears the Properties/Investments/Assets strip before
+           the next card slides over it. Opaque backing
+           (bg-editorial-ivory) is needed because InvestmentAccountTile is
+           translucent. */
+        <div className="max-md:space-y-5 md:grid md:grid-cols-2 md:gap-6 xl:grid-cols-3">
           {accounts.map((account, idx) => {
             const totalValue = calculateTotalValue(account);
             return (
-              <InvestmentAccountTile
+              <div
                 key={account.id}
+                className="max-md:sticky max-md:overflow-hidden max-md:rounded-[22px] max-md:bg-editorial-ivory max-md:shadow-[0_-6px_24px_-8px_rgba(0,0,0,0.45)]"
+                style={{ top: `calc(7.5rem + ${idx * 0.75}rem)` }}
+              >
+              <InvestmentAccountTile
                 index={idx}
                 account={{
                   id: account.id,
@@ -526,6 +539,7 @@ function InvestmentAccountsPageContent() {
                 onEdit={() => handleEdit(account)}
                 onDelete={() => handleDelete(account.id)}
               />
+              </div>
             );
           })}
         </div>
