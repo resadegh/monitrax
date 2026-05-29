@@ -268,3 +268,88 @@ N/A — no `lib/tax-engine/*` touched, no financial calculation, no column on
 ### PR
 - Branch: `claude/reminders-tier2-state-LFNFt`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (R-Charts-1)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·StD — Phase R-Charts-1)
+- **Scope**: Editorial chart primitives + 3 real-data dashboard charts (labs preview)
+- **Description**: Built the editorial interactive-chart vocabulary and wired
+  three charts to live portfolio data behind a `/dashboard/labs/charts`
+  preview route: Asset Allocation donut, 6-month Cashflow bars, and per-entity
+  Net Value contribution bars. Grounded in the locked Stitch design
+  `dashboard-interactive-charts` (project 1859462351962811110). Net Worth Trend,
+  Spending Sparklines and Debt Freedom (the other 3 Stitch charts) are deferred
+  to R-Charts-2/3.
+
+### Files Created
+- `lib/calculations/entityValueBreakdown.ts` — canonical per-LegalEntity net
+  value aggregation. Reuses `calculateTotalAssets`/`calculateTotalLiabilities`
+  with the `ownerEntityId` filter (SSOT — per-entity figures reconcile to the
+  Net Worth tile). Drops zero-value entities; net value may be negative.
+- `app/api/dashboard/charts/route.ts` — dedicated `report.read` endpoint
+  returning chart-ready arrays (`assetAllocation` slices + `totalAssets`,
+  `cashflowBars` + `cashflowAvgNet`, `entityComparison`). Distinct concern from
+  `/api/dashboard/insights` (§12.4). ALL arithmetic server-side.
+- `components/editorial/charts/EditorialChartCard.tsx` — shared card shell.
+- `components/editorial/charts/EditorialChartTooltip.tsx` — styled popover wrapper.
+- `components/editorial/charts/EditorialDonutChart.tsx` — Recharts donut + legend.
+- `components/editorial/charts/EditorialBarChart.tsx` — grouped vertical bars.
+- `components/editorial/charts/EditorialEntityBars.tsx` — CSS diverging bars.
+- `components/editorial/charts/index.ts` — barrel.
+- `app/dashboard/labs/charts/page.tsx` — live-data preview route.
+
+### Files Modified
+- `docs/IMPLEMENTATION_PLAN.md` — R-Charts workstream: R-Charts-1 ticked,
+  R-Charts-2/3 + consumer-swap queued with triggers.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — editorial charts section.
+
+### Architecture decisions
+- **Two charts had ready data, one needed a new aggregation.** Asset allocation
+  comes from `snapshot.netWorth.assets`; cashflow bars from the existing
+  `getMoneyStoryTrend` monthly series. Entity comparison needed per-entity net
+  value, which the snapshot does not expose — so a NEW canonical function was
+  added in `lib/` (not inlined in the route), reusing the net-worth calculator's
+  `ownerEntityId` filter so the numbers stay traceable and consistent (financial
+  -adviser + architect lenses).
+- **Dedicated endpoint, not an `/insights` extension.** Charts are a distinct
+  concern and the per-entity aggregation adds query weight; keeping it off the
+  hot insights path until the charts graduate to the live dashboard. The
+  consumer-swap phase decides how to fold it in (§12.10).
+- **Components are presentational; all math is server-side.** Donut percentages
+  and cashflow average net are computed in the API so the chart components never
+  do dotted-property `+`/`-` or frequency conversion — Phase 41i.6b surface
+  linter: 0 new violations.
+- **Never red.** Negative cashflow/entity values render amber, per the editorial
+  rule (red reserved for destructive actions).
+
+### Build Status
+- [x] `npm ci` — dependencies installed (fresh container)
+- [x] `npm run lint:financial-surfaces` — 27 grandfathered, 0 new
+- [ ] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new editorial chart primitives)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — editorial chart suite section (primitives, tokens, scope)
+- `docs/IMPLEMENTATION_PLAN.md` — R-Charts-1 ticked, R-Charts-2/3 queued
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no `lib/tax-engine/*` touched, no reform-affected calculation. The new
+`entityValueBreakdown` aggregation reuses the existing net-worth calculator and
+adds no regime-dependent math; no column added to `Property`/`Investment`/`LegalEntity`.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)

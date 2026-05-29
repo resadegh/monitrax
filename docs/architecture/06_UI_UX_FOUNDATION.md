@@ -1307,6 +1307,35 @@ a subtle 1px translate + elevated shadow on hover, with a
 Barrel export at `components/editorial/index.ts` for clean consumer
 imports.
 
+### Chart primitives (`components/editorial/charts/`, Phase R-Charts-1, 2026-05-29)
+
+The interactive-chart vocabulary. All theme-aware via editorial-* CSS
+variables and **purely presentational** — every financial calculation is
+done server-side in `/api/dashboard/charts` so the components never trip
+the Phase 41i.6b financial-surface linter. Grounded in the locked Stitch
+design `dashboard-interactive-charts` (project 1859462351962811110).
+
+| Component | What it does |
+|---|---|
+| `EditorialChartCard` | Shared card shell — eyebrow + optional headline/sub + top-right slot (period pill / delta) + plot area + optional footer. Every chart sits in one. |
+| `EditorialChartTooltip` | Styled popover wrapper (ivory→navy flip, 1px divider, soft shadow, uppercase label row). Recharts v3 dropped `payload` from `TooltipProps`, so each chart defines a minimal local payload type and renders this card. |
+| `EditorialDonutChart` | Recharts `PieChart` donut + centred total + legend table. Slice palette: Property = sky, Investments (incl. super) = emerald, Cash = indigo, Other = muted. Slices ≤ $0 dropped. |
+| `EditorialBarChart` | Recharts grouped vertical bars — emerald earned vs amber spent (a two-tone comparison, not an alarm). Hidden Y axis, thin month X axis, rounded bar tops. |
+| `EditorialEntityBars` | CSS diverging horizontal bars for per-entity net value. Positive → emerald right; negative → amber left (never red). Geometry from local vars only (linter-safe). |
+
+Barrel export at `components/editorial/charts/index.ts`.
+
+**Data contract.** Charts consume the dedicated `/api/dashboard/charts`
+endpoint (a distinct concern from `/api/dashboard/insights`, §12.4). The
+per-entity figures come from the canonical
+`lib/calculations/entityValueBreakdown.ts`, which reuses
+`calculateTotalAssets`/`calculateTotalLiabilities` with the `ownerEntityId`
+filter — so the chart's numbers reconcile to the Net Worth tile (SSOT).
+
+**Preview.** `/dashboard/labs/charts` renders all three against live data
+with per-chart empty states. Consumer-swap onto `/dashboard` is a queued
+phase (see `IMPLEMENTATION_PLAN.md` 0·StD → R-Charts).
+
 ### Where this pattern replicates next
 
 - All six existing dashboard metric tiles (`Tile.tsx`) migrate to
