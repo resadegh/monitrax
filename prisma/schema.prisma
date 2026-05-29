@@ -1219,6 +1219,9 @@ model User {
   // Phase 12: User Preferences
   userPreference UserPreference?
 
+  // Phase 21.5 Tier 2: per-user reminder snooze/dismiss/done state
+  reminderStates ReminderState[]
+
   // Phase 28: Realistic Budget Integration
   householdProfile HouseholdProfile?
   budgetAnalyses   BudgetAnalysis[]
@@ -2568,6 +2571,13 @@ enum ExpenseMatchStatus {
   CREATED // Expense was created from this recurring payment
 }
 
+// Phase 21.5 Tier 2 — user action on a projected reminder.
+enum ReminderStatus {
+  SNOOZED // Hidden until snoozedUntil passes, then re-surfaces
+  DISMISSED // Hidden for this due-date cycle (re-surfaces when the renewal rolls over)
+  DONE // Marked handled for this due-date cycle (re-surfaces next cycle)
+}
+
 // =============================================================================
 // PHASE 13: UNIFIED TRANSACTION RECORD (UTR)
 // =============================================================================
@@ -3094,6 +3104,31 @@ model RecurringPayment {
   @@index([nextExpected])
   @@index([linkedExpenseId])
   @@map("recurring_payments")
+}
+
+/// Phase 21.5 Tier 2 — per-user snooze/dismiss/done state for projected reminders.
+/// Keyed by the canonical engine's synthetic reminder id (`${entityId}:${sourceType}`).
+/// ABSENCE of a row = ACTIVE (the default); a row exists only once the user has
+/// acted on a reminder, so the table stays small. `dueDate` records the cycle the
+/// action was taken against — the pure `applyReminderStates()` merge ignores a
+/// state once the live reminder's dueDate has moved on (the renewal rolled over),
+/// so a dismiss/done naturally resets each cycle and the reminder re-surfaces.
+/// No financial / CDR data lives here — only a synthetic key + status + dates.
+model ReminderState {
+  id           String         @id @default(uuid())
+  userId       String
+  reminderKey  String // engine synthetic id: `${entityId}:${sourceType}`
+  dueDate      DateTime // the due-date cycle this action applies to
+  status       ReminderStatus
+  snoozedUntil DateTime? // set only when status = SNOOZED
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reminderKey])
+  @@index([userId])
+  @@map("reminder_states")
 }
 
 // =============================================================================

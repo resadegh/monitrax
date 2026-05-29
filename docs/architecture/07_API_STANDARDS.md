@@ -922,5 +922,34 @@ date + a generic label — never balances, transactions, or account numbers.
 Consumed by `<RenewalsCard>` (Assets page + Home) + the per-property renewals
 block in the property detail dialog. Property producers (R3, 2026-05-29) cover
 council/water rates, land tax, building & contents insurance, strata, lease,
-and compliance cert. Tier 2/3 will extend the producer set (standalone
-insurance/personal docs) + add delivery (email/push).
+and compliance cert.
+
+**Tier 2 state (R1 PR1, 2026-05-29):** the GET feed now merges per-user
+snooze/dismiss/done state (via the pure engine `applyReminderStates`) and
+returns only the still-ACTIVE reminders. State auto-resets when a renewal rolls
+to its next cycle. Each returned reminder still has the shape above.
+
+## `POST /api/reminders/state` — set reminder action (Phase 21.5 Tier 2)
+
+Thin wrapper (§12.3); persists the user's action on one reminder. Guarded by
+`withPermission('entity.write')`. Holds no urgency/date logic — that stays in
+the engine. No financial/CDR data (§13.3): synthetic key + status + dates only;
+not audit-logged (UI-preference state, same class as banner-dismiss flags).
+
+Body:
+
+```json
+{
+  "reminderKey": "<entityId>:<sourceType>",
+  "dueDate": "2026-07-01T00:00:00.000Z",
+  "action": "snooze | dismiss | done | restore",
+  "snoozeDays": 7
+}
+```
+
+- `snooze` → hidden until `now + snoozeDays` (default 7, max 365), then re-surfaces.
+- `dismiss` / `done` → held for this `dueDate` cycle; re-surfaces when the renewal rolls over.
+- `restore` → clears state (back to ACTIVE); `dueDate`/`snoozeDays` not required.
+
+Tier 2 remaining: in-app bell/centre (PR2) + bank-detected bills feed (PR3).
+Tier 3 (email/push delivery) = R2.

@@ -186,4 +186,85 @@ only user-entered renewal fields; no existing data at risk.
 
 ### PR
 - Branch: `claude/property-renewals-LFNFt`
+- Status: Merged (PR #923) — prod deploy `dpl_3QSZLB6h...` READY.
+
+---
+
+## Session: reminders-tier2-state-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R1 Tier 2, PR1 of 3)
+- **Scope**: Reminders — persistence foundation (snooze/dismiss/done)
+- **Description**: First slice of R1 (Tier 2 in-app reminders, Reza-greenlit
+  2026-05-29). Adds per-user **snooze / dismiss / done** state on the existing
+  projected reminders and makes the `<RenewalsCard>` rows actionable — the
+  behaviour-psychology gap in Tier 1 (a reminder you can't clear becomes a nag,
+  not a help). PR2 (in-app bell/centre) and PR3 (bank-detected bills feed) build
+  on this layer; R2 (email/push delivery) sits on top of all three.
+
+  **Design (architect lens):** state is keyed by the engine's existing synthetic
+  id (`${entityId}:${sourceType}`) + the **due-date cycle** the action was taken
+  against. Absence of a row = ACTIVE, so the table only holds acted-upon
+  reminders. The merge ignores a state once the live reminder's `dueDate` moves
+  on — so marking "rego renewed" this year does NOT suppress next year's
+  reminder. The merge is a **pure** engine function (`applyReminderStates`), so
+  Prisma never leaks into the engine (§6.4).
+
+### Files Modified / Created
+- `prisma/schema.prisma` — new `ReminderStatus` enum + `ReminderState` model
+  (`@@unique([userId, reminderKey])`, `@@index([userId])`, `@@map("reminder_states")`)
+  + `User.reminderStates` back-relation.
+- `prisma/migrations/20260529120000_phase_21_5_tier2_reminder_state/migration.sql`
+  — additive: one `CREATE TYPE` + one `CREATE TABLE` (matches schema, §12.12).
+- `lib/reminders/reminderEngine.ts` — **pure** Tier 2 merge: `ReminderStateInput`
+  + `AnnotatedReminder` + `ReminderLiveState` types, `applyReminderStates()`
+  (due-date-cycle-aware, expired-snooze-aware), `visibleReminders()`.
+- `app/api/reminders/route.ts` — GET fetches `reminderState` rows + merges via
+  the engine; returns only still-ACTIVE reminders.
+- `app/api/reminders/state/route.ts` — **NEW.** `POST` snooze/dismiss/done/restore
+  (`withPermission('entity.write')`, thin wrapper, no audit — UI-preference state).
+- `components/reminders/RenewalsCard.tsx` — per-row action menu (snooze 7/30d ·
+  mark done · dismiss) via shadcn `DropdownMenu`; optimistic row removal; the
+  menu is a sibling of the row `<Link>` (no nested-interactive).
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 Tier 2 progress block +
+  §13 checklist line.
+- `docs/architecture/03_DATA_MODEL.md` — `ReminderState` table + property/asset
+  renewal sections.
+- `docs/architecture/07_API_STANDARDS.md` — GET state-merge note + `POST
+  /api/reminders/state` contract.
+- `docs/IMPLEMENTATION_PLAN.md` — R1 → 🟡 in flight, PR1 ✅, PR2/PR3 queued.
+
+### Build Status
+- [x] `prisma validate` — schema valid
+- [x] `prisma generate` — client regenerated
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations; no baseline shift)
+- [x] `next build` — ✓ Compiled successfully (`/api/reminders/state` route built)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+`POST /api/reminders/state` contains `prisma.reminderState.upsert` + `deleteMany`:
+1. **`where` clause matches:** `upsert` → `{ userId_reminderKey: { userId, reminderKey } }`;
+   `deleteMany` → `{ userId, reminderKey }`. Both scoped to the authed `userId` +
+   a synthetic key. The only rows that can match are reminder-state rows THIS
+   code path created.
+2. **Columns overwritten / rows deleted:** `upsert` rewrites only `status` /
+   `snoozedUntil` / `dueDate` — all owned exclusively by this code path, never
+   user-entered financial data. `deleteMany` (restore) removes only the user's
+   own state row (reverting to ACTIVE).
+3. **Guard:** `userId` from `withPermission` auth + the synthetic `reminderKey`
+   that only this code path ever writes. Schema change is additive (one enum +
+   one table) — no existing row touched.
+
+User confirmation: NOT REQUIRED — additive table + writes confined to
+this-code-path-owned UI-preference state, scoped to the authed user; no
+existing data at risk.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no `lib/tax-engine/*` touched, no financial calculation, no column on
+`Property`/`Investment`/`LegalEntity`. `ReminderState` is UI-preference state.
+
+### PR
+- Branch: `claude/reminders-tier2-state-LFNFt`
 - Status: Draft (pending review)
