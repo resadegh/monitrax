@@ -1,24 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { EditorialCard, Eyebrow } from '@/components/editorial';
 import Link from 'next/link';
 import {
   Building2,
   BarChart3,
   Landmark,
   Car,
-  TrendingUp,
-  TrendingDown,
-  ArrowRight,
   ChevronDown,
   ChevronUp,
   ChevronRight,
-  Wallet,
-  DollarSign,
   Receipt,
   Briefcase,
 } from 'lucide-react';
@@ -113,7 +107,7 @@ interface EntityCashflowSummaryProps {
 // Helper to format cashflow value with color
 function CashflowValue({ value, size = 'default' }: { value: number; size?: 'default' | 'large' }) {
   const isPositive = value >= 0;
-  const colorClass = isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  const colorClass = isPositive ? 'text-editorial-emerald' : 'text-editorial-amber';
   const sizeClass = size === 'large' ? 'text-lg font-bold' : 'text-sm font-semibold';
 
   return (
@@ -162,18 +156,18 @@ function EntityRow({
     <div
       className={`p-3 rounded-lg border transition-colors ${
         isPositive
-          ? 'bg-green-50/50 dark:bg-green-950/20 border-green-100 dark:border-green-900'
-          : 'bg-red-50/50 dark:bg-red-950/20 border-red-100 dark:border-red-900'
+          ? 'bg-editorial-emerald/5 border-editorial-emerald/30'
+          : 'bg-editorial-amber/5 border-editorial-amber/30'
       }`}
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className={`p-2 rounded-lg flex-shrink-0 ${isPositive ? 'bg-green-100 dark:bg-green-900/50' : 'bg-red-100 dark:bg-red-900/50'}`}>
-            <Icon className={`h-4 w-4 ${isPositive ? 'text-green-600' : 'text-red-600'}`} />
+          <div className={`p-2 rounded-lg flex-shrink-0 ${isPositive ? 'bg-editorial-emerald/10' : 'bg-editorial-amber/10'}`}>
+            <Icon className={`h-4 w-4 ${isPositive ? 'text-editorial-emerald' : 'text-editorial-amber'}`} />
           </div>
           <div className="min-w-0">
             <p className="font-medium text-sm truncate">{name}</p>
-            {subtitle && <p className="text-xs text-muted-foreground truncate">{subtitle}</p>}
+            {subtitle && <p className="text-xs text-editorial-slate truncate">{subtitle}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -181,20 +175,20 @@ function EntityRow({
           {details && (
             <button
               onClick={handleExpandClick}
-              className="p-1 hover:bg-muted rounded"
+              className="p-1 hover:bg-editorial-warm rounded"
               aria-label={expanded ? 'Collapse details' : 'Expand details'}
             >
               {expanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                <ChevronUp className="h-4 w-4 text-editorial-slate" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-editorial-slate" />
               )}
             </button>
           )}
           {href && (
             <Link href={href} onClick={(e) => e.stopPropagation()}>
-              <button className="p-1 hover:bg-muted rounded" aria-label="View details">
-                <ChevronRight className="h-4 w-4 text-muted-foreground" />
+              <button className="p-1 hover:bg-editorial-warm rounded" aria-label="View details">
+                <ChevronRight className="h-4 w-4 text-editorial-slate" />
               </button>
             </Link>
           )}
@@ -221,39 +215,36 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
 
   if (!hasEntities) {
     return (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Wallet className="h-5 w-5 text-primary" />
-            Cashflow by Entity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-6">
-            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              Add properties, investments, or loans to see entity-level cashflow
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <EditorialCard hover aria-label="Cashflow by entity">
+        <Eyebrow>Cashflow by Entity</Eyebrow>
+        <div className="mt-6 py-4 text-center">
+          <Building2 className="mx-auto mb-3 h-10 w-10 text-editorial-slate/50" />
+          <p className="text-[13px] text-editorial-slate">
+            Add properties, investments, or loans to see entity-level cashflow.
+          </p>
+        </div>
+      </EditorialCard>
     );
   }
 
+  const totalTone = summary.totalEntityCashflow >= 0 ? 'emerald' : 'amber';
+
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center justify-between text-lg">
-          <div className="flex items-center gap-2">
-            <Wallet className="h-5 w-5 text-primary" />
-            Cashflow by Entity
-          </div>
-          <Badge variant="outline" className={summary.totalEntityCashflow >= 0 ? 'text-green-600' : 'text-red-600'}>
-            {summary.totalEntityCashflow >= 0 ? '+' : ''}{formatCurrency(summary.totalEntityCashflow)}/mo
-          </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
+    <EditorialCard hover aria-label="Cashflow by entity">
+      <header className="flex items-center justify-between">
+        <Eyebrow>Cashflow by Entity</Eyebrow>
+        <span
+          className={
+            totalTone === 'emerald'
+              ? 'rounded-md bg-editorial-emerald/10 px-2 py-0.5 text-[12px] font-medium tabular-nums-data text-editorial-emerald'
+              : 'rounded-md bg-editorial-amber/10 px-2 py-0.5 text-[12px] font-medium tabular-nums-data text-editorial-amber'
+          }
+        >
+          {summary.totalEntityCashflow >= 0 ? '+' : ''}
+          {formatCurrency(summary.totalEntityCashflow)}/mo
+        </span>
+      </header>
+      <div className="mt-4">
         <Tabs defaultValue="income" className="w-full">
           <TabsList className="grid w-full grid-cols-6 h-auto">
             <TabsTrigger value="income" className="text-xs px-1 py-1.5">
@@ -287,14 +278,14 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {income && income.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     {income.filter(i => i.isRecurring).length} recurring source{income.filter(i => i.isRecurring).length !== 1 ? 's' : ''}
                   </span>
                   <span className="font-semibold">
                     Net: <CashflowValue value={summary.incomeNet || 0} />
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                <p className="text-xs text-editorial-slate bg-editorial-warm p-2 rounded">
                   Rental income is shown under Properties. Investment income (dividends/distributions) is shown under Investments.
                 </p>
                 {income.map((inc) => (
@@ -308,12 +299,12 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                     details={
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Gross Monthly</span>
-                          <span className="text-green-600">+{formatCurrency(inc.grossMonthly)}</span>
+                          <span className="text-editorial-slate">Gross Monthly</span>
+                          <span className="text-editorial-emerald">+{formatCurrency(inc.grossMonthly)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Net (after tax)</span>
-                          <span className="text-green-600">+{formatCurrency(inc.netMonthly)}</span>
+                          <span className="text-editorial-slate">Net (after tax)</span>
+                          <span className="text-editorial-emerald">+{formatCurrency(inc.netMonthly)}</span>
                         </div>
                         {inc.isRecurring && (
                           <Badge variant="outline" className="mt-1 text-xs">Recurring</Badge>
@@ -324,7 +315,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 <p>No standalone income sources added yet</p>
                 <p className="text-xs mt-1">Rental and investment income are tracked in their respective tabs</p>
               </div>
@@ -336,14 +327,14 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {expenses && expenses.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     {expenses.length} categor{expenses.length !== 1 ? 'ies' : 'y'}
                   </span>
                   <span className="font-semibold">
                     Total: <CashflowValue value={-(summary.expensesNet || 0)} />
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                <p className="text-xs text-editorial-slate bg-editorial-warm p-2 rounded">
                   Property expenses are under Properties. Asset costs are under Assets.
                 </p>
                 {expenses.map((expense) => (
@@ -357,7 +348,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 <p>No standalone expenses added yet</p>
                 <p className="text-xs mt-1">Property and asset expenses are tracked in their respective tabs</p>
               </div>
@@ -369,7 +360,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {properties.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     {positiveProperties}/{properties.length} positive cashflow
                   </span>
                   <span className="font-semibold">
@@ -387,16 +378,16 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                     details={
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Rental Income</span>
-                          <span className="text-green-600">+{formatCurrency(property.monthlyIncome)}</span>
+                          <span className="text-editorial-slate">Rental Income</span>
+                          <span className="text-editorial-emerald">+{formatCurrency(property.monthlyIncome)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Expenses</span>
-                          <span className="text-red-600">-{formatCurrency(property.monthlyExpenses)}</span>
+                          <span className="text-editorial-slate">Expenses</span>
+                          <span className="text-editorial-amber">-{formatCurrency(property.monthlyExpenses)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Loan Repayments</span>
-                          <span className="text-red-600">-{formatCurrency(property.monthlyLoanRepayments)}</span>
+                          <span className="text-editorial-slate">Loan Repayments</span>
+                          <span className="text-editorial-amber">-{formatCurrency(property.monthlyLoanRepayments)}</span>
                         </div>
                       </>
                     }
@@ -404,7 +395,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 No properties added yet
               </div>
             )}
@@ -415,7 +406,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {investments.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     {positiveInvestments}/{investments.length} generating income
                   </span>
                   <span className="font-semibold">
@@ -433,17 +424,17 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                     details={
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Dividends</span>
-                          <span className="text-green-600">+{formatCurrency(investment.monthlyDividends)}</span>
+                          <span className="text-editorial-slate">Dividends</span>
+                          <span className="text-editorial-emerald">+{formatCurrency(investment.monthlyDividends)}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Distributions</span>
-                          <span className="text-green-600">+{formatCurrency(investment.monthlyDistributions)}</span>
+                          <span className="text-editorial-slate">Distributions</span>
+                          <span className="text-editorial-emerald">+{formatCurrency(investment.monthlyDistributions)}</span>
                         </div>
                         {investment.monthlyExpenses > 0 && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Fees/Expenses</span>
-                            <span className="text-red-600">-{formatCurrency(investment.monthlyExpenses)}</span>
+                            <span className="text-editorial-slate">Fees/Expenses</span>
+                            <span className="text-editorial-amber">-{formatCurrency(investment.monthlyExpenses)}</span>
                           </div>
                         )}
                       </>
@@ -452,7 +443,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 No investment accounts added yet
               </div>
             )}
@@ -463,13 +454,13 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {loans.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     {loans.filter(l => l.isDeductible).length} tax-deductible
                   </span>
                 </div>
                 {/* Note about property loans */}
                 {loans.some(l => l.isPropertyLinked) && (
-                  <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+                  <p className="text-xs text-editorial-slate bg-editorial-warm p-2 rounded">
                     Note: Property loan repayments are already included in property cashflow above.
                   </p>
                 )}
@@ -488,21 +479,21 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                     details={
                       <>
                         <div className="flex justify-between">
-                          <span className="text-muted-foreground">Monthly Repayment</span>
-                          <span className="text-red-600">-{formatCurrency(loan.monthlyRepayment)}</span>
+                          <span className="text-editorial-slate">Monthly Repayment</span>
+                          <span className="text-editorial-amber">-{formatCurrency(loan.monthlyRepayment)}</span>
                         </div>
                         {loan.isDeductible && loan.taxBenefit > 0 && (
                           <div className="flex justify-between">
-                            <span className="text-muted-foreground">Tax Benefit (est.)</span>
-                            <span className="text-green-600">+{formatCurrency(loan.taxBenefit)}</span>
+                            <span className="text-editorial-slate">Tax Benefit (est.)</span>
+                            <span className="text-editorial-emerald">+{formatCurrency(loan.taxBenefit)}</span>
                           </div>
                         )}
                         <div className="flex justify-between font-medium">
                           <span>Net Impact</span>
-                          <span className="text-red-600">-{formatCurrency(loan.netCashflowImpact)}</span>
+                          <span className="text-editorial-amber">-{formatCurrency(loan.netCashflowImpact)}</span>
                         </div>
                         {loan.isPropertyLinked && (
-                          <p className="text-xs text-muted-foreground mt-2 italic">
+                          <p className="text-xs text-editorial-slate mt-2 italic">
                             Already counted in property cashflow
                           </p>
                         )}
@@ -512,7 +503,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 No loans added yet
               </div>
             )}
@@ -523,7 +514,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             {assets.length > 0 ? (
               <>
                 <div className="flex items-center justify-between text-sm mb-2">
-                  <span className="text-muted-foreground">
+                  <span className="text-editorial-slate">
                     Running costs for {assets.length} asset{assets.length !== 1 ? 's' : ''}
                   </span>
                   <span className="font-semibold">
@@ -542,7 +533,7 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
                 ))}
               </>
             ) : (
-              <div className="text-center py-4 text-sm text-muted-foreground">
+              <div className="text-center py-4 text-sm text-editorial-slate">
                 No personal assets with running costs
               </div>
             )}
@@ -554,32 +545,32 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
           <div className="grid grid-cols-2 gap-2 text-xs">
             {(summary.incomeNet || 0) > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Income (salary, etc.)</span>
+                <span className="text-editorial-slate">Income (salary, etc.)</span>
                 <CashflowValue value={summary.incomeNet || 0} />
               </div>
             )}
             {(summary.expensesNet || 0) > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expenses (living costs)</span>
+                <span className="text-editorial-slate">Expenses (living costs)</span>
                 <CashflowValue value={-(summary.expensesNet || 0)} />
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Properties (incl. loans)</span>
+              <span className="text-editorial-slate">Properties (incl. loans)</span>
               <CashflowValue value={summary.propertiesNet} />
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Investments</span>
+              <span className="text-editorial-slate">Investments</span>
               <CashflowValue value={summary.investmentsNet} />
             </div>
             {summary.standaloneLoansCost > 0 && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Standalone Loans</span>
+                <span className="text-editorial-slate">Standalone Loans</span>
                 <CashflowValue value={-summary.standaloneLoansCost} />
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Assets (running costs)</span>
+              <span className="text-editorial-slate">Assets (running costs)</span>
               <CashflowValue value={summary.assetsNet} />
             </div>
           </div>
@@ -588,8 +579,8 @@ export function EntityCashflowSummary({ data, onEntityClick }: EntityCashflowSum
             <CashflowValue value={summary.totalEntityCashflow} size="large" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </EditorialCard>
   );
 }
 
