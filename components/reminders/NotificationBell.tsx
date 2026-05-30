@@ -18,7 +18,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Bell, Car, ShieldCheck, Building2, Landmark, Link2, Pin, Download, Clock, X, Plus } from 'lucide-react';
+import { Bell, Car, ShieldCheck, Building2, Landmark, Link2, Pin, Download, Receipt, Clock, X, Plus } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,7 @@ const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   CONSENT: Link2,
   CUSTOM: Pin,
   IMPORT: Download,
+  BILL: Receipt,
 };
 
 export function NotificationBell() {

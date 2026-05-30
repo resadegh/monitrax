@@ -903,8 +903,8 @@ Response:
       "id": "<entityId>:<sourceType>",
       "entityId": "...",
       "entityName": "Toyota Camry",
-      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT | CUSTOM | IMPORT",
-      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT | CUSTOM | IMPORT_DUE",
+      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT | CUSTOM | IMPORT | BILL",
+      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT | CUSTOM | IMPORT_DUE | BILL_DUE",
       "label": "Registration",
       "provider": "NRMA | null",
       "dueDate": "2026-07-01T00:00:00.000Z",
@@ -963,8 +963,17 @@ Body: `{ "title": "Call the accountant", "dueDate": "2026-08-15", "note": "FY26"
 → `201` with `{ id, title, dueDate, note }`.
 
 Edit / hard-delete / a manage view are a fast-follow (Dismiss removes from view
-in the meantime). Tier 2 remaining: bank-detected bills feed (PR3). Tier 3
-(email/push delivery) = R2.
+in the meantime).
+
+**Bank-detected bills feed (R1 PR3, 2026-05-29):** the feed also emits `BILL_DUE`
+reminders from existing `RecurringPayment` detection (`computeBillReminders`) —
+bills due within ~a week or recently overdue, active + not paused, linking to
+`/recurring`. **Opt-in**: only emitted when the user's `pushBillReminders`
+preference is on (default off — the previously-dead Settings toggle now has a
+read effect; keeps the high-volume feed from flooding the bell uninvited). The
+row subtitle carries amount + cadence — the user's own data, returned in-app
+only, never logged (CDR §13.3). **R1 Tier 2 is now complete**; Tier 3
+(email/push delivery, preference-gated) = R2.
 
 **Import-cadence reminder (R7, 2026-05-29):** the `GET /api/reminders` feed also
 emits a single `IMPORT_DUE` reminder ("time to import your latest transactions")
