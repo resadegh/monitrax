@@ -530,3 +530,70 @@ Docs updated in this PR:
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (R-Charts consumer swap)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·StD — Phase R-Charts-1 consumer swap)
+- **Scope**: `/dashboard` live page — Asset Allocation + Entity Comparison
+- **Description**: Wired two of the three R-Charts-1 editorial chart primitives onto
+  the live dashboard. Asset Allocation card and the Phase-3/4 row's Entity
+  Comparison both now consume `/api/dashboard/charts`. Cashflow Bars remains in
+  the labs preview only — its placement on the dashboard is a separate UX call
+  (adding a new section would bloat the page; replacing the KPI Cash Flow
+  sparkline would lose the 12-month context). Defer to a follow-up decision.
+
+### Files Modified
+- `app/dashboard/page.tsx`:
+  - Added `charts` state + parallel fetch of `/api/dashboard/charts` (now 3
+    parallel calls; §12.10 budget still met).
+  - Replaced the Asset Allocation `Card` (donut + manual progress-bar legend
+    with hard-coded blue/green/purple/orange) with `EditorialChartCard` +
+    `EditorialDonutChart` (sky/emerald/indigo/muted, slice arithmetic
+    server-side).
+  - Replaced `EntityComparisonChart` (cashflow-by-entity) with
+    `EditorialChartCard` + `EditorialEntityBars` (net-value-by-entity). The
+    entity-cashflow story remains covered by `EntityCashflowSummary` in the
+    earlier Debt Quality section — no information loss.
+  - **Dead code removed**: local `DonutChart` (~80 lines, SVG) and local
+    `ProgressBar` (~25 lines), both orphaned by the swap. Also removed
+    `getAssetAllocationData` helper.
+  - Removed imports of `EntityComparisonChart` + `buildEntityComparisonData`
+    from `Phase2Enhancements` (now orphaned exports — see dead-code backlog).
+- `.audit/financial-math-baseline.json`:
+  - Line numbers shifted for 7 pre-existing entries due to upstream deletions
+    (same expressions, same violations — purely line-number drift; no new
+    suppressions).
+
+### Architecture decisions
+- **Three parallel calls, not endpoint consolidation.** Keeping
+  `/api/dashboard/charts` separate from `/insights` preserves the labs route
+  contract and the §12.4 "one concern per endpoint" rule. The dashboard's
+  existing two-call Promise.all extends to three; no perf regression.
+- **Cashflow Bars deferred.** Restraint over richness (designer + behaviour
+  psychologist lens) — adding a new section would lengthen the dashboard;
+  placement is a separate decision worth its own review.
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 27 grandfathered (baseline line
+      numbers updated for upstream drift), 0 new
+- [x] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (dashboard chart sections)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — R-Charts consumer-swap (partial) ticked; dead-code backlog updated
+- `docs/changelog/CHANGELOG_2026_05_29.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — UI consumer swap; no `lib/tax-engine/*`, no financial calculation, no
+schema change, no AI tool, no per-asset tax UI.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)
