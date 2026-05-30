@@ -1,6 +1,6 @@
 /**
  * Editorial charts barrel — the interactive chart vocabulary for the
- * internal `/dashboard/*` surfaces. Workstream R-Charts-1.
+ * internal `/dashboard/*` surfaces. Workstream R-Charts-1 + R-Charts-2.
  *
  * Primitives:
  *   1. EditorialChartCard    — shared card shell (eyebrow + headline + slot)
@@ -8,6 +8,7 @@
  *   3. EditorialDonutChart   — asset allocation donut + legend
  *   4. EditorialBarChart     — grouped vertical bars (earned vs spent)
  *   5. EditorialEntityBars   — horizontal diverging bars (per-entity net value)
+ *   6. EditorialLineChart    — bezier area chart (R-Charts-2 net-worth trend)
  *
  * All charts are theme-aware via the editorial-* CSS variables and pure
  * presentational — every financial calculation is done server-side in
@@ -36,3 +37,6 @@ export type { EditorialBarChartProps, CashflowBar } from './EditorialBarChart';
 
 export { EditorialEntityBars } from './EditorialEntityBars';
 export type { EditorialEntityBarsProps, EntityBar } from './EditorialEntityBars';
+
+export { EditorialLineChart } from './EditorialLineChart';
+export type { EditorialLineChartProps, NetWorthLinePoint } from './EditorialLineChart';

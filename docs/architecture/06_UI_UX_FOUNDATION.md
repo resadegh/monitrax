@@ -1322,6 +1322,7 @@ design `dashboard-interactive-charts` (project 1859462351962811110).
 | `EditorialDonutChart` | Recharts `PieChart` donut + centred total + legend table. Slice palette: Property = sky, Investments (incl. super) = emerald, Cash = indigo, Other = muted. Slices ≤ $0 dropped. |
 | `EditorialBarChart` | Recharts grouped vertical bars — emerald earned vs amber spent (a two-tone comparison, not an alarm). Hidden Y axis, thin month X axis, rounded bar tops. |
 | `EditorialEntityBars` | CSS diverging horizontal bars for per-entity net value. Positive → emerald right; negative → amber left (never red). Geometry from local vars only (linter-safe). |
+| `EditorialLineChart` | Recharts bezier `<AreaChart>` + emerald area fill + month-label X axis + styled tooltip. Powers the Net Worth Trend tile (R-Charts-2). **Honesty contract**: shows an empty-state placeholder when <2 points — never invents history. |
 
 Barrel export at `components/editorial/charts/index.ts`.
 

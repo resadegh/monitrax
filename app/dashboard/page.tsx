@@ -56,7 +56,8 @@ import {
   calculateLinkageHealthStatus,
   QuickActionsBar,
 } from '@/components/dashboard/Phase2Enhancements';
-import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
+// NetWorthTrend (legacy, Math.random-backfilled) deleted in R-Charts-2 —
+// replaced by EditorialLineChart reading real `NetWorthSnapshot` data.
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
 import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
@@ -70,8 +71,10 @@ import {
   EditorialChartCard,
   EditorialDonutChart,
   EditorialEntityBars,
+  EditorialLineChart,
   type AllocationSlice,
   type EntityBar,
+  type NetWorthLinePoint,
 } from '@/components/editorial/charts';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
@@ -161,13 +164,20 @@ interface DashboardInsights {
   };
 }
 
-// Mirrored from /api/dashboard/charts (R-Charts-1 consumer swap, 2026-05-29).
-// Pure passthrough; all chart arithmetic (pct, average net) is done server-side.
+// Mirrored from /api/dashboard/charts. Pure passthrough; all chart
+// arithmetic (pct, average net, history delta) is done server-side.
+// Extended for R-Charts-2 (2026-05-30) with `netWorthTrend`.
 interface DashboardCharts {
   assetAllocation: { slices: AllocationSlice[]; totalAssets: number };
   cashflowBars: Array<{ label: string; earned: number; spent: number }>;
   cashflowAvgNet: number;
   entityComparison: EntityBar[];
+  netWorthTrend: {
+    points: NetWorthLinePoint[];
+    deltaAbsolute: number;
+    deltaPct: number;
+    currentNetWorth: number;
+  };
 }
 
 interface PortfolioSnapshot {
@@ -786,13 +796,26 @@ export default function DashboardPage() {
 
           {/* Phase 3 & 4: Net Worth Trend & Entity Comparison */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Phase 3: Net Worth Trend */}
-            <NetWorthTrend
-              data={generateNetWorthTrendData(
-                snapshot.netWorth,
-                snapshot.cashflow.monthlyNetCashflow
-              )}
-            />
+            {/* Net Worth Trend — editorial bezier area chart reading the
+                honest monthly snapshot store (R-Charts-2). Replaces the
+                prior simulated `generateNetWorthTrendData` (Math.random).
+                The chart shows an empty state until ≥2 months of recorded
+                snapshots accrue — never invents history. */}
+            <EditorialChartCard
+              eyebrow="Net Worth"
+              headline={
+                charts
+                  ? formatCurrency(charts.netWorthTrend.currentNetWorth, { abbreviate: true })
+                  : undefined
+              }
+              sub={
+                charts && charts.netWorthTrend.points.length >= 2
+                  ? `${charts.netWorthTrend.deltaPct >= 0 ? '+' : ''}${charts.netWorthTrend.deltaPct}% past ${charts.netWorthTrend.points.length} months`
+                  : 'Trend unlocks after 2 months of activity'
+              }
+            >
+              <EditorialLineChart data={charts?.netWorthTrend.points ?? []} />
+            </EditorialChartCard>
 
             {/* Entity Value Contribution — net value owned by each
                 LegalEntity (assets − liabilities per ownerEntityId).
