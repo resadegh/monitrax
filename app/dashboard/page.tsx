@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
-import { StatCard } from '@/components/StatCard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +48,6 @@ import {
 import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
 import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
 import {
-  CalculationTooltip,
   InvestmentIncomeDisplay,
   calculateInvestmentIncome,
   LinkageHealthIndicator,
@@ -67,6 +65,7 @@ import {
   SAVING_RATE_ZONES,
   LVR_ZONES,
 } from '@/components/editorial/kpi';
+import { PairedMetricCard } from '@/components/editorial';
 import {
   EditorialChartCard,
   EditorialDonutChart,
@@ -611,31 +610,36 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Primary Metrics Row - Clickable for details with calculation tooltips */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
-              <CalculationTooltip
-                title="Net Worth Calculation"
-                formula="Total Assets - Total Liabilities"
-                components={[
-                  { label: 'Properties', value: snapshot.assets.properties.totalValue, color: 'blue' },
-                  { label: 'Accounts', value: snapshot.assets.accounts.totalValue, color: 'green', operator: '+' },
-                  { label: 'Investments', value: snapshot.assets.investments.totalValue, color: 'purple', operator: '+' },
-                  { label: 'Personal Assets', value: snapshot.assets.personalAssets?.totalValue || 0, operator: '+' },
-                  { label: 'Loans', value: snapshot.totalLiabilities, color: 'red', operator: '-' },
-                ]}
-                result={snapshot.netWorth}
-                resultLabel="Net Worth"
-              >
-                <StatCard
-                  title="Net Worth"
-                  value={formatCompactCurrency(snapshot.netWorth)}
-                  description={`${formatCompactCurrency(snapshot.totalAssets)} assets - ${formatCompactCurrency(snapshot.totalLiabilities)} debt`}
-                  icon={Wallet}
-                  variant="purple"
-                />
-              </CalculationTooltip>
-            </div>
+          {/* Net Worth — editorial PairedMetricCard (Copilot Assets / Debts
+              split). R4 (2026-05-30) elevated Net Worth out of the 6-tile
+              metrics row into its own hero pair: gross Assets on the left,
+              gross Debts on the right, with the net implicit from the
+              difference (full calc still in the click-through detail modal).
+              Surfaces both gross numbers in line with the financial-adviser
+              lens (you can't manage leverage you can't see). */}
+          <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
+            <PairedMetricCard
+              ariaLabel="Net worth — assets and debts"
+              left={{
+                label: 'Assets',
+                value: formatCompactCurrency(snapshot.totalAssets),
+                helper: `${snapshot.assets.properties.count} properties · ${snapshot.assets.accounts.count} accounts · ${snapshot.assets.investments.count} investments`,
+                emphasis: true,
+              }}
+              right={{
+                label: 'Debts',
+                value: formatCompactCurrency(snapshot.totalLiabilities),
+                helper: `${snapshot.liabilities.loans.count} ${
+                  snapshot.liabilities.loans.count === 1 ? 'loan' : 'loans'
+                } · ${snapshot.gearing.portfolioLVR.toFixed(0)}% portfolio LVR`,
+              }}
+            />
+          </div>
+
+          {/* Primary Metrics Row — 5 editorial KPI tiles (Cash Flow, Income,
+              Outgoings, Saving Rate, LVR). Net Worth moved out to the paired
+              hero above (R4). */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {/* Monthly Cash Flow — Variant A sparkline (R-KPI 2026-05-28).
                 Drill-down to the detail modal preserved via the onClick
                 wrapper; CalculationTooltip + period toggle dropped (the
