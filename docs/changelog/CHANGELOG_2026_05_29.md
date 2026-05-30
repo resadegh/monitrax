@@ -597,3 +597,71 @@ schema change, no AI tool, no per-asset tax UI.
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: reminders-import-cadence-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R7-PR1, new reminder producer)
+- **Scope**: Reminders — transaction-import cadence nudge
+- **Description**: A recurring (~monthly) reminder nudging users to import their
+  latest bank transactions, so their data — and every number derived from it —
+  stays current. Reza's idea (2026-05-29), slotted onto the reminder engine
+  built this session rather than a bespoke nudge.
+
+  **Why it matters (financial-adviser + architect lenses):** Basiq (the auto
+  bank feed) is OFF by default (`lib/featureFlags/basiqGate.ts`), so manual
+  CSV/QIF/OFX import is the primary data path for essentially every user. With
+  nothing prompting a refresh, cashflow / budget / health-score / the bills feed
+  all silently drift stale. This is the most foundational TRAIL-stage-Track loop.
+
+  **Design:** a new engine producer `computeImportReminder` — NOT a new nudge
+  component (that's the `StaleBalanceNudge` parallel-implementation trap).
+  Emits ONE `IMPORT_DUE` reminder per user, **data-gated not toggle-gated**:
+  only fires for users with a non-Basiq account whose data is ~a month stale;
+  auto-suppressed for fully Basiq-fed users. Rides the existing feed + bell +
+  card + `ReminderState` — importing advances `ImportBatch.dateRangeEnd`, so the
+  due-date cycle moves forward and the reminder auto-clears, returning next
+  cycle. Warm copy ("Up to date through 30 Apr 2026"), never shaming. **No
+  schema change.**
+
+  **Scope corrected (Reza 2026-05-29): "this should be only a reminder, not a
+  new import engine."** R7 = the reminder, which links to the EXISTING
+  `ImportWizard` (`/dashboard/balances?action=import`). The heavier import-guide
+  idea (date-range pre-fill + QIF how-to) is parked — if revived it's at most
+  light copy on the existing wizard, never a parallel import engine (§12.1/§12.4).
+
+### Files Modified
+- `lib/reminders/reminderEngine.ts` — `IMPORT` category + `IMPORT_DUE` sourceType
+  + `ImportCadenceSource` + `computeImportReminder` producer (short surfacing
+  window so fresh importers aren't nagged early) + `IMPORT_CADENCE_DAYS`; wired
+  into `computeAllReminders`. Header updated.
+- `app/api/reminders/route.ts` — feed fans out `prisma.importBatch.aggregate`
+  (`_max.dateRangeEnd`, COMPLETED/PARTIAL) + `prisma.account` sources; computes
+  the `importCadence` source (manual-account gate + earliest-manual-account).
+- `components/reminders/NotificationBell.tsx`, `RenewalsCard.tsx` — `IMPORT` →
+  `Download` glyph in `CATEGORY_ICON`.
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 R7-PR1 + §13 line.
+- `docs/architecture/07_API_STANDARDS.md` — `IMPORT`/`IMPORT_DUE` enums + producer note.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — import-cadence reminder note.
+- `docs/IMPLEMENTATION_PLAN.md` — new R7 row (PR1 ✅, PR2 guide queued).
+
+### Build Status
+- [x] `prisma generate` — client regenerated (no schema change)
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — read-only producer. No schema change, no Prisma writes (the feed route
+only reads: `importBatch.aggregate` + `account.findMany`).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no tax-engine / financial calc / schema column touched.
+
+### PR
+- Branch: `claude/reminders-import-cadence-LFNFt`
+- Status: Draft (pending review)

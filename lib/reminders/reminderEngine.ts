@@ -18,7 +18,9 @@
  *   - Bank-feed / CDR consent expiry                         (Account/CDRConsent.consentExpiresAt)
  *
  * Tier 2 also projects user-created custom reminders (`computeCustomReminders`,
- * R1 PR2b) through the same feed + state machinery.
+ * R1 PR2b) and the transaction-import-cadence nudge (`computeImportReminder`,
+ * R7 — "time to import your latest transactions") through the same feed + state
+ * machinery.
  *
  * Tier 2/3 extend this engine with: (a) term-deposit maturity, standalone
  * insurance, personal-document expiry as further producers; (b) persisted
@@ -47,6 +49,16 @@ export const UPCOMING_WINDOW_DAYS = 60;
  */
 export const LONG_LEAD_UPCOMING_WINDOW_DAYS = 90;
 
+/**
+ * Transaction-import cadence (R7): nudge ~monthly. The reminder is "due" this
+ * many days after the data currently runs to, and only surfaces inside a short
+ * window around that — so a user who imported recently isn't nagged 3 weeks
+ * early, while a user a month behind is reminded.
+ */
+export const IMPORT_CADENCE_DAYS = 30;
+const IMPORT_LEAD_DAYS = 7;
+const IMPORT_UPCOMING_WINDOW_DAYS = 14;
+
 export type ReminderSourceType =
   | 'VEHICLE_REGISTRATION'
   | 'VEHICLE_CTP'
@@ -61,10 +73,11 @@ export type ReminderSourceType =
   | 'PROPERTY_COMPLIANCE'
   | 'LOAN_FIXED_EXPIRY'
   | 'BANK_CONSENT'
-  | 'CUSTOM';
+  | 'CUSTOM'
+  | 'IMPORT_DUE';
 
 /** Broad category — drives icon/colour grouping + the "act here" href. */
-export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT' | 'CUSTOM';
+export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT' | 'CUSTOM' | 'IMPORT';
 
 /**
  * Urgency tiers, ordered most→least pressing. Drives colour + sort order.
@@ -192,6 +205,20 @@ export interface CustomReminderSource {
   dueDate?: string | Date | null;
   /** Optional free-text note shown as the row subtitle. */
   note?: string | null;
+}
+
+/**
+ * Transaction-import cadence (Phase 21.5 R7). Drives the "time to import your
+ * latest transactions" reminder for users who rely on manual import (Basiq off,
+ * or a non-feed account). One reminder per user, not per entity.
+ */
+export interface ImportCadenceSource {
+  /** Latest transaction date the user has imported (max ImportBatch.dateRangeEnd). */
+  lastImportedThrough?: string | Date | null;
+  /** Earliest non-Basiq account creation — anchors the nudge when nothing imported yet. */
+  earliestManualAccountCreatedAt?: string | Date | null;
+  /** Whether the user has any account not on an automatic feed (i.e. relies on import). */
+  hasManualAccounts: boolean;
 }
 
 /**
@@ -447,6 +474,51 @@ export function computeCustomReminders(
   return sortReminders(out);
 }
 
+/**
+ * Project the transaction-import-cadence reminder (R7). Returns at most one
+ * reminder, and only for users who rely on manual import. A short surfacing
+ * window means it appears as their data approaches/passes a month stale, not
+ * weeks early. The import action advances `lastImportedThrough`, so the
+ * due-date cycle moves forward and any prior dismiss/done auto-resets — i.e.
+ * importing makes the reminder go away, and it returns next cycle.
+ */
+export function computeImportReminder(
+  src: ImportCadenceSource,
+  opts: ComputeOpts = {}
+): RenewalReminder[] {
+  const now = opts.now ?? new Date();
+  if (!src.hasManualAccounts) return []; // Basiq-fed / no accounts → nothing to import
+
+  const lastThrough = toDate(src.lastImportedThrough);
+  const anchor = lastThrough ?? toDate(src.earliestManualAccountCreatedAt);
+  if (!anchor) return []; // no accounts yet → don't nag
+
+  const due = new Date(anchor.getTime() + IMPORT_CADENCE_DAYS * MS_PER_DAY);
+  const daysUntilDue = daysUntil(due, now);
+
+  return [
+    {
+      id: 'transactions:IMPORT_DUE',
+      entityId: 'transactions',
+      entityName: 'Your transactions',
+      category: 'IMPORT',
+      sourceType: 'IMPORT_DUE',
+      label: 'Time to import',
+      provider: lastThrough
+        ? `Up to date through ${lastThrough.toLocaleDateString('en-AU', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })}`
+        : 'No transactions imported yet',
+      dueDate: due.toISOString(),
+      daysUntilDue,
+      urgency: urgencyFor(daysUntilDue, IMPORT_LEAD_DAYS, IMPORT_UPCOMING_WINDOW_DAYS),
+      href: '/dashboard/balances?action=import',
+    },
+  ];
+}
+
 /** Merge every producer into one sorted list. */
 export function computeAllReminders(
   input: {
@@ -455,6 +527,7 @@ export function computeAllReminders(
     loans?: LoanRenewalSource[];
     connections?: ConsentRenewalSource[];
     custom?: CustomReminderSource[];
+    importCadence?: ImportCadenceSource;
   },
   opts: ComputeOpts = {}
 ): RenewalReminder[] {
@@ -464,6 +537,7 @@ export function computeAllReminders(
     ...computeLoanRenewals(input.loans ?? [], opts),
     ...computeConsentReminders(input.connections ?? [], opts),
     ...computeCustomReminders(input.custom ?? [], opts),
+    ...(input.importCadence ? computeImportReminder(input.importCadence, opts) : []),
   ]);
 }
 

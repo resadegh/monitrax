@@ -1392,6 +1392,12 @@ never recompute days or urgency.
 note as the subtitle. They share the snooze/dismiss/done machinery with derived
 reminders.
 
+**Import-cadence reminder (R7)** renders with the `IMPORT` category (Download
+glyph), entity name "Your transactions", and links to the import flow
+(`/dashboard/balances?action=import`). One per user, only when they rely on
+manual import and their data is ~a month stale. Warm subtitle ("Up to date
+through 30 Apr 2026"), never shaming.
+
 **Urgency colour** (warm + calm per CLAUDE.md §0 — overdue stated plainly, not
 alarmist): OVERDUE → rose, DUE_SOON → amber, UPCOMING → sky. Aligns with the
 §6.7 severity vocabulary. The bell's **count badge** follows the same calm rule:
