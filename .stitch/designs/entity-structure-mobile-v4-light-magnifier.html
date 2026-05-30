@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wealth OS - Your Wealth Story</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dim": "#F1EFE8",
+                      "trail-violet": "#8B5CF6",
+                      "on-secondary-fixed": "#151b2a",
+                      "secondary": "#585e6f",
+                      "error-red": "#DC2626",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "outline": "#6e7b6c",
+                      "on-error-container": "#93000a",
+                      "on-secondary-container": "#5c6274",
+                      "error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#005320",
+                      "on-primary-fixed": "#002109",
+                      "primary-fixed": "#7ffc97",
+                      "trail-emerald": "#16A34A",
+                      "primary": "#006b2c",
+                      "on-primary-container": "#f7fff2",
+                      "surface-container-low": "#eff6ea",
+                      "surface-container-highest": "#dde5d9",
+                      "tertiary": "#4d5d73",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-surface": "#171d16",
+                      "inverse-surface": "#2b322b",
+                      "secondary-fixed": "#dce2f6",
+                      "background": "#f4fcf0",
+                      "trail-indigo": "#6366F1",
+                      "primary-fixed-dim": "#62df7d",
+                      "tertiary-container": "#66768d",
+                      "outline-slate": "#94A3B8",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "surface-ivory": "#FAFAF7",
+                      "primary-container": "#00873a",
+                      "surface": "#f4fcf0",
+                      "error": "#ba1a1a",
+                      "surface-container-high": "#e3eadf",
+                      "surface-bright": "#f4fcf0",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "inverse-primary": "#62df7d",
+                      "secondary-container": "#d9dff4",
+                      "on-secondary-fixed-variant": "#404757",
+                      "on-secondary": "#ffffff",
+                      "surface-variant": "#dde5d9",
+                      "on-error": "#ffffff",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#fdfcff",
+                      "trail-amber": "#F59E0B",
+                      "trail-sky": "#0EA5E9",
+                      "surface-tint": "#006e2d",
+                      "tertiary-fixed": "#d3e4fe",
+                      "surface-container": "#e9f0e5",
+                      "on-background": "#171d16",
+                      "on-tertiary": "#ffffff",
+                      "on-surface-variant": "#3e4a3d",
+                      "inverse-on-surface": "#ecf3e7",
+                      "outline-variant": "#bdcaba"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "unit": "4px",
+                      "section-gap": "48px",
+                      "container-max": "1280px",
+                      "gutter": "24px",
+                      "margin-desktop": "48px"
+              },
+              "fontFamily": {
+                      "label-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "data-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                      "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                      "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                      "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                      "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                      "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                      "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                      "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                      "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+            color: #0B1220;
+        }
+        
+        .shadow-soft-navy {
+            box-shadow: 0 4px 24px -2px rgba(11, 18, 32, 0.08);
+        }
+        
+        .shadow-heavy-navy {
+            box-shadow: 0 12px 32px -4px rgba(11, 18, 32, 0.12), 0 4px 16px -4px rgba(11, 18, 32, 0.06);
+        }
+
+        .dimmed-node {
+            opacity: 0.55;
+            filter: blur(2px);
+            transition: all 0.3s ease;
+        }
+
+        .pulse-emerald {
+            animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        @keyframes pulse-ring {
+            0% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(22, 163, 74, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0); }
+        }
+
+        .lens-flare {
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(244, 242, 235, 0.8) 40%, rgba(250, 250, 247, 0) 70%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased min-h-screen relative pb-24 overflow-x-hidden w-full max-w-[390px] mx-auto border-x border-[#E2E8F0]">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-inverse-surface shadow-sm docked full-width top-0 z-50 sticky">
+<div class="flex justify-between items-center w-full px-margin-mobile h-16">
+<button class="text-on-surface-variant dark:text-on-secondary-container hover:bg-surface-container-high dark:hover:bg-tertiary-container transition-colors rounded-full p-2 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary text-center flex-1">Wealth OS</h1>
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden border border-[#E2E8F0]">
+<!-- Avatar placeholder -->
+</div>
+</div>
+</header>
+<main class="pt-6 px-margin-mobile pb-12 relative min-h-[2000px]">
+<!-- Header Content -->
+<div class="mb-8">
+<div class="flex items-center gap-2 mb-2">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase tracking-widest">MY WEALTH</span>
+<span class="material-symbols-outlined text-[14px] text-outline-slate">chevron_right</span>
+<span class="font-eyebrow text-eyebrow text-on-surface uppercase tracking-widest font-semibold">MY STRUCTURE</span>
+</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-[#0B1220] mb-2">Your Wealth Story</h2>
+<p class="font-body-md text-body-md text-secondary">8 entities · 5 assets · $1,477,000...</p>
+</div>
+<!-- Lens Pill Row -->
+<div class="flex gap-2 overflow-x-auto pb-4 mb-8 -mx-margin-mobile px-margin-mobile hide-scrollbar">
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-[#E2E8F0] bg-white font-label-md text-label-md text-secondary">Control</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border-2 border-primary bg-primary/5 font-label-md text-label-md text-primary font-semibold">Ownership</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-[#E2E8F0] bg-white font-label-md text-label-md text-secondary">Money flow</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full border border-[#E2E8F0] bg-white font-label-md text-label-md text-secondary">Asset flow</button>
+</div>
+<!-- CANVAS AREA -->
+<div class="relative w-full h-[1800px] mt-12">
+<!-- Radial Lens Background behind center tile -->
+<div class="absolute top-[350px] left-1/2 -translate-x-1/2 w-[360px] h-[360px] rounded-full lens-flare pointer-events-none z-10"></div>
+<!-- SVG Lines -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0" preserveaspectratio="xMidYMid meet" viewbox="0 0 350 1800">
+<!-- Dimmed lines -->
+<path d="M 175 100 L 80 200" fill="none" stroke="#94A3B8" stroke-opacity="0.4" stroke-width="1.5"></path>
+<path d="M 175 100 L 270 200" fill="none" stroke="#94A3B8" stroke-opacity="0.4" stroke-width="1.5"></path>
+<!-- Bright active lines connecting to center -->
+<path d="M 175 220 L 175 420" fill="none" stroke="#6366F1" stroke-dasharray="4 4" stroke-width="2"></path> <!-- To Trust -->
+<path d="M 175 660 L 80 800" fill="none" stroke="#6366F1" stroke-width="2"></path> <!-- Trust to Asset -->
+<path d="M 175 660 L 175 800" fill="none" stroke="#6366F1" stroke-width="2"></path> <!-- Trust to Asset -->
+<!-- Dimmed lines bottom -->
+<path d="M 80 880 L 175 1000" fill="none" stroke="#94A3B8" stroke-opacity="0.4" stroke-width="1.5"></path>
+<path d="M 270 880 L 175 1000" fill="none" stroke="#94A3B8" stroke-opacity="0.4" stroke-width="1.5"></path>
+</svg>
+<!-- TIER 1: CONTROLLERS (Dimmed) -->
+<div class="absolute top-10 w-full flex justify-center gap-4 z-0">
+<div class="w-[100px] h-[60px] bg-white border border-[#E2E8F0] rounded-[12px] shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node">
+<span class="material-symbols-outlined text-[16px] text-secondary">corporate_fare</span>
+<span class="text-[10px] font-semibold text-center mt-1 leading-tight">Renew Grp Hold</span>
+</div>
+<div class="w-[100px] h-[60px] bg-white border border-[#E2E8F0] rounded-[12px] shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node">
+<span class="material-symbols-outlined text-[16px] text-secondary">corporate_fare</span>
+<span class="text-[10px] font-semibold text-center mt-1 leading-tight">Renew Inv Pty</span>
+</div>
+</div>
+<!-- TIER 2: VEHICLES -->
+<!-- Dimmed Left -->
+<div class="absolute top-[250px] left-4 w-[90px] h-[50px] bg-white border border-[#E2E8F0] rounded-[12px] shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node z-0">
+<span class="text-[10px] font-semibold text-center leading-tight">Renew Hold Co</span>
+</div>
+<!-- MAGNIFIED CENTERPIECE -->
+<div class="absolute top-[400px] left-1/2 -translate-x-1/2 w-[280px] bg-white border-[1.5px] border-trail-indigo rounded-[20px] shadow-heavy-navy z-20 overflow-hidden">
+<!-- Top Accent -->
+<div class="h-[3px] w-full bg-gradient-to-r from-trail-indigo to-trail-violet shadow-[0_0_8px_rgba(99,102,241,0.5)]"></div>
+<div class="p-5">
+<!-- Header -->
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-full bg-trail-indigo/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-indigo">umbrella</span>
+</div>
+<div class="bg-surface-ivory rounded-full p-1.5 border border-[#E2E8F0]">
+<span class="material-symbols-outlined text-[14px] text-secondary" style="font-variation-settings: 'FILL' 1;">search</span>
+</div>
+</div>
+<!-- Title Area -->
+<div class="mb-5">
+<div class="font-eyebrow text-[10px] text-secondary uppercase tracking-widest mb-1.5">DISCRETIONARY TRUST · ABN 12 359 350 731</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] leading-tight mb-2">Renew Investment Family Trust</h3>
+<div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-trail-emerald/10 border border-trail-emerald/20">
+<span class="text-[8px] text-trail-emerald">●</span>
+<span class="text-[10px] font-medium text-trail-emerald">Valid · Verified 28 May</span>
+</div>
+</div>
+<!-- Metric Rows -->
+<div class="space-y-3 mb-5">
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0]/50">
+<span class="text-[11px] font-semibold text-secondary">TRUSTEE:</span>
+<span class="text-[12px] font-medium text-[#0B1220]">Renew Investment Pty Ltd</span>
+</div>
+<div class="flex justify-between items-center py-2 border-b border-[#E2E8F0]/50">
+<span class="text-[11px] font-semibold text-secondary">BENEFICIARIES:</span>
+<span class="text-[12px] font-medium text-[#0B1220]">3 (Newsha · Reza · Hldg)</span>
+</div>
+<div class="flex flex-col py-2 border-b border-[#E2E8F0]/50">
+<span class="text-[11px] font-semibold text-secondary mb-1">HOLDS:</span>
+<div class="flex items-center justify-between">
+<span class="text-[12px] font-medium text-[#0B1220]">HOME · Stake</span>
+<span class="text-[12px] font-semibold text-trail-emerald">$850K</span>
+</div>
+</div>
+<div class="flex justify-between items-center py-2">
+<span class="text-[11px] font-semibold text-secondary">DISTRIBUTIONS FY:</span>
+<span class="text-[13px] font-semibold text-[#0B1220]">$185,400</span>
+</div>
+</div>
+<!-- Action Button -->
+<button class="w-full py-2.5 rounded-[10px] bg-gradient-to-r from-trail-indigo to-trail-violet text-white text-[12px] font-semibold flex items-center justify-center gap-1">
+                        View full entity
+                        <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Dimmed Right -->
+<div class="absolute top-[250px] right-4 w-[90px] h-[50px] bg-white border border-[#E2E8F0] rounded-[12px] shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node z-0">
+<span class="text-[10px] font-semibold text-center leading-tight">Renew Super</span>
+</div>
+<!-- TIER 3: ASSETS (Dimmed) -->
+<div class="absolute top-[800px] w-full flex justify-center gap-3 z-0 px-4 flex-wrap">
+<div class="w-[70px] h-[40px] bg-white border border-[#E2E8F0] rounded-[8px] flex items-center justify-center p-1 dimmed-node">
+<span class="text-[9px] font-semibold text-center">HOME</span>
+</div>
+<div class="w-[70px] h-[40px] bg-white border border-[#E2E8F0] rounded-[8px] flex items-center justify-center p-1 dimmed-node">
+<span class="text-[9px] font-semibold text-center">Stake Port</span>
+</div>
+<div class="w-[70px] h-[40px] bg-white border border-[#E2E8F0] rounded-[8px] flex items-center justify-center p-1 dimmed-node">
+<span class="text-[9px] font-semibold text-center">SMSF Cash</span>
+</div>
+</div>
+<!-- TIER 4: BENEFICIARIES -->
+<div class="absolute top-[1000px] w-full flex justify-center gap-8 z-0">
+<div class="w-[80px] h-[80px] bg-white border border-[#E2E8F0] rounded-full shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node">
+<div class="w-8 h-8 rounded-full bg-surface-dim mb-1"></div>
+<span class="text-[10px] font-semibold text-center">Newsha</span>
+</div>
+<!-- YOU Node - Dimmed but pulsing -->
+<div class="relative w-[80px] h-[80px] bg-white border-2 border-trail-emerald rounded-full shadow-soft-navy flex flex-col items-center justify-center p-2 dimmed-node pulse-emerald">
+<span class="absolute -top-2 bg-trail-emerald text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">★ YOU</span>
+<div class="w-8 h-8 rounded-full bg-surface-dim mb-1"></div>
+<span class="text-[10px] font-semibold text-center">Reza</span>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface dark:bg-inverse-surface shadow-[0_-4px_12px_rgba(11,18,32,0.04)] rounded-t-xl max-w-[390px] mx-auto border-x border-[#E2E8F0]">
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all">
+<span class="material-symbols-outlined mb-1">dashboard</span>
+<span class="font-label-md text-[10px] font-medium">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-medium hover:text-primary transition-all">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-[10px] font-medium">Wealth</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all">
+<span class="material-symbols-outlined mb-1">query_stats</span>
+<span class="font-label-md text-[10px] font-medium">Insights</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all">
+<span class="material-symbols-outlined mb-1">person</span>
+<span class="font-label-md text-[10px] font-medium">Profile</span>
+</button>
+</nav>
+</body></html>
