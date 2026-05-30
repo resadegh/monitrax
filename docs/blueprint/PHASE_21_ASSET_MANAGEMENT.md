@@ -546,6 +546,12 @@ consents).
   default off so the high-volume feed never floods the bell uninvited. `BILL`
   category (Receipt glyph); amount + cadence subtitle shown in-app only (CDR
   §13.3 — never logged). **This closes R1 Tier 2.**
+- ✅ **Import-date hint (R7-PR2, 2026-05-29)** — when importing to an existing
+  account, the `TransactionImportDialog` upload step now shows what date range
+  to export ("last NAB txn was 28 Apr → export from 29 Apr to today; QIF
+  preferred"), from a read-only `GET /api/accounts/[id]/last-transaction`. The
+  reminder (R7) tells the user *when* to import; this tells them *what to
+  download* — instruction copy on the existing dialog, not a new import engine.
 - ✅ **User-created custom reminders (R1 PR2b, 2026-05-29)** — new `Reminder`
   model (title + dueDate + optional note) + `computeCustomReminders` producer +
   `POST /api/reminders/custom`; created from the bell's "+ New" → `<AddReminderDialog>`.

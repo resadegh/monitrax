@@ -721,3 +721,60 @@ N/A — no tax-engine / financial calc / schema column touched.
 ### PR
 - Branch: `claude/reminders-bills-feed-LFNFt`
 - Status: Draft (pending review)
+
+---
+
+## Session: import-date-hint-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R7-PR2, import-date instruction)
+- **Scope**: Import dialog — date-range guidance
+- **Description**: Reza (looking at the live import dialog): when importing to an
+  existing account, the user currently has to already know their last
+  transaction date to pick the right export filter at their bank. Add a simple
+  instruction that computes it for them.
+
+  When importing to an existing account, the `TransactionImportDialog` upload
+  step now shows a calm hint: *"Your last NAB transaction was 28 Apr 2026. Export
+  transactions from 29 Apr 2026 to today, then upload the file."* (+ "a little
+  overlap is fine — duplicates are skipped; QIF preferred"). Computed from the
+  account's most recent transaction date.
+
+  **Consistent with the "reminder, not a new import engine" steer:** this is
+  instruction copy on the EXISTING dialog + one read-only endpoint — no new
+  import machinery, no change to the import pipeline. The R7 reminder says
+  *when* to import; this says *what to download*.
+
+### Files Modified / Created
+- `app/api/accounts/[id]/last-transaction/route.ts` — **NEW.** Read-only GET,
+  `_max(UnifiedTransaction.date)` for the account, ownership-checked
+  (`account.read`). Returns a single date — no amounts/merchants (§13.3).
+- `components/bank/TransactionImportDialog.tsx` — fetches the last-transaction
+  date when targeting an existing account; renders `<ImportDateHint>` (the
+  suggested export range) in the upload step. Handles the no-history case
+  (suggest ~2 years).
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 import-date hint.
+- `docs/architecture/07_API_STANDARDS.md` — `GET /api/accounts/[id]/last-transaction`.
+- `docs/IMPLEMENTATION_PLAN.md` — R7-PR2 ✅ (instruction-only).
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled (`/api/accounts/[id]/last-transaction` route built)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — read-only endpoint (`account.findFirst` + `unifiedTransaction.aggregate`).
+No schema change, no writes.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no tax-engine / financial calc / schema column touched.
+
+### UI/UX Stitch-first (CLAUDE.md §18)
+N/A — internal app surface (`/dashboard/*` import dialog). Reused existing
+primitives; no new visual primitives.
+
+### PR
+- Branch: `claude/import-date-hint-LFNFt`
+- Status: Draft (pending review)

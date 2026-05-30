@@ -33,8 +33,61 @@ import {
   ArrowRight,
   Plus,
   Wallet,
+  Calendar,
 } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
+
+/** Short AU date, e.g. "28 Apr 2026". */
+const fmtDate = (d: Date) =>
+  d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+
+/**
+ * Tells the user exactly what date range to export from their bank, based on
+ * the last transaction already held for the target account — so they don't
+ * have to remember it (Phase 21.5 R7-PR2). Advisory only; the import's
+ * duplicate detection absorbs any overlap, so a little extra range is safe.
+ */
+function ImportDateHint({
+  lastTransactionDate,
+  accountName,
+}: {
+  lastTransactionDate: string | null;
+  accountName: string;
+}) {
+  const today = new Date();
+  let range: { from: Date; lead: string };
+  if (lastTransactionDate) {
+    const last = new Date(lastTransactionDate);
+    const from = new Date(last.getTime() + 24 * 60 * 60 * 1000); // day after last
+    range = {
+      from,
+      lead: `Your last ${accountName} transaction was ${fmtDate(last)}.`,
+    };
+  } else {
+    // No history yet — suggest the last ~2 years (most banks' export limit).
+    const from = new Date(today.getFullYear() - 2, today.getMonth(), today.getDate());
+    range = { from, lead: `${accountName} has no transactions yet.` };
+  }
+
+  return (
+    <div className="rounded-lg border border-sky-500/30 bg-sky-500/5 p-3 text-sm">
+      <div className="flex items-center gap-2 font-medium text-sky-700 dark:text-sky-300">
+        <Calendar className="h-4 w-4 shrink-0" />
+        What to download from your bank
+      </div>
+      <p className="mt-1 text-muted-foreground">{range.lead}</p>
+      <p className="mt-1">
+        Export transactions from{' '}
+        <strong className="tabular-nums">{fmtDate(range.from)}</strong> to{' '}
+        <strong className="tabular-nums">{fmtDate(today)}</strong> (today), then upload the file.
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">
+        A little date overlap is fine — duplicates are skipped automatically. QIF (if your bank
+        offers it) imports most reliably.
+      </p>
+    </div>
+  );
+}
 
 interface Account {
   id: string;
@@ -124,6 +177,33 @@ export function TransactionImportDialog({
   // Balance verification state
   const [verifiedBalance, setVerifiedBalance] = useState<string>('');
   const [isVerifyingBalance, setIsVerifyingBalance] = useState(false);
+
+  // R7-PR2: last transaction date for the target existing account (drives the
+  // "export from X to today" hint). undefined = unknown/loading; null = none.
+  const [lastTxnDate, setLastTxnDate] = useState<string | null | undefined>(undefined);
+  const targetExistingAccountId = initialAccountId || (accountMode === 'existing' ? selectedAccountId : '');
+
+  useEffect(() => {
+    if (!open || !targetExistingAccountId || !token) {
+      setLastTxnDate(undefined);
+      return;
+    }
+    let active = true;
+    setLastTxnDate(undefined);
+    fetch(`/api/accounts/${targetExistingAccountId}/last-transaction`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body) => {
+        if (active) setLastTxnDate(body?.data?.lastTransactionDate ?? null);
+      })
+      .catch(() => {
+        if (active) setLastTxnDate(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, targetExistingAccountId, token]);
 
   // Reset step when dialog opens/closes or accountId changes
   useEffect(() => {
@@ -503,6 +583,13 @@ export function TransactionImportDialog({
                   Change
                 </Button>
               </div>
+            )}
+
+            {/* R7-PR2: tell the user exactly what date range to export, based on
+                the account's last transaction — only for existing-account imports
+                (a brand-new account from a file has no prior history to gap-fill). */}
+            {targetExistingAccountId && lastTxnDate !== undefined && (
+              <ImportDateHint lastTransactionDate={lastTxnDate} accountName={getSelectedAccountName()} />
             )}
 
             <div
