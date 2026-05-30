@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Your Structure - Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-tertiary": "#ffffff",
+                  "on-background": "#171d16",
+                  "surface-container": "#e9f0e5",
+                  "on-primary-fixed-variant": "#005320",
+                  "secondary-fixed": "#dce2f6",
+                  "surface-container-low": "#eff6ea",
+                  "secondary": "#585e6f",
+                  "on-tertiary-container": "#fdfcff",
+                  "outline-variant": "#bdcaba",
+                  "primary-fixed": "#7ffc97",
+                  "surface": "#f4fcf0",
+                  "on-secondary-fixed-variant": "#404757",
+                  "background": "#f4fcf0",
+                  "error": "#ba1a1a",
+                  "surface-bright": "#f4fcf0",
+                  "on-error": "#ffffff",
+                  "on-primary-fixed": "#002109",
+                  "primary-container": "#00873a",
+                  "outline-slate": "#94A3B8",
+                  "surface-dim": "#d5dcd1",
+                  "secondary-fixed-dim": "#c0c6da",
+                  "inverse-surface": "#2b322b",
+                  "on-surface": "#171d16",
+                  "trail-indigo": "#6366F1",
+                  "surface-container-high": "#e3eadf",
+                  "on-primary": "#ffffff",
+                  "surface-container-highest": "#dde5d9",
+                  "secondary-container": "#d9dff4",
+                  "trail-sky": "#0EA5E9",
+                  "on-tertiary-fixed-variant": "#38485d",
+                  "outline": "#6e7b6c",
+                  "surface-ivory": "#FAFAF7",
+                  "tertiary-fixed-dim": "#b7c8e1",
+                  "tertiary-fixed": "#d3e4fe",
+                  "on-secondary-container": "#5c6274",
+                  "on-error-container": "#93000a",
+                  "on-primary-container": "#f7fff2",
+                  "on-surface-variant": "#3e4a3d",
+                  "inverse-primary": "#62df7d",
+                  "on-secondary-fixed": "#151b2a",
+                  "trail-amber": "#F59E0B",
+                  "surface-variant": "#dde5d9",
+                  "error-red": "#DC2626",
+                  "tertiary-container": "#66768d",
+                  "error-container": "#ffdad6",
+                  "primary-fixed-dim": "#62df7d",
+                  "trail-violet": "#8B5CF6",
+                  "trail-emerald": "#16A34A",
+                  "tertiary": "#4d5d73",
+                  "surface-tint": "#006e2d",
+                  "on-tertiary-fixed": "#0b1c30",
+                  "primary": "#006b2c",
+                  "on-secondary": "#ffffff",
+                  "surface-container-lowest": "#ffffff",
+                  "inverse-on-surface": "#ecf3e7",
+                  
+                  "deep-navy": "#0B1220",
+                  "border-slate": "#E2E8F0"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "2xl": "1rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "unit": "4px",
+                  "section-gap": "48px",
+                  "gutter": "24px",
+                  "container-max": "1280px",
+                  "margin-mobile": "20px",
+                  "margin-desktop": "48px"
+          },
+          "fontFamily": {
+                  "headline-md": ["Inter"],
+                  "data-xl": ["Inter"],
+                  "body-md": ["Inter"],
+                  "headline-lg-mobile": ["Inter"],
+                  "headline-lg": ["Inter"],
+                  "data-lg": ["Inter"],
+                  "label-md": ["Inter"],
+                  "headline-sm": ["Inter"],
+                  "display-lg": ["Inter"],
+                  "body-sm": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "eyebrow": ["Inter"]
+          },
+          "fontSize": {
+                  "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                  "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                  "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                  "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                  "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}]
+          },
+          "boxShadow": {
+            "tier-1": "0 1px 3px rgba(11, 18, 32, 0.04), 0 1px 2px rgba(11, 18, 32, 0.02)",
+            "tier-2": "0 4px 6px -1px rgba(11, 18, 32, 0.04), 0 2px 4px -1px rgba(11, 18, 32, 0.02)",
+            "nav": "0 -4px 12px rgba(11, 18, 32, 0.04)"
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #FAFAF7;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+    }
+    .bezier-line {
+      position: absolute;
+      z-index: 0;
+      pointer-events: none;
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased min-h-screen pb-24 md:pb-0">
+<!-- Top Navigation (Desktop & Mobile header) -->
+<header class="sticky top-0 z-40 bg-surface-ivory/90 backdrop-blur-md w-full px-margin-mobile md:px-margin-desktop h-16 flex justify-between items-center shadow-sm border-b-[1.5px] border-border-slate">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-deep-navy cursor-pointer" data-weight="fill" style="font-variation-settings: 'FILL' 1;">menu</span>
+<h1 class="font-headline-md text-headline-md font-bold text-deep-navy">Wealth OS</h1>
+</div>
+<div class="hidden md:flex gap-8 items-center">
+<nav class="flex gap-6">
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-2 rounded-lg" href="#">Dashboard</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-2 rounded-lg" href="#">Property</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:bg-surface-container-high transition-colors px-3 py-2 rounded-lg" href="#">Insights</a>
+<a class="font-label-md text-label-md text-primary font-medium bg-surface-container-low px-3 py-2 rounded-lg flex items-center gap-2" href="#">
+<span class="w-1.5 h-1.5 rounded-full bg-primary block"></span>
+          Profile
+        </a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-8 h-8 rounded-full border-[1.5px] border-border-slate bg-white flex items-center justify-center hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-secondary text-[18px]">search</span>
+</button>
+<button class="w-8 h-8 rounded-full border-[1.5px] border-border-slate bg-white flex items-center justify-center hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-secondary text-[18px]">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-label-md text-label-md">
+        RS
+      </div>
+</div>
+</header>
+<main class="max-w-[1280px] mx-auto px-margin-mobile md:px-margin-desktop py-8 flex flex-col gap-section-gap">
+<!-- Title Section -->
+<section>
+<h2 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-deep-navy mb-2">Your Structure</h2>
+<p class="font-body-md text-body-md text-outline-slate">8 entities · 3 ownership tiers · 6 of 8 verified</p>
+</section>
+<!-- Stage Strip -->
+<section class="bg-white rounded-[16px] border-[1.5px] border-border-slate shadow-tier-1 h-[52px] flex items-center px-6 overflow-x-auto hide-scrollbar">
+<div class="flex items-center min-w-max">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-trail-emerald/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-trail-emerald" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<span class="font-label-md text-label-md text-deep-navy">Built</span>
+</div>
+<div class="w-12 h-[1.5px] bg-border-slate mx-3"></div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-trail-emerald/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-trail-emerald" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<span class="font-label-md text-label-md text-deep-navy">Verified</span>
+</div>
+<div class="w-12 h-[1.5px] bg-border-slate mx-3"></div>
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full border-2 border-trail-emerald flex items-center justify-center">
+<div class="w-2 h-2 rounded-full bg-trail-emerald"></div>
+</div>
+<span class="font-label-md text-label-md text-deep-navy font-semibold">Optimised</span>
+</div>
+<div class="w-12 h-[1.5px] bg-border-slate mx-3"></div>
+<div class="flex items-center gap-2 opacity-50">
+<div class="w-6 h-6 rounded-full border-[1.5px] border-outline-slate flex items-center justify-center">
+</div>
+<span class="font-label-md text-label-md text-outline-slate">Reviewed</span>
+</div>
+<div class="w-12 h-[1.5px] bg-border-slate mx-3"></div>
+<div class="flex items-center gap-2 opacity-50">
+<div class="w-6 h-6 rounded-full border-[1.5px] border-outline-slate flex items-center justify-center">
+</div>
+<span class="font-label-md text-label-md text-outline-slate">Live</span>
+</div>
+</div>
+</section>
+<!-- Hero Map placeholder (Structure graph would go here, simplified for this response) -->
+<section class="bg-white rounded-2xl border-[1.5px] border-border-slate shadow-tier-1 p-6 flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-trail-sky via-trail-indigo to-trail-violet opacity-30"></div>
+<p class="font-body-md text-body-md text-outline-slate mb-4 text-center">Entity Graph Canvas</p>
+<div class="text-sm text-outline-slate text-center max-w-md">
+        (In a full implementation, this area would contain the complex SVG or interactive canvas rendering the 3-tier entity graph described in the prompt.)
+      </div>
+</section>
+<!-- Entity Tiles -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Tile A -->
+<div class="bg-white rounded-[20px] border-[1.5px] border-border-slate shadow-tier-1 p-6 relative overflow-hidden flex flex-col justify-between min-h-[240px] group hover:shadow-tier-2 hover:-translate-y-1 transition-all duration-300">
+<span class="material-symbols-outlined absolute -bottom-4 -right-4 text-[120px] text-trail-indigo opacity-[0.04] pointer-events-none transform -rotate-12 group-hover:scale-110 transition-transform duration-500">beach_access</span>
+<div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-wider mb-1">Discretionary Trust</p>
+<h3 class="font-headline-sm text-headline-sm text-deep-navy">Renew Investment Family Trust</h3>
+</div>
+<div class="w-8 h-8 rounded-full bg-trail-indigo/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-trail-indigo">account_tree</span>
+</div>
+</div>
+<div class="mb-6">
+<p class="font-body-sm text-body-sm text-outline-slate mb-1">FY24-25 Distributions</p>
+<div class="flex items-baseline gap-3">
+<span class="font-data-lg text-data-lg text-deep-navy tabular-nums">$185,400</span>
+<span class="font-label-md text-label-md text-trail-emerald bg-trail-emerald/10 px-2 py-0.5 rounded-full">+12.0%</span>
+</div>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-trail-indigo to-trail-violet text-white font-label-md text-label-md py-3 rounded-full flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+          View Entity Details
+        </button>
+</div>
+<!-- Tile B -->
+<div class="bg-white rounded-[20px] border-[1.5px] border-border-slate shadow-tier-1 p-6 relative overflow-hidden flex flex-col justify-between min-h-[240px] group hover:shadow-tier-2 hover:-translate-y-1 transition-all duration-300">
+<span class="material-symbols-outlined absolute -bottom-4 -right-4 text-[120px] text-trail-emerald opacity-[0.04] pointer-events-none transform -rotate-12 group-hover:scale-110 transition-transform duration-500">rocket_launch</span>
+<div>
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-wider mb-1">SMSF</p>
+<h3 class="font-headline-sm text-headline-sm text-deep-navy">Renew Super</h3>
+</div>
+<div class="w-8 h-8 rounded-full bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-trail-emerald">savings</span>
+</div>
+</div>
+<div class="mb-6">
+<p class="font-body-sm text-body-sm text-outline-slate mb-1">Value</p>
+<div class="flex items-center gap-3">
+<span class="font-data-lg text-data-lg text-deep-navy tabular-nums">$300,000</span>
+<span class="font-label-md text-label-md text-trail-amber bg-trail-amber/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">warning</span>
+                1 detail needed
+              </span>
+</div>
+</div>
+</div>
+<button class="w-full bg-gradient-to-r from-trail-emerald to-teal-500 text-white font-label-md text-label-md py-3 rounded-full flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-[18px]">visibility</span>
+          View Entity Details
+        </button>
+</div>
+</section>
+<!-- Add Entity Action -->
+<button class="w-full border-2 border-dashed border-border-slate rounded-xl p-6 flex flex-col items-center justify-center text-outline-slate hover:bg-surface hover:text-deep-navy hover:border-outline-variant transition-colors duration-200">
+<span class="material-symbols-outlined text-[24px] mb-2">add_circle</span>
+<span class="font-label-md text-label-md">Add new entity</span>
+</button>
+</main>
+<!-- Bottom Navigation (Mobile Only) -->
+<nav class="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface-ivory shadow-nav border-t-[1.5px] border-border-slate rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70" href="#">
+<span class="material-symbols-outlined text-[24px]">dashboard</span>
+<span class="font-label-md text-[10px] mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70" href="#">
+<span class="material-symbols-outlined text-[24px]">domain</span>
+<span class="font-label-md text-[10px] mt-1">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-outline-slate opacity-70" href="#">
+<span class="material-symbols-outlined text-[24px]">query_stats</span>
+<span class="font-label-md text-[10px] mt-1">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-trail-emerald font-medium" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</a>
+</nav>
+</body></html>

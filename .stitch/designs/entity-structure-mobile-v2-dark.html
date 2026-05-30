@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Monitrax - Your Structure</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              colors: {
+                      "primary-fixed": "#7ffc97",
+                      "error": "#ffb4ab",
+                      "primary-fixed-dim": "#62df7d",
+                      "outline": "#879485",
+                      "on-primary-fixed": "#002109",
+                      "surface-bright": "#343b33",
+                      "on-tertiary-fixed-variant": "#8a143c",
+                      "tertiary-fixed": "#ffd9de",
+                      "inverse-surface": "#dde5d9",
+                      "surface-container-lowest": "#09100a",
+                      "on-error": "#690005",
+                      "on-tertiary-container": "#5a0022",
+                      "tertiary-container": "#ec6284",
+                      "on-primary-container": "#003111",
+                      "background": "#0e150f",
+                      "surface-dim": "#0e150f",
+                      "surface-container-high": "#252c24",
+                      "surface": "#0e150f",
+                      "secondary-fixed-dim": "#7bd0ff",
+                      "tertiary-fixed-dim": "#ffb2bf",
+                      "on-tertiary": "#660027",
+                      "surface-tint": "#62df7d",
+                      "on-background": "#dde5d9",
+                      "on-tertiary-fixed": "#3f0016",
+                      "on-secondary-container": "#00374d",
+                      "outline-variant": "#3e4a3d",
+                      "surface-container": "#1b211a",
+                      "inverse-primary": "#006e2d",
+                      "on-surface": "#dde5d9",
+                      "inverse-on-surface": "#2b322b",
+                      "on-primary": "#003914",
+                      "on-error-container": "#ffdad6",
+                      "error-container": "#93000a",
+                      "tertiary": "#ffb2bf",
+                      "on-primary-fixed-variant": "#005320",
+                      "on-surface-variant": "#bdcaba",
+                      "secondary-fixed": "#c4e7ff",
+                      "primary": "#62df7d",
+                      "on-secondary-fixed-variant": "#004c69",
+                      "secondary-container": "#00a6e0",
+                      "surface-variant": "#30372f",
+                      "on-secondary-fixed": "#001e2c",
+                      "on-secondary": "#00354a",
+                      "surface-container-highest": "#30372f",
+                      "secondary": "#7bd0ff",
+                      "primary-container": "#1ca64d",
+                      "surface-container-low": "#171d16"
+              },
+              borderRadius: {
+                      DEFAULT: "0.25rem",
+                      lg: "0.5rem",
+                      xl: "0.75rem",
+                      full: "9999px"
+              },
+              spacing: {
+                      "gutter": "1rem",
+                      "stack-md": "1rem",
+                      "stack-lg": "2rem",
+                      "stack-sm": "0.5rem",
+                      "unit": "4px",
+                      "container-padding-mobile": "1rem",
+                      "container-padding-desktop": "2.5rem"
+              },
+              fontFamily: {
+                      "metadata": ["Inter"],
+                      "label-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-sm": ["Inter"]
+              },
+              fontSize: {
+                      "metadata": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                      "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                      "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                      "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                      "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                      "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                      "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                      "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Custom Utilities for Premium Dark Glass Aesthetic */
+        body {
+            background: linear-gradient(180deg, #0A0E1F 0%, #0F1426 100%);
+            min-height: 100vh;
+            color: #dde5d9;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        
+        .glass-panel {
+            background: rgba(19, 26, 46, 0.4);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .glass-card {
+            background: rgba(19, 26, 46, 0.6);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 8px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        .cta-emerald {
+            background: #16A34A;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 0 15px rgba(22, 163, 74, 0.15);
+        }
+        
+        .cta-emerald:active {
+            transform: scale(0.98);
+        }
+
+        .text-gradient-sky {
+            background: linear-gradient(135deg, #7bd0ff, #c4e7ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .text-gradient-indigo {
+            background: linear-gradient(135deg, #a5b4fc, #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .border-gradient-emerald {
+            position: relative;
+        }
+        .border-gradient-emerald::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1.5px;
+            background: linear-gradient(135deg, #62df7d, transparent);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+
+        /* SVG Graph Lines & Connectors */
+        .svg-connector {
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 1.5;
+            fill: none;
+        }
+        .svg-connector-dashed {
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+            fill: none;
+        }
+        .svg-connector-emerald {
+            stroke: #62df7d;
+            stroke-width: 1.5;
+            fill: none;
+        }
+
+        .pulse-ring {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.1); }
+        }
+
+        /* Hide scrollbar for horizontal scrolling elements */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="pb-24 pt-20 relative">
+<!-- TOP SHELL (Reconstructed from JSON) -->
+<header class="fixed top-0 left-0 w-full z-50 flex flex-col items-center px-container-padding-mobile py-4 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm transition-transform duration-300">
+<!-- System Status Fake Header (Simulated for visual completeness in constraints) -->
+<div class="w-full flex justify-between items-center text-xs text-on-surface-variant mb-2 px-1 font-metadata">
+<span>8:01</span>
+<div class="flex items-center gap-1 bg-white/5 rounded-full px-2 py-0.5 border border-white/10">
+<span class="material-symbols-outlined text-[10px]">lock</span>
+<span class="text-[10px]">monitrax.com.au</span>
+</div>
+<div class="flex gap-1">
+<span class="material-symbols-outlined text-[14px]">signal_cellular_4_bar</span>
+<span class="material-symbols-outlined text-[14px]">wifi</span>
+<span class="material-symbols-outlined text-[14px]">battery_full</span>
+</div>
+</div>
+<div class="w-full flex justify-between items-center">
+<!-- Leading Avatar -->
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-white/10 overflow-hidden flex items-center justify-center shrink-0">
+<span class="font-label-md text-primary-fixed">RS</span>
+</div>
+<!-- Headline -->
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface truncate px-2">Welcome back, Reza</h1>
+<!-- Trailing Action -->
+<button class="relative w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors shrink-0 text-primary dark:text-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+<!-- Active Robot Glow indicator -->
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary-fixed rounded-full shadow-[0_0_8px_#7ffc97]"></span>
+</button>
+</div>
+</header>
+<!-- MAIN CONTENT -->
+<main class="px-container-padding-mobile pt-4 flex flex-col gap-stack-lg">
+<!-- SECTION 1: HEADER -->
+<section class="flex flex-col gap-1">
+<div class="font-label-md text-label-md text-slate-400 uppercase tracking-widest">MY WEALTH &gt;</div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-white font-bold tracking-tight">Your Structure</h2>
+<p class="font-body-sm text-body-sm text-slate-400 tabular-nums">8 entities · 3 ownership tiers · 6 of 8 verified</p>
+</section>
+<!-- SECTION 2: JOURNEY STRIP -->
+<section class="h-[52px] glass-panel rounded-2xl flex items-center px-4 relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-r from-white/5 to-transparent pointer-events-none"></div>
+<div class="flex items-center w-full justify-between z-10">
+<div class="font-label-md text-[10px] text-slate-400 font-semibold tracking-wider mr-2 shrink-0">YOUR STRUCTURE<br/>JOURNEY</div>
+<div class="flex items-center gap-1.5 flex-1 justify-end">
+<!-- Built (Emerald) -->
+<div class="w-6 h-6 rounded-full bg-primary/20 border border-primary flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div class="h-[1px] w-4 bg-primary/50"></div>
+<!-- Verified (Emerald) -->
+<div class="w-6 h-6 rounded-full bg-primary/20 border border-primary flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[14px]">check</span>
+</div>
+<div class="h-[1px] w-4 bg-primary/50"></div>
+<!-- Optimised (Current - Emerald Outline) -->
+<div class="w-6 h-6 rounded-full border-2 border-primary-fixed flex items-center justify-center bg-surface-container-highest shadow-[0_0_10px_rgba(127,252,151,0.3)]">
+<div class="w-2 h-2 rounded-full bg-primary-fixed"></div>
+</div>
+<div class="h-[1px] w-4 bg-white/10"></div>
+<!-- Reviewed (Hollow) -->
+<div class="w-6 h-6 rounded-full border border-white/20 bg-black/20 flex items-center justify-center">
+<span class="text-[10px] text-white/30">4</span>
+</div>
+<div class="h-[1px] w-4 bg-white/10"></div>
+<!-- Live (Hollow) -->
+<div class="w-6 h-6 rounded-full border border-white/20 bg-black/20 flex items-center justify-center">
+<span class="text-[10px] text-white/30">5</span>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3: HERO MAP (Your Wealth Circle) -->
+<section class="h-[440px] glass-card rounded-3xl flex flex-col overflow-hidden relative">
+<!-- Multi-tone gradient top stripe -->
+<div class="h-1.5 w-full bg-gradient-to-r from-sky-400 via-indigo-500 to-emerald-400 opacity-80"></div>
+<!-- Map Header -->
+<div class="p-4 flex justify-between items-center z-10 border-b border-white/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white/70">hub</span>
+<h3 class="font-headline-md text-headline-md text-white">Your wealth circle</h3>
+</div>
+<div class="font-label-md text-[10px] bg-white/5 rounded-full px-2 py-1 border border-white/10 text-white/50 flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]">touch_app</span> Tap to explore
+                </div>
+</div>
+<!-- Lens Pill -->
+<div class="px-4 pt-3 pb-2 z-10 flex justify-center">
+<div class="bg-black/40 border border-white/10 rounded-full flex p-1 text-[11px] font-medium w-full max-w-[280px]">
+<button class="flex-1 text-white/50 py-1.5 rounded-full text-center transition-colors">Control</button>
+<button class="flex-1 bg-white/10 text-white shadow-sm border border-white/5 py-1.5 rounded-full text-center transition-colors">Ownership</button>
+<button class="flex-1 text-white/50 py-1.5 rounded-full text-center transition-colors">Money flow</button>
+</div>
+</div>
+<!-- Graph Canvas (Complex SVG & HTML Overlay) -->
+<div class="flex-1 relative w-full h-full overflow-hidden flex flex-col justify-between pt-4 pb-8 px-2">
+<!-- Background Grid / Atmosphere -->
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-background/0 to-background/0 pointer-events-none"></div>
+<!-- TIER 1 -->
+<div class="flex justify-around items-center w-full z-10">
+<!-- Renew Group Holding -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/50 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.2)]">
+<span class="material-symbols-outlined text-sky-400 text-[20px]">domain</span>
+</div>
+<span class="font-label-md text-[9px] text-center w-16 leading-tight text-white/80">Renew Grp<br/>Holding</span>
+</div>
+<!-- Renew SMSF Pty -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-400/30 border-dashed flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-400 text-[20px]">receipt_long</span>
+</div>
+<span class="font-label-md text-[9px] text-center w-16 leading-tight text-white/60">Renew SMSF<br/>Pty</span>
+</div>
+</div>
+<!-- TIER 2 -->
+<div class="flex justify-between items-center w-full px-6 z-10 translate-y-[-10px]">
+<!-- Renew Holding Co -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-12 h-12 rounded-xl bg-orange-500/20 border border-orange-400/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-orange-400 text-[24px]">corporate_fare</span>
+</div>
+</div>
+<!-- Renew Investment Family Trust (Enlarged) -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-16 h-16 rounded-2xl bg-indigo-500/20 border-2 border-primary-fixed/80 flex items-center justify-center shadow-[0_0_20px_rgba(127,252,151,0.2)]">
+<span class="material-symbols-outlined text-indigo-400 text-[28px]">umbrella</span>
+<div class="absolute -top-2 -right-2 w-5 h-5 bg-primary-fixed rounded-full flex items-center justify-center border-2 border-background">
+<span class="material-symbols-outlined text-background text-[12px] font-bold">check</span>
+</div>
+</div>
+</div>
+<!-- Renew Super SMSF -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-400 text-[24px]">rocket_launch</span>
+</div>
+</div>
+</div>
+<!-- TIER 3 -->
+<div class="flex justify-center gap-12 items-center w-full z-10 translate-y-[-10px]">
+<!-- Newsha -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="w-10 h-10 rounded-full bg-violet-500/20 border border-violet-400/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-violet-400 text-[20px]">person</span>
+</div>
+<span class="font-label-md text-[9px] text-white/80">Newsha</span>
+</div>
+<!-- YOU - Reza (Enlarged, pulsing) -->
+<div class="flex flex-col items-center gap-1 relative z-20">
+<div class="absolute inset-0 rounded-full border-2 border-primary-fixed pulse-ring"></div>
+<div class="w-14 h-14 rounded-full bg-violet-500/30 border-2 border-violet-400/80 flex items-center justify-center z-10 shadow-[0_0_25px_rgba(139,92,246,0.3)]">
+<span class="material-symbols-outlined text-white text-[28px]">person</span>
+</div>
+<div class="bg-primary-fixed text-on-primary-fixed text-[8px] font-bold px-2 py-0.5 rounded-full absolute -bottom-2 z-20 border border-background uppercase tracking-widest">You</div>
+<span class="font-label-md text-[10px] text-white mt-2">Reza</span>
+</div>
+</div>
+<!-- SVG Connectors (Absolute positioned behind nodes) -->
+<!-- Note: Hardcoded basic paths for visual representation in this constrained environment. Real implementation would use D3 or similar. -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none z-0" preserveaspectratio="none">
+<!-- T1 to T2 Left -->
+<path class="svg-connector" d="M 120 70 Q 120 130 70 140"></path>
+<!-- T1 to T2 Center (Thick Ownership) -->
+<path d="M 120 70 Q 150 100 190 140" fill="none" stroke="rgba(123, 208, 255, 0.4)" stroke-width="3"></path>
+<!-- T1 Right to T2 Right -->
+<path class="svg-connector-dashed" d="M 270 70 Q 270 130 320 140"></path>
+<!-- T2 Center to T3 Left -->
+<path class="svg-connector" d="M 190 200 Q 150 250 140 280"></path>
+<!-- T2 Center to T3 Right (YOU) -->
+<path class="svg-connector-emerald" d="M 190 200 Q 220 250 240 280"></path>
+<!-- T2 Right to T3 Right (YOU) -->
+<path class="svg-connector" d="M 320 190 Q 280 230 255 270"></path>
+</svg>
+<!-- Relationship Chips (Floating on lines) -->
+<div class="absolute top-[32%] left-[45%] bg-black/60 border border-white/10 rounded-full px-1.5 py-0.5 text-[7px] text-white font-medium z-10">OWNS 100%</div>
+<div class="absolute top-[65%] left-[55%] bg-black/60 border border-primary-fixed/40 rounded-full px-1.5 py-0.5 text-[7px] text-primary-fixed font-medium z-10">BENEFICIARY</div>
+<div class="absolute top-[62%] right-[15%] bg-black/60 border border-white/10 rounded-full px-1.5 py-0.5 text-[7px] text-white/70 font-medium z-10">MEMBER</div>
+</div>
+</section>
+<!-- SECTION 4: ENTITY STACK -->
+<section class="flex flex-col gap-4 pb-8">
+<h3 class="font-headline-md text-body-lg text-white font-medium flex items-center justify-between">
+                All Entities <span class="bg-white/10 text-white/70 text-xs px-2 py-0.5 rounded-full">8</span>
+</h3>
+<!-- TILE A: Renew Investment Family Trust -->
+<div class="glass-card rounded-2xl relative overflow-hidden border-gradient-emerald">
+<!-- Top Accent Stripe -->
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-violet-500"></div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -right-6 -bottom-6 text-[120px] text-indigo-500 opacity-[0.04] pointer-events-none" style="font-variation-settings: 'FILL' 1;">umbrella</span>
+<div class="p-5 flex flex-col gap-4 relative z-10">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-400/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-indigo-400 text-[28px]">umbrella</span>
+</div>
+<div>
+<div class="text-[10px] text-indigo-300 font-medium tracking-wider mb-0.5">FAMILY TRUST</div>
+<h4 class="font-headline-md text-body-lg font-semibold text-white leading-tight">Renew Investment</h4>
+</div>
+</div>
+<div class="bg-primary/10 border border-primary/30 text-primary text-[10px] px-2 py-1 rounded-full flex items-center gap-1 font-medium">
+<div class="w-1.5 h-1.5 rounded-full bg-primary-fixed pulse-ring"></div>
+                            Verified
+                        </div>
+</div>
+<!-- Inner metrics card -->
+<div class="bg-black/30 rounded-xl border border-white/5 p-3 flex justify-between items-center">
+<div>
+<div class="text-[11px] text-white/50 mb-1">Total Distributions (YTD)</div>
+<div class="font-headline-lg-mobile text-[22px] font-bold text-white tabular-nums">$185,400</div>
+</div>
+<div class="text-right">
+<div class="bg-primary/20 text-primary-fixed text-[11px] px-2 py-0.5 rounded flex items-center gap-0.5 font-medium mb-1">
+<span class="material-symbols-outlined text-[12px]">trending_up</span> +12%
+                            </div>
+</div>
+</div>
+<!-- Connected Chips -->
+<div class="flex gap-2 text-[10px]">
+<span class="bg-white/5 border border-white/10 rounded-full px-2 py-1 text-white/60">Connects 3 entities</span>
+<span class="bg-white/5 border border-white/10 rounded-full px-2 py-1 text-white/60">2 Beneficiaries</span>
+</div>
+<!-- CTA -->
+<button class="w-full mt-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span> View details
+                    </button>
+</div>
+</div>
+<!-- TILE B: Renew Super SMSF -->
+<div class="glass-card rounded-2xl relative overflow-hidden">
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+<span class="material-symbols-outlined absolute -right-6 -bottom-6 text-[120px] text-emerald-500 opacity-[0.04] pointer-events-none" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+<div class="p-5 flex flex-col gap-4 relative z-10">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-400/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-emerald-400 text-[28px]">rocket_launch</span>
+</div>
+<div>
+<div class="text-[10px] text-emerald-300 font-medium tracking-wider mb-0.5">SMSF</div>
+<h4 class="font-headline-md text-body-lg font-semibold text-white leading-tight">Renew Super SMSF</h4>
+</div>
+</div>
+<div class="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] px-2 py-1 rounded-full flex items-center gap-1 font-medium">
+<span class="material-symbols-outlined text-[12px]">warning</span> Action needed
+                        </div>
+</div>
+<div class="bg-black/30 rounded-xl border border-white/5 p-3 flex justify-between items-center">
+<div>
+<div class="text-[11px] text-white/50 mb-1">Total Balance</div>
+<div class="font-headline-lg-mobile text-[22px] font-bold text-white tabular-nums">$300,000</div>
+</div>
+</div>
+<button class="w-full mt-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span> View details
+                    </button>
+</div>
+</div>
+<!-- TILE C: Renew Group Holding -->
+<div class="glass-card rounded-2xl relative overflow-hidden">
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 to-cyan-500"></div>
+<span class="material-symbols-outlined absolute -right-6 -bottom-6 text-[120px] text-sky-500 opacity-[0.04] pointer-events-none" style="font-variation-settings: 'FILL' 1;">domain</span>
+<div class="p-5 flex flex-col gap-4 relative z-10">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-14 h-14 rounded-2xl bg-sky-500/10 border border-sky-400/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-sky-400 text-[28px]">domain</span>
+</div>
+<div>
+<div class="text-[10px] text-sky-300 font-medium tracking-wider mb-0.5">HOLDING CO</div>
+<h4 class="font-headline-md text-body-lg font-semibold text-white leading-tight">Renew Group Holding</h4>
+</div>
+</div>
+</div>
+<div class="bg-black/30 rounded-xl border border-white/5 p-3 flex justify-between items-center">
+<div>
+<div class="text-[11px] text-white/50 mb-1">Ownership structure</div>
+<div class="text-sm font-medium text-white flex items-center gap-2">
+<span class="text-sky-400">OWNS 100%</span> of 2 entities
+                            </div>
+</div>
+</div>
+<button class="w-full mt-2 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-medium text-sm flex items-center justify-center gap-2 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span> View details
+                    </button>
+</div>
+</div>
+<!-- TILE D: YOU -->
+<div class="glass-card rounded-2xl relative overflow-hidden border border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.1)]">
+<div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-400 to-fuchsia-500"></div>
+<span class="material-symbols-outlined absolute -right-6 -bottom-6 text-[120px] text-violet-500 opacity-[0.06] pointer-events-none" style="font-variation-settings: 'FILL' 1;">person</span>
+<div class="p-5 flex flex-col gap-4 relative z-10">
+<div class="flex justify-between items-start">
+<div class="flex gap-3 items-center">
+<div class="w-14 h-14 rounded-2xl bg-violet-500/20 border border-violet-400/50 flex items-center justify-center shrink-0 relative">
+<span class="material-symbols-outlined text-violet-300 text-[28px]" style="font-variation-settings: 'FILL' 1;">person</span>
+<div class="absolute -top-2 -right-2 bg-primary-fixed text-on-primary-fixed text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider border border-background">You</div>
+</div>
+<div>
+<div class="text-[10px] text-violet-300 font-medium tracking-wider mb-0.5">INDIVIDUAL</div>
+<h4 class="font-headline-md text-body-lg font-semibold text-white leading-tight">Reza Sadegh</h4>
+</div>
+</div>
+</div>
+<div class="bg-violet-900/20 rounded-xl border border-violet-500/20 p-3">
+<div class="text-sm font-medium text-violet-200">
+                            You are directly connected to <span class="text-white font-bold">5 entities</span> in this structure.
+                        </div>
+</div>
+<button class="w-full mt-2 py-3 rounded-xl bg-violet-500/10 border border-violet-400/30 text-violet-200 font-medium text-sm flex items-center justify-center gap-2 hover:bg-violet-500/20 transition-colors">
+<span class="material-symbols-outlined text-[18px]">visibility</span> View profile
+                    </button>
+</div>
+</div>
+<!-- Add New Entity -->
+<button class="w-full py-5 rounded-2xl bg-transparent border-2 border-dashed border-white/10 text-white/50 font-medium text-sm flex flex-col items-center justify-center gap-2 hover:bg-white/5 hover:text-white transition-all">
+<span class="material-symbols-outlined text-[24px]">add_circle</span>
+                Add new entity
+            </button>
+</section>
+</main>
+<!-- BOTTOM SHELL (Reconstructed from JSON) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-xl rounded-t-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.4)]">
+<!-- Home -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<!-- Accounts -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
+<span class="font-label-md text-[10px]">Accounts</span>
+</a>
+<!-- Wealth (ACTIVE) -->
+<a class="flex flex-col items-center justify-center text-primary-fixed bg-primary/10 rounded-xl px-3 py-1 shadow-[0_0_15px_rgba(98,223,125,0.15)] gap-1 scale-90" href="#">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-md text-[10px] font-bold">Wealth</span>
+</a>
+<!-- Guide -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">explore</span>
+<span class="font-label-md text-[10px]">Guide</span>
+</a>
+<!-- More -->
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all gap-1" href="#">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+<span class="font-label-md text-[10px]">More</span>
+</a>
+</nav>
+<!-- Decorative Bottom Glow -->
+<div class="fixed bottom-0 left-0 w-full h-32 bg-primary/5 blur-3xl pointer-events-none z-40"></div>
+</body></html>
