@@ -975,6 +975,16 @@ row subtitle carries amount + cadence — the user's own data, returned in-app
 only, never logged (CDR §13.3). **R1 Tier 2 is now complete**; Tier 3
 (email/push delivery, preference-gated) = R2.
 
+## `GET /api/accounts/[id]/last-transaction` — import-date hint (R7-PR2)
+
+Returns `{ data: { lastTransactionDate: string | null } }` — the date of the
+most recent transaction held for an account (`_max(UnifiedTransaction.date)`,
+ownership-checked via `account.read`). Powers the import dialog's "export from
+{lastDate+1} to today" instruction so the user picks the right export filter at
+their bank instead of guessing. Read-only; returns a single date only — no
+amounts / merchants (CDR §13.3). Not a new import engine — instruction copy on
+the existing `TransactionImportDialog`.
+
 **Import-cadence reminder (R7, 2026-05-29):** the `GET /api/reminders` feed also
 emits a single `IMPORT_DUE` reminder ("time to import your latest transactions")
 for users who rely on manual import — computed by `computeImportReminder` from
