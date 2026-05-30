@@ -387,3 +387,105 @@ change. Same data inputs and props as before.
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (TRAIL palette unification + color-psychology fix)
+
+### Reza directive 2026-05-30
+> "Colour palate on TRAIL method is not correct, i want you to pick a specific
+> colour for each stage and update the relevant sections including the one on
+> dashboard, make sure you base this on colour psychology, make sure these
+> colour theme is used accross the app. (No need to change the app theme) just
+> relevant trail areas."
+
+### Root cause (the screenshot bug)
+The `TrailStageIndicator` component on `/dashboard` had a **hard-coded bespoke
+colour palette** in its local `stages` array that completely bypassed the
+canonical `TRAIL_STAGE_TONES` SSOT in `lib/navigation/trailNav.tsx`. The
+indicator was rendering:
+- T = amber/orange (golden — should be sky)
+- R = orange/rose (red-coded — should be amber)
+- A = emerald/teal (green — should be indigo)
+- I = sky/indigo (blue — should be emerald)
+- L = yellow/amber/orange (yellow — should be violet)
+
+Meanwhile every other TRAIL consumer (MoneyStoryHero, AdviceHero, FiveCapabilities,
+SectionTabsRow, MobileTabBar) was already using the canonical sky/amber/indigo/
+emerald palette. The drift was localised — but the indicator is the dashboard's
+hero TRAIL surface, so the mismatch was the most visible.
+
+Secondary issue: `TRAIL_STAGE_TONES.L` had been switched fuchsia → violet ↔
+back over the past few weeks. This PR locks L on **violet** for behavioural
+consistency.
+
+### Canonical TRAIL palette — colour psychology rationale
+
+The palette is now defined ONCE in `lib/navigation/trailNav.tsx` and every
+consumer reads from it:
+
+| Stage | Hue | Hex | Why this colour |
+|---|---|---|---|
+| **T — Track** | Sky blue | `#0EA5E9` | Open-eye observation. Sky-blue signals trust, calm clarity, "look at reality without judgment." Banks/insurance use blue for honest disclosure. |
+| **R — Reduce** | Amber | `#F59E0B` | Attention without alarm. The universal "yield / review this" colour. Critically NOT red — red would shame the user for the spending leaks they're being asked to fix. |
+| **A — Anchor** | Indigo | `#6366F1` | Depth + security + foundation. Deep water reads as stable, immovable, sheltering. Different hue from emerald so "safety net" doesn't visually collide with "growth." |
+| **I — Invest** | Emerald | `#16A34A` | The universal money / growth colour. Cross-cultural association with prosperity, wealth-building, future-positive momentum. |
+| **L — Live** | Violet | `#8B5CF6` | Mastery + aspiration + freedom. Violet/purple carries the "live on your terms" emotion — royalty, fulfilment, "I've arrived." Aligns with `editorial-violet` token. |
+
+### Changes Made
+
+- **`lib/navigation/trailNav.tsx`** — `TRAIL_STAGE_TONES` SSOT extended with
+  a new `hex` field (`{ base, soft, veil }` per stage) so non-Tailwind
+  consumers (SVG fills, mesh-gradient atmospheres, gradient stops) can
+  reuse the canonical hue. L switched back from fuchsia → violet with
+  detailed psychology rationale in the JSDoc.
+- **`components/dashboard/TrailStageIndicator.tsx`** — `stages` array
+  rewritten to consume `TRAIL_STAGE_TONES[<letter>].hex` for `glowFrom` /
+  `glowVia` / `meshA/B/C`, and the Tailwind `ringClass` + `textGradient`
+  switched to match each stage's canonical hue (single-hue gradients —
+  e.g. `from-sky-300 via-sky-500 to-sky-700` — instead of the previous
+  multi-colour rainbow `from-amber-300 via-amber-500 to-orange-600`).
+  Added a docstring header explaining the colour psychology mapping.
+
+### What this fixes visually
+- T tile reads as **sky-blue** (was amber/orange)
+- R tile reads as **amber** (was orange/red)
+- A tile reads as **indigo** (was emerald/teal)
+- I tile reads as **emerald-green** (was sky/blue)
+- L tile reads as **violet** (was yellow/orange)
+- The connecting thread + glow + CTA gradient all flow from the matching
+  hue (no more cross-stage colour bleed).
+- The downstream SectionTabsRow / MobileTabBar / MoneyStoryHero already
+  use TRAIL_STAGE_TONES, so they pick up the L=violet change automatically
+  (no consumer-side edit required).
+
+### What's NOT changing
+- The editorial-* palette itself (warm-ivory background, navy text, calm
+  emerald accent) — only TRAIL-specific stage hues are updated.
+- Other entity-graph / asset-categorisation fuchsia usages (AssetTile,
+  MoneyFlowSankey, etc.) are unrelated to TRAIL stage L and stay as-is.
+
+### Files Modified
+- `lib/navigation/trailNav.tsx` (+ documentation + `hex` field)
+- `components/dashboard/TrailStageIndicator.tsx` (stages array rewrite)
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 24 grandfathered, 0 new
+- [x] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (canonical TRAIL palette + indicator restyle)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — TRAIL palette unification logged under 0·StD
+- `docs/changelog/CHANGELOG_2026_05_30.md` — this entry (with colour psychology rationale table)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — visual / palette change only; no `lib/tax-engine/*`, no financial
+calculation, no schema change.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)

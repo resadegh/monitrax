@@ -388,10 +388,44 @@ export const mobileMoreItems: NavItem[] = [
  *   - `bgTint` — very subtle stage hue for the chrome of stage-specific
  *     surfaces (e.g. the sub-tab segmented control bar tints toward
  *     the section's stage colour). Apple-restraint: tint, not fill.
+ *   - `hex` — raw editorial-* hex codes for inline / non-Tailwind use
+ *     (gradient stops, SVG fills, mesh-gradient atmospheres). Same hue
+ *     as the Tailwind tone classes — single source of truth.
+ *
+ * COLOUR PSYCHOLOGY RATIONALE (Reza directive 2026-05-30 — "pick a specific
+ * colour for each stage and update the relevant sections, based on colour
+ * psychology"):
+ *
+ *   T (Track)   → SKY      — Open-eye observation. Sky-blue signals trust,
+ *                            calm clarity, and "looking at reality without
+ *                            judgment." Banks/insurance use blue for the
+ *                            same reason — it reads as honest disclosure.
+ *   R (Reduce)  → AMBER    — Attention without alarm. The universal
+ *                            "yield" / "review this" colour. Critically:
+ *                            NOT red — red would shame the user for the
+ *                            spending leaks they're being asked to fix.
+ *   A (Anchor)  → INDIGO   — Depth + security + foundation. Deep water
+ *                            reads as stable, immovable, sheltering. A
+ *                            different hue from emerald so "safety net"
+ *                            doesn't visually collide with "growth".
+ *   I (Invest)  → EMERALD  — The universal money / growth colour. Cross-
+ *                            cultural association with prosperity, wealth-
+ *                            building, future-positive momentum.
+ *   L (Live)    → VIOLET   — Mastery + aspiration + freedom. Violet/purple
+ *                            carries the "live on your terms" emotion —
+ *                            royalty, fulfilment, "I've arrived". Calmer
+ *                            than fuchsia (which can read playful); aligns
+ *                            with the editorial-violet token #8B5CF6.
  *
  * Phase 14.6 v5 (2026-05-08): Track changed slate → sky for the
  * trust/clarity/awareness semantic match. Slate was emotionally
  * neutral — sky is emotionally aligned with the stage's purpose.
+ *
+ * 2026-05-30 — L reverted fuchsia → violet for behavioural consistency
+ * (mastery > playfulness) and to align with the editorial-violet token.
+ * The 2026-05-18 dark-mode contrast nit that drove the original switch
+ * is resolved by the editorial-* CSS variables auto-brightening violet
+ * in `.dark` mode (see globals.css `--editorial-violet` block).
  */
 export const TRAIL_STAGE_TONES: Record<
   'T' | 'R' | 'A' | 'I' | 'L',
@@ -400,6 +434,14 @@ export const TRAIL_STAGE_TONES: Record<
     inactiveIcon: string;
     accent: string;
     bgTint: string;
+    /** Raw editorial hex values — for SVG fills, gradient stops, mesh
+     *  gradients, and any non-Tailwind colour use. Same hue as the
+     *  Tailwind tone classes. */
+    hex: {
+      base: string;   // The stage's signature colour (saturated).
+      soft: string;   // 18% opacity tint of base for atmospheric glow.
+      veil: string;   // 10% opacity tint for soft mesh-gradient layers.
+    };
   }
 > = {
   T: {
@@ -407,35 +449,59 @@ export const TRAIL_STAGE_TONES: Record<
     inactiveIcon: 'text-sky-500/55 dark:text-sky-400/55',
     accent: 'bg-sky-500 dark:bg-sky-400',
     bgTint: 'bg-sky-50/70 dark:bg-sky-950/30',
+    hex: {
+      base: '#0EA5E9', // editorial-sky
+      soft: 'rgba(14,165,233,0.18)',
+      veil: 'rgba(14,165,233,0.10)',
+    },
   },
   R: {
     activeText: 'text-amber-600 dark:text-amber-400',
     inactiveIcon: 'text-amber-500/55 dark:text-amber-400/55',
     accent: 'bg-amber-500 dark:bg-amber-400',
     bgTint: 'bg-amber-50/70 dark:bg-amber-950/30',
+    hex: {
+      base: '#F59E0B', // editorial-amber
+      soft: 'rgba(245,158,11,0.18)',
+      veil: 'rgba(245,158,11,0.10)',
+    },
   },
   A: {
     activeText: 'text-indigo-600 dark:text-indigo-400',
     inactiveIcon: 'text-indigo-500/55 dark:text-indigo-400/55',
     accent: 'bg-indigo-500 dark:bg-indigo-400',
     bgTint: 'bg-indigo-50/70 dark:bg-indigo-950/30',
+    hex: {
+      base: '#6366F1', // editorial-indigo
+      soft: 'rgba(99,102,241,0.18)',
+      veil: 'rgba(99,102,241,0.10)',
+    },
   },
   I: {
     activeText: 'text-emerald-600 dark:text-emerald-400',
     inactiveIcon: 'text-emerald-500/55 dark:text-emerald-400/55',
     accent: 'bg-emerald-500 dark:bg-emerald-400',
     bgTint: 'bg-emerald-50/70 dark:bg-emerald-950/30',
+    hex: {
+      base: '#16A34A', // editorial-emerald
+      soft: 'rgba(22,163,74,0.18)',
+      veil: 'rgba(22,163,74,0.10)',
+    },
   },
   L: {
-    // 2026-05-18 — violet→fuchsia. At dark-mode 30% opacity, violet read
-    // visually flatter than the other four tones (sky/amber/indigo/emerald
-    // all sit in the eye's high-contrast bands; violet sits lower). Fuchsia
-    // matches the punch of the other 4 AND aligns with the existing portal
-    // `<TrailStagePill>` (PR #789 client-book table) + `<DataSourceChip>`
-    // family — single colour vocabulary for LIVE across the codebase.
-    activeText: 'text-fuchsia-600 dark:text-fuchsia-400',
-    inactiveIcon: 'text-fuchsia-500/55 dark:text-fuchsia-400/55',
-    accent: 'bg-fuchsia-500 dark:bg-fuchsia-400',
-    bgTint: 'bg-fuchsia-50/70 dark:bg-fuchsia-950/30',
+    // 2026-05-30 — Reverted fuchsia → violet for behavioural consistency
+    // (mastery + aspiration, not playfulness). Aligns with the editorial-
+    // violet token (#8B5CF6) used everywhere else in the editorial system.
+    // The previous fuchsia-* Tailwind classes auto-flip in dark mode just
+    // like every other stage tone — no separate dark-mode override needed.
+    activeText: 'text-violet-600 dark:text-violet-400',
+    inactiveIcon: 'text-violet-500/55 dark:text-violet-400/55',
+    accent: 'bg-violet-500 dark:bg-violet-400',
+    bgTint: 'bg-violet-50/70 dark:bg-violet-950/30',
+    hex: {
+      base: '#8B5CF6', // editorial-violet
+      soft: 'rgba(139,92,246,0.18)',
+      veil: 'rgba(139,92,246,0.10)',
+    },
   },
 };
