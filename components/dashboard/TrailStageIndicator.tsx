@@ -11,9 +11,22 @@ import {
 } from 'framer-motion';
 import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { TRAIL_STAGE_TONES } from '@/lib/navigation/trailNav';
 
 /**
  * TrailStageIndicator — Home banner v3 (premium redesign).
+ *
+ * COLOUR PALETTE: each stage maps 1:1 to its canonical TRAIL_STAGE_TONES
+ * hue (see `lib/navigation/trailNav.tsx`), driven by colour psychology:
+ *   T (Track)   → SKY      — open observation, trust, clarity
+ *   R (Reduce)  → AMBER    — attention without alarm (never red)
+ *   A (Anchor)  → INDIGO   — depth, security, foundation
+ *   I (Invest)  → EMERALD  — growth, money, future
+ *   L (Live)    → VIOLET   — mastery, aspiration, freedom
+ *
+ * Per-stage atmospheric colours (glow, mesh gradient) read directly from
+ * `TRAIL_STAGE_TONES[<letter>].hex` so a future colour-system tweak only
+ * needs one edit to the SSOT.
  *
  * Design vocabulary:
  *   - appleEase + spring physics from components/shell/motion.ts (SSOT)
@@ -62,6 +75,12 @@ interface Stage {
   href: string;
 }
 
+// Per-stage atmospheric colour helpers. The "glow" stops are stronger than
+// `hex.soft` because the glow is the headline atmospheric layer; the mesh
+// gradient uses progressively softer veil tones for depth.
+const glowStrong = (base: string) => `${base}8C`; // ~55% alpha (8-digit hex)
+const veilWeak = (base: string) => `${base}1A`; // ~10% alpha
+
 const stages: Stage[] = [
   {
     letter: 'T',
@@ -71,13 +90,14 @@ const stages: Stage[] = [
       'Face your full financial reality — no judgment, just clarity. See every account, every debt, every dollar in and out. End the avoidance.',
     question: 'What do I actually have, owe, earn, and spend?',
     emotion: 'From avoidance → awareness',
-    ringClass: 'ring-amber-400/60',
-    textGradient: 'from-amber-300 via-amber-500 to-orange-600',
-    glowFrom: 'rgba(251,191,36,0.55)',
-    glowVia: 'rgba(245,158,11,0.18)',
-    meshA: 'rgba(251,191,36,0.18)',
-    meshB: 'rgba(217,119,6,0.10)',
-    meshC: 'rgba(120,53,15,0.10)',
+    // T → SKY (trust, calm observation, "open eyes")
+    ringClass: 'ring-sky-400/60',
+    textGradient: 'from-sky-300 via-sky-500 to-sky-700',
+    glowFrom: glowStrong(TRAIL_STAGE_TONES.T.hex.base),
+    glowVia: TRAIL_STAGE_TONES.T.hex.soft,
+    meshA: TRAIL_STAGE_TONES.T.hex.soft,
+    meshB: TRAIL_STAGE_TONES.T.hex.veil,
+    meshC: veilWeak(TRAIL_STAGE_TONES.T.hex.base),
     href: '/dashboard/balances',
   },
   {
@@ -88,13 +108,14 @@ const stages: Stage[] = [
       'Cut wasteful spending, get cashflow positive, set a budget, and start paying down debt. Stop the leaks before you fill the bucket.',
     question: 'Am I spending less than I earn? Where can I cut waste?',
     emotion: 'From overwhelm → empowerment',
-    ringClass: 'ring-orange-400/60',
-    textGradient: 'from-orange-300 via-orange-500 to-rose-600',
-    glowFrom: 'rgba(249,115,22,0.55)',
-    glowVia: 'rgba(234,88,12,0.18)',
-    meshA: 'rgba(249,115,22,0.18)',
-    meshB: 'rgba(225,29,72,0.10)',
-    meshC: 'rgba(124,45,18,0.10)',
+    // R → AMBER (attention without alarm — NEVER red, never shame)
+    ringClass: 'ring-amber-400/60',
+    textGradient: 'from-amber-300 via-amber-500 to-amber-700',
+    glowFrom: glowStrong(TRAIL_STAGE_TONES.R.hex.base),
+    glowVia: TRAIL_STAGE_TONES.R.hex.soft,
+    meshA: TRAIL_STAGE_TONES.R.hex.soft,
+    meshB: TRAIL_STAGE_TONES.R.hex.veil,
+    meshC: veilWeak(TRAIL_STAGE_TONES.R.hex.base),
     href: '/dashboard/budget-analysis',
   },
   {
@@ -105,13 +126,14 @@ const stages: Stage[] = [
       'Build an emergency fund that covers three months of expenses. Anchor yourself so one unexpected bill doesn’t send you backward.',
     question: 'Can I handle a financial shock without going into debt?',
     emotion: 'From fragile → stable',
-    ringClass: 'ring-emerald-400/60',
-    textGradient: 'from-emerald-300 via-emerald-500 to-teal-600',
-    glowFrom: 'rgba(16,185,129,0.55)',
-    glowVia: 'rgba(5,150,105,0.18)',
-    meshA: 'rgba(16,185,129,0.18)',
-    meshB: 'rgba(13,148,136,0.10)',
-    meshC: 'rgba(6,78,59,0.10)',
+    // A → INDIGO (depth, security, foundation — deep water reads as immovable)
+    ringClass: 'ring-indigo-400/60',
+    textGradient: 'from-indigo-300 via-indigo-500 to-indigo-700',
+    glowFrom: glowStrong(TRAIL_STAGE_TONES.A.hex.base),
+    glowVia: TRAIL_STAGE_TONES.A.hex.soft,
+    meshA: TRAIL_STAGE_TONES.A.hex.soft,
+    meshB: TRAIL_STAGE_TONES.A.hex.veil,
+    meshC: veilWeak(TRAIL_STAGE_TONES.A.hex.base),
     href: '/dashboard/safety-net',
   },
   {
@@ -122,13 +144,14 @@ const stages: Stage[] = [
       'Now that you’re stable, start accumulating. Buy property, invest in shares and super, build assets, and grow your net worth deliberately.',
     question: 'Is my net worth growing? Am I building something that lasts?',
     emotion: 'From surviving → building',
-    ringClass: 'ring-sky-400/60',
-    textGradient: 'from-sky-300 via-sky-500 to-indigo-600',
-    glowFrom: 'rgba(14,165,233,0.55)',
-    glowVia: 'rgba(2,132,199,0.18)',
-    meshA: 'rgba(14,165,233,0.18)',
-    meshB: 'rgba(79,70,229,0.10)',
-    meshC: 'rgba(15,23,42,0.10)',
+    // I → EMERALD (the universal money / growth colour)
+    ringClass: 'ring-emerald-400/60',
+    textGradient: 'from-emerald-300 via-emerald-500 to-emerald-700',
+    glowFrom: glowStrong(TRAIL_STAGE_TONES.I.hex.base),
+    glowVia: TRAIL_STAGE_TONES.I.hex.soft,
+    meshA: TRAIL_STAGE_TONES.I.hex.soft,
+    meshB: TRAIL_STAGE_TONES.I.hex.veil,
+    meshC: veilWeak(TRAIL_STAGE_TONES.I.hex.base),
     href: '/dashboard/properties',
   },
   {
@@ -139,13 +162,14 @@ const stages: Stage[] = [
       'Your wealth works for you. Passive income approaches or exceeds expenses. You make decisions from abundance, not scarcity.',
     question: 'Can I live the life I want without financial worry?',
     emotion: 'From building → freedom',
-    ringClass: 'ring-yellow-300/60',
-    textGradient: 'from-yellow-200 via-amber-400 to-orange-500',
-    glowFrom: 'rgba(250,204,21,0.55)',
-    glowVia: 'rgba(245,158,11,0.18)',
-    meshA: 'rgba(250,204,21,0.20)',
-    meshB: 'rgba(251,191,36,0.12)',
-    meshC: 'rgba(245,158,11,0.10)',
+    // L → VIOLET (mastery, aspiration, freedom — "I've arrived")
+    ringClass: 'ring-violet-400/60',
+    textGradient: 'from-violet-300 via-violet-500 to-violet-700',
+    glowFrom: glowStrong(TRAIL_STAGE_TONES.L.hex.base),
+    glowVia: TRAIL_STAGE_TONES.L.hex.soft,
+    meshA: TRAIL_STAGE_TONES.L.hex.soft,
+    meshB: TRAIL_STAGE_TONES.L.hex.veil,
+    meshC: veilWeak(TRAIL_STAGE_TONES.L.hex.base),
     href: '/dashboard/cfo',
   },
 ];
