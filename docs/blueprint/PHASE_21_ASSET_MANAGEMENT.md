@@ -547,6 +547,15 @@ consents).
   Flow through the same feed + snooze/dismiss/done state (synthetic key
   `${id}:CUSTOM`); rendered non-navigable (no entity page). Edit / hard-delete /
   a dedicated manage view are a fast-follow (Dismiss removes from view for now).
+- ✅ **Transaction-import-cadence reminder (R7-PR1, 2026-05-29)** —
+  `computeImportReminder` producer emits one `IMPORT_DUE` reminder ("time to
+  import your latest transactions") for manual-import users when their data is
+  ~a month stale (reads latest `ImportBatch.dateRangeEnd` + account
+  `balanceSource`; suppressed for fully Basiq-fed users). Importing advances the
+  cycle so it clears + returns monthly. Rationale: Basiq is off by default, so
+  manual import is the primary data path — stale imports silently drift every
+  downstream number. **R7-PR2 ⏳** adds the in-app export guide (date-range
+  pre-fill + **QIF-preferred** how-to) to the import wizard.
 
 **Still future:**
 - Next service due (by date or km)
@@ -742,7 +751,7 @@ Assets used for income-producing purposes may be depreciable:
 
 ### Phase 21.5: Insights & Alerts
 - [ ] Asset-related insights rules
-- [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). **Tier 2 snooze/dismiss/done shipped (R1 PR1, 2026-05-29)** — `ReminderState` table + pure `applyReminderStates()` merge + `POST /api/reminders/state` + RenewalsCard action menu. **In-app notification bell shipped (R1 PR2, 2026-05-29)** — `<NotificationBell>` in `EditorialTopBar` + shared `useReminders` hook. **Custom reminders shipped (R1 PR2b, 2026-05-29)** — `Reminder` model + `computeCustomReminders` + `POST /api/reminders/custom` + `<AddReminderDialog>`. Tier 2 remaining: bills feed (PR3). Tier 3 (email/push delivery) = R2.
+- [x] Service reminder system — Tier 1 in-app (canonical engine `lib/reminders/reminderEngine.ts` + `<RenewalsCard>` + `<RenewalChip>` + `GET /api/reminders`, 2026-05-29). **Tier 2 snooze/dismiss/done shipped (R1 PR1, 2026-05-29)** — `ReminderState` table + pure `applyReminderStates()` merge + `POST /api/reminders/state` + RenewalsCard action menu. **In-app notification bell shipped (R1 PR2, 2026-05-29)** — `<NotificationBell>` in `EditorialTopBar` + shared `useReminders` hook. **Custom reminders shipped (R1 PR2b, 2026-05-29)** — `Reminder` model + `computeCustomReminders` + `POST /api/reminders/custom` + `<AddReminderDialog>`. **Import-cadence reminder shipped (R7-PR1, 2026-05-29)** — `computeImportReminder` nudges manual-import users when data is ~a month stale. Tier 2 remaining: bills feed (PR3) + R7-PR2 import guide (QIF-preferred). Tier 3 (email/push delivery) = R2.
 - [x] Registration/insurance alerts — rego + CTP + comprehensive renewal dates on `Asset`, projected into reminders (2026-05-29). Loan fixed-rate expiry + bank/CDR consent expiry + warranty expiry also wired as producers (Tier A trio).
 - [x] Property renewals (R3 producer) — council/water rates, land tax, building & contents insurance, strata, lease, compliance cert on `Property`, projected by the same engine + surfaced in the property detail dialog (2026-05-29).
 

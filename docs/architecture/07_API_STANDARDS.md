@@ -903,8 +903,8 @@ Response:
       "id": "<entityId>:<sourceType>",
       "entityId": "...",
       "entityName": "Toyota Camry",
-      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT | CUSTOM",
-      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT | CUSTOM",
+      "category": "VEHICLE | WARRANTY | PROPERTY | LOAN | CONSENT | CUSTOM | IMPORT",
+      "sourceType": "VEHICLE_REGISTRATION | VEHICLE_CTP | VEHICLE_INSURANCE | ASSET_WARRANTY | PROPERTY_COUNCIL_RATES | PROPERTY_WATER_RATES | PROPERTY_LAND_TAX | PROPERTY_INSURANCE | PROPERTY_STRATA | PROPERTY_LEASE | PROPERTY_COMPLIANCE | LOAN_FIXED_EXPIRY | BANK_CONSENT | CUSTOM | IMPORT_DUE",
       "label": "Registration",
       "provider": "NRMA | null",
       "dueDate": "2026-07-01T00:00:00.000Z",
@@ -965,3 +965,13 @@ Body: `{ "title": "Call the accountant", "dueDate": "2026-08-15", "note": "FY26"
 Edit / hard-delete / a manage view are a fast-follow (Dismiss removes from view
 in the meantime). Tier 2 remaining: bank-detected bills feed (PR3). Tier 3
 (email/push delivery) = R2.
+
+**Import-cadence reminder (R7, 2026-05-29):** the `GET /api/reminders` feed also
+emits a single `IMPORT_DUE` reminder ("time to import your latest transactions")
+for users who rely on manual import — computed by `computeImportReminder` from
+the latest `ImportBatch.dateRangeEnd` + account `balanceSource` (only fires when
+the user has a non-Basiq account and their data is ~a month stale; suppressed
+for fully Basiq-fed users). `href` → `/dashboard/balances?action=import`.
+Importing advances the data coverage, so the due-date cycle moves and the
+reminder clears, returning next cycle. R7-PR2 adds the in-app export guide
+(date-range pre-fill + QIF-preferred how-to) to the import wizard.

@@ -24,7 +24,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, Pin, ChevronRight, MoreHorizontal, Clock, Check, X } from 'lucide-react';
+import { BellRing, Car, ShieldCheck, Building2, Landmark, Link2, Pin, Download, ChevronRight, MoreHorizontal, Clock, Check, X } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +43,7 @@ const CATEGORY_ICON: Record<ReminderCategory, typeof Car> = {
   LOAN: Landmark,
   CONSENT: Link2,
   CUSTOM: Pin,
+  IMPORT: Download,
 };
 
 /** Icon + name/label + optional subtitle + urgency chip. Shared by the

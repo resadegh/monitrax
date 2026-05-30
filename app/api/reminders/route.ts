@@ -25,7 +25,7 @@ import {
  */
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
-    const [assets, properties, loans, connections, states, custom] = await Promise.all([
+    const [assets, properties, loans, connections, states, custom, importAgg, accounts] = await Promise.all([
       prisma.asset.findMany({
         where: { userId: auth.userId },
         select: {
@@ -75,7 +75,24 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
         where: { userId: auth.userId },
         select: { id: true, title: true, dueDate: true, note: true },
       }),
+      // R7: how current is the imported transaction data (latest batch coverage).
+      prisma.importBatch.aggregate({
+        where: { userId: auth.userId, status: { in: ['COMPLETED', 'PARTIAL'] } },
+        _max: { dateRangeEnd: true },
+      }),
+      // R7: account sources — only nudge users who rely on manual import.
+      prisma.account.findMany({
+        where: { userId: auth.userId },
+        select: { balanceSource: true, createdAt: true },
+      }),
     ]);
+
+    // R7: a user "relies on manual import" if they have any non-Basiq account.
+    const manualAccounts = accounts.filter((a) => a.balanceSource !== 'BASIQ');
+    const earliestManualAccountCreatedAt = manualAccounts.reduce<Date | null>(
+      (min, a) => (!min || a.createdAt < min ? a.createdAt : min),
+      null
+    );
 
     const surfaced = surfacedReminders(
       computeAllReminders({
@@ -88,6 +105,11 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
           consentExpiresAt: c.consentExpiresAt,
         })),
         custom,
+        importCadence: {
+          lastImportedThrough: importAgg._max.dateRangeEnd,
+          earliestManualAccountCreatedAt,
+          hasManualAccounts: manualAccounts.length > 0,
+        },
       })
     );
 
