@@ -302,3 +302,88 @@ change. Same data inputs and props.
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (R5 PR3 — EntityCashflowSummary restyle)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·StD — Phase R5 PR3)
+- **Scope**: Restyle `components/dashboard/EntityCashflowSummary.tsx` — the
+  right half of the Debt + Entity Cashflow paired row. Completes R5 and brings
+  the Debt + Entity Cashflow paired row to fully-editorial styling.
+- **Description**: Surgical color migration + targeted Card → EditorialCard
+  wrapper rewrite. The widget's structure (6 tabs, EntityRow expand/collapse,
+  per-tab content templates, summary footer) is preserved intact — this PR is
+  a vocabulary swap, not a feature rewrite. The `calculateEntityCashflow`
+  helper (line ~597+) is untouched. Approach chosen to keep the diff focused
+  + reviewable on an 824-line file.
+
+### Migration mapping
+- `text-green-600 / dark:text-green-400` → `text-editorial-emerald` (auto-flips)
+- `text-red-600 / dark:text-red-400` → `text-editorial-amber` (NEVER red)
+- `bg-green-50/50 / bg-green-100 / dark:bg-green-950/20 / dark:bg-green-900/50` → `bg-editorial-emerald/5` and `/10`
+- `bg-red-50/50 / bg-red-100 / dark:bg-red-950/20 / dark:bg-red-900/50` → `bg-editorial-amber/5` and `/10`
+- `border-green-100 / dark:border-green-900` → `border-editorial-emerald/30`
+- `border-red-100 / dark:border-red-900` → `border-editorial-amber/30`
+- `text-muted-foreground` → `text-editorial-slate`
+- `bg-muted/50` → `bg-editorial-warm`
+- `hover:bg-muted` → `hover:bg-editorial-warm`
+- `Card` + `CardHeader` + `CardTitle` + `CardContent` → `EditorialCard` +
+  `Eyebrow` (header) — both the empty-state and the main widget.
+- Summary chip (was `<Badge variant="outline">`) → inline editorial chip in
+  emerald/10 (positive net) or amber/10 (negative net).
+
+### Editorial rules honoured
+- **"Never red."** All `text-red-*`, `bg-red-*`, `border-red-*` migrated to
+  the editorial-amber family. The widget shows expenses + negative cashflow
+  in amber — calm fact-surfacing, not alarm. Red is destructive-action-only.
+- **Theme-aware via CSS variables.** All editorial-* tokens auto-flip between
+  warm-ivory (light) and deep-navy (dark) — dropped the `dark:` prefixes
+  redundantly written for the legacy Tailwind classes.
+- **Same data, same props, same tabs.** Consumers in `app/dashboard/page.tsx`
+  see no API change.
+
+### Cleanup (same touch)
+- Removed unused lucide imports: `TrendingUp`, `TrendingDown`, `ArrowRight`,
+  `Wallet`, `DollarSign` (no longer referenced after the Card → EditorialCard
+  swap removed their use sites).
+- Removed unused `Button` import (was implicit from the legacy Card header
+  patterns).
+
+### What's NOT in scope of this PR
+- The legacy `@/components/ui/tabs` base component still renders with its own
+  `bg-muted` / `text-muted-foreground` ground. The `Tabs` / `TabsList` /
+  `TabsTrigger` editorial restyle is a separate piece (queued as part of
+  future R-port hygiene — not blocking the R5 close).
+- The `Badge variant="outline"` used at one spot for "Recurring" remains as-is
+  (single occurrence; not worth a separate primitive).
+
+### Files Modified
+- `components/dashboard/EntityCashflowSummary.tsx` — color migration + Card
+  swap. Public exports (`PropertyCashflow`, `InvestmentCashflow`,
+  `LoanCashflow`, `AssetCashflow`, `IncomeCashflow`, `ExpenseCashflow`,
+  `EntityCashflowData`, `EntityCashflowSummary`, `calculateEntityCashflow`)
+  all preserved.
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 24 grandfathered, 0 new
+- [x] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (EntityCashflowSummary restyle)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — R5 PR3 ticked; R5 row marked complete
+  (paired diagnostic rows fully editorial)
+- `docs/changelog/CHANGELOG_2026_05_30.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — UI restyle; no `lib/tax-engine/*`, no financial calculation, no schema
+change. Same data inputs and props as before.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)
