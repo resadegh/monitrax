@@ -54,8 +54,6 @@ import {
   calculateInvestmentIncome,
   LinkageHealthIndicator,
   calculateLinkageHealthStatus,
-  EntityComparisonChart,
-  buildEntityComparisonData,
   QuickActionsBar,
 } from '@/components/dashboard/Phase2Enhancements';
 import { NetWorthTrend, generateNetWorthTrendData, CompactNetWorthTrend } from '@/components/dashboard/NetWorthTrend';
@@ -68,6 +66,13 @@ import {
   SAVING_RATE_ZONES,
   LVR_ZONES,
 } from '@/components/editorial/kpi';
+import {
+  EditorialChartCard,
+  EditorialDonutChart,
+  EditorialEntityBars,
+  type AllocationSlice,
+  type EntityBar,
+} from '@/components/editorial/charts';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
@@ -154,6 +159,15 @@ interface DashboardInsights {
     outgoingsMonthly: number;
     incomeMonthly: number;
   };
+}
+
+// Mirrored from /api/dashboard/charts (R-Charts-1 consumer swap, 2026-05-29).
+// Pure passthrough; all chart arithmetic (pct, average net) is done server-side.
+interface DashboardCharts {
+  assetAllocation: { slices: AllocationSlice[]; totalAssets: number };
+  cashflowBars: Array<{ label: string; earned: number; spent: number }>;
+  cashflowAvgNet: number;
+  entityComparison: EntityBar[];
 }
 
 interface PortfolioSnapshot {
@@ -270,103 +284,6 @@ interface PortfolioSnapshot {
   };
 }
 
-// SVG Donut Chart Component
-function DonutChart({
-  data,
-  size = 200,
-  strokeWidth = 30,
-}: {
-  data: Array<{ label: string; value: number; color: string }>;
-  size?: number;
-  strokeWidth?: number;
-}) {
-  const total = data.reduce((sum, d) => sum + d.value, 0);
-  if (total === 0) {
-    return (
-      <div className="flex items-center justify-center" style={{ width: size, height: size }}>
-        <p className="text-sm text-muted-foreground">No data</p>
-      </div>
-    );
-  }
-
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  let currentOffset = 0;
-
-  return (
-    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-      {data.map((segment, index) => {
-        const percentage = segment.value / total;
-        const dashLength = percentage * circumference;
-        const dashOffset = -currentOffset;
-        currentOffset += dashLength;
-
-        return (
-          <circle
-            key={index}
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={segment.color}
-            strokeWidth={strokeWidth}
-            strokeDasharray={`${dashLength} ${circumference - dashLength}`}
-            strokeDashoffset={dashOffset}
-            transform={`rotate(-90 ${size / 2} ${size / 2})`}
-            className="transition-all duration-500"
-          />
-        );
-      })}
-      {/* Center text */}
-      <text
-        x={size / 2}
-        y={size / 2 - 10}
-        textAnchor="middle"
-        className="fill-current text-2xl font-bold"
-      >
-        {data.length}
-      </text>
-      <text
-        x={size / 2}
-        y={size / 2 + 15}
-        textAnchor="middle"
-        className="fill-muted-foreground text-sm"
-      >
-        {data.length === 1 ? 'Asset' : 'Assets'}
-      </text>
-    </svg>
-  );
-}
-
-// Progress Bar Component
-function ProgressBar({
-  value,
-  max,
-  color = 'bg-primary',
-  showPercentage = true,
-}: {
-  value: number;
-  max: number;
-  color?: string;
-  showPercentage?: boolean;
-}) {
-  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
-
-  return (
-    <div className="w-full">
-      <div className="h-2 bg-muted rounded-full overflow-hidden">
-        <div
-          className={`h-full ${color} rounded-full transition-all duration-500`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      {showPercentage && (
-        <p className="text-xs text-muted-foreground mt-1">{percentage.toFixed(1)}%</p>
-      )}
-    </div>
-  );
-}
-
 type DetailTileType = 'netWorth' | 'cashflow' | 'savingsRate' | 'lvr' | 'income' | 'outgoings' | null;
 type CashflowPeriod = 'monthly' | 'annual';
 
@@ -375,6 +292,7 @@ export default function DashboardPage() {
   const basiqEnabled = useBasiqEnabled();
   const [snapshot, setSnapshot] = useState<PortfolioSnapshot | null>(null);
   const [insights, setInsights] = useState<DashboardInsights | null>(null);
+  const [charts, setCharts] = useState<DashboardCharts | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDetail, setSelectedDetail] = useState<DetailTileType>(null);
   const [cashflowPeriod, setCashflowPeriod] = useState<CashflowPeriod>('monthly');
@@ -429,12 +347,17 @@ export default function DashboardPage() {
 
   const loadDashboardData = async () => {
     try {
-      // Load both endpoints in parallel
-      const [snapshotRes, insightsRes] = await Promise.all([
+      // Load all dashboard endpoints in parallel (§12.10 — 3 parallel calls,
+      // not 3 sequential). Charts endpoint serves the editorial chart suite
+      // (R-Charts-1 consumer swap) — distinct concern from /insights (§12.4).
+      const [snapshotRes, insightsRes, chartsRes] = await Promise.all([
         fetch('/api/portfolio/snapshot', {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch('/api/dashboard/insights', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch('/api/dashboard/charts', {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -444,6 +367,9 @@ export default function DashboardPage() {
       }
       if (insightsRes.ok) {
         setInsights(await insightsRes.json());
+      }
+      if (chartsRes.ok) {
+        setCharts(await chartsRes.json());
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -549,15 +475,6 @@ export default function DashboardPage() {
   };
 
   // Prepare chart data
-  const getAssetAllocationData = () => {
-    if (!snapshot) return [];
-    return [
-      { label: 'Properties', value: snapshot.assets.properties.totalValue, color: '#3b82f6' },
-      { label: 'Cash', value: snapshot.assets.accounts.totalValue, color: '#22c55e' },
-      { label: 'Investments', value: snapshot.assets.investments.totalValue, color: '#a855f7' },
-    ].filter(d => d.value > 0);
-  };
-
   const isEmpty = !snapshot || (
     snapshot.assets.properties.count === 0 &&
     snapshot.assets.accounts.count === 0 &&
@@ -877,25 +794,27 @@ export default function DashboardPage() {
               )}
             />
 
-            {/* Phase 4: Entity Comparison Chart */}
-            {(snapshot.properties.length > 0 || (snapshot.loans && snapshot.loans.length > 0)) && (
-              <EntityComparisonChart
-                items={buildEntityComparisonData(
-                  snapshot.properties,
-                  snapshot.investments.accounts.map(acc => ({
-                    name: acc.name,
-                    monthlyIncome: snapshot.income
-                      ? calculateInvestmentIncome(acc.id, snapshot.income).totalMonthlyIncome
-                      : 0,
-                  })),
-                  snapshot.loans?.map(loan => ({
-                    name: loan.name,
-                    netCashflowImpact: (loan.annualRepayment || 0) / 12,
-                    type: loan.type, // Include type to filter out property-linked loans
-                  })) || []
-                )}
-              />
-            )}
+            {/* Entity Value Contribution — net value owned by each
+                LegalEntity (assets − liabilities per ownerEntityId).
+                Data + math come from /api/dashboard/charts → the canonical
+                `getEntityValueBreakdown` (reuses the net-worth calculator,
+                so figures reconcile to the Net Worth tile). Replaces the
+                prior `EntityComparisonChart` (cashflow-by-entity) — the
+                entity-cashflow story is still covered by
+                EntityCashflowSummary above. R-Charts-1 consumer swap. */}
+            <EditorialChartCard
+              eyebrow="Entity Value Contribution"
+              headline={
+                charts && charts.entityComparison.length > 0
+                  ? `${charts.entityComparison.length} ${
+                      charts.entityComparison.length === 1 ? 'entity' : 'entities'
+                    }`
+                  : undefined
+              }
+              sub="Net value owned by each legal entity"
+            >
+              <EditorialEntityBars data={charts?.entityComparison ?? []} />
+            </EditorialChartCard>
           </div>
 
           {/* Actionable Insights & Budget Section */}
@@ -934,88 +853,24 @@ export default function DashboardPage() {
 
           {/* Two Column Layout: Charts & Insights */}
           <div className="grid gap-6 lg:grid-cols-3">
-            {/* Asset Allocation Chart */}
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Asset Allocation
-                </CardTitle>
-                <CardDescription>Distribution of your total assets</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col md:flex-row items-center gap-8">
-                  <DonutChart data={getAssetAllocationData()} size={180} strokeWidth={25} />
-                  <div className="flex-1 space-y-4 w-full">
-                    {/* Properties */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-blue-500" />
-                          <span className="text-sm font-medium">Properties</span>
-                        </div>
-                        <span className="text-sm font-semibold">{formatCompactCurrency(snapshot.assets.properties.totalValue)}</span>
-                      </div>
-                      <ProgressBar
-                        value={snapshot.assets.properties.totalValue}
-                        max={snapshot.totalAssets}
-                        color="bg-blue-500"
-                      />
-                    </div>
-
-                    {/* Cash Accounts */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-green-500" />
-                          <span className="text-sm font-medium">Cash & Accounts</span>
-                        </div>
-                        <span className="text-sm font-semibold">{formatCompactCurrency(snapshot.assets.accounts.totalValue)}</span>
-                      </div>
-                      <ProgressBar
-                        value={snapshot.assets.accounts.totalValue}
-                        max={snapshot.totalAssets}
-                        color="bg-green-500"
-                      />
-                    </div>
-
-                    {/* Investments */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full bg-purple-500" />
-                          <span className="text-sm font-medium">Investments</span>
-                        </div>
-                        <span className="text-sm font-semibold">{formatCompactCurrency(snapshot.assets.investments.totalValue)}</span>
-                      </div>
-                      <ProgressBar
-                        value={snapshot.assets.investments.totalValue}
-                        max={snapshot.totalAssets}
-                        color="bg-purple-500"
-                      />
-                    </div>
-
-                    {/* Personal Assets */}
-                    {snapshot.assets.personalAssets && snapshot.assets.personalAssets.count > 0 && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-orange-500" />
-                            <span className="text-sm font-medium">Personal Assets</span>
-                          </div>
-                          <span className="text-sm font-semibold">{formatCompactCurrency(snapshot.assets.personalAssets.totalValue)}</span>
-                        </div>
-                        <ProgressBar
-                          value={snapshot.assets.personalAssets.totalValue}
-                          max={snapshot.totalAssets}
-                          color="bg-orange-500"
-                        />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Asset Allocation — editorial donut + legend. Property=sky /
+                Investments+super=emerald / Cash=indigo / Other=muted. All
+                slice arithmetic (pct) is done server-side in
+                /api/dashboard/charts (R-Charts-1 consumer swap). */}
+            <div className="lg:col-span-2">
+              <EditorialChartCard
+                eyebrow="Asset Allocation"
+                headline={
+                  charts ? formatCurrency(charts.assetAllocation.totalAssets, { abbreviate: true }) : undefined
+                }
+                sub="Distribution of your total assets"
+              >
+                <EditorialDonutChart
+                  slices={charts?.assetAllocation.slices ?? []}
+                  totalAssets={charts?.assetAllocation.totalAssets ?? 0}
+                />
+              </EditorialChartCard>
+            </div>
 
             {/* Insights Panel */}
             <Card>
