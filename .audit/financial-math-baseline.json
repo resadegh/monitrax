@@ -131,7 +131,7 @@
     },
     {
       "file": "components/dashboard/DebtQualityWidget.tsx",
-      "line": 442,
+      "line": 404,
       "pattern": "INLINE_ARITHMETIC",
       "match": "goodDebt.total + neutralDebt.total"
     },
