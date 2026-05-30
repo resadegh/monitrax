@@ -177,3 +177,66 @@ N/A — UI consumer swap; no `lib/tax-engine/*`, no financial calculation
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (R5 PR1 — InsightWidgets restyle)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·StD — Phase R5 PR1)
+- **Scope**: Full restyle of `components/dashboard/InsightWidgets.tsx` (6 widgets)
+- **Description**: Restyles 6 of the 8 R5 dashboard widgets from legacy
+  `Card` + hard-coded blue/green/red/orange/purple to the editorial vocabulary
+  (`EditorialCard` + `Eyebrow` + `DataValue` + editorial-* tokens). Public
+  interfaces preserved — `app/dashboard/page.tsx` is untouched. Covers 3 of
+  the 4 R5 paired-diagnostic rows. Remaining: Debt + Entity Cashflow row
+  (DebtQualityWidget + EntityCashflowSummary, larger files — own PR).
+
+### Widgets restyled (all in InsightWidgets.tsx)
+1. **FinancialHealthScore** — score arc in editorial-emerald (or amber when
+   weak); editorial chip for grade letter (no red — F downgrades to amber).
+2. **EmergencyFundTracker** — emerald/amber tone tied to status; editorial
+   progress bar + tint track; gap message in amber/10 band.
+3. **MoneyBleedingCard** — `Flame` icon removed (alarmist, anti-editorial);
+   heavy items render in amber, routine in slate/60; no red.
+4. **SpendingByCategory** — TRAIL spectrum dots (sky / emerald / indigo /
+   violet / amber / slate) replace the rainbow blue/green/purple/orange/pink/cyan
+   palette.
+5. **ActionableInsights** — danger maps to amber (per "never red"); success →
+   emerald-edge wrap; info → calm warm bg; action link in emerald.
+6. **MonthlyBudgetSummary** — TRAIL spectrum segments (sky/indigo/violet/emerald)
+   replace blue/purple/orange/green; income & remaining bands in emerald/10.
+
+### Bonus cleanup
+- **3 grandfathered `0.15` HARDCODED_FINANCIAL_CONSTANT violations eliminated.**
+  Refactored MonthlyBudgetSummary's "is this segment wide enough to show its
+  label?" check from `(amount / income) > 0.15` to `widthPct > 15` (presentation
+  threshold extracted as `SEGMENT_LABEL_MIN_PCT`). Baseline count `27 → 24`.
+- Unused lucide imports dropped (Flame, Droplets, Target, Wallet, TrendingDown).
+
+### Files Modified
+- `components/dashboard/InsightWidgets.tsx` — full rewrite (~633 → ~470 lines).
+- `.audit/financial-math-baseline.json` — removed 3 InsightWidgets entries
+  (count 27 → 24); pure cleanup.
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 24 grandfathered (3 violations
+      eliminated by the refactor), 0 new
+- [x] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (6 widgets migrated to editorial vocabulary)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — R5 PR1 ticked; R5 PR2 (Debt + Entity Cashflow) queued
+- `docs/changelog/CHANGELOG_2026_05_30.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — UI restyle; no `lib/tax-engine/*`, no financial calculation, no schema
+change. Same data inputs and props as before; pure presentational rewrite.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)

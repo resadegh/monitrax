@@ -1,7 +1,7 @@
 {
   "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
   "generatedAt": "2026-05-29T03:49:56.914Z",
-  "count": 27,
+  "count": 24,
   "entries": [
     {
       "file": "app/dashboard/cfo/page.tsx",
@@ -134,24 +134,6 @@
       "line": 442,
       "pattern": "INLINE_ARITHMETIC",
       "match": "goodDebt.total + neutralDebt.total"
-    },
-    {
-      "file": "components/dashboard/InsightWidgets.tsx",
-      "line": 560,
-      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
-      "match": "0.15"
-    },
-    {
-      "file": "components/dashboard/InsightWidgets.tsx",
-      "line": 570,
-      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
-      "match": "0.15"
-    },
-    {
-      "file": "components/dashboard/InsightWidgets.tsx",
-      "line": 580,
-      "pattern": "HARDCODED_FINANCIAL_CONSTANT",
-      "match": "0.15"
     },
     {
       "file": "components/onboarding/wizard/steps/AssetsStep.tsx",
