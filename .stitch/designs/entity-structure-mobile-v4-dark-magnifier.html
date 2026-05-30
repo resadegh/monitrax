@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Your Wealth Story - Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-container-low": "#171d16",
+                        "on-surface-variant": "#bdcaba",
+                        "surface-container-high": "#252c24",
+                        "inverse-primary": "#006e2d",
+                        "surface-container": "#1b211a",
+                        "on-secondary-fixed-variant": "#004c69",
+                        "on-secondary-container": "#00374d",
+                        "on-primary-fixed": "#002109",
+                        "secondary-fixed": "#c4e7ff",
+                        "surface-container-lowest": "#09100a",
+                        "tertiary-fixed": "#ffd9de",
+                        "on-surface": "#dde5d9",
+                        "surface-container-highest": "#30372f",
+                        "surface-tint": "#62df7d",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#7ffc97",
+                        "tertiary": "#ffb2bf",
+                        "surface-dim": "#0e150f",
+                        "on-primary-container": "#003111",
+                        "background": "#0e150f",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#5a0022",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "tertiary-container": "#ec6284",
+                        "on-tertiary-fixed": "#3f0016",
+                        "primary-fixed-dim": "#62df7d",
+                        "inverse-surface": "#dde5d9",
+                        "on-secondary": "#00354a",
+                        "secondary": "#7bd0ff",
+                        "surface-variant": "#30372f",
+                        "on-tertiary": "#660027",
+                        "surface-bright": "#343b33",
+                        "primary": "#62df7d",
+                        "on-error-container": "#ffdad6",
+                        "inverse-on-surface": "#2b322b",
+                        "on-background": "#dde5d9",
+                        "error": "#ffb4ab",
+                        "outline": "#879485",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-error": "#690005",
+                        "surface": "#0e150f",
+                        "secondary-container": "#00a6e0",
+                        "primary-container": "#1ca64d",
+                        "on-primary": "#003914",
+                        "on-secondary-fixed": "#001e2c",
+                        "secondary-fixed-dim": "#7bd0ff",
+                        // Custom Brand Colors
+                        "glass-surface": "#131A2E",
+                        "brand-bg-start": "#0A0E1F",
+                        "brand-bg-end": "#0F1426",
+                        "accent-trust": "#6366f1",
+                        "accent-trust-light": "#818cf8",
+                        "accent-smsf": "#10b981",
+                        "accent-company": "#0ea5e9",
+                        "accent-individual": "#d946ef",
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.25rem",
+                        lg: "0.5rem",
+                        xl: "0.75rem",
+                        full: "9999px",
+                        "glass": "20px"
+                    },
+                    spacing: {
+                        "container-padding-mobile": "1rem",
+                        "stack-lg": "2rem",
+                        "unit": "4px",
+                        "stack-sm": "0.5rem",
+                        "gutter": "1rem",
+                        "container-padding-desktop": "2.5rem",
+                        "stack-md": "1rem"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "metadata": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-lg": ["16px", { lineHeight: "24px", fontWeight: "400" }],
+                        "headline-md": ["20px", { lineHeight: "28px", fontWeight: "600" }],
+                        "headline-lg": ["32px", { lineHeight: "40px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "display-lg": ["48px", { lineHeight: "56px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "metadata": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "label-md": ["12px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "500" }],
+                        "headline-lg-mobile": ["24px", { lineHeight: "32px", fontWeight: "600" }],
+                        "body-sm": ["14px", { lineHeight: "20px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background: linear-gradient(180deg, #0A0E1F 0%, #0F1426 100%);
+            min-height: 100vh;
+            color: #dde5d9;
+        }
+        .glass-panel {
+            background: rgba(19, 26, 46, 0.6);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 20px;
+        }
+        .glass-pill {
+            background: rgba(19, 26, 46, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 9999px;
+        }
+        .node-dimmed {
+            opacity: 0.55;
+            filter: blur(2px);
+            transition: all 0.3s ease;
+        }
+        .node-magnified {
+            transform: scale(2.2);
+            z-index: 40;
+            box-shadow: 0 28px 48px -12px rgba(10, 14, 31, 0.8), 0 0 0 1.5px #818cf8;
+            background: #131A2E;
+        }
+        .lens-flare {
+            position: absolute;
+            width: 360px;
+            height: 360px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, rgba(99, 102, 241, 0) 70%);
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 0;
+            pointer-events: none;
+        }
+        .bezier-line {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 1;
+        }
+        .bezier-line-active {
+            stroke: #818cf8;
+            stroke-width: 2;
+            opacity: 1;
+        }
+        .bezier-line-dimmed {
+            stroke: rgba(255, 255, 255, 0.1);
+            stroke-width: 1;
+            opacity: 0.4;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="antialiased overflow-x-hidden pb-32">
+<!-- TopAppBar Shell Component -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-container-padding-mobile py-4 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+<img alt="User profile photo of Reza" class="w-full h-full object-cover" data-alt="Close-up portrait of a professional man with short dark hair and a neat beard, wearing a dark navy blazer over a crisp white shirt, photographed against a sophisticated dark background with soft studio lighting, creating a premium corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVWrGaJhC36QvL2W5gBpB86qZrneEHZTAyjBDpRwmn21qI-R9UEB6Oa5yCjtoX5ZCYqzdi2O9tLdrg0u3_FF5RBEsi19DFe37kZE_FlS6Tk2YLqKUDqmhZP3AgEDkNKqBUz6EO5QRYEDmGvGFjT_96v9qHlIJS0YD0Nta9KtWyQibJ3tW-AWL_6fLx2tTVq0S0heTz6O6hk7CwNbeQzEP_nsnSXQnXBsQ9uEX_ESCZsBdjblXRROcAorHvwUAxtbse4oWg6UVwB7s"/>
+</div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface">Welcome back, Reza</h1>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 rounded-full hover:bg-white/5 transition-colors text-primary dark:text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat_bubble</span>
+</button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-4 relative z-10 flex flex-col gap-6">
+<!-- Header Section -->
+<section class="flex flex-col gap-2">
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">MY WEALTH &gt; MY STRUCTURE</p>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-white">Your Wealth Story</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">8 entities · 5 assets · $1,477,000</p>
+</section>
+<!-- Lens Pill -->
+<div class="flex w-full overflow-x-auto pb-2 scrollbar-hide">
+<div class="glass-pill flex p-1 min-w-max mx-auto">
+<button class="px-4 py-1.5 font-label-md text-label-md rounded-full text-on-surface-variant hover:text-white transition-colors">Control</button>
+<button class="px-4 py-1.5 font-label-md text-label-md rounded-full bg-white/10 text-white shadow-sm border border-white/5">Ownership</button>
+<button class="px-4 py-1.5 font-label-md text-label-md rounded-full text-on-surface-variant hover:text-white transition-colors">Money flow</button>
+<button class="px-4 py-1.5 font-label-md text-label-md rounded-full text-on-surface-variant hover:text-white transition-colors">Asset flow</button>
+</div>
+</div>
+<!-- Canvas Area (Mock Graph) -->
+<div class="relative w-full h-[1200px] mt-8">
+<!-- SVG Edges -->
+<svg class="absolute top-0 left-0 w-full h-full z-0 pointer-events-none" viewbox="0 0 390 1200">
+<!-- Dimmed connections -->
+<path class="bezier-line bezier-line-dimmed" d="M 100 100 C 100 200, 100 300, 100 400"></path>
+<path class="bezier-line bezier-line-dimmed" d="M 290 100 C 290 200, 290 300, 290 400"></path>
+<path class="bezier-line bezier-line-dimmed" d="M 195 450 C 100 600, 100 700, 100 800"></path>
+<!-- Active connections to magnified tile -->
+<path class="bezier-line bezier-line-active" d="M 195 150 C 195 250, 195 350, 195 450"></path>
+<path class="bezier-line bezier-line-active" d="M 195 550 C 195 650, 290 750, 290 850"></path>
+</svg>
+<!-- TIER 1: Controllers -->
+<div class="absolute top-10 left-4 w-[100px] h-[60px] glass-panel node-dimmed flex items-center justify-center p-2">
+<span class="font-metadata text-metadata text-white text-center">Group Holding</span>
+</div>
+<div class="absolute top-10 left-[145px] w-[100px] h-[60px] glass-panel node-dimmed flex items-center justify-center p-2">
+<span class="font-metadata text-metadata text-white text-center">Inv Pty</span>
+</div>
+<div class="absolute top-10 right-4 w-[100px] h-[60px] glass-panel node-dimmed flex items-center justify-center p-2">
+<span class="font-metadata text-metadata text-white text-center">SMSF Pty</span>
+</div>
+<!-- TIER 2: Vehicles -->
+<div class="absolute top-[300px] left-4 w-[100px] h-[60px] glass-panel node-dimmed flex items-center justify-center p-2">
+<span class="font-metadata text-metadata text-white text-center">Renew Holding Co</span>
+</div>
+<!-- MAGNIFIED FOCAL TILE -->
+<div class="absolute top-[300px] left-[145px] w-[100px] h-[60px] node-magnified rounded-xl flex flex-col relative transition-transform duration-500 origin-center">
+<!-- Lens flare background effect -->
+<div class="lens-flare"></div>
+<!-- Tile Content (Scaled down slightly internally to fit within the 100x60 base before 2.2x scale) -->
+<div class="p-1 flex flex-col h-full w-full relative z-10" style="transform: scale(0.45); transform-origin: top left; width: 222px; height: 133px;">
+<!-- Header row -->
+<div class="flex justify-between items-start w-full">
+<div class="flex items-center gap-1.5">
+<div class="w-8 h-8 rounded-full bg-accent-trust/20 flex items-center justify-center border border-accent-trust/30">
+<span class="material-symbols-outlined text-accent-trust-light" style="font-size: 16px;">umbrella</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-[8px] text-on-surface-variant uppercase tracking-wider">ABN 12 345 • DISCRETIONARY</span>
+<span class="font-headline-md text-[11px] text-white font-semibold leading-tight w-32 truncate">Renew Investment Family Trust</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/50" style="font-size: 12px;">search</span>
+</div>
+<!-- Status Pill -->
+<div class="mt-1 flex">
+<span class="px-1.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-label-md text-[7px]">Valid</span>
+</div>
+<!-- Metrics Grid -->
+<div class="grid grid-cols-2 gap-2 mt-2 w-full">
+<div class="flex flex-col">
+<span class="text-[7px] text-on-surface-variant uppercase">Trustee</span>
+<span class="text-[8px] text-white">Renew Holding Pty Ltd</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[7px] text-on-surface-variant uppercase">Beneficiaries</span>
+<span class="text-[8px] text-white">2 Entities</span>
+</div>
+</div>
+<!-- Relationship Pills & Chips Row -->
+<div class="flex justify-between items-end mt-auto pb-1">
+<div class="flex gap-1">
+<span class="px-1.5 py-0.5 rounded-full bg-white/5 border border-white/10 text-white/70 text-[6px]">Owns 3</span>
+</div>
+<div class="flex -space-x-1">
+<div class="w-3 h-3 rounded-full bg-surface-variant border border-surface-dim z-30"></div>
+<div class="w-3 h-3 rounded-full bg-surface-variant border border-surface-dim z-20"></div>
+<div class="w-3 h-3 rounded-full bg-surface-variant border border-surface-dim z-10"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute top-[300px] right-4 w-[100px] h-[60px] glass-panel node-dimmed flex items-center justify-center p-2">
+<span class="font-metadata text-metadata text-white text-center">Renew Super</span>
+</div>
+<!-- TIER 3: Assets -->
+<div class="absolute top-[600px] left-2 w-[70px] h-[40px] glass-panel node-dimmed flex items-center justify-center p-1">
+<span class="text-[10px] text-white">HOME</span>
+</div>
+<div class="absolute top-[600px] left-[80px] w-[70px] h-[40px] glass-panel node-dimmed flex items-center justify-center p-1">
+<span class="text-[10px] text-white">Stake</span>
+</div>
+<div class="absolute top-[600px] left-[160px] w-[70px] h-[40px] glass-panel node-dimmed flex items-center justify-center p-1">
+<span class="text-[10px] text-white">SMSF Cash</span>
+</div>
+<div class="absolute top-[600px] left-[240px] w-[70px] h-[40px] glass-panel node-dimmed flex items-center justify-center p-1">
+<span class="text-[10px] text-white">Landcruiser</span>
+</div>
+<div class="absolute top-[600px] right-2 w-[70px] h-[40px] glass-panel node-dimmed flex items-center justify-center p-1">
+<span class="text-[10px] text-white">VW Golf</span>
+</div>
+<!-- TIER 4: Beneficiaries -->
+<div class="absolute top-[900px] left-[100px] w-[80px] h-[80px] rounded-full glass-panel node-dimmed flex flex-col items-center justify-center p-2">
+<span class="material-symbols-outlined text-white/50 mb-1">person</span>
+<span class="text-[10px] text-white text-center">Newsha</span>
+</div>
+<div class="absolute top-[900px] right-[100px] w-[80px] h-[80px] rounded-full glass-panel node-dimmed flex flex-col items-center justify-center p-2 relative">
+<!-- Emerald Pulse -->
+<div class="absolute inset-0 rounded-full border-2 border-emerald-500/50 animate-ping" style="animation-duration: 3s;"></div>
+<div class="absolute inset-0 rounded-full border border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.3)]"></div>
+<img alt="Reza" class="w-8 h-8 rounded-full mb-1 object-cover" data-alt="Close-up portrait of a professional man with short dark hair and a neat beard, wearing a dark navy blazer over a crisp white shirt, photographed against a sophisticated dark background with soft studio lighting, creating a premium corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDwA4PXdiAiRmaEu-1iFI_Z6DFs0TV9VgU0jin6ZWf6eNMiEUJTUxYGYubGCZbvBy1eGXWuWCsWylxnAIRjHB1cmEgcSwE4rCEaybiyxFxQMmsMx0iioMmrGfXHvgZEMrG1dAmvO3pU3VtavxP42vRPZAyqQXCCSYDnBmuxPRBPaVD0JXZNcHn6KdheYg9MpvNqdebgf8EEjJKqLiwFM9Xs1UsTp6DuVOtbxTLHFZFr_7GfOAPm0DSe_B-Av3-ZdJpAEgRezNUM4DM"/>
+<span class="text-[10px] text-white font-semibold text-center">YOU</span>
+</div>
+</div>
+<!-- Action Row -->
+<div class="flex gap-4 mt-8 mb-4">
+<button class="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-label-md text-label-md hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">add</span>
+                Add entity or asset
+            </button>
+<button class="flex-1 py-3 rounded-xl border border-white/10 bg-white/5 text-white font-label-md text-label-md hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined" style="font-size: 18px;">download</span>
+                Export structure
+            </button>
+</div>
+</main>
+<!-- BottomNavBar Shell Component -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined mb-1">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined mb-1">account_balance_wallet</span>
+<span class="font-label-md text-[10px]">Accounts</span>
+</a>
+<!-- Active Tab: Wealth -->
+<a class="flex flex-col items-center justify-center text-primary-fixed bg-primary/10 rounded-xl px-3 py-1 shadow-[0_0_15px_rgba(98,223,125,0.15)] scale-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-md text-[10px] text-primary">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined mb-1">explore</span>
+<span class="font-label-md text-[10px]">Guide</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined mb-1">more_horiz</span>
+<span class="font-label-md text-[10px]">More</span>
+</a>
+</nav>
+</body></html>
