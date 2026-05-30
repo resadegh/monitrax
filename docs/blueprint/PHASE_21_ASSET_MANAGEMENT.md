@@ -554,8 +554,11 @@ consents).
   `balanceSource`; suppressed for fully Basiq-fed users). Importing advances the
   cycle so it clears + returns monthly. Rationale: Basiq is off by default, so
   manual import is the primary data path — stale imports silently drift every
-  downstream number. **R7-PR2 ⏳** adds the in-app export guide (date-range
-  pre-fill + **QIF-preferred** how-to) to the import wizard.
+  downstream number. The reminder links to the **existing** import flow
+  (`/dashboard/balances?action=import`). **Scope (Reza 2026-05-29): R7 is a
+  reminder only — NOT a new import engine.** A heavier "import guide" (date-range
+  pre-fill + QIF how-to inside `ImportWizard`) is parked; if revived it's at most
+  light copy on the existing wizard, never new import machinery (§12.1/§12.4).
 
 **Still future:**
 - Next service due (by date or km)

@@ -973,5 +973,5 @@ the latest `ImportBatch.dateRangeEnd` + account `balanceSource` (only fires when
 the user has a non-Basiq account and their data is ~a month stale; suppressed
 for fully Basiq-fed users). `href` → `/dashboard/balances?action=import`.
 Importing advances the data coverage, so the due-date cycle moves and the
-reminder clears, returning next cycle. R7-PR2 adds the in-app export guide
-(date-range pre-fill + QIF-preferred how-to) to the import wizard.
+reminder clears, returning next cycle. The reminder links to the **existing**
+import flow — R7 is a reminder only, not a new import engine (Reza 2026-05-29).

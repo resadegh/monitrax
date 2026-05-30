@@ -626,8 +626,11 @@ schema change, no AI tool, no per-asset tax UI.
   cycle. Warm copy ("Up to date through 30 Apr 2026"), never shaming. **No
   schema change.**
 
-  R7-PR2 (next) adds the in-app export guide to the `ImportWizard`: date-range
-  pre-fill + **QIF-preferred** how-to (Reza: QIF is the most reliable format).
+  **Scope corrected (Reza 2026-05-29): "this should be only a reminder, not a
+  new import engine."** R7 = the reminder, which links to the EXISTING
+  `ImportWizard` (`/dashboard/balances?action=import`). The heavier import-guide
+  idea (date-range pre-fill + QIF how-to) is parked — if revived it's at most
+  light copy on the existing wizard, never a parallel import engine (§12.1/§12.4).
 
 ### Files Modified
 - `lib/reminders/reminderEngine.ts` — `IMPORT` category + `IMPORT_DUE` sourceType
