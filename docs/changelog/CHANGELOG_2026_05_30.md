@@ -112,3 +112,68 @@ logic (it's a derived total, regime-neutral).
 ### PR
 - Branch: `claude/stitch-dashboard-redesign-LIlK9`
 - Status: Draft (pending review)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (R4 — Net Worth paired-hero)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·StD — Phase R4 completion)
+- **Scope**: Live dashboard `/dashboard` — Net Worth tile elevation
+- **Description**: Migrated the Net Worth tile from a legacy `StatCard` inside
+  the 6-tile metrics row to a full-width editorial `PairedMetricCard` (Copilot
+  Assets / Debts pattern) above the now-5-tile KPI strip. Net result is a
+  cleaner IA: Money Story hero (forward-looking) → Net Worth hero (current
+  position, Assets / Debts split) → KPI strip (drill-down metrics). The
+  click-through detail modal is preserved.
+
+### Files Modified
+- `app/dashboard/page.tsx`:
+  - Removed the Net Worth `StatCard` + `CalculationTooltip` wrapper from the
+    metrics row (~25 lines).
+  - Inserted `PairedMetricCard` between the utility row and the metrics row:
+    `left = Assets (total + items breakdown)`, `right = Debts (total + loan
+    count + portfolio LVR)`, click-wrapped to open the existing Net Worth
+    detail modal.
+  - Tile grid `xl:grid-cols-6` → `xl:grid-cols-5` (5 KPI tiles now).
+  - Dead imports cleaned: `StatCard` (orphaned), `CalculationTooltip`
+    (was only used by the Net Worth tile).
+- `.audit/financial-math-baseline.json` — 7 entries shifted +4 lines from
+  the PairedMetricCard insertion (pure drift; no new violations).
+
+### Architecture / lens decisions
+- **Hero pair, not single tile.** Net Worth in a 1/6 grid cell read as a
+  peer of the flow KPIs, but it's a *stock* metric (current position) not a
+  *flow* metric — different mental model. Elevating to a paired hero gives
+  the user both gross numbers (Copilot Assets / Debts pattern), which the
+  financial-adviser lens prefers: "you can't manage leverage you can't see."
+- **Net Worth value implicit, not headline.** The PairedMetricCard surfaces
+  Assets and Debts prominently; the net is derivable at a glance from the
+  two numbers and is shown explicitly in the click-through detail modal.
+  Designer lens: restraint — let the user do the trivial subtraction; don't
+  triple-show the same number.
+- **CalculationTooltip dropped.** Consistent with the editorial KPI tiles
+  (which dropped their tooltips too); the detail modal is the canonical
+  surface for the breakdown formula.
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 27 grandfathered (baseline line
+      drift updated), 0 new
+- [x] `npm run build` — see verification below
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (Net Worth elevated to PairedMetricCard hero)
+- [ ] application config / GCP / identity / deployment / security / operational / strategic
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` — R4 (final tile migration) ticked
+- `docs/changelog/CHANGELOG_2026_05_30.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — UI consumer swap; no `lib/tax-engine/*`, no financial calculation
+(all reading existing canonical snapshot fields), no schema change.
+
+### PR
+- Branch: `claude/stitch-dashboard-redesign-LIlK9`
+- Status: Draft (pending review)

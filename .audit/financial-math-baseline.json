@@ -41,43 +41,43 @@
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1251,
+      "line": 1255,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1259,
+      "line": 1263,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1300,
+      "line": 1304,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1308,
+      "line": 1312,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1322,
+      "line": 1326,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "expense.annualAmount / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1521,
+      "line": 1525,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1525,
+      "line": 1529,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
