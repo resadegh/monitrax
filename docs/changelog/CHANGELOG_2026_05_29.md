@@ -665,3 +665,59 @@ N/A — no tax-engine / financial calc / schema column touched.
 ### PR
 - Branch: `claude/reminders-import-cadence-LFNFt`
 - Status: Draft (pending review)
+
+---
+
+## Session: reminders-bills-feed-LFNFt
+
+### Changes Made
+- **Type**: Feature (Phase 21.5 — R1 PR3, the last Tier 2 slice)
+- **Scope**: Reminders — bank-detected bills feed
+- **Description**: Surfaces detected recurring bills (`RecurringPayment`) as
+  `BILL_DUE` reminders in the same feed/bell/card. Closes R1 Tier 2.
+
+  **No new detection engine** (Reza's R7 steer applies here too): recurring-bill
+  detection already exists (`RecurringPayment` + `nextExpected`); this is purely
+  a producer that projects the next-due ones. **Opt-in**: gated by the
+  previously-dead `pushBillReminders` toggle, which now has a real read effect —
+  default off, so the high-volume feed never floods the bell uninvited. Users
+  who want it flip the existing Settings toggle; snooze/dismiss tune per-bill
+  noise. Short fuse (due within ~a week or recently overdue, active + not
+  paused) keeps it calm.
+
+  **CDR (§13.3):** the row subtitle shows amount + cadence ("$15.99 · monthly")
+  — the user's own data, returned in-app only to the authed user, never in
+  logs / URLs / audit metadata.
+
+### Files Modified
+- `lib/reminders/reminderEngine.ts` — `BILL` category + `BILL_DUE` sourceType +
+  `BillReminderSource` + `computeBillReminders` producer (short window; AUD
+  amount + cadence subtitle) + `BILL_LEAD_DAYS`/`BILL_UPCOMING_WINDOW_DAYS`;
+  wired into `computeAllReminders`. Header updated (Tier 2 complete).
+- `app/api/reminders/route.ts` — fetches `UserPreference.pushBillReminders` +
+  due `recurringPayment` rows (date-bounded, active, not paused); emits bills
+  only when the toggle is on.
+- `components/reminders/NotificationBell.tsx`, `RenewalsCard.tsx` — `BILL` →
+  `Receipt` glyph.
+
+### Documentation Updated
+- `docs/blueprint/PHASE_21_ASSET_MANAGEMENT.md` — §8.2 PR3 ✅ (R1 Tier 2 complete) + §13 line.
+- `docs/architecture/07_API_STANDARDS.md` — `BILL`/`BILL_DUE` enums + bills-feed + opt-in note.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — bill-reminder note.
+- `docs/IMPLEMENTATION_PLAN.md` — R1 → ✅ COMPLETE.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — read-only producer. No schema change, no Prisma writes (feed route reads
+`userPreference.findUnique` + `recurringPayment.findMany`).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+N/A — no tax-engine / financial calc / schema column touched.
+
+### PR
+- Branch: `claude/reminders-bills-feed-LFNFt`
+- Status: Draft (pending review)

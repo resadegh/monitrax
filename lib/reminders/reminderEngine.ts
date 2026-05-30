@@ -25,10 +25,10 @@
  * Tier 2/3 extend this engine with: (a) term-deposit maturity, standalone
  * insurance, personal-document expiry as further producers; (b) persisted
  * snooze/dismiss/done state — the pure `applyReminderStates()` merge below is
- * shipped (R1 PR1), surfaced via the in-app bell (PR2); the high-volume
- * bank-detected bills feed (RecurringPayment.nextExpected) follows (PR3);
- * (c) email/push delivery gated by `UserPreference` via a daily Cloud
- * Scheduler sweep (R2).
+ * shipped (R1 PR1), surfaced via the in-app bell (PR2); the bank-detected bills
+ * feed (`computeBillReminders` from RecurringPayment.nextExpected, opt-in via
+ * `pushBillReminders`) is shipped (PR3); (c) email/push delivery gated by
+ * `UserPreference` via a daily Cloud Scheduler sweep (R2).
  *
  * Where used (Tier 1):
  *   - app/api/reminders/route.ts          — unified GET (assets+properties+loans+accounts)
@@ -59,6 +59,15 @@ export const IMPORT_CADENCE_DAYS = 30;
 const IMPORT_LEAD_DAYS = 7;
 const IMPORT_UPCOMING_WINDOW_DAYS = 14;
 
+/**
+ * Bank-detected bills (R1 PR3) recur often, so they surface on a short fuse —
+ * a few days before due, plus anything recently overdue — to stay useful, not
+ * noisy. Opt-in: the feed only emits these when the user's `pushBillReminders`
+ * preference is on.
+ */
+const BILL_LEAD_DAYS = 3;
+const BILL_UPCOMING_WINDOW_DAYS = 7;
+
 export type ReminderSourceType =
   | 'VEHICLE_REGISTRATION'
   | 'VEHICLE_CTP'
@@ -74,10 +83,11 @@ export type ReminderSourceType =
   | 'LOAN_FIXED_EXPIRY'
   | 'BANK_CONSENT'
   | 'CUSTOM'
-  | 'IMPORT_DUE';
+  | 'IMPORT_DUE'
+  | 'BILL_DUE';
 
 /** Broad category — drives icon/colour grouping + the "act here" href. */
-export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT' | 'CUSTOM' | 'IMPORT';
+export type ReminderCategory = 'VEHICLE' | 'WARRANTY' | 'PROPERTY' | 'LOAN' | 'CONSENT' | 'CUSTOM' | 'IMPORT' | 'BILL';
 
 /**
  * Urgency tiers, ordered most→least pressing. Drives colour + sort order.
@@ -205,6 +215,21 @@ export interface CustomReminderSource {
   dueDate?: string | Date | null;
   /** Optional free-text note shown as the row subtitle. */
   note?: string | null;
+}
+
+/**
+ * Bank-detected recurring bill (Phase 21.5 R1 PR3). Projected from the existing
+ * `RecurringPayment` detection — this engine does NOT detect bills, it only
+ * surfaces the next-due ones as reminders.
+ */
+export interface BillReminderSource {
+  id: string;
+  /** Standardised merchant name (e.g. "Netflix"). */
+  merchant: string;
+  expectedAmount?: number | null;
+  nextExpected?: string | Date | null;
+  /** RecurrencePattern value (WEEKLY / MONTHLY / …) for the cadence label. */
+  pattern?: string | null;
 }
 
 /**
@@ -519,6 +544,57 @@ export function computeImportReminder(
   ];
 }
 
+/** Human cadence label per RecurrencePattern. */
+const BILL_PATTERN_LABEL: Record<string, string> = {
+  WEEKLY: 'weekly',
+  FORTNIGHTLY: 'fortnightly',
+  MONTHLY: 'monthly',
+  QUARTERLY: 'quarterly',
+  ANNUALLY: 'yearly',
+  IRREGULAR: 'recurring',
+};
+
+/**
+ * Project bank-detected recurring bills (R1 PR3): one reminder per bill that's
+ * due soon (or recently overdue). Short fuse + the caller's opt-in gate keep
+ * the high-volume feed calm. Amount + cadence become the row subtitle (the
+ * user's own data, shown in-app only — never logged; CLAUDE.md §13.3).
+ */
+export function computeBillReminders(
+  bills: BillReminderSource[],
+  opts: ComputeOpts = {}
+): RenewalReminder[] {
+  const now = opts.now ?? new Date();
+  const out: RenewalReminder[] = [];
+
+  for (const bill of bills) {
+    const due = toDate(bill.nextExpected);
+    if (!due) continue;
+    const daysUntilDue = daysUntil(due, now);
+    const amount =
+      typeof bill.expectedAmount === 'number'
+        ? bill.expectedAmount.toLocaleString('en-AU', { style: 'currency', currency: 'AUD' })
+        : null;
+    const cadence = bill.pattern ? BILL_PATTERN_LABEL[bill.pattern] ?? null : null;
+    const subtitle = [amount, cadence].filter(Boolean).join(' · ') || null;
+    out.push({
+      id: `${bill.id}:BILL_DUE`,
+      entityId: bill.id,
+      entityName: bill.merchant,
+      category: 'BILL',
+      sourceType: 'BILL_DUE',
+      label: 'Bill due',
+      provider: subtitle,
+      dueDate: due.toISOString(),
+      daysUntilDue,
+      urgency: urgencyFor(daysUntilDue, BILL_LEAD_DAYS, BILL_UPCOMING_WINDOW_DAYS),
+      href: '/recurring',
+    });
+  }
+
+  return sortReminders(out);
+}
+
 /** Merge every producer into one sorted list. */
 export function computeAllReminders(
   input: {
@@ -528,6 +604,7 @@ export function computeAllReminders(
     connections?: ConsentRenewalSource[];
     custom?: CustomReminderSource[];
     importCadence?: ImportCadenceSource;
+    bills?: BillReminderSource[];
   },
   opts: ComputeOpts = {}
 ): RenewalReminder[] {
@@ -538,6 +615,7 @@ export function computeAllReminders(
     ...computeConsentReminders(input.connections ?? [], opts),
     ...computeCustomReminders(input.custom ?? [], opts),
     ...(input.importCadence ? computeImportReminder(input.importCadence, opts) : []),
+    ...computeBillReminders(input.bills ?? [], opts),
   ]);
 }
 

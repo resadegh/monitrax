@@ -1398,6 +1398,12 @@ glyph), entity name "Your transactions", and links to the import flow
 manual import and their data is ~a month stale. Warm subtitle ("Up to date
 through 30 Apr 2026"), never shaming.
 
+**Bill reminders (R1 PR3)** render with the `BILL` category (Receipt glyph),
+the merchant as the name, an amount + cadence subtitle ("$15.99 · monthly"), and
+link to `/recurring`. **Opt-in** — only present when `pushBillReminders` is on
+(default off), so the high-volume feed never floods the bell uninvited; snooze/
+dismiss let opted-in users tune the noise per bill.
+
 **Urgency colour** (warm + calm per CLAUDE.md §0 — overdue stated plainly, not
 alarmist): OVERDUE → rose, DUE_SOON → amber, UPCOMING → sky. Aligns with the
 §6.7 severity vocabulary. The bell's **count badge** follows the same calm rule:

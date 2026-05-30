@@ -25,7 +25,14 @@ import {
  */
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
-    const [assets, properties, loans, connections, states, custom, importAgg, accounts] = await Promise.all([
+    // Bill-feed surfacing window (R1 PR3): due within ~a week, or recently
+    // overdue — bounded so the high-volume query stays small + indexed.
+    const now = new Date();
+    const billWindowStart = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000);
+    const billWindowEnd = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
+
+    const [assets, properties, loans, connections, states, custom, importAgg, accounts, pref, recurring] =
+      await Promise.all([
       prisma.asset.findMany({
         where: { userId: auth.userId },
         select: {
@@ -85,6 +92,27 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
         where: { userId: auth.userId },
         select: { balanceSource: true, createdAt: true },
       }),
+      // PR3: the opt-in gate for the bank-detected bills feed.
+      prisma.userPreference.findUnique({
+        where: { userId: auth.userId },
+        select: { pushBillReminders: true },
+      }),
+      // PR3: recurring bills due soon (or recently overdue), active + not paused.
+      prisma.recurringPayment.findMany({
+        where: {
+          userId: auth.userId,
+          isActive: true,
+          isPaused: false,
+          nextExpected: { not: null, gte: billWindowStart, lte: billWindowEnd },
+        },
+        select: {
+          id: true,
+          merchantStandardised: true,
+          expectedAmount: true,
+          nextExpected: true,
+          pattern: true,
+        },
+      }),
     ]);
 
     // R7: a user "relies on manual import" if they have any non-Basiq account.
@@ -110,6 +138,17 @@ export const GET = withPermission('entity.read', async (_request, auth) => {
           earliestManualAccountCreatedAt,
           hasManualAccounts: manualAccounts.length > 0,
         },
+        // PR3: opt-in — only surface bill reminders when the user enabled them
+        // (the previously-dead `pushBillReminders` toggle now has a read effect).
+        bills: pref?.pushBillReminders
+          ? recurring.map((b) => ({
+              id: b.id,
+              merchant: b.merchantStandardised,
+              expectedAmount: b.expectedAmount,
+              nextExpected: b.nextExpected,
+              pattern: b.pattern,
+            }))
+          : undefined,
       })
     );
 
