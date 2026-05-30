@@ -1225,6 +1225,12 @@ model User {
   // Phase 21.5 Tier 2: user-created custom reminders
   customReminders Reminder[]
 
+  // Phase R-Charts-2 (2026-05-30): per-month net-worth snapshot store —
+  // replaces the simulated `generateNetWorthTrendData` (Math.random) used
+  // by the legacy NetWorth Trend tile. Honest data; the editorial trend
+  // chart shows a quiet empty state until ≥2 months of snapshots accrue.
+  netWorthSnapshots NetWorthSnapshot[]
+
   // Phase 28: Realistic Budget Integration
   householdProfile HouseholdProfile?
   budgetAnalyses   BudgetAnalysis[]
@@ -3152,6 +3158,40 @@ model Reminder {
 
   @@index([userId])
   @@map("reminders")
+}
+
+// =============================================================================
+// PHASE R-CHARTS-2 (2026-05-30): NET WORTH HISTORICAL SNAPSHOTS
+// =============================================================================
+// Powers the editorial Net Worth Trend tile with HONEST data — replaces the
+// prior simulated `generateNetWorthTrendData` (Math.random) used by the legacy
+// NetWorthTrend component. One row per (user, month-anchor) — `snapshotDate`
+// is the first day of the calendar month the row represents (UTC). The
+// recorder upserts on every dashboard load so the current month always
+// reflects the latest known position; once the calendar rolls over, the
+// previous month freezes.
+//
+// Float is consistent with the rest of the financial schema (Property
+// currentValue Float, Loan principal Float, Account currentBalance Float —
+// this table is a derived aggregate of those values).
+model NetWorthSnapshot {
+  id               String   @id @default(uuid())
+  userId           String
+  /// First day of the calendar month this snapshot represents (UTC).
+  /// Uniqueness on (userId, snapshotDate) makes the recorder upsert
+  /// idempotent across multiple visits in the same month.
+  snapshotDate     DateTime
+  totalAssets      Float
+  totalLiabilities Float
+  netWorth         Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, snapshotDate])
+  @@index([userId])
+  @@map("net_worth_snapshots")
 }
 
 // =============================================================================
