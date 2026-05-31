@@ -79,6 +79,11 @@ export interface WealthRelationship {
    * Undefined when no notice applies.
    */
   reformNotice?: string;
+  /**
+   * Phase 2 enhancement — for flow ribbons, the FY this flow belongs
+   * to. Drives FY-slider filtering. Undefined for non-flow ribbons.
+   */
+  financialYear?: string;
 }
 
 /** Type → accent colour token (hex). Drives inner glow + ribbon stroke. */

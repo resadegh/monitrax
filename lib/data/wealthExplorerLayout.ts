@@ -60,6 +60,14 @@ export interface LayoutResult {
   relationships: WealthRelationship[];
   /** True when there's no real structure to render (only PERSONAL_NAME, no assets). */
   isEmpty: boolean;
+  /**
+   * Phase 2 enhancement — drives the canvas FY-slider. `fy` is the
+   * default selection (most recent FY with CONFIRMED data); `fyOptions`
+   * is every FY with data, descending. Passed through from the
+   * service.
+   */
+  moneyFlowFy: string;
+  moneyFlowFyOptions: string[];
 }
 
 /** Map LegalEntityType + role → canvas vocabulary. */
@@ -228,6 +236,8 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
     ownershipGroups,
     beneficialOverrides,
     moneyFlows,
+    moneyFlowFy,
+    moneyFlowFyOptions,
   } = snapshot;
 
   const personal: WealthGraphEntity[] = [];
@@ -500,10 +510,17 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
       label: flowLabel(f),
       amount: f.amount,
       reformNotice: f.reformNotice ?? undefined,
+      financialYear: f.financialYear,
     });
   }
 
-  return { nodes, relationships: ribbons, isEmpty };
+  return {
+    nodes,
+    relationships: ribbons,
+    isEmpty,
+    moneyFlowFy,
+    moneyFlowFyOptions,
+  };
 }
 
 // ===========================================================================

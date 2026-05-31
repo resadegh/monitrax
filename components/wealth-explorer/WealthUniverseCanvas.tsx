@@ -37,7 +37,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   NODE_ACCENT,
   RIBBON_COLOR,
@@ -476,6 +476,15 @@ export default function WealthUniverseCanvas() {
 
   const nodes = layout?.nodes ?? [];
   const relationships = layout?.relationships ?? [];
+  // Phase 2 enhancement — FY-slider state. Default to the most recent
+  // FY with data (from the service). User can scrub through historical
+  // FYs in money-flow mode. `null` until the layout loads.
+  const [selectedFy, setSelectedFy] = useState<string | null>(null);
+  const moneyFlowFy = layout?.moneyFlowFy ?? null;
+  const moneyFlowFyOptions = useMemo(() => layout?.moneyFlowFyOptions ?? [], [layout]);
+  useEffect(() => {
+    if (selectedFy === null && moneyFlowFy) setSelectedFy(moneyFlowFy);
+  }, [moneyFlowFy, selectedFy]);
 
   const nodesById = useMemo(
     () => Object.fromEntries(nodes.map(n => [n.id, n])),
@@ -529,9 +538,14 @@ export default function WealthUniverseCanvas() {
 
   // Phase 2 — §12.14 surface: aggregated count of pending-Royal-Assent
   // flows so the canvas can show a "X pending Royal Assent" badge.
+  // Filtered to the currently-selected FY so the count tracks what
+  // the user can actually see on the canvas (FW-1 per-FY discipline).
   const pendingReformFlowCount = useMemo(
-    () => flowRibbons.filter(r => !!r.reformNotice).length,
-    [flowRibbons],
+    () =>
+      flowRibbons.filter(
+        r => !!r.reformNotice && (!selectedFy || r.financialYear === selectedFy),
+      ).length,
+    [flowRibbons, selectedFy],
   );
 
   // Phase 1.1 — given a ribbon, is it dimmed by the current lens?
@@ -554,6 +568,10 @@ export default function WealthUniverseCanvas() {
     // ribbons recede instead.
     if (flowMode === 'money-flow') {
       if (!isFlowRibbon(r)) return true;
+      // Phase 2 enhancement — FY-slider scope: dim flows that don't
+      // belong to the selected FY so the user reads one year at a
+      // time.
+      if (selectedFy && r.financialYear && r.financialYear !== selectedFy) return true;
     } else {
       if (isFlowRibbon(r)) return true;
     }
@@ -834,7 +852,60 @@ export default function WealthUniverseCanvas() {
         </button>
       </div>
 
-      {/* Level breadcrumb */}
+      {/* Phase 2 enhancement — FY-slider strip. Ghost-glass strip with
+          a tick mark per FY that has CONFIRMED data. Renders only when
+          the Money Flow lens is active. Each tick is tappable; the
+          selected FY drives ribbon-dim + the pending-Royal-Assent
+          count (so the §12.14 surface tracks the FY the user is
+          actually reading). Sits where the Level breadcrumb would —
+          they're alternatives, not overlapping concerns. */}
+      {flowMode === 'money-flow' && moneyFlowFyOptions.length > 0 && (
+        <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2">
+          <div
+            className="flex h-9 items-center gap-1 rounded-full px-2"
+            style={{
+              background: 'rgba(13, 18, 36, 0.72)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <span className="pl-1 pr-2 text-[9px] font-medium uppercase tracking-[0.16em] text-white/40">
+              FY
+            </span>
+            {moneyFlowFyOptions.map(fy => {
+              const active = fy === selectedFy;
+              return (
+                <button
+                  key={fy}
+                  type="button"
+                  onClick={() => setSelectedFy(fy)}
+                  className="flex h-7 items-center rounded-full px-2.5 text-[10px] font-medium tabular-nums transition"
+                  style={
+                    active
+                      ? {
+                          background: 'rgba(52, 211, 153, 0.16)',
+                          border: '1px solid rgba(52, 211, 153, 0.45)',
+                          color: '#A7F3D0',
+                        }
+                      : {
+                          color: 'rgba(255, 255, 255, 0.55)',
+                          border: '1px solid transparent',
+                        }
+                  }
+                  aria-pressed={active}
+                  aria-label={`Show money flow for ${formatFyLabel(fy)}`}
+                >
+                  {formatFyLabel(fy)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Level breadcrumb — hidden in money-flow mode (the FY-slider
+          above sits at the same position). */}
+      {flowMode === 'structure' && (
       <div className="pointer-events-none absolute left-1/2 top-20 z-30 -translate-x-1/2">
         <div
           className="flex items-center gap-2 rounded-full px-3 py-1.5"
@@ -851,6 +922,7 @@ export default function WealthUniverseCanvas() {
           <span className="h-1 w-1 rounded-full bg-white/15" />
         </div>
       </div>
+      )}
 
       {/* Ribbons */}
       <svg
@@ -980,4 +1052,12 @@ function hexToRgb(hex: string): string | null {
   if (!m || m.length < 3) return null;
   const [r, g, b] = m.map(c => parseInt(c, 16));
   return `${r}, ${g}, ${b}`;
+}
+
+/** Phase 2 enhancement — render `'2025-26'` as `'FY25-26'` to match the
+    canonical FY label used elsewhere in the app (`taxYearConfig.label`). */
+function formatFyLabel(fy: string): string {
+  const m = fy.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return fy;
+  return `FY${m[1].slice(-2)}-${m[2]}`;
 }

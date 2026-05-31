@@ -109,6 +109,8 @@ export default function WealthUniverseMobile() {
   const [lensMode, setLensMode] = useState<'legal' | 'beneficial'>('legal');
   // Phase 2 — Structure / Money Flow primary lens (mirrors desktop).
   const [flowMode, setFlowMode] = useState<'structure' | 'money-flow'>('structure');
+  // Phase 2 enhancement — FY-slider state (mirrors desktop).
+  const [selectedFy, setSelectedFy] = useState<string | null>(null);
 
   useEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -169,9 +171,23 @@ export default function WealthUniverseMobile() {
     [relationships],
   );
   const hasFlows = flowRibbons.length > 0;
+  // Phase 2 enhancement — FY-slider data (mirrors desktop).
+  const moneyFlowFy = layout?.moneyFlowFy ?? null;
+  const moneyFlowFyOptions = useMemo(
+    () => layout?.moneyFlowFyOptions ?? [],
+    [layout],
+  );
+  useEffect(() => {
+    if (selectedFy === null && moneyFlowFy) setSelectedFy(moneyFlowFy);
+  }, [moneyFlowFy, selectedFy]);
+  // Pending-Royal-Assent count is scoped to the selected FY so the
+  // §12.14 surface tracks what the user can actually see on the canvas.
   const pendingReformFlowCount = useMemo(
-    () => flowRibbons.filter(r => !!r.reformNotice).length,
-    [flowRibbons],
+    () =>
+      flowRibbons.filter(
+        r => !!r.reformNotice && (!selectedFy || r.financialYear === selectedFy),
+      ).length,
+    [flowRibbons, selectedFy],
   );
   function isLensDimmed(r: WealthRelationship): boolean {
     if (!hasBeneficialOverride) return false;
@@ -181,6 +197,7 @@ export default function WealthUniverseMobile() {
   function isRibbonDimmed(r: WealthRelationship): boolean {
     if (flowMode === 'money-flow') {
       if (!isFlowRibbon(r)) return true;
+      if (selectedFy && r.financialYear && r.financialYear !== selectedFy) return true;
     } else {
       if (isFlowRibbon(r)) return true;
     }
@@ -367,6 +384,48 @@ export default function WealthUniverseMobile() {
                 {pendingReformFlowCount} pending
               </div>
             )}
+          </div>
+        )}
+
+        {/* Phase 2 enhancement — FY-slider strip. Renders only in
+            money-flow mode, when ≥1 FY has data. Horizontal scrollable
+            row of FY pills. Each pill is the FY canonical label
+            (FY25-26 etc.); selected pill is emerald-tinted. */}
+        {flowMode === 'money-flow' && moneyFlowFyOptions.length > 0 && (
+          <div className="overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex items-center gap-1.5">
+              <span className="pr-1 text-[9px] font-medium uppercase tracking-[0.16em] text-white/40">
+                FY
+              </span>
+              {moneyFlowFyOptions.map(fy => {
+                const active = fy === selectedFy;
+                return (
+                  <button
+                    key={fy}
+                    type="button"
+                    onClick={() => setSelectedFy(fy)}
+                    className="flex h-7 flex-shrink-0 items-center rounded-full px-2.5 text-[10px] font-medium tabular-nums transition"
+                    style={
+                      active
+                        ? {
+                            background: 'rgba(52, 211, 153, 0.16)',
+                            border: '1px solid rgba(52, 211, 153, 0.45)',
+                            color: '#A7F3D0',
+                          }
+                        : {
+                            background: 'rgba(19, 26, 46, 0.7)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            color: 'rgba(255, 255, 255, 0.55)',
+                          }
+                    }
+                    aria-pressed={active}
+                    aria-label={`Show money flow for ${formatFyLabel(fy)}`}
+                  >
+                    {formatFyLabel(fy)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -1156,4 +1215,11 @@ function hexToRgb(hex: string): string | null {
 
 function prettifyType(t: WealthNodeType): string {
   return t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/** Phase 2 enhancement — `'2025-26'` → `'FY25-26'` (canonical label). */
+function formatFyLabel(fy: string): string {
+  const m = fy.match(/^(\d{4})-(\d{2})$/);
+  if (!m) return fy;
+  return `FY${m[1].slice(-2)}-${m[2]}`;
 }
