@@ -170,3 +170,72 @@ may need a section on the inline-error-details fallback pattern.
 ### PRs
 - See "PRs merged this session" table above.
 - Status: All merged into `main` and deployed to prod.
+
+---
+
+## Session continuation — Mobile React port + tuning + legacy retirement
+
+### Mobile parity build (PRs #947–950)
+
+After PR #946 documented the Phase 1 desktop build, the mobile React
+port + tuning + feature-parity pass landed in four additional PRs:
+
+| # | What it shipped |
+|---|---|
+| #947 | `feat(wealth-explorer): mobile Apple Maps hybrid (port Stitch 72ea8d79)` — Built `WealthUniverseMobile` from Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198`. Compact canvas + draggable bottom sheet with 3 snap states (peek / half / full) via Framer Motion drag controls. Swapped `/dashboard/entities` `md:hidden` block from legacy `EntityCanvas` to new mobile component. Shared data layer with desktop (`useWealthExplorerData()` → `/api/wealth-graph`). |
+| #948 | `fix(wealth-explorer/mobile): bigger tiles + peek default + X collapses sheet` — Tuning after first prod look: COMPACT_SIZE_SCALE 0.55→0.78, min glyph 12→14px, added tile name labels (truncated) + $ value chip beneath each. Sheet default snap moved from `half`→`peek` (map gets full screen on first load). X on detail card collapses sheet to peek (not just clears selection). |
+| #949 | `fix(wealth-explorer/mobile): drop redundant header + search; reclaim space` — Removed the in-canvas "MY WEALTH › MY STRUCTURE / Wealth Explorer / 4 entities" header that was stacking on top of the existing dashboard chrome (Welcome bar + Balances/Activity/My Structure sub-tabs). Canvas top offset 84→8px. Removed search pill from sheet — filter chips are enough for typical entity counts. |
+| #950 | `feat(wealth-explorer/mobile): rich entity detail card + 'Holds N' list chip` — Mobile feature parity with desktop's `EntityDetailPanel`. Inline detail card now mirrors desktop content density: Identity section (ABN / ACN / Trading as / Established / Trust type), Controlled-by parent entity, 2×2 asset counts grid (Properties / Investments / Accounts / Other), gradient CTA. On-demand fetch of `/api/entities/[id]` gated on `isEntity` (skipped for synthetic ownership-group + asset nodes). Added "Holds N" chip on entity list rows derived from outgoing `holds` ribbons. |
+
+### Stitch artefact (committed before #947)
+- `.stitch/designs/wealth-explorer-mobile-v1-dark.{html,png}` — Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198` — visual SoT for mobile (Apple Maps hybrid).
+
+### State of play after #950
+| Surface | Live in prod | Real data | Tap interactive | Detail panel | Joint + beneficial |
+|---|---|---|---|---|---|
+| Desktop | ✅ | ✅ | Hover + click + search + filter | Slide-in right panel | ✅ |
+| Mobile | ✅ | ✅ | Tap + filter (search dropped per A4-mobile) | Inline rich card in bottom sheet | ✅ |
+
+The Wealth Universe Explorer is now the canonical entity-graph surface on every viewport. The legacy `EntityCanvas` (React Flow) is orphaned — used by zero consumers — which triggers Phase 6.
+
+### Phase 6 — Legacy `EntityCanvas` retirement (this PR)
+
+**§12.1 zero-tolerance dead code.** With both desktop and mobile on the
+new Wealth Universe canvas, the legacy React Flow `EntityCanvas` and
+its tightly-coupled tile + dialog + layout components are dead weight.
+
+Files deleted:
+- `components/entities/EntityCanvas.tsx` — the legacy React Flow canvas
+- `components/entities/canvas/EntityCanvasNode.tsx` — its custom tile (only consumer was EntityCanvas)
+- `components/entities/canvas/layout.ts` — its dagre auto-layout adapter (only consumer was EntityCanvas + a unit test)
+- `components/entities/EntityDetailDialog.tsx` — entity-detail dialog (only consumer was EntityCanvas)
+- `components/entities/RelationshipDetailDialog.tsx` — relationship-detail dialog (only consumer was EntityCanvas)
+
+Files updated:
+- `app/dashboard/entities/page.tsx` — removed the now-orphaned `EntityCanvas` dynamic import + stale comments.
+- `tests/entity-graph/canvasMeta.test.ts` — removed the "dagre auto-layout adapter" describe block (3 tests) + the `layoutGraph` / `NODE_WIDTH` / `NODE_HEIGHT` import. Replaced with a comment pointing at the new layout function at `lib/data/wealthExplorerLayout.ts` (spatial, not dagre). Other tests in the file (lens edge-filter / metadata coverage / API error extraction) retained — they still serve the accountant-review page which uses `entityGraphClient` + `graphMeta`.
+
+Files retained (still in active use):
+- `components/entities/MoneyFlowSankey.tsx` — used by `components/bookkeeping/ConsumerMoneyFlowSankey.tsx`
+- `components/entities/canvas/entityGraphClient.ts` — used by accountant-review page + retained tests
+- `components/entities/canvas/graphMeta.ts` — used by accountant-review page + retained tests
+- `components/entities/types.ts` — `ROLE_PALETTE` / `ROLE_LABELS` still consumed by `EntityTree.tsx` (accountant portal client view) + `MoneyFlowSankey.tsx` + accountant-review page
+- `components/entities/EntityTree.tsx` — used by `app/portal/clients/[id]/view/page.tsx`
+- `components/entities/OwnershipGroupsDialog.tsx` — used by `app/dashboard/entities/page.tsx`
+
+### Documentation in this PR
+
+- `docs/changelog/CHANGELOG_2026_05_31.md` (this file) — extended with the Mobile parity build summary + Phase 6 retirement notes.
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WX` Phase 4 (mobile) marked complete; Phase 6 (legacy retirement) added with this PR's scope; phase ordering updated.
+
+CLAUDE.md compliance for Phase 6:
+- **§12.1 zero-tolerance dead code** — every file deleted has zero consumers verified via `grep -rn "FileName" --include="*.tsx" --include="*.ts"`.
+- **§18 Stitch-first** — both retained mobile + desktop surfaces are ports of Stitch screens `a3b43b9164d74f1c8ec53bc20f319cbd` and `72ea8d79fa7e4a0c865a2c2a9d73d198` respectively.
+- **§16 doc-sync** — Phase 44 doc already references the new canvas as the canonical surface (PR #946 §16.6 phased rollout); this PR closes the Phase 6 row by deleting the legacy components.
+
+### Outstanding
+- Phase 1.1 — beneficial-ownership lens toggle (legal dim/show switch)
+- Phase 2 — Money Flow lens with §12.14 Phase 41E reform-awareness
+- Phase 2 enhancement — FY-slider
+- Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
+- Phase 5 — Simplified dashboard widget on `/dashboard` home

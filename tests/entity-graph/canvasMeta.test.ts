@@ -17,7 +17,6 @@ import {
   relationshipTypeMeta,
   ALL_RELATIONSHIP_TYPES,
 } from '@/components/entities/canvas/graphMeta';
-import { layoutGraph, NODE_WIDTH, NODE_HEIGHT } from '@/components/entities/canvas/layout';
 import { extractApiError } from '@/components/entities/canvas/entityGraphClient';
 
 describe('Phase 44 Part 1c — canvas lens edge-filter', () => {
@@ -82,31 +81,11 @@ describe('Phase 44 Part 1c — canvas metadata coverage', () => {
   });
 });
 
-describe('Phase 44 Part 1c — dagre auto-layout adapter', () => {
-  it('positions every node, even disconnected ones', () => {
-    const positions = layoutGraph(['a', 'b', 'c'], [{ source: 'a', target: 'b' }]);
-    expect(positions.size).toBe(3);
-    expect(positions.has('c')).toBe(true);
-  });
-
-  it('places the controller above the entity it controls (top-to-bottom)', () => {
-    const positions = layoutGraph(['trustee', 'trust'], [{ source: 'trustee', target: 'trust' }]);
-    const trustee = positions.get('trustee')!;
-    const trust = positions.get('trust')!;
-    expect(trust.y).toBeGreaterThan(trustee.y);
-  });
-
-  it('returns finite, non-negative top-left coordinates', () => {
-    const positions = layoutGraph(['only'], []);
-    const p = positions.get('only')!;
-    expect(Number.isFinite(p.x)).toBe(true);
-    expect(Number.isFinite(p.y)).toBe(true);
-    expect(p.x).toBeGreaterThanOrEqual(0);
-    expect(p.y).toBeGreaterThanOrEqual(0);
-    expect(NODE_WIDTH).toBeGreaterThan(0);
-    expect(NODE_HEIGHT).toBeGreaterThan(0);
-  });
-});
+// Phase 44 Part 1c dagre auto-layout adapter tests removed in Phase 6
+// (2026-05-31) — the legacy EntityCanvas + canvas/layout.ts were
+// retired when the new Wealth Universe canvas reached desktop + mobile
+// parity. The layout function is now in
+// `lib/data/wealthExplorerLayout.ts` (spatial, not dagre).
 
 describe('Phase 44 Part 1c — API error extraction', () => {
   it('reads the canonical { error: { code, message } } shape', () => {
