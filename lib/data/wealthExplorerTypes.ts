@@ -16,7 +16,9 @@ export type WealthNodeType =
   | 'asset-property'
   | 'asset-vehicle'
   | 'asset-investment'
-  | 'asset-cash';
+  | 'asset-cash'
+  | 'asset-loan'
+  | 'ownership-group'; // synthetic node for joint-tenancy / tenants-in-common
 
 export interface WealthNode {
   id: string;
@@ -33,6 +35,16 @@ export interface WealthNode {
   isAnchor?: boolean;
   /** Featured entity — gets the emerald focal ring at rest. */
   isFocal?: boolean;
+  /**
+   * For asset nodes: which entity holds it. Used by the detail panel to
+   * jump to the owning entity on click.
+   */
+  ownerEntityId?: string;
+  /**
+   * Tier marker for layout debug + filter chips. Entities sit in tier 1
+   * (controllers / vehicles), assets in tier 2, individuals in tier 3.
+   */
+  tier?: 'entity' | 'asset' | 'individual' | 'group';
 }
 
 export type RelationshipType =
@@ -65,6 +77,8 @@ export const NODE_ACCENT: Record<WealthNodeType, string> = {
   'asset-vehicle': '#FBBF24',
   'asset-investment': '#818CF8',
   'asset-cash': '#34D399',
+  'asset-loan': '#F87171', // amber-rose for debt
+  'ownership-group': '#F0ABFC', // pink-violet — matches household ribbon
 };
 
 /** Relationship → ribbon stroke colour. */
