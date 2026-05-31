@@ -44,6 +44,7 @@ import type {
   WealthGraphBeneficialOverride,
   WealthGraphEdge,
   WealthGraphEntity,
+  WealthGraphMoneyFlow,
   WealthGraphOwnershipGroup,
   WealthGraphSnapshot,
 } from '@/lib/services/wealthGraphService';
@@ -220,7 +221,14 @@ function shortLabel(edgeType: WealthGraphEdge['type']): string {
 // ===========================================================================
 
 export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResult {
-  const { entities, assets, relationships, ownershipGroups, beneficialOverrides } = snapshot;
+  const {
+    entities,
+    assets,
+    relationships,
+    ownershipGroups,
+    beneficialOverrides,
+    moneyFlows,
+  } = snapshot;
 
   const personal: WealthGraphEntity[] = [];
   const corporate: WealthGraphEntity[] = [];
@@ -477,6 +485,24 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
     });
   }
 
+  // 5) Money flows (Phase 2) — distribution + dividend ribbons. Direction
+  //    matches cash movement: from trust / company to beneficiary /
+  //    shareholder. We only emit a ribbon if both endpoints are nodes on
+  //    the canvas — otherwise the user would see a flow into nowhere.
+  for (const f of moneyFlows) {
+    if (!nodePositionById.has(f.fromEntityId)) continue;
+    if (!nodePositionById.has(f.toEntityId)) continue;
+    ribbons.push({
+      id: f.id,
+      from: f.fromEntityId,
+      to: f.toEntityId,
+      type: f.kind === 'distribution' ? 'flow-distribution' : 'flow-dividend',
+      label: flowLabel(f),
+      amount: f.amount,
+      reformNotice: f.reformNotice ?? undefined,
+    });
+  }
+
   return { nodes, relationships: ribbons, isEmpty };
 }
 
@@ -515,4 +541,11 @@ function formatValue(value: number): string {
   if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (abs >= 1_000) return `$${Math.round(value / 1_000)}K`;
   return `$${value.toFixed(0)}`;
+}
+
+/** Phase 2 — money-flow ribbon label. */
+function flowLabel(f: WealthGraphMoneyFlow): string {
+  const amount = formatValue(f.amount);
+  const verb = f.kind === 'distribution' ? 'Distribution' : 'Dividend';
+  return `${verb} ${amount}`;
 }

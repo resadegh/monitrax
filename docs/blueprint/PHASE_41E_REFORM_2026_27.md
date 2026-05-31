@@ -751,6 +751,7 @@ Not every surface needs to land in Stage 1. Three buckets:
 | `lib/portal/alerts/alertEngine.ts` | `computeAlerts` | Stage 1 no-op. Stage 2 adds the 4 new reform-aware triggers per §12.1. |
 | `lib/ai/tax-advisor/tools/*` (all 11 existing tools) | each tool's executor | Audit each tool for whether its facts can change under the reform. If yes, the tool's citations must include the reform-status flag (Stage 2). |
 | `lib/ai/tax-advisor/tools/getReformImpactSummaryForUser.ts` *(new — §10.10)* | tool executor | Stage 1: composes `getReformedTaxRegimeStatus` per asset + Measure 5 carry-back + summary narration from the knowledge pack. Returns UNCOMPUTED for M1/M2/M3 dollar projections until Stage 2 lands. Output schema MUST pass the same HR-1 (numeric-fields trace to tool results) + HR-2 (citations trace to knowledge pack) + D-2 (no recommendation verbs) validator chain. |
+| `lib/services/wealthGraphService.ts` | `classifyDistributionRegime` *(Phase 44 Part 3 Phase 2)* | **FW-1 + FW-2 implemented (2026-05-31).** Returns one of `PRE_REFORM` / `POST_REFORM_VERIFIED` / `POST_REFORM_PENDING` + a verbatim `reformNotice` for the Wealth Universe Money Flow lens. Measure 3 (`TRUST_MINIMUM_TAX`) dispatch only — Measure 3 is the only reform measure that touches trust money-flow ribbons. Aggregator NEVER computes the 30% min-tax amount; the canvas surfaces the gross flow + the notice. Test pin: `tests/wealth-graph/classifyDistributionRegime.test.ts`. |
 
 ### 13.2 Test fixtures — the regression wall
 

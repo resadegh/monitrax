@@ -260,6 +260,11 @@ function WealthNodeTile({
   );
 }
 
+/** Phase 2 — true if this ribbon is a Money Flow (distribution or dividend). */
+function isFlowRibbon(r: WealthRelationship): boolean {
+  return r.type === 'flow-distribution' || r.type === 'flow-dividend';
+}
+
 function buildRibbonPath(fromX: number, fromY: number, toX: number, toY: number): string {
   const dx = toX - fromX;
   const dy = toY - fromY;
@@ -284,12 +289,26 @@ function RelationshipRibbon({ rel, nodes, isActive, isDimmed }: RibbonProps) {
   const toNode = nodes[rel.to];
   if (!fromNode || !toNode) return null;
 
+  const isFlow = isFlowRibbon(rel);
+  const hasReformNotice = !!rel.reformNotice;
+
   const stroke = RIBBON_COLOR[rel.type];
-  const opacity = isActive ? 0.85 : isDimmed ? 0.06 : 0.22;
-  const strokeWidth = isActive ? 2 : 1.2;
-  const glowStrength = isActive ? 6 : 2;
+  // Flow ribbons read stronger at rest so the canvas reads as
+  // "money in motion" when the flow lens is active.
+  const opacity = isActive
+    ? 0.9
+    : isDimmed
+      ? 0.06
+      : isFlow
+        ? 0.55
+        : 0.22;
+  const strokeWidth = isActive ? 2 : isFlow ? 1.6 : 1.2;
+  const glowStrength = isActive ? 6 : isFlow ? 4 : 2;
   const path = buildRibbonPath(fromNode.position.x, fromNode.position.y, toNode.position.x, toNode.position.y);
   const filterId = `glow-${rel.id}`;
+  // Midpoint for the flow-amount label.
+  const midX = (fromNode.position.x + toNode.position.x) / 2;
+  const midY = (fromNode.position.y + toNode.position.y) / 2 - 1.5;
 
   return (
     <g style={{ opacity, transition: 'opacity 0.4s ease' }}>
@@ -308,9 +327,27 @@ function RelationshipRibbon({ rel, nodes, isActive, isDimmed }: RibbonProps) {
         stroke={stroke}
         strokeWidth={strokeWidth}
         strokeLinecap="round"
-        strokeDasharray={rel.type === 'controls' ? '0.6 0.8' : undefined}
-        filter={isActive ? `url(#${filterId})` : undefined}
-      />
+        strokeDasharray={
+          rel.type === 'controls'
+            ? '0.6 0.8'
+            // Flow ribbons get a marching-ants dash when not dimmed —
+            // signals movement even when not the hovered ribbon.
+            : isFlow && !isDimmed
+              ? '1.4 0.8'
+              : undefined
+        }
+        filter={isActive || (isFlow && !isDimmed) ? `url(#${filterId})` : undefined}
+      >
+        {isFlow && !isDimmed && (
+          <animate
+            attributeName="stroke-dashoffset"
+            from="0"
+            to="-2.2"
+            dur="1.8s"
+            repeatCount="indefinite"
+          />
+        )}
+      </path>
       {isActive && (
         <>
           <circle r="0.5" fill={stroke}>
@@ -320,6 +357,46 @@ function RelationshipRibbon({ rel, nodes, isActive, isDimmed }: RibbonProps) {
             <animateMotion dur="2.4s" begin="0.8s" repeatCount="indefinite" path={path} />
           </circle>
         </>
+      )}
+      {/* Flow amount label — only when the flow lens is showing (i.e.
+          the ribbon is not dimmed). Reform-pending flows get a small
+          dot to flag "this number has a caveat — open the ribbon". */}
+      {isFlow && !isDimmed && rel.label && (
+        <g style={{ pointerEvents: 'none' }}>
+          <rect
+            x={midX - 4.2}
+            y={midY - 1.4}
+            width="8.4"
+            height="2.4"
+            rx="1.2"
+            fill="rgba(13, 18, 36, 0.92)"
+            stroke={stroke}
+            strokeWidth="0.12"
+            opacity="0.95"
+          />
+          <text
+            x={midX}
+            y={midY + 0.4}
+            textAnchor="middle"
+            fontSize="1.2"
+            fontWeight="600"
+            fill="#D1FAE5"
+            style={{ fontFamily: 'inherit' }}
+          >
+            {rel.label}
+          </text>
+          {hasReformNotice && (
+            <circle
+              cx={midX + 3.6}
+              cy={midY - 0.4}
+              r="0.45"
+              fill="#FBBF24"
+              opacity="0.95"
+            >
+              <title>{rel.reformNotice}</title>
+            </circle>
+          )}
+        </g>
       )}
     </g>
   );
@@ -389,6 +466,13 @@ export default function WealthUniverseCanvas() {
   // user has at least one BeneficialOwnershipOverride; otherwise the
   // 'legal' default is a no-op.
   const [lensMode, setLensMode] = useState<'legal' | 'beneficial'>('legal');
+  // Phase 2 — primary lens toggle. 'structure' shows ownership ribbons
+  // (default — what Phase 1 + 1.1 ship); 'money-flow' dims structural
+  // ribbons and surfaces DistributionAllocation + DividendPayment flows
+  // as animated emerald ribbons. §12.14 reform-awareness is surfaced via
+  // a per-flow `reformNotice` (read from the service) — never silently
+  // computed in the canvas.
+  const [flowMode, setFlowMode] = useState<'structure' | 'money-flow'>('structure');
 
   const nodes = layout?.nodes ?? [];
   const relationships = layout?.relationships ?? [];
@@ -433,6 +517,23 @@ export default function WealthUniverseCanvas() {
     [relationships],
   );
 
+  // Phase 2 — true when at least one Money Flow ribbon exists. The
+  // primary Structure / Money Flow toggle only renders when there's
+  // something to switch to (behaviour-psychology lens — no
+  // anticipated-disappointment toggle that opens to an empty state).
+  const flowRibbons = useMemo(
+    () => relationships.filter(isFlowRibbon),
+    [relationships],
+  );
+  const hasFlows = flowRibbons.length > 0;
+
+  // Phase 2 — §12.14 surface: aggregated count of pending-Royal-Assent
+  // flows so the canvas can show a "X pending Royal Assent" badge.
+  const pendingReformFlowCount = useMemo(
+    () => flowRibbons.filter(r => !!r.reformNotice).length,
+    [flowRibbons],
+  );
+
   // Phase 1.1 — given a ribbon, is it dimmed by the current lens?
   // Lens has no effect when no overrides exist (toggle is hidden too).
   function isLensDimmed(r: WealthRelationship): boolean {
@@ -448,6 +549,14 @@ export default function WealthUniverseCanvas() {
   }
 
   function isRibbonDimmed(r: WealthRelationship): boolean {
+    // Phase 2 — flow-mode precedence: structural ribbons recede, flow
+    // ribbons take centre stage. In structure mode (default) flow
+    // ribbons recede instead.
+    if (flowMode === 'money-flow') {
+      if (!isFlowRibbon(r)) return true;
+    } else {
+      if (isFlowRibbon(r)) return true;
+    }
     // Lens-dim takes precedence over hover/selection (the user explicitly
     // chose to read one chain over the other).
     if (isLensDimmed(r)) return true;
@@ -593,9 +702,61 @@ export default function WealthUniverseCanvas() {
           })}
         </div>
 
+        {/* Phase 2 — Structure / Money Flow primary lens toggle. Only
+            renders when there's at least one CONFIRMED money flow this
+            FY (avoids an empty-toggle anticipated-disappointment per
+            behaviour-psychology lens). */}
+        {hasFlows && (
+          <div
+            className="flex h-7 items-center overflow-hidden rounded-full"
+            style={{
+              background: 'rgba(19, 26, 46, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setFlowMode('structure')}
+              className="h-7 rounded-full px-2.5 text-[10px] font-medium transition"
+              style={
+                flowMode === 'structure'
+                  ? {
+                      background: 'rgba(125, 211, 252, 0.14)',
+                      border: '1px solid rgba(125, 211, 252, 0.4)',
+                      color: '#BAE6FD',
+                    }
+                  : { color: 'rgba(255, 255, 255, 0.6)' }
+              }
+              aria-pressed={flowMode === 'structure'}
+            >
+              Structure
+            </button>
+            <button
+              type="button"
+              onClick={() => setFlowMode('money-flow')}
+              className="h-7 rounded-full px-2.5 text-[10px] font-medium transition"
+              style={
+                flowMode === 'money-flow'
+                  ? {
+                      background: 'rgba(52, 211, 153, 0.16)',
+                      border: '1px solid rgba(52, 211, 153, 0.45)',
+                      color: '#A7F3D0',
+                    }
+                  : { color: 'rgba(255, 255, 255, 0.6)' }
+              }
+              aria-pressed={flowMode === 'money-flow'}
+            >
+              Money flow
+            </button>
+          </div>
+        )}
+
         {/* Phase 1.1 — Legal / Beneficial lens toggle. Renders only when
-            the user has at least one BeneficialOwnershipOverride. */}
-        {hasBeneficialOverride && (
+            the user has at least one BeneficialOwnershipOverride AND the
+            primary lens is in 'structure' mode (the override emphasis is
+            about ownership reading; in money-flow mode the structural
+            ribbons are dimmed anyway). */}
+        {hasBeneficialOverride && flowMode === 'structure' && (
           <div
             className="flex h-7 items-center overflow-hidden rounded-full"
             style={{
@@ -637,6 +798,26 @@ export default function WealthUniverseCanvas() {
             >
               Beneficial
             </button>
+          </div>
+        )}
+
+        {/* Phase 2 — §12.14 surface. When the Money Flow lens is active
+            and at least one flow is POST_REFORM_PENDING, a small amber
+            pill surfaces "N pending Royal Assent" with the canonical
+            notice in a tooltip. NEVER replaced by a computed number —
+            this is the FW-2 honesty surface. */}
+        {flowMode === 'money-flow' && pendingReformFlowCount > 0 && (
+          <div
+            className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium"
+            style={{
+              background: 'rgba(251, 191, 36, 0.1)',
+              border: '1px solid rgba(251, 191, 36, 0.35)',
+              color: '#FCD34D',
+            }}
+            title="One or more distributions would be subject to the 30% minimum tax on discretionary-trust taxable income (Phase 41E Measure 3) once the Bill receives Royal Assent. Amounts shown are gross — Monitrax never speculatively applies post-reform math."
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+            {pendingReformFlowCount} pending Royal Assent
           </div>
         )}
 

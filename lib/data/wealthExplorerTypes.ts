@@ -54,7 +54,12 @@ export type RelationshipType =
   | 'beneficiary'
   | 'member'
   | 'household'
-  | 'holds';
+  | 'holds'
+  // Phase 2 — Money Flow lens. Both flow kinds render as emerald
+  // animated ribbons; the canvas may differentiate by kind in a later
+  // iteration (e.g. franked-dividend halo).
+  | 'flow-distribution'
+  | 'flow-dividend';
 
 export interface WealthRelationship {
   id: string;
@@ -62,6 +67,18 @@ export interface WealthRelationship {
   to: string;
   type: RelationshipType;
   label?: string;
+  /**
+   * Phase 2 — for flow ribbons, the gross $ amount of this flow leg.
+   * Drives the ribbon label (formatted) + tooltip detail. Undefined
+   * for non-flow ribbons.
+   */
+  amount?: number;
+  /**
+   * Phase 2 — §12.14 FW-2 verbatim notice the canvas surfaces when a
+   * post-reform regime applies but the Bill has not assented.
+   * Undefined when no notice applies.
+   */
+  reformNotice?: string;
 }
 
 /** Type → accent colour token (hex). Drives inner glow + ribbon stroke. */
@@ -90,4 +107,8 @@ export const RIBBON_COLOR: Record<RelationshipType, string> = {
   member: '#6EE7B7',
   household: '#F0ABFC',
   holds: '#38BDF8',
+  // Money flow — bright emerald, distinguishes cash movement from
+  // structural ribbons even when the latter are also rendered.
+  'flow-distribution': '#34D399',
+  'flow-dividend': '#34D399',
 };

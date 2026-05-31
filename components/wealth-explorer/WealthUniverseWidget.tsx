@@ -104,6 +104,13 @@ export default function WealthUniverseWidget() {
   }
 
   const { nodes, relationships } = layout;
+  // Phase 2 — the dashboard widget is a structural preview, not a
+  // money-flow surface. Filter flow ribbons out here so the widget
+  // always shows the ownership picture (per CLAUDE.md §0 — restraint
+  // over richness on a compact tile).
+  const structuralRibbons = relationships.filter(
+    r => r.type !== 'flow-distribution' && r.type !== 'flow-dividend',
+  );
   const nodesById = Object.fromEntries(nodes.map(n => [n.id, n]));
   const totalHeld = nodes
     .filter(n => n.value)
@@ -153,7 +160,7 @@ export default function WealthUniverseWidget() {
               preserveAspectRatio="none"
               className="pointer-events-none absolute inset-0 h-full w-full"
             >
-              {relationships.map(r => (
+              {structuralRibbons.map(r => (
                 <Ribbon key={r.id} rel={r} nodes={nodesById} />
               ))}
             </svg>
