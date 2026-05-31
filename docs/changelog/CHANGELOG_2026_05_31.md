@@ -574,5 +574,136 @@ The §12.14 FW-1 (regime is a first-class input) discipline was
   status flipped.
 - `docs/changelog/CHANGELOG_2026_05_31.md` — this section.
 
-### Outstanding
-- Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
+### Outstanding (after this PR)
+- Phase 3 — Click-to-zoom (shipping in the follow-up PR after this one)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (continued — Phase 3 click-to-zoom)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·WX — Wealth Universe Explorer · Phase 3)
+- **Scope**: Closes out the Wealth Universe Explorer workstream with
+  the **Level 2 ecosystem zoom** + **Level 3 EntityDetailPanel linked-
+  assets list** click-throughs. After this PR, workstream `0·WX` is
+  ✅ COMPLETE.
+- **Decision**: Phase 3 row in workstream `0·WX`. Pure-presentation +
+  a minor data-hook surface expansion (expose `snapshot` alongside
+  `layout` so the panel can read source assets without re-fetching).
+
+### Level 2 — Ecosystem dim (canvas)
+
+When `selectedId` is set, the canvas computes a `connectedToSelectedIds`
+set = `{ focal id } ∪ { every node that shares a ribbon with the focal }`.
+The set scans **every** ribbon — structural ribbons (`holds`, `owns`,
+`controls`, etc.) AND money-flow ribbons (`flow-distribution`,
+`flow-dividend`). Tiles NOT in the set dim to 0.22 opacity via the
+existing `nodeOpacity()` pipeline (multiplicative — composes cleanly
+with the filter-chip + search dims). The focal tile + its direct
+neighbours stay at full brightness.
+
+**Why dim, not spatial reorganisation:** the layout is already
+informative (corporate top-left, SMSF top-right, individuals
+centre-bottom, assets below their owning entity). Re-laying out on
+selection would disorient the user and break the per-entity spatial
+memory built up over a few minutes of use. Dim is the right move per
+CLAUDE.md §0.4 ("default to elegance + restraint over richness +
+density").
+
+**Breadcrumb upgrade:** `Level 1 · Universe` advances to `← Universe ·
+Level 2 · {entity name}` when a tile is selected. The back chevron is
+a button — tap clears `selectedId` and returns to Level 1. The Level 2
+label is tinted with the focal entity's accent colour so the user can
+read at a glance which tile they're zoomed on.
+
+### Level 3 — EntityDetailPanel linked-assets list (desktop + mobile)
+
+The detail panel previously rendered:
+- Identity (ABN/ACN/trading name/trust type)
+- Controlled by
+- Asset counts (2x2 grid)
+- A dead-end "Open full entity file →" CTA pointing back to
+  `/dashboard/entities` (the page the user is already on)
+
+This PR replaces the dead-end CTA with a **Linked assets** section:
+one row per asset the entity holds (filtered from
+`snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)`).
+Each row carries a glyph + name + subtype/context + formatted $ value
++ chevron + click-through. URL map (`assetHrefFor`):
+
+| Asset kind | Route |
+|---|---|
+| `property` | `/dashboard/properties/{id}` |
+| `loan` | `/dashboard/loans/{id}` |
+| `account` | `/dashboard/accounts` (list — no individual route yet) |
+| `investment-account` | `/dashboard/investments/accounts` (list) |
+| `asset` | `/dashboard/assets` (list) |
+
+Property + Loan have individual detail pages; the rest fall back to
+the list page (per-asset routes can be added later as those module
+pages mature). The panel closes itself on navigation via `onClose()`
+so the user lands cleanly on the destination route.
+
+### Data-hook surface change
+
+`useWealthExplorerData` previously returned only `{ layout, loading,
+error, refetch }`. The snapshot was loaded, layout-derived, then
+discarded. This PR exposes `snapshot` alongside so consumers (just the
+detail panel today) can read source data without a second fetch.
+The new shape:
+
+```ts
+interface UseWealthExplorerDataResult {
+  layout: LayoutResult | null;
+  snapshot: WealthGraphSnapshot | null;  // ← new
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
+}
+```
+
+The widget (`WealthUniverseWidget.tsx`) ignores the new field via
+selective destructuring — no behavioural change there.
+
+### Files modified
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — Level 2
+  ecosystem-dim, breadcrumb upgrade, `ChevronLeft` icon import, pass
+  `assets` to `EntityDetailPanel`.
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — Level 3
+  parity in `SelectedEntityCard` (pass + render assets, remove dead-
+  end CTA), `LinkedAssetRow` helper, `Link` + `WealthGraphAsset` imports.
+- `components/wealth-explorer/EntityDetailPanel.tsx` — accept `assets`
+  prop, render `Linked assets` section, `LinkedAssetRow` helper +
+  glyph/href/format helpers, remove dead-end CTA.
+- `lib/hooks/useWealthExplorerData.ts` — expose `snapshot` field.
+
+### Documentation in this PR
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WX` Phase 3 row
+  flipped to ✅ THIS PR with full scope; status flipped to ✅ COMPLETE.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — Phase 3 marked shipped
+  this PR.
+- `docs/changelog/CHANGELOG_2026_05_31.md` — this section.
+
+### CLAUDE.md compliance recap
+
+- **§0 four-lens recap** — Designer: dim-not-reorg is the right move
+  (spatial memory matters). Behaviour psychologist: removing the dead-
+  end CTA is a §14 warm-words win (no false promises). Architect: hook
+  surface expansion is additive + minimal. Financial adviser: linked-
+  assets list shows real $ amounts from the SSOT — never invented.
+- **§12.1 zero dead code** — dead-end CTA deleted from both desktop +
+  mobile panels.
+- **§12.2 SSOT** — assets read from the existing wealth-graph
+  snapshot; no new service, no parallel fetch.
+- **§12.14** — no reform-surface change; per-flow regime + lens-toggle
+  pending-pill already track correctly.
+- **§16 doc-sync** — IMPLEMENTATION_PLAN.md, PHASE_44, this changelog
+  all updated in the same PR.
+
+### Workstream `0·WX` — closed
+All phases shipped this week: Phase 1 (PR #944/#945) → Phase 1.1 (PR
+#954) → Phase 2 (PR #955) → Phase 2 enhancement (PR #956) → Phase 3
+(this PR). Mobile Phase 4 (PRs #947–#950), legacy retirement Phase 6
+(via Phase 1.1 PR), dashboard widget Phase 5 (PR #952). Workstream
+will roll into `✅ Recently Completed` archive at the next 30-day plan
+sweep.

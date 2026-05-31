@@ -1546,10 +1546,25 @@ flips to the left so it doesn't clip off-screen.
 ribbons dim to 6% opacity (almost invisible). This makes the focused
 entity's relationships POP without hiding the structural map.
 
-**Click → detail panel.** Sets `selectedId`. `EntityDetailPanel`
-mounts (Framer Motion `AnimatePresence`), fetches
-`/api/entities/[selectedId]` on mount, renders identity / parent /
-asset counts / open-full-file CTA. Backdrop click or `X` closes.
+**Click → detail panel (Level 3).** Sets `selectedId`.
+`EntityDetailPanel` mounts (Framer Motion `AnimatePresence`), fetches
+`/api/entities/[selectedId]` on mount for the identity/parent metadata,
+then renders identity / controlled-by / asset counts / **linked
+assets list** (Phase 3 — Level 3 extension). Each linked-asset row
+click-throughs to the asset's individual detail page where one exists
+(property → `/dashboard/properties/{id}`, loan →
+`/dashboard/loans/{id}`); account/investment/asset fall back to their
+list page. Backdrop click or `X` closes.
+
+**Click → ecosystem dim (Level 2 — Phase 3).** Same click as above ALSO
+triggers an ecosystem-dim pass: every tile NOT directly connected to
+the focal entity (via any ribbon — structural or money-flow) recedes
+to 0.22 opacity, ribbons not touching the focal recede to 0.06. The
+focal tile + its direct neighbours stay at full brightness. The
+breadcrumb advances from "Level 1 · Universe" to
+"← Universe · Level 2 · {entity name}" with the entity's accent
+colour. No re-layout — the layout is already informative and spatial
+memory is the asset; dim is the right move per §0.4 restraint.
 
 **Search dim, never hide.** Non-matching tiles drop to 35% opacity.
 Spatial memory is the asset — the user knows where their HOME tile is
@@ -1558,6 +1573,23 @@ hiding does not.
 
 **Filter chip dim, never hide.** Out-of-bucket tiles drop to 18%
 opacity. Same psychological rationale as search.
+
+**Lens toggles (Phase 1.1 + Phase 2).** Two primary lens toggles in
+the canvas chrome:
+- **Structure / Money flow** (Phase 2) — renders only when ≥1
+  CONFIRMED money flow exists. Switches the canvas from showing
+  ownership ribbons (default) to animated emerald flow ribbons with
+  $ amount pill labels.
+- **Legal / Beneficial** (Phase 1.1) — renders only when ≥1
+  `BeneficialOwnershipOverride` exists AND the primary lens is in
+  Structure mode. Toggles emphasis between the legal ownership chain
+  and the beneficial-owner chain.
+
+**FY scrubber (Phase 2 enhancement).** When the Money flow lens is
+active, a ghost-glass pill strip sits where the breadcrumb would —
+one pill per FY with CONFIRMED data, sorted descending. Selecting a
+pill dims flows from other FYs; the chrome-level "N pending Royal
+Assent" §12.14 pill auto-retracks the selection.
 
 ### Mobile pattern — Apple Maps hybrid (Stitch design 2026-05-31, React port pending)
 

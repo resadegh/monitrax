@@ -21,6 +21,12 @@ import type { WealthGraphSnapshot } from '@/lib/services/wealthGraphService';
 
 interface UseWealthExplorerDataResult {
   layout: LayoutResult | null;
+  /**
+   * Phase 3 — raw snapshot exposed alongside the layout so consumers
+   * needing source data (e.g. the detail panel's linked-assets list)
+   * can read it without re-fetching. Same data, no extra request.
+   */
+  snapshot: WealthGraphSnapshot | null;
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
@@ -29,6 +35,7 @@ interface UseWealthExplorerDataResult {
 export function useWealthExplorerData(): UseWealthExplorerDataResult {
   const { token } = useAuth();
   const [layout, setLayout] = useState<LayoutResult | null>(null);
+  const [snapshot, setSnapshot] = useState<WealthGraphSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,16 +49,18 @@ export function useWealthExplorerData(): UseWealthExplorerDataResult {
         throw new Error(`Failed to load wealth graph: ${res.status}`);
       }
       const json = await res.json();
-      const snapshot: WealthGraphSnapshot | undefined = json.data;
-      if (!snapshot) {
+      const next: WealthGraphSnapshot | undefined = json.data;
+      if (!next) {
         throw new Error('Empty wealth-graph response');
       }
-      const result = layoutWealthExplorer(snapshot);
+      const result = layoutWealthExplorer(next);
+      setSnapshot(next);
       setLayout(result);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Unknown error';
       setError(message);
       setLayout(null);
+      setSnapshot(null);
     } finally {
       setLoading(false);
     }
@@ -61,5 +70,5 @@ export function useWealthExplorerData(): UseWealthExplorerDataResult {
     void fetchData();
   }, [fetchData]);
 
-  return { layout, loading, error, refetch: fetchData };
+  return { layout, snapshot, loading, error, refetch: fetchData };
 }
