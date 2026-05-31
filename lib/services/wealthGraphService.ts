@@ -149,7 +149,12 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     relationships,
     ownershipGroups,
     beneficialOverrides,
-  ] = await prisma.$transaction([
+  // Promise.all (not $transaction(array) — the project's wrapped Prisma
+  // client rejects the array form with "All elements of the array need
+  // to be Prisma Client promises"; the WIF-backed adapter wraps each
+  // query and the wrapper isn't recognised. For a read-only aggregator
+  // we don't need transaction isolation anyway — parallel reads suffice.
+  ] = await Promise.all([
     prisma.legalEntity.findMany({
       where: { userId },
       select: {
