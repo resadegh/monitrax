@@ -385,6 +385,10 @@ export default function WealthUniverseCanvas() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
+  // Phase 1.1 — beneficial-ownership lens toggle. Only renders when the
+  // user has at least one BeneficialOwnershipOverride; otherwise the
+  // 'legal' default is a no-op.
+  const [lensMode, setLensMode] = useState<'legal' | 'beneficial'>('legal');
 
   const nodes = layout?.nodes ?? [];
   const relationships = layout?.relationships ?? [];
@@ -422,7 +426,31 @@ export default function WealthUniverseCanvas() {
     if (!hoveredId) return false;
     return r.from === hoveredId || r.to === hoveredId;
   }
+  // Phase 1.1 — true when ANY beneficial-override ribbon exists in the
+  // graph, which is when the lens toggle should render.
+  const hasBeneficialOverride = useMemo(
+    () => relationships.some(r => r.id.startsWith('boo-')),
+    [relationships],
+  );
+
+  // Phase 1.1 — given a ribbon, is it dimmed by the current lens?
+  // Lens has no effect when no overrides exist (toggle is hidden too).
+  function isLensDimmed(r: WealthRelationship): boolean {
+    if (!hasBeneficialOverride) return false;
+    if (lensMode === 'beneficial') {
+      // Beneficial lens — dim the legal HOLDS chain so the violet
+      // beneficial-owner ribbons read as primary.
+      return r.type === 'holds';
+    }
+    // Legal lens (default) — dim the BeneficialOwnershipOverride
+    // ribbons so the standard ownership chain reads as primary.
+    return r.id.startsWith('boo-');
+  }
+
   function isRibbonDimmed(r: WealthRelationship): boolean {
+    // Lens-dim takes precedence over hover/selection (the user explicitly
+    // chose to read one chain over the other).
+    if (isLensDimmed(r)) return true;
     if (selectedId) {
       return r.from !== selectedId && r.to !== selectedId;
     }
@@ -564,6 +592,53 @@ export default function WealthUniverseCanvas() {
             );
           })}
         </div>
+
+        {/* Phase 1.1 — Legal / Beneficial lens toggle. Renders only when
+            the user has at least one BeneficialOwnershipOverride. */}
+        {hasBeneficialOverride && (
+          <div
+            className="flex h-7 items-center overflow-hidden rounded-full"
+            style={{
+              background: 'rgba(19, 26, 46, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setLensMode('legal')}
+              className="h-7 rounded-full px-2.5 text-[10px] font-medium transition"
+              style={
+                lensMode === 'legal'
+                  ? {
+                      background: 'rgba(56, 189, 248, 0.14)',
+                      border: '1px solid rgba(56, 189, 248, 0.4)',
+                      color: '#7DD3FC',
+                    }
+                  : { color: 'rgba(255, 255, 255, 0.6)' }
+              }
+              aria-pressed={lensMode === 'legal'}
+            >
+              Legal
+            </button>
+            <button
+              type="button"
+              onClick={() => setLensMode('beneficial')}
+              className="h-7 rounded-full px-2.5 text-[10px] font-medium transition"
+              style={
+                lensMode === 'beneficial'
+                  ? {
+                      background: 'rgba(167, 139, 250, 0.16)',
+                      border: '1px solid rgba(167, 139, 250, 0.45)',
+                      color: '#C4B5FD',
+                    }
+                  : { color: 'rgba(255, 255, 255, 0.6)' }
+              }
+              aria-pressed={lensMode === 'beneficial'}
+            >
+              Beneficial
+            </button>
+          </div>
+        )}
 
         <button
           className="flex h-8 w-8 items-center justify-center rounded-full"

@@ -105,6 +105,8 @@ export default function WealthUniverseMobile() {
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   const [snap, setSnap] = useState<SnapState>('peek');
   const [viewportHeight, setViewportHeight] = useState<number>(844);
+  // Phase 1.1 — beneficial-ownership lens toggle (mirrors desktop).
+  const [lensMode, setLensMode] = useState<'legal' | 'beneficial'>('legal');
 
   useEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -154,7 +156,18 @@ export default function WealthUniverseMobile() {
     if (!selectedId) return false;
     return r.from === selectedId || r.to === selectedId;
   }
+  // Phase 1.1 — beneficial-ownership lens (mirrors desktop).
+  const hasBeneficialOverride = useMemo(
+    () => relationships.some(r => r.id.startsWith('boo-')),
+    [relationships],
+  );
+  function isLensDimmed(r: WealthRelationship): boolean {
+    if (!hasBeneficialOverride) return false;
+    if (lensMode === 'beneficial') return r.type === 'holds';
+    return r.id.startsWith('boo-');
+  }
   function isRibbonDimmed(r: WealthRelationship): boolean {
+    if (isLensDimmed(r)) return true;
     if (!selectedId) return false;
     return r.from !== selectedId && r.to !== selectedId;
   }
@@ -277,6 +290,55 @@ export default function WealthUniverseMobile() {
         snapHeights={snapHeights}
         onSnapChange={setSnap}
       >
+        {/* Phase 1.1 — Legal / Beneficial lens toggle. Renders only
+            when there's a beneficial-ownership override in the graph. */}
+        {hasBeneficialOverride && (
+          <div className="px-4 pb-2">
+            <div
+              className="inline-flex h-7 items-center overflow-hidden rounded-full"
+              style={{
+                background: 'rgba(19, 26, 46, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setLensMode('legal')}
+                className="h-7 rounded-full px-3 text-[10px] font-medium transition"
+                style={
+                  lensMode === 'legal'
+                    ? {
+                        background: 'rgba(56, 189, 248, 0.14)',
+                        border: '1px solid rgba(56, 189, 248, 0.4)',
+                        color: '#7DD3FC',
+                      }
+                    : { color: 'rgba(255, 255, 255, 0.6)' }
+                }
+                aria-pressed={lensMode === 'legal'}
+              >
+                Legal
+              </button>
+              <button
+                type="button"
+                onClick={() => setLensMode('beneficial')}
+                className="h-7 rounded-full px-3 text-[10px] font-medium transition"
+                style={
+                  lensMode === 'beneficial'
+                    ? {
+                        background: 'rgba(167, 139, 250, 0.16)',
+                        border: '1px solid rgba(167, 139, 250, 0.45)',
+                        color: '#C4B5FD',
+                      }
+                    : { color: 'rgba(255, 255, 255, 0.6)' }
+                }
+                aria-pressed={lensMode === 'beneficial'}
+              >
+                Beneficial
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Filter chips — horizontal scroll. Search pill removed for
             mobile (2026-05-31 Reza feedback: 'not sure if the search
             section is needed on mobile view where the screen is
