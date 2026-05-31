@@ -1,16 +1,13 @@
 /**
- * WealthUniverseCanvas — surface-design preview of the Wealth Explorer.
+ * WealthUniverseCanvas — interactive Wealth Explorer canvas.
  *
- * Renders the Apple-Dock × Apple-Maps × Minority-Report spatial canvas
- * from the v5 Stitch design:
- *   `.stitch/designs/wealth-explorer-v5-universe-dark.png`
- *   Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
+ * v3 — real data via `useWealthExplorerData()` (`/api/entities`), live
+ * hover with Apple Dock fan magnification, click-to-open
+ * `EntityDetailPanel`, working search + filter chips. Layout positions
+ * come from `wealthExplorerLayout.ts`.
  *
- * This is a STATIC visual at v1 — the HOME tile is rendered in its hover
- * state to demonstrate the magnification + ribbon-highlight behaviour, but
- * no interactive hover handlers are wired yet. Interactivity ships once
- * Reza approves the look. See `lib/data/wealthExplorerFixture.ts` for the
- * fixture (Renew Group structure).
+ * Surface SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
+ * Artefact: `.stitch/designs/wealth-explorer-v5-universe-dark.png`
  */
 
 'use client';
@@ -34,17 +31,20 @@ import {
   Settings2,
   ChevronRight,
   PanelRight,
+  TreePine,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
-  WEALTH_NODES,
-  WEALTH_RELATIONSHIPS,
   NODE_ACCENT,
   RIBBON_COLOR,
   type WealthNode,
   type WealthNodeType,
   type WealthRelationship,
-} from '@/lib/data/wealthExplorerFixture';
+} from '@/lib/data/wealthExplorerTypes';
+import { useWealthExplorerData } from '@/lib/hooks/useWealthExplorerData';
+import EntityDetailPanel from './EntityDetailPanel';
 
 const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'holding-company': Briefcase,
@@ -60,9 +60,30 @@ const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'asset-cash': CircleDollarSign,
 };
 
-/** A few dozen dust motes scattered + slowly drifting. Pure CSS animation. */
+const FILTER_CHIPS: { id: 'all' | 'people' | 'entities' | 'smsf' | 'companies'; label: string; types: WealthNodeType[] | 'all' }[] = [
+  { id: 'all', label: 'All', types: 'all' },
+  { id: 'people', label: 'People', types: ['individual'] },
+  { id: 'entities', label: 'Trusts', types: ['trust'] },
+  { id: 'smsf', label: 'SMSF', types: ['smsf', 'smsf-trustee-company'] },
+  { id: 'companies', label: 'Companies', types: ['holding-company', 'trustee-company', 'other-company'] },
+];
+
+/**
+ * Apple-Dock fan effect — when a tile is hovered, neighbours within
+ * `radiusPct` get a smooth magnification falloff. Returns a scale
+ * multiplier for each (non-hovered) tile.
+ */
+function fanScale(hoveredPos: { x: number; y: number }, tilePos: { x: number; y: number }, radiusPct: number): number {
+  const dx = tilePos.x - hoveredPos.x;
+  const dy = tilePos.y - hoveredPos.y;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist >= radiusPct) return 1;
+  // Cosine falloff: full boost at dist=0, taper to 1.0 at dist=radius
+  const t = 1 - dist / radiusPct;
+  return 1 + 0.2 * t * t;
+}
+
 function DustMoteLayer() {
-  // Deterministic positions so SSR + client match. 36 motes.
   const motes = Array.from({ length: 36 }, (_, i) => {
     const seed = (i + 1) * 9301;
     const x = (seed % 100);
@@ -73,7 +94,6 @@ function DustMoteLayer() {
     const isEmerald = i % 5 === 0;
     return { x, y, size, opacity, delay, isEmerald };
   });
-
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {motes.map((m, i) => (
@@ -100,87 +120,94 @@ interface TileProps {
   node: WealthNode;
   glyph: LucideIcon;
   accent: string;
+  /** Composite scale applied to the rest size — combines hover (1.6), fan (1.0-1.2), search dim (0.7). */
+  scaleMultiplier: number;
+  /** 1.0 in default state, lower when search/filter dims the tile. */
+  visibilityOpacity: number;
+  isHovered: boolean;
+  isSelected: boolean;
+  onHover: () => void;
+  onLeave: () => void;
+  onClick: () => void;
 }
 
-function WealthNodeTile({ node, glyph: Glyph, accent }: TileProps) {
-  const isHovered = !!node.isHovered;
+function WealthNodeTile({
+  node,
+  glyph: Glyph,
+  accent,
+  scaleMultiplier,
+  visibilityOpacity,
+  isHovered,
+  isSelected,
+  onHover,
+  onLeave,
+  onClick,
+}: TileProps) {
   const isAnchor = !!node.isAnchor;
-  const isFocal = !!node.isFocal;
-  const scale = isHovered ? 1.6 : 1;
-  const renderedSize = node.size * scale;
+  const isFocal = !!node.isFocal || isSelected;
+  const renderedSize = node.size * scaleMultiplier;
 
   const accentRgb = hexToRgb(accent);
   const innerGlow = accentRgb
-    ? `inset 0 0 ${isHovered ? 32 : 18}px rgba(${accentRgb}, ${isHovered ? 0.35 : 0.2})`
+    ? `inset 0 0 ${isHovered ? 32 : 18}px rgba(${accentRgb}, ${isHovered ? 0.4 : 0.2})`
     : 'none';
   const outerGlow = accentRgb
-    ? `0 0 ${isHovered ? 48 : 28}px rgba(${accentRgb}, ${isHovered ? 0.35 : 0.15})`
+    ? `0 0 ${isHovered ? 48 : 28}px rgba(${accentRgb}, ${isHovered ? 0.4 : 0.15})`
     : '';
   const dropShadow = '0 8px 24px rgba(0, 0, 0, 0.45)';
 
-  // Anchor pulsing rings
   const anchorRings = isAnchor ? (
     <>
-      <span
-        className="pointer-events-none absolute rounded-full"
-        style={{
-          inset: -16,
-          border: '1.5px solid rgba(52, 211, 153, 0.45)',
-          animation: 'wealth-anchor-pulse 2.4s ease-out infinite',
-        }}
-      />
-      <span
-        className="pointer-events-none absolute rounded-full"
-        style={{
-          inset: -32,
-          border: '1px solid rgba(52, 211, 153, 0.25)',
-          animation: 'wealth-anchor-pulse 2.4s ease-out 0.6s infinite',
-        }}
-      />
+      <span className="pointer-events-none absolute rounded-full" style={{ inset: -16, border: '1.5px solid rgba(52, 211, 153, 0.45)', animation: 'wealth-anchor-pulse 2.4s ease-out infinite' }} />
+      <span className="pointer-events-none absolute rounded-full" style={{ inset: -32, border: '1px solid rgba(52, 211, 153, 0.25)', animation: 'wealth-anchor-pulse 2.4s ease-out 0.6s infinite' }} />
     </>
   ) : null;
 
-  // Focal entity ring (currently-featured but not hovered)
   const focalRing = isFocal && !isHovered ? (
-    <span
-      className="pointer-events-none absolute rounded-full"
-      style={{
-        inset: -6,
-        border: '1.5px solid rgba(52, 211, 153, 0.7)',
-        boxShadow: '0 0 20px rgba(52, 211, 153, 0.25)',
-      }}
-    />
+    <span className="pointer-events-none absolute rounded-full" style={{ inset: -6, border: '1.5px solid rgba(52, 211, 153, 0.7)', boxShadow: '0 0 20px rgba(52, 211, 153, 0.25)' }} />
   ) : null;
 
   const isDashed = node.type === 'trustee-company' || node.type === 'smsf-trustee-company';
-  const hoveredBorder = isHovered
+  const border = isHovered
     ? `1.5px solid ${accent}`
     : isDashed
-      ? `1.5px dashed rgba(255, 255, 255, 0.18)`
-      : `1px solid rgba(255, 255, 255, 0.12)`;
+      ? '1.5px dashed rgba(255, 255, 255, 0.18)'
+      : '1px solid rgba(255, 255, 255, 0.12)';
 
   return (
     <div
-      className="absolute"
+      className="absolute cursor-pointer"
       style={{
         left: `${node.position.x}%`,
         top: `${node.position.y}%`,
         transform: 'translate(-50%, -50%)',
         zIndex: isHovered ? 30 : isAnchor ? 20 : 10,
-        transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+        opacity: visibilityOpacity,
+        transition: 'opacity 0.3s ease, z-index 0s',
       }}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onClick={onClick}
     >
-      <div className="relative" style={{ width: renderedSize, height: renderedSize }}>
+      <div
+        className="relative"
+        style={{
+          width: renderedSize,
+          height: renderedSize,
+          transition: 'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
         {anchorRings}
         {focalRing}
         <div
-          className="relative h-full w-full flex flex-col items-center justify-center text-white"
+          className="relative flex h-full w-full flex-col items-center justify-center text-white"
           style={{
             borderRadius: '30%',
             background: 'rgba(19, 26, 46, 0.92)',
             backdropFilter: 'blur(16px)',
-            border: hoveredBorder,
+            border,
             boxShadow: `${innerGlow}, ${outerGlow}, ${dropShadow}`,
+            transition: 'box-shadow 0.32s ease, border-color 0.32s ease',
           }}
         >
           <Glyph
@@ -188,18 +215,12 @@ function WealthNodeTile({ node, glyph: Glyph, accent }: TileProps) {
             color={accent}
             strokeWidth={1.5}
           />
-          {/* Hover-state magnifier corner indicator */}
           {isHovered && (
-            <span
-              className="absolute right-2 top-2 rounded-full p-1"
-              style={{ background: 'rgba(0, 0, 0, 0.35)' }}
-            >
+            <span className="absolute right-2 top-2 rounded-full p-1" style={{ background: 'rgba(0, 0, 0, 0.35)' }}>
               <Search size={10} color="rgba(255,255,255,0.7)" strokeWidth={1.8} />
             </span>
           )}
         </div>
-
-        {/* Label beneath the tile */}
         <div
           className="absolute left-1/2 top-full mt-2 -translate-x-1/2 text-center"
           style={{ width: Math.max(120, renderedSize * 1.4) }}
@@ -235,23 +256,11 @@ function WealthNodeTile({ node, glyph: Glyph, accent }: TileProps) {
   );
 }
 
-/**
- * Soft-curved Bezier between two % coordinates, rendered as an SVG path.
- * We compute control points to bow the curve gently outward — feels organic,
- * not orthogonal-engineering.
- */
-function buildRibbonPath(
-  fromX: number,
-  fromY: number,
-  toX: number,
-  toY: number,
-): string {
+function buildRibbonPath(fromX: number, fromY: number, toX: number, toY: number): string {
   const dx = toX - fromX;
   const dy = toY - fromY;
-  // Bow perpendicular to the line — magnitude relative to distance
   const dist = Math.sqrt(dx * dx + dy * dy);
   const bow = Math.min(dist * 0.18, 8);
-  // Perpendicular direction (rotate 90° anticlockwise + normalise)
   const perpX = dist > 0 ? -dy / dist : 0;
   const perpY = dist > 0 ? dx / dist : 0;
   const midX = (fromX + toX) / 2 + perpX * bow;
@@ -262,27 +271,20 @@ function buildRibbonPath(
 interface RibbonProps {
   rel: WealthRelationship;
   nodes: Record<string, WealthNode>;
+  isActive: boolean;
   isDimmed: boolean;
 }
 
-function RelationshipRibbon({ rel, nodes, isDimmed }: RibbonProps) {
+function RelationshipRibbon({ rel, nodes, isActive, isDimmed }: RibbonProps) {
   const fromNode = nodes[rel.from];
   const toNode = nodes[rel.to];
   if (!fromNode || !toNode) return null;
 
   const stroke = RIBBON_COLOR[rel.type];
-  const isActive = !!rel.active;
-  const opacity = isActive ? 0.85 : isDimmed ? 0.08 : 0.22;
+  const opacity = isActive ? 0.85 : isDimmed ? 0.06 : 0.22;
   const strokeWidth = isActive ? 2 : 1.2;
   const glowStrength = isActive ? 6 : 2;
-
-  const path = buildRibbonPath(
-    fromNode.position.x,
-    fromNode.position.y,
-    toNode.position.x,
-    toNode.position.y,
-  );
-
+  const path = buildRibbonPath(fromNode.position.x, fromNode.position.y, toNode.position.x, toNode.position.y);
   const filterId = `glow-${rel.id}`;
 
   return (
@@ -305,7 +307,6 @@ function RelationshipRibbon({ rel, nodes, isDimmed }: RibbonProps) {
         strokeDasharray={rel.type === 'controls' ? '0.6 0.8' : undefined}
         filter={isActive ? `url(#${filterId})` : undefined}
       />
-      {/* Particle stream on active ribbons */}
       {isActive && (
         <>
           <circle r="0.5" fill={stroke}>
@@ -314,25 +315,24 @@ function RelationshipRibbon({ rel, nodes, isDimmed }: RibbonProps) {
           <circle r="0.4" fill={stroke} opacity="0.7">
             <animateMotion dur="2.4s" begin="0.8s" repeatCount="indefinite" path={path} />
           </circle>
-          <circle r="0.3" fill={stroke} opacity="0.5">
-            <animateMotion dur="2.4s" begin="1.6s" repeatCount="indefinite" path={path} />
-          </circle>
         </>
       )}
     </g>
   );
 }
 
-/** EntityPreviewPopover — static, anchored to HOME for the v1 demo. */
-function HomePreviewPopover() {
-  const home = WEALTH_NODES.find(n => n.id === 'home')!;
-  // Anchor to the right of the HOME tile.
+/** Floating preview anchored to a node by % coords. */
+function EntityPreviewPopover({ node }: { node: WealthNode }) {
+  const accent = NODE_ACCENT[node.type];
+  const Glyph = NODE_GLYPH[node.type];
+  // Anchor to the right if there's room, otherwise to the left.
+  const anchorRight = node.position.x < 65;
   return (
     <div
       className="pointer-events-none absolute z-40"
       style={{
-        left: `calc(${home.position.x}% + 70px)`,
-        top: `calc(${home.position.y}% - 110px)`,
+        left: `calc(${node.position.x}% + ${anchorRight ? node.size * 0.6 : -node.size * 0.6 - 280}px)`,
+        top: `calc(${node.position.y}% - 100px)`,
         width: 280,
       }}
     >
@@ -342,75 +342,32 @@ function HomePreviewPopover() {
           background: 'rgba(26, 34, 68, 0.94)',
           backdropFilter: 'blur(24px)',
           border: '1px solid rgba(255, 255, 255, 0.12)',
-          boxShadow: '0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(56, 189, 248, 0.15)',
+          boxShadow: `0 24px 60px rgba(0, 0, 0, 0.45), 0 0 0 1px ${accent}26`,
         }}
       >
         <div className="mb-3 flex items-start gap-3">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-xl"
             style={{
-              background: 'rgba(56, 189, 248, 0.12)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
+              background: `${accent}22`,
+              border: `1px solid ${accent}55`,
             }}
           >
-            <Home size={18} color="#38BDF8" strokeWidth={1.5} />
+            <Glyph size={18} color={accent} strokeWidth={1.5} />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-[15px] font-semibold text-white">HOME</div>
-            <div className="text-[10px] font-medium uppercase tracking-[0.16em] text-sky-300/80">
-              Investment Property
-            </div>
-          </div>
-        </div>
-        <div className="mb-3 text-[12px] text-white/60">903 Boree Valley Rd, Laguna NSW</div>
-
-        <div className="mb-3 grid grid-cols-2 gap-3 border-t border-white/5 pt-3">
-          <div>
-            <div className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/40">
-              Current Value
-            </div>
-            <div className="flex items-baseline gap-1.5">
-              <div className="text-[16px] font-semibold tabular-nums text-white">$850K</div>
-              <div
-                className="rounded-full px-1.5 py-0.5 text-[9px] font-medium tabular-nums"
-                style={{
-                  background: 'rgba(52, 211, 153, 0.15)',
-                  color: '#6EE7B7',
-                }}
-              >
-                +24.1%
+            <div className="text-[15px] font-semibold text-white">{node.shortName ?? node.name}</div>
+            {node.subtitle && (
+              <div className="text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: accent }}>
+                {node.subtitle}
               </div>
-            </div>
-          </div>
-          <div>
-            <div className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/40">
-              Equity
-            </div>
-            <div className="text-[16px] font-semibold tabular-nums text-white">$850K</div>
-            <div className="text-[9px] text-emerald-300/70">LVR 0%</div>
+            )}
           </div>
         </div>
-
-        <div className="mb-2 text-[9px] uppercase tracking-[0.14em] text-white/40">Owned By</div>
-        <div
-          className="mb-3 flex items-center gap-2 rounded-lg p-2"
-          style={{ background: 'rgba(129, 140, 248, 0.08)', border: '1px solid rgba(129, 140, 248, 0.18)' }}
-        >
-          <Umbrella size={14} color="#A78BFA" strokeWidth={1.5} />
-          <div className="flex-1 truncate text-[11px] font-medium text-white/90">
-            Renew Investment Family Trust
-          </div>
-          <ChevronRight size={12} color="rgba(255,255,255,0.4)" />
-        </div>
-
-        <div className="mb-1 text-[9px] uppercase tracking-[0.14em] text-white/40">
-          Key Relationship
-        </div>
-        <div className="text-[11px] leading-relaxed text-white/70">
-          Held by trust → beneficiaries are ★ YOU, Newsha, Holding Co
-        </div>
-
-        <div className="mt-3 text-[10px] font-medium text-sky-300/80">
+        {node.value && (
+          <div className="text-[16px] font-semibold tabular-nums text-white">{node.value}</div>
+        )}
+        <div className="mt-2 text-[10px] font-medium text-white/55">
           Tap to open full file →
         </div>
       </div>
@@ -419,45 +376,124 @@ function HomePreviewPopover() {
 }
 
 export default function WealthUniverseCanvas() {
-  const nodesById: Record<string, WealthNode> = Object.fromEntries(
-    WEALTH_NODES.map(n => [n.id, n]),
-  );
-  const hoveredId = WEALTH_NODES.find(n => n.isHovered)?.id;
+  const { layout, loading, error, refetch } = useWealthExplorerData();
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
 
-  // Adjacent tiles to the hovered one get the Apple-Dock fan boost.
-  // For v1 (HOME hovered), fan effect handled in WealthNodeTile via isHovered
-  // and surrounding ribbon dimming.
-  const isRibbonDimmed = (r: WealthRelationship) =>
-    !!hoveredId && r.from !== hoveredId && r.to !== hoveredId && !r.active;
+  const nodes = layout?.nodes ?? [];
+  const relationships = layout?.relationships ?? [];
+
+  const nodesById = useMemo(
+    () => Object.fromEntries(nodes.map(n => [n.id, n])),
+    [nodes],
+  );
+
+  const hoveredNode = hoveredId ? nodesById[hoveredId] : null;
+  const selectedNode = selectedId ? nodesById[selectedId] : null;
+
+  // Derive which types are visible based on filter.
+  const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
+    const chip = FILTER_CHIPS.find(c => c.id === activeFilter);
+    if (!chip || chip.types === 'all') return null;
+    return new Set(chip.types);
+  }, [activeFilter]);
+
+  // Derive which nodes match the search query.
+  const matchedNodeIds = useMemo<Set<string> | null>(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    return new Set(nodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
+  }, [nodes, searchQuery]);
+
+  function nodeOpacity(node: WealthNode): number {
+    let opacity = 1;
+    if (visibleTypes && !visibleTypes.has(node.type)) opacity *= 0.18;
+    if (matchedNodeIds && !matchedNodeIds.has(node.id)) opacity *= 0.35;
+    return opacity;
+  }
+
+  function isRibbonActive(r: WealthRelationship): boolean {
+    if (!hoveredId) return false;
+    return r.from === hoveredId || r.to === hoveredId;
+  }
+  function isRibbonDimmed(r: WealthRelationship): boolean {
+    if (selectedId) {
+      return r.from !== selectedId && r.to !== selectedId;
+    }
+    if (!hoveredId) return false;
+    return r.from !== hoveredId && r.to !== hoveredId;
+  }
+
+  // Apple Dock fan effect: compute scale for each tile relative to hovered.
+  function scaleFor(node: WealthNode): number {
+    if (!hoveredNode) return 1;
+    if (node.id === hoveredId) return 1.6;
+    return fanScale(hoveredNode.position, node.position, 14); // radius ~14% of canvas
+  }
+
+  // Render states
+  if (loading) {
+    return (
+      <CanvasShell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center">
+          <div className="flex items-center gap-3 text-[12px] text-white/50">
+            <Sparkles size={14} className="animate-pulse" />
+            <span>Loading your wealth universe…</span>
+          </div>
+        </div>
+      </CanvasShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <CanvasShell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8">
+          <div className="max-w-md rounded-2xl p-6 text-center" style={{ background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
+            <div className="text-[14px] font-semibold text-amber-200">Couldn&rsquo;t load your structure</div>
+            <div className="mt-1 text-[12px] text-amber-200/70">{error}</div>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-[11px] font-medium text-white hover:bg-white/15"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </CanvasShell>
+    );
+  }
+
+  if (layout?.isEmpty || nodes.length === 0) {
+    return (
+      <CanvasShell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8">
+          <div className="max-w-md text-center">
+            <div
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl"
+              style={{ background: 'rgba(167, 139, 250, 0.1)', border: '1px solid rgba(167, 139, 250, 0.3)' }}
+            >
+              <TreePine size={28} color="#A78BFA" strokeWidth={1.5} />
+            </div>
+            <div className="mt-4 text-[16px] font-semibold text-white">Your wealth universe is just you so far</div>
+            <p className="mt-2 text-[12px] leading-relaxed text-white/55">
+              Add a family trust, an SMSF, or a Pty Ltd and your structure will appear here — every property, loan, and investment mapped to the right entity.
+            </p>
+          </div>
+        </div>
+      </CanvasShell>
+    );
+  }
 
   return (
-    <div
-      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
-      style={{
-        background:
-          'radial-gradient(ellipse at 50% 55%, #0A0E1F 0%, #060914 60%, #050810 100%)',
-      }}
-    >
-      {/* Keyframes for the canvas-local animations */}
-      <style jsx>{`
-        @keyframes wealth-mote-drift {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(8px, -6px); }
-          50% { transform: translate(-4px, 10px); }
-          75% { transform: translate(-10px, -4px); }
-        }
-        @keyframes wealth-anchor-pulse {
-          0% { transform: scale(1); opacity: 0.7; }
-          70% { transform: scale(1.4); opacity: 0; }
-          100% { transform: scale(1.4); opacity: 0; }
-        }
-      `}</style>
-
+    <CanvasShell>
       <DustMoteLayer />
 
-      {/* Top floating chrome — search + filter chips + settings */}
+      {/* Top chrome — search + filter chips */}
       <div className="pointer-events-auto absolute left-0 right-0 top-0 z-40 flex items-center gap-3 px-6 pt-4">
-        {/* Section title cluster */}
         <div className="flex items-center gap-3">
           <div
             className="flex h-8 w-8 items-center justify-center rounded-full text-[11px] font-semibold text-white"
@@ -470,16 +506,13 @@ export default function WealthUniverseCanvas() {
             M
           </div>
           <div>
-            <div className="text-[14px] font-semibold leading-tight text-white">
-              Wealth Explorer
-            </div>
+            <div className="text-[14px] font-semibold leading-tight text-white">Wealth Explorer</div>
             <div className="text-[10px] leading-tight text-white/45">
-              Reza &amp; Newsha&rsquo;s wealth universe
+              {nodes.length} {nodes.length === 1 ? 'entity' : 'entities'} in your universe
             </div>
           </div>
         </div>
 
-        {/* Search pill */}
         <div className="ml-4 flex-1 max-w-[440px]">
           <div
             className="flex h-9 items-center gap-2 rounded-full px-3.5"
@@ -489,21 +522,43 @@ export default function WealthUniverseCanvas() {
             }}
           >
             <Search size={14} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
-            <span className="text-[12px] text-white/45">
-              Search any entity, asset, person, document…
-            </span>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search any entity, asset, person…"
+              className="flex-1 bg-transparent text-[12px] text-white placeholder:text-white/45 focus:outline-none"
+            />
           </div>
         </div>
 
-        {/* Filter chips */}
         <div className="ml-auto flex items-center gap-1.5">
-          <FilterChip label="All" count={14} active />
-          <FilterChip label="People" count={2} />
-          <FilterChip label="Entities" count={5} />
-          <FilterChip label="Properties" count={1} />
-          <FilterChip label="Investments" count={2} />
-          <FilterChip label="Accounts" count={1} />
-          <FilterChip label="Other" count={3} />
+          {FILTER_CHIPS.map(chip => {
+            const count = chip.types === 'all'
+              ? nodes.length
+              : nodes.filter(n => (chip.types as WealthNodeType[]).includes(n.type)).length;
+            const active = chip.id === activeFilter;
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                onClick={() => setActiveFilter(chip.id)}
+                className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium transition"
+                style={{
+                  background: active ? 'rgba(52, 211, 153, 0.12)' : 'rgba(19, 26, 46, 0.7)',
+                  border: active
+                    ? '1px solid rgba(52, 211, 153, 0.4)'
+                    : '1px solid rgba(255, 255, 255, 0.08)',
+                  color: active ? '#6EE7B7' : 'rgba(255, 255, 255, 0.65)',
+                }}
+              >
+                <span>{chip.label}</span>
+                <span className="rounded-full px-1 text-[9px] tabular-nums" style={{ background: 'rgba(0, 0, 0, 0.25)' }}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <button
@@ -519,7 +574,7 @@ export default function WealthUniverseCanvas() {
         </button>
       </div>
 
-      {/* Level indicator — top-centre */}
+      {/* Level breadcrumb */}
       <div className="pointer-events-none absolute left-1/2 top-20 z-30 -translate-x-1/2">
         <div
           className="flex items-center gap-2 rounded-full px-3 py-1.5"
@@ -537,36 +592,44 @@ export default function WealthUniverseCanvas() {
         </div>
       </div>
 
-      {/* SVG ribbon layer */}
+      {/* Ribbons */}
       <svg
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
         className="pointer-events-none absolute inset-0 h-full w-full"
       >
-        {WEALTH_RELATIONSHIPS.map(rel => (
+        {relationships.map(r => (
           <RelationshipRibbon
-            key={rel.id}
-            rel={rel}
+            key={r.id}
+            rel={r}
             nodes={nodesById}
-            isDimmed={isRibbonDimmed(rel)}
+            isActive={isRibbonActive(r)}
+            isDimmed={isRibbonDimmed(r)}
           />
         ))}
       </svg>
 
-      {/* Tile layer */}
-      {WEALTH_NODES.map(node => (
+      {/* Tiles */}
+      {nodes.map(node => (
         <WealthNodeTile
           key={node.id}
           node={node}
           glyph={NODE_GLYPH[node.type]}
           accent={NODE_ACCENT[node.type]}
+          scaleMultiplier={scaleFor(node)}
+          visibilityOpacity={nodeOpacity(node)}
+          isHovered={hoveredId === node.id}
+          isSelected={selectedId === node.id}
+          onHover={() => setHoveredId(node.id)}
+          onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
+          onClick={() => setSelectedId(node.id)}
         />
       ))}
 
-      {/* Hover popover — static demo on HOME */}
-      <HomePreviewPopover />
+      {/* Live preview popover follows the hovered tile */}
+      {hoveredNode && !selectedNode && <EntityPreviewPopover node={hoveredNode} />}
 
-      {/* Zoom controls — bottom-left */}
+      {/* Zoom controls */}
       <div className="absolute bottom-6 left-6 z-30 flex flex-col gap-2">
         <ZoomButton icon={Plus} label="Zoom in" />
         <ZoomButton icon={Minus} label="Zoom out" />
@@ -576,60 +639,61 @@ export default function WealthUniverseCanvas() {
         </div>
       </div>
 
-      {/* Detail panel tab — right edge collapsed */}
-      <div className="absolute right-0 top-1/2 z-30 -translate-y-1/2">
-        <div
-          className="flex h-20 w-7 items-center justify-center rounded-l-2xl"
-          style={{
-            background: 'rgba(19, 26, 46, 0.85)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-            borderRight: 'none',
-            backdropFilter: 'blur(12px)',
-          }}
-        >
-          <PanelRight size={14} color="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+      {/* Detail panel tab — peek */}
+      {!selectedNode && (
+        <div className="absolute right-0 top-1/2 z-30 -translate-y-1/2">
+          <div
+            className="flex h-20 w-7 items-center justify-center rounded-l-2xl"
+            style={{
+              background: 'rgba(19, 26, 46, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRight: 'none',
+              backdropFilter: 'blur(12px)',
+            }}
+          >
+            <PanelRight size={14} color="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+          </div>
+        </div>
+      )}
+
+      {/* Hint */}
+      <div className="pointer-events-none absolute bottom-6 right-6 z-30 max-w-xs text-right">
+        <div className="text-[10px] leading-relaxed text-white/35">
+          Hover a tile to preview · click to open · search to find any node
         </div>
       </div>
 
-      {/* Hint text — bottom-right */}
-      <div className="pointer-events-none absolute bottom-6 right-6 z-30 max-w-xs text-right">
-        <div className="text-[10px] leading-relaxed text-white/35">
-          Hover a tile to preview · click to zoom in · search to find any node
-        </div>
-      </div>
-    </div>
+      {/* Detail panel — slides in when a tile is selected */}
+      <EntityDetailPanel node={selectedNode} onClose={() => setSelectedId(null)} />
+    </CanvasShell>
   );
 }
 
-// ----- Small inline subcomponents (lifted up once Reza approves the look) ----
+// ----- Shell + helpers --------------------------------------------------------
 
-function FilterChip({
-  label,
-  count,
-  active,
-}: {
-  label: string;
-  count: number;
-  active?: boolean;
-}) {
+function CanvasShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium"
+      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
       style={{
-        background: active ? 'rgba(52, 211, 153, 0.12)' : 'rgba(19, 26, 46, 0.7)',
-        border: active
-          ? '1px solid rgba(52, 211, 153, 0.4)'
-          : '1px solid rgba(255, 255, 255, 0.08)',
-        color: active ? '#6EE7B7' : 'rgba(255, 255, 255, 0.65)',
+        background:
+          'radial-gradient(ellipse at 50% 55%, #0A0E1F 0%, #060914 60%, #050810 100%)',
       }}
     >
-      <span>{label}</span>
-      <span
-        className="rounded-full px-1 text-[9px] tabular-nums"
-        style={{ background: 'rgba(0, 0, 0, 0.25)' }}
-      >
-        {count}
-      </span>
+      <style jsx>{`
+        @keyframes wealth-mote-drift {
+          0%, 100% { transform: translate(0, 0); }
+          25% { transform: translate(8px, -6px); }
+          50% { transform: translate(-4px, 10px); }
+          75% { transform: translate(-10px, -4px); }
+        }
+        @keyframes wealth-anchor-pulse {
+          0% { transform: scale(1); opacity: 0.7; }
+          70% { transform: scale(1.4); opacity: 0; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+      `}</style>
+      {children}
     </div>
   );
 }
@@ -650,8 +714,6 @@ function ZoomButton({ icon: Icon, label }: { icon: LucideIcon; label: string }) 
     </button>
   );
 }
-
-// ----- helpers ---------------------------------------------------------------
 
 function hexToRgb(hex: string): string | null {
   const m = hex.replace('#', '').match(/.{1,2}/g);
