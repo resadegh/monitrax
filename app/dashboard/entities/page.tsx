@@ -75,11 +75,6 @@ import { OwnershipGroupsDialog } from '@/components/entities/OwnershipGroupsDial
 // its graph libraries should not weigh on other routes' bundles. The
 // money-flow Sankey is folded into the canvas as a lens — there is no
 // longer a separate Money Flow tab on this page.
-const EntityCanvas = dynamic(
-  () => import('@/components/entities/EntityCanvas').then((m) => m.EntityCanvas),
-  { ssr: false },
-);
-
 // Desktop Wealth Universe canvas — the v5 Stitch design ported in
 // PR #940 (Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`).
 // Dynamically imported to keep its bundle off other routes.
@@ -91,8 +86,9 @@ const WealthUniverseCanvas = dynamic(
 // Mobile Wealth Universe — Apple Maps hybrid (compact canvas + draggable
 // bottom sheet). Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198`,
 // artefact `.stitch/designs/wealth-explorer-mobile-v1-dark.{html,png}`.
-// Reuses the same /api/wealth-graph SSOT as desktop; replaces the legacy
-// React Flow EntityCanvas on mobile.
+// Reuses the same /api/wealth-graph SSOT as desktop. Replaced the legacy
+// React Flow EntityCanvas on mobile (PR #947); legacy retired in
+// Phase 6 (this PR).
 const WealthUniverseMobile = dynamic(
   () => import('@/components/wealth-explorer/WealthUniverseMobile'),
   { ssr: false },
@@ -662,11 +658,9 @@ export default function EntitiesPage() {
                 <div className="hidden md:block -mx-4 sm:-mx-6">
                   <WealthUniverseCanvas />
                 </div>
-                {/* Mobile — Apple Maps hybrid (compact canvas + draggable
-                    bottom sheet). Replaces the legacy React Flow
-                    EntityCanvas. Add/edit handlers move to the entity
-                    list inside the bottom sheet + the existing dialog
-                    entry points below. */}
+                {/* Mobile — Apple Maps hybrid (compact canvas +
+                    draggable bottom sheet). Add/edit happens via the
+                    existing dialog entry points below the canvas. */}
                 <div className="md:hidden -mx-4">
                   <WealthUniverseMobile />
                 </div>
