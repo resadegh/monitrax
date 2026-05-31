@@ -82,11 +82,17 @@ const FILTER_CHIPS: Array<{
   { id: 'vehicles', label: 'Vehicles', types: ['asset-vehicle'] },
 ];
 
-// Compact tile-size multiplier for mobile (desktop sizes assume 1440px+ canvas).
-const COMPACT_SIZE_SCALE = 0.55;
+// Compact tile-size multiplier for mobile. 0.78 leaves tiles legible
+// without crowding 13 nodes — increased from 0.55 (2026-05-31 Reza
+// feedback: "tiles too small to read").
+const COMPACT_SIZE_SCALE = 0.78;
 
 // Snap-state heights (px from bottom). Used by the bottom sheet drag.
-const SNAP_PEEK = 88;
+// Default opens at PEEK (handle + search only) so the map gets the
+// full canvas area — increased from 'half' (2026-05-31 Reza feedback:
+// "the map is very small"). Sheet auto-rises to 'half' when a tile is
+// tapped; X on the detail card drops it back to 'peek'.
+const SNAP_PEEK = 96;
 const SNAP_HALF_FRAC = 0.55;
 const SNAP_FULL_FRAC = 0.92;
 
@@ -97,7 +103,7 @@ export default function WealthUniverseMobile() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
-  const [snap, setSnap] = useState<SnapState>('half');
+  const [snap, setSnap] = useState<SnapState>('peek');
   const [viewportHeight, setViewportHeight] = useState<number>(844);
 
   useEffect(() => {
@@ -345,7 +351,12 @@ export default function WealthUniverseMobile() {
           <div className="px-4 pb-3">
             <SelectedEntityCard
               node={selectedNode}
-              onClose={() => setSelectedId(null)}
+              onClose={() => {
+                // Close BOTH the selection and the sheet — addresses
+                // the 'card cannot be minimised' feedback (2026-05-31).
+                setSelectedId(null);
+                setSnap('peek');
+              }}
             />
           </div>
         )}
@@ -568,7 +579,7 @@ function MobileTile({
             boxShadow: `${innerGlow}, ${outerGlow}`,
           }}
         >
-          <Glyph size={Math.max(12, renderedSize * 0.36)} color={accent} strokeWidth={1.6} />
+          <Glyph size={Math.max(14, renderedSize * 0.36)} color={accent} strokeWidth={1.6} />
         </div>
         {isAnchor && (
           <div
@@ -582,6 +593,21 @@ function MobileTile({
             ★ YOU
           </div>
         )}
+        {/* Label below tile — 2026-05-31 Reza feedback: 'tiles too small
+            to read'. Width caps to prevent overlap with neighbours. */}
+        <div
+          className="absolute left-1/2 top-full mt-1 -translate-x-1/2 text-center"
+          style={{ width: Math.max(64, renderedSize * 1.8) }}
+        >
+          <div className="truncate text-[9px] font-medium leading-tight text-white/85">
+            {node.shortName ?? node.name}
+          </div>
+          {node.value && (
+            <div className="truncate text-[9px] font-semibold tabular-nums leading-tight" style={{ color: accent }}>
+              {node.value}
+            </div>
+          )}
+        </div>
       </div>
     </button>
   );
