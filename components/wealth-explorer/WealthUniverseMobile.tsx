@@ -32,8 +32,6 @@ import {
   CircleDollarSign,
   Banknote,
   Users,
-  Search,
-  SlidersHorizontal,
   ChevronRight,
   CheckCircle2,
   TreePine,
@@ -220,40 +218,23 @@ export default function WealthUniverseMobile() {
     );
   }
 
-  // Canvas takes the area above the sheet.
-  const canvasHeight = Math.max(180, viewportHeight - sheetHeight - 64);
+  // Canvas takes the area above the sheet (no page header now — saves
+  // 84px of vertical space; the dashboard's existing tab strip provides
+  // context).
+  const canvasHeight = Math.max(220, viewportHeight - sheetHeight - 16);
 
   return (
     <Shell>
       <DustMoteLayer />
 
-      {/* Page header — compact for mobile */}
-      <div className="pointer-events-auto absolute left-0 right-0 top-0 z-30 flex items-center justify-between px-4 pt-3">
-        <div>
-          <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/45">
-            MY WEALTH › MY STRUCTURE
-          </div>
-          <div className="text-[18px] font-semibold leading-tight text-white">Wealth Explorer</div>
-          <div className="text-[10px] leading-tight text-white/40">
-            {nodes.length} entities · tap any to explore
-          </div>
-        </div>
-        <span
-          className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white"
-          style={{
-            background: 'rgba(19, 26, 46, 0.9)',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          {nodes.length}
-        </span>
-      </div>
-
-      {/* Compact canvas */}
+      {/* Compact canvas — fills the area above the sheet. The page-level
+          header (in app/dashboard/entities/page.tsx) is hidden on mobile
+          so the canvas can use the full vertical space without three
+          stacked header rows. */}
       <div
         className="absolute left-0 right-0 z-20"
         style={{
-          top: 84,
+          top: 8,
           height: canvasHeight,
           transition: 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
@@ -294,28 +275,12 @@ export default function WealthUniverseMobile() {
         snapHeights={snapHeights}
         onSnapChange={setSnap}
       >
-        {/* Search pill */}
-        <div className="px-4 pb-2">
-          <div
-            className="flex h-10 items-center gap-2 rounded-full px-3.5"
-            style={{
-              background: 'rgba(19, 26, 46, 0.7)',
-              border: '1px solid rgba(255, 255, 255, 0.08)',
-            }}
-          >
-            <Search size={14} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search any entity, asset, person…"
-              className="flex-1 bg-transparent text-[13px] text-white placeholder:text-white/45 focus:outline-none"
-            />
-            <SlidersHorizontal size={14} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
-          </div>
-        </div>
-
-        {/* Filter chips — horizontal scroll */}
+        {/* Filter chips — horizontal scroll. Search pill removed for
+            mobile (2026-05-31 Reza feedback: 'not sure if the search
+            section is needed on mobile view where the screen is
+            smaller'). With small entity counts, the filter chips alone
+            are enough; users can scroll the list directly. Search can
+            return later if user-data scales beyond ~20 entities. */}
         <div className="overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex items-center gap-1.5">
             {FILTER_CHIPS.map(chip => {
