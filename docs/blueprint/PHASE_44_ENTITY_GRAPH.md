@@ -567,3 +567,160 @@ Phase 44 Part 1a does not start until every box is satisfied in this document (a
 - [x] §8.2 separates eligibility from actual money-flow.
 - [x] Legal title / beneficial ownership / control kept as three separate dimensions (§3A).
 - [x] Structured trust-deed-rule model has an explicit Part 2 dependency (§7, §11).
+
+---
+
+## §16 — Part 3: Wealth Universe canvas (consumer surface) — 2026-05-31
+
+Part 1 shipped the entity-relationship data layer. Part 2 shipped the
+money-flow + tax-engine rewire. **Part 3 ships the consumer-facing
+visualisation** of that data — the Wealth Universe canvas at
+`/dashboard/entities` (My Accounts → My Structure).
+
+### §16.1 — Why Part 3 (the consumer gap)
+
+Parts 1 + 2 made the entity graph CORRECT (data layer) and made tax
+COMPUTE off it (engine). But the user couldn't SEE their structure —
+the legacy React Flow `EntityCanvas` (Part 1c) was a corporate-org-chart
+treatment that read as a database diagram, not a wealth view. Reza's
+five-Stitch direction (2026-05-30) landed on **"Apple Dock meets Apple
+Maps for wealth structures"** — a spatial canvas where the user is the
+gravitational anchor, every owned object is its own node, every typed
+relationship is a soft silk-thread ribbon, and the whole thing fits the
+user's mental model: *"my wealth, mapped."*
+
+### §16.2 — Surface architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ /dashboard/entities (page)                              │
+│   ├─ Desktop (md+) → <WealthUniverseCanvas/>            │
+│   │     ├─ useWealthExplorerData() ────┐                │
+│   │     │      ↓                       │                │
+│   │     │   /api/wealth-graph          │ Phase 1 SSOT   │
+│   │     │      ↓                       │                │
+│   │     │   getWealthGraphSnapshot()   ┘                │
+│   │     │      ↓                                        │
+│   │     │   layoutWealthExplorer() → positioned nodes   │
+│   │     ├─ <WealthNodeTile/> × N                        │
+│   │     ├─ <RelationshipRibbon/> × M (SVG bezier)       │
+│   │     ├─ <EntityPreviewPopover/> (hover, follows tile)│
+│   │     └─ <EntityDetailPanel/> (slide-in, click open)  │
+│   └─ Mobile (<md) → legacy <EntityCanvas/> until Phase 4│
+└─────────────────────────────────────────────────────────┘
+```
+
+### §16.3 — The third snapshot SSOT (`/api/wealth-graph`)
+
+Distinct from the two pre-existing snapshot SSOTs per CLAUDE.md §12.2
+"Two snapshot SSOTs, not duplication" — this is now the third, for a
+third concern:
+
+| SSOT | Concern | Output shape |
+|---|---|---|
+| `getMasterFinancialSnapshot()` (Master) | Financial breakdowns — income / expenses / cashflow / net worth | Totals + categorical breakdowns |
+| `/api/portfolio/snapshot` (SnapshotV2) | Aggregated counts + GRDCS linkage health | Per-category counts + completeness scores |
+| **`/api/wealth-graph` (Part 3)** | **Relational graph — individual entities + individual assets + typed edges** | **Canvas-ready node list + edge list + ownership-group list + beneficial-override list** |
+
+The Wealth Graph service is a pure aggregator — zero tax math, zero
+calc, zero side effects. Reads:
+- `LegalEntity[]` with `_count` of owned objects (properties / loans /
+  accounts / investmentAccounts / assets)
+- All owned objects with their `ownerEntityId`
+- `EntityRelationship[]` (only currently-effective — `effectiveTo` null
+  or future)
+- `OwnershipGroup[]` + nested `OwnershipStake[]`
+- `BeneficialOwnershipOverride[]`
+
+Reads via `Promise.all([...])` (not `prisma.$transaction([array])` —
+the project's WIF-backed Prisma adapter rejects the array form; read-only
+aggregator doesn't need transaction isolation anyway).
+
+### §16.4 — Layout function semantics (`lib/data/wealthExplorerLayout.ts`)
+
+Pure function. Given `WealthGraphSnapshot`, returns positioned nodes +
+derived ribbons.
+
+**Spatial zones** (% coords on canvas):
+- Corporate cluster (companies + trusts) — upper-left arc, centre (28, 30)
+- SMSF cluster — upper-right arc, centre (78, 28)
+- Joint vehicles (partnerships) — mid-left, centre (16, 50)
+- Sole-trader vehicles — mid-right, centre (84, 50)
+- Individuals — centre-bottom band, centre (50, 74)
+
+**Asset placement.** Each owned object is positioned as a satellite in a
+9%-canvas-radius arc BELOW its owning entity, biased to the lower
+hemisphere so assets sit "downstream" of ownership. If an asset is in
+an `OwnershipGroup` (joint tenancy / tenants in common), it's placed
+below the centroid of the group's members instead — and the connection
+routes via a synthetic `ownership-group` node positioned between the
+members.
+
+**Ribbon derivation.** Three sources:
+1. **EntityRelationship[]** — typed edges (BENEFICIARY_OF → violet,
+   SHAREHOLDER_OF/UNITHOLDER_OF/PARTNER_OF → emerald, DIRECTOR_OF /
+   APPOINTOR_OF / TRUSTEE_OF / others → sky-controls, MEMBER_OF →
+   emerald-soft, FAMILY_MEMBER_OF / ASSOCIATE_OF → pink-violet).
+2. **parentEntityId fallback** — synthesised as `PARENT_OF` for legacy
+   entities without an explicit relationship row.
+3. **Holds edges** — entity → asset, or group → asset for joint-owned
+   objects. Asset-kind colour overrides on the edge stroke (sky for
+   property, indigo for investment, emerald for cash, amber for vehicle,
+   rose for loan).
+
+**BeneficialOwnershipOverride** renders both legal + beneficial chains —
+legal ribbon dimmed (slate), beneficial ribbon full-strength (violet).
+Lens toggle to switch which is dominant lands in Phase 1.1.
+
+### §16.5 — Component breakdown (the 9 reusable components)
+
+Reza brief 2026-05-30 named these. Currently all live inline in
+`WealthUniverseCanvas.tsx` for fast iteration; extraction follows in
+Phase 5 (dashboard widget) when reuse begins.
+
+| # | Component | Role |
+|---|---|---|
+| 1 | `WealthExplorerPage` | Thin route wrapper (currently inlined as `app/dashboard/entities/page.tsx`) |
+| 2 | `WealthUniverseCanvas` | Orchestrator — state, layout, event handlers |
+| 3 | `WealthNodeTile` | Single tile — squircle, accent inner-glow, anchor rings, focal ring, hover scale |
+| 4 | `RelationshipRibbon` | SVG Bezier with Gaussian-blur glow halo + optional particle stream |
+| 5 | `EntityPreviewPopover` | Hover popover — anchors L/R based on canvas position |
+| 6 | `EntityDetailPanel` | Slide-in right panel (Framer Motion spring) — full entity file |
+| 7 | `WealthFilterBar` | Horizontal chip strip — All / People / Trusts / SMSF / Companies (counts live) |
+| 8 | `WealthSearch` | Search pill — fuzzy name match, dims non-matches |
+| 9 | `ZoomControls` | Bottom-left stack — +/- / fit (visual chrome currently) |
+
+### §16.6 — Phased rollout
+
+| Phase | Status | What it ships |
+|---|---|---|
+| **Stitch v1–v5** | ✅ Merged PR #939 | Visual SoT — Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd` |
+| **React port v1** | ✅ Merged PR #940 | Surface preview with fixture data + static hover demo |
+| **Relocation** | ✅ Merged PR #941 | Moved canvas into `/dashboard/entities` (My Structure tab); deleted standalone preview route |
+| **v2 interactivity** | ✅ Merged PR #942 | Real `/api/entities`, live hover/click/search/filter, `EntityDetailPanel` |
+| **Phase 1 — graph SSOT** | ✅ Merged PR #943-#945 | `/api/wealth-graph` + every owned asset as a node + EntityRelationship-typed ribbons + OwnershipGroup synthetic nodes + BeneficialOwnershipOverride dual chains |
+| **Phase 1.1** | ⏳ Next | Beneficial-ownership lens toggle (legal dim / show switch) |
+| **Phase 2 — Money Flow** | 📋 Queued | DistributionAllocation + DividendPayment as Money Flow lens ribbons. **§12.14 reform-aware** — passes through per-entity `taxRegime`, never silently computes post-reform math; PR template block required. |
+| **Phase 2 enhancement — FY slider** | 📋 Queued (per A4 deferral) | Historical FY scrub via ghost-glass strip with tick marks for each FY with recorded distributions |
+| **Phase 3 — click-to-zoom** | 📋 Queued | Level 2 ecosystem zoom + Level 3 panel extension with linked-asset list click-through |
+| **Phase 4 — mobile design** | 🟡 Stitch ready | Apple Maps hybrid — compact canvas top + draggable bottom sheet. Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198` awaiting sign-off |
+| **Phase 5 — dashboard widget** | 📋 Queued | Simplified mini-canvas on `/dashboard` home page |
+| **Phase 6 — legacy retirement** | 📋 Queued | Retire `EntityCanvas` (React Flow) once mobile + dashboard widget land |
+
+### §16.7 — How Part 3 relates to Parts 1 + 2
+
+- **Part 1 (data layer)** — `EntityRelationship`, `OwnershipGroup`,
+  `OwnershipStake`, `BeneficialOwnershipOverride` schema + the
+  `entityRelationshipService` writer, the validity matrix, the queries
+  helper. **Part 3 reads from these**, doesn't mutate them.
+- **Part 2 (money-flow + tax-engine rewire)** — `DistributionResolution`
+  + `DividendDistribution` + `PrivateCompanyBenefit` + `TrustDeedRule` +
+  `entityTaxFactsAssembler` + `smsfIncomeTax`. **Part 3 Phase 2** will
+  add a Money Flow lens that renders `DistributionAllocation` +
+  `DividendPayment` as animated ribbons; engine modules stay
+  unmodified per §8.3 — Part 3 is purely a visualisation of the data
+  Parts 1 + 2 already maintain.
+- **Strict separation maintained:** Part 3 contains ZERO tax math,
+  ZERO calc engine logic, ZERO writes to relationship / distribution /
+  override tables. Read-only surface. §8.3 + §8.4 SSOT commitments
+  hold for Part 3 as they did for Parts 1 + 2.

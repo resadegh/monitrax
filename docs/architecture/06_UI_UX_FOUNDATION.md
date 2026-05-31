@@ -1418,3 +1418,205 @@ Acting on a row removes it optimistically across both surfaces.
 **Where to replicate next:** new reminder producers (standalone insurance,
 personal-document expiry) plug into the engine, not the UI — both `RenewalsCard`
 and `NotificationBell` render them automatically once the engine emits them.
+
+---
+
+## Wealth Universe Explorer pattern (Phase 44 Part 3, 2026-05-31)
+
+**The spatial-canvas pattern for visualising the user's full legal-entity +
+asset graph.** Lives at `/dashboard/entities` (My Accounts → My Structure)
+on desktop. Replaces the legacy React Flow `EntityCanvas` (which read as a
+corporate org-chart). Mobile pattern documented separately below — Apple
+Maps hybrid (compact canvas + draggable bottom sheet).
+
+### Visual identity — what makes this pattern distinct
+
+Three premium "wow" elements that DON'T exist anywhere else in the app, and
+SHOULD only be used here (and any future surface that's specifically a
+spatial map):
+
+| Element | Spec | Why it's reserved for this pattern |
+|---|---|---|
+| **Gravitational anchor** | YOU node, 96px squircle, violet→fuchsia gradient + pulsing emerald rings (two concentric, decreasing opacity, 2.4s loop). Always rendered at the spatial centre of the canvas. | Establishes "you are here" psychologically the moment the page loads. Behavioural-psych load-bearing — without it, users get lost in a graph of abstract entities. |
+| **Silk-thread ribbons** | 1px curved Bezier with `feGaussianBlur` halo. Rest opacity 22%, active opacity 85% + animated particle stream (3 dots drifting along the path). Bend perpendicular to the line, magnitude `min(distance * 0.18, 8)`. | Distinguishes from engineering node-graphs (sharp 1.5px orthogonal lines). The bezier + glow reads as "relationship" not "dataflow." |
+| **Dust-mote layer** | 36 particles, 1–3px white or emerald, opacity 4–11%, drift via CSS keyframes (12–18s loops). Background is a deep-navy radial-gradient vignette (`#0A0E1F → #060914 → #050810`). | Communicates "spatial environment" / "wealth universe." Without it the canvas reads flat. |
+
+### Component breakdown (the 9 reusable components)
+
+Currently all inlined in `WealthUniverseCanvas.tsx` for fast iteration.
+Extraction policy: extract a component the SECOND time it's needed
+(per §12.8 "Simplicity Over Cleverness" — no premature abstraction).
+Phase 5 (dashboard widget) is the natural extraction trigger.
+
+| # | Component | File | Role |
+|---|---|---|---|
+| 1 | `WealthExplorerPage` | `app/dashboard/entities/page.tsx` (currently inlined) | Thin route wrapper — `DashboardLayout` + viewport gate (`md:block` for canvas, `md:hidden` for legacy mobile) |
+| 2 | `WealthUniverseCanvas` | `components/wealth-explorer/WealthUniverseCanvas.tsx` | Orchestrator. Holds React state (`hoveredId` / `selectedId` / `searchQuery` / `activeFilter`). Computes derived: visibility opacity, ribbon active/dimmed, tile fan-scale |
+| 3 | `WealthNodeTile` | (inlined) | Single tile — squircle (`borderRadius: '30%'`), accent inner-glow via `box-shadow inset`, anchor pulsing rings, focal ring, hover scale 1.6× + magnifier corner icon |
+| 4 | `RelationshipRibbon` | (inlined) | SVG path with Gaussian-blur filter + optional `<animateMotion>` for particle stream |
+| 5 | `EntityPreviewPopover` | (inlined) | Hover popover — `anchorRight = node.position.x < 65` (flips left when the tile is on the right half so popover never goes off-screen) |
+| 6 | `EntityDetailPanel` | `components/wealth-explorer/EntityDetailPanel.tsx` | Slide-in right panel (`framer-motion` spring, `damping: 28, stiffness: 280`). On-demand fetch of `/api/entities/[id]` |
+| 7 | `WealthFilterBar` | (inlined) | Horizontal chip strip with live counts (All / People / Trusts / SMSF / Companies). Active chip = emerald-soft fill + emerald border |
+| 8 | `WealthSearch` | (inlined) | Search pill — fuzzy name match. Non-matches dim to 35% (preserves spatial memory; never hides) |
+| 9 | `ZoomControls` | (inlined) | Bottom-left stack (+/- / fit). Currently visual chrome — gesture-handler wiring is Phase 3 |
+
+### Canonical data flow (SSOT chain)
+
+```
+/api/wealth-graph (route, withPermission('entity.read'))
+    ↓
+getWealthGraphSnapshot(userId)   ← lib/services/wealthGraphService.ts
+    ↓                              (Promise.all reads — NO calc, NO tax math)
+WealthGraphSnapshot
+    ↓
+useWealthExplorerData() hook     ← lib/hooks/useWealthExplorerData.ts
+    ↓
+layoutWealthExplorer(snapshot)   ← lib/data/wealthExplorerLayout.ts
+    ↓                              (pure function — zone-based placement,
+LayoutResult                       satellite arcs, ribbon derivation)
+{ nodes, relationships, isEmpty }
+    ↓
+WealthUniverseCanvas             ← presentational only
+```
+
+**Strict separation:** the canvas component knows nothing about Prisma,
+`/api/entities`, or any business logic. The layout function knows
+nothing about React. The service knows nothing about the canvas. Three
+isolated layers — each replaceable without touching the others.
+
+### Entity-type colour tokens
+
+Each `WealthNodeType` has a single canonical accent. Drives the tile's
+inner glow, the glyph colour, the ribbon stroke when this entity is an
+endpoint. **Do not invent new entity types without adding a token here**
+— the canvas will fall back to undefined behaviour.
+
+| Type | Hex | Glyph (Lucide) |
+|---|---|---|
+| `holding-company` | `#38BDF8` sky | `Briefcase` |
+| `trustee-company` | `#7DD3FC` sky-light (dashed border) | `Scroll` |
+| `smsf-trustee-company` | `#6EE7B7` emerald-light (dashed border) | `Shield` |
+| `other-company` | `#FBBF24` amber | `Box` |
+| `trust` | `#818CF8` indigo | `Umbrella` |
+| `smsf` | `#34D399` emerald | `Rocket` |
+| `individual` | `#A78BFA` violet | `User` |
+| `asset-property` | `#38BDF8` sky | `Home` |
+| `asset-vehicle` | `#FBBF24` amber | `Car` |
+| `asset-investment` | `#818CF8` indigo | `LineChart` |
+| `asset-cash` | `#34D399` emerald | `CircleDollarSign` |
+| `asset-loan` | `#F87171` amber-rose | `Banknote` |
+| `ownership-group` | `#F0ABFC` pink-violet | `Users` |
+
+### Relationship-type ribbon colours
+
+| Bucket | Hex | Sourced from |
+|---|---|---|
+| `owns` | `#34D399` emerald | SHAREHOLDER_OF / UNITHOLDER_OF / PARTNER_OF / holding-company → child |
+| `controls` | `#7DD3FC` sky | DIRECTOR_OF / APPOINTOR_OF / TRUSTEE_OF (other than ATF) / SECRETARY_OF / GUARDIAN_OF / POWER_HOLDER_OF / LPR / EXECUTOR_OF / ADMINISTRATOR_OF |
+| `trustee` (ATF) | `#FBBF24` amber | TRUSTEE_OF when it's the actual ATF edge (trustee → trust / SMSF) |
+| `beneficiary` | `#A78BFA` violet | BENEFICIARY_OF + BeneficialOwnershipOverride beneficial chain |
+| `member` | `#6EE7B7` emerald-soft | MEMBER_OF |
+| `household` | `#F0ABFC` pink-violet | FAMILY_MEMBER_OF / ASSOCIATE_OF |
+| `holds` | per asset-kind | Entity → asset (sky/indigo/emerald/amber by asset type) |
+
+### Interaction patterns
+
+**Apple Dock fan-effect.** When a tile is hovered, every other tile gets a
+scale boost based on distance from the hovered one. Cosine falloff over
+14% canvas radius:
+
+```ts
+function fanScale(hoveredPos, tilePos, radiusPct = 14) {
+  const dist = Math.hypot(tilePos.x - hoveredPos.x, tilePos.y - hoveredPos.y);
+  if (dist >= radiusPct) return 1;
+  const t = 1 - dist / radiusPct;
+  return 1 + 0.2 * t * t;
+}
+```
+
+The hovered tile itself is excluded from the fan (gets a direct `1.6` scale).
+
+**Edge-aware popover anchoring.** `anchorRight = node.position.x < 65` —
+when the focused tile is in the right 35% of the canvas, the popover
+flips to the left so it doesn't clip off-screen.
+
+**Ribbon highlighting.** When a tile is hovered: ribbons where
+`from === hoveredId || to === hoveredId` go full-brightness (opacity 85%,
+2px stroke, Gaussian-blur halo at 6px, particle stream); all OTHER
+ribbons dim to 6% opacity (almost invisible). This makes the focused
+entity's relationships POP without hiding the structural map.
+
+**Click → detail panel.** Sets `selectedId`. `EntityDetailPanel`
+mounts (Framer Motion `AnimatePresence`), fetches
+`/api/entities/[selectedId]` on mount, renders identity / parent /
+asset counts / open-full-file CTA. Backdrop click or `X` closes.
+
+**Search dim, never hide.** Non-matching tiles drop to 35% opacity.
+Spatial memory is the asset — the user knows where their HOME tile is
+even if it's currently dim, and reflection / dimming preserves that;
+hiding does not.
+
+**Filter chip dim, never hide.** Out-of-bucket tiles drop to 18%
+opacity. Same psychological rationale as search.
+
+### Mobile pattern — Apple Maps hybrid (Stitch design 2026-05-31, React port pending)
+
+Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198`.
+Artefact: `.stitch/designs/wealth-explorer-mobile-v1-dark.{html,png}`.
+
+**Structure** (top → bottom):
+
+1. **Compact canvas** (~320px tall, full-width). All 13 nodes from the
+   desktop fixture at smaller sizes — YOU 56×56 (still pulsing), Family
+   Trust 48×48 (focal), assets 28–40×28–40. Pinch-zoom + pan via
+   gesture only; tiny "Two-finger" hint top-right, "↕ Drag sheet"
+   chip bottom-right.
+2. **Draggable bottom sheet** — three snap states:
+   - **Peek** (~80px): drag handle + search pill only. Canvas takes
+     the rest.
+   - **Half** (~380px, default open): drag handle + search + filter
+     chips + selected-entity detail card + entity list (5 rows
+     visible).
+   - **Full** (covers canvas): same content, scrollable list takes the
+     full screen.
+3. **Bottom nav** — unchanged from the existing My Wealth aesthetic.
+
+**Tap behaviour:** tap tile = sheet rises to half + that entity's
+detail card appears at top. Tap a list row = both zooms/highlights
+the tile on the canvas AND scrolls the list to that row. The two
+surfaces stay in sync.
+
+**Why this not just "shrink the desktop":** at 375px wide, 13
+spatial tiles + hover-magnify-on-touch-which-doesn't-exist would be
+unusable. The hybrid preserves the wealth-universe identity (compact
+canvas always visible) while giving mobile-native tap-to-explore via
+the sheet.
+
+### Where this pattern should be replicated next
+
+The Wealth Universe canvas is **the** spatial-graph pattern for
+Monitrax. The intent is a single specialised pattern, not a class
+of patterns to repeat. **Do NOT clone** for:
+- Investment holdings (use a portfolio table — different mental model)
+- Spending categories (use Sankey + bars — different mental model)
+- Document organisation (use a folder list — different mental model)
+
+**DO consider** for:
+- The simplified dashboard widget on `/dashboard` (Phase 5) — same
+  components, smaller canvas, no detail panel
+- Future "Inheritance / Estate" planning surface (Phase 41E.x) — same
+  spatial model, time-travel lens added (FY slider per Phase 2
+  enhancement)
+
+### Reviewer enforcement (§16.6)
+
+Any PR that materially touches the Wealth Universe surface MUST:
+1. Either reuse the canonical components above OR explain in the PR
+   description why a fork is necessary
+2. Maintain the SSOT chain (no fetching `/api/entities` directly from
+   the canvas — must go via `useWealthExplorerData()` → `/api/wealth-graph`)
+3. Not introduce a new node-type or relationship-type without adding
+   the corresponding token to `NODE_ACCENT` / `RIBBON_COLOR`
+4. Keep the design-language elements (gravitational anchor pulsing,
+   silk-thread ribbon glow, dust-mote layer) — removing any one of
+   them changes the identity
