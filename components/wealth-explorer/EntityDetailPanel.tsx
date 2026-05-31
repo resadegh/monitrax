@@ -6,11 +6,18 @@
  * counts + actions. Mirrors the v5 Stitch design's intent for "Level 3 —
  * Entity File".
  *
+ * Phase 3 (Level 3 extension) — accepts the entity's linked assets
+ * from the parent canvas (already in memory via the wealth-graph
+ * snapshot — no extra fetch). Renders them as a tappable list with
+ * click-through to each asset's individual detail page where one
+ * exists, falling back to the asset list-route otherwise.
+ *
  * Surface SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
  */
 
 'use client';
 
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   X,
@@ -19,6 +26,7 @@ import {
   LineChart,
   Landmark,
   Box,
+  Banknote,
   CheckCircle2,
   AlertTriangle,
   ChevronRight,
@@ -28,6 +36,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import type { WealthNode } from '@/lib/data/wealthExplorerTypes';
 import { NODE_ACCENT } from '@/lib/data/wealthExplorerTypes';
+import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
 
 interface EntityDetail {
   id: string;
@@ -55,9 +64,16 @@ interface EntityDetail {
 interface Props {
   node: WealthNode | null;
   onClose: () => void;
+  /**
+   * Phase 3 Level 3 — assets held by this entity. Already in memory
+   * via the wealth-graph snapshot; the canvas filters + passes the
+   * subset whose `ownerEntityId === node.id`. Empty array when the
+   * entity owns nothing directly.
+   */
+  assets?: WealthGraphAsset[];
 }
 
-export default function EntityDetailPanel({ node, onClose }: Props) {
+export default function EntityDetailPanel({ node, onClose, assets = [] }: Props) {
   const { token } = useAuth();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [loading, setLoading] = useState(false);
@@ -222,17 +238,21 @@ export default function EntityDetailPanel({ node, onClose }: Props) {
                     </div>
                   </Section>
 
-                  {/* Tap-through action */}
-                  <a
-                    href={`/dashboard/entities`}
-                    className="block w-full rounded-xl py-3 text-center text-[12px] font-medium text-white transition"
-                    style={{
-                      background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
-                      boxShadow: `0 8px 24px ${accent}33`,
-                    }}
-                  >
-                    Open full entity file →
-                  </a>
+                  {/* Phase 3 Level 3 — Linked assets list with
+                      click-through. Renders only when ≥1 asset
+                      exists. Replaces the prior "Open full entity
+                      file →" dead-end CTA (it pointed back to
+                      /dashboard/entities, which is where the user
+                      already is). */}
+                  {assets.length > 0 && (
+                    <Section title="Linked assets">
+                      <div className="space-y-1.5">
+                        {assets.map(a => (
+                          <LinkedAssetRow key={a.id} asset={a} onNavigate={onClose} />
+                        ))}
+                      </div>
+                    </Section>
+                  )}
                 </div>
               )}
             </div>
@@ -293,4 +313,89 @@ function AssetCountTile({
 
 function prettifyType(t: string): string {
   return t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
+/**
+ * Phase 3 Level 3 — render one linked asset as a tappable row with
+ * click-through to the asset's individual detail page where one
+ * exists, falling back to the asset list-route otherwise.
+ *
+ * URL map (`assetHrefFor`):
+ *   - property → `/dashboard/properties/{id}` (individual route exists)
+ *   - loan → `/dashboard/loans/{id}` (individual route exists)
+ *   - account → `/dashboard/accounts` (no individual route — list)
+ *   - investment-account → `/dashboard/investments/accounts` (list)
+ *   - asset → `/dashboard/assets` (list)
+ *
+ * `onNavigate` closes the panel before the route change so the user
+ * lands on the destination cleanly without a stale Level-3 panel
+ * hanging over it.
+ */
+function LinkedAssetRow({
+  asset,
+  onNavigate,
+}: {
+  asset: WealthGraphAsset;
+  onNavigate: () => void;
+}) {
+  const { icon: Icon, accent } = assetGlyphFor(asset.kind);
+  const href = assetHrefFor(asset);
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className="group flex items-center gap-3 rounded-xl p-3 transition"
+      style={{
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+      }}
+    >
+      <div
+        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+        style={{ background: `${accent}1f`, border: `1px solid ${accent}44` }}
+      >
+        <Icon size={15} color={accent} strokeWidth={1.5} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[12px] font-medium text-white/95">{asset.name}</div>
+        <div className="truncate text-[10px] text-white/45">
+          {asset.subtype ?? asset.context ?? prettifyType(asset.kind)}
+        </div>
+      </div>
+      <div className="flex flex-shrink-0 items-center gap-2">
+        <div className="text-[12px] font-semibold tabular-nums text-white/85">
+          {formatValue(asset.value)}
+        </div>
+        <ChevronRight size={12} color="rgba(255,255,255,0.4)" className="transition group-hover:text-white/70" />
+      </div>
+    </Link>
+  );
+}
+
+function assetGlyphFor(kind: WealthGraphAsset['kind']): { icon: LucideIcon; accent: string } {
+  switch (kind) {
+    case 'property': return { icon: HomeIcon, accent: '#38BDF8' };
+    case 'loan': return { icon: Banknote, accent: '#F87171' };
+    case 'account': return { icon: Landmark, accent: '#34D399' };
+    case 'investment-account': return { icon: LineChart, accent: '#818CF8' };
+    case 'asset': return { icon: Box, accent: '#FBBF24' };
+  }
+}
+
+function assetHrefFor(asset: WealthGraphAsset): string {
+  switch (asset.kind) {
+    case 'property': return `/dashboard/properties/${asset.id}`;
+    case 'loan': return `/dashboard/loans/${asset.id}`;
+    case 'account': return '/dashboard/accounts';
+    case 'investment-account': return '/dashboard/investments/accounts';
+    case 'asset': return '/dashboard/assets';
+  }
+}
+
+function formatValue(v: number): string {
+  if (!isFinite(v)) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${Math.round(v / 1_000)}K`;
+  return `$${v.toFixed(0)}`;
 }

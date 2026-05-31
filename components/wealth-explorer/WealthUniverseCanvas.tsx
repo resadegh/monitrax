@@ -32,6 +32,7 @@ import {
   Maximize2,
   Settings2,
   ChevronRight,
+  ChevronLeft,
   PanelRight,
   TreePine,
   Sparkles,
@@ -457,7 +458,7 @@ function EntityPreviewPopover({ node }: { node: WealthNode }) {
 }
 
 export default function WealthUniverseCanvas() {
-  const { layout, loading, error, refetch } = useWealthExplorerData();
+  const { layout, snapshot, loading, error, refetch } = useWealthExplorerData();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -508,10 +509,31 @@ export default function WealthUniverseCanvas() {
     return new Set(nodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
   }, [nodes, searchQuery]);
 
+  // Phase 3 — Level 2 ecosystem zoom. When a tile is selected, compute
+  // the set of node ids directly connected to it (via any ribbon —
+  // structural or flow). Tiles in this set + the focal itself read at
+  // full opacity; the rest dim. Pure additive opacity factor — does
+  // not re-run the layout.
+  const connectedToSelectedIds = useMemo<Set<string> | null>(() => {
+    if (!selectedId) return null;
+    const set = new Set<string>([selectedId]);
+    for (const r of relationships) {
+      if (r.from === selectedId) set.add(r.to);
+      if (r.to === selectedId) set.add(r.from);
+    }
+    return set;
+  }, [selectedId, relationships]);
+
   function nodeOpacity(node: WealthNode): number {
     let opacity = 1;
     if (visibleTypes && !visibleTypes.has(node.type)) opacity *= 0.18;
     if (matchedNodeIds && !matchedNodeIds.has(node.id)) opacity *= 0.35;
+    // Phase 3 Level 2 — non-connected tiles recede when a focal entity
+    // is selected. The focal tile + its direct neighbours stay
+    // visible; the rest fade to 0.22 so the ecosystem reads.
+    if (connectedToSelectedIds && !connectedToSelectedIds.has(node.id)) {
+      opacity *= 0.22;
+    }
     return opacity;
   }
 
@@ -904,9 +926,12 @@ export default function WealthUniverseCanvas() {
       )}
 
       {/* Level breadcrumb — hidden in money-flow mode (the FY-slider
-          above sits at the same position). */}
+          above sits at the same position). Phase 3 — when a tile is
+          selected the breadcrumb advances from "Level 1 · Universe" to
+          "Level 2 · {entity name}" with a back chevron (tap = back to
+          Level 1). Level 3 (the detail panel) layers on top. */}
       {flowMode === 'structure' && (
-      <div className="pointer-events-none absolute left-1/2 top-20 z-30 -translate-x-1/2">
+      <div className="absolute left-1/2 top-20 z-30 -translate-x-1/2">
         <div
           className="flex items-center gap-2 rounded-full px-3 py-1.5"
           style={{
@@ -915,11 +940,34 @@ export default function WealthUniverseCanvas() {
             backdropFilter: 'blur(8px)',
           }}
         >
-          <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
-            Level 1 · Universe
-          </span>
-          <span className="h-1 w-1 rounded-full bg-white/15" />
-          <span className="h-1 w-1 rounded-full bg-white/15" />
+          {selectedNode ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
+                aria-label="Back to universe"
+              >
+                <ChevronLeft size={11} strokeWidth={1.5} />
+                Universe
+              </button>
+              <span className="h-1 w-1 rounded-full bg-white/15" />
+              <span
+                className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
+                style={{ color: NODE_ACCENT[selectedNode.type] }}
+              >
+                Level 2 · {selectedNode.shortName ?? selectedNode.name}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
+                Level 1 · Universe
+              </span>
+              <span className="h-1 w-1 rounded-full bg-white/15" />
+              <span className="h-1 w-1 rounded-full bg-white/15" />
+            </>
+          )}
         </div>
       </div>
       )}
@@ -995,8 +1043,19 @@ export default function WealthUniverseCanvas() {
         </div>
       </div>
 
-      {/* Detail panel — slides in when a tile is selected */}
-      <EntityDetailPanel node={selectedNode} onClose={() => setSelectedId(null)} />
+      {/* Detail panel — slides in when a tile is selected. Phase 3
+          Level 3 — pass assets held by the focal entity for the new
+          linked-assets list (already in memory via the wealth-graph
+          snapshot; no extra fetch). */}
+      <EntityDetailPanel
+        node={selectedNode}
+        onClose={() => setSelectedId(null)}
+        assets={
+          selectedNode && snapshot
+            ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
+            : []
+        }
+      />
     </CanvasShell>
   );
 }

@@ -49,6 +49,8 @@ import {
   type WealthRelationship,
 } from '@/lib/data/wealthExplorerTypes';
 import { useWealthExplorerData } from '@/lib/hooks/useWealthExplorerData';
+import Link from 'next/link';
+import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
 
 const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'holding-company': Briefcase,
@@ -99,7 +101,7 @@ const SNAP_FULL_FRAC = 0.92;
 type SnapState = 'peek' | 'half' | 'full';
 
 export default function WealthUniverseMobile() {
-  const { layout, loading, error, refetch } = useWealthExplorerData();
+  const { layout, snapshot, loading, error, refetch } = useWealthExplorerData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
@@ -515,7 +517,9 @@ export default function WealthUniverseMobile() {
           </div>
         </div>
 
-        {/* Selected entity detail card */}
+        {/* Selected entity detail card. Phase 3 Level 3 — pass linked
+            assets from the in-memory snapshot for the list-with-
+            click-through. */}
         {selectedNode && (
           <div className="px-4 pb-3">
             <SelectedEntityCard
@@ -526,6 +530,11 @@ export default function WealthUniverseMobile() {
                 setSelectedId(null);
                 setSnap('peek');
               }}
+              assets={
+                snapshot
+                  ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
+                  : []
+              }
             />
           </div>
         )}
@@ -893,9 +902,12 @@ interface EntityDetail {
 function SelectedEntityCard({
   node,
   onClose,
+  assets = [],
 }: {
   node: WealthNode;
   onClose: () => void;
+  /** Phase 3 Level 3 — assets held by this entity (in-memory pass-through). */
+  assets?: WealthGraphAsset[];
 }) {
   const { token } = useAuth();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
@@ -1059,20 +1071,23 @@ function SelectedEntityCard({
               <AssetCountTile icon={Box} label="Other assets" count={detail.ownedObjectsCount.assets} accent="#FBBF24" />
             </div>
           </Section>
+
+          {/* Phase 3 Level 3 — Linked assets list with click-through.
+              Renders only when ≥1 asset exists. Replaces the prior
+              dead-end "Open full entity file →" CTA (it pointed back
+              to /dashboard/entities, which is where the user
+              already is). */}
+          {assets.length > 0 && (
+            <Section title="Linked assets">
+              <div className="space-y-1.5">
+                {assets.map(a => (
+                  <LinkedAssetRow key={a.id} asset={a} onNavigate={onClose} />
+                ))}
+              </div>
+            </Section>
+          )}
         </div>
       )}
-
-      {/* CTA — always shown */}
-      <a
-        href={`/dashboard/entities`}
-        className="mt-4 block w-full rounded-xl py-2.5 text-center text-[12px] font-medium text-white"
-        style={{
-          background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
-          boxShadow: `0 6px 18px ${accent}33`,
-        }}
-      >
-        Open full entity file →
-      </a>
     </div>
   );
 }
@@ -1222,4 +1237,88 @@ function formatFyLabel(fy: string): string {
   const m = fy.match(/^(\d{4})-(\d{2})$/);
   if (!m) return fy;
   return `FY${m[1].slice(-2)}-${m[2]}`;
+}
+
+// =============================================================================
+// Phase 3 Level 3 — linked asset row (mirrors desktop EntityDetailPanel
+// `LinkedAssetRow`, lighter padding for the mobile bottom sheet).
+// =============================================================================
+
+function LinkedAssetRow({
+  asset,
+  onNavigate,
+}: {
+  asset: WealthGraphAsset;
+  onNavigate: () => void;
+}) {
+  const { icon: Icon, accent } = assetGlyphFor(asset.kind);
+  const href = assetHrefFor(asset);
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className="flex items-center gap-3 rounded-xl p-2.5"
+      style={{
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+      }}
+    >
+      <div
+        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+        style={{ background: `${accent}1f`, border: `1px solid ${accent}44` }}
+      >
+        <Icon size={13} color={accent} strokeWidth={1.5} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[12px] font-medium text-white/95">{asset.name}</div>
+        <div className="truncate text-[10px] text-white/45">
+          {asset.subtype ?? asset.context ?? assetKindLabel(asset.kind)}
+        </div>
+      </div>
+      <div className="flex flex-shrink-0 items-center gap-1.5">
+        <div className="text-[11px] font-semibold tabular-nums text-white/85">
+          {formatAssetValue(asset.value)}
+        </div>
+        <ChevronRight size={11} color="rgba(255,255,255,0.4)" />
+      </div>
+    </Link>
+  );
+}
+
+function assetGlyphFor(kind: WealthGraphAsset['kind']): { icon: LucideIcon; accent: string } {
+  switch (kind) {
+    case 'property': return { icon: Home, accent: '#38BDF8' };
+    case 'loan': return { icon: Banknote, accent: '#F87171' };
+    case 'account': return { icon: CircleDollarSign, accent: '#34D399' };
+    case 'investment-account': return { icon: LineChart, accent: '#818CF8' };
+    case 'asset': return { icon: Box, accent: '#FBBF24' };
+  }
+}
+
+function assetHrefFor(asset: WealthGraphAsset): string {
+  switch (asset.kind) {
+    case 'property': return `/dashboard/properties/${asset.id}`;
+    case 'loan': return `/dashboard/loans/${asset.id}`;
+    case 'account': return '/dashboard/accounts';
+    case 'investment-account': return '/dashboard/investments/accounts';
+    case 'asset': return '/dashboard/assets';
+  }
+}
+
+function assetKindLabel(kind: WealthGraphAsset['kind']): string {
+  switch (kind) {
+    case 'property': return 'Property';
+    case 'loan': return 'Loan';
+    case 'account': return 'Account';
+    case 'investment-account': return 'Investment';
+    case 'asset': return 'Asset';
+  }
+}
+
+function formatAssetValue(v: number): string {
+  if (!isFinite(v)) return '—';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${Math.round(v / 1_000)}K`;
+  return `$${v.toFixed(0)}`;
 }
