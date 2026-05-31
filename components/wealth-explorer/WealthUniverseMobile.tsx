@@ -1,0 +1,805 @@
+/**
+ * WealthUniverseMobile — Apple Maps-style hybrid for `/dashboard/entities`
+ * on mobile viewports (<md). Compact spatial canvas on top + draggable
+ * bottom sheet (peek / half / full snap states) with search + filter +
+ * selected-entity detail card + entity list. Tapping a tile and tapping
+ * a list row stay in sync.
+ *
+ * Source of truth: Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198`
+ * Artefact: `.stitch/designs/wealth-explorer-mobile-v1-dark.{html,png}`
+ *
+ * Reuses the same data layer as the desktop canvas
+ * (`useWealthExplorerData()` → `/api/wealth-graph` → `layoutWealthExplorer`).
+ * Renders independently — no shared component with WealthUniverseCanvas
+ * to keep refactor risk low for the first ship. Extraction policy
+ * (CLAUDE.md §12.8) — extract on the second use, not the first.
+ */
+
+'use client';
+
+import { AnimatePresence, motion, useDragControls, useMotionValue } from 'framer-motion';
+import {
+  Briefcase,
+  Scroll,
+  Shield,
+  Box,
+  Umbrella,
+  Rocket,
+  User,
+  Home,
+  Car,
+  LineChart,
+  CircleDollarSign,
+  Banknote,
+  Users,
+  Search,
+  SlidersHorizontal,
+  ChevronRight,
+  CheckCircle2,
+  TreePine,
+  Sparkles,
+  type LucideIcon,
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  NODE_ACCENT,
+  RIBBON_COLOR,
+  type WealthNode,
+  type WealthNodeType,
+  type WealthRelationship,
+} from '@/lib/data/wealthExplorerTypes';
+import { useWealthExplorerData } from '@/lib/hooks/useWealthExplorerData';
+
+const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
+  'holding-company': Briefcase,
+  'trustee-company': Scroll,
+  'smsf-trustee-company': Shield,
+  'other-company': Box,
+  'trust': Umbrella,
+  'smsf': Rocket,
+  'individual': User,
+  'asset-property': Home,
+  'asset-vehicle': Car,
+  'asset-investment': LineChart,
+  'asset-cash': CircleDollarSign,
+  'asset-loan': Banknote,
+  'ownership-group': Users,
+};
+
+const FILTER_CHIPS: Array<{
+  id: 'all' | 'people' | 'trusts' | 'smsf' | 'companies' | 'properties' | 'investments' | 'cash' | 'vehicles';
+  label: string;
+  types: WealthNodeType[] | 'all';
+}> = [
+  { id: 'all', label: 'All', types: 'all' },
+  { id: 'people', label: 'People', types: ['individual'] },
+  { id: 'trusts', label: 'Trusts', types: ['trust'] },
+  { id: 'smsf', label: 'SMSF', types: ['smsf', 'smsf-trustee-company'] },
+  { id: 'companies', label: 'Companies', types: ['holding-company', 'trustee-company', 'other-company'] },
+  { id: 'properties', label: 'Properties', types: ['asset-property'] },
+  { id: 'investments', label: 'Investments', types: ['asset-investment'] },
+  { id: 'cash', label: 'Cash', types: ['asset-cash'] },
+  { id: 'vehicles', label: 'Vehicles', types: ['asset-vehicle'] },
+];
+
+// Compact tile-size multiplier for mobile (desktop sizes assume 1440px+ canvas).
+const COMPACT_SIZE_SCALE = 0.55;
+
+// Snap-state heights (px from bottom). Used by the bottom sheet drag.
+const SNAP_PEEK = 88;
+const SNAP_HALF_FRAC = 0.55;
+const SNAP_FULL_FRAC = 0.92;
+
+type SnapState = 'peek' | 'half' | 'full';
+
+export default function WealthUniverseMobile() {
+  const { layout, loading, error, refetch } = useWealthExplorerData();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
+  const [snap, setSnap] = useState<SnapState>('half');
+  const [viewportHeight, setViewportHeight] = useState<number>(844);
+
+  useEffect(() => {
+    const update = () => setViewportHeight(window.innerHeight);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
+  const snapHeights = useMemo(() => {
+    return {
+      peek: SNAP_PEEK,
+      half: Math.round(viewportHeight * SNAP_HALF_FRAC),
+      full: Math.round(viewportHeight * SNAP_FULL_FRAC),
+    };
+  }, [viewportHeight]);
+
+  const sheetHeight = snapHeights[snap];
+
+  const nodes = layout?.nodes ?? [];
+  const relationships = layout?.relationships ?? [];
+  const nodesById = useMemo(
+    () => Object.fromEntries(nodes.map(n => [n.id, n])),
+    [nodes],
+  );
+  const selectedNode = selectedId ? nodesById[selectedId] : null;
+
+  const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
+    const chip = FILTER_CHIPS.find(c => c.id === activeFilter);
+    if (!chip || chip.types === 'all') return null;
+    return new Set(chip.types);
+  }, [activeFilter]);
+
+  const matchedNodeIds = useMemo<Set<string> | null>(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return null;
+    return new Set(nodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
+  }, [nodes, searchQuery]);
+
+  function nodeOpacity(node: WealthNode): number {
+    let opacity = 1;
+    if (visibleTypes && !visibleTypes.has(node.type)) opacity *= 0.18;
+    if (matchedNodeIds && !matchedNodeIds.has(node.id)) opacity *= 0.35;
+    return opacity;
+  }
+
+  function isRibbonActive(r: WealthRelationship): boolean {
+    if (!selectedId) return false;
+    return r.from === selectedId || r.to === selectedId;
+  }
+  function isRibbonDimmed(r: WealthRelationship): boolean {
+    if (!selectedId) return false;
+    return r.from !== selectedId && r.to !== selectedId;
+  }
+
+  function onTapTile(id: string) {
+    setSelectedId(id);
+    if (snap === 'peek') setSnap('half');
+  }
+
+  // Loading / error / empty states share the same shell.
+  if (loading) {
+    return (
+      <Shell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center">
+          <div className="flex items-center gap-2 text-[12px] text-white/50">
+            <Sparkles size={14} className="animate-pulse" />
+            <span>Loading your wealth universe…</span>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+  if (error) {
+    return (
+      <Shell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8">
+          <div
+            className="max-w-sm rounded-2xl p-5 text-center"
+            style={{ background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)' }}
+          >
+            <div className="text-[14px] font-semibold text-amber-200">Couldn&rsquo;t load your structure</div>
+            <div className="mt-1 text-[12px] text-amber-200/70">{error}</div>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="mt-4 rounded-full bg-white/10 px-4 py-1.5 text-[11px] font-medium text-white hover:bg-white/15"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+  if (layout?.isEmpty || nodes.length === 0) {
+    return (
+      <Shell>
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-8">
+          <div className="max-w-sm text-center">
+            <div
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl"
+              style={{ background: 'rgba(167, 139, 250, 0.1)', border: '1px solid rgba(167, 139, 250, 0.3)' }}
+            >
+              <TreePine size={24} color="#A78BFA" strokeWidth={1.5} />
+            </div>
+            <div className="mt-4 text-[15px] font-semibold text-white">Your wealth universe is just you so far</div>
+            <p className="mt-2 text-[12px] leading-relaxed text-white/55">
+              Add a family trust, an SMSF, or a Pty Ltd to see your structure here.
+            </p>
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+  // Canvas takes the area above the sheet.
+  const canvasHeight = Math.max(180, viewportHeight - sheetHeight - 64);
+
+  return (
+    <Shell>
+      <DustMoteLayer />
+
+      {/* Page header — compact for mobile */}
+      <div className="pointer-events-auto absolute left-0 right-0 top-0 z-30 flex items-center justify-between px-4 pt-3">
+        <div>
+          <div className="text-[9px] font-medium uppercase tracking-[0.18em] text-white/45">
+            MY WEALTH › MY STRUCTURE
+          </div>
+          <div className="text-[18px] font-semibold leading-tight text-white">Wealth Explorer</div>
+          <div className="text-[10px] leading-tight text-white/40">
+            {nodes.length} entities · tap any to explore
+          </div>
+        </div>
+        <span
+          className="flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold text-white"
+          style={{
+            background: 'rgba(19, 26, 46, 0.9)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          {nodes.length}
+        </span>
+      </div>
+
+      {/* Compact canvas */}
+      <div
+        className="absolute left-0 right-0 z-20"
+        style={{
+          top: 84,
+          height: canvasHeight,
+          transition: 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+        }}
+      >
+        {/* SVG ribbons */}
+        <svg
+          viewBox="0 0 100 100"
+          preserveAspectRatio="none"
+          className="pointer-events-none absolute inset-0 h-full w-full"
+        >
+          {relationships.map(r => (
+            <Ribbon
+              key={r.id}
+              rel={r}
+              nodes={nodesById}
+              isActive={isRibbonActive(r)}
+              isDimmed={isRibbonDimmed(r)}
+            />
+          ))}
+        </svg>
+        {/* Tiles */}
+        {nodes.map(node => (
+          <MobileTile
+            key={node.id}
+            node={node}
+            glyph={NODE_GLYPH[node.type]}
+            accent={NODE_ACCENT[node.type]}
+            isSelected={selectedId === node.id}
+            visibilityOpacity={nodeOpacity(node)}
+            onTap={() => onTapTile(node.id)}
+          />
+        ))}
+      </div>
+
+      {/* Bottom sheet */}
+      <BottomSheet
+        snap={snap}
+        snapHeights={snapHeights}
+        onSnapChange={setSnap}
+      >
+        {/* Search pill */}
+        <div className="px-4 pb-2">
+          <div
+            className="flex h-10 items-center gap-2 rounded-full px-3.5"
+            style={{
+              background: 'rgba(19, 26, 46, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            <Search size={14} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              placeholder="Search any entity, asset, person…"
+              className="flex-1 bg-transparent text-[13px] text-white placeholder:text-white/45 focus:outline-none"
+            />
+            <SlidersHorizontal size={14} color="rgba(255,255,255,0.5)" strokeWidth={1.5} />
+          </div>
+        </div>
+
+        {/* Filter chips — horizontal scroll */}
+        <div className="overflow-x-auto px-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center gap-1.5">
+            {FILTER_CHIPS.map(chip => {
+              const count =
+                chip.types === 'all'
+                  ? nodes.length
+                  : nodes.filter(n => (chip.types as WealthNodeType[]).includes(n.type)).length;
+              const active = chip.id === activeFilter;
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setActiveFilter(chip.id)}
+                  className="flex h-7 flex-shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium"
+                  style={{
+                    background: active ? 'rgba(52, 211, 153, 0.12)' : 'rgba(19, 26, 46, 0.7)',
+                    border: active ? '1px solid rgba(52, 211, 153, 0.4)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    color: active ? '#6EE7B7' : 'rgba(255, 255, 255, 0.65)',
+                  }}
+                >
+                  <span>{chip.label}</span>
+                  <span className="rounded-full px-1 text-[9px] tabular-nums" style={{ background: 'rgba(0,0,0,0.25)' }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected entity detail card */}
+        {selectedNode && (
+          <div className="px-4 pb-3">
+            <SelectedEntityCard
+              node={selectedNode}
+              onClose={() => setSelectedId(null)}
+            />
+          </div>
+        )}
+
+        {/* Entity list */}
+        <div className="px-4 pb-6">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">
+              All entities · {nodes.length}
+            </div>
+          </div>
+          <ul className="space-y-1">
+            {nodes
+              .filter(n => (visibleTypes ? visibleTypes.has(n.type) : true))
+              .filter(n => (matchedNodeIds ? matchedNodeIds.has(n.id) : true))
+              .map(node => {
+                const Glyph = NODE_GLYPH[node.type];
+                const accent = NODE_ACCENT[node.type];
+                const isSel = selectedId === node.id;
+                return (
+                  <li key={node.id}>
+                    <button
+                      type="button"
+                      onClick={() => onTapTile(node.id)}
+                      className="flex w-full items-center gap-3 rounded-xl py-2.5 pl-2 pr-3 text-left transition"
+                      style={{
+                        background: isSel ? 'rgba(52, 211, 153, 0.07)' : 'transparent',
+                        borderLeft: isSel ? '2px solid rgba(52, 211, 153, 0.75)' : '2px solid transparent',
+                      }}
+                    >
+                      <div
+                        className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg"
+                        style={{
+                          background: `${accent}1a`,
+                          border: `1px solid ${accent}33`,
+                        }}
+                      >
+                        <Glyph size={15} color={accent} strokeWidth={1.6} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-[13px] font-medium text-white">
+                          {node.shortName ?? node.name}
+                        </div>
+                        <div className="truncate text-[10px] uppercase tracking-wide text-white/40">
+                          {node.subtitle ?? prettifyType(node.type)}
+                          {node.value ? ` · ${node.value}` : ''}
+                        </div>
+                      </div>
+                      <ChevronRight size={14} color="rgba(255,255,255,0.35)" strokeWidth={1.5} />
+                    </button>
+                  </li>
+                );
+              })}
+          </ul>
+        </div>
+      </BottomSheet>
+    </Shell>
+  );
+}
+
+// ============================================================================
+// SHELL — the dark canvas page background
+// ============================================================================
+
+function Shell({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
+      style={{
+        background: 'radial-gradient(ellipse at 50% 40%, #0A0E1F 0%, #060914 60%, #050810 100%)',
+      }}
+    >
+      <style jsx>{`
+        @keyframes wealth-mote-drift {
+          0%, 100% { transform: translate(0, 0); }
+          25% { transform: translate(6px, -4px); }
+          50% { transform: translate(-3px, 8px); }
+          75% { transform: translate(-8px, -3px); }
+        }
+        @keyframes wealth-anchor-pulse {
+          0% { transform: scale(1); opacity: 0.7; }
+          70% { transform: scale(1.4); opacity: 0; }
+          100% { transform: scale(1.4); opacity: 0; }
+        }
+      `}</style>
+      {children}
+    </div>
+  );
+}
+
+// ============================================================================
+// DUST MOTE LAYER
+// ============================================================================
+
+function DustMoteLayer() {
+  const motes = Array.from({ length: 24 }, (_, i) => {
+    const seed = (i + 1) * 9301;
+    const x = seed % 100;
+    const y = (seed * 7) % 100;
+    const size = 1 + ((seed * 3) % 3);
+    const opacity = 0.03 + ((seed * 11) % 7) * 0.01;
+    const delay = (i * 0.7) % 8;
+    const isEmerald = i % 6 === 0;
+    return { x, y, size, opacity, delay, isEmerald };
+  });
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {motes.map((m, i) => (
+        <span
+          key={i}
+          className="absolute rounded-full"
+          style={{
+            left: `${m.x}%`,
+            top: `${m.y}%`,
+            width: `${m.size}px`,
+            height: `${m.size}px`,
+            backgroundColor: m.isEmerald ? '#34D399' : '#FFFFFF',
+            opacity: m.opacity,
+            filter: `blur(${m.size > 2 ? 1 : 0.5}px)`,
+            animation: `wealth-mote-drift ${12 + (i % 6)}s ease-in-out ${m.delay}s infinite`,
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+// ============================================================================
+// MOBILE TILE — smaller than desktop, simpler chrome
+// ============================================================================
+
+function MobileTile({
+  node,
+  glyph: Glyph,
+  accent,
+  isSelected,
+  visibilityOpacity,
+  onTap,
+}: {
+  node: WealthNode;
+  glyph: LucideIcon;
+  accent: string;
+  isSelected: boolean;
+  visibilityOpacity: number;
+  onTap: () => void;
+}) {
+  const isAnchor = !!node.isAnchor;
+  const isFocal = !!node.isFocal || isSelected;
+  const renderedSize = Math.max(28, node.size * COMPACT_SIZE_SCALE);
+
+  const accentRgb = hexToRgb(accent);
+  const innerGlow = accentRgb
+    ? `inset 0 0 ${isSelected ? 18 : 10}px rgba(${accentRgb}, ${isSelected ? 0.35 : 0.2})`
+    : 'none';
+  const outerGlow = accentRgb
+    ? `0 0 ${isSelected ? 24 : 14}px rgba(${accentRgb}, ${isSelected ? 0.3 : 0.12})`
+    : '';
+
+  const anchorRings = isAnchor ? (
+    <>
+      <span
+        className="pointer-events-none absolute rounded-full"
+        style={{
+          inset: -8,
+          border: '1.5px solid rgba(52, 211, 153, 0.45)',
+          animation: 'wealth-anchor-pulse 2.4s ease-out infinite',
+        }}
+      />
+      <span
+        className="pointer-events-none absolute rounded-full"
+        style={{
+          inset: -16,
+          border: '1px solid rgba(52, 211, 153, 0.25)',
+          animation: 'wealth-anchor-pulse 2.4s ease-out 0.6s infinite',
+        }}
+      />
+    </>
+  ) : null;
+
+  const focalRing = isFocal ? (
+    <span
+      className="pointer-events-none absolute rounded-full"
+      style={{
+        inset: -4,
+        border: '1.5px solid rgba(52, 211, 153, 0.75)',
+        boxShadow: '0 0 14px rgba(52, 211, 153, 0.3)',
+      }}
+    />
+  ) : null;
+
+  const isDashed = node.type === 'trustee-company' || node.type === 'smsf-trustee-company';
+  const border = isSelected
+    ? `1.5px solid ${accent}`
+    : isDashed
+      ? '1px dashed rgba(255, 255, 255, 0.18)'
+      : '1px solid rgba(255, 255, 255, 0.12)';
+
+  return (
+    <button
+      type="button"
+      onClick={onTap}
+      className="absolute appearance-none"
+      style={{
+        left: `${node.position.x}%`,
+        top: `${node.position.y}%`,
+        transform: 'translate(-50%, -50%)',
+        opacity: visibilityOpacity,
+        zIndex: isSelected ? 30 : isAnchor ? 20 : 10,
+      }}
+    >
+      <div className="relative" style={{ width: renderedSize, height: renderedSize }}>
+        {anchorRings}
+        {focalRing}
+        <div
+          className="flex h-full w-full items-center justify-center text-white"
+          style={{
+            borderRadius: '30%',
+            background: 'rgba(19, 26, 46, 0.92)',
+            border,
+            boxShadow: `${innerGlow}, ${outerGlow}`,
+          }}
+        >
+          <Glyph size={Math.max(12, renderedSize * 0.36)} color={accent} strokeWidth={1.6} />
+        </div>
+        {isAnchor && (
+          <div
+            className="absolute -top-3 left-1/2 inline-block -translate-x-1/2 rounded-full px-1 py-0.5 text-[8px] font-semibold tracking-[0.12em]"
+            style={{
+              background: 'rgba(52, 211, 153, 0.18)',
+              color: '#6EE7B7',
+              border: '1px solid rgba(52, 211, 153, 0.4)',
+            }}
+          >
+            ★ YOU
+          </div>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ============================================================================
+// RIBBON
+// ============================================================================
+
+function buildRibbonPath(fromX: number, fromY: number, toX: number, toY: number): string {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const bow = Math.min(dist * 0.18, 8);
+  const perpX = dist > 0 ? -dy / dist : 0;
+  const perpY = dist > 0 ? dx / dist : 0;
+  const midX = (fromX + toX) / 2 + perpX * bow;
+  const midY = (fromY + toY) / 2 + perpY * bow;
+  return `M ${fromX} ${fromY} Q ${midX} ${midY} ${toX} ${toY}`;
+}
+
+function Ribbon({
+  rel,
+  nodes,
+  isActive,
+  isDimmed,
+}: {
+  rel: WealthRelationship;
+  nodes: Record<string, WealthNode>;
+  isActive: boolean;
+  isDimmed: boolean;
+}) {
+  const fromNode = nodes[rel.from];
+  const toNode = nodes[rel.to];
+  if (!fromNode || !toNode) return null;
+  const stroke = RIBBON_COLOR[rel.type];
+  const opacity = isActive ? 0.85 : isDimmed ? 0.06 : 0.22;
+  const strokeWidth = isActive ? 1.5 : 0.9;
+  const path = buildRibbonPath(fromNode.position.x, fromNode.position.y, toNode.position.x, toNode.position.y);
+  return (
+    <g style={{ opacity, transition: 'opacity 0.4s ease' }}>
+      <path d={path} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </g>
+  );
+}
+
+// ============================================================================
+// SELECTED ENTITY CARD (inside the bottom sheet)
+// ============================================================================
+
+function SelectedEntityCard({
+  node,
+  onClose,
+}: {
+  node: WealthNode;
+  onClose: () => void;
+}) {
+  const accent = NODE_ACCENT[node.type];
+  const Glyph = NODE_GLYPH[node.type];
+  return (
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background: 'rgba(26, 34, 68, 0.88)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: `0 0 0 1px ${accent}33, 0 12px 32px rgba(0,0,0,0.35)`,
+      }}
+    >
+      <div className="mb-3 flex items-start gap-3">
+        <div
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          style={{ background: `${accent}22`, border: `1px solid ${accent}55` }}
+        >
+          <Glyph size={18} color={accent} strokeWidth={1.5} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-semibold text-white">{node.name}</div>
+          {node.subtitle && (
+            <div className="truncate text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: accent }}>
+              {node.subtitle}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-white/60"
+          style={{ background: 'rgba(255,255,255,0.06)' }}
+          aria-label="Close"
+        >
+          ×
+        </button>
+      </div>
+
+      <div
+        className="mb-3 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
+        style={{
+          background: 'rgba(52, 211, 153, 0.1)',
+          border: '1px solid rgba(52, 211, 153, 0.3)',
+          color: '#6EE7B7',
+        }}
+      >
+        <CheckCircle2 size={11} strokeWidth={1.5} />
+        <span>Active</span>
+      </div>
+
+      {node.value && (
+        <div className="mb-2 text-[18px] font-semibold tabular-nums text-white">{node.value}</div>
+      )}
+
+      {node.ownerEntityId && (
+        <div className="text-[11px] text-white/55">
+          Owned by entity · tap below to open full file
+        </div>
+      )}
+
+      <a
+        href={`/dashboard/entities`}
+        className="mt-3 block w-full rounded-xl py-2.5 text-center text-[12px] font-medium text-white transition"
+        style={{
+          background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
+          boxShadow: `0 6px 18px ${accent}33`,
+        }}
+      >
+        Open full entity file →
+      </a>
+    </div>
+  );
+}
+
+// ============================================================================
+// BOTTOM SHEET — draggable, 3 snap points
+// ============================================================================
+
+function BottomSheet({
+  snap,
+  snapHeights,
+  onSnapChange,
+  children,
+}: {
+  snap: SnapState;
+  snapHeights: Record<SnapState, number>;
+  onSnapChange: (snap: SnapState) => void;
+  children: React.ReactNode;
+}) {
+  const dragControls = useDragControls();
+  const height = snapHeights[snap];
+
+  function snapNearest(deltaY: number, velocityY: number): SnapState {
+    // Negative deltaY = dragging UP (sheet grows). Positive deltaY = down.
+    const projected = height - deltaY + velocityY * 0.2;
+    const candidates: SnapState[] = ['peek', 'half', 'full'];
+    let best: SnapState = snap;
+    let bestDist = Infinity;
+    for (const c of candidates) {
+      const d = Math.abs(snapHeights[c] - projected);
+      if (d < bestDist) {
+        bestDist = d;
+        best = c;
+      }
+    }
+    return best;
+  }
+
+  return (
+    <motion.div
+      className="absolute left-0 right-0 bottom-0 z-40 flex flex-col"
+      style={{
+        height,
+        background: 'rgba(13, 18, 32, 0.96)',
+        backdropFilter: 'blur(24px)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        boxShadow: '0 -8px 32px rgba(0, 0, 0, 0.45)',
+      }}
+      animate={{ height }}
+      transition={{ type: 'spring', damping: 28, stiffness: 280 }}
+      drag="y"
+      dragControls={dragControls}
+      dragListener={false}
+      dragConstraints={{ top: 0, bottom: 0 }}
+      dragElastic={0.1}
+      onDragEnd={(_, info) => {
+        const next = snapNearest(info.offset.y, info.velocity.y);
+        onSnapChange(next);
+      }}
+    >
+      {/* Drag handle — only this is the drag affordance */}
+      <button
+        type="button"
+        onPointerDown={e => dragControls.start(e)}
+        aria-label="Drag sheet"
+        className="flex h-6 w-full flex-shrink-0 items-center justify-center"
+        style={{ touchAction: 'none' }}
+      >
+        <span
+          className="block h-1 w-10 rounded-full"
+          style={{ background: 'rgba(255, 255, 255, 0.25)' }}
+        />
+      </button>
+
+      <div className="flex-1 overflow-y-auto pt-2">{children}</div>
+    </motion.div>
+  );
+}
+
+// ============================================================================
+// helpers
+// ============================================================================
+
+function hexToRgb(hex: string): string | null {
+  const m = hex.replace('#', '').match(/.{1,2}/g);
+  if (!m || m.length < 3) return null;
+  const [r, g, b] = m.map(c => parseInt(c, 16));
+  return `${r}, ${g}, ${b}`;
+}
+
+function prettifyType(t: WealthNodeType): string {
+  return t.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}

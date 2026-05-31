@@ -80,14 +80,21 @@ const EntityCanvas = dynamic(
   { ssr: false },
 );
 
-// Desktop-only Wealth Universe canvas — the v5 Stitch design ported in
-// PR #940 (Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`). Surface-only
-// preview that REPLACES the legacy React Flow canvas on desktop; mobile
-// keeps the legacy canvas until the simplified mobile design lands in a
-// follow-up PR. Dynamically imported to keep its bundle off mobile-only
-// renders.
+// Desktop Wealth Universe canvas — the v5 Stitch design ported in
+// PR #940 (Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`).
+// Dynamically imported to keep its bundle off other routes.
 const WealthUniverseCanvas = dynamic(
   () => import('@/components/wealth-explorer/WealthUniverseCanvas'),
+  { ssr: false },
+);
+
+// Mobile Wealth Universe — Apple Maps hybrid (compact canvas + draggable
+// bottom sheet). Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198`,
+// artefact `.stitch/designs/wealth-explorer-mobile-v1-dark.{html,png}`.
+// Reuses the same /api/wealth-graph SSOT as desktop; replaces the legacy
+// React Flow EntityCanvas on mobile.
+const WealthUniverseMobile = dynamic(
+  () => import('@/components/wealth-explorer/WealthUniverseMobile'),
   { ssr: false },
 );
 
@@ -655,18 +662,13 @@ export default function EntitiesPage() {
                 <div className="hidden md:block -mx-4 sm:-mx-6">
                   <WealthUniverseCanvas />
                 </div>
-                {/* Mobile — keep the legacy React Flow canvas with its
-                    add/edit handlers until the simplified mobile design
-                    is built. */}
-                <div className="md:hidden">
-                  <EntityCanvas
-                    reloadSignal={canvasReload}
-                    onAddEntity={openAdd}
-                    onEditEntity={(id) => {
-                      const target = entities.find((e) => e.id === id);
-                      if (target) openEdit(target);
-                    }}
-                  />
+                {/* Mobile — Apple Maps hybrid (compact canvas + draggable
+                    bottom sheet). Replaces the legacy React Flow
+                    EntityCanvas. Add/edit handlers move to the entity
+                    list inside the bottom sheet + the existing dialog
+                    entry points below. */}
+                <div className="md:hidden -mx-4">
+                  <WealthUniverseMobile />
                 </div>
               </>
             );
