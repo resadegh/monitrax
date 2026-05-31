@@ -16,10 +16,10 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getWealthGraphSnapshot } from '@/lib/services/wealthGraphService';
 
-export const GET = withPermission('entity.read', async authReq => {
+export const GET = withPermission('entity.read', async (_request, context) => {
   const startedAt = Date.now();
   try {
-    const snapshot = await getWealthGraphSnapshot(authReq.user!.userId);
+    const snapshot = await getWealthGraphSnapshot(context.userId);
     return NextResponse.json({
       success: true,
       data: snapshot,
