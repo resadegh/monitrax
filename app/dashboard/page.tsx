@@ -47,6 +47,16 @@ import {
 } from '@/components/dashboard/InsightWidgets';
 import { DebtQualityWidget, calculateDebtQuality } from '@/components/dashboard/DebtQualityWidget';
 import { EntityCashflowSummary, calculateEntityCashflow } from '@/components/dashboard/EntityCashflowSummary';
+import dynamic from 'next/dynamic';
+// Phase 5 dashboard widget — Wealth Universe preview tile (PR #952
+// Stitch design `c84ff8ac53b74f04a8d07e5b61b53848`). Dark-glass
+// premium moment in the otherwise light editorial dashboard.
+// Dynamic + ssr:false to keep the framer-motion-free widget bundle
+// off the dashboard SSR critical path.
+const WealthUniverseWidget = dynamic(
+  () => import('@/components/wealth-explorer/WealthUniverseWidget'),
+  { ssr: false },
+);
 import {
   InvestmentIncomeDisplay,
   calculateInvestmentIncome,
@@ -761,6 +771,16 @@ export default function DashboardPage() {
               />
             </div>
           )}
+
+          {/* Phase 5 Wealth Universe widget — dashboard preview of the
+              full /dashboard/entities canvas (PR #952 Stitch design
+              `c84ff8ac53b74f04a8d07e5b61b53848`). Sized to fit the
+              diagnostic 2-up grid; right column intentionally empty
+              for now per Reza's "diagnostic pair width" choice — a
+              future Phase can pair it with a related widget. */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            <WealthUniverseWidget />
+          </div>
 
           {/* Phase 1: Debt Quality & Entity Cashflow Section */}
           {snapshot.loans && snapshot.loans.length > 0 && (
