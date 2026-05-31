@@ -31,6 +31,10 @@ export const GET = withPermission('entity.read', async (_request, context) => {
     });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error';
+    const stack = e instanceof Error ? e.stack : undefined;
+    // Log server-side so Vercel runtime logs capture the root cause —
+    // the client-facing error stays generic per §13 CDR posture.
+    console.error('[wealth-graph] failed', { userId: context.userId, message, stack });
     return NextResponse.json(
       {
         success: false,
