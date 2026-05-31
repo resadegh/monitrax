@@ -42,10 +42,10 @@ export const GET = withPermission('entity.read', async (_request, context) => {
         error: {
           code: 'WEALTH_GRAPH_FAILED',
           message: 'Failed to load wealth graph',
-          // TEMPORARY: surface details in prod for active debugging. Revert
-          // to NODE_ENV check once root cause is identified.
-          details: message,
-          stack: stack?.split('\n').slice(0, 5).join('\n'),
+          // §13 CDR: never leak error details to the client in prod.
+          // The server-side console.error above captures the root cause
+          // for Vercel runtime logs.
+          details: process.env.NODE_ENV === 'development' ? message : undefined,
         },
         meta: {
           timestamp: new Date().toISOString(),
