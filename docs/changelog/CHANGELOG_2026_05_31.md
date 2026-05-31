@@ -233,9 +233,108 @@ CLAUDE.md compliance for Phase 6:
 - **§18 Stitch-first** — both retained mobile + desktop surfaces are ports of Stitch screens `a3b43b9164d74f1c8ec53bc20f319cbd` and `72ea8d79fa7e4a0c865a2c2a9d73d198` respectively.
 - **§16 doc-sync** — Phase 44 doc already references the new canvas as the canonical surface (PR #946 §16.6 phased rollout); this PR closes the Phase 6 row by deleting the legacy components.
 
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (continued — Phase 5 dashboard widget)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·WX — Wealth Universe Explorer · Phase 5)
+- **Scope**: Adds `components/wealth-explorer/WealthUniverseWidget.tsx` — a
+  340px dark-glass tile on `/dashboard` (home) showing a compact preview of
+  the user's wealth structure with a one-tap path to the full Wealth
+  Universe at `/dashboard/entities`. Ported from Stitch screen
+  `c84ff8ac53b74f04a8d07e5b61b53848` (`.stitch/designs/wealth-universe-widget-v1.{html,png}`).
+- **Decision**: Phase 5 row in the workstream queue — Stitch-first per
+  CLAUDE.md §18. PR #951 committed the Stitch artefact; PR #952 ported it
+  to React; PR #953 bumped the financial-surface lint baseline to absorb
+  the +20-line shift on `app/dashboard/page.tsx` from the new diagnostic-grid row.
+
+### Files modified
+- `components/wealth-explorer/WealthUniverseWidget.tsx` — **NEW** — dark
+  glass card, mini-canvas at `COMPACT_SIZE_SCALE = 0.42`. Header (eyebrow
+  + title + node-count chip + ArrowUpRight glyph) + body (positioned
+  glyph tiles + opacity-graded ribbons, no particle stream, fewer dust
+  motes for performance) + footer (total $held + "Open Wealth Universe →"
+  link). Whole card wrapped in `<Link href="/dashboard/entities">`.
+  Skeleton on load, silent-fail on error (§13.3 — no error surface
+  visible to consumers), celebratory empty state.
+- `app/dashboard/page.tsx` — added a new diagnostic-grid row above
+  `DebtQualityWidget` rendering `<WealthUniverseWidget />`.
+- `.stitch/designs/wealth-universe-widget-v1.{html,png}` — Stitch
+  artefact committed (Stitch-first §18 compliance evidence).
+- `.audit/financial-math-baseline.json` — bumped the `line` value of
+  every `app/dashboard/page.tsx` entry by +20 to absorb the new
+  diagnostic-grid row. Pre-existing inline-arithmetic violations, no new
+  violations (`npm run lint:financial-surfaces` clean post-bump).
+
+### Documentation in this PR
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WX` Phase 5 row flipped
+  to ✅ MERGED with PR numbers + Stitch screen reference.
+
+CLAUDE.md compliance for Phase 5:
+- **§18 Stitch-first** — dedicated Stitch screen `c84ff8ac53b74f04a8d07e5b61b53848`
+  with HTML + PNG artefact committed.
+- **§12.2 SSOT** — no new aggregator; the widget consumes the same
+  `/api/wealth-graph` endpoint as the full canvas.
+- **§13.3 no leaked errors** — load failures degrade to silent
+  skeleton-then-empty; no error string ever rendered to the consumer.
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (continued — Phase 1.1 lens toggle)
+
+### Changes Made
+- **Type**: Enhancement (Workstream 0·WX — Wealth Universe Explorer · Phase 1.1)
+- **Scope**: Adds the beneficial-ownership lens toggle Phase 1 promised.
+  A 2-segment pill ("Legal · Beneficial") renders ONLY when the graph
+  contains at least one `BeneficialOwnershipOverride`. Legal mode dims
+  the violet override ribbons (legal HOLDS chain emphasised). Beneficial
+  mode dims the legal HOLDS ribbons (violet override chain emphasised).
+  Pure presentational change — no schema, no migration, no service
+  change, no relationships-array mutation.
+- **Decision**: Phase 1 A3 answer ("show both, with a lens toggle to
+  switch emphasis") locked at Phase 1 time. This PR delivers the
+  toggle.
+
+### Files modified
+- `components/wealth-explorer/WealthUniverseCanvas.tsx`
+  - Added `lensMode: 'legal' | 'beneficial'` state (default `'legal'`).
+  - Added `hasBeneficialOverride` memo
+    (`relationships.some(r => r.id.startsWith('boo-'))`).
+  - Added `isLensDimmed(r)` — returns true when the ribbon is dimmed by
+    the current lens.
+  - Updated `isRibbonDimmed(r)` — lens-dim now takes precedence over
+    hover/selection dim (the user explicitly chose to read one chain).
+  - Inserted the 2-segment pill toggle between the filter chips and
+    the settings icon in the top chrome. Sky tint when Legal active,
+    violet tint when Beneficial active. `aria-pressed` set on each
+    button.
+- `components/wealth-explorer/WealthUniverseMobile.tsx`
+  - Mirror of the desktop logic — same state, same memo, same dim
+    function, same precedence rule.
+  - Toggle rendered above the filter chips inside the bottom sheet
+    (`px-4 pb-2` row), `inline-flex` so it sizes to its content
+    instead of stretching to the sheet width.
+
+### Documentation in this PR
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WX` adds the new Phase
+  1.1 row marked ✅ THIS PR with full scope description; workstream
+  status line updated to reflect Phases 1 / 4 / 5 / 6 all merged this
+  week + Phase 1.1 in flight.
+- `docs/changelog/CHANGELOG_2026_05_31.md` — this section.
+
+CLAUDE.md compliance for Phase 1.1:
+- **§12.1 zero dead code** — the toggle is gated on
+  `hasBeneficialOverride` so it disappears entirely for users without
+  an override (no UI noise on simple structures).
+- **§12.2 SSOT** — no service / aggregator / route changed. The lens
+  is a pure presentation pass over the same `WealthRelationship[]`.
+- **§16 doc-sync** — no new design tokens introduced; the toggle reuses
+  the existing chip-shaped pill pattern + the cosmos sky/violet token
+  palette already in use across the canvas. No `06_UI_UX_FOUNDATION.md`
+  change needed.
+
 ### Outstanding
-- Phase 1.1 — beneficial-ownership lens toggle (legal dim/show switch)
 - Phase 2 — Money Flow lens with §12.14 Phase 41E reform-awareness
 - Phase 2 enhancement — FY-slider
 - Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
-- Phase 5 — Simplified dashboard widget on `/dashboard` home
