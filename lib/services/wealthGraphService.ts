@@ -8,10 +8,12 @@
  *   - Edges (EntityRelationship + parentEntityId fallback)
  *   - OwnershipGroups (joint ownership — Phase 44 Q1)
  *   - BeneficialOwnershipOverrides (Phase 44 Q2 — legal vs beneficial)
+ *   - Money flows (Phase 2 — DistributionAllocation + DividendPayment)
  *
- * Returns SHAPE ONLY — no tax math, no calc engine. Phase 2 (separate PR)
- * adds DistributionAllocation + DividendPayment for the Money Flow lens
- * with Phase 41E reform-awareness gating per CLAUDE.md §12.14.
+ * Returns SHAPE ONLY — no tax math, no calc engine. Phase 2 adds the
+ * Money Flow lens data with Phase 41E reform-awareness gating per
+ * CLAUDE.md §12.14 (FW-1 regime is a first-class input, FW-2 no silent
+ * post-reform math).
  *
  * SSOT (CLAUDE.md §6.1 / §12.2): every route surfacing the wealth
  * graph MUST go through this service. Distinct concern from
@@ -26,6 +28,10 @@
  */
 
 import { prisma } from '@/lib/db';
+import {
+  isPostCommencementFy,
+} from '@/lib/tax-engine/config/reformConstants';
+import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import type {
   LegalEntityType,
   LegalEntityRole,
@@ -48,6 +54,26 @@ export interface WealthGraphSnapshot {
   relationships: WealthGraphEdge[];
   ownershipGroups: WealthGraphOwnershipGroup[];
   beneficialOverrides: WealthGraphBeneficialOverride[];
+  /**
+   * Phase 2 — Money Flow lens data. Aggregated cash flows from CONFIRMED
+   * trustee resolutions (`DistributionAllocation`) and confirmed company
+   * dividends (`DividendPayment`). One row per actual flow leg —
+   * direction matches cash movement (trust → beneficiary, company →
+   * shareholder).
+   *
+   * **§12.14 reform-awareness:** every flow carries `taxRegime` and an
+   * optional `reformNotice`. The aggregator NEVER applies post-reform
+   * math (no 30% min-tax computation, no indexation override). When a
+   * post-reform regime would apply but the Bill has not assented, the
+   * flow surfaces an UNCOMPUTED-style notice for the canvas to render
+   * verbatim — the user sees the rule status, not a guess.
+   */
+  moneyFlows: WealthGraphMoneyFlow[];
+  /**
+   * The FY for which money flows are aggregated. v1 = current FY only;
+   * historical FY scrub is the queued Phase 2 enhancement (per A4).
+   */
+  moneyFlowFy: string;
 }
 
 export interface WealthGraphEntity {
@@ -121,6 +147,54 @@ export interface WealthGraphBeneficialOverride {
   accountantVerified: boolean;
 }
 
+/**
+ * Per-flow regime classification — drives Phase 41E §12.14 awareness in
+ * the canvas. **First-class input** per FW-1: the canvas / any consumer
+ * reads this directly instead of re-deriving it.
+ *
+ * - `PRE_REFORM` — the FY pre-dates the relevant measure's commencement.
+ *   No reform math applies. Render normally.
+ * - `POST_REFORM_VERIFIED` — the FY is on/after commencement AND the
+ *   per-measure `commencementVerified` flag is true. Post-reform math
+ *   may be applied by downstream engines; this service still does NOT
+ *   compute it (Part 3 stays pure-shape).
+ * - `POST_REFORM_PENDING` — the FY would trigger the measure BUT the
+ *   Bill has not assented. **FW-2:** the aggregator returns the gross
+ *   amount + a `reformNotice` so the canvas can surface "may be subject
+ *   to 30% min tax — pending Royal Assent" verbatim. NEVER compute the
+ *   post-reform number speculatively.
+ */
+export type MoneyFlowTaxRegime =
+  | 'PRE_REFORM'
+  | 'POST_REFORM_VERIFIED'
+  | 'POST_REFORM_PENDING';
+
+export interface WealthGraphMoneyFlow {
+  id: string;
+  kind: 'distribution' | 'dividend';
+  /** Source entity (trust for distribution, company for dividend). */
+  fromEntityId: string;
+  /** Recipient entity (beneficiary or shareholder). */
+  toEntityId: string;
+  financialYear: string;
+  /** Gross dollar amount of this flow leg. Always positive. */
+  amount: number;
+  /** When set, the flow carries franking credits (dividends + streamed). */
+  frankingCredits: number | null;
+  /**
+   * Phase 41E regime classification for this flow. See
+   * `MoneyFlowTaxRegime` doc. Always populated.
+   */
+  taxRegime: MoneyFlowTaxRegime;
+  /**
+   * Human-readable rule-status notice. Non-null only when
+   * `taxRegime === 'POST_REFORM_PENDING'`. The canvas renders this
+   * verbatim so the user sees the announced-but-not-yet-law caveat.
+   * **NEVER** compute a post-reform amount in this service.
+   */
+  reformNotice: string | null;
+}
+
 // ===========================================================================
 // Service
 // ===========================================================================
@@ -139,6 +213,8 @@ export interface WealthGraphBeneficialOverride {
 export async function getWealthGraphSnapshot(userId: string): Promise<WealthGraphSnapshot> {
   const asOf = new Date();
 
+  const moneyFlowFy = currentFinancialYear(asOf);
+
   const [
     entitiesRaw,
     properties,
@@ -149,6 +225,8 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     relationships,
     ownershipGroups,
     beneficialOverrides,
+    distributionResolutions,
+    dividendDistributions,
   // Promise.all (not $transaction(array) — the project's wrapped Prisma
   // client rejects the array form with "All elements of the array need
   // to be Prisma Client promises"; the WIF-backed adapter wraps each
@@ -285,6 +363,45 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         ownedObjectId: true,
         basis: true,
         accountantVerified: true,
+      },
+    }),
+    // Phase 2 — CONFIRMED trustee resolutions for the current FY. DRAFT
+    // resolutions are excluded: trustees haven't decided yet, so there
+    // is no money flow to render. A future "draft awareness" filter can
+    // be added when the trust-distribution UI ships in-app entry.
+    prisma.distributionResolution.findMany({
+      where: { userId, financialYear: moneyFlowFy, status: 'CONFIRMED' },
+      select: {
+        id: true,
+        trustEntityId: true,
+        financialYear: true,
+        trustNetIncome: true,
+        distributableIncome: true,
+        allocations: {
+          select: {
+            id: true,
+            beneficiaryEntityId: true,
+            presentlyEntitledShare: true,
+            streamedFrankedDividends: true,
+            streamedCapitalGains: true,
+          },
+        },
+      },
+    }),
+    prisma.dividendDistribution.findMany({
+      where: { userId, financialYear: moneyFlowFy, status: 'CONFIRMED' },
+      select: {
+        id: true,
+        companyEntityId: true,
+        financialYear: true,
+        payments: {
+          select: {
+            id: true,
+            shareholderEntityId: true,
+            amount: true,
+            frankingCredits: true,
+          },
+        },
       },
     }),
   ]);
@@ -424,6 +541,65 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     accountantVerified: b.accountantVerified,
   }));
 
+  // --- money flows (Phase 2)
+  // Build a trust → trustType lookup for the §12.14 dispatch.
+  const trustTypeByEntityId = new Map<string, TrustType | null>();
+  for (const e of entitiesRaw) {
+    trustTypeByEntityId.set(e.id, e.trustType);
+  }
+  const moneyFlows: WealthGraphMoneyFlow[] = [];
+  for (const r of distributionResolutions) {
+    const denom = r.distributableIncome != null
+      ? Number(r.distributableIncome)
+      : Number(r.trustNetIncome);
+    if (!isFinite(denom) || denom <= 0) continue;
+    const trustType = trustTypeByEntityId.get(r.trustEntityId) ?? null;
+    for (const a of r.allocations) {
+      const share = Number(a.presentlyEntitledShare);
+      if (!isFinite(share) || share <= 0) continue;
+      const amount = denom * share;
+      const streamedFranked = a.streamedFrankedDividends != null
+        ? Number(a.streamedFrankedDividends) : 0;
+      const { taxRegime, reformNotice } = classifyDistributionRegime(
+        r.financialYear,
+        trustType,
+      );
+      moneyFlows.push({
+        id: `mf-dist-${a.id}`,
+        kind: 'distribution',
+        fromEntityId: r.trustEntityId,
+        toEntityId: a.beneficiaryEntityId,
+        financialYear: r.financialYear,
+        amount,
+        frankingCredits: streamedFranked > 0 ? streamedFranked : null,
+        taxRegime,
+        reformNotice,
+      });
+    }
+  }
+  for (const d of dividendDistributions) {
+    for (const p of d.payments) {
+      const amount = Number(p.amount);
+      if (!isFinite(amount) || amount <= 0) continue;
+      const frankingCredits = Number(p.frankingCredits);
+      moneyFlows.push({
+        id: `mf-div-${p.id}`,
+        kind: 'dividend',
+        fromEntityId: d.companyEntityId,
+        toEntityId: p.shareholderEntityId,
+        financialYear: d.financialYear,
+        amount,
+        frankingCredits: isFinite(frankingCredits) && frankingCredits > 0
+          ? frankingCredits : null,
+        // Dividends are not within Measure 3's (TRUST_MINIMUM_TAX) scope —
+        // that measure is trust-taxable-income only. Other measures don't
+        // touch the company → shareholder cashflow either.
+        taxRegime: 'PRE_REFORM',
+        reformNotice: null,
+      });
+    }
+  }
+
   return {
     asOf: asOf.toISOString(),
     userId,
@@ -432,6 +608,57 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     relationships: allRelationships,
     ownershipGroups: groups,
     beneficialOverrides: overrides,
+    moneyFlows,
+    moneyFlowFy,
+  };
+}
+
+/**
+ * §12.14 FW-1 / FW-2 dispatch for a trustee distribution.
+ *
+ * Measure 3 (`TRUST_MINIMUM_TAX`) applies only to DISCRETIONARY trusts,
+ * for FYs at/after 1 Jul 2028 (FY 2028-29). When the FY is in scope but
+ * the Bill has not assented (`trustMinTaxCommencementVerified === false`),
+ * we mark the flow `POST_REFORM_PENDING` and attach a notice — the
+ * canvas renders the notice; the engine never speculatively applies the
+ * 30% min-tax math (mirrors the discipline in
+ * `lib/tax-engine/divisions/trustMinimumTax.ts`).
+ *
+ * Exported for unit testing — this function carries the load-bearing
+ * §12.14 FW-1 / FW-2 discipline for Phase 2's Money Flow lens.
+ */
+export function classifyDistributionRegime(
+  fy: string,
+  trustType: TrustType | null,
+): { taxRegime: MoneyFlowTaxRegime; reformNotice: string | null } {
+  // Non-discretionary trusts are not in Measure 3's scope — pre-reform.
+  if (trustType !== 'DISCRETIONARY') {
+    return { taxRegime: 'PRE_REFORM', reformNotice: null };
+  }
+  // FY pre-dates the measure — pre-reform.
+  let measureActiveByDate = false;
+  try {
+    measureActiveByDate = isPostCommencementFy(fy, 'TRUST_MINIMUM_TAX');
+  } catch {
+    // Malformed FY string — treat as pre-reform; the canvas still renders
+    // the gross amount, no speculative math.
+    return { taxRegime: 'PRE_REFORM', reformNotice: null };
+  }
+  if (!measureActiveByDate) {
+    return { taxRegime: 'PRE_REFORM', reformNotice: null };
+  }
+  // FY is in scope. Check the per-measure assent gate.
+  const cfg = getTaxYearConfig(fy);
+  if (cfg.trustMinTaxCommencementVerified) {
+    return { taxRegime: 'POST_REFORM_VERIFIED', reformNotice: null };
+  }
+  return {
+    taxRegime: 'POST_REFORM_PENDING',
+    reformNotice:
+      'This distribution would be subject to the 30% minimum tax on discretionary-trust ' +
+      'taxable income (Phase 41E Measure 3) once the Bill receives Royal Assent. ' +
+      'The amount shown is the gross resolution — Monitrax will not apply the post-reform ' +
+      'math until the law commences.',
   };
 }
 
@@ -464,4 +691,16 @@ function prettyAccountType(t: string): string {
 
 function prettyAssetType(t: string): string {
   return t.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase());
+}
+
+/**
+ * AU financial year for a given date in canonical `YYYY-YY` form.
+ * Mirrors `lib/depreciation/div40.ts:getFinancialYear` semantics (local
+ * time) to keep FY rollover behaviour consistent across the codebase.
+ */
+function currentFinancialYear(d: Date): string {
+  const year = d.getFullYear();
+  const month = d.getMonth(); // 0-indexed; July = 6
+  const lead = month >= 6 ? year : year - 1;
+  return `${lead}-${String(lead + 1).slice(-2)}`;
 }

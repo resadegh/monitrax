@@ -699,8 +699,8 @@ Phase 5 (dashboard widget) when reuse begins.
 | **Relocation** | ✅ Merged PR #941 | Moved canvas into `/dashboard/entities` (My Structure tab); deleted standalone preview route |
 | **v2 interactivity** | ✅ Merged PR #942 | Real `/api/entities`, live hover/click/search/filter, `EntityDetailPanel` |
 | **Phase 1 — graph SSOT** | ✅ Merged PR #943-#945 | `/api/wealth-graph` + every owned asset as a node + EntityRelationship-typed ribbons + OwnershipGroup synthetic nodes + BeneficialOwnershipOverride dual chains |
-| **Phase 1.1** | ⏳ Next | Beneficial-ownership lens toggle (legal dim / show switch) |
-| **Phase 2 — Money Flow** | 📋 Queued | DistributionAllocation + DividendPayment as Money Flow lens ribbons. **§12.14 reform-aware** — passes through per-entity `taxRegime`, never silently computes post-reform math; PR template block required. |
+| **Phase 1.1** | ✅ Merged PR #954 (2026-05-31) | Beneficial-ownership lens toggle (Legal · Beneficial pill). Pure presentation, no schema change. |
+| **Phase 2 — Money Flow** | ✅ Shipped this PR (2026-05-31) | DistributionAllocation + DividendPayment as Money Flow lens ribbons. New primary lens toggle (Structure / Money flow) on desktop + mobile chrome. **§12.14 FW-1 / FW-2 implemented** — `classifyDistributionRegime(fy, trustType)` returns `PRE_REFORM` / `POST_REFORM_VERIFIED` / `POST_REFORM_PENDING` + verbatim `reformNotice` when pending; canvas surfaces both per-ribbon amber dots + a chrome-level "N pending Royal Assent" pill; 12 unit tests pin the dispatch. Pure-shape aggregator, no calc-engine touch. |
 | **Phase 2 enhancement — FY slider** | 📋 Queued (per A4 deferral) | Historical FY scrub via ghost-glass strip with tick marks for each FY with recorded distributions |
 | **Phase 3 — click-to-zoom** | 📋 Queued | Level 2 ecosystem zoom + Level 3 panel extension with linked-asset list click-through |
 | **Phase 4 — mobile design** | 🟡 Stitch ready | Apple Maps hybrid — compact canvas top + draggable bottom sheet. Stitch screen `72ea8d79fa7e4a0c865a2c2a9d73d198` awaiting sign-off |

@@ -107,6 +107,8 @@ export default function WealthUniverseMobile() {
   const [viewportHeight, setViewportHeight] = useState<number>(844);
   // Phase 1.1 — beneficial-ownership lens toggle (mirrors desktop).
   const [lensMode, setLensMode] = useState<'legal' | 'beneficial'>('legal');
+  // Phase 2 — Structure / Money Flow primary lens (mirrors desktop).
+  const [flowMode, setFlowMode] = useState<'structure' | 'money-flow'>('structure');
 
   useEffect(() => {
     const update = () => setViewportHeight(window.innerHeight);
@@ -161,12 +163,27 @@ export default function WealthUniverseMobile() {
     () => relationships.some(r => r.id.startsWith('boo-')),
     [relationships],
   );
+  // Phase 2 — Money Flow lens (mirrors desktop).
+  const flowRibbons = useMemo(
+    () => relationships.filter(isFlowRibbon),
+    [relationships],
+  );
+  const hasFlows = flowRibbons.length > 0;
+  const pendingReformFlowCount = useMemo(
+    () => flowRibbons.filter(r => !!r.reformNotice).length,
+    [flowRibbons],
+  );
   function isLensDimmed(r: WealthRelationship): boolean {
     if (!hasBeneficialOverride) return false;
     if (lensMode === 'beneficial') return r.type === 'holds';
     return r.id.startsWith('boo-');
   }
   function isRibbonDimmed(r: WealthRelationship): boolean {
+    if (flowMode === 'money-flow') {
+      if (!isFlowRibbon(r)) return true;
+    } else {
+      if (isFlowRibbon(r)) return true;
+    }
     if (isLensDimmed(r)) return true;
     if (!selectedId) return false;
     return r.from !== selectedId && r.to !== selectedId;
@@ -290,9 +307,73 @@ export default function WealthUniverseMobile() {
         snapHeights={snapHeights}
         onSnapChange={setSnap}
       >
+        {/* Phase 2 — Structure / Money Flow primary lens. Renders only
+            when there's at least one CONFIRMED flow this FY. */}
+        {hasFlows && (
+          <div className="flex items-center gap-2 px-4 pb-2">
+            <div
+              className="inline-flex h-7 items-center overflow-hidden rounded-full"
+              style={{
+                background: 'rgba(19, 26, 46, 0.7)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setFlowMode('structure')}
+                className="h-7 rounded-full px-3 text-[10px] font-medium transition"
+                style={
+                  flowMode === 'structure'
+                    ? {
+                        background: 'rgba(125, 211, 252, 0.14)',
+                        border: '1px solid rgba(125, 211, 252, 0.4)',
+                        color: '#BAE6FD',
+                      }
+                    : { color: 'rgba(255, 255, 255, 0.6)' }
+                }
+                aria-pressed={flowMode === 'structure'}
+              >
+                Structure
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlowMode('money-flow')}
+                className="h-7 rounded-full px-3 text-[10px] font-medium transition"
+                style={
+                  flowMode === 'money-flow'
+                    ? {
+                        background: 'rgba(52, 211, 153, 0.16)',
+                        border: '1px solid rgba(52, 211, 153, 0.45)',
+                        color: '#A7F3D0',
+                      }
+                    : { color: 'rgba(255, 255, 255, 0.6)' }
+                }
+                aria-pressed={flowMode === 'money-flow'}
+              >
+                Money flow
+              </button>
+            </div>
+            {flowMode === 'money-flow' && pendingReformFlowCount > 0 && (
+              <div
+                className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium"
+                style={{
+                  background: 'rgba(251, 191, 36, 0.1)',
+                  border: '1px solid rgba(251, 191, 36, 0.35)',
+                  color: '#FCD34D',
+                }}
+                title="One or more distributions would be subject to the 30% minimum tax on discretionary-trust taxable income (Phase 41E Measure 3) once the Bill receives Royal Assent. Amounts shown are gross."
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                {pendingReformFlowCount} pending
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Phase 1.1 — Legal / Beneficial lens toggle. Renders only
-            when there's a beneficial-ownership override in the graph. */}
-        {hasBeneficialOverride && (
+            when there's a beneficial-ownership override in the graph AND
+            the primary lens is in 'structure' mode. */}
+        {hasBeneficialOverride && flowMode === 'structure' && (
           <div className="px-4 pb-2">
             <div
               className="inline-flex h-7 items-center overflow-hidden rounded-full"
@@ -688,15 +769,40 @@ function Ribbon({
   const fromNode = nodes[rel.from];
   const toNode = nodes[rel.to];
   if (!fromNode || !toNode) return null;
+  const isFlow = isFlowRibbon(rel);
   const stroke = RIBBON_COLOR[rel.type];
-  const opacity = isActive ? 0.85 : isDimmed ? 0.06 : 0.22;
-  const strokeWidth = isActive ? 1.5 : 0.9;
+  // Mobile is denser — flow ribbons read at 0.5 to stay visible against
+  // the smaller canvas + tile-heavy composition.
+  const opacity = isActive ? 0.9 : isDimmed ? 0.06 : isFlow ? 0.5 : 0.22;
+  const strokeWidth = isActive ? 1.5 : isFlow ? 1.1 : 0.9;
   const path = buildRibbonPath(fromNode.position.x, fromNode.position.y, toNode.position.x, toNode.position.y);
   return (
     <g style={{ opacity, transition: 'opacity 0.4s ease' }}>
-      <path d={path} fill="none" stroke={stroke} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <path
+        d={path}
+        fill="none"
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeDasharray={isFlow && !isDimmed ? '1.4 0.8' : undefined}
+      >
+        {isFlow && !isDimmed && (
+          <animate
+            attributeName="stroke-dashoffset"
+            from="0"
+            to="-2.2"
+            dur="1.8s"
+            repeatCount="indefinite"
+          />
+        )}
+      </path>
     </g>
   );
+}
+
+/** Phase 2 — true if this ribbon is a Money Flow (distribution or dividend). */
+function isFlowRibbon(r: WealthRelationship): boolean {
+  return r.type === 'flow-distribution' || r.type === 'flow-dividend';
 }
 
 // ============================================================================

@@ -334,7 +334,141 @@ CLAUDE.md compliance for Phase 1.1:
   palette already in use across the canvas. No `06_UI_UX_FOUNDATION.md`
   change needed.
 
+### Outstanding (after this PR)
+- Phase 2 enhancement — FY-slider (historical FY scrub)
+- Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (continued — Phase 2 Money Flow lens)
+
+### Changes Made
+- **Type**: Feature (Workstream 0·WX — Wealth Universe Explorer · Phase 2)
+- **Scope**: Adds the **Money Flow lens** to the Wealth Universe canvas
+  on `/dashboard/entities`. A new primary lens toggle (Structure /
+  Money flow) re-paints the canvas with `DistributionAllocation` +
+  `DividendPayment` flows as animated emerald ribbons, with $ amount
+  labels at the ribbon midpoint and direction matching actual cash
+  movement (trust → beneficiary, company → shareholder).
+- **Decision**: Phase 2 row in workstream `0·WX`. Reza A4 answer
+  ("current FY only for v1; FY-slider becomes Phase 2 enhancement")
+  honoured. Reza A5 answer ("two PRs — Phase 1 shape-only, Phase 2
+  includes §12.14 reform-awareness PR-template block") honoured.
+
+### CLAUDE.md §12.14 compliance — Phase 41E reform awareness
+
+This PR ships the load-bearing **FW-1 (regime is a first-class input)** +
+**FW-2 (no silent post-reform math)** discipline for the canvas:
+
+- New `classifyDistributionRegime(fy, trustType)` in
+  `lib/services/wealthGraphService.ts` returns one of three regimes
+  + an optional verbatim `reformNotice`:
+  - `PRE_REFORM` — FY pre-dates Measure 3 commencement OR trust is
+    not DISCRETIONARY (only discretionary trusts are in scope).
+  - `POST_REFORM_VERIFIED` — Bill has assented (controlled by
+    `taxYearConfig.trustMinTaxCommencementVerified`). Currently
+    **false on every FY config** — this branch is dormant by design.
+  - `POST_REFORM_PENDING` — FY ≥ 2028-29 AND trust is DISCRETIONARY
+    AND Bill has not assented. The function NEVER computes the 30%
+    min-tax amount; it returns the **gross** flow + a verbatim
+    notice the canvas surfaces.
+- Per-ribbon **amber dot** on `POST_REFORM_PENDING` flows (tooltip =
+  the full notice).
+- **Chrome-level "N pending Royal Assent" pill** when Money flow lens
+  is active. Tooltip = the canonical notice.
+- 12 new unit tests in
+  `tests/wealth-graph/classifyDistributionRegime.test.ts` pin the
+  dispatch at the boundary FYs + the non-discretionary out-of-scope
+  + the malformed-FY safe-fallback. Mirrors the boundary discipline
+  in `tests/tax-engine/config/reformConstants.test.ts`.
+
+The wealth-graph service is a **pure-shape aggregator** — no tax math
+runs here. Measure 3's actual 30% computation lives in
+`lib/tax-engine/divisions/trustMinimumTax.ts` and stays untouched.
+
+### Files modified
+
+#### Service + types
+- `lib/services/wealthGraphService.ts`
+  - New `WealthGraphMoneyFlow` interface + `MoneyFlowTaxRegime` union
+    on the public shape.
+  - `WealthGraphSnapshot` gains `moneyFlows: WealthGraphMoneyFlow[]`
+    + `moneyFlowFy: string`.
+  - Parallel fetch of `DistributionResolution` (with allocations) +
+    `DividendDistribution` (with payments) — CONFIRMED status only,
+    scoped to current FY (`currentFinancialYear(asOf)` local helper).
+  - New `classifyDistributionRegime(fy, trustType)` — exported, pure.
+  - For each allocation: `amount = presentlyEntitledShare × (distributableIncome ?? trustNetIncome)`,
+    franking copied through from `streamedFrankedDividends`.
+  - For each dividend payment: `amount = payment.amount`,
+    franking = `payment.frankingCredits` (treated as PRE_REFORM —
+    Measure 3 is trust-only).
+- `lib/data/wealthExplorerTypes.ts`
+  - `RelationshipType` extended with `'flow-distribution' | 'flow-dividend'`.
+  - `WealthRelationship` gains optional `amount` + `reformNotice`.
+  - `RIBBON_COLOR` map extended (both flow kinds = bright emerald
+    `#34D399`).
+- `lib/data/wealthExplorerLayout.ts`
+  - Layout consumes `moneyFlows`, emits one ribbon per flow leg
+    (skipped if either endpoint is not on the canvas).
+  - New `flowLabel(f)` helper formats the ribbon label as
+    `Distribution $XK` / `Dividend $X.YM`.
+
+#### Desktop canvas
+- `components/wealth-explorer/WealthUniverseCanvas.tsx`
+  - New `flowMode: 'structure' | 'money-flow'` state (default
+    `'structure'`).
+  - `isFlowRibbon(r)` module-level helper.
+  - `isRibbonDimmed()` extended — flow-mode precedence: flow ribbons
+    receive emphasis in money-flow mode, structural ribbons recede;
+    structure mode (default) dims flow ribbons.
+  - `RelationshipRibbon` rendering enhanced — flow ribbons get a
+    marching-ants emerald dash animation, a bright $ amount label
+    pill at the midpoint, and an amber dot when `reformNotice` is
+    set (tooltip = the verbatim notice).
+  - Primary lens toggle (Structure / Money flow) rendered in top
+    chrome, renders only when `hasFlows === true`.
+  - Legal/Beneficial pill from Phase 1.1 hides in Money flow mode
+    (override emphasis is about ownership reading — pointless when
+    structural ribbons are dimmed anyway).
+  - "N pending Royal Assent" amber chrome pill renders when Money
+    flow lens is active AND ≥1 flow is `POST_REFORM_PENDING`.
+
+#### Mobile canvas
+- `components/wealth-explorer/WealthUniverseMobile.tsx`
+  - Mirror of desktop logic — same `flowMode`, same `isFlowRibbon`,
+    same `isRibbonDimmed` precedence rule, same toggle UI in the
+    bottom sheet (above the existing Legal/Beneficial pill).
+  - Mobile Ribbon renders flow ribbons with the marching-ants dash
+    (skipping the per-ribbon amount label — mobile space is too
+    constrained for SVG text at 100×100 viewBox; the chrome pending
+    pill carries the §12.14 surface).
+
+#### Dashboard widget
+- `components/wealth-explorer/WealthUniverseWidget.tsx`
+  - Filters `flow-distribution` / `flow-dividend` ribbons out at
+    render time. The widget is a **structural preview**, not a
+    money-flow surface — per CLAUDE.md §0.4 restraint over richness
+    on a 340px compact tile.
+
+#### Tests
+- `tests/wealth-graph/classifyDistributionRegime.test.ts` — **NEW** —
+  12 tests pinning every branch of the §12.14 dispatch:
+  - Non-discretionary out of scope (5 cases × all FYs)
+  - Discretionary pre-FY 2028-29 = PRE_REFORM (4 boundary FYs)
+  - Discretionary FY 2028-29+ = POST_REFORM_PENDING with verbatim
+    notice (asserts "30% minimum tax", "Royal Assent", and "gross")
+  - Discretionary FY 2029-30 (further post-commencement) also
+    POST_REFORM_PENDING
+  - Malformed FY string handled safely (no throw, falls back to
+    PRE_REFORM so the canvas keeps rendering).
+
+### Documentation in this PR
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WX` Phase 2 row
+  flipped to ✅ THIS PR with full scope description; status line +
+  Last touched updated.
+- `docs/changelog/CHANGELOG_2026_05_31.md` (this section).
+
 ### Outstanding
-- Phase 2 — Money Flow lens with §12.14 Phase 41E reform-awareness
-- Phase 2 enhancement — FY-slider
+- Phase 2 enhancement — FY-slider (historical FY scrub)
 - Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
