@@ -17,7 +17,7 @@
 
 'use client';
 
-import { AnimatePresence, motion, useDragControls, useMotionValue } from 'framer-motion';
+import { motion, useDragControls } from 'framer-motion';
 import {
   Briefcase,
   Scroll,
@@ -36,9 +36,11 @@ import {
   CheckCircle2,
   TreePine,
   Sparkles,
+  AlertTriangle,
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { useAuth } from '@/lib/context/AuthContext';
 import {
   NODE_ACCENT,
   RIBBON_COLOR,
@@ -341,6 +343,11 @@ export default function WealthUniverseMobile() {
                 const Glyph = NODE_GLYPH[node.type];
                 const accent = NODE_ACCENT[node.type];
                 const isSel = selectedId === node.id;
+                // Compute "Holds N" — count of outgoing ribbons of type 'holds'
+                // OR any related asset nodes connected via this entity.
+                const holdsCount = relationships.filter(
+                  r => r.from === node.id && r.type === 'holds',
+                ).length;
                 return (
                   <li key={node.id}>
                     <button
@@ -370,6 +377,17 @@ export default function WealthUniverseMobile() {
                           {node.value ? ` · ${node.value}` : ''}
                         </div>
                       </div>
+                      {holdsCount > 0 && (
+                        <span
+                          className="flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-medium text-white/70"
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                          }}
+                        >
+                          Holds {holdsCount}
+                        </span>
+                      )}
                       <ChevronRight size={14} color="rgba(255,255,255,0.35)" strokeWidth={1.5} />
                     </button>
                   </li>
@@ -620,8 +638,30 @@ function Ribbon({
 }
 
 // ============================================================================
-// SELECTED ENTITY CARD (inside the bottom sheet)
+// SELECTED ENTITY CARD (inside the bottom sheet) — mirrors EntityDetailPanel's
+// content density on desktop. Fetches /api/entities/[id] on demand.
 // ============================================================================
+
+interface EntityDetail {
+  id: string;
+  name: string;
+  type: string;
+  role: string;
+  abn: string | null;
+  acn: string | null;
+  tradingName: string | null;
+  establishedDate: string | null;
+  parentEntityId: string | null;
+  parentEntityName: string | null;
+  trustType: string | null;
+  ownedObjectsCount: {
+    properties: number;
+    loans: number;
+    accounts: number;
+    investmentAccounts: number;
+    assets: number;
+  };
+}
 
 function SelectedEntityCard({
   node,
@@ -630,26 +670,68 @@ function SelectedEntityCard({
   node: WealthNode;
   onClose: () => void;
 }) {
+  const { token } = useAuth();
+  const [detail, setDetail] = useState<EntityDetail | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Only fetch real entity records — synthetic ownership-group nodes
+  // and asset nodes don't have /api/entities/[id] records.
+  const isEntity =
+    node.type !== 'ownership-group' &&
+    !node.type.startsWith('asset-');
+
+  useEffect(() => {
+    if (!isEntity) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+        const res = await fetch(`/api/entities/${node.id}`, { headers });
+        if (!res.ok) throw new Error(`Failed (${res.status})`);
+        const json = await res.json();
+        if (!cancelled) setDetail(json.entity ?? json.data ?? json);
+      } catch (e: unknown) {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [node.id, isEntity, token]);
+
   const accent = NODE_ACCENT[node.type];
   const Glyph = NODE_GLYPH[node.type];
+
   return (
     <div
       className="rounded-2xl p-4"
       style={{
-        background: 'rgba(26, 34, 68, 0.88)',
+        background: 'rgba(26, 34, 68, 0.92)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: `0 0 0 1px ${accent}33, 0 12px 32px rgba(0,0,0,0.35)`,
+        boxShadow: `0 0 0 1px ${accent}33, 0 12px 32px rgba(0,0,0,0.4)`,
       }}
     >
+      {/* Header */}
       <div className="mb-3 flex items-start gap-3">
         <div
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+          className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
           style={{ background: `${accent}22`, border: `1px solid ${accent}55` }}
         >
-          <Glyph size={18} color={accent} strokeWidth={1.5} />
+          <Glyph size={20} color={accent} strokeWidth={1.5} />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-semibold text-white">{node.name}</div>
+          <div className="truncate text-[15px] font-semibold leading-tight text-white">
+            {node.name}
+          </div>
           {node.subtitle && (
             <div className="truncate text-[10px] font-medium uppercase tracking-[0.16em]" style={{ color: accent }}>
               {node.subtitle}
@@ -667,6 +749,7 @@ function SelectedEntityCard({
         </button>
       </div>
 
+      {/* Active pill */}
       <div
         className="mb-3 inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10px] font-medium"
         style={{
@@ -679,19 +762,83 @@ function SelectedEntityCard({
         <span>Active</span>
       </div>
 
-      {node.value && (
-        <div className="mb-2 text-[18px] font-semibold tabular-nums text-white">{node.value}</div>
+      {/* Asset/group nodes — show their value + owner context, skip the
+          /api/entities fetch */}
+      {!isEntity && (
+        <>
+          {node.value && (
+            <div className="mb-2 text-[20px] font-semibold tabular-nums text-white">{node.value}</div>
+          )}
+          <div className="text-[11px] text-white/55">
+            {node.type === 'ownership-group'
+              ? 'Joint ownership group · members linked above'
+              : 'Owned by an entity in your structure'}
+          </div>
+        </>
       )}
 
-      {node.ownerEntityId && (
-        <div className="text-[11px] text-white/55">
-          Owned by entity · tap below to open full file
+      {/* Loading */}
+      {isEntity && loading && (
+        <div className="py-6 text-center text-[11px] text-white/45">Loading details…</div>
+      )}
+
+      {/* Error */}
+      {isEntity && error && (
+        <div className="flex items-start gap-2 rounded-xl p-3 text-[11px]" style={{ background: 'rgba(251, 191, 36, 0.08)', border: '1px solid rgba(251, 191, 36, 0.2)' }}>
+          <AlertTriangle size={13} color="#FBBF24" strokeWidth={1.5} />
+          <div>
+            <div className="font-medium text-amber-200">Couldn&rsquo;t load full details</div>
+            <div className="mt-0.5 text-amber-200/70">{error}</div>
+          </div>
         </div>
       )}
 
+      {/* Real entity detail content */}
+      {isEntity && detail && (
+        <div className="space-y-4">
+          {/* Identity */}
+          <Section title="Identity">
+            {detail.abn && <Row label="ABN" value={detail.abn} />}
+            {detail.acn && <Row label="ACN" value={detail.acn} />}
+            {detail.tradingName && <Row label="Trading as" value={detail.tradingName} />}
+            {detail.establishedDate && (
+              <Row
+                label="Established"
+                value={new Date(detail.establishedDate).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}
+              />
+            )}
+            {detail.trustType && (
+              <Row label="Trust type" value={detail.trustType.replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase())} />
+            )}
+          </Section>
+
+          {/* Parent */}
+          {detail.parentEntityName && (
+            <Section title="Controlled by">
+              <div className="flex items-center gap-2 rounded-xl p-2.5" style={{ background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
+                <Briefcase size={14} color="#7DD3FC" strokeWidth={1.5} />
+                <div className="flex-1 truncate text-[12px] text-white/90">{detail.parentEntityName}</div>
+                <ChevronRight size={12} color="rgba(255,255,255,0.4)" />
+              </div>
+            </Section>
+          )}
+
+          {/* Asset counts */}
+          <Section title="Holds">
+            <div className="grid grid-cols-2 gap-2">
+              <AssetCountTile icon={Home} label="Properties" count={detail.ownedObjectsCount.properties} accent="#38BDF8" />
+              <AssetCountTile icon={LineChart} label="Investments" count={detail.ownedObjectsCount.investmentAccounts} accent="#818CF8" />
+              <AssetCountTile icon={CircleDollarSign} label="Accounts" count={detail.ownedObjectsCount.accounts} accent="#34D399" />
+              <AssetCountTile icon={Box} label="Other assets" count={detail.ownedObjectsCount.assets} accent="#FBBF24" />
+            </div>
+          </Section>
+        </div>
+      )}
+
+      {/* CTA — always shown */}
       <a
         href={`/dashboard/entities`}
-        className="mt-3 block w-full rounded-xl py-2.5 text-center text-[12px] font-medium text-white transition"
+        className="mt-4 block w-full rounded-xl py-2.5 text-center text-[12px] font-medium text-white"
         style={{
           background: `linear-gradient(135deg, ${accent}, ${accent}aa)`,
           boxShadow: `0 6px 18px ${accent}33`,
@@ -699,6 +846,54 @@ function SelectedEntityCard({
       >
         Open full entity file →
       </a>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="mb-1.5 text-[9px] font-medium uppercase tracking-[0.16em] text-white/40">
+        {title}
+      </div>
+      <div className="space-y-0.5">{children}</div>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 py-1">
+      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[12px] font-medium tabular-nums text-white/90">{value}</span>
+    </div>
+  );
+}
+
+function AssetCountTile({
+  icon: Icon,
+  label,
+  count,
+  accent,
+}: {
+  icon: LucideIcon;
+  label: string;
+  count: number;
+  accent: string;
+}) {
+  const dim = count === 0;
+  return (
+    <div
+      className="rounded-xl p-2.5"
+      style={{
+        background: 'rgba(255, 255, 255, 0.03)',
+        border: '1px solid rgba(255, 255, 255, 0.06)',
+        opacity: dim ? 0.5 : 1,
+      }}
+    >
+      <Icon size={13} color={accent} strokeWidth={1.5} />
+      <div className="mt-1.5 text-[16px] font-semibold tabular-nums text-white">{count}</div>
+      <div className="text-[9px] text-white/45">{label}</div>
     </div>
   );
 }
