@@ -12,42 +12,40 @@
  * canvas layout function to position.
  */
 
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getWealthGraphSnapshot } from '@/lib/services/wealthGraphService';
 
-export async function GET(request: NextRequest) {
-  return withPermission(request, 'entity.read', async authReq => {
-    const startedAt = Date.now();
-    try {
-      const snapshot = await getWealthGraphSnapshot(authReq.user!.userId);
-      return NextResponse.json({
-        success: true,
-        data: snapshot,
-        error: null,
+export const GET = withPermission('entity.read', async authReq => {
+  const startedAt = Date.now();
+  try {
+    const snapshot = await getWealthGraphSnapshot(authReq.user!.userId);
+    return NextResponse.json({
+      success: true,
+      data: snapshot,
+      error: null,
+      meta: {
+        timestamp: new Date().toISOString(),
+        durationMs: Date.now() - startedAt,
+      },
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error';
+    return NextResponse.json(
+      {
+        success: false,
+        data: null,
+        error: {
+          code: 'WEALTH_GRAPH_FAILED',
+          message: 'Failed to load wealth graph',
+          details: process.env.NODE_ENV === 'development' ? message : undefined,
+        },
         meta: {
           timestamp: new Date().toISOString(),
           durationMs: Date.now() - startedAt,
         },
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Unknown error';
-      return NextResponse.json(
-        {
-          success: false,
-          data: null,
-          error: {
-            code: 'WEALTH_GRAPH_FAILED',
-            message: 'Failed to load wealth graph',
-            details: process.env.NODE_ENV === 'development' ? message : undefined,
-          },
-          meta: {
-            timestamp: new Date().toISOString(),
-            durationMs: Date.now() - startedAt,
-          },
-        },
-        { status: 500 },
-      );
-    }
-  });
-}
+      },
+      { status: 500 },
+    );
+  }
+});
