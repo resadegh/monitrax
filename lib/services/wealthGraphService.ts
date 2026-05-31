@@ -67,13 +67,25 @@ export interface WealthGraphSnapshot {
    * post-reform regime would apply but the Bill has not assented, the
    * flow surfaces an UNCOMPUTED-style notice for the canvas to render
    * verbatim — the user sees the rule status, not a guess.
+   *
+   * Phase 2 enhancement — the snapshot now includes flows for **every**
+   * FY that has CONFIRMED data; the canvas filters by selected FY at
+   * render time. Each flow carries its own `taxRegime`/`reformNotice`
+   * classified at that flow's FY, satisfying §12.14 FW-1 "regime is a
+   * first-class input per FY."
    */
   moneyFlows: WealthGraphMoneyFlow[];
   /**
-   * The FY for which money flows are aggregated. v1 = current FY only;
-   * historical FY scrub is the queued Phase 2 enhancement (per A4).
+   * Default FY to display when the user first opens the Money Flow lens.
+   * Resolves to the most recent FY with CONFIRMED data, falling back to
+   * the current FY when no data exists.
    */
   moneyFlowFy: string;
+  /**
+   * All FYs that have at least one CONFIRMED distribution or dividend,
+   * descending (most recent first). Drives the FY-slider tick strip.
+   */
+  moneyFlowFyOptions: string[];
 }
 
 export interface WealthGraphEntity {
@@ -213,7 +225,10 @@ export interface WealthGraphMoneyFlow {
 export async function getWealthGraphSnapshot(userId: string): Promise<WealthGraphSnapshot> {
   const asOf = new Date();
 
-  const moneyFlowFy = currentFinancialYear(asOf);
+  // Phase 2 enhancement — the canvas's initial FY-slider position.
+  // Resolved below from the actually-loaded data so we open to a FY the
+  // user can see. Falls back to the calendar current FY for empty datasets.
+  const currentFy = currentFinancialYear(asOf);
 
   const [
     entitiesRaw,
@@ -365,12 +380,14 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         accountantVerified: true,
       },
     }),
-    // Phase 2 — CONFIRMED trustee resolutions for the current FY. DRAFT
-    // resolutions are excluded: trustees haven't decided yet, so there
-    // is no money flow to render. A future "draft awareness" filter can
-    // be added when the trust-distribution UI ships in-app entry.
+    // Phase 2 — CONFIRMED trustee resolutions. DRAFT resolutions are
+    // excluded: trustees haven't decided yet, so there is no money flow
+    // to render. Phase 2 enhancement: fetch every FY (no
+    // `financialYear` filter) so the FY-slider can scrub through
+    // history without a refetch. The canvas filters by selected FY at
+    // render time.
     prisma.distributionResolution.findMany({
-      where: { userId, financialYear: moneyFlowFy, status: 'CONFIRMED' },
+      where: { userId, status: 'CONFIRMED' },
       select: {
         id: true,
         trustEntityId: true,
@@ -389,7 +406,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
       },
     }),
     prisma.dividendDistribution.findMany({
-      where: { userId, financialYear: moneyFlowFy, status: 'CONFIRMED' },
+      where: { userId, status: 'CONFIRMED' },
       select: {
         id: true,
         companyEntityId: true,
@@ -600,6 +617,15 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     }
   }
 
+  // Phase 2 enhancement — derive the FY-slider state from the actual
+  // flows we loaded. moneyFlowFyOptions = every FY with ≥1 flow,
+  // descending. moneyFlowFy = the most recent FY with data, or the
+  // calendar current FY when no flows exist (so the slider has a
+  // sensible focal point even on empty datasets).
+  const moneyFlowFyOptions = Array.from(new Set(moneyFlows.map(f => f.financialYear)))
+    .sort((a, b) => (a < b ? 1 : a > b ? -1 : 0));
+  const moneyFlowFy = moneyFlowFyOptions[0] ?? currentFy;
+
   return {
     asOf: asOf.toISOString(),
     userId,
@@ -610,6 +636,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     beneficialOverrides: overrides,
     moneyFlows,
     moneyFlowFy,
+    moneyFlowFyOptions,
   };
 }
 

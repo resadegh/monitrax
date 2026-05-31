@@ -469,6 +469,110 @@ runs here. Measure 3's actual 30% computation lives in
   Last touched updated.
 - `docs/changelog/CHANGELOG_2026_05_31.md` (this section).
 
+### Outstanding (after Phase 2 base ships)
+- Phase 2 enhancement — FY-slider (shipping in the follow-up PR after this one)
+- Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
+
+---
+
+## Session: stitch-dashboard-redesign-LIlK9 (continued — Phase 2 enhancement: FY-slider)
+
+### Changes Made
+- **Type**: Enhancement (Workstream 0·WX — Wealth Universe Explorer · Phase 2 enhancement)
+- **Scope**: Extends the Money Flow lens with a **financial-year
+  slider** so the user can scrub through historical FYs of CONFIRMED
+  distributions/dividends without leaving the canvas. Each FY pill
+  re-paints the canvas ribbons for that FY; the chrome-level
+  pending-Royal-Assent count + per-ribbon amber dots automatically
+  retrack the selection (per §12.14 FW-1 "regime is a first-class input
+  per FY" — when the user scrubs from FY 2025-26 to FY 2028-29 on a
+  discretionary trust, the pending pill appears).
+- **Decision**: Phase 2 enhancement row in workstream `0·WX` (Reza Q4
+  deferral). Phase 2 base PR (#955) merged earlier today shipped
+  current-FY only; this PR delivers the historical scrub.
+
+### Architectural changes
+
+**Service (`lib/services/wealthGraphService.ts`):**
+- Dropped the `financialYear: currentFy` filter from both
+  `distributionResolution.findMany` + `dividendDistribution.findMany`
+  — the aggregator now returns flows for **every** CONFIRMED
+  resolution/dividend.
+- `WealthGraphSnapshot` gains `moneyFlowFyOptions: string[]` — every
+  FY that has ≥1 flow, descending.
+- `moneyFlowFy` is now resolved from the loaded data
+  (most-recent-FY-with-data → fallback to calendar current FY) so the
+  slider opens to a FY the user can actually see.
+- Each flow's `taxRegime` + `reformNotice` was already classified at
+  the flow's own FY (Phase 2 base PR), so per-FY reform-awareness was
+  already correct — the FY-slider just selects which subset is read.
+
+**Types (`lib/data/wealthExplorerTypes.ts`):**
+- `WealthRelationship` gains optional `financialYear?: string` (set
+  for flow ribbons only).
+
+**Layout (`lib/data/wealthExplorerLayout.ts`):**
+- Layout passes through `moneyFlowFy` + `moneyFlowFyOptions` to
+  `LayoutResult` (canvas consumes them without a re-fetch).
+- Each emitted flow ribbon carries `financialYear` from the source flow.
+
+**Desktop canvas (`WealthUniverseCanvas.tsx`):**
+- New `selectedFy: string | null` state, initialized from the
+  service's `moneyFlowFy` default via `useEffect`.
+- `isRibbonDimmed()` extended — flow ribbons whose `financialYear !==
+  selectedFy` dim to 0.06 alongside structural ribbons.
+- Pending-Royal-Assent count filtered by `selectedFy` so the count
+  matches what the user can actually see (§12.14 FW-1 surface
+  honesty).
+- New FY strip rendered at the same canvas position as the Level
+  breadcrumb (they're alternatives — the breadcrumb hides in
+  money-flow mode). Ghost-glass row with "FY" eyebrow + one pill per
+  FY in `moneyFlowFyOptions`. Selected pill emerald-tinted.
+
+**Mobile canvas (`WealthUniverseMobile.tsx`):**
+- Mirror of desktop logic — same state, same dim rule, same FY
+  pills. Strip rendered in the bottom sheet below the
+  Structure/Money-flow toggle (horizontal scroll, hidden
+  scrollbar).
+
+### CLAUDE.md §12.14 compliance — Phase 41E reform awareness
+
+The §12.14 FW-1 (regime is a first-class input) discipline was
+**strengthened** by this PR, not weakened:
+
+- **FW-1 per-FY discipline:** Each flow ribbon now carries its own
+  `financialYear` AND its own `taxRegime`/`reformNotice` (classified
+  per-FY by `classifyDistributionRegime`). When the user selects FY
+  2028-29 on a discretionary trust, all visible flows from that FY
+  surface the pending notice. When they select FY 2025-26, none do.
+  The per-FY accuracy is **structural**, not state-dependent.
+- **FW-2 no silent post-reform math:** The aggregator still NEVER
+  computes the 30% min-tax amount. The FY-slider just selects which
+  subset of pre-classified flows is rendered.
+- **Tests:** The 12 unit tests in
+  `tests/wealth-graph/classifyDistributionRegime.test.ts` already
+  cover per-FY classification at the boundary FYs (2024-25 through
+  2029-30). No new tests required for the FY-slider itself — it's a
+  client-side filter over already-classified flows.
+
+### Files modified
+- `lib/services/wealthGraphService.ts` — multi-FY aggregator +
+  `moneyFlowFyOptions` derivation.
+- `lib/data/wealthExplorerTypes.ts` — `WealthRelationship.financialYear`.
+- `lib/data/wealthExplorerLayout.ts` — `LayoutResult.moneyFlowFy` +
+  `moneyFlowFyOptions`; per-ribbon `financialYear` pass-through.
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — `selectedFy`
+  state, FY filter in `isRibbonDimmed`, FY strip UI, breadcrumb
+  hides in money-flow mode, `formatFyLabel` helper.
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — mirror of
+  desktop logic.
+
+### Documentation in this PR
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 2 enhancement row flipped to
+  ✅ THIS PR; status line + Last touched updated.
+- `docs/blueprint/PHASE_44_ENTITY_GRAPH.md` — Phase 2 enhancement
+  status flipped.
+- `docs/changelog/CHANGELOG_2026_05_31.md` — this section.
+
 ### Outstanding
-- Phase 2 enhancement — FY-slider (historical FY scrub)
 - Phase 3 — Click-to-zoom (Level 2 ecosystem + Level 3 panel extension)
