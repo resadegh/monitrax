@@ -24,6 +24,8 @@ import {
   Car,
   LineChart,
   CircleDollarSign,
+  Banknote,
+  Users,
   Search,
   Plus,
   Minus,
@@ -58,6 +60,8 @@ const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'asset-vehicle': Car,
   'asset-investment': LineChart,
   'asset-cash': CircleDollarSign,
+  'asset-loan': Banknote,
+  'ownership-group': Users,
 };
 
 const FILTER_CHIPS: { id: 'all' | 'people' | 'entities' | 'smsf' | 'companies'; label: string; types: WealthNodeType[] | 'all' }[] = [
