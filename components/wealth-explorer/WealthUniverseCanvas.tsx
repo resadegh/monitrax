@@ -432,7 +432,7 @@ export default function WealthUniverseCanvas() {
 
   return (
     <div
-      className="relative h-[calc(100vh-64px)] w-full overflow-hidden"
+      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
       style={{
         background:
           'radial-gradient(ellipse at 50% 55%, #0A0E1F 0%, #060914 60%, #050810 100%)',

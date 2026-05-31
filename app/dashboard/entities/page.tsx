@@ -80,6 +80,17 @@ const EntityCanvas = dynamic(
   { ssr: false },
 );
 
+// Desktop-only Wealth Universe canvas — the v5 Stitch design ported in
+// PR #940 (Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`). Surface-only
+// preview that REPLACES the legacy React Flow canvas on desktop; mobile
+// keeps the legacy canvas until the simplified mobile design lands in a
+// follow-up PR. Dynamically imported to keep its bundle off mobile-only
+// renders.
+const WealthUniverseCanvas = dynamic(
+  () => import('@/components/wealth-explorer/WealthUniverseCanvas'),
+  { ssr: false },
+);
+
 // =============================================================================
 // LOCAL TYPES — mirror the LegalEntitySummary shape from the service
 // =============================================================================
@@ -634,14 +645,30 @@ export default function EntitiesPage() {
 
           if (hasRealStructure) {
             return (
-              <EntityCanvas
-                reloadSignal={canvasReload}
-                onAddEntity={openAdd}
-                onEditEntity={(id) => {
-                  const target = entities.find((e) => e.id === id);
-                  if (target) openEdit(target);
-                }}
-              />
+              <>
+                {/* Desktop — new Wealth Universe canvas (v5 Stitch design,
+                    ported PR #940). Surface-only for now; click-to-edit
+                    behaviour lands in the follow-up PR alongside the
+                    real-entity data hookup. The fixture currently renders
+                    Reza's Renew Group structure regardless of the user's
+                    actual entities — that resolves with the data wiring. */}
+                <div className="hidden md:block -mx-4 sm:-mx-6">
+                  <WealthUniverseCanvas />
+                </div>
+                {/* Mobile — keep the legacy React Flow canvas with its
+                    add/edit handlers until the simplified mobile design
+                    is built. */}
+                <div className="md:hidden">
+                  <EntityCanvas
+                    reloadSignal={canvasReload}
+                    onAddEntity={openAdd}
+                    onEditEntity={(id) => {
+                      const target = entities.find((e) => e.id === id);
+                      if (target) openEdit(target);
+                    }}
+                  />
+                </div>
+              </>
             );
           }
 
