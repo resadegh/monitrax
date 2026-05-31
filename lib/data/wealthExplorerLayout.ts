@@ -1,91 +1,89 @@
 /**
  * Wealth Explorer — layout function.
  *
- * Pure function: given the user's real `LegalEntitySummary[]` from
- * `/api/entities`, returns positioned `WealthNode[]` + derived
- * `WealthRelationship[]` for the Wealth Universe canvas.
+ * Pure function: given the user's `WealthGraphSnapshot` from
+ * `/api/wealth-graph`, returns positioned `WealthNode[]` + derived
+ * `WealthRelationship[]` for the canvas.
  *
  * Layout strategy:
- *   1. The user is always the gravitational anchor near centre-bottom.
- *   2. Entities cluster by role into spatial zones (corporate top-left,
- *      SMSF top-right, partnerships left-mid, sole-trader right-mid).
- *   3. Tile size scales with `ownedObjectsCount` — entities holding more
- *      wealth render larger (Apple Dock significance encoding).
- *   4. Parent → child relationships drive ribbon edges (sky for
- *      controls/trustee, emerald for owns, violet for beneficiary).
+ *   1. The user (PERSONAL_NAME #1) is the gravitational anchor at
+ *      centre-bottom.
+ *   2. Entities cluster by role/type into spatial zones (corporate
+ *      top-left, SMSF top-right, partnerships left-mid, sole-trader
+ *      right-mid, individuals centre-bottom band).
+ *   3. Each owned asset gets its own node in a small radial cluster
+ *      BELOW its owning entity. Cluster radius + angle spacing scale
+ *      with asset count so 1 asset sits directly below, 5 assets fan
+ *      across a 180° arc.
+ *   4. Joint-ownership groups (Phase 44 Q1) render as synthetic
+ *      `ownership-group` nodes positioned between their members; the
+ *      owned asset connects via the group, not directly.
+ *   5. Beneficial-ownership overrides (Phase 44 Q2) render as DUAL
+ *      chains — the legal chain dimmed (slate), the beneficial chain
+ *      full-strength (violet). Visibility toggleable from the canvas
+ *      lens switcher (not handled here — layout returns both, canvas
+ *      decides which to show).
+ *   6. Tile size scales with `ownedObjectsCount` — entities holding
+ *      more wealth render larger (Apple Dock significance encoding).
  *
- * Handles the empty/sparse case: 2 entities laid out cleanly, 20+
- * entities laid out without overlap, both look composed.
+ * Ribbons:
+ *   - `EntityRelationship` rows drive typed edges
+ *     (BENEFICIARY_OF → violet, SHAREHOLDER_OF → emerald, etc.)
+ *   - `parentEntityId` fallback synthesised as PARENT_OF edges in the
+ *     service when no explicit relationship row exists.
+ *   - Asset HOLDS edges generated here from each asset's
+ *     `ownerEntityId` (or via the `ownership-group` synthetic node
+ *     when applicable).
+ *
+ * SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`.
  */
 
+import type {
+  WealthGraphAsset,
+  WealthGraphAssetKind,
+  WealthGraphBeneficialOverride,
+  WealthGraphEdge,
+  WealthGraphEntity,
+  WealthGraphOwnershipGroup,
+  WealthGraphSnapshot,
+} from '@/lib/services/wealthGraphService';
 import type {
   WealthNode,
   WealthNodeType,
   WealthRelationship,
+  RelationshipType,
 } from './wealthExplorerTypes';
-
-/** Subset of LegalEntitySummary that the layout actually needs. */
-export interface LayoutEntityInput {
-  id: string;
-  name: string;
-  type:
-    | 'PERSONAL_NAME'
-    | 'COMPANY'
-    | 'DISCRETIONARY_TRUST'
-    | 'UNIT_TRUST'
-    | 'SMSF'
-    | 'PARTNERSHIP'
-    | 'SOLE_TRADER';
-  role:
-    | 'PERSONAL'
-    | 'HOLDING'
-    | 'OPERATING'
-    | 'INVESTMENT'
-    | 'SUPERANNUATION'
-    | 'CORPORATE_TRUSTEE';
-  abn: string | null;
-  parentEntityId: string | null;
-  parentEntityName: string | null;
-  ownedObjectsCount: {
-    properties: number;
-    loans: number;
-    accounts: number;
-    investmentAccounts: number;
-    assets: number;
-  };
-}
 
 export interface LayoutResult {
   nodes: WealthNode[];
   relationships: WealthRelationship[];
-  /** True when there's no real structure to render (only PERSONAL_NAME). */
+  /** True when there's no real structure to render (only PERSONAL_NAME, no assets). */
   isEmpty: boolean;
 }
 
-/** Map LegalEntitySummary type+role into the WealthNode type vocabulary. */
-function classifyEntity(
-  e: Pick<LayoutEntityInput, 'type' | 'role'>,
-): WealthNodeType {
+/** Map LegalEntityType + role → canvas vocabulary. */
+function classifyEntity(e: WealthGraphEntity): WealthNodeType {
   if (e.type === 'PERSONAL_NAME') return 'individual';
   if (e.type === 'SMSF') return 'smsf';
   if (e.type === 'DISCRETIONARY_TRUST' || e.type === 'UNIT_TRUST') return 'trust';
-  // COMPANY / PARTNERSHIP / SOLE_TRADER — role decides
   if (e.role === 'HOLDING') return 'holding-company';
-  if (e.role === 'CORPORATE_TRUSTEE') {
-    // Could be trustee of a trust or an SMSF. Without explicit linkage,
-    // default to trustee-company; the relationship phase below upgrades to
-    // smsf-trustee-company when the entity is the parent of an SMSF.
-    return 'trustee-company';
-  }
+  if (e.role === 'CORPORATE_TRUSTEE') return 'trustee-company';
   return 'other-company';
 }
 
-/** Tile size — scale with significance. */
-function sizeFor(
-  nodeType: WealthNodeType,
-  ownedCount: number,
-  isAnchor: boolean,
-): number {
+/** Asset kind → canvas vocabulary. */
+function classifyAsset(kind: WealthGraphAssetKind): WealthNodeType {
+  switch (kind) {
+    case 'property': return 'asset-property';
+    case 'loan': return 'asset-loan';
+    case 'account': return 'asset-cash';
+    case 'investment-account': return 'asset-investment';
+    case 'asset': return 'asset-vehicle'; // Asset table is currently vehicles + misc
+  }
+}
+
+/** Tile size — significance encoding. */
+function sizeForEntity(nodeType: WealthNodeType, ownedCount: number, isAnchor: boolean): number {
   if (isAnchor) return 96;
   if (nodeType === 'individual') return 76;
   if (nodeType === 'trust') return Math.min(88, 70 + ownedCount * 2);
@@ -95,28 +93,24 @@ function sizeFor(
   return Math.min(70, 56 + ownedCount * 2);
 }
 
-/** Spatial zones — % coords on a 100x100 canvas. */
+function sizeForAsset(): number {
+  return 52;
+}
+
 const ZONES = {
-  /** Companies + trusts cluster — upper-left arc. */
-  corporate: { cx: 28, cy: 32, rx: 22, ry: 18 },
-  /** SMSF cluster — upper-right arc. */
-  smsf: { cx: 78, cy: 30, rx: 14, ry: 18 },
-  /** Joint vehicles (partnership, joint trust) — mid-left. */
-  joint: { cx: 18, cy: 56, rx: 10, ry: 12 },
-  /** Sole trader — mid-right. */
-  soleTrader: { cx: 84, cy: 56, rx: 8, ry: 10 },
-  /** Individuals — centre-bottom band. */
-  individuals: { cx: 50, cy: 68, rx: 16, ry: 6 },
+  corporate: { cx: 28, cy: 30, rx: 22, ry: 16 },
+  smsf: { cx: 78, cy: 28, rx: 14, ry: 16 },
+  joint: { cx: 16, cy: 50, rx: 8, ry: 10 },
+  soleTrader: { cx: 84, cy: 50, rx: 8, ry: 10 },
+  individuals: { cx: 50, cy: 74, rx: 14, ry: 4 },
 };
 
-/** Distribute N points along an elliptical arc inside a zone. */
 function distributeInZone(
   zone: typeof ZONES.corporate,
   count: number,
   index: number,
 ): { x: number; y: number } {
   if (count === 1) return { x: zone.cx, y: zone.cy };
-  // Use a partial arc — spread over ~140° so tiles don't crowd
   const startAngle = -Math.PI * 0.75;
   const endAngle = Math.PI * 0.05;
   const t = count > 1 ? index / (count - 1) : 0.5;
@@ -128,16 +122,111 @@ function distributeInZone(
 }
 
 /**
- * Main layout. The caller hands in the LegalEntitySummary[] from the
- * API; we return positioned nodes + derived relationships.
+ * Place N satellites around a parent position, biased to the lower
+ * hemisphere (so assets sit "downstream" of their owning entity).
+ * `radiusPct` = distance in canvas-percentage units.
  */
-export function layoutWealthExplorer(entities: LayoutEntityInput[]): LayoutResult {
-  // Phase 1 — partition entities by role/type.
-  const personal: LayoutEntityInput[] = [];
-  const corporate: LayoutEntityInput[] = []; // companies + trusts
-  const smsfs: LayoutEntityInput[] = [];
-  const joint: LayoutEntityInput[] = [];
-  const soleTraders: LayoutEntityInput[] = [];
+function placeSatellites(
+  parent: { x: number; y: number },
+  count: number,
+  radiusPct: number,
+): Array<{ x: number; y: number }> {
+  if (count === 0) return [];
+  if (count === 1) return [{ x: parent.x, y: parent.y + radiusPct }];
+  // Spread across 200° arc below the parent (from 350° → 190° going clockwise),
+  // skipping the top to keep the label readable.
+  const startAngle = Math.PI * 0.15; // ~27° below horizontal-right
+  const endAngle = Math.PI * 0.85;   // ~27° below horizontal-left
+  const step = (endAngle - startAngle) / (count - 1);
+  return Array.from({ length: count }, (_, i) => {
+    const angle = startAngle + step * i;
+    return {
+      x: parent.x + radiusPct * Math.cos(angle),
+      y: parent.y + radiusPct * Math.sin(angle),
+    };
+  });
+}
+
+function midpoint(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): { x: number; y: number } {
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+}
+
+/** EntityRelationship type → ribbon colour bucket. */
+function ribbonTypeFor(
+  edgeType: WealthGraphEdge['type'],
+): RelationshipType {
+  switch (edgeType) {
+    case 'TRUSTEE_OF':
+    case 'APPOINTOR_OF':
+    case 'GUARDIAN_OF':
+    case 'POWER_HOLDER_OF':
+    case 'DIRECTOR_OF':
+    case 'SECRETARY_OF':
+    case 'PUBLIC_OFFICER_OF':
+    case 'LEGAL_PERSONAL_REPRESENTATIVE_FOR':
+    case 'EXECUTOR_OF':
+    case 'ADMINISTRATOR_OF':
+      return 'controls';
+    case 'SHAREHOLDER_OF':
+    case 'UNITHOLDER_OF':
+    case 'PARTNER_OF':
+      return 'owns';
+    case 'BENEFICIARY_OF':
+      return 'beneficiary';
+    case 'MEMBER_OF':
+      return 'member';
+    case 'FAMILY_MEMBER_OF':
+    case 'ASSOCIATE_OF':
+      return 'household';
+    case 'SETTLOR_OF':
+    case 'OPERATES_AS_SOLE_TRADER':
+    case 'PARENT_OF':
+    default:
+      return 'controls';
+  }
+}
+
+function shortLabel(edgeType: WealthGraphEdge['type']): string {
+  const map: Partial<Record<WealthGraphEdge['type'], string>> = {
+    TRUSTEE_OF: 'ATF',
+    APPOINTOR_OF: 'Appointor',
+    BENEFICIARY_OF: 'Beneficiary',
+    SHAREHOLDER_OF: 'Shareholder',
+    UNITHOLDER_OF: 'Unitholder',
+    DIRECTOR_OF: 'Director',
+    SECRETARY_OF: 'Secretary',
+    MEMBER_OF: 'Member',
+    PARTNER_OF: 'Partner',
+    FAMILY_MEMBER_OF: 'Family',
+    LEGAL_PERSONAL_REPRESENTATIVE_FOR: 'LPR',
+    POWER_HOLDER_OF: 'Power holder',
+    SETTLOR_OF: 'Settlor',
+    GUARDIAN_OF: 'Guardian',
+    EXECUTOR_OF: 'Executor',
+    ADMINISTRATOR_OF: 'Administrator',
+    PUBLIC_OFFICER_OF: 'Public officer',
+    OPERATES_AS_SOLE_TRADER: 'Sole trader',
+    ASSOCIATE_OF: 'Associate',
+    PARENT_OF: 'Controls',
+  };
+  return map[edgeType] ?? 'Linked';
+}
+
+// ===========================================================================
+// Main
+// ===========================================================================
+
+export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResult {
+  const { entities, assets, relationships, ownershipGroups, beneficialOverrides } = snapshot;
+
+  const personal: WealthGraphEntity[] = [];
+  const corporate: WealthGraphEntity[] = [];
+  const smsfs: WealthGraphEntity[] = [];
+  const joint: WealthGraphEntity[] = [];
+  const soleTraders: WealthGraphEntity[] = [];
 
   for (const e of entities) {
     if (e.type === 'PERSONAL_NAME') personal.push(e);
@@ -147,162 +236,255 @@ export function layoutWealthExplorer(entities: LayoutEntityInput[]): LayoutResul
     else corporate.push(e);
   }
 
-  // Phase 2 — also identify SMSF-trustee companies (parent of an SMSF).
   const smsfParentIds = new Set(smsfs.map(s => s.parentEntityId).filter(Boolean));
 
-  // Empty case: no real structure (just one personal-name entity).
-  const isEmpty = corporate.length === 0 && smsfs.length === 0 &&
-    joint.length === 0 && soleTraders.length === 0 && personal.length <= 1;
+  const isEmpty = entities.length === 0 ||
+    (corporate.length === 0 && smsfs.length === 0 &&
+     joint.length === 0 && soleTraders.length === 0 &&
+     personal.length <= 1 && assets.length === 0);
 
-  // Phase 3 — assign positions.
   const nodes: WealthNode[] = [];
+  const nodePositionById = new Map<string, { x: number; y: number }>();
 
-  // Individuals (PERSONAL_NAME) — first one is YOU anchor at zone centre.
-  personal.forEach((e, idx) => {
-    const nodeType = classifyEntity(e);
-    const isAnchor = idx === 0;
+  // ---- Entity nodes
+  function pushEntity(
+    e: WealthGraphEntity,
+    nodeType: WealthNodeType,
+    pos: { x: number; y: number },
+    isAnchor: boolean,
+  ) {
     const ownedTotal = sumOwned(e.ownedObjectsCount);
-    const size = sizeFor(nodeType, ownedTotal, isAnchor);
-    const pos = personal.length === 1
-      ? { x: ZONES.individuals.cx, y: ZONES.individuals.cy }
-      : distributeInZone(ZONES.individuals, personal.length, idx);
+    const size = sizeForEntity(nodeType, ownedTotal, isAnchor);
     nodes.push({
       id: e.id,
       type: nodeType,
       name: e.name,
-      shortName: isAnchor ? 'YOU' : e.name.split(' ')[0],
-      subtitle: isAnchor ? 'You' : 'Household',
-      position: pos,
-      size,
-      isAnchor,
-    });
-  });
-
-  // Corporate cluster (companies + trusts).
-  corporate.forEach((e, idx) => {
-    let nodeType = classifyEntity(e);
-    // Upgrade trustee companies that are parents of SMSFs.
-    if (nodeType === 'trustee-company' && smsfParentIds.has(e.id)) {
-      nodeType = 'smsf-trustee-company';
-    }
-    const ownedTotal = sumOwned(e.ownedObjectsCount);
-    const size = sizeFor(nodeType, ownedTotal, false);
-    const pos = distributeInZone(ZONES.corporate, corporate.length, idx);
-    nodes.push({
-      id: e.id,
-      type: nodeType,
-      name: e.name,
-      shortName: shortenName(e.name),
+      shortName: isAnchor ? 'YOU' : shortenName(e.name),
       subtitle: subtitleFor(nodeType, e),
       position: pos,
       size,
+      isAnchor,
+      tier: nodeType === 'individual' ? 'individual' : 'entity',
     });
+    nodePositionById.set(e.id, pos);
+  }
+
+  personal.forEach((e, idx) => {
+    const nodeType = classifyEntity(e);
+    const isAnchor = idx === 0;
+    const pos = personal.length === 1
+      ? { x: ZONES.individuals.cx, y: ZONES.individuals.cy }
+      : distributeInZone(ZONES.individuals, personal.length, idx);
+    pushEntity(e, nodeType, pos, isAnchor);
   });
 
-  // SMSF cluster.
+  corporate.forEach((e, idx) => {
+    let nodeType = classifyEntity(e);
+    if (nodeType === 'trustee-company' && smsfParentIds.has(e.id)) {
+      nodeType = 'smsf-trustee-company';
+    }
+    const pos = distributeInZone(ZONES.corporate, corporate.length, idx);
+    pushEntity(e, nodeType, pos, false);
+  });
+
   smsfs.forEach((e, idx) => {
-    const nodeType: WealthNodeType = 'smsf';
-    const ownedTotal = sumOwned(e.ownedObjectsCount);
-    const size = sizeFor(nodeType, ownedTotal, false);
     const pos = distributeInZone(ZONES.smsf, smsfs.length, idx);
-    nodes.push({
-      id: e.id,
-      type: nodeType,
-      name: e.name,
-      shortName: shortenName(e.name),
-      subtitle: 'Self-Managed Super Fund',
-      position: pos,
-      size,
-    });
+    pushEntity(e, 'smsf', pos, false);
   });
 
-  // Joint vehicles.
   joint.forEach((e, idx) => {
-    const nodeType: WealthNodeType = 'other-company';
-    const size = sizeFor(nodeType, sumOwned(e.ownedObjectsCount), false);
     const pos = distributeInZone(ZONES.joint, joint.length, idx);
-    nodes.push({
-      id: e.id,
-      type: nodeType,
-      name: e.name,
-      shortName: shortenName(e.name),
-      subtitle: 'Partnership',
-      position: pos,
-      size,
-    });
+    pushEntity(e, 'other-company', pos, false);
   });
 
-  // Sole traders.
   soleTraders.forEach((e, idx) => {
-    const nodeType: WealthNodeType = 'other-company';
-    const size = sizeFor(nodeType, sumOwned(e.ownedObjectsCount), false);
     const pos = distributeInZone(ZONES.soleTrader, soleTraders.length, idx);
+    pushEntity(e, 'other-company', pos, false);
+  });
+
+  // ---- Joint ownership groups (synthetic nodes between members)
+  // Build a map of (objectType,objectId) → group so we know which assets
+  // route via a group instead of directly from their ownerEntityId.
+  const groupByOwnedObject = new Map<string, WealthGraphOwnershipGroup>();
+  ownershipGroups.forEach(g => {
+    groupByOwnedObject.set(`${g.ownedObjectType}:${g.ownedObjectId}`, g);
+  });
+
+  const groupNodePositionById = new Map<string, { x: number; y: number }>();
+  ownershipGroups.forEach(g => {
+    const memberPositions = g.stakes
+      .map(s => nodePositionById.get(s.entityId))
+      .filter((p): p is { x: number; y: number } => !!p);
+    if (memberPositions.length < 2) return;
+    // Position the group at the centroid of its members, nudged slightly
+    // downward so the owned asset can sit just below.
+    const cx = memberPositions.reduce((s, p) => s + p.x, 0) / memberPositions.length;
+    const cy = memberPositions.reduce((s, p) => s + p.y, 0) / memberPositions.length + 3;
+    const pos = { x: cx, y: cy };
+    groupNodePositionById.set(g.id, pos);
     nodes.push({
-      id: e.id,
-      type: nodeType,
-      name: e.name,
-      shortName: shortenName(e.name),
-      subtitle: 'Sole trader',
+      id: `group-${g.id}`,
+      type: 'ownership-group',
+      name: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Tenants in common',
+      shortName: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'TIC',
+      subtitle: `${g.stakes.length} owners`,
       position: pos,
-      size,
+      size: 36,
+      tier: 'group',
     });
   });
 
-  // Phase 4 — derive relationships.
-  // Currently we only have parentEntityId from the API. That encodes
-  // "trustee-of" / "shareholder-of" relationships in the Phase 41b
-  // model. Richer relationships (beneficiary, member) will land when
-  // the API exposes them; for now, parent edge is the single source.
-  const relationships: WealthRelationship[] = [];
-  for (const e of entities) {
-    if (!e.parentEntityId) continue;
-    const child = nodes.find(n => n.id === e.id);
-    const parent = nodes.find(n => n.id === e.parentEntityId);
-    if (!child || !parent) continue;
-
-    // Trustee company → trust/SMSF: "ATF" (Acting as Trustee For)
-    if (
-      (parent.type === 'trustee-company' || parent.type === 'smsf-trustee-company') &&
-      (child.type === 'trust' || child.type === 'smsf')
-    ) {
-      relationships.push({
-        id: `r-atf-${parent.id}-${child.id}`,
-        from: parent.id,
-        to: child.id,
-        type: 'trustee',
-        label: 'ATF',
-      });
-      continue;
+  // ---- Asset nodes — placed in satellite arc below their owning entity
+  // (or below the centroid of an OwnershipGroup if jointly held).
+  const ownedAssetsByEntity = new Map<string, WealthGraphAsset[]>();
+  const ownedAssetsByGroup = new Map<string, WealthGraphAsset[]>();
+  for (const a of assets) {
+    const groupKey = `${a.kind === 'investment-account' ? 'investmentAccount' : a.kind}:${a.id}`;
+    const group = groupByOwnedObject.get(groupKey);
+    if (group) {
+      const arr = ownedAssetsByGroup.get(group.id) ?? [];
+      arr.push(a);
+      ownedAssetsByGroup.set(group.id, arr);
+    } else {
+      const arr = ownedAssetsByEntity.get(a.ownerEntityId) ?? [];
+      arr.push(a);
+      ownedAssetsByEntity.set(a.ownerEntityId, arr);
     }
+  }
 
-    // Holding company → trustee-company / operating-company: "Owns"
-    if (parent.type === 'holding-company') {
-      relationships.push({
-        id: `r-owns-${parent.id}-${child.id}`,
-        from: parent.id,
-        to: child.id,
-        type: 'owns',
-        label: 'Owns',
+  const assetPositionById = new Map<string, { x: number; y: number }>();
+
+  // Place entity-owned assets
+  ownedAssetsByEntity.forEach((assetsForEntity, entityId) => {
+    const parentPos = nodePositionById.get(entityId);
+    if (!parentPos) return;
+    const positions = placeSatellites(parentPos, assetsForEntity.length, 9);
+    assetsForEntity.forEach((a, i) => {
+      const pos = positions[i];
+      assetPositionById.set(a.id, pos);
+      nodes.push({
+        id: a.id,
+        type: classifyAsset(a.kind),
+        name: a.name,
+        shortName: shortenName(a.name, 16),
+        subtitle: a.subtype ?? a.context ?? undefined,
+        value: formatValue(a.value),
+        position: pos,
+        size: sizeForAsset(),
+        ownerEntityId: a.ownerEntityId,
+        tier: 'asset',
       });
-      continue;
-    }
+    });
+  });
 
-    // Default fallback — "controls"
-    relationships.push({
-      id: `r-controls-${parent.id}-${child.id}`,
-      from: parent.id,
-      to: child.id,
-      type: 'controls',
-      label: 'Controls',
+  // Place group-owned assets just below the group node
+  ownedAssetsByGroup.forEach((assetsForGroup, groupId) => {
+    const groupPos = groupNodePositionById.get(groupId);
+    if (!groupPos) return;
+    const positions = placeSatellites(groupPos, assetsForGroup.length, 7);
+    assetsForGroup.forEach((a, i) => {
+      const pos = positions[i];
+      assetPositionById.set(a.id, pos);
+      nodes.push({
+        id: a.id,
+        type: classifyAsset(a.kind),
+        name: a.name,
+        shortName: shortenName(a.name, 16),
+        subtitle: a.subtype ?? a.context ?? undefined,
+        value: formatValue(a.value),
+        position: pos,
+        size: sizeForAsset(),
+        ownerEntityId: a.ownerEntityId,
+        tier: 'asset',
+      });
+    });
+  });
+
+  // ===== Ribbons =====
+
+  const ribbons: WealthRelationship[] = [];
+
+  // 1) EntityRelationship + PARENT_OF fallback edges
+  for (const r of relationships) {
+    if (!nodePositionById.has(r.fromEntityId) || !nodePositionById.has(r.toEntityId)) continue;
+    ribbons.push({
+      id: `rel-${r.id}`,
+      from: r.fromEntityId,
+      to: r.toEntityId,
+      type: ribbonTypeFor(r.type),
+      label: shortLabel(r.type),
     });
   }
 
-  return { nodes, relationships, isEmpty };
+  // 2) Asset HOLDS edges — entity → asset
+  ownedAssetsByEntity.forEach((assetsForEntity, entityId) => {
+    for (const a of assetsForEntity) {
+      if (!nodePositionById.has(entityId) || !assetPositionById.has(a.id)) continue;
+      ribbons.push({
+        id: `holds-${a.id}`,
+        from: entityId,
+        to: a.id,
+        type: 'holds',
+        label: 'Holds',
+      });
+    }
+  });
+
+  // 3) OwnershipGroup edges:
+  //    member entity → group → asset
+  ownershipGroups.forEach(g => {
+    const groupNodeId = `group-${g.id}`;
+    if (!groupNodePositionById.has(g.id)) return;
+    g.stakes.forEach(s => {
+      if (!nodePositionById.has(s.entityId)) return;
+      ribbons.push({
+        id: `og-stake-${g.id}-${s.entityId}`,
+        from: s.entityId,
+        to: groupNodeId,
+        type: 'owns',
+        label: s.sharePct != null ? `${s.sharePct.toFixed(1)}%` : (g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Co-owner'),
+      });
+    });
+    const groupAssets = ownedAssetsByGroup.get(g.id) ?? [];
+    for (const a of groupAssets) {
+      if (!assetPositionById.has(a.id)) continue;
+      ribbons.push({
+        id: `og-holds-${g.id}-${a.id}`,
+        from: groupNodeId,
+        to: a.id,
+        type: 'holds',
+        label: 'Holds',
+      });
+    }
+  });
+
+  // 4) Beneficial-ownership overrides — dual chain rendering
+  //    Render the BENEFICIAL edge at full strength (violet).
+  //    The legal edge already exists via ownerEntityId; the canvas can
+  //    dim those when the override toggle is on. For now we add the
+  //    beneficial edge with the 'beneficiary' ribbon type.
+  for (const o of beneficialOverrides) {
+    if (!nodePositionById.has(o.beneficialOwnerEntityId)) continue;
+    // The "asset" id is the owned-object id; if we placed it as a node,
+    // wire the beneficial edge there.
+    if (!assetPositionById.has(o.ownedObjectId)) continue;
+    ribbons.push({
+      id: `boo-${o.id}`,
+      from: o.beneficialOwnerEntityId,
+      to: o.ownedObjectId,
+      type: 'beneficiary',
+      label: 'Beneficial owner',
+    });
+  }
+
+  return { nodes, relationships: ribbons, isEmpty };
 }
 
-// ----- helpers ---------------------------------------------------------------
+// ===========================================================================
+// helpers
+// ===========================================================================
 
-function sumOwned(c: LayoutEntityInput['ownedObjectsCount']): number {
+function sumOwned(c: WealthGraphEntity['ownedObjectsCount']): number {
   return c.properties + c.loans + c.accounts + c.investmentAccounts + c.assets;
 }
 
@@ -311,20 +493,26 @@ function shortenName(name: string, max = 22): string {
   return name.slice(0, max - 1).trim() + '…';
 }
 
-function subtitleFor(
-  nodeType: WealthNodeType,
-  e: Pick<LayoutEntityInput, 'type' | 'role'>,
-): string {
+function subtitleFor(nodeType: WealthNodeType, e: WealthGraphEntity): string {
   if (nodeType === 'trust') {
     return e.type === 'DISCRETIONARY_TRUST' ? 'Discretionary Trust' : 'Unit Trust';
   }
   if (nodeType === 'holding-company') return 'Holding Co';
   if (nodeType === 'trustee-company') return 'Trustee Co';
   if (nodeType === 'smsf-trustee-company') return 'SMSF Trustee';
+  if (nodeType === 'smsf') return 'Self-Managed Super Fund';
   if (nodeType === 'other-company') {
     if (e.role === 'OPERATING') return 'Operating';
     if (e.role === 'INVESTMENT') return 'Investment';
     return 'Company';
   }
   return '';
+}
+
+function formatValue(value: number): string {
+  if (!isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `$${Math.round(value / 1_000)}K`;
+  return `$${value.toFixed(0)}`;
 }
