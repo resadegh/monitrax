@@ -34,6 +34,7 @@ import {
   AuthDivider,
   AuthError,
 } from '@/components/auth/AuthShell';
+import { AuthPasswordInput } from '@/components/auth/AuthPasswordInput';
 
 interface AvailableProviders {
   google: boolean;
@@ -237,31 +238,26 @@ export default function RegisterPage() {
 
         <div>
           <AuthLabel htmlFor="password">Password</AuthLabel>
-          <input
+          <AuthPasswordInput
             id="password"
-            type="password"
-            placeholder="At least 8 characters"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
+            placeholder="At least 8 characters"
             required
             disabled={isLoading}
             autoComplete="new-password"
-            className="cosmos-input"
           />
         </div>
 
         <div>
           <AuthLabel htmlFor="confirmPassword">Confirm password</AuthLabel>
-          <input
+          <AuthPasswordInput
             id="confirmPassword"
-            type="password"
-            placeholder="••••••••"
             value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
+            onChange={setConfirmPassword}
             required
             disabled={isLoading}
             autoComplete="new-password"
-            className="cosmos-input"
           />
         </div>
 

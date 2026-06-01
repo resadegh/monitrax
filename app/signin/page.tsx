@@ -33,6 +33,7 @@ import {
   AuthError,
   AuthInfo,
 } from '@/components/auth/AuthShell';
+import { AuthPasswordInput } from '@/components/auth/AuthPasswordInput';
 
 interface AvailableProviders {
   google: boolean;
@@ -177,16 +178,13 @@ export default function SignInPage() {
 
         <div>
           <AuthLabel htmlFor="password">Password</AuthLabel>
-          <input
+          <AuthPasswordInput
             id="password"
-            type="password"
-            placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={setPassword}
             required
             disabled={isLoading}
             autoComplete="current-password"
-            className="cosmos-input"
           />
         </div>
 

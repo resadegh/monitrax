@@ -245,3 +245,58 @@ N/A — resilience/try-catch change, no schema, no Prisma writes.
 ### PR
 - Branch: `claude/qif-import-ai-resilience-LFNFt`
 - Status: Merged (PR #959).
+
+---
+
+## Session: auth-forgot-password-and-show-password-LFNFt
+
+### Changes Made
+- **Type**: Fix (prod — broken forgot-password link) + UX (show-password toggle)
+- **Scope**: Auth pages (`/signin`, `/register`, new `/forgot-password`) + `AuthContext`
+- **Two reports (Reza, live app):**
+  1. "When signing in, I checked forgot password and got [404]." — `/signin`
+     linked to `/forgot-password` but **no such route existed** → hard 404, so
+     users could not reset their password at all.
+  2. "Show password is not available." — the auth password fields were plain
+     masked inputs with no reveal toggle.
+
+### Solution
+1. **Forgot-password page (new).** `app/forgot-password/page.tsx` mirrors the
+   `/signin` Deep Cosmos `AuthShell` chrome (functional dead-link target, not a
+   new design surface → §18 Stitch-first exempt). Uses Firebase
+   `sendPasswordResetEmail` via a new `resetPassword(email)` on `AuthContext`.
+   **Anti-enumeration (§13):** success and `auth/user-not-found` render the same
+   neutral confirmation; only `auth/invalid-email` / `auth/too-many-requests`
+   show distinct errors.
+2. **Show-password toggle.** New reusable `components/auth/AuthPasswordInput.tsx`
+   (native `cosmos-input` + an Eye/EyeOff button that toggles input type only,
+   never the value). Applied to `/signin` (1 field) and `/register` (password +
+   confirm). The toggle is keyboard-focusable with `aria-pressed`/`aria-label`.
+
+### Files Modified / Created
+- `lib/context/AuthContext.tsx` — `sendPasswordResetEmail` import + `resetPassword`
+  method + type + provider value.
+- `app/forgot-password/page.tsx` — **NEW.** The reset page.
+- `components/auth/AuthPasswordInput.tsx` — **NEW.** Reusable show/hide field.
+- `app/signin/page.tsx` — password field → `<AuthPasswordInput>`.
+- `app/register/page.tsx` — password + confirm fields → `<AuthPasswordInput>`.
+
+### Documentation Updated
+- `docs/operational/security/01_AUTHENTICATION.md` — new "Password Reset" section
+  (flow, anti-enumeration, "email not arriving → check Identity Platform template").
+- `docs/changelog/CHANGELOG_2026_06_01.md` — this entry.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled (`/forgot-password` route built)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — new page + a Firebase client call (`sendPasswordResetEmail`); no schema, no Prisma writes.
+
+### UI/UX Stitch-first (CLAUDE.md §18)
+N/A — `/forgot-password` is a **missing dead-link target route** (functional, not visual; §18.2 exempt). Reuses the existing `AuthShell` + `cosmos-*` vocabulary; the only new primitive is `AuthPasswordInput`, which matches `cosmos-input`. No new design vocabulary.
+
+### PR
+- Branch: `claude/auth-forgot-password-and-show-password-LFNFt`
+- Status: Draft (pending review)

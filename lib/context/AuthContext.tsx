@@ -13,6 +13,7 @@ import {
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
   updateProfile,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -42,6 +43,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (email: string, password: string, name: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
   isGCPEnabled: boolean;
@@ -312,6 +314,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await handleSignIn(credential.user);
   };
 
+  // Send a Firebase password-reset email. Errors propagate raw (the caller
+  // maps the Firebase code) so the page can avoid account-enumeration leakage
+  // by treating `auth/user-not-found` the same as success.
+  const resetPassword = async (email: string) => {
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error('Authentication not configured');
+    await sendPasswordResetEmail(auth, email);
+  };
+
   // ==========================================================================
   // MFA Challenge Resolution
   // ==========================================================================
@@ -379,6 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         loginWithGoogle,
         register,
+        resetPassword,
         logout,
         isLoading,
         isGCPEnabled: gcpEnabled,
