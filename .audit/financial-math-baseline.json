@@ -1,7 +1,7 @@
 {
   "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
-  "generatedAt": "2026-05-29T03:49:56.914Z",
-  "count": 24,
+  "generatedAt": "2026-06-01T09:27:48.722Z",
+  "count": 22,
   "entries": [
     {
       "file": "app/dashboard/cfo/page.tsx",
@@ -83,25 +83,13 @@
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 755,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
-    },
-    {
-      "file": "app/dashboard/tax/page.tsx",
-      "line": 768,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "taxConfig.nonConcessionalCap - taxPosition.super.nonConcessional"
-    },
-    {
-      "file": "app/dashboard/tax/page.tsx",
-      "line": 811,
+      "line": 793,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxPosition.tax.marginalRate - taxConfig.superContributionsTaxRate"
     },
     {
       "file": "app/dashboard/tax/page.tsx",
-      "line": 814,
+      "line": 796,
       "pattern": "INLINE_ARITHMETIC",
       "match": "taxConfig.concessionalCap - taxPosition.super.concessional"
     },
