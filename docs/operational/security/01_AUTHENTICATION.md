@@ -19,6 +19,24 @@ Monitrax uses **GCP Identity Platform (Firebase Auth)** as its sole authenticati
 
 All providers are configured in the GCP Identity Platform console. No provider-specific code exists in Monitrax beyond the Firebase SDK client configuration.
 
+## Password Reset (Forgot Password)
+
+`/forgot-password` (public) calls Firebase `sendPasswordResetEmail` via
+`useAuth().resetPassword(email)` (`lib/context/AuthContext.tsx`). Firebase sends
+the reset email + hosts the reset-link landing flow — Monitrax holds no
+reset-token logic. Linked from `/signin`, `/admin/login`, `/portal/signin`.
+
+**Anti-enumeration:** the page shows the **same** neutral confirmation ("if an
+account exists for X, we've sent a link") on both success and
+`auth/user-not-found`, so it never reveals whether an email is registered
+(CLAUDE.md §13). Only `auth/invalid-email` and `auth/too-many-requests` surface
+a distinct message.
+
+**Reset email not arriving?** Check GCP Identity Platform → Templates (the
+password-reset email template must be enabled + the sender domain verified), and
+the user's spam folder. The send itself succeeding but no email = a template /
+sender-domain config issue in the console, not an app bug.
+
 ---
 
 ## Token Flow
