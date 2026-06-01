@@ -42,7 +42,16 @@ import { useEffect, useState } from 'react';
 import { Bot, Sparkles, X } from 'lucide-react';
 import AiAdvisorPanel from '@/components/strategy/AiAdvisorPanel';
 
-export default function AiChatButton() {
+interface AiChatButtonProps {
+  /**
+   * Trigger placement (see `HelpDrawerButton` for the full rationale).
+   * `'fixed'` (default) for mobile floating; `'inline'` for the
+   * EditorialTopBar's right cluster (added 2026-06-01).
+   */
+  placement?: 'fixed' | 'inline';
+}
+
+export default function AiChatButton({ placement = 'fixed' }: AiChatButtonProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
 
   // Close on Escape (desktop accessibility).
@@ -55,6 +64,11 @@ export default function AiChatButton() {
     return () => document.removeEventListener('keydown', handler);
   }, [isOpen]);
 
+  const positionClasses =
+    placement === 'fixed'
+      ? 'fixed top-3 right-14 sm:top-4 sm:right-16 lg:top-5 lg:right-[4.5rem] z-40'
+      : '';
+
   return (
     <>
       {/* Header-bar trigger — sits to the LEFT of the help button.
@@ -66,8 +80,7 @@ export default function AiChatButton() {
         aria-label={isOpen ? 'Close AI Advisor' : 'Open AI Advisor'}
         title="AI Advisor"
         className={`
-          fixed top-3 right-14 sm:top-4 sm:right-16 lg:top-5 lg:right-[4.5rem]
-          z-40
+          ${positionClasses}
           inline-flex items-center justify-center
           h-9 w-9 rounded-full
           bg-white/85 backdrop-blur-sm

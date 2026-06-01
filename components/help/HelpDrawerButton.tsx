@@ -27,12 +27,31 @@ interface HelpDrawerButtonProps {
    * this set.
    */
   audiences: HelpAudience[];
+  /**
+   * Trigger placement:
+   *   - `'fixed'` (default) — `fixed top-right` of the viewport (legacy
+   *     mobile floating behaviour).
+   *   - `'inline'` — no position classes; the trigger renders inside
+     *     the parent's flow (used by `EditorialTopBar`'s right cluster).
+   * Added 2026-06-01 to resolve the topbar-search collision (the
+   * three floating bubbles overlapped the editorial topbar's search
+   * pill once Phase R2b landed). Mobile still uses `'fixed'`.
+   */
+  placement?: 'fixed' | 'inline';
   /** Position override — defaults to fixed top-right of viewport. */
   className?: string;
 }
 
-export function HelpDrawerButton({ audiences, className = '' }: HelpDrawerButtonProps) {
+export function HelpDrawerButton({
+  audiences,
+  placement = 'fixed',
+  className = '',
+}: HelpDrawerButtonProps) {
   const [open, setOpen] = useState(false);
+  const positionClasses =
+    placement === 'fixed'
+      ? 'fixed top-3 right-3 sm:top-4 sm:right-4 lg:top-5 lg:right-6 z-40'
+      : '';
 
   return (
     <>
@@ -42,8 +61,7 @@ export function HelpDrawerButton({ audiences, className = '' }: HelpDrawerButton
         aria-label="Open help"
         title="Help"
         className={`
-          fixed top-3 right-3 sm:top-4 sm:right-4 lg:top-5 lg:right-6
-          z-40
+          ${positionClasses}
           inline-flex items-center justify-center
           h-9 w-9 rounded-full
           bg-white/85 backdrop-blur-sm
