@@ -909,7 +909,10 @@ function BalancesPageContent() {
           loans.length === 0 &&
           !accountsError &&
           !loansError ? (
-          <EmptyState />
+          <EmptyState
+            onAddAccount={() => setAccountPickerOpen(true)}
+            onAddLoan={() => setLoanPickerOpen(true)}
+          />
         ) : (
           <div className="space-y-10">
             {/* CASH */}
@@ -1408,7 +1411,13 @@ function LinkChip({
 // Empty + Loading states
 // ---------------------------------------------------------------------------
 
-function EmptyState() {
+function EmptyState({
+  onAddAccount,
+  onAddLoan,
+}: {
+  onAddAccount: () => void;
+  onAddLoan: () => void;
+}) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card/50 p-10 sm:p-14 text-center anim-rise">
       <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 mb-4">
@@ -1419,15 +1428,15 @@ function EmptyState() {
         Link a bank to import balances and transactions automatically, or add an account manually to start tracking.
       </p>
       <div className="mt-6 flex items-center justify-center gap-2">
-        <Button asChild>
-          <Link href="/dashboard/accounts">
-            <Plus className="w-4 h-4 mr-1.5" /> Add account
-          </Link>
+        {/* Open the add-account / add-loan form dialogs directly — same
+            handlers the toolbar uses. (Previously these were <Link>s to
+            /dashboard/accounts|loans, which navigated away instead of opening
+            the form, so first-run users could not add anything.) */}
+        <Button onClick={onAddAccount}>
+          <Plus className="w-4 h-4 mr-1.5" /> Add account
         </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/loans">
-            <Plus className="w-4 h-4 mr-1.5" /> Add loan
-          </Link>
+        <Button variant="outline" onClick={onAddLoan}>
+          <Plus className="w-4 h-4 mr-1.5" /> Add loan
         </Button>
       </div>
     </div>
