@@ -114,6 +114,32 @@ These GCP IAM roles are required for infrastructure operations:
 | `roles/monitoring.viewer` | On-call engineers | Read Cloud Monitoring |
 | `roles/secretmanager.secretAccessor` | Application service account | Access secrets |
 | `roles/storage.objectViewer` | Application service account | Read GCS buckets |
+| `roles/firebaseauth.admin` | WIF SA (`vercel-monitrax-db@…`) | **Account-deletion executor** — delete Firebase Auth identities via the Identity Platform Admin REST API (`accounts:lookup` + `accounts:delete`). See below. |
+
+### Account-deletion executor (right-to-erasure)
+
+The nightly `monitrax-account-deletion-executor` Cloud Scheduler job
+(`POST /api/account/lifecycle`) deletes the Firebase Auth identity of
+users past their 30-day deletion grace, using the same WIF service
+account that authenticates Cloud SQL (`GCP_SERVICE_ACCOUNT_EMAIL`).
+
+- **Why a grant is needed:** the SA can mint impersonated tokens but is
+  not authorised for Identity Platform out of the box. Without it the
+  REST `accounts:delete` returns **403** and the executor *safely
+  aborts* the data deletion (identity-first, abort-on-failure — no
+  resurrectable accounts). So the grant is the prerequisite that "arms"
+  the executor.
+- **Grant (one-time):**
+  ```bash
+  gcloud projects add-iam-policy-binding monitrax-479700 \
+    --member="serviceAccount:vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com" \
+    --role="roles/firebaseauth.admin"
+  ```
+- **Least-privilege alternative:** a custom role containing only
+  `firebaseauth.users.get` + `firebaseauth.users.delete` is sufficient
+  and preferred for a tightly-scoped production posture.
+- **Operational runbook:** `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md`
+  §4a (the job) + §6b (this grant). Code: `lib/auth/identityPlatformAdmin.ts`.
 
 **Principle of least privilege:** Only grant the minimum IAM roles needed. Review quarterly.
 

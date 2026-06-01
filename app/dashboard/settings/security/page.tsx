@@ -93,6 +93,11 @@ export default function SecuritySettingsPage() {
     gracePeriodDays: number;
   } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  // Type-to-confirm guard for the irreversible deletion request. The user must
+  // type the exact phrase before the destructive action enables — a deliberate
+  // friction step matching the gravity of a permanent, full-data hard-delete.
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const DELETE_CONFIRM_PHRASE = 'DELETE';
 
   // MFA State
   const [mfaMethods, setMfaMethods] = useState<MFAMethod[]>([]);
@@ -828,7 +833,12 @@ export default function SecuritySettingsPage() {
                 </p>
                 <AlertDialog
                   open={deleteDialogOpen}
-                  onOpenChange={setDeleteDialogOpen}
+                  onOpenChange={(open) => {
+                    setDeleteDialogOpen(open);
+                    // Reset the confirmation phrase whenever the dialog opens or
+                    // closes so a re-open always starts from a disabled state.
+                    if (!open) setDeleteConfirmText('');
+                  }}
                 >
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive">Delete account</Button>
@@ -840,12 +850,26 @@ export default function SecuritySettingsPage() {
                       </AlertDialogTitle>
                       <AlertDialogDescription>
                         We'll keep your account active for{' '}
-                        <strong>30 days</strong> in case you change your mind.
-                        After that, your CDR data is permanently purged and
-                        your profile is anonymised. You can cancel any time
-                        before then from this page.
+                        <strong>30 days</strong> in case you change your mind —
+                        you can cancel any time before then from this page. After
+                        that, your account, all your financial data, and your CDR
+                        data are <strong>permanently and irreversibly deleted</strong>.
+                        This cannot be undone.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
+                    <div className="space-y-2 py-2">
+                      <Label htmlFor="delete-confirm" className="text-sm text-muted-foreground">
+                        Type <strong className="font-semibold text-foreground">{DELETE_CONFIRM_PHRASE}</strong> to confirm
+                      </Label>
+                      <Input
+                        id="delete-confirm"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                        placeholder={DELETE_CONFIRM_PHRASE}
+                        autoComplete="off"
+                        disabled={deletionLoading}
+                      />
+                    </div>
                     <AlertDialogFooter>
                       <AlertDialogCancel disabled={deletionLoading}>
                         Cancel
@@ -856,7 +880,10 @@ export default function SecuritySettingsPage() {
                           e.preventDefault();
                           handleRequestDeletion();
                         }}
-                        disabled={deletionLoading}
+                        disabled={
+                          deletionLoading ||
+                          deleteConfirmText.trim() !== DELETE_CONFIRM_PHRASE
+                        }
                       >
                         {deletionLoading ? (
                           <Loader2 className="h-4 w-4 animate-spin mr-2" />

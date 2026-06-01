@@ -124,6 +124,28 @@ MFA enrollment status is available from Firebase Auth. To check if a user has MF
 
 ---
 
+## Account Deletion (Identity Removal)
+
+When a user's 30-day deletion grace elapses, the account-deletion
+executor (`monitrax-account-deletion-executor` → `POST /api/account/lifecycle`)
+removes their **Firebase Auth identity** as the FIRST step, before any
+data is touched.
+
+**Why identity-first matters here:** the "User Sync (Auto-Provisioning)"
+flow above re-creates a local `User` row for *any* valid Firebase token.
+If the data were deleted but the Firebase identity survived, the user's
+next login would silently resurrect an empty account. The executor
+therefore deletes the identity via the Identity Platform Admin REST API
+(`accounts:lookup` by email → `accounts:delete` by localId) using the
+WIF service account, and **aborts the whole deletion if the identity
+cannot be removed** (the soft-delete flags stay set and the next nightly
+run retries). There is no `firebase-admin` SDK server-side — token
+verification is JWKS-based — so this REST path is the canonical way to
+mutate identities. Code: `lib/auth/identityPlatformAdmin.ts`. IAM grant:
+`02_IAM_AND_PERMISSIONS.md` → "Account-deletion executor".
+
+---
+
 ## Troubleshooting: User Cannot Sign In
 
 ### Step 1: Identify the Error
