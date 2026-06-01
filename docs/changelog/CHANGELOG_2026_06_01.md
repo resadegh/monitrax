@@ -1,5 +1,96 @@
 # Changelog — 2026-06-01
 
+## Session: account-deletion-executor-LFNFt — Right-to-erasure hard-delete executor
+
+### Changes Made
+- **Type**: Feature (compliance — closes a Privacy Act APP 11.2 / CDR §3.2 gap)
+- **Scope**: Account deletion. `/api/account/delete-request` only ever set a
+  30-day soft-delete timer; the schema comment + that route's docstring both
+  promised a Cloud Scheduler hard-delete that **never existed**. "Delete my
+  account" therefore erased nothing. This session builds that missing executor.
+
+### Decision audit (CLAUDE.md §0 advisory mindset)
+
+- **Architect / security lens drove the design.** Research surfaced that there
+  is **no `firebase-admin` SDK** server-side (consumer tokens are verified with
+  raw JWKS / `jwt.verify`, `lib/auth/gcpTokenVerifier.ts`) and `User.id` is a
+  generated UUID — the Firebase UID lives on `OAuthAccount.providerUserId`. So
+  deleting the auth identity is not a function call; it needs the **Identity
+  Platform Admin REST API** authenticated with the existing WIF service account.
+- **Resurrection is the load-bearing risk.** The auto-provisioning path
+  (`lib/auth/gcpIdentity.ts`) re-creates a `User` row for any valid Firebase
+  token. Deleting the data while leaving the identity = the account silently
+  resurrects (empty) on next login. Hence **identity-first, abort-on-failure**:
+  if the identity can't be removed, NO data is deleted and the soft-delete flags
+  stay set so the next nightly run retries. No half-deleted, resurrectable
+  accounts — ever.
+- **Restrict-aware DB deletion.** The schema has exactly **7 `onDelete: Restrict`
+  relations**, all `entity → LegalEntity`; everything else is Cascade/SetNull.
+  A naive `user.delete()` can fail non-deterministically (it cascades
+  `LegalEntity` while a `Property` still references it). Fix: delete the 7 entity
+  models first, then `user.delete()` cascades the rest. Precedent:
+  `lib/testing/reset.ts` (which predates `Asset` and misses it — the prod path
+  covers all 7).
+- **Behaviour-psychology lens on the UI.** The dialog copy said data is
+  "anonymised" — but the executor does a true hard-delete. Corrected to
+  "permanently and irreversibly deleted" (honesty over comfort), and added a
+  **type-to-confirm** ("type DELETE") friction step matching the gravity, with
+  the 30-day grace framed as the warm safety net.
+- **Scope confirmed with Reza** (AskUserQuestion): "Build full executor now"
+  — ships with the one-time IAM grant documented as the prerequisite to arm it.
+
+### Files created
+- `lib/auth/identityPlatformAdmin.ts` — WIF-authenticated Identity Platform
+  Admin REST helper. `deleteIdentityByEmail(email)` → `{ status, deletedUids }`
+  where status ∈ `deleted` / `not_found` / `skipped` (no GCP auth) / `failed`.
+  Reuses the OIDC→STS→IAM-Credentials impersonation chain from `lib/db.ts`
+  (no new secret), adds `cloud-platform` scope. Never throws.
+- `lib/services/accountDeletion.ts` — `deleteUserAccount(userId, trigger)`
+  (identity → CDR → ordered DB cascade → `USER_DELETED` audit) +
+  `executeScheduledDeletions()` (sequential over due users).
+- `app/api/account/lifecycle/route.ts` — Cloud Scheduler endpoint
+  (`CRON_SECRET` bearer, timing-safe; mirrors `/api/cdr/lifecycle`).
+
+### Files modified
+- `app/dashboard/settings/security/page.tsx` — type-to-confirm input + honest
+  hard-delete copy + reset-on-close.
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+- `prisma.user.delete` + 7 `deleteMany` in `lib/services/accountDeletion.ts`.
+  1. **WHERE matches:** only users with `deletionRequestedAt != null` AND
+     `deletionScheduledFor <= now` — i.e. users who self-requested deletion and
+     whose 30-day grace expired. Per-user re-read inside `deleteUserAccount`.
+  2. **Rows:** full hard-delete of the user + owned entities (intended — this IS
+     the erasure feature).
+  3. **Guard:** identity-deletion runs first and ABORTS the data delete on
+     failure; the trigger is the user's own expired, self-set timer.
+  - User confirmation: granted 2026-06-01 ("Build full executor now").
+- No `prisma/schema.prisma` change → no migration needed (§12.12 N/A).
+
+### Build Status
+- [x] `npx tsc --noEmit` — 0 errors project-wide
+- [x] `npm run build` — passes; `/api/account/lifecycle` registered (ƒ Dynamic)
+- [x] `next lint` on touched files — clean
+
+### Reza-side console steps to arm the executor (documented)
+1. Grant the WIF SA `roles/firebaseauth.admin` — runbook §6b / IAM doc.
+2. Create the `monitrax-account-deletion-executor` Cloud Scheduler job — §4a.
+   Until both are done, deletions safely no-op (abort-on-failure).
+
+### Documentation updated in this PR
+- `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md` — §4a (the job) + §6b
+  (the IAM grant) + jobs table row
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — `firebaseauth.admin`
+  grant + "Account-deletion executor" section
+- `docs/operational/security/01_AUTHENTICATION.md` — "Account Deletion (Identity
+  Removal)" section (identity-first / resurrection rationale)
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — row 5.3a flipped from
+  "Pending" to shipped + summary line
+- `docs/IMPLEMENTATION_PLAN.md` — workstream completed + dead-promise closed
+- `docs/changelog/CHANGELOG_2026_06_01.md` (this entry)
+
+---
+
 ## Session: stitch-dashboard-redesign-LIlK9 — Dashboard chrome cleanup
 
 ### Changes Made

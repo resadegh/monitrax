@@ -23,6 +23,7 @@
 | `monitrax-cdr-lifecycle` | `POST /api/cdr/lifecycle` | `30 3 * * *` (03:30) | CDR consent-expiry sweep — see §3. **Moved from 02:00 to 03:30 on 2026-05-19** to dodge Cloud SQL maintenance-window collisions (TLS-handshake 500s — see `04_WIF_TROUBLESHOOTING.md` §3.G). |
 | `monitrax-conversation-retention-sweep` | `POST /api/conversations/retention-sweep` | `0 3 * * *` (03:00) | 7-yr conversation message purge — see §4 |
 | `monitrax-portal-alert-sweep` | `POST /api/portal/alerts/sweep` | `0 4 * * *` (04:00) | Recompute the Practice "needs attention" alert stream — **not** a retention obligation; documented in `docs/blueprint/PHASE_32B_PR3_ALERT_ENGINE.md`. Listed here because it shares the Cloud Scheduler console + the same `CRON_SECRET` + the same region/timezone. |
+| `monitrax-account-deletion-executor` | `POST /api/account/lifecycle` | `0 5 * * *` (05:00) | Right-to-erasure hard-delete — finds users past their 30-day grace (`deletionScheduledFor <= now`) and irreversibly deletes them (identity → CDR → DB). See §6a. **Has a one-time IAM prerequisite** (Firebase Auth admin on the WIF SA) before it can complete deletions — see §6b. |
 
 > **Status (2026-05-12 — confirmed in the console):** `monitrax-cdr-lifecycle`
 > ✅ and `monitrax-portal-alert-sweep` ✅ both exist, are `ENABLED`, and
@@ -188,7 +189,91 @@ data is no more compliant for waiting another day.
 
 ---
 
-## 5. Job 3 — Stripe webhook reconciliation (FUTURE)
+## 4a. Job 3 — Account-deletion executor
+
+**Endpoint:** `POST https://www.monitrax.com.au/api/account/lifecycle`
+**Built:** Right-to-erasure executor workstream 2026-06-01. See
+`app/api/account/lifecycle/route.ts` + `lib/services/accountDeletion.ts`
++ `lib/auth/identityPlatformAdmin.ts`.
+
+This is the hard-delete half that `/api/account/delete-request` has
+always promised ("Hard-deletion happens out-of-band on the scheduled
+date via Cloud Scheduler"). Until this job existed, "Delete my account"
+only set a 30-day timer that never fired — a Privacy Act APP 11.2 / CDR
+§3.2 gap.
+
+### gcloud setup
+
+```bash
+gcloud scheduler jobs create http monitrax-account-deletion-executor \
+  --project=monitrax-479700 \
+  --location=australia-southeast1 \
+  --schedule="0 5 * * *" \
+  --time-zone="Australia/Sydney" \
+  --uri="https://www.monitrax.com.au/api/account/lifecycle" \
+  --http-method=POST \
+  --headers="Authorization=Bearer ${CRON_SECRET}" \
+  --attempt-deadline=300s \
+  --description="Daily right-to-erasure hard-delete for users past their 30-day grace. Privacy Act APP 11.2 + CDR §3.2. See docs/operational/runbooks/05_RETENTION_SCHEDULERS.md §4a"
+```
+
+**Note:** scheduled at 05:00 Australia/Sydney — after the CDR
+(03:30) and conversation (03:00) sweeps. It shares the DB; a later
+slot avoids warm-up contention, and deletions are low-volume
+(opt-in + 30-day-delayed).
+
+### What it does, step by step (per due user)
+
+1. Verifies the `CRON_SECRET` Bearer token (timing-safe).
+2. `executeScheduledDeletions()` finds users with
+   `deletionRequestedAt != null` AND `deletionScheduledFor <= now`.
+3. For each, `deleteUserAccount(userId, 'SCHEDULED')` runs the
+   **identity-first, abort-on-failure** sequence:
+   1. **Delete the Firebase identity** via the Identity Platform Admin
+      REST API (`accounts:lookup` by email → `accounts:delete` by
+      localId), authenticated with the WIF SA (no new secret — reuses
+      the OIDC→STS→IAM-Credentials chain from `lib/db.ts`).
+      - If this **fails** (e.g. the IAM grant in §6b is missing → 403),
+        the executor **STOPS for that user** and does NOT delete the
+        data. The soft-delete flags stay set, so the next nightly run
+        retries. This prevents a half-deleted, *resurrectable* account
+        (data gone, login still works → next login re-creates an empty
+        `User`). Statuses `deleted` / `not_found` / `skipped` (no GCP
+        auth configured) are all safe-to-proceed.
+   2. **Purge CDR data** (`deleteCDRData` — local rows + remote Basiq
+      connection deletes).
+   3. **Hard-delete the DB** in one transaction: the 7
+      `onDelete: Restrict` entity models (`Asset`, `Property`, `Loan`,
+      `Account`, `Income`, `Expense`, `InvestmentAccount`) first — so
+      the `User → LegalEntity` cascade isn't blocked — then
+      `prisma.user.delete()` cascades `LegalEntity` + everything else.
+   4. **Audit** a `USER_DELETED` row (userId omitted — the FK target is
+      gone; the deleted id lives in `entityId` + `metadata`, and the
+      365-day Cloud Logging dual-write captures it).
+4. Returns `{ processed, deleted, failed, failures[] }`. The
+   `failures[]` array carries `{ userId, identityStatus, error }` only
+   — never PII or CDR data — so a failed run is diagnosable from the
+   response + Cloud Logging.
+
+### Verification (post-create)
+
+```bash
+# Force an immediate run:
+gcloud scheduler jobs run monitrax-account-deletion-executor \
+  --project=monitrax-479700 --location=australia-southeast1
+```
+
+- A `200` with `data.failed: 0` means every due user was deleted (or
+  there were none due).
+- A `200` with `data.failed > 0` and `failures[].identityStatus:
+  "failed"` almost always means the **§6b IAM grant is missing** — the
+  REST `accounts:delete` returned 403. Grant the role and the next run
+  drains the backlog. No data was deleted for those users (abort-on-
+  failure), so nothing is lost.
+
+---
+
+## 5. Job 4 — Stripe webhook reconciliation (FUTURE)
 
 Reserved for the post-Stripe-live-mode hardening. Not yet built.
 When ready, add a third job here that calls a yet-to-be-built
@@ -201,6 +286,31 @@ endpoint reconciling local `StripeSubscription` against
 
 These are GCP-console actions that aren't in the code path. Track
 them off this runbook so they don't fall through the cracks.
+
+### §6b — Firebase Auth admin grant for the deletion executor (REQUIRED to arm Job 3)
+
+- **Why:** The account-deletion executor (§4a) deletes the Firebase
+  Auth identity via the Identity Platform Admin REST API using the
+  WIF service account (`GCP_SERVICE_ACCOUNT_EMAIL`,
+  `vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com`). That
+  SA can currently mint tokens for Cloud SQL but is **not** authorised
+  for Identity Platform. Until this grant exists, every deletion run
+  returns `failures[].identityStatus: "failed"` and **safely deletes
+  nothing** (abort-on-failure — see §4a). This is the one prerequisite
+  that "arms" the executor.
+- **How (one-time):**
+  ```bash
+  gcloud projects add-iam-policy-binding monitrax-479700 \
+    --member="serviceAccount:vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com" \
+    --role="roles/firebaseauth.admin"
+  ```
+  (`roles/firebaseauth.admin` includes `firebaseauth.users.delete` +
+  `firebaseauth.users.get`. A custom role with just those two
+  permissions is the least-privilege alternative if preferred — see
+  `docs/operational/security/02_IAM_AND_PERMISSIONS.md`.)
+- **Verify:** force-run Job 3 (§4a verification) → expect
+  `data.failed: 0` (or only non-identity failures).
+- **Effort:** ~2 minutes of Reza-time in Cloud Shell / console.
 
 ### CMEK (Customer-Managed Encryption Keys) on Cloud SQL
 
