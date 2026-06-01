@@ -26,6 +26,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   trailNavItems,
@@ -37,11 +38,18 @@ import { EditorialNavRow } from './EditorialNavRow';
 export interface EditorialSidebarProps {
   /** Page-level user context — surface name + avatar at the bottom. */
   user?: { name: string; email?: string };
+  /**
+   * Sign-out handler. When provided, the account row renders a LogOut
+   * icon button to the right of the user name. Regression fix
+   * (2026-06-01) — restoring the pre-Phase R2b desktop sign-out that
+   * was dropped in the chrome swap (commit 810d849).
+   */
+  onSignOut?: () => void;
   /** Optional extra classes for the outer aside. */
   className?: string;
 }
 
-export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
+export function EditorialSidebar({ user, onSignOut, className }: EditorialSidebarProps) {
   const pathname = usePathname() ?? '/dashboard';
   const active = findActiveNavItem(pathname, trailNavItems);
 
@@ -126,27 +134,48 @@ export function EditorialSidebar({ user, className }: EditorialSidebarProps) {
           dataTour={settingsNavItem.tourId}
         />
         {user && (
-          <Link
-            href="/dashboard/settings/profile"
-            className="mt-2 flex items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-editorial-warm"
-          >
-            <span
-              aria-hidden
-              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-emerald-chip text-[12px] font-semibold text-editorial-emerald"
+          // Account row — Link wraps the avatar + name (taps go to
+          // /dashboard/settings/profile), a separate inline Sign-out
+          // button sits at the right. Nested-interactive split: the
+          // outer container is a flex row, the Link covers the
+          // identity area, the button is a sibling so click targets
+          // never overlap. Sign-out renders only when onSignOut is
+          // provided (back-compat for callers that don't wire auth).
+          <div className="mt-2 flex items-center gap-2 rounded-lg pl-3 pr-1.5 py-1.5 transition-colors hover:bg-editorial-warm">
+            <Link
+              href="/dashboard/settings/profile"
+              className="flex min-w-0 flex-1 items-center gap-3"
+              aria-label={`Open profile for ${user.name}`}
             >
-              {user.name.slice(0, 1).toUpperCase()}
-            </span>
-            <span className="flex min-w-0 flex-col">
-              <span className="truncate text-[13px] font-medium text-editorial-ink">
-                {user.name}
+              <span
+                aria-hidden
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-editorial-emerald-chip text-[12px] font-semibold text-editorial-emerald"
+              >
+                {user.name.slice(0, 1).toUpperCase()}
               </span>
-              {user.email && (
-                <span className="truncate text-[11px] text-editorial-slate">
-                  {user.email}
+              <span className="flex min-w-0 flex-col">
+                <span className="truncate text-[13px] font-medium text-editorial-ink">
+                  {user.name}
                 </span>
-              )}
-            </span>
-          </Link>
+                {user.email && (
+                  <span className="truncate text-[11px] text-editorial-slate">
+                    {user.email}
+                  </span>
+                )}
+              </span>
+            </Link>
+            {onSignOut && (
+              <button
+                type="button"
+                onClick={onSignOut}
+                aria-label="Sign out"
+                title="Sign out"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-editorial-slate transition-colors hover:bg-red-50 hover:text-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
+              >
+                <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </aside>

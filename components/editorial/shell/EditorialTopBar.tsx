@@ -40,6 +40,16 @@ export interface EditorialTopBarProps {
    * links to `/dashboard/settings/profile` on desktop.
    */
   onAvatarClick?: () => void;
+  /**
+   * Optional chrome buttons rendered inline in the desktop right
+   * cluster between the search pill and the notification bell.
+   * Added 2026-06-01 to host the AI / Help / Feedback triggers so
+   * they stop colliding with the search pill (the bubbles were
+   * previously `fixed top-right` and overlapped the topbar's right
+   * cluster). The slot is `hidden md:flex` so mobile keeps its
+   * existing floating-bubble pattern via DashboardLayout.
+   */
+  chromeButtons?: React.ReactNode;
   className?: string;
 }
 
@@ -68,6 +78,7 @@ export function EditorialTopBar({
   borderOnScroll = true,
   onSearchClick,
   onAvatarClick,
+  chromeButtons,
   className,
 }: EditorialTopBarProps) {
   const [scrolled, setScrolled] = useState(false);
@@ -131,6 +142,17 @@ export function EditorialTopBar({
             <kbd className="rounded bg-editorial-paper px-1.5 py-0.5 text-[11px] font-medium text-editorial-slate ring-1 ring-editorial-divider">
               ⌘K
             </kbd>
+          </div>
+        )}
+
+        {/* Chrome buttons slot (desktop only) — hosts the AI / Help /
+            Feedback triggers passed in by DashboardLayout with
+            `placement="inline"`. Sits between the search pill and the
+            notification bell. Hidden on mobile (mobile keeps the
+            legacy floating-bubble pattern via DashboardLayout). */}
+        {chromeButtons && (
+          <div className="hidden items-center gap-2 md:flex">
+            {chromeButtons}
           </div>
         )}
 

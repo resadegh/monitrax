@@ -344,13 +344,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           `useOnboardingState.shouldShowResumeBanner`). The CSS lives in
           styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
       <div className="flex min-h-screen bg-editorial-ivory text-editorial-ink">
-        <EditorialSidebar user={{ name: user.name, email: user.email }} />
+        <EditorialSidebar
+          user={{ name: user.name, email: user.email }}
+          onSignOut={logout}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <EditorialTopBar
             user={{ name: user.name, email: user.email }}
             onSearchClick={() => setSearchOpen(true)}
             onAvatarClick={() => setMoreSheetOpen(true)}
+            chromeButtons={
+              // Inline AI / Feedback / Help buttons sit in the topbar's
+              // right cluster on desktop (resolves the bubble-vs-search
+              // collision flagged 2026-06-01). Order matches the legacy
+              // floating layout: 💬 feedback · 🤖 AI · ? help. Hidden
+              // when onboarding modals are open so they don't compete
+              // with the wizard's controls.
+              !showWelcomeModal && !showWizard ? (
+                <>
+                  <FeedbackButton placement="inline" />
+                  <AiChatButton placement="inline" />
+                  <HelpDrawerButton audiences={['consumer', 'compliance']} placement="inline" />
+                </>
+              ) : null
+            }
           />
 
           <main
@@ -396,13 +414,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         onSignOut={logout}
       />
 
-      {/* Floating chrome — hidden while onboarding modals are open so
-          they don't overlap the wizard's controls. */}
-      {!showWelcomeModal && !showWizard && <AiChatButton />}
+      {/* Floating chrome — MOBILE ONLY (2026-06-01). On desktop these
+          three buttons are rendered inline inside `EditorialTopBar`'s
+          right cluster via the `chromeButtons` slot above. The mobile
+          `<header className="md:hidden">` doesn't reserve space for
+          them in its right area, so they keep the fixed-top-right
+          floating treatment. Hidden while onboarding modals are open
+          so they don't overlap the wizard's controls. */}
       {!showWelcomeModal && !showWizard && (
-        <HelpDrawerButton audiences={['consumer', 'compliance']} />
+        <div className="md:hidden">
+          <AiChatButton />
+          <HelpDrawerButton audiences={['consumer', 'compliance']} />
+          <FeedbackButton />
+        </div>
       )}
-      {!showWelcomeModal && !showWizard && <FeedbackButton />}
 
       {/* Universal Search modal — wired to the editorial TopBar search
           pill via `setSearchOpen`. */}

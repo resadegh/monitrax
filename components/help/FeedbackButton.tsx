@@ -33,12 +33,22 @@ import { MessageSquarePlus } from 'lucide-react';
 import { FeedbackChatDrawer } from './FeedbackChatDrawer';
 
 interface FeedbackButtonProps {
+  /**
+   * Trigger placement (see `HelpDrawerButton` for the full rationale).
+   * `'fixed'` (default) for mobile floating; `'inline'` for the
+   * EditorialTopBar's right cluster.
+   */
+  placement?: 'fixed' | 'inline';
   /** Override the default top-right position (e.g. for embedding elsewhere). */
   className?: string;
 }
 
-export function FeedbackButton({ className = '' }: FeedbackButtonProps) {
+export function FeedbackButton({ placement = 'fixed', className = '' }: FeedbackButtonProps) {
   const [open, setOpen] = useState(false);
+  const positionClasses =
+    placement === 'fixed'
+      ? 'fixed top-3 right-[6.25rem] sm:top-4 sm:right-28 lg:top-5 lg:right-[7.5rem] z-40'
+      : '';
 
   return (
     <>
@@ -48,8 +58,7 @@ export function FeedbackButton({ className = '' }: FeedbackButtonProps) {
         aria-label="Send feedback"
         title="Send feedback"
         className={`
-          fixed top-3 right-[6.25rem] sm:top-4 sm:right-28 lg:top-5 lg:right-[7.5rem]
-          z-40
+          ${positionClasses}
           inline-flex items-center justify-center
           h-9 w-9 rounded-full
           bg-white/85 backdrop-blur-sm
