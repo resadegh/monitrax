@@ -299,4 +299,49 @@ N/A — `/forgot-password` is a **missing dead-link target route** (functional, 
 
 ### PR
 - Branch: `claude/auth-forgot-password-and-show-password-LFNFt`
+- Status: Merged (PR #962).
+
+---
+
+## Session: register-duplicate-email-message-LFNFt
+
+### Changes Made
+- **Type**: UX polish (auth) — friendly register error messages
+- **Scope**: `app/register/page.tsx` (`handleSubmit` catch)
+- **Context (Reza, live app):** "I created a new account with
+  reza.sadegh@ymail.com — it went through, didn't say the user exists, and
+  logged me in." **Investigation conclusion: NOT a bug.** `AuthContext.register`
+  only calls `createUserWithEmailAndPassword` (no "sign in existing user"
+  fallback); being logged in proves that call *succeeded*, which proves the
+  email had no production Firebase account. Reza confirmed via Admin Portal:
+  **exactly one** user for that email → no duplicate, "multiple accounts per
+  email" is off. The earlier "no reset email" is consistent — the account
+  didn't exist yet, so forgot-password's anti-enumeration path sent nothing.
+- **The real polish:** on a *genuine* duplicate, register showed the raw
+  Firebase string (`Firebase: Error (auth/email-already-in-use).`). Mapped the
+  common codes to friendly copy — most importantly `auth/email-already-in-use`
+  → "An account with this email already exists. Try signing in instead." (the
+  page already has a Sign in → link). Also `auth/invalid-email`,
+  `auth/weak-password`, `auth/too-many-requests`.
+
+### Files Modified
+- `app/register/page.tsx` — `handleSubmit` catch maps Firebase auth codes to
+  friendly messages.
+
+### Still open (console-side, not code)
+- **Password-reset email delivery:** now that the account exists, the real test
+  is forgot-password again. If no email arrives → GCP Identity Platform →
+  Templates → password-reset email (enable + verify sender domain). Documented
+  in `docs/operational/security/01_AUTHENTICATION.md`.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — copy/error-mapping change, no schema, no Prisma writes.
+
+### PR
+- Branch: `claude/register-duplicate-email-message-LFNFt`
 - Status: Draft (pending review)

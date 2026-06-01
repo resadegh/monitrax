@@ -149,7 +149,22 @@ export default function RegisterPage() {
       await captureConsent('SIGNUP');
       router.push('/dashboard');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      // Map Firebase auth codes to friendly copy. Most important: a duplicate
+      // email must clearly say so + point to sign-in (the raw Firebase string
+      // is opaque). createUserWithEmailAndPassword throws auth/email-already-in-use
+      // for a taken email — it never silently signs the existing user in.
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('auth/email-already-in-use')) {
+        setError('An account with this email already exists. Try signing in instead.');
+      } else if (message.includes('auth/invalid-email')) {
+        setError('Please enter a valid email address.');
+      } else if (message.includes('auth/weak-password')) {
+        setError('Please choose a stronger password (at least 8 characters).');
+      } else if (message.includes('auth/too-many-requests')) {
+        setError('Too many attempts. Please try again in a few minutes.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Registration failed');
+      }
     } finally {
       setIsLoading(false);
     }
