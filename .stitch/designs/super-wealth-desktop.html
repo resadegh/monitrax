@@ -7,19 +7,27 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f9f9f6; /* Warm ivory from config */
+            background-color: #FAFAF7; /* Warm ivory per request */
             overflow-x: hidden;
         }
         .glass-card {
             background: rgba(255, 255, 255, 0.7);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
+            border: 1px solid rgba(110, 165, 233, 0.15); /* Sky/Indigo hairline */
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+        .fund-tile {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border: 1px solid rgba(99, 102, 241, 0.1); /* Indigo hairline */
+            box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.05), 0 4px 8px -4px rgba(0, 0, 0, 0.03);
+            border-radius: 22px;
+            overflow: hidden;
         }
         .mesh-gradient-bg {
             position: fixed;
@@ -28,20 +36,44 @@
             right: 0;
             bottom: 0;
             z-index: -1;
-            background: 
-                radial-gradient(circle at 10% 20%, rgba(14, 165, 233, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(70, 72, 212, 0.05) 0%, transparent 40%);
+            background: radial-gradient(circle at 50% 20%, rgba(14, 165, 233, 0.08) 0%, transparent 60%);
         }
-        .primary-gradient {
-            background: linear-gradient(135deg, #0ea5e9 0%, #4648d4 100%);
+        .hero-glow {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120%;
+            height: 140%;
+            background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.12) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 70%);
+            z-index: -1;
+            pointer-events: none;
         }
-        .success-gradient-text {
-            background: linear-gradient(135deg, #006e2d 0%, #2db156 100%);
+        .sky-indigo-gradient-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .indigo-violet-gradient {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
+        }
+        .indigo-violet-text {
+            background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .watermark-icon {
+            position: absolute;
+            right: -20px;
+            bottom: -10px;
+            font-size: 140px !important;
+            opacity: 0.08;
+            color: #6366F1;
+            pointer-events: none;
+            z-index: 0;
         }
     </style>
 <script id="tailwind-config">
@@ -50,53 +82,20 @@
             theme: {
                 extend: {
                     "colors": {
-                        "error-container": "#ffdad6",
-                        "surface-container-high": "#e8e8e5",
-                        "tertiary-fixed-dim": "#62df7d",
-                        "inverse-surface": "#2f312f",
-                        "surface": "#f9f9f6",
-                        "on-tertiary-container": "#003c15",
-                        "tertiary": "#006e2d",
-                        "primary-container": "#0ea5e9",
-                        "on-surface-variant": "#3e4850",
-                        "error": "#ba1a1a",
-                        "on-secondary-fixed-variant": "#2f2ebe",
-                        "on-tertiary": "#ffffff",
-                        "primary-fixed-dim": "#89ceff",
-                        "secondary-container": "#6063ee",
-                        "outline": "#6e7881",
-                        "on-secondary-container": "#fffbff",
-                        "inverse-on-surface": "#f1f1ee",
-                        "on-secondary-fixed": "#07006c",
-                        "primary-fixed": "#c9e6ff",
-                        "surface-variant": "#e2e3e0",
-                        "on-background": "#1a1c1b",
-                        "surface-container-lowest": "#ffffff",
-                        "on-tertiary-fixed-variant": "#005320",
-                        "on-tertiary-fixed": "#002109",
-                        "on-error": "#ffffff",
-                        "on-surface": "#1a1c1b",
-                        "surface-bright": "#f9f9f6",
-                        "surface-container-highest": "#e2e3e0",
-                        "surface-dim": "#dadad7",
-                        "on-secondary": "#ffffff",
-                        "tertiary-container": "#2db156",
                         "primary": "#006591",
-                        "on-error-container": "#93000a",
-                        "surface-tint": "#006591",
-                        "outline-variant": "#bec8d2",
-                        "surface-container-low": "#f4f4f1",
                         "secondary": "#4648d4",
-                        "tertiary-fixed": "#7ffc97",
-                        "on-primary": "#ffffff",
-                        "background": "#f9f9f6",
-                        "on-primary-fixed": "#001e2f",
-                        "secondary-fixed": "#e1e0ff",
-                        "surface-container": "#eeeeeb",
-                        "on-primary-fixed-variant": "#004c6e",
-                        "secondary-fixed-dim": "#c0c1ff",
-                        "inverse-primary": "#89ceff",
-                        "on-primary-container": "#003751"
+                        "background": "#FAFAF7",
+                        "surface": "#f9f9f6",
+                        "on-surface": "#1a1c1b",
+                        "on-surface-variant": "#3e4850",
+                        "outline": "#6e7881",
+                        "outline-variant": "#bec8d2",
+                        "primary-container": "#0ea5e9",
+                        "secondary-container": "#6063ee",
+                        "tertiary-container": "#2db156",
+                        "tertiary": "#006e2d",
+                        "on-primary-container": "#003751",
+                        "surface-container": "#eeeeeb"
                     },
                     "borderRadius": {
                         "DEFAULT": "1rem",
@@ -113,234 +112,262 @@
                         "margin-mobile": "20px",
                         "gutter": "24px",
                         "stack-xl": "64px"
-                    },
-                    "fontFamily": {
-                        "body-md": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "headline-md": ["Inter"],
-                        "label-md": ["Inter"],
-                        "display-xl-mobile": ["Inter"],
-                        "label-sm": ["Inter"],
-                        "headline-sm": ["Inter"],
-                        "display-lg": ["Inter"],
-                        "display-xl": ["Inter"]
-                    },
-                    "fontSize": {
-                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
-                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
-                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
-                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
-                        "display-xl-mobile": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
-                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
-                        "headline-sm": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
-                        "display-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.04em", "fontWeight": "600"}]
                     }
-                },
-            },
+                }
+            }
         }
     </script>
 </head>
 <body class="text-on-background">
 <div class="mesh-gradient-bg"></div>
 <div class="flex">
-<!-- Side Navigation (Authority Source: SideNavBar JSON) -->
+<!-- Side Navigation -->
 <aside class="hidden md:flex flex-col h-screen p-stack-md sticky left-0 top-0 bg-surface/80 backdrop-blur-2xl border-r border-white/40 shadow-xl w-64 z-50">
 <div class="mb-stack-xl px-4">
-<h1 class="font-headline-sm text-headline-sm font-black text-primary">Monitrax</h1>
-<p class="text-label-md font-label-md text-on-surface-variant">Wealth Management</p>
+<h1 class="font-bold text-2xl text-primary">Monitrax</h1>
+<p class="text-sm font-medium text-on-surface-variant">Wealth Management</p>
 </div>
 <nav class="flex-1 space-y-2">
 <a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="font-label-md text-label-md">Dashboard</span>
+<span class="material-symbols-outlined">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
 </a>
 <a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
-<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
-<span class="font-label-md text-label-md">Investments</span>
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="text-sm font-medium">Investments</span>
 </a>
-<a class="flex items-center gap-3 bg-primary-container/30 text-on-primary-container font-semibold rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
-<span class="material-symbols-outlined" data-icon="savings">savings</span>
-<span class="font-label-md text-label-md">Superannuation</span>
-</a>
-<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
-<span class="material-symbols-outlined" data-icon="trending_up">trending_up</span>
-<span class="font-label-md text-label-md">Wealth Plan</span>
+<a class="flex items-center gap-3 bg-primary-container/20 text-primary font-semibold rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">savings</span>
+<span class="text-sm font-medium">Superannuation</span>
 </a>
 <a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
-<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
-<span class="font-label-md text-label-md">Reports</span>
+<span class="material-symbols-outlined">trending_up</span>
+<span class="text-sm font-medium">Wealth Plan</span>
+</a>
+<a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3 transition-all hover:translate-x-1 duration-300" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-sm font-medium">Reports</span>
 </a>
 </nav>
 <div class="mt-auto space-y-2 border-t border-white/20 pt-stack-md">
 <a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3" href="#">
-<span class="material-symbols-outlined" data-icon="help">help</span>
-<span class="font-label-md text-label-md">Support</span>
+<span class="material-symbols-outlined">help</span>
+<span class="text-sm font-medium">Support</span>
 </a>
 <a class="flex items-center gap-3 text-on-surface-variant hover:bg-surface-variant/50 rounded-lg px-4 py-3" href="#">
-<span class="material-symbols-outlined" data-icon="logout">logout</span>
-<span class="font-label-md text-label-md">Sign Out</span>
+<span class="material-symbols-outlined">logout</span>
+<span class="text-sm font-medium">Sign Out</span>
 </a>
 </div>
 </aside>
-<main class="flex-1 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg pb-stack-xl">
+<main class="flex-1 max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop py-stack-lg pb-stack-xl relative">
 <!-- Header Section -->
 <header class="flex flex-col md:flex-row md:items-center justify-between gap-gutter mb-stack-xl">
 <div>
-<h2 class="font-display-xl-mobile md:font-display-lg text-display-xl-mobile md:text-display-lg tracking-tight text-primary">Superannuation</h2>
-<p class="font-body-lg text-body-lg text-on-surface-variant mt-2">Your retirement is wealth too — every fund, in one place.</p>
+<h2 class="text-4xl md:text-5xl font-bold tracking-tight text-primary">Superannuation</h2>
+<p class="text-lg text-on-surface-variant mt-2">Your retirement is wealth too — every fund, in one place.</p>
 </div>
-<button class="primary-gradient text-on-primary font-label-md text-label-md px-6 py-3 rounded-full flex items-center gap-2 shadow-lg active:scale-95 transition-transform">
-<span class="material-symbols-outlined text-[20px]" data-icon="add">add</span>
-                    Add super fund
-                </button>
+<button class="indigo-violet-gradient text-white font-semibold px-6 py-3 rounded-full flex items-center gap-2 shadow-lg active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[20px]">add</span>
+                Add super fund
+            </button>
 </header>
 <!-- Hero Summary Card -->
-<section class="glass-card rounded-xl p-stack-lg mb-gutter relative overflow-hidden">
-<!-- Subtle glow effect -->
-<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary-container/20 blur-[80px] rounded-full"></div>
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-stack-xl items-end">
+<div class="relative mb-gutter">
+<div class="hero-glow"></div>
+<section class="glass-card rounded-[28px] p-8 md:p-10 relative overflow-hidden">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+<span class="text-xs font-bold text-on-surface-variant/60 uppercase tracking-widest">YOUR SUPER</span>
+<div class="flex items-center gap-2 px-4 py-1.5 bg-primary-container/10 border border-primary-container/20 rounded-full">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="text-sm font-semibold text-primary">Stage I — Invest</span>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-10">
 <div class="lg:col-span-1">
-<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Total super balance</span>
-<div class="mt-2">
-<h3 class="font-display-xl text-display-xl success-gradient-text">$284,500</h3>
+<h3 class="text-5xl md:text-6xl font-bold sky-indigo-gradient-text tabular-nums">$284,500</h3>
+<p class="text-sm text-on-surface-variant mt-2 font-medium">Total Portfolio Value</p>
 </div>
+<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-4 backdrop-blur-sm">
+<span class="text-[10px] uppercase font-bold text-on-surface-variant/60 tracking-wider">Tax-free component</span>
+<p class="text-xl font-bold mt-1 text-on-surface">$96,200</p>
 </div>
-<div class="lg:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-gutter">
-<div class="border-l-2 border-primary-container/30 pl-4">
-<span class="font-label-sm text-label-sm text-on-surface-variant">Tax-free component</span>
-<p class="font-headline-sm text-headline-sm mt-1">$96,200</p>
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-2xl p-4 backdrop-blur-sm">
+<span class="text-[10px] uppercase font-bold text-on-surface-variant/60 tracking-wider">Taxable component</span>
+<p class="text-xl font-bold mt-1 text-on-surface">$188,300</p>
 </div>
-<div class="border-l-2 border-primary-container/30 pl-4">
-<span class="font-label-sm text-label-sm text-on-surface-variant">Taxable component</span>
-<p class="font-headline-sm text-headline-sm mt-1">$188,300</p>
-</div>
-<div class="border-l-2 border-tertiary-container/30 pl-4">
-<span class="font-label-sm text-label-sm text-on-surface-variant">Contributions this year</span>
-<p class="font-headline-sm text-headline-sm mt-1 text-tertiary">$14,820</p>
+<div class="bg-tertiary/5 border border-tertiary/10 rounded-2xl p-4 backdrop-blur-sm">
+<span class="text-[10px] uppercase font-bold text-on-surface-variant/60 tracking-wider">Contributions YTD</span>
+<p class="text-xl font-bold mt-1 text-tertiary">$14,820</p>
 </div>
 </div>
 </div>
-<div class="mt-stack-xl">
-<div class="flex items-center justify-between mb-2">
-<span class="font-label-sm text-label-sm font-semibold">Fund Allocation</span>
+<div class="mt-12">
+<div class="flex items-center justify-between mb-3">
+<span class="text-xs font-bold text-on-surface-variant/80 uppercase tracking-wider">Asset Allocation</span>
 <div class="flex gap-4">
 <div class="flex items-center gap-2">
-<span class="w-2 h-2 rounded-full bg-primary"></span>
-<span class="font-label-sm text-label-sm">AustralianSuper</span>
+<span class="w-2.5 h-2.5 rounded-full bg-primary shadow-sm shadow-primary/30"></span>
+<span class="text-xs font-semibold text-on-surface-variant">AustralianSuper</span>
 </div>
 <div class="flex items-center gap-2">
-<span class="w-2 h-2 rounded-full bg-secondary"></span>
-<span class="font-label-sm text-label-sm">Hostplus</span>
+<span class="w-2.5 h-2.5 rounded-full bg-secondary shadow-sm shadow-secondary/30"></span>
+<span class="text-xs font-semibold text-on-surface-variant">Hostplus</span>
 </div>
 </div>
 </div>
-<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden flex">
+<div class="h-1.5 w-full bg-surface-container rounded-full overflow-hidden flex shadow-inner">
 <div class="h-full bg-primary" style="width: 71%;"></div>
 <div class="h-full bg-secondary" style="width: 29%;"></div>
 </div>
 </div>
 </section>
+</div>
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
 <!-- Contribution Caps Panel -->
-<section class="lg:col-span-5 flex flex-col gap-gutter">
-<div class="glass-card rounded-xl p-stack-lg flex-1">
-<h4 class="font-headline-sm text-headline-sm mb-stack-lg flex items-center justify-between">
-                            Contribution caps · 2025-26
-                            <span class="material-symbols-outlined text-outline" data-icon="info">info</span>
+<section class="lg:col-span-5">
+<div class="glass-card rounded-[22px] p-8 h-full">
+<h4 class="text-xl font-bold mb-8 flex items-center justify-between">
+                        Contribution Caps
+                        <span class="text-sm font-normal text-on-surface-variant">2025-26</span>
 </h4>
-<div class="space-y-stack-xl">
-<!-- Progress 1 -->
+<div class="space-y-10">
 <div>
-<div class="flex justify-between mb-2">
-<span class="font-label-md text-label-md">Concessional (before-tax)</span>
-<span class="font-label-md text-label-md font-bold text-primary">$14,820 / $30,000</span>
+<div class="flex justify-between mb-3 text-sm">
+<span class="font-medium text-on-surface-variant">Concessional (before-tax)</span>
+<span class="font-bold text-primary">$14,820 <span class="text-on-surface-variant/40 font-normal">/ $30,000</span></span>
 </div>
-<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
-<div class="h-full bg-tertiary-container rounded-full transition-all duration-1000" style="width: 49.4%;"></div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner">
+<div class="h-full bg-tertiary-container rounded-full" style="width: 49.4%;"></div>
 </div>
 </div>
-<!-- Progress 2 -->
 <div>
-<div class="flex justify-between mb-2">
-<span class="font-label-md text-label-md">Non-concessional (after-tax)</span>
-<span class="font-label-md text-label-md font-bold text-on-surface-variant">$0 / $120,000</span>
+<div class="flex justify-between mb-3 text-sm">
+<span class="font-medium text-on-surface-variant">Non-concessional (after-tax)</span>
+<span class="font-bold text-on-surface-variant">$0 <span class="text-on-surface-variant/40 font-normal">/ $120,000</span></span>
 </div>
-<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
-<div class="h-full bg-outline-variant rounded-full" style="width: 0%;"></div>
+<div class="h-3 w-full bg-surface-container rounded-full overflow-hidden shadow-inner">
+<div class="h-full bg-outline-variant/30" style="width: 0%;"></div>
 </div>
 </div>
 </div>
-<div class="mt-stack-xl bg-primary-container/10 p-4 rounded-lg flex gap-3 border border-primary-container/20">
-<span class="material-symbols-outlined text-primary" data-icon="lightbulb" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
-<p class="font-label-md text-label-md text-on-primary-fixed-variant leading-relaxed">
-                                You have <span class="font-bold">$15,180</span> remaining in your concessional cap. Consider a personal contribution to reduce your taxable income.
-                            </p>
+<div class="mt-10 bg-[#FFF9E6] p-5 rounded-2xl flex gap-4 border border-yellow-200/50 shadow-sm">
+<div class="w-10 h-10 rounded-full bg-yellow-400/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-yellow-700" style="font-variation-settings: 'FILL' 1;">lightbulb</span>
+</div>
+<p class="text-sm text-yellow-900 leading-relaxed">
+                            You have <span class="font-bold">$15,180</span> remaining in your concessional cap. Consider a personal contribution to reduce your taxable income.
+                        </p>
 </div>
 </div>
 </section>
-<!-- Your Funds Section -->
-<section class="lg:col-span-7">
-<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
-<!-- Tile 1 -->
-<div class="glass-card rounded-xl p-stack-md relative transition-all hover:scale-[1.02] cursor-pointer group">
-<div class="absolute top-0 left-0 w-1.5 h-12 bg-primary rounded-tr-md rounded-br-md"></div>
-<div class="flex justify-between items-start mb-stack-md ml-2">
+<!-- Fund Tiles Section -->
+<section class="lg:col-span-7 flex flex-col gap-gutter">
+<div class="grid grid-cols-1 md:grid-cols-1 gap-gutter">
+<!-- AustralianSuper Tile -->
+<div class="fund-tile relative p-6 transition-all hover:translate-y-[-4px] group">
+<div class="absolute top-0 left-0 w-full h-[3px] indigo-violet-gradient"></div>
+<span class="material-symbols-outlined watermark-icon" style="font-variation-settings: 'wght' 200;">account_balance</span>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-11 h-11 rounded-[14px] indigo-violet-gradient flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
 <div>
-<h5 class="font-headline-sm text-headline-sm">AustralianSuper</h5>
-<p class="font-label-md text-label-md text-on-surface-variant">My Super</p>
+<span class="text-[10px] font-bold indigo-violet-text uppercase tracking-[0.1em]">SUPER FUND</span>
+<h5 class="text-xl font-bold text-on-surface leading-tight">AustralianSuper</h5>
+<p class="text-sm text-on-surface-variant/70">My Super</p>
 </div>
-<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" data-icon="open_in_new">open_in_new</span>
 </div>
-<div class="mb-stack-lg ml-2">
-<p class="font-display-lg text-display-lg">$201,300</p>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/40 transition-colors">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/40 transition-colors">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
 </div>
-<div class="flex flex-wrap gap-2 ml-2">
-<span class="px-3 py-1 bg-surface-container rounded-full font-label-sm text-label-sm">Balanced</span>
-<span class="px-3 py-1 bg-tertiary/10 text-tertiary rounded-full font-label-sm text-label-sm flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="trending_up">trending_up</span>
+</div>
+<div class="mb-6">
+<p class="text-3xl font-bold tabular-nums text-on-surface">$201,300</p>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-6">
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-[12px] p-3">
+<span class="text-[9px] uppercase font-bold text-on-surface-variant/60">Tax-Free</span>
+<p class="text-sm font-bold">$72,000</p>
+</div>
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-[12px] p-3">
+<span class="text-[9px] uppercase font-bold text-on-surface-variant/60">Taxable</span>
+<p class="text-sm font-bold">$129,300</p>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="px-3 py-1 bg-[#E1F2E8] text-[#006e2d] rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
                                     1yr +8.2%
                                 </span>
+<span class="px-3 py-1 bg-white/50 backdrop-blur-sm border border-outline-variant/20 rounded-full text-xs font-medium text-on-surface-variant">Balanced</span>
+<span class="px-3 py-1 bg-white/50 backdrop-blur-sm border border-outline-variant/20 rounded-full text-xs font-medium text-on-surface-variant">ID: 94827103</span>
 </div>
-<div class="mt-4 pt-4 border-t border-white/20 ml-2">
-<p class="font-label-sm text-label-sm text-on-surface-variant">Member: 94827103</p>
+<button class="w-full indigo-violet-gradient text-white font-semibold py-3.5 rounded-[14px] shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                                View details
+                                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
 </div>
 </div>
-<!-- Tile 2 -->
-<div class="glass-card rounded-xl p-stack-md relative transition-all hover:scale-[1.02] cursor-pointer group">
-<div class="absolute top-0 left-0 w-1.5 h-12 bg-secondary rounded-tr-md rounded-br-md"></div>
-<div class="flex justify-between items-start mb-stack-md ml-2">
+<!-- Hostplus Tile -->
+<div class="fund-tile relative p-6 transition-all hover:translate-y-[-4px] group">
+<div class="absolute top-0 left-0 w-full h-[3px] indigo-violet-gradient"></div>
+<span class="material-symbols-outlined watermark-icon" style="font-variation-settings: 'wght' 200;">account_balance</span>
+<div class="relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-11 h-11 rounded-[14px] indigo-violet-gradient flex items-center justify-center shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
 <div>
-<h5 class="font-headline-sm text-headline-sm">Hostplus</h5>
-<p class="font-label-md text-label-md text-on-surface-variant">Admin Fee Saver</p>
+<span class="text-[10px] font-bold indigo-violet-text uppercase tracking-[0.1em]">SUPER FUND</span>
+<h5 class="text-xl font-bold text-on-surface leading-tight">Hostplus</h5>
+<p class="text-sm text-on-surface-variant/70">Admin Fee Saver</p>
 </div>
-<span class="material-symbols-outlined text-on-surface-variant group-hover:text-secondary transition-colors" data-icon="open_in_new">open_in_new</span>
 </div>
-<div class="mb-stack-lg ml-2">
-<p class="font-display-lg text-display-lg">$83,200</p>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/40 transition-colors">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/40 transition-colors">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
 </div>
-<div class="flex flex-wrap gap-2 ml-2">
-<span class="px-3 py-1 bg-surface-container rounded-full font-label-sm text-label-sm">Indexed High Growth</span>
-<span class="px-3 py-1 bg-tertiary/10 text-tertiary rounded-full font-label-sm text-label-sm flex items-center gap-1">
-<span class="material-symbols-outlined text-[14px]" data-icon="trending_up">trending_up</span>
+</div>
+<div class="mb-6">
+<p class="text-3xl font-bold tabular-nums text-on-surface">$83,200</p>
+</div>
+<div class="grid grid-cols-2 gap-3 mb-6">
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-[12px] p-3">
+<span class="text-[9px] uppercase font-bold text-on-surface-variant/60">Tax-Free</span>
+<p class="text-sm font-bold">$24,200</p>
+</div>
+<div class="bg-indigo-500/5 border border-indigo-500/10 rounded-[12px] p-3">
+<span class="text-[9px] uppercase font-bold text-on-surface-variant/60">Taxable</span>
+<p class="text-sm font-bold">$59,000</p>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 mb-8">
+<span class="px-3 py-1 bg-[#E1F2E8] text-[#006e2d] rounded-full text-xs font-bold flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">trending_up</span>
                                     1yr +9.4%
                                 </span>
+<span class="px-3 py-1 bg-white/50 backdrop-blur-sm border border-outline-variant/20 rounded-full text-xs font-medium text-on-surface-variant">Indexed High Growth</span>
+<span class="px-3 py-1 bg-white/50 backdrop-blur-sm border border-outline-variant/20 rounded-full text-xs font-medium text-on-surface-variant">ID: 11029384</span>
 </div>
-<div class="mt-4 pt-4 border-t border-white/20 ml-2">
-<p class="font-label-sm text-label-sm text-on-surface-variant">Member: 11029384</p>
+<button class="w-full indigo-violet-gradient text-white font-semibold py-3.5 rounded-[14px] shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                                View details
+                                <span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
 </div>
-</div>
-</div>
-<!-- Market Insights (Extra contextual value) -->
-<div class="mt-gutter glass-card rounded-xl p-stack-md flex items-center gap-gutter">
-<img alt="Market Insights" class="w-24 h-24 rounded-lg object-cover" data-alt="A professional close-up of a digital stock market chart showing upward trends in deep blues and vibrant greens. The lighting is crisp and modern, reflecting a premium financial dashboard aesthetic. The mood is optimistic and professional, suggesting steady growth and financial intelligence in an Australian wealth management context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBBacT_AM33USP4hpa1wigZT5x1Vk7e5ib1xwZ3tLHu_Qh5LR4QAMvtV3oPh4Z6kjmog9Z2Jl7PUoLmJWGvZe_OdGcZLDXBubiz5MLY89iqpwLf7nAOYTNYcuoi1Km6Cs5vP-ilNIxiHEnacnFua3kzxuCdcF0M_z3Y5Jk5jThw-GTkXfB91gIgPRqxaE3rjkir5EfmKiDqTR-72-UfuEPT6_voOZJcZPrnRXjq3Gi4yjd1rup478solFZrSSLbNlG2alIP9FP6aMU"/>
-<div>
-<h6 class="font-headline-sm text-headline-sm">Retirement Outlook</h6>
-<p class="font-body-md text-body-md text-on-surface-variant mt-1">Based on your current trajectory, you're on track for a 'Comfortable' retirement by age 62.</p>
-<a class="inline-flex items-center gap-1 text-primary font-label-md text-label-md mt-2 hover:underline" href="#">
-                                Run detailed simulation
-                                <span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
-</a>
 </div>
 </div>
 </section>
@@ -348,50 +375,36 @@
 </main>
 </div>
 <!-- Bottom Navigation for Mobile -->
-<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 md:hidden bg-surface/90 backdrop-blur-lg border-t border-white/40 shadow-[0_-4px_20px_0_rgba(0,0,0,0.05)] rounded-t-lg">
-<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
-<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
-<span class="font-label-sm text-label-sm-mobile">Wealth</span>
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 md:hidden bg-white/80 backdrop-blur-xl border-t border-black/5 shadow-2xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="text-[10px] font-bold">Wealth</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
-<span class="material-symbols-outlined" data-icon="show_chart">show_chart</span>
-<span class="font-label-sm text-label-sm-mobile">Invest</span>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="text-[10px] font-bold">Invest</span>
 </a>
-<a class="flex flex-col items-center justify-center text-primary scale-110" href="#">
-<span class="material-symbols-outlined" data-icon="security" style="font-variation-settings: 'FILL' 1;">security</span>
-<span class="font-label-sm text-label-sm-mobile">Super</span>
+<a class="flex flex-col items-center justify-center text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="text-[10px] font-bold">Super</span>
 </a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant" href="#">
-<span class="material-symbols-outlined" data-icon="person">person</span>
-<span class="font-label-sm text-label-sm-mobile">Profile</span>
+<a class="flex flex-col items-center justify-center text-on-surface-variant/60" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-bold">Profile</span>
 </a>
 </nav>
 <script>
-        // Micro-interaction for balance hover
-        const heroCard = document.querySelector('.glass-card');
-        if (heroCard) {
-            heroCard.addEventListener('mousemove', (e) => {
-                const rect = heroCard.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                heroCard.style.setProperty('--mouse-x', `${x}px`);
-                heroCard.style.setProperty('--mouse-y', `${y}px`);
-            });
-        }
-
-        // Simple enter animation
-        document.addEventListener('DOMContentLoaded', () => {
-            const cards = document.querySelectorAll('.glass-card');
-            cards.forEach((card, index) => {
-                card.style.opacity = '0';
-                card.style.transform = 'translateY(20px)';
-                setTimeout(() => {
-                    card.style.transition = 'all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-                    card.style.opacity = '1';
-                    card.style.transform = 'translateY(0)';
-                }, 100 * index);
-            });
+    document.addEventListener('DOMContentLoaded', () => {
+        const elements = document.querySelectorAll('.glass-card, .fund-tile');
+        elements.forEach((el, index) => {
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(15px)';
+            setTimeout(() => {
+                el.style.transition = 'all 0.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+                el.style.opacity = '1';
+                el.style.transform = 'translateY(0)';
+            }, 80 * index);
         });
-    </script>
+    });
+</script>
 </body></html>

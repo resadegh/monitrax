@@ -1728,6 +1728,43 @@ A reviewer (human or future-Claude in a follow-up session) MUST reject any PR th
 
 - **Phase 48.7 (2026-05-26):** `/trail-method`, `/wealth-check`, `/trail-check` were "redesigned" via a sed-based token migration that bypassed Stitch. The pages now match the cosmos palette but retain v1 structural composition (long-form text bands, slider-card stacks, quiz steppers) instead of the cosmos design vocabulary (glass cards, hero patterns, motion choreography). Reza caught this and corrected it — this protocol is the structural fix so it can't recur. The proper Stitch-designed rebuilds ship as Phase 48.7.1 / the workstream that follows.
 
+### 18.7 Canonical design principles ARE the Stitch design guidance (MANDATORY)
+
+> **The design principles below are the single source of design truth. Every Stitch `generate`/`edit` prompt MUST be seeded with them so Stitch matches the Monitrax app — not Stitch's own generic defaults. And whenever the design language changes, these principles MUST be updated in the same PR.** Driven by Reza directive 2026-06-01: *"always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance."*
+
+This closes the gap Stitch otherwise leaves: left to its own defaults Stitch invents flat cards, cool-blue backgrounds, and chunky accent bars (see the 2026-06-01 Superannuation v1 pass, which had to be re-driven toward the real My Wealth glass vocabulary). Feeding the canonical principles into the prompt up front prevents that re-work.
+
+#### 18.7.1 The rule
+
+1. **Seed every Stitch prompt with these principles.** Before any `mcp__stitch__generate_screen_from_text` / `edit_screens` call for a Monitrax surface, the prompt MUST embed the relevant tokens + anatomy from §18.7.2 (or the matching internal/public design-system doc). Do NOT re-derive the look ad hoc and do NOT let Stitch's default design system stand unchallenged.
+2. **In-app surfaces (`/dashboard/*`) use the internal design system** documented in `08_BRAND_UI_DESIGN.md` + `06_UI_UX_FOUNDATION.md` + Phase 39 (My Wealth glass language). **Public surfaces use the cosmos design system** (`.stitch/SITE.md`, Phase 48). Pick the right one for the surface; never cross-contaminate (no cosmos tokens in-app, no v1 amber/stone tokens on public).
+3. **Keep them current.** Any PR that changes the design language (new token, new tile/hero pattern, palette shift, motion rule, glyph) MUST update these principles in the SAME PR — here in §18.7.2 AND in the canonical doc (`06_UI_UX_FOUNDATION.md` / `08_BRAND_UI_DESIGN.md` / the relevant Phase doc) per the §16.3 matrix. Stale design principles are a process violation exactly like a stale runbook.
+
+#### 18.7.2 Monitrax in-app design principles digest (My Wealth glass vocabulary — Phase 39)
+
+Canonical source files: `components/properties/PropertyTile.tsx`, `components/properties/PropertiesHero.tsx`, `components/wealth/wealthGlyphs.tsx`, `components/shell/motion.ts`. Full narrative: `docs/blueprint/PHASE_39_MY_WEALTH_REDESIGN.md`, `docs/architecture/06_UI_UX_FOUNDATION.md`, `docs/architecture/08_BRAND_UI_DESIGN.md`.
+
+| Principle | Token / rule |
+|---|---|
+| **Page surface** | Warm ivory `#FAFAF7` (never clinical white, never cool blue). Content max-width ~1200px, generous whitespace. |
+| **Glass** | `bg-card/70 backdrop-blur-xl` + 1px hairline border (entity-tinted, low opacity) + soft layered float shadow `shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)]`. Restraint over richness — premium *because* of what's removed. |
+| **Radius** | Hero `rounded-[28px]`, tile `rounded-[22px]`, KPI sub-box `rounded-[12px]`, interactive (button/pill) `rounded-[14px]` / `rounded-full`. No sharp corners. |
+| **Stage I (Invest) atmosphere** | Sky→indigo mesh glow behind hero (`rgba(14,165,233,…)` → `rgba(79,70,229,…)`) as a soft ambient glow, never a hard shape. Stage pill: `border-sky-400/25 bg-sky-500/10 text-sky-700`. |
+| **Per-entity sub-palette** | Home = amber; Investment/Super = sky→indigo / indigo→violet; Rental = teal/cyan. Each tile carries a 3px gradient top-accent strip + an oversized faint glyph watermark (~6–12% opacity) bleeding off the right edge. |
+| **Money signal** | Emerald `#16A34A` reserved for positive returns / equity gains only (gain pill `bg-emerald-500/12 text-emerald-700 ring-emerald-500/20`). Big balance numbers use the brand sky→indigo gradient text. Amber only for genuine caution (e.g. LVR > 80%, approaching a cap). No red except true loss. |
+| **Tile anatomy** | gradient icon badge (44px `rounded-[14px]`, gradient fill, 1px ring) + tiny uppercase gradient-text type label → title + muted subtitle → large `tabular-nums` balance → tinted-glass KPI mini-grid → gain pill + ghost pills (`border-foreground/10 bg-background/50 backdrop-blur`) → full-width gradient CTA + quiet edit/delete icons. |
+| **Typography** | Inter throughout. Confident `tabular-nums` numerals with tight tracking for money; warm, plain-English microcopy; `label-sm` uppercase tracked labels for categories. |
+| **Motion** | `appleEase = [0.25,0.46,0.45,0.94]`; `springSnap = { stiffness:320, damping:28, mass:0.8 }`; tile entrance 0.55s + 40ms stagger; hero 0.6s. Full `prefers-reduced-motion` support — every animation has a reduced fallback. |
+| **Glyphs** | Filled silhouettes, `viewBox 0 0 120 120`, `fill='currentColor'`, no strokes. Reuse `wealthGlyphs.tsx` (e.g. `SuperFilledGlyph` = classical column). Never invent a one-off glyph when one exists. |
+| **Behaviour-psychology** | Celebrate the next achievable action; normalise rather than shame; no false precision, no manufactured urgency, no invented numbers (a projection without an engine is a lie — cut it). |
+
+#### 18.7.3 Reviewer enforcement
+
+A reviewer (human or future-Claude) MUST reject any PR that:
+1. Generates/edits a Monitrax Stitch screen without seeding the §18.7.2 principles (or the matching public/internal design-system doc) into the prompt — evidence: the prompt text in the session changelog.
+2. Changes the design language without updating §18.7.2 AND the canonical `06_/08_/Phase` doc in the same PR.
+3. Lets Stitch's default design system (cool blue, flat cards, generic spacing) ship as the Monitrax look.
+
 ---
 
 ## ENFORCEMENT
@@ -1751,5 +1788,5 @@ A reviewer (human or future-Claude in a follow-up session) MUST reject any PR th
 
 ---
 
-*Last Updated: 2026-05-26*
-*Protocol Version: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY). Driven by Phase 48.7 (2026-05-26) where `/trail-method`, `/wealth-check`, `/trail-check` were "redesigned" via a sed-based token migration that bypassed Stitch — pages matched the palette but retained v1 structural composition. Reza directive 2026-05-26: "every UI UX design changes should be using stitch skill and MCP. this should be added to the critical instructions." Part 18 makes this structurally enforceable. Previous: 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
+*Last Updated: 2026-06-01*
+*Protocol Version: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
