@@ -177,7 +177,11 @@ ACTIVE / SOLD / WRITTEN_OFF assets all render as tiles. Inactive (sold/written-o
 
 **Behaviour-psychology (§0.1):** the amber caps insight celebrates the *next achievable action* (remaining concessional headroom + salary-sacrifice nudge from the optimisation engine) rather than shaming. Empty state ("Add your first super fund") frames super as wealth, not admin.
 
-**Out of scope (v1, deferred to v2):** manual per-contribution logging UI (the read-only cap meters cover the v1 need; `recentContributions` already flows from the API for a future detail view); the `SuperannuationAccount.concessionalCap`/`nonConcessionalCap` column-default refresh (27500/110000 → 30000/120000 — cosmetic, runtime already correct via `taxYearConfig`, needs a `prisma migrate dev` run per §12.12); retiring the duplicate `SUPERS` path in onboarding `InvestmentsStep`. All three logged in `IMPLEMENTATION_PLAN.md`.
+**Detail dialog (follow-up PR after #965):** the tile's "View details" CTA opens a read-only dialog — Overview (balance, tax-free/taxable components, 1yr/5yr returns, fund/nickname/member#/option) + Contributions tab (per-account concessional/non-concessional YTD totals + the `recentContributions` list from `GET /api/tax/super`). No new API. Closes the v1 shortcut where "View details" opened the edit form.
+
+**Out of scope (v2):** manual per-contribution logging UI (write path via `POST /api/tax/super/contributions`); the `SuperannuationAccount.concessionalCap`/`nonConcessionalCap` column-default refresh (27500/110000 → 30000/120000 — cosmetic, runtime already correct via `taxYearConfig`, needs a `prisma migrate dev` run per §12.12 — Dead Code #26).
+
+**Blocked (NOT a clean duplicate):** retiring the `SUPERS` option in onboarding `InvestmentsStep` — Reza flagged (2026-06-01) it may legitimately serve **SMSF** investment accounts, distinct from retail super. Needs an SMSF-model decision first (IMPLEMENTATION_PLAN Open Question #8 / Dead Code #27).
 
 ## 4. Mobile sticky-stack scroll pattern
 
