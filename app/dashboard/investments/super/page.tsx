@@ -24,11 +24,20 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Landmark, Plus, Lightbulb } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Landmark, Plus, Lightbulb, Edit2, PiggyBank } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { InvestmentsHero, type InvestmentsHeroSegment } from '@/components/investments/InvestmentsHero';
 import { SuperAccountTile } from '@/components/wealth/SuperAccountTile';
 import { SuperCapMeter } from '@/components/wealth/SuperCapMeter';
+
+interface SuperContributionRow {
+  id: string;
+  type: string;
+  amount: number;
+  date: string;
+  employerName: string | null;
+}
 
 interface SuperAccount {
   id: string;
@@ -41,6 +50,15 @@ interface SuperAccount {
   investmentOption: string | null;
   returns1Year: number | null;
   returns5Year: number | null;
+  contributions?: {
+    employerSG: number;
+    salarySacrifice: number;
+    personalDeductible: number;
+    personalNonDeductible: number;
+    totalConcessional: number;
+    totalNonConcessional: number;
+  };
+  recentContributions?: SuperContributionRow[];
 }
 
 interface SuperPosition {
@@ -92,6 +110,7 @@ export default function SuperannuationPage() {
   const [showDialog, setShowDialog] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SuperFormData>(EMPTY_FORM);
+  const [detailAccount, setDetailAccount] = useState<SuperAccount | null>(null);
 
   useEffect(() => {
     if (token) loadPosition();
@@ -134,6 +153,10 @@ export default function SuperannuationPage() {
     });
     setEditingId(account.id);
     setShowDialog(true);
+  };
+
+  const handleViewDetails = (account: SuperAccount) => {
+    setDetailAccount(account);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -286,7 +309,7 @@ export default function SuperannuationPage() {
               <SuperAccountTile
                 index={idx}
                 account={account}
-                onView={() => handleEdit(account)}
+                onView={() => handleViewDetails(account)}
                 onEdit={() => handleEdit(account)}
                 onDelete={() => handleDelete(account.id)}
               />
@@ -400,6 +423,165 @@ export default function SuperannuationPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Detail Dialog — read-only overview + contributions */}
+      <Dialog open={!!detailAccount} onOpenChange={(open) => !open && setDetailAccount(null)}>
+        <DialogContent className="flex max-h-[88vh] flex-col sm:max-w-[640px]">
+          <DialogHeader className="flex-shrink-0">
+            <DialogTitle className="flex items-center gap-2">
+              <Landmark className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              {detailAccount?.fundName || detailAccount?.name}
+            </DialogTitle>
+            <DialogDescription>
+              {detailAccount?.fundName && detailAccount?.name !== detailAccount?.fundName
+                ? detailAccount.name
+                : 'Super fund details'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {detailAccount && (
+            <Tabs defaultValue="overview" className="min-h-0 flex-1 overflow-y-auto pr-1">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="contributions">Contributions</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4 pt-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Balance</p>
+                  <p className="mt-0.5 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
+                    {formatCurrency(detailAccount.currentBalance)}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <DetailStat label="Tax-free" value={formatCurrency(detailAccount.taxFreeComponent)} />
+                  <DetailStat label="Taxable" value={formatCurrency(detailAccount.taxableComponent)} />
+                  {typeof detailAccount.returns1Year === 'number' && (
+                    <DetailStat
+                      label="1-year return"
+                      value={`${detailAccount.returns1Year >= 0 ? '+' : ''}${detailAccount.returns1Year.toFixed(1)}%`}
+                      accent={detailAccount.returns1Year >= 0 ? 'emerald' : 'amber'}
+                    />
+                  )}
+                  {typeof detailAccount.returns5Year === 'number' && (
+                    <DetailStat
+                      label="5-year return"
+                      value={`${detailAccount.returns5Year >= 0 ? '+' : ''}${detailAccount.returns5Year.toFixed(1)}%`}
+                      accent={detailAccount.returns5Year >= 0 ? 'emerald' : 'amber'}
+                    />
+                  )}
+                </div>
+
+                <div className="space-y-2 rounded-[14px] border border-foreground/[0.06] bg-background/40 p-4">
+                  <DetailRow label="Fund" value={detailAccount.fundName || '—'} />
+                  <DetailRow label="Nickname" value={detailAccount.name} />
+                  <DetailRow label="Member number" value={detailAccount.memberNumber || '—'} />
+                  <DetailRow label="Investment option" value={detailAccount.investmentOption || '—'} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="contributions" className="space-y-4 pt-4">
+                {detailAccount.contributions && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <DetailStat label="Concessional (YTD)" value={formatCurrency(detailAccount.contributions.totalConcessional)} />
+                    <DetailStat label="Non-concessional (YTD)" value={formatCurrency(detailAccount.contributions.totalNonConcessional)} />
+                  </div>
+                )}
+
+                {detailAccount.recentContributions && detailAccount.recentContributions.length > 0 ? (
+                  <div className="space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Recent contributions</p>
+                    {detailAccount.recentContributions.map((c) => (
+                      <div
+                        key={c.id}
+                        className="flex items-center justify-between rounded-[12px] border border-foreground/[0.06] bg-background/40 px-3.5 py-2.5"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-foreground">{formatContributionType(c.type)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(c.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            {c.employerName ? ` · ${c.employerName}` : ''}
+                          </p>
+                        </div>
+                        <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">{formatCurrency(c.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="py-8 text-center text-muted-foreground">
+                    <PiggyBank className="mx-auto mb-3 h-10 w-10 opacity-40" />
+                    <p className="text-sm">No contributions recorded yet.</p>
+                    <p className="text-xs">Contributions sync from your linked income and super activity.</p>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+
+          <div className="flex flex-shrink-0 justify-end gap-3 pt-4">
+            <Button variant="outline" onClick={() => setDetailAccount(null)}>
+              Close
+            </Button>
+            <Button
+              onClick={() => {
+                const acct = detailAccount;
+                setDetailAccount(null);
+                if (acct) handleEdit(acct);
+              }}
+            >
+              <Edit2 className="mr-2 h-4 w-4" />
+              Edit fund
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </DashboardLayout>
   );
+}
+
+function DetailStat({
+  label,
+  value,
+  accent = 'neutral',
+}: {
+  label: string;
+  value: string;
+  accent?: 'neutral' | 'emerald' | 'amber';
+}) {
+  const tone =
+    accent === 'emerald'
+      ? 'text-emerald-700 dark:text-emerald-300'
+      : accent === 'amber'
+      ? 'text-amber-700 dark:text-amber-300'
+      : 'text-foreground';
+  return (
+    <div className="rounded-[12px] border border-foreground/[0.06] bg-background/40 px-3.5 py-3">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-0.5 text-lg font-semibold tabular-nums ${tone}`}>{value}</p>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="truncate font-medium text-foreground">{value}</span>
+    </div>
+  );
+}
+
+/** Format a SuperContributionType enum value into plain English. */
+function formatContributionType(type: string): string {
+  const map: Record<string, string> = {
+    EMPLOYER_SG: 'Employer SG',
+    SALARY_SACRIFICE: 'Salary sacrifice',
+    PERSONAL_DEDUCTIBLE: 'Personal (deductible)',
+    PERSONAL_NON_DEDUCTIBLE: 'Personal (after-tax)',
+    SPOUSE: 'Spouse contribution',
+    GOVERNMENT_CO_CONTRIBUTION: 'Government co-contribution',
+    DOWNSIZER: 'Downsizer contribution',
+  };
+  return map[type] || type.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (m) => m.toUpperCase());
 }
