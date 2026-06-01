@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Superannuation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Shared Style Guidance Tokens -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-variant": "#e2e3e0",
+                    "secondary-fixed-dim": "#c0c1ff",
+                    "on-surface": "#1a1c1b",
+                    "outline-variant": "#bec8d2",
+                    "outline": "#6e7881",
+                    "surface-container-high": "#e8e8e5",
+                    "surface-dim": "#dadad7",
+                    "secondary": "#4648d4",
+                    "tertiary": "#006e2d",
+                    "on-tertiary-fixed-variant": "#005320",
+                    "surface-container-highest": "#e2e3e0",
+                    "primary-fixed-dim": "#89ceff",
+                    "on-primary-container": "#003751",
+                    "tertiary-fixed-dim": "#62df7d",
+                    "on-error-container": "#93000a",
+                    "on-tertiary-fixed": "#002109",
+                    "inverse-primary": "#89ceff",
+                    "on-secondary-fixed": "#07006c",
+                    "surface-tint": "#006591",
+                    "on-tertiary-container": "#003c15",
+                    "primary": "#006591",
+                    "primary-fixed": "#c9e6ff",
+                    "tertiary-fixed": "#7ffc97",
+                    "primary-container": "#0ea5e9",
+                    "error-container": "#ffdad6",
+                    "error": "#ba1a1a",
+                    "surface-container": "#eeeeeb",
+                    "on-surface-variant": "#3e4850",
+                    "on-primary-fixed": "#001e2f",
+                    "on-primary": "#ffffff",
+                    "surface-bright": "#f9f9f6",
+                    "on-secondary": "#ffffff",
+                    "secondary-fixed": "#e1e0ff",
+                    "surface": "#f9f9f6",
+                    "background": "#f9f9f6",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-fixed-variant": "#004c6e",
+                    "inverse-surface": "#2f312f",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#2db156",
+                    "on-secondary-fixed-variant": "#2f2ebe",
+                    "surface-container-low": "#f4f4f1",
+                    "inverse-on-surface": "#f1f1ee",
+                    "on-background": "#1a1c1b",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary-container": "#fffbff",
+                    "secondary-container": "#6063ee"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-md": "16px",
+                    "margin-desktop": "40px",
+                    "container-max": "1200px",
+                    "margin-mobile": "20px",
+                    "gutter": "24px",
+                    "stack-xl": "64px",
+                    "stack-lg": "32px",
+                    "stack-sm": "8px"
+            },
+            "fontFamily": {
+                    "display-xl": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "display-xl-mobile": ["Inter"]
+            },
+            "fontSize": {
+                    "display-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-xl-mobile": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.04em", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            color: #1a1c1b;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.2); /* Tinted indigo hairline */
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+        }
+        .mesh-glow {
+            position: absolute;
+            top: -20%;
+            left: -10%;
+            width: 140%;
+            height: 140%;
+            background: radial-gradient(circle at 30% 20%, #e0f2fe 0%, transparent 40%),
+                        radial-gradient(circle at 70% 60%, #c7d2fe 0%, transparent 50%);
+            z-index: -1;
+            filter: blur(40px);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0ea5e9 0%, #4648d4 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-button {
+            background: linear-gradient(135deg, #4648d4 0%, #6063ee 100%);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .watermark-glyph {
+            mask-image: linear-gradient(to right, transparent, black);
+            -webkit-mask-image: linear-gradient(to right, transparent, black);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col min-h-screen">
+<!-- Top AppBar (Mobile Only via shell_layout logic) -->
+<header class="flex justify-between items-center w-full px-5 h-16 sticky top-0 z-50 bg-surface/70 backdrop-blur-xl border-b border-white/40">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-bold tracking-tight text-primary">Monitrax</span>
+</div>
+<button class="gradient-button text-white px-4 py-2 rounded-[14px] text-label-sm font-semibold flex items-center gap-1 shadow-md active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[18px]">add</span>
+            Add super fund
+        </button>
+</header>
+<main class="flex-1 px-4 pb-24 pt-4 space-y-6 overflow-x-hidden relative">
+<!-- Hero Section -->
+<section class="relative">
+<div class="mesh-glow opacity-60"></div>
+<div class="glass-card rounded-[28px] p-6 relative overflow-hidden">
+<div class="flex justify-between items-start mb-4">
+<span class="text-[10px] font-extrabold tracking-[0.15em] text-outline uppercase">Your Super</span>
+<div class="bg-primary-container/10 border border-primary-container/20 px-3 py-1 rounded-full">
+<span class="text-[10px] font-bold text-primary">Stage I · Invest</span>
+</div>
+</div>
+<div class="mb-6">
+<h1 class="gradient-text text-[40px] leading-tight font-black tabular-nums tracking-tighter">$284,500</h1>
+<p class="text-on-surface-variant font-medium text-label-md">Total super balance</p>
+</div>
+<!-- Asset Allocation Bar -->
+<div class="space-y-2 mb-6">
+<div class="h-2.5 w-full bg-surface-container rounded-full flex overflow-hidden">
+<div class="h-full bg-primary-container" style="width: 70%;"></div>
+<div class="h-full bg-secondary-container" style="width: 30%;"></div>
+</div>
+<div class="flex gap-4">
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-primary-container"></div>
+<span class="text-[10px] font-bold text-on-surface-variant">Growth (70%)</span>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-secondary-container"></div>
+<span class="text-[10px] font-bold text-on-surface-variant">Defensive (30%)</span>
+</div>
+</div>
+</div>
+<!-- KPI Box Grid -->
+<div class="grid grid-cols-2 gap-3">
+<div class="bg-white/40 p-3 rounded-[12px] border border-white/40">
+<p class="text-[10px] font-semibold text-outline-variant mb-1">Tax-free</p>
+<p class="text-label-md font-bold text-on-surface tabular-nums">$96,200</p>
+</div>
+<div class="bg-white/40 p-3 rounded-[12px] border border-white/40">
+<p class="text-[10px] font-semibold text-outline-variant mb-1">Taxable</p>
+<p class="text-label-md font-bold text-on-surface tabular-nums">$188,300</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Contribution Caps Card -->
+<section>
+<div class="glass-card rounded-[22px] p-5">
+<div class="flex justify-between items-center mb-6">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Contribution caps</h2>
+<span class="text-label-sm text-outline font-bold">2025–26</span>
+</div>
+<div class="space-y-5">
+<!-- Progress Item 1 -->
+<div class="space-y-2">
+<div class="flex justify-between text-[11px] font-bold">
+<span class="text-on-surface-variant">Concessional (before-tax)</span>
+<span class="text-on-surface">$14,820 / $30,000</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full gradient-button" style="width: 49%;"></div>
+</div>
+</div>
+<!-- Progress Item 2 -->
+<div class="space-y-2">
+<div class="flex justify-between text-[11px] font-bold">
+<span class="text-on-surface-variant">Non-concessional (after-tax)</span>
+<span class="text-on-surface">$0 / $120,000</span>
+</div>
+<div class="h-2 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full gradient-button" style="width: 0%;"></div>
+</div>
+</div>
+<!-- Insight Note -->
+<div class="bg-[#FFF8E1] border border-amber-200/50 p-4 rounded-[14px] flex gap-3">
+<span class="material-symbols-outlined text-amber-600 text-[20px]">lightbulb</span>
+<p class="text-[13px] leading-relaxed text-amber-900 font-medium">
+                            You have <span class="font-bold">$15,180</span> remaining in your concessional cap. Consider salary sacrifice to reduce taxable income.
+                        </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Fund Tiles Vertical Stack -->
+<section class="space-y-4">
+<!-- Fund Tile 1 -->
+<div class="glass-card rounded-[22px] overflow-hidden relative">
+<div class="h-[3px] w-full bg-gradient-to-r from-secondary to-secondary-container"></div>
+<!-- Watermark Glyph -->
+<div class="absolute right-[-20px] bottom-0 opacity-[0.08] watermark-glyph">
+<span class="material-symbols-outlined text-[160px] text-secondary">account_balance</span>
+</div>
+<div class="p-5 relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h3 class="font-bold text-body-md text-on-surface">AustralianSuper</h3>
+<p class="text-label-sm text-outline-variant font-medium">My Super</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline-variant">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline-variant">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</div>
+<div class="flex justify-between items-end mb-6">
+<div>
+<p class="text-display-lg font-black text-on-surface tabular-nums">$201,300</p>
+<div class="flex gap-2 mt-2">
+<span class="bg-tertiary-container/10 text-tertiary font-bold text-[10px] px-2 py-0.5 rounded-full">+8.2%</span>
+<span class="border border-outline-variant/30 text-outline text-[10px] px-2 py-0.5 rounded-full">Balanced</span>
+<span class="border border-outline-variant/30 text-outline text-[10px] px-2 py-0.5 rounded-full">ID 8482700</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 mb-6">
+<div class="bg-surface-container-low/40 p-2.5 rounded-[12px] border border-white/20">
+<p class="text-[9px] font-bold text-outline uppercase tracking-wider">Tax-free</p>
+<p class="text-label-md font-bold text-on-surface-variant tabular-nums">$72,000</p>
+</div>
+<div class="bg-surface-container-low/40 p-2.5 rounded-[12px] border border-white/20">
+<p class="text-[9px] font-bold text-outline uppercase tracking-wider">Taxable</p>
+<p class="text-label-md font-bold text-on-surface-variant tabular-nums">$129,300</p>
+</div>
+</div>
+<button class="w-full gradient-button text-white font-bold py-3 rounded-[14px] flex justify-center items-center gap-1 shadow-lg shadow-indigo-200 active:scale-95 transition-all">
+                        View details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Fund Tile 2 -->
+<div class="glass-card rounded-[22px] overflow-hidden relative">
+<div class="h-[3px] w-full bg-gradient-to-r from-secondary to-secondary-container"></div>
+<div class="absolute right-[-20px] bottom-0 opacity-[0.08] watermark-glyph">
+<span class="material-symbols-outlined text-[160px] text-secondary">account_balance</span>
+</div>
+<div class="p-5 relative z-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-4">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white">
+<span class="material-symbols-outlined" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<h3 class="font-bold text-body-md text-on-surface">Hostplus</h3>
+<p class="text-label-sm text-outline-variant font-medium">Admin Fee Saver</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline-variant">
+<span class="material-symbols-outlined text-[18px]">edit</span>
+</button>
+<button class="w-8 h-8 rounded-full border border-outline-variant/30 flex items-center justify-center text-outline-variant">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+</button>
+</div>
+</div>
+<div class="flex justify-between items-end mb-6">
+<div>
+<p class="text-display-lg font-black text-on-surface tabular-nums">$83,200</p>
+<div class="flex gap-2 mt-2">
+<span class="bg-tertiary-container/10 text-tertiary font-bold text-[10px] px-2 py-0.5 rounded-full">+9.4%</span>
+<span class="border border-outline-variant/30 text-outline text-[10px] px-2 py-0.5 rounded-full">Indexed High Growth</span>
+<span class="border border-outline-variant/30 text-outline text-[10px] px-2 py-0.5 rounded-full">ID 11023304</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 mb-6">
+<div class="bg-surface-container-low/40 p-2.5 rounded-[12px] border border-white/20">
+<p class="text-[9px] font-bold text-outline uppercase tracking-wider">Tax-free</p>
+<p class="text-label-md font-bold text-on-surface-variant tabular-nums">$24,000</p>
+</div>
+<div class="bg-surface-container-low/40 p-2.5 rounded-[12px] border border-white/20">
+<p class="text-[9px] font-bold text-outline uppercase tracking-wider">Taxable</p>
+<p class="text-label-md font-bold text-on-surface-variant tabular-nums">$59,200</p>
+</div>
+</div>
+<button class="w-full gradient-button text-white font-bold py-3 rounded-[14px] flex justify-center items-center gap-1 shadow-lg shadow-indigo-200 active:scale-95 transition-all">
+                        View details <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (Mandatory Shell Mapping) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface/90 backdrop-blur-lg border-t border-white/40 shadow-[0_-4px_20px_0_rgba(0,0,0,0.05)] md:hidden">
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-sm text-label-sm-mobile">Wealth</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">show_chart</span>
+<span class="font-label-sm text-label-sm-mobile">Invest</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary scale-110">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">security</span>
+<span class="font-label-sm text-label-sm-mobile">Super</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-sm text-label-sm-mobile">Profile</span>
+</div>
+</nav>
+<script>
+        // Simple interactive effect for glass cards on scroll or touch
+        const cards = document.querySelectorAll('.glass-card');
+        cards.forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.98)';
+                card.style.transition = 'transform 0.2s ease-out';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>

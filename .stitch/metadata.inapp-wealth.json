@@ -1,0 +1,37 @@
+{
+  "name": "projects/5991501424852019479",
+  "projectId": "5991501424852019479",
+  "title": "Monitrax — In-App My Wealth (Phase 39.x)",
+  "visibility": "PRIVATE",
+  "projectType": "PROJECT_DESIGN",
+  "origin": "STITCH",
+  "note": "Separate Stitch project for IN-APP /dashboard surfaces (NOT the public cosmos redesign in metadata.json). Uses the internal My Wealth glass design system (CLAUDE.md §18.7.2 — warm-ivory #FAFAF7, glass cards, sky→indigo / indigo→violet Stage-I palette), NOT the public cosmos tokens. Every prompt here is seeded with the §18.7.2 principles per CLAUDE.md §18.7.",
+  "designTheme": {
+    "colorMode": "LIGHT",
+    "font": "INTER",
+    "overrideNeutralColor": "#fafaf7",
+    "overridePrimaryColor": "#0ea5e9",
+    "overrideSecondaryColor": "#6366f1",
+    "overrideTertiaryColor": "#16a34a"
+  },
+  "screens": {
+    "super-wealth-desktop": {
+      "id": "1c01d0c1e990458899afbf2f68d5a615",
+      "deviceType": "DESKTOP",
+      "title": "My Wealth → Superannuation (desktop, v2)",
+      "generatedAt": "2026-06-01T08:03:00.000000Z",
+      "artifacts": ".stitch/designs/super-wealth-desktop.{html,png}",
+      "reactPort": "app/dashboard/investments/super/page.tsx",
+      "scope": "v2 — applied the My Wealth glass vocabulary (column-glyph watermark, indigo→violet top strip, gradient icon badge, tinted-glass KPI sub-boxes, emerald gain pill, gradient CTA). v1 (2efefe2200b9459fb3bb100e921e0e99) was flat-card / cool-blue and re-driven toward the canonical look."
+    },
+    "super-wealth-mobile": {
+      "id": "e7a87730d34844ab8c170c9d86fc01b9",
+      "deviceType": "MOBILE",
+      "title": "My Wealth → Superannuation (mobile, 375px)",
+      "generatedAt": "2026-06-01T09:00:00.000000Z",
+      "artifacts": ".stitch/designs/super-wealth-mobile.{html,png}",
+      "reactPort": "app/dashboard/investments/super/page.tsx",
+      "scope": "Mobile reflow of the desktop pass: hero → contribution-caps card → vertically stacked fund tiles. Same glass vocabulary."
+    }
+  }
+}

@@ -391,3 +391,59 @@ N/A — `/forgot-password` is a **missing dead-link target route** (functional, 
 ### PR
 - Branch: `claude/auth-forgot-password-and-show-password-LFNFt`
 - Status: Draft (pending review)
+
+---
+
+## Session: brave-shannon-mr1ye — My Wealth → Superannuation (Phase 39.4) + §18.7 governance
+
+### Changes Made
+- **Type**: Feature + Governance + Doc-sync
+- **Scope**: My Wealth (TRAIL Stage I — Invest) — new Superannuation surface; shared cap-meter; CLAUDE.md design-principles rule.
+- **Origin**: Continuation of the Phase 39.4 design gate (PR #961, merged). Reza: "Continue."
+
+### What shipped
+1. **CLAUDE.md §18.7 (PR #961, merged)** — "Canonical design principles ARE the Stitch design guidance." Every Stitch prompt must seed the §18.7.2 My Wealth glass digest; the digest must be kept current in the same PR when the design language changes. Protocol → v2.2.
+2. **My Wealth → Superannuation page** (`/dashboard/investments/super`) — Stitch-first (desktop `1c01d0c1…`, mobile `e7a87730…`). Reuses the existing `/api/tax/super` endpoints; no new aggregation/snapshot logic.
+3. **`SuperCapMeter`** (`components/wealth/SuperCapMeter.tsx`) — canonical concessional/non-concessional cap meters (§12.2 SSOT). Tax page (`app/dashboard/tax/page.tsx`) refactored to consume it, deleting its duplicated inline meter markup.
+4. **`SuperAccountTile`** (`components/wealth/SuperAccountTile.tsx`) — Stage I glass tile, indigo→violet Super palette, `SuperFilledGlyph` watermark, emerald gain pill, gradient CTA (§18.7.2).
+5. **`PUT /api/tax/super/[id]`** extended to accept `memberNumber`, `fundABN`, `taxableComponent`, `taxFreeComponent`, `investmentOption` (was name/fundName/currentBalance only). Ownership-guarded single-row update.
+6. **Nav** — "Superannuation" child under My Wealth in `lib/navigation/trailNav.tsx`.
+
+### Files Modified / Created
+- `app/dashboard/investments/super/page.tsx` — NEW page.
+- `components/wealth/SuperCapMeter.tsx` — NEW shared component (SSOT).
+- `components/wealth/SuperAccountTile.tsx` — NEW tile.
+- `app/api/tax/super/[id]/route.ts` — extended PUT field set + JSDoc.
+- `app/dashboard/tax/page.tsx` — consume `SuperCapMeter` (removed inline meters).
+- `lib/navigation/trailNav.tsx` — nav child.
+- `CLAUDE.md` — §18.7 + version bump.
+- `.stitch/designs/super-wealth-{desktop,mobile}.{html,png}` — design artifacts.
+- `.stitch/metadata.inapp-wealth.json` — NEW (records the in-app Stitch project).
+
+### Documentation Updated
+- `docs/blueprint/PHASE_39_MY_WEALTH_REDESIGN.md` — §3.4 Superannuation.
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — SuperCapMeter pattern + where-replicated.
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed (2026-06-01) + Dead Code #26 (cap-default drift) + #27 (onboarding SUPERS duplicate).
+- `.stitch/SITE.md` §4 — cross-reference to the in-app project.
+- `.stitch/metadata.inapp-wealth.json` — screen IDs + React port.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors in changed files (only pre-existing `baseUrl` deprecation notice).
+- [x] `next build` — ✓ Compiled (`/dashboard/investments/super` 6.37 kB; `/dashboard/tax` still builds after refactor).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+`PUT /api/tax/super/[id]` → `prisma.superannuationAccount.update`:
+1. **`where` matches:** single row by verified `id`, after `verifyOwnership(existing, auth.userId)` — only the caller's own account.
+2. **Columns overwritten:** only fields present in the request body (partial update; `undefined` skipped) — user-entered super fields.
+3. **Guard:** `verifyOwnership` + `where: { id }`; no bulk update.
+- User confirmation: NOT REQUIRED — single-row, ownership-guarded, user-initiated edit of own record.
+
+### Phase 41E reform-awareness (CLAUDE.md §12.14)
+No trigger hit: no new `lib/tax-engine/*` function, no CGT/neg-gearing/trust/FBT/PAYG calc added (the page CONSUMES existing `/api/tax/super` output), no column added to `Property`/`Investment`/`LegalEntity`, no new AI tool. Super contribution caps are not reform-grandfathered (FW-5 per-asset-tax-position trigger N/A — caps are not a CGT/neg-gear position).
+
+### UI/UX Stitch-first (CLAUDE.md §18)
+Followed. In-app My Wealth surface designed in Stitch (desktop + mobile) BEFORE React; prompts seeded with §18.7.2 principles; artifacts committed; screen IDs in the component file-header JSDoc + `.stitch/metadata.inapp-wealth.json`.
+
+### PR
+- Branch: `claude/brave-shannon-mr1ye`
+- Status: Draft (pending review)

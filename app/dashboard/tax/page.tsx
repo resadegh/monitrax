@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { SuperCapMeter } from '@/components/wealth/SuperCapMeter';
 import { Separator } from '@/components/ui/separator';
 import {
   DollarSign,
@@ -741,33 +742,14 @@ export default function TaxPage() {
                     </CardTitle>
                     <CardDescription>Year-to-date contribution summary</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="inline-flex items-center gap-1">
-                          Concessional (Pre-tax)
-                          <HelpTooltip term="concessional-cap" />
-                        </span>
-                        <span className="font-medium">{formatCurrency(taxPosition.super.concessional)}</span>
-                      </div>
-                      <Progress value={(taxPosition.super.concessional / taxConfig.concessionalCap) * 100} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatCurrency(taxConfig.concessionalCap - taxPosition.super.concessional)} remaining of {formatCurrency(taxConfig.concessionalCap)} cap
-                      </p>
-                    </div>
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="inline-flex items-center gap-1">
-                          Non-Concessional (After-tax)
-                          <HelpTooltip term="non-concessional-cap" />
-                        </span>
-                        <span className="font-medium">{formatCurrency(taxPosition.super.nonConcessional)}</span>
-                      </div>
-                      <Progress value={(taxPosition.super.nonConcessional / taxConfig.nonConcessionalCap) * 100} className="h-2" />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {formatCurrency(taxConfig.nonConcessionalCap - taxPosition.super.nonConcessional)} remaining of {formatCurrency(taxConfig.nonConcessionalCap)} cap
-                      </p>
-                    </div>
+                  <CardContent>
+                    {/* Canonical cap meters — shared with My Wealth → Super
+                        (CLAUDE.md §12.2 SSOT). */}
+                    <SuperCapMeter
+                      showHelp
+                      concessional={{ used: taxPosition.super.concessional, cap: taxConfig.concessionalCap }}
+                      nonConcessional={{ used: taxPosition.super.nonConcessional, cap: taxConfig.nonConcessionalCap }}
+                    />
                   </CardContent>
                 </Card>
 

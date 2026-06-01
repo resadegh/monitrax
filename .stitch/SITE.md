@@ -69,7 +69,7 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 
 ### Pages NOT in this redesign (keep current treatment)
 
-- `/dashboard/*` — internal app, has its own design system (per `08_BRAND_UI_DESIGN.md`)
+- `/dashboard/*` — internal app, has its own design system (per `08_BRAND_UI_DESIGN.md`). In-app Stitch design work lives in a **separate** project (`5991501424852019479`), recorded in `.stitch/metadata.inapp-wealth.json` — e.g. My Wealth → Superannuation (Phase 39.4, screens `1c01d0c1…` desktop / `e7a87730…` mobile). Those screens use the My Wealth glass system (§18.7.2), NOT the cosmos tokens in this sitemap.
 - `/portal/*` — Org Portal (Phase 32B design language)
 - `/admin/*` — Admin Portal (Linear/GCP-Console style)
 - `/onboarding/*` — internal onboarding wizard
