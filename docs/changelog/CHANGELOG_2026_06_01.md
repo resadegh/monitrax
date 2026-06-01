@@ -447,3 +447,37 @@ Followed. In-app My Wealth surface designed in Stitch (desktop + mobile) BEFORE 
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+---
+
+## Session: brave-shannon-mr1ye (cont.) — Super detail dialog + SMSF caveat
+
+### Changes Made
+- **Type**: Feature (polish) + tech-debt refinement
+- **Scope**: My Wealth → Superannuation page detail view.
+
+### What shipped
+- **Read-only detail dialog** on `/dashboard/investments/super`. The tile "View details" CTA previously opened the edit form (a v1 shortcut / UX lie); it now opens a proper dialog:
+  - **Overview** — balance, tax-free/taxable components, 1yr/5yr returns, fund/nickname/member#/investment-option.
+  - **Contributions** — per-account concessional/non-concessional YTD totals + the `recentContributions` list (already returned by `GET /api/tax/super`, previously unused on the page), with a warm empty state. "Edit fund" switches to the edit dialog.
+- No new API; consumes existing GET fields. `tsc` clean, `lint:financial-surfaces` exit 0, `next build` ✓ (`/dashboard/investments/super` 6.54 kB).
+
+### Decision (Reza 2026-06-01) — onboarding cleanup HELD
+- Proposed retiring the duplicate `SUPERS` option in onboarding `InvestmentsStep`. Reza flagged a domain caveat: the `SUPERS` investment-type may legitimately serve **SMSF** investment accounts (distinct from retail super on the new page). It is therefore NOT a clean duplicate — removal is **blocked** pending an SMSF data-model decision.
+- Captured as `IMPLEMENTATION_PLAN.md` Open Question #8 + refined Dead Code #27. `InvestmentsStep` left untouched.
+
+### Files Modified
+- `app/dashboard/investments/super/page.tsx` — detail dialog + helpers (`DetailStat`, `DetailRow`, `formatContributionType`).
+
+### Documentation Updated
+- `docs/blueprint/PHASE_39_MY_WEALTH_REDESIGN.md` §3.4 — detail dialog shipped; out-of-scope/blocked recut.
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 39.4 entry follow-up; Open Question #8 (SMSF model); Dead Code #27 refined (blocked, not deferred).
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors in changed files
+- [x] `lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled
+
+### PR
+- Branch: `claude/brave-shannon-mr1ye`
+- Status: Draft (pending review)
