@@ -1652,3 +1652,50 @@ Any PR that materially touches the Wealth Universe surface MUST:
 4. Keep the design-language elements (gravitational anchor pulsing,
    silk-thread ribbon glow, dust-mote layer) — removing any one of
    them changes the identity
+
+## SuperCapMeter pattern (Phase 39.4, 2026-06-01)
+
+**Canonical component:** `components/wealth/SuperCapMeter.tsx`. The single
+source of truth for rendering superannuation contribution-cap progress
+(concessional + non-concessional). Before it, the cap meters were inlined
+only in `app/dashboard/tax/page.tsx`; the new My Wealth → Superannuation
+page would have duplicated the cap math + bar markup, so it was extracted
+(CLAUDE.md §12.2 SSOT).
+
+**Contract:**
+
+```ts
+interface SuperCapDatum { used: number; cap: number }   // AUD, year-to-date
+interface SuperCapMeterProps {
+  concessional: SuperCapDatum;
+  nonConcessional: SuperCapDatum;
+  showHelp?: boolean;   // render the HelpTooltip glossary terms on labels
+  className?: string;
+}
+```
+
+**Design rules (§18.7.2 My Wealth glass vocabulary):**
+
+- Rounded-full meter track (`bg-foreground/[0.06]`) + rounded-full fill.
+- Concessional fill `from-sky-500 to-indigo-500`; non-concessional
+  `from-indigo-500 to-violet-500`.
+- **Amber→rose fill ONLY when a cap is exceeded** — money-signal rule:
+  amber for genuine caution, never red except true loss. Exceeded state
+  switches the remaining-text to amber and reads "Over cap by $X".
+- Every dollar figure is `tabular-nums`.
+- Bar grows with `appleEase` (0.8s, staggered 0.1s per meter); honours
+  `prefers-reduced-motion` (instant width when reduced).
+- **Renders the meter pair only — no card chrome.** Each surface supplies
+  its own container so the component drops cleanly into either a glass card
+  (Wealth) or a shadcn `Card` (Tax).
+
+**Where this is used / should replicate next:**
+
+| Surface | Container | Notes |
+|---|---|---|
+| `app/dashboard/investments/super/page.tsx` | glass card | values from `GET /api/tax/super` `caps.*` |
+| `app/dashboard/tax/page.tsx` (Super tab) | shadcn `Card` | `showHelp` on; values from `taxPosition.super` + `taxConfig` |
+
+Any future surface that shows super cap usage (e.g. a CFO recommendation
+card, an SMSF cap view) MUST consume `SuperCapMeter` rather than re-deriving
+the bar — do not fork the cap math.

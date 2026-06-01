@@ -156,6 +156,29 @@ ACTIVE / SOLD / WRITTEN_OFF assets all render as tiles. Inactive (sold/written-o
 - Calculation helpers (`asset._computed`) — used as before; results passed in as tile props.
 - Filter / search (`ListFilter` with `assetFilterConfigs`).
 
+### 3.4 `/dashboard/investments/super` — SHIPPED (Phase 39.4)
+
+**Brief:** everyday (retail/industry) superannuation had no post-onboarding home. It was only capturable in the onboarding wizard (`SuperStep`) and shown read-only on the Tax page (My Guide → Tax, Super tab). SMSF, by contrast, gets the full Entities UI. Phase 39.4 closes that gap with a first-class My Wealth surface, designed Stitch-first (CLAUDE.md §18) before any React.
+
+**Stitch:** project `5991501424852019479` · desktop screen `1c01d0c1e990458899afbf2f68d5a615` · mobile screen `e7a87730d34844ab8c170c9d86fc01b9`. Artifacts committed at `.stitch/designs/super-wealth-{desktop,mobile}.{html,png}`. Prompts seeded with the §18.7.2 My Wealth glass principles.
+
+**New components introduced:**
+
+| Component | Path | Purpose |
+|---|---|---|
+| `SuperAccountTile` | `components/wealth/SuperAccountTile.tsx` | Stage I glass tile for a single fund. Mirrors `InvestmentAccountTile` with the fixed **indigo→violet Super sub-palette**: 3px top strip, atmosphere mesh, oversized `SuperFilledGlyph` (classical column) watermark bleeding off the right edge, gradient icon badge + "SUPER FUND" label, fund-name headline + nickname subtitle, neutral `tabular-nums` balance, Tax-free / Taxable KPI mini-grid, emerald 1-yr gain pill (positive only; amber if negative), option + member-ID ghost pills, gradient CTA. |
+| `SuperCapMeter` | `components/wealth/SuperCapMeter.tsx` | **Canonical** concessional + non-concessional contribution-cap meter pair (CLAUDE.md §12.2 SSOT). Rounded-full sky→indigo / indigo→violet fills; amber→rose only when a cap is exceeded; `tabular-nums`; reduced-motion safe; optional `showHelp` for the glossary tooltips. Renders the meters only — each surface supplies its own card chrome. **Consumed by both** the Super page (glass card) and the Tax page (shadcn Card) — the Tax page's previously-inlined meter markup was deleted and now imports this. |
+
+**Hero reuse (no new hero):** `InvestmentsHero` is reused directly — total = `summary.totalBalance`, KPIs = Total balance / Tax-free / Concessional used %, allocation segments = per-fund balances (Stage I family cycle). Fewer surfaces, less code (§12.1).
+
+**Data flow (no new aggregation, §12.2/§12.4):** the page reads the existing `GET /api/tax/super` (summary, caps, accounts, optimisation) and writes via `POST /api/tax/super` + `PUT/DELETE /api/tax/super/[id]`. The `PUT` was extended from the original three wizard fields (name/fundName/currentBalance) to the full editable set (member#, ABN, tax components, investment option) — ownership-guarded single-row update; `POST` already accepted these. No `masterFinancialService` / snapshot changes.
+
+**Nav:** "Superannuation" child added under My Wealth in `lib/navigation/trailNav.tsx` (the existing `/dashboard/investments` matchRoute already covers the route). Sits between Investments and Assets.
+
+**Behaviour-psychology (§0.1):** the amber caps insight celebrates the *next achievable action* (remaining concessional headroom + salary-sacrifice nudge from the optimisation engine) rather than shaming. Empty state ("Add your first super fund") frames super as wealth, not admin.
+
+**Out of scope (v1, deferred to v2):** manual per-contribution logging UI (the read-only cap meters cover the v1 need; `recentContributions` already flows from the API for a future detail view); the `SuperannuationAccount.concessionalCap`/`nonConcessionalCap` column-default refresh (27500/110000 → 30000/120000 — cosmetic, runtime already correct via `taxYearConfig`, needs a `prisma migrate dev` run per §12.12); retiring the duplicate `SUPERS` path in onboarding `InvestmentsStep`. All three logged in `IMPLEMENTATION_PLAN.md`.
+
 ## 4. Mobile sticky-stack scroll pattern
 
 > **Status as of 39.1d (mock):** prototyped on Properties only via PR #58? for visual review. Pattern queued for app-wide replication once Reza approves (see IMPLEMENTATION_PLAN queued items).
