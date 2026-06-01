@@ -391,7 +391,7 @@
   - [x] Doc-sync — `06_UI_UX_FOUNDATION.md`, `03_DATA_MODEL.md`, `PHASE_19_DOCUMENT_MANAGEMENT.md`, `IMPLEMENTATION_PLAN.md`, `CHANGELOG_2026_05_08.md`.
 - **Risk:** Low. Migration is purely additive, defaults preserve existing behaviour. New routes don't touch CDR boundaries beyond the existing `withPermission`/`withActiveConsent` patterns. Visual surface unchanged on the in-place pages.
 - **Reversed-decision protection:** Mock API Keys + Billing pages were the worst offenders. They're now stripped to placeholders. If someone wants to re-build them as mock UI in the future, this entry says "no — that's why we deleted them last time".
-- **Closes tech-debt / opens:** Closes `🗑️ Dead Code` entries for the API Keys mock + Billing mock + categorisation-API-no-UI orphan + portal-settings-component orphan. Opens follow-up: (1) Cloud Scheduler job to actually hard-delete + anonymise users on `deletionScheduledFor`; (2) Phase 39 GlassHero pass on Settings; (3) Folder-organisation Storage settings when Phase 26 ships.
+- **Closes tech-debt / opens:** Closes `🗑️ Dead Code` entries for the API Keys mock + Billing mock + categorisation-API-no-UI orphan + portal-settings-component orphan. Opens follow-up: (1) ✅ **DONE 2026-06-01** — Cloud Scheduler hard-delete executor shipped (`/api/account/lifecycle` + `lib/services/accountDeletion.ts`; identity-first, abort-on-failure; see Recently Completed 2026-06-01). Note: the design is hard-delete (not anonymise) — the irreversibility is surfaced honestly in the UI. Two Reza-side console steps remain to arm it (IAM grant + Scheduler job). (2) Phase 39 GlassHero pass on Settings; (3) Folder-organisation Storage settings when Phase 26 ships.
 - **Why-this-matters (psychology lens):** Reza's brief 2026-05-08: *"Yes fix them all and give me a PR url to merge"* — pragmatic, decisive. The audit identified 5 things the app was lying about and 4 things it didn't expose. Lying erodes trust faster than missing features; this PR closes the lies first.
 
 ### 0d. GTM Automation — B2B-led launch playbook (executable plan)
@@ -1206,6 +1206,14 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 ---
 
 ## ✅ Recently Completed (rolling 30 days)
+
+### 2026-06-01
+- **Right-to-erasure hard-delete executor — closes the 2026-05-08 Settings-overhaul follow-up (1) (CDR §3.2 / Privacy Act APP 11.2).** Branch `claude/account-deletion-executor-LFNFt`. The 2026-05-08 PR shipped the 30-day soft-delete timer (`/api/account/delete-request`) but the promised Cloud Scheduler hard-delete **never existed** — "Delete my account" erased nothing. This session builds it.
+  - **Shipped:** `app/api/account/lifecycle/route.ts` (Cloud Scheduler endpoint, `CRON_SECRET` bearer, mirrors `/api/cdr/lifecycle`) + `lib/services/accountDeletion.ts` (`executeScheduledDeletions()` + `deleteUserAccount()`) + `lib/auth/identityPlatformAdmin.ts` (WIF-authenticated Identity Platform Admin REST — no `firebase-admin` SDK exists server-side, tokens are JWKS-verified). UI: type-to-confirm + honest "permanently and irreversibly deleted" copy (was "anonymised").
+  - **Design (architect/security lens):** **identity-first, abort-on-failure.** Delete the Firebase identity FIRST; if it can't be removed, delete NO data and retry next run — otherwise the account resurrects empty on next login (auto-provisioning re-creates a `User` for any valid token). DB delete is **Restrict-aware**: the 7 `entity → LegalEntity` Restrict relations are deleted before `user.delete()` cascades `LegalEntity`. §12.11 checklist in PR body; no schema change (§12.12 N/A).
+  - **Verified:** `tsc` 0 errors, `next build` ✓ (`/api/account/lifecycle` registered), `next lint` clean on touched files.
+  - **Reza-side to arm it (2 console steps, documented in `05_RETENTION_SCHEDULERS.md` §4a + §6b):** (1) grant the WIF SA `roles/firebaseauth.admin`; (2) create the `monitrax-account-deletion-executor` Cloud Scheduler job (daily 05:00 Australia/Sydney). Until then, deletions safely no-op (abort-on-failure).
+  - **Scope decision (Reza 2026-06-01):** "Build full executor now" (vs data-erasure-half-only / grant-IAM-first).
 
 ### 2026-05-29
 - **Phase 21.5 — Vehicle renewal dates + canonical reminder engine (Tier 1, in-app).** Branch `claude/asset-rego-reminders-LFNFt`. Originating report: creating a car asset had no rego/registration renewal date, no CTP, no insurance dates. Investigation confirmed `Asset` stored only the rego *plate* (no dates) AND the app had **no reminder capability at all** (the Settings notification toggles persist to `UserPreference` but nothing reads them — `11_EMAIL_NOTIFICATIONS_AUDIT.md`). A full data-model sweep catalogued every reminder-worthy value (see Up Next rows added below).
