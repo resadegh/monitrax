@@ -125,6 +125,7 @@ export const trailNavItems: NavItem[] = [
     children: [
       { name: 'Properties', href: '/dashboard/properties' },
       { name: 'Investments', href: '/dashboard/investments/accounts' },
+      { name: 'Superannuation', href: '/dashboard/investments/super' },
       { name: 'Assets', href: '/dashboard/assets' },
     ],
   },

@@ -9,10 +9,13 @@
  * GET + POST only — no per-id update/delete). Both handlers are
  * ownership-guarded via `verifyOwnership` and audited (§12.5 / §13.3).
  *
- * Scope: only the three minimum-viable wizard fields (name / fundName /
- * currentBalance) are writable here — every other `SuperannuationAccount`
- * column keeps its value (a partial update; `undefined` fields are
- * skipped by Prisma).
+ * Scope: the user-editable fund fields are writable here — name, fundName,
+ * memberNumber, fundABN, currentBalance, taxableComponent, taxFreeComponent,
+ * investmentOption. This is a partial update: only fields present in the
+ * request body are written; `undefined` fields are skipped by Prisma so every
+ * other column (caps, YTD tracking, returns) keeps its value. Extended from
+ * the original three wizard fields (name/fundName/currentBalance) when the
+ * My Wealth → Superannuation page (Phase 39.4) needed full fund editing.
  */
 
 import { NextResponse } from 'next/server';
@@ -27,9 +30,19 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
   try {
     const { id } = await context!.params;
     const body = await request.json();
-    const { name, fundName, currentBalance } = body;
+    const {
+      name,
+      fundName,
+      memberNumber,
+      fundABN,
+      currentBalance,
+      taxableComponent,
+      taxFreeComponent,
+      investmentOption,
+    } = body;
 
-    // Verify ownership
+    // Verify ownership — only the caller's own row can be reached (the
+    // update below is keyed by this verified id, never a bulk where).
     const existing = await prisma.superannuationAccount.findUnique({ where: { id } });
     const ownershipResult = verifyOwnership(existing, auth.userId, 'Superannuation account');
     if (!ownershipResult.success) return ownershipResult.response;
@@ -39,7 +52,12 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
       data: {
         ...(name !== undefined && { name }),
         ...(fundName !== undefined && { fundName: fundName || null }),
+        ...(memberNumber !== undefined && { memberNumber: memberNumber || null }),
+        ...(fundABN !== undefined && { fundABN: fundABN || null }),
         ...(currentBalance !== undefined && { currentBalance }),
+        ...(taxableComponent !== undefined && { taxableComponent }),
+        ...(taxFreeComponent !== undefined && { taxFreeComponent }),
+        ...(investmentOption !== undefined && { investmentOption: investmentOption || null }),
       },
     });
 
