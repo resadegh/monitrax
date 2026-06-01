@@ -43,4 +43,60 @@ N/A — UI wiring fix, no schema, no Prisma writes.
 
 ### PR
 - Branch: `claude/balances-empty-state-add-fix-LFNFt`
+- Status: Merged (PR #958) — prod deploy `dpl_ETzY2rC4...` READY.
+
+---
+
+## Session: qif-import-ai-resilience-LFNFt
+
+### Changes Made
+- **Type**: Fix (prod — QIF import hard-failed on AI categorisation error)
+- **Scope**: `lib/bank/aiCategorisation.ts` → `categoriseWithLearning`
+- **Root Cause**: The QIF/CSV import (`/api/accounts/[id]/import`) calls
+  `categoriseWithLearning` → `categoriseInBatches` → `categoriseWithAI`, which
+  calls Gemini. The unconfigured case is handled (falls back to uncategorised),
+  but a **configured-but-failing** Gemini call (rate limit, timeout, quota,
+  model change, outage, malformed JSON) **throws** — and nothing on the path
+  (`categoriseInBatches`, `categoriseWithLearning`) catches it. It bubbles to
+  the import route's generic `catch` → `500 "Failed to process import"`. So one
+  transient upstream blip discards the user's entire (successfully parsed)
+  upload. The import code itself hadn't changed — a stable path failing
+  suddenly points to the external dependency (Gemini), and the path had zero
+  resilience to it. Reza reported "uploading a QIF file and it just errored".
+- **Solution**: AI categorisation is an **enrichment**, not a prerequisite for
+  importing transactions. Wrapped the `categoriseInBatches` call in
+  `categoriseWithLearning` in try/catch; on any AI error it falls back to
+  uncategorised + confidence 0 (the same path already used when Gemini is
+  unconfigured), so every transaction still imports and lands in the review
+  queue for manual categorisation. The upload never fails because the AI is
+  down.
+
+### Files Modified
+- `lib/bank/aiCategorisation.ts` — `categoriseWithLearning` step 4: AI call now
+  in try/catch with a shared `uncategorisedFallback` helper (covers both the
+  unconfigured and the failed-call cases).
+
+### Diagnosis evidence (§17.3)
+- Prod runtime logs (`vercel-logs.sh latest-runtime` / `runtime <id>`)
+  **timed out** (curl 28, 25s cap) — the runtime-logs stream returned nothing
+  within the window. Diagnosed from code instead: traced the import route's
+  generic 500 → `categoriseWithLearning` (line 560) → `categoriseInBatches`
+  (no try/catch) → `categoriseWithAI` (throws at the Gemini call / unconfigured
+  guard). Stable import code + sudden failure ⇒ external (Gemini) failure on an
+  unguarded path.
+- **Caveat surfaced to Reza:** without the error text I can't be 100% certain
+  THIS upload's error was the AI path vs another cause (e.g. a 400 "No
+  transactions found" on an unrecognised QIF variant). The fix is correct
+  hardening regardless; asked Reza for the exact dialog error to confirm.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors (whole project)
+- [x] `npm run lint:financial-surfaces` — exit 0 (no new violations)
+- [x] `next build` — ✓ Compiled successfully
+
+### Destructive write checklist (CLAUDE.md §12.11)
+N/A — resilience/try-catch change, no schema, no Prisma writes.
+
+### PR
+- Branch: `claude/qif-import-ai-resilience-LFNFt`
 - Status: Draft (pending review)

@@ -552,22 +552,23 @@ export async function categoriseWithLearning(
     }
   }
 
-  // Step 4: Use AI for remaining transactions
+  // Step 4: Use AI for remaining transactions.
+  //
+  // AI categorisation is an ENRICHMENT, not a prerequisite for importing
+  // transactions. A Gemini failure (rate limit, timeout, quota, model change,
+  // outage, malformed response) must NEVER fail the whole import — otherwise a
+  // transient upstream blip throws a generic 500 and the user loses their
+  // upload. On any AI error (or when Gemini is unconfigured) we fall back to
+  // uncategorised + confidence 0, so every transaction still imports and lands
+  // in the review queue for manual categorisation.
   let aiResults: AICategorizationResult[] = [];
   let usage: GeminiUsageMetrics | null = null;
 
-  if (needsAI.length > 0 && settings.enableAI && isGeminiConfigured()) {
-    const aiResponse = await categoriseInBatches(
-      needsAI,
-      merchantLearnings,
-      recurringPatterns,
-      settings
-    );
-    aiResults = aiResponse.results;
-    usage = aiResponse.usage;
-  } else if (needsAI.length > 0) {
-    // Fallback: return uncategorised with low confidence
-    aiResults = needsAI.map(tx => ({
+  const uncategorisedFallback = (
+    txs: NormalisedTransaction[],
+    reason: string
+  ): AICategorizationResult[] =>
+    txs.map((tx) => ({
       transaction: tx,
       prediction: {
         categoryLevel1: 'Other',
@@ -578,12 +579,35 @@ export async function categoriseWithLearning(
         isRecurring: false,
         suggestedFrequency: null,
         confidence: 0,
-        reasoning: 'AI not available, requires manual categorisation',
+        reasoning: reason,
       },
       adjustedConfidence: 0,
       boostReasons: [],
       penaltyReasons: ['AI categorisation not available'],
     }));
+
+  if (needsAI.length > 0 && settings.enableAI && isGeminiConfigured()) {
+    try {
+      const aiResponse = await categoriseInBatches(
+        needsAI,
+        merchantLearnings,
+        recurringPatterns,
+        settings
+      );
+      aiResults = aiResponse.results;
+      usage = aiResponse.usage;
+    } catch (err) {
+      // Degrade gracefully — import proceeds, categorisation is deferred to
+      // manual review rather than failing the upload.
+      console.error('AI categorisation failed during import — importing uncategorised:', err);
+      aiResults = uncategorisedFallback(
+        needsAI,
+        'AI categorisation unavailable, requires manual categorisation'
+      );
+    }
+  } else if (needsAI.length > 0) {
+    // Gemini unconfigured / AI disabled.
+    aiResults = uncategorisedFallback(needsAI, 'AI not available, requires manual categorisation');
   }
 
   // Step 5: Combine results
