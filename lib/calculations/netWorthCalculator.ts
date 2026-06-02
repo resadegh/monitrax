@@ -70,6 +70,14 @@ export interface InvestmentInput {
 export interface SuperInput {
   balance: number;
   ownerEntityId?: string | null;
+  /**
+   * Phase 39.5: 'SMSF' member accounts are EXCLUDED from the net-worth super
+   * sum — their value flows through the SMSF LegalEntity's owned assets
+   * (investment accounts / property / cash), which are summed separately.
+   * Counting both would double-count the fund. Retail/industry accounts
+   * (default, undefined) are summed as before.
+   */
+  fundType?: 'INDUSTRY' | 'RETAIL' | 'SMSF' | null;
 }
 
 export interface AssetInput {
@@ -122,10 +130,12 @@ export function calculateTotalAssets(
     return sum + units * price;
   }, 0);
 
-  const superTotal = matchEntity(superannuation).reduce(
-    (sum, s) => sum + Number(s.balance || 0),
-    0
-  );
+  // Phase 39.5: exclude SMSF member accounts — their wealth is represented by
+  // the SMSF LegalEntity's owned assets (already summed above), so adding the
+  // member balance too would double-count the fund.
+  const superTotal = matchEntity(superannuation)
+    .filter((s) => s.fundType !== 'SMSF')
+    .reduce((sum, s) => sum + Number(s.balance || 0), 0);
 
   const assetTotal = matchEntity(personalAssets).reduce(
     (sum, a) => sum + Number(a.currentValue || 0),
