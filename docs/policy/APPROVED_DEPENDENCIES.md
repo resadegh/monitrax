@@ -37,7 +37,7 @@ Last reviewed: 2026-03-08
 
 | Package | Version | Purpose | License | Review Date |
 |---------|---------|---------|---------|-------------|
-| `next` | 15.2.6 | React framework (App Router, API routes, SSR) | MIT | 2026-03-08 |
+| `next` | 15.5.19 | React framework (App Router, API routes, SSR) | MIT | 2026-03-08 |
 | `react` | ^19.0.0 | UI library | MIT | 2026-03-08 |
 | `react-dom` | ^19.0.0 | React DOM renderer | MIT | 2026-03-08 |
 | `typescript` | ^5 | Type-safe JavaScript | Apache-2.0 | 2026-03-08 |
@@ -130,7 +130,7 @@ Last reviewed: 2026-03-08
 | `vitest` | ^1.6.1 | Test framework | MIT | 2026-03-08 |
 | `@vitest/coverage-v8` | ^1.6.1 | Test coverage with V8 | MIT | 2026-03-08 |
 | `eslint` | ^8 | Code linting | MIT | 2026-03-08 |
-| `eslint-config-next` | 15.2.6 | Next.js ESLint rules | MIT | 2026-03-08 |
+| `eslint-config-next` | 15.5.19 | Next.js ESLint rules | MIT | 2026-03-08 |
 | `ts-node` | ^10.9.2 | TypeScript execution (seed scripts) | MIT | 2026-03-08 |
 
 ### Type Definitions
@@ -206,8 +206,8 @@ The `security-audit` workflow runs `npm audit` in two steps:
 **Why `--omit=dev` on the gate (2026-06-02):** the only criticals at the time were `vitest` / `@vitest/coverage-v8` (`^1.6.1`) — the "Vitest UI server arbitrary file read" advisory (via `vite`/`vite-node`). It is dev-only, the fix is a SemVer-**major** jump (1→4) across 110 test files, and the attack vector (`@vitest/ui` server) **isn't even installed** here — so it is not exploitable in this repo. Scoping the gate to production deps is the correct posture (protect what users run); the informational step keeps the advisory visible.
 
 **Tracked follow-ups (IMPLEMENTATION_PLAN Dead Code #28):**
+- ✅ **DONE 2026-06-02 — Next.js** bumped 15.2.6 → **15.5.19** (15.x security-backport line, `isSemVerMajor:false`), clearing the high-severity advisories (SSRF / XSS / cache-poisoning / DoS). `eslint-config-next` bumped in lockstep; `npm run lint` migrated off the deprecated `next lint` to the ESLint CLI (`.eslintrc.json`, prior `next/core-web-vitals` rule set preserved).
 - **vitest 1 → 4 major upgrade** — clears the dev criticals at source; needs validation of the 110-test suite.
-- **Next.js high-severity advisories** (SSRF / XSS / cache-poisoning / DoS on 15.2.6) — production-relevant; bump to the latest patched 15.x in a validated PR. **Recommended as the next security action.**
 - **xlsx / SheetJS** (high, no npm fix) — migrate to the official SheetJS CDN build or a maintained alternative.
 
 ---
