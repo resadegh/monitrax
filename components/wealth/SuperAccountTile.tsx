@@ -25,6 +25,8 @@ import { SuperFilledGlyph } from '@/components/wealth/wealthGlyphs';
 
 export interface SuperAccountTileData {
   id: string;
+  /** Phase 39.5: INDUSTRY | RETAIL | SMSF — drives the type micro-label. */
+  fundType?: 'INDUSTRY' | 'RETAIL' | 'SMSF';
   /** Account nickname (e.g. "My Super"). */
   name: string;
   /** Fund name (e.g. "AustralianSuper"). */
@@ -94,7 +96,7 @@ export function SuperAccountTile({ account, index = 0, onView, onEdit, onDelete 
 
           <div className="min-w-0 flex-1">
             <span className="inline-flex items-center bg-gradient-to-r from-indigo-500 to-violet-500 bg-clip-text text-[10px] font-bold uppercase tracking-[0.14em] text-transparent">
-              Super fund
+              {account.fundType === 'SMSF' ? 'SMSF' : account.fundType === 'RETAIL' ? 'Retail super' : 'Industry super'}
             </span>
             <h3 className="truncate text-base font-semibold tracking-tight text-foreground">{title}</h3>
             {subtitle && <p className="mt-0.5 truncate text-xs text-muted-foreground">{subtitle}</p>}
