@@ -22,10 +22,12 @@ import { PageHeader } from '@/components/PageHeader';
 import { EmptyState } from '@/components/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import Link from 'next/link';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Landmark, Plus, Lightbulb, Edit2, PiggyBank } from 'lucide-react';
+import { Landmark, Plus, Lightbulb, Edit2, PiggyBank, Building2, ArrowUpRight } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { InvestmentsHero, type InvestmentsHeroSegment } from '@/components/investments/InvestmentsHero';
 import { SuperAccountTile } from '@/components/wealth/SuperAccountTile';
@@ -39,8 +41,17 @@ interface SuperContributionRow {
   employerName: string | null;
 }
 
+type SuperFundType = 'INDUSTRY' | 'RETAIL' | 'SMSF';
+
+interface SmsfEntityOption {
+  id: string;
+  name: string;
+}
+
 interface SuperAccount {
   id: string;
+  fundType: SuperFundType;
+  ownerEntityId: string | null;
   name: string;
   fundName: string | null;
   memberNumber: string | null;
@@ -73,6 +84,8 @@ interface SuperPosition {
 }
 
 type SuperFormData = {
+  fundType: SuperFundType;
+  ownerEntityId: string;
   name: string;
   fundName: string;
   memberNumber: string;
@@ -84,6 +97,8 @@ type SuperFormData = {
 };
 
 const EMPTY_FORM: SuperFormData = {
+  fundType: 'INDUSTRY',
+  ownerEntityId: '',
   name: '',
   fundName: '',
   memberNumber: '',
@@ -111,9 +126,13 @@ export default function SuperannuationPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState<SuperFormData>(EMPTY_FORM);
   const [detailAccount, setDetailAccount] = useState<SuperAccount | null>(null);
+  const [smsfEntities, setSmsfEntities] = useState<SmsfEntityOption[]>([]);
 
   useEffect(() => {
-    if (token) loadPosition();
+    if (token) {
+      loadPosition();
+      loadSmsfEntities();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -132,6 +151,26 @@ export default function SuperannuationPage() {
     }
   };
 
+  // Phase 39.5: the user's SMSF legal entities — offered when classifying a
+  // fund as SMSF so its member account links to the structure (which owns the
+  // underlying investments/property).
+  const loadSmsfEntities = async () => {
+    try {
+      const response = await fetch('/api/entities', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (response.ok) {
+        const result = await response.json();
+        const entities: SmsfEntityOption[] = (result.data || [])
+          .filter((e: { type: string }) => e.type === 'SMSF')
+          .map((e: { id: string; name: string }) => ({ id: e.id, name: e.name }));
+        setSmsfEntities(entities);
+      }
+    } catch (error) {
+      console.error('Error loading SMSF entities:', error);
+    }
+  };
+
   const resetForm = () => setFormData(EMPTY_FORM);
 
   const handleAdd = () => {
@@ -142,6 +181,8 @@ export default function SuperannuationPage() {
 
   const handleEdit = (account: SuperAccount) => {
     setFormData({
+      fundType: account.fundType,
+      ownerEntityId: account.ownerEntityId || '',
       name: account.name,
       fundName: account.fundName || '',
       memberNumber: account.memberNumber || '',
@@ -176,6 +217,9 @@ export default function SuperannuationPage() {
           currentBalance: formData.currentBalance || 0,
           taxFreeComponent: formData.taxFreeComponent || 0,
           taxableComponent: formData.taxableComponent || 0,
+          fundType: formData.fundType,
+          // Only link an entity for SMSF; clear it otherwise.
+          ownerEntityId: formData.fundType === 'SMSF' ? formData.ownerEntityId || null : null,
         }),
       });
       if (response.ok) {
@@ -329,12 +373,63 @@ export default function SuperannuationPage() {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1 pb-2">
             <div className="space-y-2">
+              <Label htmlFor="fundType">Fund type</Label>
+              <Select
+                value={formData.fundType}
+                onValueChange={(value) => setFormData({ ...formData, fundType: value as SuperFundType })}
+              >
+                <SelectTrigger id="fundType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INDUSTRY">Industry fund</SelectItem>
+                  <SelectItem value="RETAIL">Retail fund</SelectItem>
+                  <SelectItem value="SMSF">Self-managed (SMSF)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* SMSF entity link — its investments & property live in My Structure */}
+            {formData.fundType === 'SMSF' && (
+              <div className="space-y-2 rounded-[14px] border border-indigo-400/20 bg-indigo-50/40 dark:bg-indigo-950/20 p-4">
+                <Label htmlFor="ownerEntityId">Linked SMSF (My Structure)</Label>
+                {smsfEntities.length > 0 ? (
+                  <Select
+                    value={formData.ownerEntityId}
+                    onValueChange={(value) => setFormData({ ...formData, ownerEntityId: value })}
+                  >
+                    <SelectTrigger id="ownerEntityId">
+                      <SelectValue placeholder="Select your SMSF" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {smsfEntities.map((e) => (
+                        <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    No SMSF found yet. Create it in{' '}
+                    <Link href="/dashboard/entities" className="font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400">
+                      My Structure
+                    </Link>{' '}
+                    first, then link it here.
+                  </p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  An SMSF&apos;s investments and property are tracked against the entity in My Structure — so its
+                  balance here is not double-counted in your net worth.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
               <Label htmlFor="fundName">Fund name</Label>
               <Input
                 id="fundName"
                 value={formData.fundName}
                 onChange={(e) => setFormData({ ...formData, fundName: e.target.value })}
-                placeholder="e.g. AustralianSuper"
+                placeholder={formData.fundType === 'SMSF' ? 'e.g. Smith Family Super Fund' : 'e.g. AustralianSuper'}
               />
             </div>
             <div className="space-y-2">
@@ -447,6 +542,20 @@ export default function SuperannuationPage() {
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4 pt-4">
+                {detailAccount.fundType === 'SMSF' && (
+                  <div className="flex items-start gap-2.5 rounded-[14px] border border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-950/20 px-4 py-3">
+                    <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+                    <div className="text-sm text-indigo-900 dark:text-indigo-100">
+                      <p>This is a self-managed fund. Its investments, property, and cash are tracked against the entity in My Structure — and counted there in your net worth (not double-counted here).</p>
+                      <Link
+                        href="/dashboard/entities"
+                        className="mt-1 inline-flex items-center gap-1 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                      >
+                        View structure <ArrowUpRight className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Balance</p>
                   <p className="mt-0.5 text-3xl font-semibold tabular-nums tracking-tight text-foreground">

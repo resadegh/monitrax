@@ -635,13 +635,14 @@ model LegalEntity {
   childEntities LegalEntity[] @relation("EntityHierarchy")
 
   // Reverse owner relations (every owned object hangs back here)
-  properties         Property[]
-  loans              Loan[]
-  accounts           Account[]
-  investmentAccounts InvestmentAccount[]
-  assets             Asset[]
-  incomes            Income[]
-  expenses           Expense[]
+  properties             Property[]
+  loans                  Loan[]
+  accounts               Account[]
+  investmentAccounts     InvestmentAccount[]
+  superannuationAccounts SuperannuationAccount[] // Phase 39.5: SMSF member accounts
+  assets                 Asset[]
+  incomes                Income[]
+  expenses               Expense[]
 
   // Phase 41f: bookkeeping integration (USER_ENTITY scope only — see
   // PHASE_41F_BOOKKEEPING_INTEGRATION.md). Cascades on entity delete.
@@ -4061,9 +4062,26 @@ model StorageProviderConfig {
 // PHASE 20: SUPERANNUATION ACCOUNT
 // =============================================================================
 
+// Phase 39.5: distinguishes retail/industry super (member of an external
+// APRA fund) from SMSF (a self-managed fund modelled as a LegalEntity that
+// OWNS its assets). SMSF member balances carry ownerEntityId → the SMSF
+// LegalEntity; their net worth flows through the entity's owned assets, so
+// they are excluded from the super-bucket sum to avoid double-counting.
+enum SuperFundType {
+  INDUSTRY // Industry fund (AustralianSuper, Hostplus, …) — default
+  RETAIL // Retail fund (employer/wrap MySuper, …)
+  SMSF // Self-managed super fund — linked to a LegalEntity(type=SMSF)
+}
+
 model SuperannuationAccount {
   id     String @id @default(uuid())
   userId String
+
+  // Phase 39.5: fund classification + SMSF entity link.
+  // ownerEntityId is set ONLY for SMSF member accounts (→ the SMSF
+  // LegalEntity); null for retail/industry accounts (external funds).
+  fundType      SuperFundType @default(INDUSTRY)
+  ownerEntityId String?
 
   // Account details
   name         String
@@ -4098,9 +4116,11 @@ model SuperannuationAccount {
 
   // Relationships
   user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity   LegalEntity?        @relation(fields: [ownerEntityId], references: [id], onDelete: SetNull)
   contributions SuperContribution[]
 
   @@index([userId])
+  @@index([ownerEntityId])
   @@map("superannuation_accounts")
 }
 

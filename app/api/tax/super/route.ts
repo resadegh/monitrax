@@ -14,6 +14,8 @@ import { createAuditLog } from '@/lib/security/auditLog';
 // Type for super account with contributions
 interface SuperAccountWithContributions {
   id: string;
+  fundType: 'INDUSTRY' | 'RETAIL' | 'SMSF';
+  ownerEntityId: string | null;
   name: string;
   fundName: string | null;
   memberNumber: string | null;
@@ -107,6 +109,8 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       return {
         id: account.id,
+        fundType: account.fundType,
+        ownerEntityId: account.ownerEntityId,
         name: account.name,
         fundName: account.fundName,
         memberNumber: account.memberNumber,
@@ -240,6 +244,8 @@ export const POST = withPermission('income.write', async (request, auth) => {
       taxableComponent = 0,
       taxFreeComponent = 0,
       investmentOption,
+      fundType,
+      ownerEntityId,
     } = body;
 
     if (!name) {
@@ -247,6 +253,26 @@ export const POST = withPermission('income.write', async (request, auth) => {
         { error: 'Account name is required' },
         { status: 400 }
       );
+    }
+
+    // Phase 39.5: validate the optional SMSF entity link. ownerEntityId may
+    // ONLY reference a LegalEntity owned by this user (security lens — never
+    // let a user link to another user's entity).
+    const normalizedFundType: 'INDUSTRY' | 'RETAIL' | 'SMSF' =
+      fundType === 'RETAIL' || fundType === 'SMSF' ? fundType : 'INDUSTRY';
+    let linkedEntityId: string | null = null;
+    if (ownerEntityId) {
+      const entity = await prisma.legalEntity.findFirst({
+        where: { id: ownerEntityId, userId },
+        select: { id: true },
+      });
+      if (!entity) {
+        return NextResponse.json(
+          { error: 'Linked entity not found' },
+          { status: 400 }
+        );
+      }
+      linkedEntityId = entity.id;
     }
 
     const currentFY = getCurrentFinancialYear();
@@ -266,6 +292,8 @@ export const POST = withPermission('income.write', async (request, auth) => {
         concessionalCap: config.concessionalCap,
         nonConcessionalCap: config.nonConcessionalCap,
         investmentOption,
+        fundType: normalizedFundType,
+        ownerEntityId: linkedEntityId,
       },
     });
 

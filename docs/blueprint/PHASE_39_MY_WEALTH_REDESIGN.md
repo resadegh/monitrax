@@ -181,7 +181,25 @@ ACTIVE / SOLD / WRITTEN_OFF assets all render as tiles. Inactive (sold/written-o
 
 **Out of scope (v2):** manual per-contribution logging UI (write path via `POST /api/tax/super/contributions`); the `SuperannuationAccount.concessionalCap`/`nonConcessionalCap` column-default refresh (27500/110000 → 30000/120000 — cosmetic, runtime already correct via `taxYearConfig`, needs a `prisma migrate dev` run per §12.12 — Dead Code #26).
 
-**Blocked (NOT a clean duplicate):** retiring the `SUPERS` option in onboarding `InvestmentsStep` — Reza flagged (2026-06-01) it may legitimately serve **SMSF** investment accounts, distinct from retail super. Needs an SMSF-model decision first (IMPLEMENTATION_PLAN Open Question #8 / Dead Code #27).
+### 3.4.1 Super vs SMSF model — Phase 39.5 (SHIPPED 2026-06-02)
+
+**Decision (Open Question #8, DECIDED):** two distinct concepts, two homes:
+
+| Concept | Stored as | Owns assets? | Net worth | Tax surface |
+|---|---|---|---|---|
+| **Retail / Industry super** | `SuperannuationAccount` (userId-scoped, no entity) | No — external APRA fund | `currentBalance` summed into the super bucket | Caps / Div 293 / salary-sacrifice (built) |
+| **SMSF** | `LegalEntity(type=SMSF, role=SUPERANNUATION)` owning `InvestmentAccount`/`Property`/`Account` via `ownerEntityId` | **Yes** (relations already existed) | Counted **once** via owned assets; member balance **excluded** from the super sum | Fund-level Div 295 / ECPI / NALI (`calculateSmsfIncomeTax` built, **staged** — not yet surfaced) |
+
+So **SMSF is a `LegalEntity`, not a `SuperannuationAccount` and not an `InvestmentAccount(type=SUPERS)`** — that enum was dead (UI-label-only, never read for tax/net-worth).
+
+**Shipped:**
+- Schema: `SuperannuationAccount.fundType` (`SuperFundType`: INDUSTRY/RETAIL/SMSF, default INDUSTRY) + nullable `ownerEntityId`→`LegalEntity` (migration `20260602100000`, additive).
+- **Net-worth double-count guard:** `netWorthCalculator` excludes `fundType=SMSF` accounts from the super sum (their value flows through the SMSF entity's owned assets). Threaded via `masterFinancialService`.
+- API: `/api/tax/super` GET returns `fundType`+`ownerEntityId`; POST/PUT accept them with an ownership-guarded entity link (`ownerEntityId` must reference a `LegalEntity` owned by the caller).
+- UI: Super page "Add fund" fund-type selector + SMSF→My Structure link; tile type badge; detail-dialog SMSF banner + "View structure" link.
+- Onboarding: `SUPERS` removed from `InvestmentsStep` (dead enum, retained in Prisma for back-compat + graceful fallback); `SuperStep` SMSF hint → "Your structure".
+
+**Deferred (staged):** SMSF member-balance allocation, franking-credit refunds, separate-return lodgement, per-member TBC, sole-purpose/in-house/LRBA (tax engine flags these UNCOMPUTED). Surfacing `calculateSmsfIncomeTax` to a user view is a later phase.
 
 ## 4. Mobile sticky-stack scroll pattern
 

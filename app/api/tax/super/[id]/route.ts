@@ -39,6 +39,8 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
       taxableComponent,
       taxFreeComponent,
       investmentOption,
+      fundType,
+      ownerEntityId,
     } = body;
 
     // Verify ownership — only the caller's own row can be reached (the
@@ -46,6 +48,29 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
     const existing = await prisma.superannuationAccount.findUnique({ where: { id } });
     const ownershipResult = verifyOwnership(existing, auth.userId, 'Superannuation account');
     if (!ownershipResult.success) return ownershipResult.response;
+
+    // Phase 39.5: SMSF entity link — ownerEntityId may only reference a
+    // LegalEntity owned by this user. `null` clears the link.
+    let ownerEntityUpdate: { ownerEntityId: string | null } | undefined;
+    if (ownerEntityId !== undefined) {
+      if (ownerEntityId === null || ownerEntityId === '') {
+        ownerEntityUpdate = { ownerEntityId: null };
+      } else {
+        const entity = await prisma.legalEntity.findFirst({
+          where: { id: ownerEntityId, userId: auth.userId },
+          select: { id: true },
+        });
+        if (!entity) {
+          return NextResponse.json(
+            { error: 'Linked entity not found' },
+            { status: 400 }
+          );
+        }
+        ownerEntityUpdate = { ownerEntityId: entity.id };
+      }
+    }
+    const validFundType =
+      fundType === 'INDUSTRY' || fundType === 'RETAIL' || fundType === 'SMSF';
 
     const account = await prisma.superannuationAccount.update({
       where: { id },
@@ -58,6 +83,8 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
         ...(taxableComponent !== undefined && { taxableComponent }),
         ...(taxFreeComponent !== undefined && { taxFreeComponent }),
         ...(investmentOption !== undefined && { investmentOption: investmentOption || null }),
+        ...(validFundType && { fundType }),
+        ...(ownerEntityUpdate ?? {}),
       },
     });
 

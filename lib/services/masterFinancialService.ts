@@ -482,6 +482,9 @@ interface RawInvestmentHolding {
 interface RawSuperannuation {
   id: string;
   currentBalance: number;
+  // Phase 39.5: SMSF accounts are excluded from the net-worth super sum
+  // (their value flows through the SMSF entity's owned assets).
+  fundType: 'INDUSTRY' | 'RETAIL' | 'SMSF';
 }
 
 interface RawAsset {
@@ -630,6 +633,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       select: {
         id: true,
         currentBalance: true,
+        fundType: true,
       },
     }),
     prisma.asset.findMany({
@@ -1652,7 +1656,7 @@ async function computeMasterFinancialSnapshot(
       type: l.type,
       propertyId: l.propertyId,
     })),
-    data.superannuation.map(s => ({ balance: s.currentBalance })),
+    data.superannuation.map(s => ({ balance: s.currentBalance, fundType: s.fundType })),
     data.assets.map(a => ({ currentValue: a.currentValue }))
   );
 
