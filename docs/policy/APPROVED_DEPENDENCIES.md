@@ -191,10 +191,26 @@ Last reviewed: 2026-03-08
 | Tool | Status | Purpose |
 |------|--------|---------|
 | Dependabot | Enabled (`.github/dependabot.yml`) | Automated dependency update PRs |
-| `npm audit` | CI pipeline | Vulnerability scanning on every push |
+| `npm audit` | CI pipeline (`.github/workflows/security-audit.yml`) | Vulnerability scanning on every push |
 | GitHub Security Advisories | Enabled | Notification of vulnerable dependencies |
+
+### 7.1 npm audit CI gate policy (2026-06-02)
+
+The `security-audit` workflow runs `npm audit` in two steps:
+
+| Step | Command | Blocking? | Rationale |
+|---|---|---|---|
+| Informational | `npm audit --audit-level=high` | No (`continue-on-error`) | Surfaces **all** high+critical advisories incl. devDependencies + no-fix items (xlsx/SheetJS), so the team stays aware. |
+| **Gate** | `npm audit --omit=dev --audit-level=critical` | **Yes — must pass** | A critical in a **devDependency** (test runner, linter, build tool) never ships to users, so it must not block a deploy. The gate scopes to **production runtime** deps. |
+
+**Why `--omit=dev` on the gate (2026-06-02):** the only criticals at the time were `vitest` / `@vitest/coverage-v8` (`^1.6.1`) — the "Vitest UI server arbitrary file read" advisory (via `vite`/`vite-node`). It is dev-only, the fix is a SemVer-**major** jump (1→4) across 110 test files, and the attack vector (`@vitest/ui` server) **isn't even installed** here — so it is not exploitable in this repo. Scoping the gate to production deps is the correct posture (protect what users run); the informational step keeps the advisory visible.
+
+**Tracked follow-ups (IMPLEMENTATION_PLAN Dead Code #28):**
+- **vitest 1 → 4 major upgrade** — clears the dev criticals at source; needs validation of the 110-test suite.
+- **Next.js high-severity advisories** (SSRF / XSS / cache-poisoning / DoS on 15.2.6) — production-relevant; bump to the latest patched 15.x in a validated PR. **Recommended as the next security action.**
+- **xlsx / SheetJS** (high, no npm fix) — migrate to the official SheetJS CDN build or a maintained alternative.
 
 ---
 
-*Last Updated: 2026-03-08*
+*Last Updated: 2026-06-02*
 *Next Review: 2026-06-08 (Quarterly)*
