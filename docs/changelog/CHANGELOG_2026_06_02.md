@@ -136,3 +136,51 @@ Docs updated: `APPROVED_DEPENDENCIES.md`, `IMPLEMENTATION_PLAN.md` #28, this cha
 ### Follow-up fix — decouple lint from `next build`
 - The Vercel build of the upgrade errored: adding `.eslintrc.json` (for the new `eslint .` lint script) made `next build` run ESLint automatically, which failed on **pre-existing** `react/no-unescaped-entities` errors (100+, always in the codebase, never previously blocking — because no ESLint config was committed before, so `next build` skipped linting).
 - **Fix:** `next.config.ts` → `eslint: { ignoreDuringBuilds: true }`. Lint is now a separate explicit gate (`npm run lint` + the security-audit workflow's lint step); `next build` is about compilation only. Verified locally: `next build` → "✓ Compiled successfully / Skipping linting", exit 0, with `.eslintrc.json` present.
+
+---
+
+## Session: brave-shannon-mr1ye (cont.) — Phase 44.2 SMSF fund-income tax surface
+
+### Changes Made
+- **Type**: Feature + schema migration (entity tax surfacing)
+- **Scope**: SMSF fund-income tax — persisted figures + entity tax UI.
+- **Origin**: Reza picked "SMSF tax surface" from the backlog → "Continue with the plan". Scoped via architect-mode (seven-lens) + Explore codebase map.
+
+### Finding (research)
+- `calculateSmsfIncomeTax` (Div 295 / ECPI / NALI) was already **built + tested + wired** into `entityTaxRouter` and reachable via `GET/POST /api/tax/entity/[id]`. The gap was purely the **data layer + UI**: `assembleEntityTaxFacts` had no SMSF branch (GET returned UNCOMPUTED) and POST was pure-compute (route comment: "GET path from persisted data; until then this is the testable [POST]").
+
+### What shipped (persisted slice — Reza confirmed)
+1. **Schema:** `SmsfAnnualReturn` model — `@@unique([legalEntityId, financialYear])`, fund figures (investment income / deductions / contributions / NALI / isComplying / isInPensionPhase / ecpiExemptProportion?). Additive migration `20260602140000_phase_44_2_smsf_annual_return` (CREATE TABLE only).
+2. **Assembler:** `lib/services/entityTaxFactsAssembler.ts` — SMSF branch populates `facts.smsfIncomeTax` from the persisted return → GET entity-tax now returns a real number.
+3. **Save API:** `GET/PUT /api/tax/entity/[entityId]/smsf-return` — ownership-guarded (entity must be the caller's `LegalEntity(type=SMSF)`), upsert keyed by entity+FY, audited (`SMSF_RETURN_SAVED`, no financial values in metadata).
+4. **UI:** `/dashboard/entities/[id]/tax` — fund-tax breakdown (contributions tax 15% / investment-income tax / NALI 45% / ECPI exempt / total), UNCOMPUTED (ECPI-missing) rendered as a calm amber "add your ECPI proportion" prompt (never guessed), citations + `BoundaryFootnote`, edit form, FY selector.
+5. **Entry point:** My Wealth → Super SMSF detail dialog — "View tax position" link when `ownerEntityId` is set.
+
+### Files Modified / Created
+- `prisma/schema.prisma` — `SmsfAnnualReturn` model + User/LegalEntity back-relations.
+- `prisma/migrations/20260602140000_phase_44_2_smsf_annual_return/migration.sql` — NEW (additive).
+- `lib/services/entityTaxFactsAssembler.ts` — SMSF facts branch.
+- `app/api/tax/entity/[entityId]/smsf-return/route.ts` — NEW (GET prefill + PUT upsert).
+- `app/dashboard/entities/[id]/tax/page.tsx` — NEW (entity SMSF tax view).
+- `app/dashboard/investments/super/page.tsx` — "View tax position" link in SMSF detail dialog.
+
+### Documentation Updated
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — Phase 44.2 section.
+- `docs/architecture/03_DATA_MODEL.md` — SmsfAnnualReturn model note.
+- `docs/architecture/07_API_STANDARDS.md` — smsf-return endpoint rows.
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed (2026-06-02).
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors
+- [x] `lint:financial-surfaces` — exit 0
+- [x] `next build` — ✓ Compiled (`/dashboard/entities/[id]/tax` 4.51 kB; `/api/tax/entity/[entityId]/smsf-return`)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- `PUT /api/tax/entity/[entityId]/smsf-return` → `prisma.smsfAnnualReturn.upsert`: keyed by `(legalEntityId, financialYear)` on an entity verified to be the caller's own `LegalEntity(type=SMSF)`. **`where` matches:** only the one (entity, FY) row. **Columns overwritten:** the fund-figure fields the user is editing. **Guard:** `verifyOwnedSmsf()` + this route is the exclusive writer of `smsf_annual_returns`. Migration additive (CREATE TABLE, no DROP). User confirmation: NOT REQUIRED (user-initiated edit of own data, additive schema).
+
+### Phase 41E reform-awareness (CLAUDE.md §12.14)
+- No `lib/tax-engine/*` function modified (assembler is `lib/services`). The surface shows **fund income tax** (Div 295/ECPI/NALI), not a per-asset CGT position → FW-5 regime badge N/A. CGT within the fund routes through the already-gated `divisions/cgtDiscount.ts`; no reform-gated math introduced. `SmsfAnnualReturn` does not interact with grandfathering. New model is on a new table, NOT a column on `Property`/`Investment`/`LegalEntity` → FW-3 N/A.
+
+### PR
+- Branch: `claude/brave-shannon-mr1ye`
+- Status: Draft (pending review)
