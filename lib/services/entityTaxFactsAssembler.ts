@@ -234,5 +234,31 @@ export async function assembleEntityTaxFacts(
     if (div7aLoans.length > 0) facts.div7aLoans = div7aLoans;
   }
 
+  // --- SMSF fund-earnings income tax (Div 295 / ECPI / NALI) ----------
+  // Phase 44.2: populate `smsfIncomeTax` from the persisted SmsfAnnualReturn
+  // so the GET entity-tax path returns a real number instead of UNCOMPUTED.
+  // When no return is saved, the SMSF dispatch stays UNCOMPUTED (honest).
+  if (entity.type === 'SMSF') {
+    const smsfReturn = await prisma.smsfAnnualReturn.findUnique({
+      where: {
+        legalEntityId_financialYear: {
+          legalEntityId: entityId,
+          financialYear: fy.financialYear,
+        },
+      },
+    });
+    if (smsfReturn) {
+      facts.smsfIncomeTax = {
+        assessableInvestmentIncome: Number(smsfReturn.assessableInvestmentIncome),
+        deductions: Number(smsfReturn.deductions),
+        assessableContributions: Number(smsfReturn.assessableContributions),
+        nonArmsLengthIncome: Number(smsfReturn.nonArmsLengthIncome),
+        isComplying: smsfReturn.isComplying,
+        isInPensionPhase: smsfReturn.isInPensionPhase,
+        ecpiExemptProportion: smsfReturn.ecpiExemptProportion ?? undefined,
+      };
+    }
+  }
+
   return facts;
 }
