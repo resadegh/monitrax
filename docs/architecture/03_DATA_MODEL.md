@@ -793,6 +793,8 @@ Pre-Phase-41, every owned object (Property / Loan / Account / InvestmentAccount 
 
 Phase 41a introduces `LegalEntity` as the canonical "who owns this?" layer. Every owned object now has an `ownerEntityId`, and the entity carries the type (`PERSONAL_NAME` / `COMPANY` / `DISCRETIONARY_TRUST` / `UNIT_TRUST` / `SMSF` / `PARTNERSHIP` / `SOLE_TRADER`), the role (`PERSONAL` / `HOLDING` / `OPERATING` / `INVESTMENT` / `SUPERANNUATION`), and the structural identifiers (ABN / ACN / encrypted TFN / trading name / established date / parent-entity for trustee → trust hierarchies).
 
+> **Phase 39.5 — Super vs SMSF (2026-06-02).** `SuperannuationAccount` gains `fundType` (`SuperFundType`: `INDUSTRY` / `RETAIL` / `SMSF`, default `INDUSTRY`) + nullable `ownerEntityId` → `LegalEntity` (`onDelete: SetNull`). The model now cleanly separates **retail/industry super** (a `SuperannuationAccount` for membership in an external APRA fund — userId-scoped, no entity) from an **SMSF** (a `LegalEntity(type=SMSF)` that OWNS its assets via the existing `ownerEntityId` relations on `InvestmentAccount` / `Property` / `Account`). An SMSF member account carries `ownerEntityId`→the SMSF entity and is **excluded from the net-worth super sum** (its wealth flows through the entity's owned assets — see `lib/calculations/netWorthCalculator.ts`, double-count guard). `InvestmentAccountType.SUPERS` is retained for back-compat only (dead — never read for tax/net-worth; removed from the onboarding picker).
+
 ## **10.2 The `LegalEntity` shape**
 
 ```
