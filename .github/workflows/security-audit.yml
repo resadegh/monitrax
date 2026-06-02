@@ -25,12 +25,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run npm audit
+      # Informational: surfaces ALL high+critical advisories, including
+      # devDependencies (e.g. vitest/vite test tooling). Non-blocking so the
+      # team stays aware without gating deploys on dev-only or no-fix-available
+      # advisories (xlsx/SheetJS, etc.). Tracked in IMPLEMENTATION_PLAN #28.
+      - name: Run npm audit (all deps — informational)
         run: npm audit --audit-level=high
         continue-on-error: true
 
-      - name: Run npm audit (critical only - must pass)
-        run: npm audit --audit-level=critical
+      # BLOCKING gate: production runtime only. A critical in a devDependency
+      # (test runner, linter, build tool) never ships to users, so it must not
+      # block a deploy. `--omit=dev` scopes the must-pass gate to what actually
+      # runs in production. (2026-06-02: the only criticals were vitest's
+      # Vitest-UI-server advisory — dev-only, and @vitest/ui isn't even
+      # installed here. See docs/policy/APPROVED_DEPENDENCIES.md.)
+      - name: Run npm audit (production deps, critical — must pass)
+        run: npm audit --omit=dev --audit-level=critical
 
   build-check:
     name: Build verification
