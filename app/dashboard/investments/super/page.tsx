@@ -547,12 +547,22 @@ export default function SuperannuationPage() {
                     <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
                     <div className="text-sm text-indigo-900 dark:text-indigo-100">
                       <p>This is a self-managed fund. Its investments, property, and cash are tracked against the entity in My Structure — and counted there in your net worth (not double-counted here).</p>
-                      <Link
-                        href="/dashboard/entities"
-                        className="mt-1 inline-flex items-center gap-1 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
-                      >
-                        View structure <ArrowUpRight className="h-3.5 w-3.5" />
-                      </Link>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                        <Link
+                          href="/dashboard/entities"
+                          className="inline-flex items-center gap-1 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                        >
+                          View structure <ArrowUpRight className="h-3.5 w-3.5" />
+                        </Link>
+                        {detailAccount.ownerEntityId && (
+                          <Link
+                            href={`/dashboard/entities/${detailAccount.ownerEntityId}/tax`}
+                            className="inline-flex items-center gap-1 font-medium text-indigo-600 underline-offset-2 hover:underline dark:text-indigo-400"
+                          >
+                            View tax position <ArrowUpRight className="h-3.5 w-3.5" />
+                          </Link>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
