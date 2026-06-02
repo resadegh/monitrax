@@ -93,12 +93,12 @@ const INVESTMENT_TYPES: InvestmentTypeMeta[] = [
     icon: <BarChart3 className="h-5 w-5" />,
     accent: 'bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-400',
   },
-  {
-    value: 'SUPERS',
-    label: 'Superannuation',
-    icon: <Briefcase className="h-5 w-5" />,
-    accent: 'bg-violet-100 text-violet-600 dark:bg-violet-900/40 dark:text-violet-400',
-  },
+  // Phase 39.5: 'SUPERS' removed from the picker. Retail/industry super is
+  // captured in SuperStep (→ SuperannuationAccount); an SMSF is a LegalEntity
+  // (My Structure) that owns ordinary investment accounts (brokerage/fund/…).
+  // The enum value remains in the Prisma schema for back-compat; any legacy
+  // InvestmentAccount(type=SUPERS) row falls back gracefully via the typeMeta
+  // lookup (?? INVESTMENT_TYPES[0]).
   {
     value: 'FUND',
     label: 'Managed fund',

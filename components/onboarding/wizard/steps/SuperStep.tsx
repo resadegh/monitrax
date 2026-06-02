@@ -310,6 +310,14 @@ export function SuperStep({ data, onUpdate, registerStepCommit }: SuperStepProps
           No super to add? Click <span className="font-medium">Continue</span> to skip.
         </p>
       )}
+
+      {/* Phase 39.5: route SMSF to its proper home (the entity layer). This is
+          for retail/industry super; an SMSF is captured as a structure in the
+          earlier "Your structure" step and owns its own investments. */}
+      <p className="text-center text-xs text-slate-400 dark:text-slate-500">
+        Have a self-managed fund (SMSF)? Add it as a structure in{' '}
+        <span className="font-medium">Your structure</span> — its investments and property are tracked there.
+      </p>
     </WizardStepShell>
   );
 }
