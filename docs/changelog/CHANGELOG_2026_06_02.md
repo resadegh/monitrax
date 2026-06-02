@@ -91,3 +91,48 @@ Docs updated: `.github/workflows/security-audit.yml`, `docs/policy/APPROVED_DEPE
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+---
+
+## Session: brave-shannon-mr1ye (cont.) — Next.js security upgrade
+
+### Changes Made
+- **Type**: Dependency / security upgrade + build-tooling migration
+- **Scope**: `next`, `eslint-config-next`, `npm run lint` (ESLint CLI migration).
+- **Origin**: Reza — "continue with next build" (the recommended next security action: Next.js high-severity bump).
+
+### Root cause + fix
+- `npm audit` flagged numerous Next.js **high-severity** advisories on 15.2.6 (SSRF, XSS, cache-poisoning, DoS, request-smuggling). `npm audit` recommended **15.5.19** with `isSemVerMajor:false`.
+- **Fix:** bumped `next` 15.2.6 → **15.5.19** (the 15.x security-backport line) + `eslint-config-next` in lockstep. Stays within the major — no React 19 / runtime breakage risk of jumping to 16.
+
+### Side-effect handled — `next lint` deprecation
+- Next 15.5 deprecates `next lint` (interactive migration prompt; breaks `npm run lint`).
+- Migrated `npm run lint` → `eslint . --ext .js,.jsx,.ts,.tsx` with a committed `.eslintrc.json`:
+  - `extends: next/core-web-vitals` (the prior default rule set) + `plugins: ["@typescript-eslint"]` (registers the plugin so existing `eslint-disable @typescript-eslint/*` directives resolve, WITHOUT enabling the strict recommended set — exact parity with old `next lint`).
+  - Rejected `next/typescript` (would enable strict recommended → 1259 problems, not the prior baseline).
+- Lint now runs non-interactively: **166 findings (99 errors, 67 warnings)** — all pre-existing (`react/no-unescaped-entities` 91, `react-hooks/exhaustive-deps` 57, etc.), non-blocking (CI lint is `continue-on-error`). No regression vs old `next lint`.
+
+### Verification
+- `next` installed: 15.5.19. `tsc --noEmit` → 0 errors. `npm run build` → ✓ compiled (full route tree). `lint:financial-surfaces` → exit 0.
+- `npm audit --omit=dev`: prod high 2 → **1** (remaining = `xlsx`/SheetJS, no upstream fix); criticals still 0 (gate passes).
+
+### Files Modified
+- `package.json` — `next` + `eslint-config-next` → 15.5.19; `lint` script → ESLint CLI.
+- `package-lock.json` — regenerated.
+- `.eslintrc.json` — NEW (lint config preserving prior rule set).
+
+### Documentation Updated
+- `docs/policy/APPROVED_DEPENDENCIES.md` — `next`/`eslint-config-next` versions + §7.1 follow-up marked done.
+- `docs/IMPLEMENTATION_PLAN.md` Dead Code #28 — Next.js item ✅ done; xlsx + vitest remain.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces: [x] deployment / build (lint tooling), [x] security posture (dependency upgrade).
+Docs updated: `APPROVED_DEPENDENCIES.md`, `IMPLEMENTATION_PLAN.md` #28, this changelog.
+
+### PR
+- Branch: `claude/brave-shannon-mr1ye`
+- Status: Draft (pending review)
+
+### Follow-up fix — decouple lint from `next build`
+- The Vercel build of the upgrade errored: adding `.eslintrc.json` (for the new `eslint .` lint script) made `next build` run ESLint automatically, which failed on **pre-existing** `react/no-unescaped-entities` errors (100+, always in the codebase, never previously blocking — because no ESLint config was committed before, so `next build` skipped linting).
+- **Fix:** `next.config.ts` → `eslint: { ignoreDuringBuilds: true }`. Lint is now a separate explicit gate (`npm run lint` + the security-audit workflow's lint step); `next build` is about compilation only. Verified locally: `next build` → "✓ Compiled successfully / Skipping linting", exit 0, with `.eslintrc.json` present.

@@ -7,6 +7,17 @@ const nextConfig: NextConfig = {
   // Ensure Prisma works properly with serverless/edge
   serverExternalPackages: ['@prisma/client', 'prisma'],
 
+  // Lint is a separate, explicit CI gate (`npm run lint` + the security-audit
+  // workflow's lint step), NOT a build blocker. `next build` runs ESLint
+  // automatically whenever an ESLint config is present; with the committed
+  // .eslintrc.json (added when migrating off the deprecated `next lint`),
+  // that would fail the build on pre-existing `react/no-unescaped-entities`
+  // errors that have always lived in the codebase and never blocked a deploy.
+  // Decoupling keeps builds about compilation and lint about quality.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+
   // Override Cross-Origin-Opener-Policy on the proxied Firebase auth handler
   // pages. Firebase Hosting may send COOP: same-origin which severs the
   // window.opener relationship and prevents the popup from communicating the
