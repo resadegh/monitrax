@@ -132,3 +132,7 @@ Docs updated: `APPROVED_DEPENDENCIES.md`, `IMPLEMENTATION_PLAN.md` #28, this cha
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+### Follow-up fix — decouple lint from `next build`
+- The Vercel build of the upgrade errored: adding `.eslintrc.json` (for the new `eslint .` lint script) made `next build` run ESLint automatically, which failed on **pre-existing** `react/no-unescaped-entities` errors (100+, always in the codebase, never previously blocking — because no ESLint config was committed before, so `next build` skipped linting).
+- **Fix:** `next.config.ts` → `eslint: { ignoreDuringBuilds: true }`. Lint is now a separate explicit gate (`npm run lint` + the security-audit workflow's lint step); `next build` is about compilation only. Verified locally: `next build` → "✓ Compiled successfully / Skipping linting", exit 0, with `.eslintrc.json` present.
