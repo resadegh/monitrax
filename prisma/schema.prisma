@@ -1439,8 +1439,13 @@ model Property {
   type          PropertyType
   address       String?
   purchasePrice Float
+  // Q-DEC PR 1 (Phase 45 gate): Decimal sibling — engines write Float
+  // in PR 1-2, read-only here. PR 3 cuts engines over to Decimal; PR 4
+  // drops Float. Nullable until PR 4. See PHASE_45_WHAT_IF_SCENARIOS.md.
+  purchasePriceDecimal Decimal? @db.Decimal(19, 4)
   purchaseDate  DateTime
   currentValue  Float
+  currentValueDecimal Decimal? @db.Decimal(19, 4)
   valuationDate DateTime
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
@@ -1513,14 +1518,18 @@ model Loan {
   name                String
   type                LoanType
   principal           Float // Current balance
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings — see PHASE_45_WHAT_IF_SCENARIOS.md
+  principalDecimal    Decimal?           @db.Decimal(19, 4)
   interestRateAnnual  Float // e.g., 0.0625 for 6.25%
   rateType            RateType
   fixedExpiry         DateTime? // When fixed rate expires
   isInterestOnly      Boolean            @default(false)
   termMonthsRemaining Int
   minRepayment        Float // Current required payment
+  minRepaymentDecimal Decimal?           @db.Decimal(19, 4)
   repaymentFrequency  RepaymentFrequency
   extraRepaymentCap   Float? // Annual cap for extra repayments on fixed loans
+  extraRepaymentCapDecimal Decimal?      @db.Decimal(19, 4)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -1554,6 +1563,8 @@ model Account {
   type           AccountType
   institution    String?
   currentBalance Float
+  // Q-DEC PR 1 (Phase 45 gate) Decimal sibling — see PHASE_45_WHAT_IF_SCENARIOS.md
+  currentBalanceDecimal Decimal? @db.Decimal(19, 4)
   interestRate   Float? // Annual interest rate (e.g., 0.025 for 2.5%)
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
@@ -1562,6 +1573,8 @@ model Account {
   balanceSource        BalanceSource @default(MANUAL) // Where the balance came from
   balanceLastUpdatedAt DateTime? // When balance was last updated
   lastImportedBalance  Float? // Balance from most recent import
+  // Q-DEC PR 1 (Phase 45 gate) Decimal sibling
+  lastImportedBalanceDecimal Decimal? @db.Decimal(19, 4)
 
   // Basiq Open Banking Integration
   basiqAccountId    String?   @unique // Basiq account ID (if linked via Open Banking)
@@ -1758,6 +1771,8 @@ model Income {
   type                IncomeType       @default(OTHER) // System type (fallback when customCategoryId is null)
   sourceType          IncomeSourceType @default(GENERAL)
   amount              Float
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings for every Income money column.
+  amountDecimal       Decimal? @db.Decimal(19, 4)
   frequency           Frequency
 
   // Phase 20: Salary-specific fields (only applicable when type = SALARY)
@@ -1766,19 +1781,27 @@ model Income {
 
   // Phase 20: Calculated fields for salary
   grossAmount     Float? // If NET entered, calculated GROSS
+  grossAmountDecimal     Decimal? @db.Decimal(19, 4)
   netAmount       Float? // If GROSS entered, calculated NET
+  netAmountDecimal       Decimal? @db.Decimal(19, 4)
   paygWithholding Float? // Calculated PAYG withholding (annual)
+  paygWithholdingDecimal Decimal? @db.Decimal(19, 4)
 
   // Phase 20: Superannuation (for SALARY type)
   superGuaranteeRate   Float? // e.g., 0.115 for 11.5%
   superGuaranteeAmount Float? // Calculated SG amount (annual)
+  superGuaranteeAmountDecimal Decimal? @db.Decimal(19, 4)
   salarySacrifice      Float? // Pre-tax super sacrifice (annual)
+  salarySacrificeDecimal      Decimal? @db.Decimal(19, 4)
 
   // Phase 20: Tax determination (auto-calculated, replaces isTaxable)
   taxCategory        TaxCategory? // System-determined category
   taxableAmount      Float? // The taxable portion
+  taxableAmountDecimal      Decimal? @db.Decimal(19, 4)
   taxExemptAmount    Float? // Any exempt portion
+  taxExemptAmountDecimal    Decimal? @db.Decimal(19, 4)
   frankingCredits    Float? // For dividends
+  frankingCreditsDecimal    Decimal? @db.Decimal(19, 4)
   frankingPercentage Float? // Franking percentage (0-100)
   taxNotes           String? // Explanation of tax treatment
 
@@ -1787,6 +1810,7 @@ model Income {
 
   // Phase 30: Budget vs Actual Reconciliation
   budgetedAmount Float? // Original budgeted/estimated amount (preserved when actual updates)
+  budgetedAmountDecimal Decimal? @db.Decimal(19, 4)
   lastReconciled DateTime? // When amount was last updated from real transactions
 
   startDate DateTime?
@@ -1829,6 +1853,8 @@ model Expense {
   category            ExpenseCategory   @default(OTHER) // System category (fallback when customCategoryId is null)
   sourceType          ExpenseSourceType @default(GENERAL)
   amount              Float
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings
+  amountDecimal       Decimal? @db.Decimal(19, 4)
   frequency           Frequency
   isEssential         Boolean           @default(true)
   isTaxDeductible     Boolean           @default(false)
@@ -1836,6 +1862,7 @@ model Expense {
 
   // Phase 30: Budget vs Actual Reconciliation
   budgetedAmount Float? // Original budgeted/estimated amount (preserved when actual updates)
+  budgetedAmountDecimal Decimal? @db.Decimal(19, 4)
   lastReconciled DateTime? // When amount was last updated from real transactions
 
   createdAt DateTime @default(now())
@@ -2049,9 +2076,14 @@ model InvestmentAccount {
   // Phase 23: Balance tracking fields
   openingDate      DateTime?
   openingBalance   Float           @default(0)
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings
+  openingBalanceDecimal Decimal?  @db.Decimal(19, 4)
   cashBalance      Float           @default(0)
+  cashBalanceDecimal    Decimal?  @db.Decimal(19, 4)
   totalDeposits    Float           @default(0)
+  totalDepositsDecimal  Decimal?  @db.Decimal(19, 4)
   totalWithdrawals Float           @default(0)
+  totalWithdrawalsDecimal Decimal? @db.Decimal(19, 4)
   costBasisMethod  CostBasisMethod @default(FIFO)
 
   createdAt DateTime @default(now())
@@ -2081,17 +2113,23 @@ model InvestmentHolding {
   ticker              String // VAS, A200, VGS, BHP
   name                String? // Full name (e.g., "Vanguard Australian Shares ETF")
   units               Float
+  unitsDecimal        Decimal? @db.Decimal(19, 4)
   averagePrice        Float
+  averagePriceDecimal Decimal? @db.Decimal(19, 4)
   frankingPercentage  Float? // AU feature for franking credits
   type                HoldingType
 
   // Phase 23: Enhanced tracking
   firstPurchaseDate DateTime? // Date of first purchase (for CGT discount)
   totalCostBasis    Float     @default(0) // Total amount invested
+  totalCostBasisDecimal Decimal? @db.Decimal(19, 4)
   currentPrice      Float? // Latest market price per unit
+  currentPriceDecimal Decimal? @db.Decimal(19, 4)
   currentValue      Float? // units * currentPrice (computed on update)
+  currentValueDecimal Decimal? @db.Decimal(19, 4)
   priceUpdatedAt    DateTime? // When price was last updated
   unrealizedGain    Float? // currentValue - totalCostBasis
+  unrealizedGainDecimal Decimal? @db.Decimal(19, 4)
   unrealizedGainPct Float? // Percentage gain/loss
 
   createdAt DateTime @default(now())
@@ -2155,12 +2193,17 @@ model PurchaseLot {
   // Lot details
   purchaseDate DateTime
   units        Float // Units in this lot
+  unitsDecimal Decimal? @db.Decimal(19, 4)
   unitCost     Float // Price per unit at purchase
+  unitCostDecimal Decimal? @db.Decimal(19, 4)
   totalCost    Float // units * unitCost + fees
+  totalCostDecimal Decimal? @db.Decimal(19, 4)
   fees         Float    @default(0)
+  feesDecimal  Decimal? @db.Decimal(19, 4)
 
   // Tracking
   unitsRemaining Float // Units not yet sold (starts = units)
+  unitsRemainingDecimal Decimal? @db.Decimal(19, 4)
   isFullySold    Boolean @default(false)
 
   createdAt DateTime @default(now())
@@ -4093,20 +4136,30 @@ model SuperannuationAccount {
 
   // Balances
   currentBalance   Float @default(0)
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings — super is in the Phase
+  // 45 salary-sacrifice lever's critical path.
+  currentBalanceDecimal   Decimal? @db.Decimal(19, 4)
   taxableComponent Float @default(0)
+  taxableComponentDecimal Decimal? @db.Decimal(19, 4)
   taxFreeComponent Float @default(0)
+  taxFreeComponentDecimal Decimal? @db.Decimal(19, 4)
 
   // Contribution tracking (current FY)
   concessionalYTD    Float   @default(0) // SG + Salary Sacrifice + Personal deductible
+  concessionalYTDDecimal    Decimal? @db.Decimal(19, 4)
   nonConcessionalYTD Float   @default(0) // After-tax contributions
+  nonConcessionalYTDDecimal Decimal? @db.Decimal(19, 4)
   financialYear      String? // e.g., "2024-25"
 
   // Contribution caps (updated annually)
   concessionalCap    Float @default(27500)
+  concessionalCapDecimal    Decimal? @db.Decimal(19, 4)
   nonConcessionalCap Float @default(110000)
+  nonConcessionalCapDecimal Decimal? @db.Decimal(19, 4)
 
   // Carry-forward tracking (unused concessional caps from prior 5 years)
   carryForwardAvailable Float @default(0)
+  carryForwardAvailableDecimal Decimal? @db.Decimal(19, 4)
 
   // Investment options / performance (optional)
   investmentOption String?
@@ -4273,12 +4326,16 @@ model Asset {
 
   // Value tracking
   purchasePrice Float
+  // Q-DEC PR 1 (Phase 45 gate) Decimal siblings
+  purchasePriceDecimal Decimal? @db.Decimal(19, 4)
   purchaseDate  DateTime
   currentValue  Float
+  currentValueDecimal Decimal? @db.Decimal(19, 4)
   valuationDate DateTime // When currentValue was set
 
   // Sale/disposal tracking
   salePrice Float?
+  salePriceDecimal Decimal? @db.Decimal(19, 4)
   saleDate  DateTime?
 
   // Depreciation (optional)
@@ -4286,6 +4343,7 @@ model Asset {
   depreciationRate   Float? // Annual rate (e.g., 0.15 for 15%)
   usefulLifeYears    Int?
   residualValue      Float? // Expected value at end of useful life
+  residualValueDecimal Decimal? @db.Decimal(19, 4)
 
   // Vehicle-specific fields (nullable for non-vehicles)
   vehicleMake         String?
