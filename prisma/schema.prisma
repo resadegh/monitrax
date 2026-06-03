@@ -1906,6 +1906,8 @@ model Transaction {
   date        DateTime
   description String
   amount      Float
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal sibling
+  amountDecimal Decimal? @db.Decimal(19, 4)
   direction   TransactionDirection
   category    String?
   createdAt   DateTime             @default(now())
@@ -2157,13 +2159,18 @@ model InvestmentTransaction {
   date                DateTime
   type                InvestmentTransactionType
   price               Float
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal siblings
+  priceDecimal        Decimal? @db.Decimal(19, 4)
   units               Float
+  unitsDecimal        Decimal? @db.Decimal(19, 4)
   fees                Float?
+  feesDecimal         Decimal? @db.Decimal(19, 4)
   notes               String?
 
   // Phase 23: Enhanced transaction tracking
   ticker       String? // For BUY/SELL when holdingId not yet created
   totalAmount  Float? // price * units + fees (for reporting)
+  totalAmountDecimal Decimal? @db.Decimal(19, 4)
   exchangeRate Float? // For foreign currency transactions
 
   createdAt DateTime @default(now())
@@ -2232,18 +2239,27 @@ model CapitalGainEvent {
   // Sale details
   saleDate      DateTime
   unitsSold     Float
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal siblings
+  unitsSoldDecimal Decimal? @db.Decimal(19, 4)
   salePrice     Float // Price per unit at sale
+  salePriceDecimal Decimal? @db.Decimal(19, 4)
   saleFees      Float    @default(0)
+  saleFeesDecimal Decimal? @db.Decimal(19, 4)
   grossProceeds Float // unitsSold * salePrice - saleFees
+  grossProceedsDecimal Decimal? @db.Decimal(19, 4)
 
   // Cost basis (calculated from allocated lots)
   totalCostBasis Float // Sum of cost from allocated purchase lots
+  totalCostBasisDecimal Decimal? @db.Decimal(19, 4)
 
   // Gain/Loss calculation
   capitalGain     Float // grossProceeds - totalCostBasis
+  capitalGainDecimal Decimal? @db.Decimal(19, 4)
   capitalGainType CapitalGainType // SHORT_TERM or LONG_TERM
   cgtDiscount     Float           @default(0) // 50% discount if LONG_TERM
+  cgtDiscountDecimal Decimal? @db.Decimal(19, 4)
   taxableGain     Float // capitalGain - cgtDiscount
+  taxableGainDecimal Decimal? @db.Decimal(19, 4)
 
   // Tax year tracking
   financialYear String // e.g., "2024-25"
@@ -2278,7 +2294,9 @@ model CapitalGainLotAllocation {
 
   // Allocation details
   unitsAllocated     Float // How many units from this lot were sold
+  unitsAllocatedDecimal     Decimal? @db.Decimal(19, 4)
   costBasisAllocated Float // Proportional cost basis
+  costBasisAllocatedDecimal Decimal? @db.Decimal(19, 4)
   holdingPeriodDays  Int // Days between purchase and sale
 
   createdAt DateTime @default(now())
@@ -3124,7 +3142,9 @@ model RecurringPayment {
   // Pattern
   pattern        RecurrencePattern
   expectedAmount Float
-  amountVariance Float             @default(0.05) // 5% variance tolerance
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal siblings
+  expectedAmountDecimal Decimal? @db.Decimal(19, 4)
+  amountVariance Float             @default(0.05) // 5% variance tolerance (ratio — stays Float)
 
   // Tracking
   lastOccurrence  DateTime
@@ -3134,6 +3154,7 @@ model RecurringPayment {
   // Alerts
   priceIncreaseAlert  Boolean   @default(false)
   lastPriceChange     Float?
+  lastPriceChangeDecimal Decimal? @db.Decimal(19, 4)
   lastPriceChangeDate DateTime?
 
   // Status
@@ -4194,13 +4215,19 @@ model SmsfAnnualReturn {
   financialYear String // e.g. "2024-25"
 
   assessableInvestmentIncome Float   @default(0) // ordinary + statutory investment income (ex-contributions/NALI)
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal siblings
+  assessableInvestmentIncomeDecimal Decimal? @db.Decimal(19, 4)
   deductions                 Float   @default(0) // deductions against investment income
+  deductionsDecimal          Decimal? @db.Decimal(19, 4)
   assessableContributions    Float   @default(0) // employer SG + salary sacrifice + personal deductible (taxed @15%)
+  assessableContributionsDecimal Decimal? @db.Decimal(19, 4)
   nonArmsLengthIncome        Float   @default(0) // NALI — taxed at top rate, ECPI never applies (s295-550)
+  nonArmsLengthIncomeDecimal Decimal? @db.Decimal(19, 4)
   frankingCredits            Float   @default(0) // Phase 44.2 slice 2: refundable imputation credits (Div 207 + s67-25)
+  frankingCreditsDecimal     Decimal? @db.Decimal(19, 4)
   isComplying                Boolean @default(true)
   isInPensionPhase           Boolean @default(false)
-  ecpiExemptProportion       Float? // 0..1 exempt proportion; null = unknown (drives UNCOMPUTED)
+  ecpiExemptProportion       Float? // 0..1 exempt proportion; null = unknown (drives UNCOMPUTED) — ratio stays Float
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4224,6 +4251,8 @@ model SuperContribution {
 
   type          SuperContributionType
   amount        Float
+  // Q-DEC PR 1.5 (Phase 45 gate) Decimal sibling
+  amountDecimal Decimal? @db.Decimal(19, 4)
   date          DateTime
   financialYear String // e.g., "2024-25"
 

@@ -186,3 +186,53 @@ most common source of partial-apply failures.
 **§17.3 discipline followed:** real build log read first
 (`./scripts/vercel-logs.sh build <id>`), root cause traced from the
 DbError directly. No guessing.
+
+---
+
+## Session: qdec-pr1-5-remaining-money-cols-LIlK9 — Q-DEC PR 1.5 (supplementary Decimal columns)
+
+### Changes Made
+- **Type**: Schema migration (additive, non-destructive)
+- **Scope**: Workstream `0·WI` Stage A PR 1.5 — same additive pattern as PR 1, extended to the 7 supplementary money-bearing models PR 1 deferred. After this merges, every Float money column the engines compose has a Decimal sibling. Q-DEC PR 2 (adapter layer) can then begin.
+
+### Models in scope (7 models, ~23 columns)
+
+| Model | Money columns gaining `*Decimal` sibling |
+|---|---|
+| `Transaction` | `amount` |
+| `InvestmentTransaction` | `price`, `units`, `fees`, `totalAmount` |
+| `CapitalGainEvent` | `unitsSold`, `salePrice`, `saleFees`, `grossProceeds`, `totalCostBasis`, `capitalGain`, `cgtDiscount`, `taxableGain` |
+| `CapitalGainLotAllocation` | `unitsAllocated`, `costBasisAllocated` |
+| `RecurringPayment` | `expectedAmount`, `lastPriceChange` (`amountVariance` is a ratio — stays Float) |
+| `SmsfAnnualReturn` | `assessableInvestmentIncome`, `deductions`, `assessableContributions`, `nonArmsLengthIncome`, `frankingCredits` (`ecpiExemptProportion` is a ratio — stays Float) |
+| `SuperContribution` | `amount` |
+
+### Models excluded (intentional)
+- **Phase 41E models** (`DistributionResolution`, `DistributionAllocation`, `DividendDistribution`, `DividendPayment`, `PrivateCompanyBenefit`) — already use Decimal. Built fresh in Phase 41E + Phase 44 per CLAUDE.md §0 with Decimal from day one. Nothing to migrate.
+- **TaxPosition** (~30 cols) — derived cache layer, not user-input. Can ship in a follow-up if engine cutover (Q-DEC PR 3) proves it matters; out of scope for the precision-foundation gate.
+
+### Lessons applied from PR 1
+- **Table-name verification before SQL** — every @@map grepped from the schema. All 7 targets confirmed plural (`transactions`, `investment_transactions`, `capital_gain_events`, `capital_gain_lot_allocations`, `recurring_payments`, `smsf_annual_returns`, `super_contributions`). No more `income` vs `incomes` typos.
+- **`IF NOT EXISTS` from the start** — every `ADD COLUMN` is idempotent on re-run. Safe under partial-apply failure recovery.
+- **`prisma format` not run** — avoids file-wide whitespace re-alignment that inflates the diff.
+
+### CLAUDE.md compliance
+- **§12.11 destructive-write checklist: N/A** — additive only. Backfill UPDATE writes to new `*_decimal` columns only; existing Float data is read but NEVER overwritten.
+- **§12.12 schema-change deploy protocol** — schema.prisma change + matching migration file `20260603130000_q_dec_pr1_5_supplementary_decimal_columns/migration.sql` in same PR.
+- **§15 IMPLEMENTATION_PLAN** — workstream 0·WI Q-DEC PR 1 row flipped to `[x] ✅ MERGED`; PR 1.5 row added as `[~]` (in flight).
+- **§16 doc-sync** — this changelog + IMPLEMENTATION_PLAN + spec doc all in coherent state.
+
+### Build status
+- [x] `npx prisma generate` — Prisma Client v5.22.0 generated cleanly
+- [x] `npm run build` — Next.js compiled successfully
+- [x] `prisma format` artefacts intentionally NOT committed (clean diff)
+
+### Risk profile
+**Very low.** Same risk profile as PR 1 — additive schema only, engines unchanged, no type contract changed (nullable columns). Worst case: new columns exist with NULLs, engines keep reading Float.
+
+### Next concrete step
+After this merges: Q-DEC PR 2 — engine adapter layer (`Prisma.Decimal` at engine boundaries; computation in Decimal; parallel-run shadow-comparison harness extends Phase 41I calc-audit).
+
+### PR
+- Branch: `claude/qdec-pr1-5-remaining-money-cols-LIlK9`
+- Status: Draft

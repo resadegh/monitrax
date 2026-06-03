@@ -64,11 +64,12 @@ The wedge is real because:
 Reza decision 2026-06-01: Phase 45 v1 ships AFTER Q-DEC (Float→Decimal) lands. Rationale: 10-year horizons compound Float error to visibly-wrong cents; the entire product promise is "regulator-grade accuracy, every number traceable"; pre-revenue is the cheap time to fix the precision foundation.
 
 Sequencing:
-1. Q-DEC PR 1 — additive Decimal schema
-2. Q-DEC PR 2 — engine adapter layer
-3. **Phase 45 Stitch design pass begins HERE in parallel with Q-DEC PR 3** (so Reza can iterate the UI design while engine cutover proceeds)
-4. Q-DEC PR 3 — engine-by-engine cutover
-5. Q-DEC PR 4 — Float drop (after 7-day parallel-run)
+1. ✅ **Q-DEC PR 1 — additive Decimal schema (core 10 models) — MERGED PR #974 (2026-06-03)** — ~45 columns on Property/Loan/Account/Income/Expense/InvestmentAccount/InvestmentHolding/PurchaseLot/SuperannuationAccount/Asset.
+2. 🟡 **Q-DEC PR 1.5 — supplementary Decimal columns (7 models, this PR's follow-up) — IN FLIGHT** — ~23 columns on Transaction/InvestmentTransaction/CapitalGainEvent/CapitalGainLotAllocation/RecurringPayment/SmsfAnnualReturn/SuperContribution. Phase 41E models already Decimal; TaxPosition cache deferred.
+3. Q-DEC PR 2 — engine adapter layer
+4. **Phase 45 Stitch design pass begins HERE in parallel with Q-DEC PR 3** (so Reza can iterate the UI design while engine cutover proceeds)
+5. Q-DEC PR 3 — engine-by-engine cutover
+6. Q-DEC PR 4 — Float drop (after 7-day parallel-run)
 6. Phase 45 PR 1 — engine composition (salary-sacrifice scenario + `tenYearProjection.ts`)
 7. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens)
 8. Phase 45.1 — contextual entry points (separate PR)
