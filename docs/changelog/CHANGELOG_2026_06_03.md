@@ -143,3 +143,46 @@ Q-DEC PR 1.5 — extend the same additive pattern to the remaining ~50 columns o
 ### PR
 - Branch: `claude/phase-45-and-qdec-LIlK9`
 - Status: Draft
+
+### v2 fix — migration table-name typo + idempotency hardening (2026-06-03, same session)
+
+**Bug:** Vercel preview build failed at `prisma migrate deploy`. Real
+build log (pulled via `./scripts/vercel-logs.sh build <id>` per §17.3
+active-debugging discipline — diagnosed from real log, not guessed):
+
+```
+ERROR: relation "incomes" does not exist
+Migration name: 20260603120000_q_dec_pr1_additive_decimal_columns
+A migration failed to apply. New migrations cannot be applied before
+the error is recovered from. Error: P3018
+```
+
+**Root cause:** The Income Prisma model maps to a table named
+`income` (singular). Every other money-bearing model is plural
+(`properties`, `loans`, `accounts`, `expenses`, `investment_accounts`,
+`investment_holdings`, `purchase_lots`, `superannuation_accounts`,
+`assets`). I assumed plural by pattern-match without checking `@@map`.
+
+**Fix:**
+1. Migration SQL `"incomes"` → `"income"` (all 11 lines: 10 ALTER + 10 UPDATE).
+2. Added `IF NOT EXISTS` to every `ALTER TABLE ... ADD COLUMN` so
+   re-running is safe — the partial first attempt had already added
+   Property + Loan + Account columns to dev before failing.
+
+**Reza-side recovery step (one-shot, on monitrax-db-dev):**
+```bash
+npx prisma migrate resolve --rolled-back \
+  "20260603120000_q_dec_pr1_additive_decimal_columns"
+```
+This marks the failed migration as rolled-back in `_prisma_migrations`,
+allowing the next `prisma migrate deploy` (on rebuild) to retry the
+(now-fixed) migration. Without this step, every future build aborts
+because Prisma sees the unresolved failed row.
+
+**Lesson logged:** future hand-written migrations MUST `grep @@map` on
+the Prisma model before writing SQL — table-name assumption is the
+most common source of partial-apply failures.
+
+**§17.3 discipline followed:** real build log read first
+(`./scripts/vercel-logs.sh build <id>`), root cause traced from the
+DbError directly. No guessing.
