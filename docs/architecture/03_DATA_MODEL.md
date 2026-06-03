@@ -4199,3 +4199,46 @@ the engine `computeCustomReminders` (synthetic id `${id}:CUSTOM`, category
 derived reminders via `ReminderState` — no separate state machinery. No
 financial / CDR data — title + date + note only (§13.3). Created via
 `POST /api/reminders/custom`.
+
+---
+
+## Q-DEC Float → Decimal precision migration (workstream 0·WI, 2026-06-03)
+
+The pre-Phase-41E money-bearing models (Property, Loan, Account, Income, Expense, InvestmentAccount, InvestmentHolding, PurchaseLot, SuperannuationAccount, Asset, Transaction, InvestmentTransaction, CapitalGainEvent, CapitalGainLotAllocation, RecurringPayment, SmsfAnnualReturn, SuperContribution) shipped with `Float` (PostgreSQL `DOUBLE PRECISION`) for every dollar amount. The Phase 41E + Phase 44 models that landed later (DistributionResolution, DistributionAllocation, DividendDistribution, DividendPayment, PrivateCompanyBenefit, ShareParcel) use `Decimal @db.Decimal(19, 4)` from day one — the canonical choice per CLAUDE.md §0 for financial precision.
+
+**Q-DEC retrofits the older models to the same standard.** Why it matters: `Float` cannot exactly represent most decimal fractions; errors compound across aggregations and 10-year projections; Phase 41E tax calculations are particularly exposed (rounding compounds at every layer of Div 6 streaming + CGT lot allocation). 10-year What-If scenarios (Phase 45) make this user-visible — wrong cents on a projection result page is a credibility kill. Pre-revenue is the cheap time to fix.
+
+### Migration strategy (4-PR cutover)
+
+| PR | Stage | What changes | Status |
+|---|---|---|---|
+| **Q-DEC PR 1** | Additive schema (core 10 models, ~45 columns) | `*_decimal` sibling `Decimal? @db.Decimal(19, 4)` columns on Property, Loan, Account, Income, Expense, InvestmentAccount, InvestmentHolding, PurchaseLot, SuperannuationAccount, Asset. Idempotent backfill from existing Float. Engines unchanged. | ✅ MERGED (PR #974, 2026-06-03) |
+| **Q-DEC PR 1.5** | Additive schema (supplementary 7 models, ~23 columns) | Same pattern for Transaction, InvestmentTransaction, CapitalGainEvent, CapitalGainLotAllocation, RecurringPayment, SmsfAnnualReturn, SuperContribution. Phase 41E models excluded (already Decimal). TaxPosition cache layer deferred. | 🟡 IN FLIGHT (2026-06-03) |
+| **Q-DEC PR 2** | Engine adapter layer | `Prisma.Decimal` import at engine boundaries (`lib/calculations/*`, `lib/tax-engine/*`, `lib/cashflow/*`, `lib/cfo/*`); computation in Decimal; return `Decimal | number` union for back-compat. Parallel-run shadow-comparison harness extends Phase 41I calc-audit. | 📋 Queued |
+| **Q-DEC PR 3** | Engine-by-engine cutover | Route handlers consume Decimal results; components format via existing type-abstract `formatCurrency()`. Engines write to BOTH Float and Decimal columns (parallel-run period). | 📋 Queued |
+| **Q-DEC PR 4** | Float column drop | After 7-day parallel-run shows zero diff in the shadow-comparison harness, drop the original Float columns. §12.11 destructive-write checklist mandatory. | 📋 Queued |
+
+### Column-naming convention
+
+Every Decimal sibling follows `<originalField>Decimal`:
+- `Property.purchasePrice` → `Property.purchasePriceDecimal`
+- `Loan.principal` → `Loan.principalDecimal`
+- `Income.amount` → `Income.amountDecimal`
+- etc.
+
+PostgreSQL column names match (camelCase, no underscore). Type: `DECIMAL(19, 4)` — up to ~AU$999 trillion to four decimal places. Overkill for single-user values but the right scale for aggregated portfolio sums and the 4-decimal intermediate precision that franking-credit + per-unit-cost arithmetic produces.
+
+### What stays `Float` (intentional)
+
+- **Rates / percentages** — `Loan.interestRateAnnual`, `Account.interestRate`, `Income.frankingPercentage`, `Asset.depreciationRate`, `InvestmentTransaction.exchangeRate`. Different precision class (typically `Decimal(7, 4)` if migrated later; `Float` is fine until then because rates rarely compound over 10y the way money does).
+- **Scores / ratios** — `Transaction.confidenceScore`, `InvestmentHolding.unrealizedGainPct`, `RecurringPayment.amountVariance`, `SmsfAnnualReturn.ecpiExemptProportion`. Not money.
+- **Coordinates** — `Property.latitude`, `Property.longitude`. Geographic precision, not financial.
+- **Phase 41E rates** — `RecurringPayment.matchConfidence`, etc. Confidence scores stay Float.
+
+### Reform-awareness (CLAUDE.md §12.14)
+
+Q-DEC is precision-only — no regime semantics introduced. New Decimal columns carry the SAME monetary value as their Float siblings; grandfathering tests (`acquisitionContractDate` on Property; `trustType` on LegalEntity) read dates and types, not money values. §12.14 N/A for the Q-DEC PRs themselves.
+
+Anchors:
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5 (Q-DEC is the gate)
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` + Up Next row 69
