@@ -72,3 +72,117 @@ The `xlsx` tarball now resolves from `cdn.sheetjs.com` at install time (recorded
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+---
+
+## Session: phase-45-and-qdec-LIlK9 — Q-DEC PR 1 (additive Decimal schema)
+
+### Changes Made
+- **Type**: Schema migration (additive, non-destructive)
+- **Scope**: Workstream `0·WI` Stage A PR 1 — the precision-foundation gate for Phase 45 ("What If?" scenarios). Adds `*_decimal` sibling columns of type `DECIMAL(19, 4)` for every money-bearing `Float` column on the 10 core models that Phase 45's 5 levers compose.
+- **Origin**: Reza decision 2026-06-01 (`AskUserQuestion`) — block Phase 45 v1 on Q-DEC. Pre-revenue is the cheap time to fix the precision foundation; 10-year horizons compound `Float` error visibly.
+
+### Decision audit (CLAUDE.md §0 advisory mindset)
+
+- **Architect lens drove the scope.** Full Q-DEC scope is ~30+ models / ~80+ money columns (per row 69). Bundling all of it into one PR creates review fatigue — reviewer can't cognitively track 80 ALTER TABLE statements. **Scoped PR 1 to the 10 models Phase 45's levers actually compose** (Property, Loan, Account, Income, Expense, InvestmentAccount, InvestmentHolding, PurchaseLot, SuperannuationAccount, Asset → ~45 columns). The remaining ~50 columns ship in Q-DEC PR 1.5 (same pattern, separate review). Same end state, materially better reviewability.
+- **Financial-adviser lens validated the precision choice.** `DECIMAL(19, 4)` handles up to AU$999,999,999,999,999.9999 — overkill for any single user but the right scale for aggregated portfolio sums. Four decimal places is one more than cents because franking-credit and per-unit-cost arithmetic produces 4-decimal intermediates.
+- **§12.11 destructive-write checklist N/A by structure.** The migration is additive only. The backfill `UPDATE` writes to NEW columns only — existing `Float` data is read but NEVER overwritten. No row deletion, no column drop. Reviewer can verify by reading the SQL: every UPDATE has `WHERE "x_decimal" IS NULL` (idempotent on re-run) and sets only `"x_decimal"`, never the source column.
+- **§12.12 schema-change deploy protocol followed.** `prisma/schema.prisma` change + matching migration file `20260603120000_q_dec_pr1_additive_decimal_columns/migration.sql` in same PR. `prisma migrate deploy` runs on Vercel build for both preview (`monitrax-db-dev`) and production (`monitrax-db-prod`). If migration fails, deploy aborts and previous code keeps running on previous schema.
+
+### Implementation
+
+#### Schema additions (10 models, ~45 columns)
+
+Every new column is `Decimal? @db.Decimal(19, 4)` (nullable until Q-DEC PR 4 drops the Float sibling). Engines still WRITE to the Float columns in PR 1 and PR 2; PR 2 adds the `Prisma.Decimal` adapter layer at engine boundaries; PR 3 cuts engines over (parallel-run with shadow-comparison harness); PR 4 drops Float after 7-day parallel-run shows zero diff.
+
+| Model | Money columns gaining `*Decimal` sibling |
+|---|---|
+| `Property` | `purchasePrice`, `currentValue` |
+| `Loan` | `principal`, `minRepayment`, `extraRepaymentCap` |
+| `Account` | `currentBalance`, `lastImportedBalance` |
+| `Income` | `amount`, `grossAmount`, `netAmount`, `paygWithholding`, `superGuaranteeAmount`, `salarySacrifice`, `taxableAmount`, `taxExemptAmount`, `frankingCredits`, `budgetedAmount` |
+| `Expense` | `amount`, `budgetedAmount` |
+| `InvestmentAccount` | `openingBalance`, `cashBalance`, `totalDeposits`, `totalWithdrawals` |
+| `InvestmentHolding` | `units`, `averagePrice`, `totalCostBasis`, `currentPrice`, `currentValue`, `unrealizedGain` |
+| `PurchaseLot` | `units`, `unitCost`, `totalCost`, `fees`, `unitsRemaining` |
+| `SuperannuationAccount` | `currentBalance`, `taxableComponent`, `taxFreeComponent`, `concessionalYTD`, `nonConcessionalYTD`, `concessionalCap`, `nonConcessionalCap`, `carryForwardAvailable` |
+| `Asset` | `purchasePrice`, `currentValue`, `salePrice`, `residualValue` |
+
+Excluded fields (intentional, deferred to PR 1.5):
+- **Rates** (e.g. `interestRateAnnual`, `interestRate`, `depreciationRate`, `superGuaranteeRate`, `frankingPercentage`) — different precision class. Will migrate to `Decimal(7, 4)` or `Decimal(7, 5)` in a later PR.
+- **Scores / ratios** (e.g. `confidenceScore`, `unrealizedGainPct`) — not money.
+- **Transaction / Recurring / Budget rows** — large scope; PR 1.5.
+- **Phase 41E per-FY tax-engine throughput** (e.g. `CompanyFyTaxPosition`) — PR 1.5.
+
+#### Migration file
+
+`prisma/migrations/20260603120000_q_dec_pr1_additive_decimal_columns/migration.sql`:
+- One `ALTER TABLE ADD COLUMN` per new field.
+- One `UPDATE` per new field, with `WHERE *_decimal IS NULL` (idempotent).
+- Header comment documents the 4-PR cutover plan + §12.11 N/A + §12.12 compliance + scope rationale.
+- Tested via `prisma generate` (Prisma client generates cleanly) + full `next build` (type-check passes against the generated client).
+
+### Files modified
+- `prisma/schema.prisma` — 58 inserted lines (pure additions; clean diff after avoiding `prisma format`'s file-wide whitespace re-alignment).
+- `prisma/migrations/20260603120000_q_dec_pr1_additive_decimal_columns/migration.sql` — NEW migration file.
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WI` Q-DEC PR 1 row flipped to `[~]` (in flight); Last touched updated.
+- `docs/changelog/CHANGELOG_2026_06_03.md` (this entry).
+
+### Build status
+- [x] `npx prisma generate` — Prisma Client v5.22.0 generated cleanly
+- [x] `npm run build` — Next.js compiled successfully
+- [x] `npm run lint:financial-surfaces` — 0 new violations
+- [x] `prisma format` artefacts intentionally NOT committed (file-wide whitespace re-alignment would have inflated the diff to 600+ lines and obscured the real additions)
+
+### Risk profile
+**Very low.** Pure additive schema. Engines unchanged, route handlers unchanged, no type contract changed (new columns are nullable). Production migrations of this shape are routine (`prisma migrate deploy` adds the columns + runs the backfills in a transactional unit). Worst case if backfill fails: new columns exist but contain NULLs; engines keep reading Float; no behaviour change for users.
+
+### Next concrete step
+Q-DEC PR 1.5 — extend the same additive pattern to the remaining ~50 columns on Transaction / RecurringPayment / BudgetCategory / BudgetActual / DistributionAllocation / DividendPayment / Phase 41E tax-engine tables / InvestmentTransaction / CapitalGainEvent. Same pattern, fresh PR. After PR 1.5, Q-DEC PR 2 (adapter layer) begins.
+
+### PR
+- Branch: `claude/phase-45-and-qdec-LIlK9`
+- Status: Draft
+
+### v2 fix — migration table-name typo + idempotency hardening (2026-06-03, same session)
+
+**Bug:** Vercel preview build failed at `prisma migrate deploy`. Real
+build log (pulled via `./scripts/vercel-logs.sh build <id>` per §17.3
+active-debugging discipline — diagnosed from real log, not guessed):
+
+```
+ERROR: relation "incomes" does not exist
+Migration name: 20260603120000_q_dec_pr1_additive_decimal_columns
+A migration failed to apply. New migrations cannot be applied before
+the error is recovered from. Error: P3018
+```
+
+**Root cause:** The Income Prisma model maps to a table named
+`income` (singular). Every other money-bearing model is plural
+(`properties`, `loans`, `accounts`, `expenses`, `investment_accounts`,
+`investment_holdings`, `purchase_lots`, `superannuation_accounts`,
+`assets`). I assumed plural by pattern-match without checking `@@map`.
+
+**Fix:**
+1. Migration SQL `"incomes"` → `"income"` (all 11 lines: 10 ALTER + 10 UPDATE).
+2. Added `IF NOT EXISTS` to every `ALTER TABLE ... ADD COLUMN` so
+   re-running is safe — the partial first attempt had already added
+   Property + Loan + Account columns to dev before failing.
+
+**Reza-side recovery step (one-shot, on monitrax-db-dev):**
+```bash
+npx prisma migrate resolve --rolled-back \
+  "20260603120000_q_dec_pr1_additive_decimal_columns"
+```
+This marks the failed migration as rolled-back in `_prisma_migrations`,
+allowing the next `prisma migrate deploy` (on rebuild) to retry the
+(now-fixed) migration. Without this step, every future build aborts
+because Prisma sees the unresolved failed row.
+
+**Lesson logged:** future hand-written migrations MUST `grep @@map` on
+the Prisma model before writing SQL — table-name assumption is the
+most common source of partial-apply failures.
+
+**§17.3 discipline followed:** real build log read first
+(`./scripts/vercel-logs.sh build <id>`), root cause traced from the
+DbError directly. No guessing.
