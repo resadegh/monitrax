@@ -101,7 +101,7 @@ Last reviewed: 2026-03-08
 |---------|---------|---------|---------|-------------|
 | `zod` | ^3.23.8 | Schema validation (API input validation) | MIT | 2026-03-08 |
 | `uuid` | ^9.0.0 | UUID generation | MIT | 2026-03-08 |
-| `xlsx` | ^0.18.5 | Excel file generation (reports/export) | Apache-2.0 | 2026-03-08 |
+| `xlsx` | 0.20.3 (SheetJS CDN) | Excel file generation (reports/export) — write-only. Pinned to the SheetJS CDN tarball (`cdn.sheetjs.com`), the vendor's official patched distribution; the npm-registry `xlsx` (≤0.18.5) carries unpatched Prototype-Pollution + ReDoS advisories. | Apache-2.0 | 2026-06-03 |
 | `jszip` | ^3.10.1 | ZIP file creation (bulk downloads) | MIT/GPLv3 (dual) | 2026-03-08 |
 | `qrcode` | ^1.5.4 | QR code generation (MFA setup) | MIT | 2026-03-08 |
 | `unpdf` | ^1.4.0 | PDF text extraction | MIT | 2026-03-08 |
@@ -207,8 +207,8 @@ The `security-audit` workflow runs `npm audit` in two steps:
 
 **Tracked follow-ups (IMPLEMENTATION_PLAN Dead Code #28):**
 - ✅ **DONE 2026-06-02 — Next.js** bumped 15.2.6 → **15.5.19** (15.x security-backport line, `isSemVerMajor:false`), clearing the high-severity advisories (SSRF / XSS / cache-poisoning / DoS). `eslint-config-next` bumped in lockstep; `npm run lint` migrated off the deprecated `next lint` to the ESLint CLI (`.eslintrc.json`, prior `next/core-web-vitals` rule set preserved).
-- **vitest 1 → 4 major upgrade** — clears the dev criticals at source; needs validation of the 110-test suite.
-- **xlsx / SheetJS** (high, no npm fix) — migrate to the official SheetJS CDN build or a maintained alternative.
+- ✅ **DONE 2026-06-03 — xlsx / SheetJS** repointed to the SheetJS CDN build **0.20.3** (`cdn.sheetjs.com`), the vendor's official patched distribution. 0.20.3 is above both GHSA ranges (Prototype Pollution `<0.19.3`, ReDoS `<0.20.2`) so npm audit no longer flags it — prod is now **0 high / 0 critical**. Zero code change (identical API); usage is write-only (exports), so the parse-triggered advisories were never reachable anyway.
+- **vitest 1 → 4 major upgrade** — clears the dev criticals at source; needs validation of the 110-test suite. (The only remaining tracked audit item.)
 
 ---
 
