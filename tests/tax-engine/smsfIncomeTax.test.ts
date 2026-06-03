@@ -148,3 +148,82 @@ describe('Phase 44 Part 2c-i — SMSF income tax: non-complying fund', () => {
     expect(r.isComplying).toBe(false);
   });
 });
+
+describe('Phase 44.2 slice 2 — SMSF franking credit refunds (Div 207 + s67-25)', () => {
+  it('back-compat: omitting frankingCredits → 0, net == gross, refund 0', () => {
+    const r = calculateSmsfIncomeTax(
+      input({ assessableInvestmentIncome: 10000, assessableContributions: 20000 }),
+      config,
+    );
+    // gross = 1500 (inv) + 3000 (contrib) = 4500.
+    expect(r.tax).toBeCloseTo(4500, 4);
+    expect(r.frankingCredits).toBe(0);
+    expect(r.netTaxPayable).toBeCloseTo(4500, 4);
+    expect(r.frankingRefund).toBe(0);
+  });
+
+  it('complying: franking credits offset gross tax (credits < tax → still payable)', () => {
+    const r = calculateSmsfIncomeTax(
+      input({ assessableContributions: 20000, frankingCredits: 1000 }),
+      config,
+    );
+    // gross = 3000; net = 3000 - 1000 = 2000; no refund.
+    expect(r.tax).toBeCloseTo(3000, 4);
+    expect(r.frankingCredits).toBe(1000);
+    expect(r.netTaxPayable).toBeCloseTo(2000, 4);
+    expect(r.frankingRefund).toBe(0);
+  });
+
+  it('complying: excess franking credits are refunded in cash (credits > tax)', () => {
+    const r = calculateSmsfIncomeTax(
+      input({ assessableInvestmentIncome: 10000, frankingCredits: 4000 }),
+      config,
+    );
+    // gross = 1500; net = 1500 - 4000 = -2500 (refundable); refund = 2500.
+    expect(r.tax).toBeCloseTo(1500, 4);
+    expect(r.netTaxPayable).toBeCloseTo(-2500, 4);
+    expect(r.frankingRefund).toBeCloseTo(2500, 4);
+  });
+
+  it('pension phase (fully exempt): franking credits still fully refund', () => {
+    const r = calculateSmsfIncomeTax(
+      input({
+        assessableInvestmentIncome: 30000,
+        isInPensionPhase: true,
+        ecpiExemptProportion: 1, // 100% exempt → 0 investment-income tax
+        frankingCredits: 3000,
+      }),
+      config,
+    );
+    expect(r.tax).toBeCloseTo(0, 4); // all investment income exempt
+    expect(r.netTaxPayable).toBeCloseTo(-3000, 4);
+    expect(r.frankingRefund).toBeCloseTo(3000, 4); // classic pension-phase refund
+  });
+
+  it('non-complying: franking is non-refundable — floors tax at 0, no refund', () => {
+    const r = calculateSmsfIncomeTax(
+      input({ assessableInvestmentIncome: 10000, isComplying: false, frankingCredits: 9000 }),
+      config,
+    );
+    // gross = 10000 @ 45% = 4500; non-refundable → net floored at 0; no refund.
+    expect(r.tax).toBeCloseTo(4500, 4);
+    expect(r.netTaxPayable).toBe(0);
+    expect(r.frankingRefund).toBe(0);
+  });
+
+  it('UNCOMPUTED ECPI: net + refund stay null even with franking credits', () => {
+    const r = calculateSmsfIncomeTax(
+      input({
+        assessableInvestmentIncome: 10000,
+        isInPensionPhase: true, // no ecpiExemptProportion → UNCOMPUTED
+        frankingCredits: 2000,
+      }),
+      config,
+    );
+    expect(r.tax).toBeNull();
+    expect(r.netTaxPayable).toBeNull();
+    expect(r.frankingRefund).toBeNull();
+    expect(r.frankingCredits).toBe(2000);
+    expect(r.uncomputed.some((u) => u.id === 'UC-SMSF-ECPI-PROPORTION')).toBe(true);
+  });
+});

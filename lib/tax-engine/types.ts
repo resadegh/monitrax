@@ -844,6 +844,8 @@ export interface EntityTaxFacts {
     isComplying: boolean;
     isInPensionPhase: boolean;
     ecpiExemptProportion?: number;
+    /** Phase 44.2 slice 2 — refundable franking credits (Div 207 + s67-25). */
+    frankingCredits?: number;
   };
 }
 

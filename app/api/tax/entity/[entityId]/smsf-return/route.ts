@@ -106,6 +106,7 @@ export const PUT = withPermission<RouteContext>(
       deductions: num(body.deductions),
       assessableContributions: num(body.assessableContributions),
       nonArmsLengthIncome: num(body.nonArmsLengthIncome),
+      frankingCredits: num(body.frankingCredits),
       isComplying: body.isComplying !== false, // default complying
       isInPensionPhase: body.isInPensionPhase === true,
       ecpiExemptProportion,

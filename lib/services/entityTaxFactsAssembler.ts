@@ -256,6 +256,7 @@ export async function assembleEntityTaxFacts(
         isComplying: smsfReturn.isComplying,
         isInPensionPhase: smsfReturn.isInPensionPhase,
         ecpiExemptProportion: smsfReturn.ecpiExemptProportion ?? undefined,
+        frankingCredits: Number(smsfReturn.frankingCredits),
       };
     }
   }
