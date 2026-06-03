@@ -236,3 +236,80 @@ After this merges: Q-DEC PR 2 — engine adapter layer (`Prisma.Decimal` at engi
 ### PR
 - Branch: `claude/qdec-pr1-5-remaining-money-cols-LIlK9`
 - Status: Draft
+
+---
+
+## Session: monitoring-alerts-review-jlnHl — harden /api/health against transient false P0s
+
+### Origin
+Reza forwarded two production alerts (n8n "Founder Daily Digest v1" Gmail-OAuth
+failure email + a GCP P0 SMS "/api/health uptime check failing" from
+2026-06-02 03:32 AEST) and asked what they were and to fix the GCP SMS one.
+
+### Diagnosis (from live probes + log read, §17.3 discipline)
+- **App was healthy at investigation time** — `GET https://monitrax.com.au/api/health`
+  → `200 {"status":"healthy","database":"connected"}`; 11/12 rapid probes green
+  (the 1 miss was a sandbox-proxy DNS hiccup, not an app 503). Current prod
+  deploy `dpl_DYgxM1X6c2anxfMfejqammJXQMPA` = READY.
+- **Apex 308-redirects to `www`** (`monitrax.com.au` → `www.monitrax.com.au`,
+  Vercel domain-level canonical since the Firebase auth-domain work). GCP uptime
+  checks follow redirects, so this is **not** the cause — ruled out.
+- **The 03:32 AEST page was a ~2-min transient DB-unreachable window that
+  self-recovered.** Exact logs were outside Vercel Pro's ~1-day runtime-log
+  retention (~28 h old) so the smoking gun wasn't retrievable; root cause is one
+  of the known transients — cold-start auth-chain jitter (OIDC→STS→IAM) or
+  connection-pool contention (Postgres `53300`, the issue behind the 2026-05-20
+  `pool max=2` change). `lib/db.ts`'s retry only covers **TLS-handshake** errors,
+  not these.
+
+### Changes Made
+- **Type**: Resilience / observability hardening (Reza chose "harden the route")
+- **Scope**: `app/api/health/route.ts`
+- **Solution**: Wrapped the `SELECT 1` connectivity probe in a **bounded
+  2-attempt / 150 ms-backoff** retry. Absorbs single-probe transients so they
+  don't flip the route to 503 and page a false P0. **Does not mask real
+  outages** — A1 needs ~2 consecutive minutes of failed probes, and a genuine
+  DB-unreachable window fails every attempt of every probe. Worst-case added
+  failure-path latency ~150 ms, inside the uptime-check timeout. Sits above the
+  existing `lib/db.ts` TLS-handshake retry (cert-rotation transients still
+  handled underneath).
+
+### Files Modified
+- `app/api/health/route.ts` — bounded retry loop + explanatory header comment.
+
+### Build Status
+- [x] `npx tsc --noEmit` — 0 errors (lone output is a pre-existing tsconfig
+  `baseUrl` deprecation warning, unrelated)
+- [x] `npm run build` — ✓ Compiled; `/api/health` emitted as `ƒ` (dynamic)
+- [x] `npm run lint` — no findings on `app/api/health/route.ts` (the 99 errors
+  are all pre-existing debt in unrelated files; `next.config.ts` decouples lint
+  from builds)
+
+### Documentation Updated
+- `docs/operational/runbooks/03_HEALTH_CHECKS.md` — documented the new 2-attempt
+  retry behaviour + what a 503 now means.
+- `docs/operational/runbooks/08_OBSERVABILITY_SLOS.md` — §2.2 latency table note
+  updated (retry behaviour; slow *success* = DB latency, 503 = both attempts
+  failed).
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry + observability note.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed: [x] operational procedure (health-check resilience behaviour /
+known-transient lesson). No design/config/infra/identity/security-posture change.
+Docs updated: `03_HEALTH_CHECKS.md`, `08_OBSERVABILITY_SLOS.md`,
+`IMPLEMENTATION_PLAN.md`, this changelog.
+
+### Not done (deliberately, flagged to Reza)
+- **GCP-side tuning** (repoint the uptime check at the canonical `www` host;
+  raise the A1 trigger to N-consecutive / multi-region) — needs `gcloud`/GCP
+  creds this sandbox doesn't have; left as a Reza-side action.
+- **Deep root-cause of the transient** (pool exhaustion vs cold-start auth
+  jitter) — needs GCP Cloud Logging / Cloud SQL log access not available here.
+- **The n8n Gmail-OAuth email** — separate system, internal-only impact; fix is
+  re-auth the `Gmail - try-monitrax` credential + publish the OAuth consent
+  screen out of "Testing" (7-day refresh-token expiry is the likely recurrence
+  cause). See `runbooks/09_GTM_FOUNDER_DAILY_DIGEST.md`.
+
+### PR
+- Branch: `claude/monitoring-alerts-review-jlnHl`
+- Status: Draft (pending review)

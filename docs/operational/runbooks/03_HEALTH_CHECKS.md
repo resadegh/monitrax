@@ -26,12 +26,21 @@ Run these checks to verify the system is operating normally:
 curl -s https://monitrax.com.au/api/health | jq .
 ```
 
-**What it checks:** Database connectivity (runs `SELECT 1`)
+**What it checks:** Database connectivity (runs `SELECT 1`).
+
+**Retry behaviour (since 2026-06-03):** the route attempts `SELECT 1` up to
+**2 times** with a **150 ms** backoff before returning 503. This absorbs
+single-probe transients (cold-start auth-chain jitter, momentary pool
+contention / Postgres `53300`) so they don't page a false P0. It does **not**
+mask a real outage — the A1 alert needs ~2 consecutive minutes of failed
+probes, and a genuine DB-unreachable window fails every attempt. Worst-case
+added latency on the failure path is ~150 ms (well inside the uptime-check
+timeout). Source: `app/api/health/route.ts`.
 
 | Response | Meaning |
 |----------|---------|
 | `200 {"status":"healthy","database":"connected"}` | All good |
-| `503 {"status":"unhealthy","database":"disconnected"}` | DB connection failed |
+| `503 {"status":"unhealthy","database":"disconnected"}` | DB connection failed (both attempts) |
 | Timeout / no response | Vercel or network issue |
 
 ### 2. Cloud SQL Instance Status
