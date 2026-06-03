@@ -428,4 +428,12 @@ This document was put through an external Australian-tax-law conformance review 
 
 **Reform-awareness (§12.14):** this surface shows **fund income tax**, not a per-asset CGT position — so FW-5's per-asset regime badge does not apply here. CGT *within* the fund routes through the already-gated `divisions/cgtDiscount.ts` elsewhere; no reform-gated math is introduced. The new `SmsfAnnualReturn` model does not interact with the reform's grandfathering logic.
 
-**Deferred (later slices):** per-member balances, Transfer Balance Cap (TBC) tracking, franking-credit refunds (engine doesn't compute these yet), the household-tax-page (`/dashboard/tax`) per-entity breakdown, and a dedicated entry point from the entities list page (the SMSF triumvirate — sole-purpose / in-house-asset / LRBA — remains scoped to Phase 41e.11 per `entityTaxRouter` `UC-SMSF-SOLE-PURPOSE`).
+### Phase 44.2 slice 2 — franking credit refunds (SHIPPED 2026-06-03)
+
+Extends the engine + surface with **refundable franking (imputation) credits** — the single most material SMSF tax feature (a pension-phase fund holding Australian shares pays ~0% on exempt income yet gets its franking credits *refunded in cash*).
+
+- **Engine** (`lib/tax-engine/super/smsfIncomeTax.ts`): `calculateSmsfIncomeTax` gains an optional `frankingCredits` input and returns `frankingCredits`, `netTaxPayable` (gross `tax` − credits; negative ⇒ refund), `frankingRefund` (`max(0, credits − tax)`). Complying funds → refundable (s67-25, net can go negative); non-complying → non-refundable (floored at 0). Citations: Div 207 + s67-25. **Reform-neutral** (franking refundability isn't a 2026-27 measure) and **back-compatible** (omitting `frankingCredits` ⇒ byte-for-byte the prior result). UNCOMPUTED honesty preserved: when gross `tax` is null (pension-phase ECPI missing), `netTaxPayable`/`frankingRefund` are null too. 6 new engine tests (15 total, all green).
+- **Schema:** `SmsfAnnualReturn.frankingCredits Float @default(0)` — additive migration `20260603090000`.
+- **Assembler + API + UI:** `frankingCredits` threaded through; the entity tax view's headline is now the **net position** — a refund is shown in emerald with a "+", celebrated, with gross tax + franking credits surfaced in the breakdown.
+
+**Deferred (later slices):** per-member balances, Transfer Balance Cap (TBC) tracking, the household-tax-page (`/dashboard/tax`) per-entity breakdown, and a dedicated entry point from the entities list page (the SMSF triumvirate — sole-purpose / in-house-asset / LRBA — remains scoped to Phase 41e.11 per `entityTaxRouter` `UC-SMSF-SOLE-PURPOSE`).
