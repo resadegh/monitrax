@@ -640,6 +640,7 @@ model LegalEntity {
   accounts               Account[]
   investmentAccounts     InvestmentAccount[]
   superannuationAccounts SuperannuationAccount[] // Phase 39.5: SMSF member accounts
+  smsfAnnualReturns      SmsfAnnualReturn[]      // Phase 44.2: SMSF fund-tax figures (when type=SMSF)
   assets                 Asset[]
   incomes                Income[]
   expenses               Expense[]
@@ -1215,6 +1216,7 @@ model User {
 
   // Phase 20: Australian Tax Intelligence Engine
   superannuationAccounts SuperannuationAccount[]
+  smsfAnnualReturns      SmsfAnnualReturn[] // Phase 44.2: persisted SMSF fund-tax figures
   taxPositions           TaxPosition[]
 
   // Phase 12: User Preferences
@@ -4122,6 +4124,39 @@ model SuperannuationAccount {
   @@index([userId])
   @@index([ownerEntityId])
   @@map("superannuation_accounts")
+}
+
+// Phase 44.2: the SMSF's declared annual fund-level figures for one FY —
+// the persisted input to `calculateSmsfIncomeTax` (Div 295 / ECPI / NALI).
+// Keyed per (SMSF LegalEntity, financial year). `assembleEntityTaxFacts`
+// reads this to populate `facts.smsfIncomeTax` so the GET entity-tax path
+// returns a real number instead of UNCOMPUTED. These are an ESTIMATE input,
+// never tax advice — surfaced with the canonical boundary footnote.
+// `ecpiExemptProportion` null = unknown → the engine returns the
+// investment-income tax as UNCOMPUTED (never estimated).
+model SmsfAnnualReturn {
+  id            String @id @default(uuid())
+  userId        String
+  legalEntityId String
+  financialYear String // e.g. "2024-25"
+
+  assessableInvestmentIncome Float   @default(0) // ordinary + statutory investment income (ex-contributions/NALI)
+  deductions                 Float   @default(0) // deductions against investment income
+  assessableContributions    Float   @default(0) // employer SG + salary sacrifice + personal deductible (taxed @15%)
+  nonArmsLengthIncome        Float   @default(0) // NALI — taxed at top rate, ECPI never applies (s295-550)
+  isComplying                Boolean @default(true)
+  isInPensionPhase           Boolean @default(false)
+  ecpiExemptProportion       Float? // 0..1 exempt proportion; null = unknown (drives UNCOMPUTED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  legalEntity LegalEntity @relation(fields: [legalEntityId], references: [id], onDelete: Cascade)
+
+  @@unique([legalEntityId, financialYear])
+  @@index([userId])
+  @@map("smsf_annual_returns")
 }
 
 // =============================================================================

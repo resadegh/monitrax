@@ -411,3 +411,21 @@ This document was put through an external Australian-tax-law conformance review 
 ---
 
 *This document is the Part 2 design contract — v2, external law-conformance review (§13) incorporated. Build begins only after Reza review. Created 2026-05-22.*
+
+---
+
+## Phase 44.2 — SMSF fund-income tax surface (SHIPPED 2026-06-02)
+
+**The gap Part 2 named, closed for SMSF.** Part 2's central finding was "engine built, gap is the data layer." Phase 44.2 closes that for the SMSF fund-income-tax engine (`calculateSmsfIncomeTax` — Div 295 / ECPI / NALI), which was built + tested + wired into `entityTaxRouter` but had **no persisted input and no UI**.
+
+**What shipped:**
+- **`SmsfAnnualReturn` model** (`prisma/schema.prisma`, migration `20260602140000`) — per `(legalEntityId, financialYear)`: assessable investment income, deductions, assessable contributions, NALI, `isComplying`, `isInPensionPhase`, `ecpiExemptProportion?`. Additive (CREATE TABLE only).
+- **Assembler branch** — `lib/services/entityTaxFactsAssembler.ts` now populates `facts.smsfIncomeTax` from the persisted return for `entity.type === 'SMSF'`, so `GET /api/tax/entity/[id]` returns a **real** number (was UNCOMPUTED). No saved return → SMSF stays UNCOMPUTED (honest).
+- **Save API** — `GET/PUT /api/tax/entity/[entityId]/smsf-return` (`tax_data.read`/`tax_data.write`); ownership-guarded upsert keyed by entity+FY (the route is the exclusive writer; §12.11-safe).
+- **UI** — `/dashboard/entities/[id]/tax` (mirrors the `[id]/trust-deed` + `[id]/connect-bookkeeping` sub-page pattern): fund-tax breakdown (contributions tax 15% / investment-income tax / NALI tax 45% / ECPI exempt / total), UNCOMPUTED surfaced as a calm amber "add your ECPI proportion" prompt (never a guessed number), citations + the canonical `BoundaryFootnote`. Entry point: the My Wealth → Super SMSF detail dialog gains a "View tax position" link when the account is linked to an entity (`ownerEntityId`).
+
+**Honesty discipline preserved:** the engine's `UC-SMSF-ECPI-PROPORTION` flag (pension-phase fund with no ECPI proportion → `tax: null`) is surfaced as "uncomputed", never estimated. The page is an **estimate**, never tax advice — boundary footnote always shown.
+
+**Reform-awareness (§12.14):** this surface shows **fund income tax**, not a per-asset CGT position — so FW-5's per-asset regime badge does not apply here. CGT *within* the fund routes through the already-gated `divisions/cgtDiscount.ts` elsewhere; no reform-gated math is introduced. The new `SmsfAnnualReturn` model does not interact with the reform's grandfathering logic.
+
+**Deferred (later slices):** per-member balances, Transfer Balance Cap (TBC) tracking, franking-credit refunds (engine doesn't compute these yet), the household-tax-page (`/dashboard/tax`) per-entity breakdown, and a dedicated entry point from the entities list page (the SMSF triumvirate — sole-purpose / in-house-asset / LRBA — remains scoped to Phase 41e.11 per `entityTaxRouter` `UC-SMSF-SOLE-PURPOSE`).
