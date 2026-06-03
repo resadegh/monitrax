@@ -481,3 +481,68 @@ Followed. In-app My Wealth surface designed in Stitch (desktop + mobile) BEFORE 
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+---
+
+## Session: phase-45-and-qdec-LIlK9 — Open Phase 45 / Q-DEC workstream
+
+### Changes Made
+- **Type**: Workstream open + spec docs (no code yet)
+- **Scope**: Begin Phase 45 — "What If?" scenarios surface at `/dashboard/cfo/what-if`, the wedge feature for the wealth-builder ICP (Q-ICP-1 closed 2026-05-24). Q-DEC (Float→Decimal) migration sequenced FIRST as the precision gate.
+
+### Decision audit (CLAUDE.md §0 advisory mindset)
+
+Reza directive 2026-06-01: "Let's go with phase 45, make sure all ui ux designs are through stitch. Also always read claude.md to understand the principles."
+
+Architect-mode synthesis (four lenses) put three decisions to Reza via `AskUserQuestion`:
+
+1. **Q-DEC sequencing** → "Block Phase 45 on Q-DEC (Recommended for correctness)". Trade-off accepted: ~3 weeks elapsed before friendlies see Phase 45, but 10-year projections are to-the-cent accurate on day one. No PREVIEW caveat.
+2. **Design system** → "Editorial palette (Recommended)". Phase 45 matches the rest of `/dashboard/cfo` (warm-ivory + emerald + navy) rather than a cosmos-style dark scenario lab. Cohesion with My Guide as the parent surface.
+3. **v1 scope** → "All 5 levers v1 (Recommended per plan)". Refinance + salary-sacrifice + sell property + extra debt + buy investment property.
+
+Stitch-first per Reza's blanket directive — every Phase 45 UI surface goes through `.stitch/designs/` before React port (CLAUDE.md §18).
+
+### Key findings from research-before-action (§10)
+
+- **~70% of the engine work is already done.** `lib/cfo/scenarios/` has 6 Phase 40 deterministic scenarios + a `runScenario(type, ctx, params)` dispatcher + `/api/cfo/scenarios/run` endpoint. Of Phase 45's 5 levers, 4 already exist (refinanceLoan, sellProperty, payDownLoan, addInvestment + redirectToOffset close cousin). Only salary-sacrifice-to-super is new.
+- **The 10-year composer is the actual new piece.** Existing scenarios return 1-year impact only (shared with the Phase 40 AI advisor). Phase 45 wraps each with a `tenYearProjection.ts` composer that loops `cashflowOrchestrator` + `MasterTaxPosition` per year.
+- **Q-HOOK-AFSL pre-review (2026-05-24) already covers the in-app surface.** "People-like-you-and-a-pattern" framing + General Advice Warning + concessional cap headroom check + no product/broker names — all apply identically to Phase 45. No new lawyer pass needed for the in-app surface; lawyer engagement remains bundled with `/wealth-check` traffic-on.
+- **Q-DEC scope is large.** ~30+ Prisma models with Float money columns; ~50+ engine files in `lib/calculations/*`, `lib/tax-engine/*`, `lib/cashflow/*`, `lib/cfo/*`. 4-PR cutover (additive schema → adapter layer → engine-by-engine cutover → Float drop after 7-day parallel run).
+
+### Sequencing locked
+
+1. Q-DEC PR 1 — additive Decimal schema (idempotent backfill from Float)
+2. Q-DEC PR 2 — engine adapter layer (Prisma.Decimal at boundaries)
+3. **Phase 45 Stitch design pass begins HERE in parallel** (Reza iterates the lever-picker + lever-detail screens while engine cutover proceeds)
+4. Q-DEC PR 3 — engine-by-engine cutover
+5. Q-DEC PR 4 — Float column drop (after 7-day parallel-run shows zero diff)
+6. Phase 45 PR 1 — engine composition (`salarySacrificeToSuper.ts` + `tenYearProjection.ts`)
+7. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens, editorial palette)
+8. Phase 45.1 — contextual entry points on loan/property/super/income detail pages
+
+### Files added in this PR (workstream-opening — no code)
+
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` — NEW spec doc. Covers: why this phase exists, scope, architectural rules (SSOT + AFSL + §12.14 reform-aware + editorial palette), Q-DEC gate, Stitch design pass spec (Screen A lever picker + Screen B lever detail + reference set + editorial-palette guard rail), composed-engine call graph, risks, acceptance criteria.
+- `docs/IMPLEMENTATION_PLAN.md` — NEW workstream `0·WI` opened between `0·WX` and `0. Production Readiness`. Full phase checklist for Q-DEC PRs 1-4 + Phase 45 design pass + Phase 45 PRs 1-2 + Phase 45.1 follow-up.
+
+### Documentation updated in this PR
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` (created)
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WI` added
+- `docs/changelog/CHANGELOG_2026_06_01.md` (this entry)
+
+### CLAUDE.md compliance recap
+
+- **§0 four-lens review** — designer (Apple Numbers / Wealthfront refs) + behaviour psychologist (Q-HOOK-AFSL framing + Klontz 2011 self-efficacy) + architect (composes existing engines, ZERO new calc) + financial adviser (cap headroom check, AFSL discipline) all surfaced in the spec doc.
+- **§10 research-before-action** — verified existing scenario engines, endpoint, Q-DEC scope, Q-HOOK-AFSL precedent before drafting the spec.
+- **§12.2 SSOT** — ZERO new calc engines; everything composes existing primitives.
+- **§12.14 Phase 41E reform-awareness** — explicitly mandated in §4 of the spec for salary-sacrifice scenario (FY-aware regime classification).
+- **§15 IMPLEMENTATION_PLAN** — workstream entry opened with full phase checklist before any code.
+- **§16 doc-sync** — spec doc + IMPLEMENTATION_PLAN + this changelog in the same PR.
+- **§18 Stitch-first** — every Phase 45 UI surface goes through `.stitch/designs/` before React port; editorial-palette guard rail documented to prevent cosmos-* drift.
+
+### Next concrete step
+Q-DEC PR 1 — additive Decimal schema migration. Schema-only PR (~1d code work + the migration file per §12.12).
+
+### PR
+- Branch: `claude/phase-45-and-qdec-LIlK9`
+- Status: Draft — workstream-opening PR (docs only)
