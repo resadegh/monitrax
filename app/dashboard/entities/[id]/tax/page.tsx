@@ -47,6 +47,9 @@ interface SmsfIncomeTaxResult {
   contributionsTax: number;
   naliTax: number;
   ecpiExemptAmount: number | null;
+  frankingCredits: number;
+  netTaxPayable: number | null;
+  frankingRefund: number | null;
   isComplying: boolean;
 }
 
@@ -62,6 +65,7 @@ interface SavedReturn {
   deductions: number;
   assessableContributions: number;
   nonArmsLengthIncome: number;
+  frankingCredits: number;
   isComplying: boolean;
   isInPensionPhase: boolean;
   ecpiExemptProportion: number | null;
@@ -72,6 +76,7 @@ type FormState = {
   deductions: string;
   assessableContributions: string;
   nonArmsLengthIncome: string;
+  frankingCredits: string;
   isComplying: boolean;
   isInPensionPhase: boolean;
   ecpiExemptPercent: string; // shown as a percentage (0-100); '' = unknown
@@ -82,6 +87,7 @@ const EMPTY_FORM: FormState = {
   deductions: '',
   assessableContributions: '',
   nonArmsLengthIncome: '',
+  frankingCredits: '',
   isComplying: true,
   isInPensionPhase: false,
   ecpiExemptPercent: '',
@@ -120,6 +126,7 @@ export default function SmsfTaxPage() {
       deductions: String(ret.deductions ?? ''),
       assessableContributions: String(ret.assessableContributions ?? ''),
       nonArmsLengthIncome: String(ret.nonArmsLengthIncome ?? ''),
+      frankingCredits: String(ret.frankingCredits ?? ''),
       isComplying: ret.isComplying,
       isInPensionPhase: ret.isInPensionPhase,
       ecpiExemptPercent:
@@ -177,6 +184,7 @@ export default function SmsfTaxPage() {
         deductions: Number(form.deductions) || 0,
         assessableContributions: Number(form.assessableContributions) || 0,
         nonArmsLengthIncome: Number(form.nonArmsLengthIncome) || 0,
+        frankingCredits: Number(form.frankingCredits) || 0,
         isComplying: form.isComplying,
         isInPensionPhase: form.isInPensionPhase,
         ecpiExemptProportion: ecpiRaw === '' ? null : Number(ecpiRaw) / 100,
@@ -262,23 +270,63 @@ export default function SmsfTaxPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Estimated total fund tax
-                        </p>
-                        <p className="mt-0.5 text-3xl font-semibold tabular-nums tracking-tight text-foreground">
-                          {smsf?.tax === null || smsf?.tax === undefined
-                            ? '—'
-                            : formatCurrency(smsf.tax)}
-                        </p>
-                      </div>
-                      <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                        <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit figures
-                      </Button>
-                    </div>
+                    {(() => {
+                      const net = smsf?.netTaxPayable;
+                      const refund = smsf?.frankingRefund ?? 0;
+                      const isRefund = net !== null && net !== undefined && net < 0;
+                      const headlineLabel =
+                        net === null || net === undefined
+                          ? 'Estimated net tax'
+                          : isRefund
+                            ? 'Estimated refund'
+                            : 'Estimated net tax payable';
+                      const headlineValue =
+                        net === null || net === undefined
+                          ? '—'
+                          : isRefund
+                            ? formatCurrency(refund)
+                            : formatCurrency(net);
+                      return (
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                              {headlineLabel}
+                            </p>
+                            <p
+                              className={`mt-0.5 text-3xl font-semibold tabular-nums tracking-tight ${
+                                isRefund ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
+                              }`}
+                            >
+                              {isRefund ? '+' : ''}{headlineValue}
+                            </p>
+                            {isRefund && (
+                              <p className="mt-0.5 text-xs text-emerald-700/80 dark:text-emerald-400/80">
+                                Franking credits exceed the fund&apos;s tax — the excess is refundable.
+                              </p>
+                            )}
+                          </div>
+                          <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" /> Edit figures
+                          </Button>
+                        </div>
+                      );
+                    })()}
 
                     <div className="grid grid-cols-2 gap-3">
+                      <Stat
+                        label="Gross fund tax"
+                        value={
+                          smsf?.tax === null || smsf?.tax === undefined
+                            ? 'Uncomputed'
+                            : formatCurrency(smsf.tax)
+                        }
+                        muted={smsf?.tax === null}
+                      />
+                      <Stat
+                        label="Franking credits (refundable)"
+                        value={smsf ? formatCurrency(smsf.frankingCredits) : '—'}
+                        accent={smsf && smsf.frankingCredits > 0 ? 'emerald' : undefined}
+                      />
                       <Stat
                         label="Contributions tax (15%)"
                         value={smsf ? formatCurrency(smsf.contributionsTax) : '—'}
@@ -357,6 +405,13 @@ export default function SmsfTaxPage() {
                     value={form.nonArmsLengthIncome}
                     onChange={(v) => setForm({ ...form, nonArmsLengthIncome: v })}
                   />
+                  <MoneyField
+                    id="franking"
+                    label="Franking (imputation) credits"
+                    help="Credits attached to franked Australian dividends. A refundable offset — for a complying fund, any excess over the fund's tax is refunded in cash. Make sure the grossed-up dividend is already in your investment income above."
+                    value={form.frankingCredits}
+                    onChange={(v) => setForm({ ...form, frankingCredits: v })}
+                  />
 
                   <div className="flex items-center justify-between rounded-[12px] border border-foreground/10 px-4 py-3">
                     <div>
@@ -427,13 +482,20 @@ export default function SmsfTaxPage() {
   );
 }
 
-function Stat({ label, value, muted }: { label: string; value: string; muted?: boolean }) {
+function Stat({
+  label, value, muted, accent,
+}: {
+  label: string; value: string; muted?: boolean; accent?: 'emerald';
+}) {
+  const valueColor = accent === 'emerald'
+    ? 'text-emerald-600 dark:text-emerald-400'
+    : muted
+      ? 'text-muted-foreground'
+      : 'text-foreground';
   return (
     <div className="rounded-[12px] border border-foreground/10 bg-background/50 p-3">
       <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
-      <p className={`mt-0.5 text-lg font-semibold tabular-nums ${muted ? 'text-muted-foreground' : 'text-foreground'}`}>
-        {value}
-      </p>
+      <p className={`mt-0.5 text-lg font-semibold tabular-nums ${valueColor}`}>{value}</p>
     </div>
   );
 }

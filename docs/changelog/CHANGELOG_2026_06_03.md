@@ -37,3 +37,38 @@ The `xlsx` tarball now resolves from `cdn.sheetjs.com` at install time (recorded
 ### PR
 - Branch: `claude/brave-shannon-mr1ye`
 - Status: Draft (pending review)
+
+---
+
+## Session: brave-shannon-mr1ye (cont.) — Phase 44.2 slice 2: SMSF franking refunds
+
+### Changes Made
+- **Type**: Feature + tax-engine extension + schema migration
+- **Scope**: SMSF fund-income tax — refundable franking (imputation) credits.
+- **Origin**: Reza — "go with slice 2". Franking refunds = the single most material SMSF tax feature (pension-phase funds live off them).
+
+### What shipped
+- **Engine** (`lib/tax-engine/super/smsfIncomeTax.ts`): `calculateSmsfIncomeTax` gains optional `frankingCredits` input + returns `frankingCredits`, `netTaxPayable` (gross `tax` − credits; negative ⇒ refund), `frankingRefund` (`max(0, credits − tax)`). Complying → refundable (s67-25); non-complying → non-refundable (floored at 0). Citations: Div 207 + s67-25. Helper `applyFranking()`.
+- **Tests** (`tests/tax-engine/smsfIncomeTax.test.ts`): +6 cases — back-compat (no credits → net == gross), offset < tax, excess refund, pension-phase full refund, non-complying non-refundable, UNCOMPUTED-ECPI → null net/refund. **15/15 green.**
+- **Schema:** `SmsfAnnualReturn.frankingCredits Float @default(0)` — additive migration `20260603090000_phase_44_2_smsf_franking_credits` (ADD COLUMN only).
+- **types.ts / assembler / API:** `frankingCredits` threaded through `EntityTaxFacts.smsfIncomeTax`, `assembleEntityTaxFacts`, and the `smsf-return` PUT body.
+- **UI** (`/dashboard/entities/[id]/tax`): headline is now the **net position** — a refund shows in emerald with "+", celebrated, with a "franking credits exceed the fund's tax" note; gross tax + franking credits added to the breakdown grid; a franking-credits input added to the form.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors
+- [x] `vitest` SMSF suite — 15/15 pass
+- [x] `lint:financial-surfaces` — exit 0
+- [x] `next build` — ✓ Compiled (`/dashboard/entities/[id]/tax` 4.9 kB)
+
+### Schema-change deploy protocol (CLAUDE.md §12.12)
+- `prisma/schema.prisma` modified with matching migration `20260603090000_phase_44_2_smsf_franking_credits/migration.sql`. Additive `ADD COLUMN ... NOT NULL DEFAULT 0`. No DROP, no `db push`.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- No new destructive write. The existing `smsf-return` PUT upsert (ownership-guarded, entity+FY key) gains one field in its `data`. Migration additive (ADD COLUMN, existing rows default to 0 = prior behaviour). User confirmation: NOT REQUIRED.
+
+### Phase 41E reform-awareness (CLAUDE.md §12.14)
+- Modified `calculateSmsfIncomeTax` (in `lib/tax-engine/super/`). **Reform outcome: reform-neutral.** Franking refundability is NOT one of the 8 reform measures, so the new branch produces the same number under every regime — no regime parameter or `commencementVerified` gate is required (documented in the function). Back-compatible: callers omitting `frankingCredits` get byte-for-byte the prior result. New column is on `SmsfAnnualReturn`, not `Property`/`Investment`/`LegalEntity` → FW-3 N/A.
+
+### PR
+- Branch: `claude/brave-shannon-mr1ye`
+- Status: Draft (pending review)

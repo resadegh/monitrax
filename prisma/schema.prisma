@@ -4144,6 +4144,7 @@ model SmsfAnnualReturn {
   deductions                 Float   @default(0) // deductions against investment income
   assessableContributions    Float   @default(0) // employer SG + salary sacrifice + personal deductible (taxed @15%)
   nonArmsLengthIncome        Float   @default(0) // NALI — taxed at top rate, ECPI never applies (s295-550)
+  frankingCredits            Float   @default(0) // Phase 44.2 slice 2: refundable imputation credits (Div 207 + s67-25)
   isComplying                Boolean @default(true)
   isInPensionPhase           Boolean @default(false)
   ecpiExemptProportion       Float? // 0..1 exempt proportion; null = unknown (drives UNCOMPUTED)

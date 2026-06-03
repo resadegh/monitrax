@@ -64,10 +64,21 @@ export interface SmsfIncomeTaxInput {
    * absent, the investment-income tax is UNCOMPUTED — never guessed.
    */
   ecpiExemptProportion?: number;
+  /**
+   * Imputation (franking) credits attached to franked dividends the fund
+   * received this FY. A REFUNDABLE tax offset for a complying super fund
+   * (ITAA 1997 Div 207 + s67-25) — it reduces the fund's tax and any
+   * EXCESS is refunded in cash (the classic pension-phase SMSF benefit:
+   * exempt income still attracts a franking refund). The grossed-up
+   * dividend should already be inside `assessableInvestmentIncome`; this
+   * is the credit that both grosses it up and offsets the tax. Defaults
+   * to 0 — callers that omit it get byte-for-byte the prior result.
+   */
+  frankingCredits?: number;
 }
 
 export interface SmsfIncomeTaxResult {
-  /** Total fund income tax for the FY. `null` ⇒ UNCOMPUTED (see `uncomputed`). */
+  /** Total fund income tax for the FY (gross, before franking offset). `null` ⇒ UNCOMPUTED (see `uncomputed`). */
   tax: number | null;
   /** Tax on the assessable (non-NALI, non-ECPI-exempt) investment income. `null` ⇒ UNCOMPUTED. */
   investmentIncomeTax: number | null;
@@ -77,6 +88,16 @@ export interface SmsfIncomeTaxResult {
   naliTax: number;
   /** The 0%-taxed ECPI amount. `null` when the ECPI proportion is unknown. */
   ecpiExemptAmount: number | null;
+  /** Refundable franking (imputation) credits applied as an offset (Div 207 + s67-25). */
+  frankingCredits: number;
+  /**
+   * Net tax position after the refundable franking offset:
+   * `tax - frankingCredits`. POSITIVE ⇒ payable; NEGATIVE ⇒ refundable.
+   * `null` when gross `tax` is UNCOMPUTED.
+   */
+  netTaxPayable: number | null;
+  /** The cash franking refund when credits exceed gross tax (`max(0, frankingCredits - tax)`). `null` when `tax` is UNCOMPUTED. */
+  frankingRefund: number | null;
   isComplying: boolean;
   citations: AuthorityCitation[];
   uncomputed: UncomputedFlag[];
@@ -88,6 +109,35 @@ const REVIEWED = '2026-05-22';
 function clampProportion(value: number): number {
   if (Number.isNaN(value)) return 0;
   return Math.min(1, Math.max(0, value));
+}
+
+/**
+ * Apply franking (imputation) credits as a tax offset.
+ *
+ * Complying funds: refundable (ITAA 1997 s67-25) — net can go negative
+ * (a cash refund), and `frankingRefund` is the excess over gross tax.
+ * Non-complying funds: non-refundable — credits floor the tax at 0, no
+ * cash refund.
+ *
+ * Reform-neutral: franking refundability is NOT one of the 2026-27 reform
+ * measures, so this branch produces the same number under every regime.
+ */
+function applyFranking(
+  grossTax: number | null,
+  frankingCredits: number,
+  refundable: boolean,
+): { netTaxPayable: number | null; frankingRefund: number | null } {
+  if (grossTax === null) return { netTaxPayable: null, frankingRefund: null };
+  if (refundable) {
+    return {
+      netTaxPayable: grossTax - frankingCredits, // negative ⇒ cash refund
+      frankingRefund: Math.max(0, frankingCredits - grossTax),
+    };
+  }
+  return {
+    netTaxPayable: Math.max(0, grossTax - frankingCredits),
+    frankingRefund: 0,
+  };
 }
 
 /**
@@ -116,18 +166,32 @@ export function calculateSmsfIncomeTax(
   );
   const nali = Math.max(0, input.nonArmsLengthIncome);
   const contributions = Math.max(0, input.assessableContributions);
+  // Refundable franking offset (Div 207 + s67-25 for complying funds).
+  const frankingCredits = Math.max(0, input.frankingCredits ?? 0);
+  if (frankingCredits > 0) {
+    citations.push(
+      { kind: 'ITAA_1997', reference: 'Div 207', lastReviewed: REVIEWED },
+      { kind: 'ITAA_1997', reference: 's67-25', lastReviewed: REVIEWED },
+    );
+  }
 
   // --- Non-complying fund — top rate on all assessable income ----------
   if (!input.isComplying) {
     const investmentIncomeTax = netInvestmentIncome * topRate;
     const contributionsTax = contributions * topRate;
     const naliTax = nali * topRate;
+    const grossTax = investmentIncomeTax + contributionsTax + naliTax;
+    // Non-complying fund — franking credits are non-refundable here.
+    const { netTaxPayable, frankingRefund } = applyFranking(grossTax, frankingCredits, false);
     return {
-      tax: investmentIncomeTax + contributionsTax + naliTax,
+      tax: grossTax,
       investmentIncomeTax,
       contributionsTax,
       naliTax,
       ecpiExemptAmount: 0,
+      frankingCredits,
+      netTaxPayable,
+      frankingRefund,
       isComplying: false,
       citations: [
         ...citations,
@@ -156,12 +220,16 @@ export function calculateSmsfIncomeTax(
         'This fund has retirement-phase (pension) accounts, but the exempt-current-pension-income proportion has not been supplied — the segregated method, or a proportionate-method actuary’s certificate. The fund’s investment-income tax cannot be computed without it; ECPI is never estimated. Contributions tax and NALI tax (where ECPI does not apply) are still shown.',
       citation: { kind: 'ITAA_1997', reference: 's295-385', lastReviewed: REVIEWED },
     });
+    // Gross tax is UNCOMPUTED → net + refund are too (never guessed).
     return {
       tax: null,
       investmentIncomeTax: null,
       contributionsTax,
       naliTax,
       ecpiExemptAmount: null,
+      frankingCredits,
+      netTaxPayable: null,
+      frankingRefund: null,
       isComplying: true,
       citations,
       uncomputed,
@@ -179,12 +247,20 @@ export function calculateSmsfIncomeTax(
     citations.push({ kind: 'ITAA_1997', reference: 's295-385', lastReviewed: REVIEWED });
   }
 
+  const grossTax = investmentIncomeTax + contributionsTax + naliTax;
+  // Complying fund — franking credits are refundable (s67-25). In pension
+  // phase, the exempt pool's franking credits still refund in cash.
+  const { netTaxPayable, frankingRefund } = applyFranking(grossTax, frankingCredits, true);
+
   return {
-    tax: investmentIncomeTax + contributionsTax + naliTax,
+    tax: grossTax,
     investmentIncomeTax,
     contributionsTax,
     naliTax,
     ecpiExemptAmount,
+    frankingCredits,
+    netTaxPayable,
+    frankingRefund,
     isComplying: true,
     citations,
     uncomputed,
