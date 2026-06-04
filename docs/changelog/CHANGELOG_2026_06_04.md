@@ -165,3 +165,83 @@ Operations in this PR that touch existing rows: NONE — additive code only. No 
 
 - PR 2.B — rest of `lib/calculations/*`: `cashflowOrchestrator`, `expenseAggregator`, `incomeAggregator`, `loanAggregator`, `entityValueBreakdown`, `moneyStoryTrend`, `netWorthHistory`.
 - Branch: `claude/qdec-pr2-adapter-layer-LIlK9` (PR 2.A); new branch for 2.B.
+
+---
+
+## Session: qdec-pr2b-calculations-rest-LIlK9 (continuation after PR #978 merge)
+
+### Changes Made
+
+- **Type**: Feature / Foundation
+- **Scope**: Q-DEC PR 2.B — rest of `lib/calculations/*` (4 pure-compute engines + frequency helpers)
+- **Description**: Second sub-PR of Q-DEC PR 2. Extends the Decimal foundation from PR 2.A to four canonical calculation engines: `expenseAggregator`, `incomeAggregator`, `loanAggregator`, `cashflowOrchestrator`. Adds `toAnnualDecimal` / `toMonthlyDecimal` to `lib/utils/frequencies.ts` so every Decimal-side caller has a canonical SSOT for frequency conversion. ZERO existing engine changes — every Float function stays live for back-compat. The 3 I/O readers (`entityValueBreakdown`, `moneyStoryTrend`, `netWorthHistory`) intentionally deferred to PR 3 because their math is either trivial subtraction or delegates to PR 2.A's `netWorthCalculator` Decimal siblings.
+
+### Latent bugs discovered + fixed
+
+- **`Decimal(0).isPositive()` truthy.** decimal.js (via Prisma re-export) treats `Decimal(0).isPositive()` as truthy in some builds, causing `0 / 0 = NaN` in div-by-zero guards (`totalPrincipal.isPositive() ? sum.div(totalPrincipal) : 0` silently produces NaN). Caught by the shadow harness on the `loanAggregator/empty` fixture (`|Δ|=NaN`). Replaced all such guards with `.gt(0)` (strict positive). Applies to `loanAggregator.aggregateLoanRepaymentsDecimal`, `calculateDebtMetricsDecimal`, `calculateLVRDecimal`, and `cashflowOrchestrator.calculateCashflowDecimal` (savingsRate / expenseRatio / debtServiceRatio guards). The same pattern in `expenseAggregator.aggregateExpensesByCategoryDecimal`'s sort comparator was also tightened to `.gt(a.amount)`.
+- **Cashflow ratio fields are pre-rounded percentages, not raw rates.** The Float `calculateCashflow` calls `Math.round(n * 100) / 100` on EVERY output field including `savingsRate`, `expenseRatio`, `debtServiceRatio`. The Decimal sibling does NOT pre-round (rounding happens only at the OUTPUT boundary). So the shadow comparison sees Float `5.40` vs Decimal `5.398765…` — diff ~0.0012, fails 'percentage' tolerance (0.00005) but passes 'currency' tolerance (0.005). Initial fix: `fieldPolicy.savingsRate = 'percentage'`. Real fix: drop the per-field policy and let everything default to 'currency'. Documented in `decimal-calculations.ts` comment.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-calculations.ts` — 4 shadow engines (`expenseAggregatorShadow`, `incomeAggregatorShadow`, `loanAggregatorShadow`, `cashflowOrchestratorShadow`) + a `calculationsShadowEngines` convenience export
+- `tests/utils/frequencies.decimal.test.ts` — 17 tests for the Decimal frequency converters
+- `tests/calculations/aggregators.decimal.test.ts` — 18 tests covering per-engine shadow PASS + Decimal-path exactness contracts + the aggregate report
+
+### Files Modified
+
+- `lib/utils/frequencies.ts` — added `toAnnualDecimal`, `toMonthlyDecimal` (null-safe, accepts `number | string | Decimal | null | undefined`).
+- `lib/calculations/expenseAggregator.ts` — `aggregateExpensesDecimal`, `aggregateExpensesByCategoryDecimal`, `aggregateExpensesBySourceDecimal` + their `*Decimal` result types.
+- `lib/calculations/incomeAggregator.ts` — `aggregateIncomeDecimal`, `aggregateIncomeBySourceDecimal` + `*Decimal` result types; private helpers `getGrossAmountDecimal` / `getNetAmountDecimal` / `getPaygAmountDecimal` mirror the Float salary/PAYG branching.
+- `lib/calculations/loanAggregator.ts` — `aggregateLoanRepaymentsDecimal`, `calculateDebtMetricsDecimal`, `calculateLVRDecimal` + `*Decimal` result types.
+- `lib/calculations/cashflowOrchestrator.ts` — `calculateCashflowDecimal` + private `calculateIncomeAmountsDecimal` helper (Float-bridges to `calculateTakeHomePay` per PR 2.B scope; PR 2.C provides the Decimal sibling).
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Phase 45 row — PR 2.B row flipped to `[~] IN FLIGHT this PR` with scope + lessons documented.
+
+### Architectural rules (CLAUDE.md §0 + §12.2)
+
+Same as PR 2.A:
+- The ONLY entry to Decimal-land is `toDecimal` / `toDecimalRequired`.
+- The ONLY exit is `fromDecimal`.
+- Mid-computation MUST stay in Decimal. Rounding only at the OUTPUT boundary.
+- Engines compose via `.plus`, `.minus`, `.times`, `.div`, `sumDecimal` — never via `+`, `-`, `*`, `/`.
+- Div-by-zero guards use `.gt(0)`, never `.isPositive()` (lesson from this PR).
+
+### Testing
+
+- [x] All 35 new tests pass (17 frequencies + 18 aggregators)
+- [x] All 218 existing decimal/calc-audit tests still pass — zero regression (247 total across the surface)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 13 fixtures across the 4 engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new failure-mode lesson: `Decimal(0).isPositive()` truthiness on this Prisma.Decimal build — documented inline + in changelog)
+- [x] strategic decision (PR 2.B scope: 4 pure-compute engines IN; 3 I/O readers DEFERRED to PR 3 with rationale)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Phase 45 row — PR 2.B status flipped to `[~]` with scope detailed
+- `docs/changelog/CHANGELOG_2026_06_04.md` — this session entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions added: `aggregateExpensesDecimal`, `aggregateExpensesByCategoryDecimal`, `aggregateExpensesBySourceDecimal`, `aggregateIncomeDecimal`, `aggregateIncomeBySourceDecimal`, `aggregateLoanRepaymentsDecimal`, `calculateDebtMetricsDecimal`, `calculateLVRDecimal`, `calculateCashflowDecimal`, plus the `toAnnualDecimal` / `toMonthlyDecimal` frequency helpers — outcome **(a) reform-agnostic by design**. Input shapes don't carry regime-relevant fields; aggregation math is the same pre- vs post-reform.
+- [x] No `lib/tax-engine/*` modified.
+- [x] No schema columns added to `Property` / `Investment` / `LegalEntity`.
+- [x] No new AI tool added.
+- [x] No UI surface added.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows: **NONE** — additive code only. No Prisma writes. No schema changes.
+
+### Next
+
+- PR 2.C — `lib/cashflow/*` (daily/monthly/annual rollups + `calculateTakeHomePay` Decimal sibling — which unblocks the Float-bridge in cashflowOrchestrator).
+- PR 2.D — `lib/tax-engine/*` (largest sub-PR; salary-sacrifice depends on this for Phase 45 PR 1).
+- PR 2.E — `lib/cfo/*` (scenarios + intelligence engine).
