@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - What If?</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-tertiary-container": "#fdfcff",
+                        "inverse-on-surface": "#ecf3e7",
+                        "primary": "#006b2c",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "trail-indigo": "#6366F1",
+                        "on-primary-fixed": "#002109",
+                        "outline-variant": "#bdcaba",
+                        "error-red": "#DC2626",
+                        "surface-container": "#e9f0e5",
+                        "surface-bright": "#f4fcf0",
+                        "surface": "#f4fcf0",
+                        "primary-fixed": "#7ffc97",
+                        "trail-emerald": "#16A34A",
+                        "inverse-primary": "#62df7d",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#00873a",
+                        "on-primary": "#ffffff",
+                        "surface-container-high": "#e3eadf",
+                        "on-background": "#171d16",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "trail-violet": "#8B5CF6",
+                        "surface-dim": "#F1EFE8",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#eff6ea",
+                        "inverse-surface": "#2b322b",
+                        "secondary": "#585e6f",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-variant": "#dde5d9",
+                        "background": "#f4fcf0",
+                        "trail-amber": "#F59E0B",
+                        "surface-ivory": "#FAFAF7",
+                        "tertiary-container": "#66768d",
+                        "outline": "#6e7b6c",
+                        "on-secondary-fixed-variant": "#404757",
+                        "error": "#ba1a1a",
+                        "tertiary": "#4d5d73",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-container": "#f7fff2",
+                        "secondary-container": "#d9dff4",
+                        "trail-sky": "#0EA5E9",
+                        "surface-container-highest": "#dde5d9",
+                        "secondary-fixed": "#dce2f6",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-surface": "#171d16",
+                        "surface-tint": "#006e2d",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "outline-slate": "#94A3B8",
+                        "on-primary-fixed-variant": "#005320"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "margin-desktop": "48px",
+                        "section-gap": "48px",
+                        "container-max": "1280px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "eyebrow": ["Inter", "sans-serif"],
+                        "data-xl": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-sm": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "headline-lg-mobile": ["Inter", "sans-serif"],
+                        "data-lg": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                        "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen flex flex-col text-on-surface antialiased">
+<!-- TopNavBar Shell (Simulated) -->
+<nav class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface">Monitrax</div>
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="search">search</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCvgH77VshS3GNGERCpPLWvRXF9uy2qpTad01NNzNzKlEQPQSihUR46dFzg2b-kYzsL6MICjYmeP_aIhk29CxD4kd-jmt_37UreydH86HpYLKCwOasey5QD_ORfTABgV9CMX-TCQu15rYvj8sUD_2NRTy_Ik0be6EDeIctkaR6fVeCaJbCpWVPGQ4x0T_uMEWCfsXZQMN6w5S_yKsidZpvdI2THbLFZCCFJv-IOX_AFR_HokHCQD9MU6R7q0BfGNMpUHDz0zBxksAo"/>
+</div>
+</div>
+</nav>
+<!-- SideNavBar Shell (Simulated) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant h-full w-64">
+<div class="h-16 flex items-center px-6 border-b border-outline-variant/30">
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4">
+<div class="space-y-1">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="home">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="group">group</span>
+<span class="font-body-md text-body-md">My Household</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 opacity-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="map">map</span>
+<span class="font-body-md text-body-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="trending_up">trending_up</span>
+<span class="font-body-md text-body-md">My Wealth</span>
+</a>
+</div>
+</div>
+<div class="p-4 border-t border-outline-variant/30">
+<button class="w-full h-11 rounded-[12px] bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors">Update Plan</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 ml-64 mt-16 p-margin-desktop overflow-y-auto">
+<div class="max-w-[1100px] mx-auto">
+<!-- Page Header -->
+<header class="mb-section-gap text-center max-w-2xl mx-auto">
+<div class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.18em] mb-4">MY GUIDE · WHAT IF</div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-6">What if?</h1>
+<p class="font-body-lg text-body-lg text-secondary">
+                    See how a single move could change your 10-year picture. Pick one lever — Monitrax shows what changes, never what you should do.
+                </p>
+</header>
+<!-- Lever Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-gutter mb-section-gap">
+<!-- Lever A -->
+<button class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-sm hover:border-primary/20 relative h-[240px] flex flex-col justify-between">
+<div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[20px] text-secondary" data-icon="percent">percent</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Refinance a loan</h3>
+<p class="font-body-sm text-body-sm text-secondary line-clamp-3">
+                            Change your rate. See your monthly repayment, lifetime interest, and 10-year net-worth shift.
+                        </p>
+</div>
+<div class="flex items-center text-trail-emerald font-label-md text-label-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span>Open</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</button>
+<!-- Lever B -->
+<button class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-sm hover:border-primary/20 relative h-[240px] flex flex-col justify-between">
+<div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[20px] text-secondary" data-icon="savings">savings</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Salary-sacrifice to super</h3>
+<p class="font-body-sm text-body-sm text-secondary line-clamp-3">
+                            Add to your retirement pot pre-tax. We check your concessional cap headroom first.
+                        </p>
+</div>
+<div class="flex items-center text-trail-emerald font-label-md text-label-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span>Open</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</button>
+<!-- Lever C -->
+<button class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-sm hover:border-primary/20 relative h-[240px] flex flex-col justify-between">
+<div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[20px] text-secondary" data-icon="home_work">home_work</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Sell a property</h3>
+<p class="font-body-sm text-body-sm text-secondary line-clamp-3">
+                            See your CGT exposure, freed equity, and what changes once the rental income stops.
+                        </p>
+</div>
+<div class="flex items-center text-trail-emerald font-label-md text-label-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span>Open</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</button>
+<!-- Lever D -->
+<button class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-sm hover:border-primary/20 relative h-[240px] flex flex-col justify-between">
+<div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[20px] text-secondary" data-icon="trending_down">trending_down</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Pay extra off a debt</h3>
+<p class="font-body-sm text-body-sm text-secondary line-clamp-3">
+                            Add extra a month above your minimum. See how many years it shaves off, and what it costs in cashflow.
+                        </p>
+</div>
+<div class="flex items-center text-trail-emerald font-label-md text-label-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span>Open</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</button>
+<!-- Lever E -->
+<button class="group bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 text-left transition-all duration-200 hover:-translate-y-1 hover:shadow-sm hover:border-primary/20 relative h-[240px] flex flex-col justify-between">
+<div>
+<div class="w-10 h-10 rounded-lg bg-surface-container-low flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-[20px] text-secondary" data-icon="domain_add">domain_add</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Buy an investment property</h3>
+<p class="font-body-sm text-body-sm text-secondary line-clamp-3">
+                            Model a new IP at a given price + LVR. See the year-1 cashflow drag and the 10-year wealth effect.
+                        </p>
+</div>
+<div class="flex items-center text-trail-emerald font-label-md text-label-md opacity-0 group-hover:opacity-100 transition-opacity">
+<span>Open</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</button>
+<!-- Sixth Cell (Coming Soon) -->
+<div class="border border-dashed border-outline-variant rounded-xl p-6 flex flex-col items-center justify-center text-center h-[240px] bg-surface-ivory/50">
+<span class="font-label-md text-label-md text-secondary">More levers coming</span>
+</div>
+</div>
+<!-- Footer Panel -->
+<div class="bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-6">
+<h4 class="font-headline-sm text-[15px] font-semibold text-on-surface mb-2">Why no recommendations?</h4>
+<p class="font-body-sm text-body-sm text-secondary mb-4">
+                    Monitrax shows you what each move would do to your numbers — never what you should choose. That's what a licensed adviser is for. Every lever you see here is information, not advice.
+                </p>
+<a class="inline-flex items-center font-label-md text-label-md text-trail-emerald hover:underline" href="#">
+<span>Read the General Advice Warning</span>
+<span class="material-symbols-outlined text-[16px] ml-1" data-icon="arrow_forward">arrow_forward</span>
+</a>
+</div>
+</div>
+</main>
+</body></html>

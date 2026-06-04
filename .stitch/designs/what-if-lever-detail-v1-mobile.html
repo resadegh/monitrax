@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax — What if? lever detail v1 MOBILE — Salary-sacrifice</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary": "#ffffff",
+                      "on-surface": "#171d16",
+                      "tertiary-fixed": "#d3e4fe",
+                      "trail-indigo": "#6366F1",
+                      "on-surface-variant": "#3e4a3d",
+                      "on-primary": "#ffffff",
+                      "inverse-surface": "#2b322b",
+                      "inverse-on-surface": "#ecf3e7",
+                      "surface-container-highest": "#dde5d9",
+                      "trail-violet": "#8B5CF6",
+                      "primary-container": "#00873a",
+                      "on-tertiary": "#ffffff",
+                      "secondary-fixed": "#dce2f6",
+                      "surface-variant": "#dde5d9",
+                      "on-error": "#ffffff",
+                      "background": "#f4fcf0",
+                      "on-primary-fixed": "#002109",
+                      "surface-container-high": "#e3eadf",
+                      "on-background": "#171d16",
+                      "error-container": "#ffdad6",
+                      "on-primary-container": "#f7fff2",
+                      "surface-container-low": "#eff6ea",
+                      "outline-slate": "#94A3B8",
+                      "surface-container": "#e9f0e5",
+                      "surface": "#f4fcf0",
+                      "outline": "#6e7b6c",
+                      "trail-emerald": "#16A34A",
+                      "surface-dim": "#d5dcd1",
+                      "on-primary-fixed-variant": "#005320",
+                      "trail-sky": "#0EA5E9",
+                      "on-secondary-fixed": "#151b2a",
+                      "surface-bright": "#f4fcf0",
+                      "surface-ivory": "#FAFAF7",
+                      "primary-fixed-dim": "#62df7d",
+                      "tertiary-container": "#66768d",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-secondary-fixed-variant": "#404757",
+                      "secondary-container": "#d9dff4",
+                      "on-tertiary-container": "#fdfcff",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "surface-tint": "#006e2d",
+                      "on-error-container": "#93000a",
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#7ffc97",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "secondary": "#585e6f",
+                      "error-red": "#DC2626",
+                      "on-secondary-container": "#5c6274",
+                      "trail-amber": "#F59E0B",
+                      "inverse-primary": "#62df7d",
+                      "outline-variant": "#bdcaba",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "primary": "#006b2c",
+                      "tertiary": "#4d5d73",
+                      "error": "#ba1a1a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-desktop": "48px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "gutter": "24px",
+                      "section-gap": "48px"
+              },
+              "fontFamily": {
+                      "data-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "data-xl": ["Inter"]
+              },
+              "fontSize": {
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7; /* warm ivory */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(22, 163, 74, 0.1);
+            box-shadow: 0 4px 24px -4px rgba(11, 18, 32, 0.04);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #16A34A 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #16A34A 0%, #6366F1 100%);
+        }
+        
+        /* Custom Range Slider */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #0B1220;
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: linear-gradient(90deg, #16A34A 0%, #6366F1 100%);
+            border-radius: 2px;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="pb-[100px] font-body-md text-on-surface">
+<!-- Top Navigation Placeholder (Hidden per logic, rendering only specific breadcrumb) -->
+<main class="px-margin-mobile pt-8 flex flex-col gap-unit-6">
+<!-- 1. Breadcrumb -->
+<header class="flex items-center justify-between mb-2">
+<button class="flex items-center text-outline-slate hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined mr-1" style="font-size: 20px;">arrow_back</span>
+<span class="font-label-md text-label-md">What if?</span>
+</button>
+<div class="px-3 py-1 rounded-full border border-outline-slate/30 bg-white/50 backdrop-blur-sm">
+<span class="font-eyebrow text-eyebrow tracking-widest gradient-text">SALARY-SACRIFICE</span>
+</div>
+</header>
+<!-- 2. RESULT HERO -->
+<section class="glass-card rounded-2xl p-6 flex flex-col gap-6">
+<div class="flex flex-col gap-1">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile gradient-text tabular-nums leading-tight">
+                    $378,400 more in super by 2036
+                </h1>
+<p class="font-body-sm text-body-sm text-outline-slate tabular-nums">
+                    vs. your current path of $1,247,200
+                </p>
+</div>
+<!-- Trajectory Chart Placeholder -->
+<div class="w-full h-40 relative rounded-xl border border-outline-slate/20 bg-white/40 overflow-hidden flex items-end px-4 pb-2 pt-6">
+<!-- Decorative representation of chart -->
+<svg class="absolute bottom-0 left-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<path d="M0,80 Q25,75 50,50 T100,10" fill="none" stroke="#16A34A" stroke-width="2"></path>
+<path d="M0,80 Q25,80 50,70 T100,60" fill="none" stroke="#0b1c30" stroke-dasharray="4,4" stroke-width="1.5"></path>
+</svg>
+<div class="absolute top-2 right-4 text-right">
+<div class="font-label-md text-label-md text-trail-emerald tabular-nums">$1,625k</div>
+<div class="font-eyebrow text-eyebrow text-on-tertiary-fixed tabular-nums">$1,247k</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1.5 bg-trail-emerald/10 rounded-full border border-trail-emerald/20">
+<span class="material-symbols-outlined text-trail-emerald" style="font-size: 16px;">savings</span>
+<span class="font-label-md text-label-md text-trail-emerald tabular-nums">Annual tax saved: $5,400</span>
+</div>
+<div class="flex items-center gap-1.5 px-3 py-1.5 bg-transparent rounded-full border border-outline-slate/40">
+<span class="material-symbols-outlined text-outline-slate" style="font-size: 16px;">pie_chart</span>
+<span class="font-label-md text-label-md text-outline-slate tabular-nums">Concessional cap used: 75%</span>
+</div>
+</div>
+</section>
+<!-- 3. INPUTS CARD -->
+<section class="glass-card rounded-2xl p-6 flex flex-col gap-8">
+<div class="flex flex-col gap-6">
+<h2 class="font-body-md text-body-md font-medium text-on-tertiary-fixed">How much per month?</h2>
+<div class="relative pt-8 pb-4">
+<!-- Tooltip permanently visible -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 gradient-bg rounded-full px-4 py-1.5 shadow-md">
+<span class="font-label-md text-label-md text-white tabular-nums">$1,500 /mo</span>
+<div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 gradient-bg rotate-45"></div>
+</div>
+<input aria-label="Contribution amount slider" class="w-full" max="3000" min="0" type="range" value="1500"/>
+<div class="flex justify-between mt-2 font-eyebrow text-eyebrow text-outline-slate tabular-nums">
+<span>$0</span>
+<span>$3,000+</span>
+</div>
+</div>
+<!-- Cap Check -->
+<div class="bg-white/60 backdrop-blur-md rounded-xl p-3 border border-outline-slate/20 flex gap-3 items-start">
+<span class="material-symbols-outlined text-trail-emerald mt-0.5" style="font-size: 18px;">check_circle</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant tabular-nums leading-snug">
+                        Cap headroom $24,000/yr. This contribution $18,000/yr. Within cap — no extra tax.
+                    </p>
+</div>
+<!-- Default Pills -->
+<div class="flex flex-wrap gap-2">
+<button class="px-4 py-2 rounded-full border border-outline-slate/40 hover:bg-white/50 transition-colors font-label-md text-label-md text-on-surface-variant tabular-nums">
+                        Use my current ($800/mo)
+                    </button>
+<button class="px-4 py-2 rounded-full border border-outline-slate/40 hover:bg-white/50 transition-colors font-label-md text-label-md text-on-surface-variant tabular-nums">
+                        Max within cap ($2,000/mo)
+                    </button>
+</div>
+</div>
+<!-- Entity Picker -->
+<div class="flex flex-col gap-3">
+<h3 class="font-eyebrow text-eyebrow text-outline-slate tracking-widest">APPLY TO</h3>
+<div class="flex flex-col gap-2">
+<button class="w-full flex items-center justify-between p-3 rounded-xl border border-trail-emerald/30 bg-trail-emerald/5 transition-colors text-left">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-outline-slate/20">
+<span class="material-symbols-outlined text-trail-emerald" style="font-size: 18px;">corporate_fare</span>
+</div>
+<div>
+<div class="font-label-md text-label-md text-on-surface">AustralianSuper</div>
+<div class="font-eyebrow text-eyebrow text-outline-slate">Industry</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-trail-emerald" style="font-size: 20px;">radio_button_checked</span>
+</button>
+<button class="w-full flex items-center justify-between p-3 rounded-xl border border-outline-slate/20 bg-white/40 hover:bg-white/60 transition-colors text-left">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border border-outline-slate/20">
+<span class="material-symbols-outlined text-outline-slate" style="font-size: 18px;">domain</span>
+</div>
+<div>
+<div class="font-label-md text-label-md text-on-surface">SMSF Smith Family</div>
+<div class="font-eyebrow text-eyebrow text-outline-slate">SMSF</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-slate" style="font-size: 20px;">radio_button_unchecked</span>
+</button>
+</div>
+</div>
+</section>
+<!-- 4. Accordion -->
+<button class="w-full flex items-center justify-between py-4 border-b border-outline-slate/20 text-left">
+<span class="font-body-md text-body-md font-medium text-on-surface-variant">How we computed this (7 assumptions)</span>
+<span class="material-symbols-outlined text-outline-slate">expand_more</span>
+</button>
+<!-- 5. AFSL Footer -->
+<div class="glass-card rounded-xl p-4 mt-4 text-center">
+<p class="font-eyebrow text-eyebrow text-outline-slate tracking-widest uppercase">
+                WHY NO RECOMMENDATIONS
+            </p>
+<p class="font-body-sm text-body-sm text-outline-slate/80 mt-1">
+                General information only. Not financial advice.
+            </p>
+</div>
+</main>
+<!-- BottomNavBar Semantic Shell (Mandated per JSON for Destination Mobile screens, assumed 'Guide' or 'Explore' intent here, but instructed to leave ~80px clear for tab bar. Applying JSON exactly.) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] rounded-t-xl md:hidden">
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">home</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Home</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">account_balance_wallet</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Accounts</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">payments</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Wealth</span>
+</button>
+<!-- Assuming "Guide" active for "What If" scenarios -->
+<button class="flex flex-col items-center justify-center text-primary-fixed bg-primary/10 rounded-xl px-3 py-1 shadow-[0_0_15px_rgba(98,223,125,0.15)] hover:text-primary transition-all scale-90 duration-200">
+<span class="material-symbols-outlined" style="font-size: 24px; font-variation-settings: 'FILL' 1;">explore</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">Guide</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all">
+<span class="material-symbols-outlined" style="font-size: 24px;">more_horiz</span>
+<span class="font-label-md text-label-md mt-1 text-[10px]">More</span>
+</button>
+</nav>
+</body></html>

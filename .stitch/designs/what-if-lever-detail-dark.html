@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cosmos Wealth | Salary-sacrifice Lever</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#1f1f29",
+                    "surface": "#12121d",
+                    "secondary-fixed": "#c9e6ff",
+                    "on-error-container": "#ffdad6",
+                    "secondary-fixed-dim": "#89ceff",
+                    "tertiary-container": "#ec6284",
+                    "on-secondary": "#00344d",
+                    "on-surface-variant": "#bdcaba",
+                    "on-primary": "#003914",
+                    "primary-fixed-dim": "#62df7d",
+                    "inverse-surface": "#e4e1f0",
+                    "surface-container-low": "#1b1b25",
+                    "error": "#ffb4ab",
+                    "primary-fixed": "#7ffc97",
+                    "on-primary-container": "#003111",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-tint": "#62df7d",
+                    "inverse-primary": "#006e2d",
+                    "primary": "#62df7d",
+                    "surface-dim": "#12121d",
+                    "secondary": "#89ceff",
+                    "on-primary-fixed": "#002109",
+                    "surface-container-highest": "#34343f",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "outline": "#879485",
+                    "on-secondary-fixed": "#001e2f",
+                    "outline-variant": "#3e4a3d",
+                    "tertiary": "#ffb2bf",
+                    "surface-container-high": "#292934",
+                    "inverse-on-surface": "#302f3b",
+                    "on-surface": "#e4e1f0",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "background": "#050913",
+                    "on-tertiary": "#660027",
+                    "on-background": "#FAFAF7",
+                    "surface-container-lowest": "#0d0d17",
+                    "surface-bright": "#393844",
+                    "error-container": "#93000a",
+                    "primary-container": "#1ca64d",
+                    "secondary-container": "#00a2e6",
+                    "on-error": "#690005",
+                    "on-secondary-container": "#00344e",
+                    "surface-variant": "#34343f",
+                    "on-tertiary-container": "#5a0022",
+                    "on-tertiary-fixed": "#3f0016",
+                    "on-secondary-fixed-variant": "#004c6e",
+                    "on-primary-fixed-variant": "#005320",
+                    "cosmos-glass": "#0E1424",
+                    "brand-indigo": "#6366F1",
+                    "brand-violet": "#8B5CF6",
+                    "brand-emerald": "#22C55E"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "cosmos": "20px",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "stack-lg": "32px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "stack-xl": "64px",
+                    "margin-desktop": "64px",
+                    "gutter": "24px",
+                    "container-max": "1200px",
+                    "unit": "4px"
+            },
+            "fontFamily": {
+                    "inter": ["Inter", "sans-serif"],
+                    "label-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913;
+            color: #FAFAF7;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 20px;
+            overflow: hidden;
+            position: relative;
+        }
+        .gradient-text {
+            background: linear-gradient(to right, #6366F1, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(to right, #89ceff, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tabular {
+            font-variant-numeric: tabular-nums;
+        }
+        .lever-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background: #6366F1;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .lever-thumb::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            background: #6366F1;
+            border: 4px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.5);
+        }
+        .watermark {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 160px;
+            opacity: 0.14;
+            pointer-events: none;
+            user-select: none;
+        }
+    </style>
+</head>
+<body class="antialiased overflow-x-hidden min-h-screen">
+<header class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-outline-variant/30">
+<div class="flex justify-between items-center h-20 px-margin-desktop max-w-container-max mx-auto">
+<div class="font-headline-lg text-headline-lg font-bold text-primary tracking-tighter">Cosmos Wealth</div>
+<nav class="hidden md:flex items-center gap-stack-lg">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Portfolio</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1 font-label-md text-label-md" href="#">Insights</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Treasury</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors font-label-md text-label-md" href="#">Governance</a>
+</nav>
+<div class="flex items-center gap-stack-md">
+<button class="text-on-surface-variant font-label-md text-label-md hover:text-on-surface px-4 py-2">Sign In</button>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-md text-label-md hover:opacity-90 transition-opacity">Open Account</button>
+</div>
+</div>
+</header>
+<main class="pt-32 pb-margin-desktop px-margin-desktop max-w-container-max mx-auto">
+<div class="flex items-center gap-2 mb-stack-md">
+<button class="flex items-center text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+</button>
+<nav class="flex items-center text-label-sm font-label-sm gap-2">
+<span class="text-slate-400">What If?</span>
+<span class="text-slate-600">›</span>
+<span class="text-on-background">Salary-sacrifice</span>
+</nav>
+</div>
+<div class="mb-stack-xl">
+<div class="flex items-center gap-3 mb-2">
+<span class="px-3 py-1 bg-secondary-container/20 text-secondary font-label-sm text-[10px] tracking-widest rounded-full">STAGE I · INVEST</span>
+<span class="gradient-text font-bold text-label-md tracking-widest">BOOST</span>
+</div>
+<h1 class="font-display-lg text-display-lg max-w-2xl leading-tight">
+                What if you salary-sacrificed an extra $500/month?
+            </h1>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-10 gap-gutter items-start">
+<div class="lg:col-span-6 flex flex-col gap-gutter">
+<div class="glass-card p-stack-lg min-h-[480px]">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-right from-brand-indigo to-brand-violet" style="background: linear-gradient(to right, #6366F1, #8B5CF6);"></div>
+<span class="material-symbols-outlined watermark">monetization_on</span>
+<div class="relative z-10 h-full flex flex-col justify-between">
+<div>
+<p class="text-slate-400 font-label-sm text-[11px] tracking-[0.2em] mb-4">EXTRA MONTHLY CONTRIBUTION</p>
+<div class="flex items-baseline gap-2 mb-8">
+<span class="text-[48px] font-bold gradient-text tabular">$500</span>
+<span class="text-slate-400 font-body-md">/ month</span>
+</div>
+<div class="mb-12">
+<input class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer lever-thumb" max="1000" min="0" type="range" value="500"/>
+<div class="flex justify-between mt-4 text-[11px] text-slate-500 font-medium">
+<span>$0</span>
+<span>$1,000 MAX</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-stack-md mb-12">
+<div class="glass-card bg-white/5 border-white/10 p-4">
+<p class="text-slate-400 text-[11px] font-semibold mb-2">CONCESSIONAL CAP USED</p>
+<div class="flex items-baseline justify-between mb-2">
+<span class="tabular text-body-lg font-bold">$22,500</span>
+<span class="tabular text-[11px] text-slate-500">/ $27,500</span>
+</div>
+<div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-brand-indigo" style="width: 82%;"></div>
+</div>
+</div>
+<div class="glass-card bg-white/5 border-white/10 p-4">
+<p class="text-slate-400 text-[11px] font-semibold mb-2">HEADROOM</p>
+<p class="tabular text-body-lg font-bold text-brand-emerald">$5,000</p>
+<p class="text-[11px] text-slate-500 mt-2">remaining for FY24</p>
+</div>
+</div>
+</div>
+<div>
+<p class="text-slate-400 text-[11px] font-semibold mb-6">PROJECTED SUPER BALANCE AT AGE 65</p>
+<div class="relative h-32 w-full flex items-end gap-1">
+<div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+<div class="bg-[#1f1f29] border border-white/10 px-3 py-2 rounded-lg text-[12px] shadow-2xl translate-y-[-40px] translate-x-[40px]">
+<div class="text-slate-400 mb-1">Jun 2031</div>
+<div class="font-bold text-brand-emerald">+$142k delta</div>
+</div>
+</div>
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+<path d="M0,35 Q25,32 50,28 T100,20" fill="none" stroke="#475569" stroke-dasharray="2,2" stroke-width="0.5"></path>
+<path d="M0,35 Q25,30 50,22 T100,5" fill="none" stroke="#6366F1" stroke-width="1.5"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-4 flex flex-col gap-gutter">
+<div class="glass-card p-stack-lg border-white/10 bg-gradient-to-br from-cosmos-glass to-[#161B2E]">
+<p class="text-slate-400 text-[11px] font-semibold mb-4">ESTIMATED BALANCE AT 65</p>
+<h2 class="text-[56px] font-extrabold sky-indigo-gradient tabular leading-none mb-4">$754,200</h2>
+<div class="flex items-center gap-2 text-brand-emerald font-semibold tabular">
+<span class="material-symbols-outlined text-[18px]">trending_up</span>
+<span>+$142,200 vs baseline</span>
+</div>
+</div>
+<div class="glass-card p-stack-lg">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-8 h-8 rounded-full bg-brand-indigo/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-brand-indigo text-[18px]">lightbulb</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm">What this means</h3>
+</div>
+<div class="space-y-4 text-slate-400 font-body-md leading-relaxed">
+<p>
+                            By salary-sacrificing, you're investing before-tax income, which is taxed at a flat 15% within super—typically much lower than your marginal tax rate.
+                        </p>
+<p>
+                            This strategy reduces your taxable income today while significantly boosting the compounding engine of your retirement nest egg. The earlier you start, the more profound the effect.
+                        </p>
+</div>
+<button class="mt-8 w-full py-4 bg-brand-indigo hover:bg-brand-violet text-white font-bold rounded-xl transition-all active:scale-95">
+                        Implement Strategy
+                    </button>
+</div>
+<div class="glass-card p-6 border-brand-emerald/20 bg-brand-emerald/5">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-brand-emerald">shield</span>
+<div>
+<p class="text-[12px] font-bold text-brand-emerald mb-1">AFSL COMPLIANCE</p>
+<p class="text-[12px] text-slate-400 leading-normal">
+                                Information only — never personal advice. This simulation assumes a constant 7.5% annual return and current tax legislation.
+                            </p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<footer class="w-full py-12 border-t border-outline-variant/20 bg-surface-container-lowest">
+<div class="flex flex-col md:flex-row justify-between items-center px-margin-desktop max-w-container-max mx-auto gap-gutter">
+<div class="font-headline-xl text-headline-xl text-on-surface">Cosmos Wealth</div>
+<div class="flex gap-6 text-on-surface-variant font-label-sm text-label-sm">
+<a class="hover:text-primary transition-opacity" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-opacity" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-opacity" href="#">Security</a>
+<a class="hover:text-primary transition-opacity" href="#">Status</a>
+</div>
+<p class="text-on-surface-variant font-label-sm text-label-sm">© 2024 Cosmos Wealth Operating System. All rights reserved.</p>
+</div>
+</footer>
+<script>
+        const slider = document.querySelector('input[type="range"]');
+        const valueDisplay = document.querySelector('.tabular.text-\\[48px\\]');
+        const projectionValue = document.querySelector('.sky-indigo-gradient.tabular');
+        const deltaDisplay = document.querySelector('.text-brand-emerald.tabular span:last-child');
+
+        slider.addEventListener('input', (e) => {
+            const val = e.target.value;
+            valueDisplay.textContent = `$${val}`;
+            
+            const projected = 612000 + (val * 284.4);
+            projectionValue.textContent = `$${Math.round(projected).toLocaleString()}`;
+            
+            const delta = val * 284.4;
+            deltaDisplay.textContent = `+$${Math.round(delta).toLocaleString()} vs baseline`;
+        });
+    </script>
+</body></html>

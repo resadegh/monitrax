@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - What if?</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "tertiary": "#5b5c5a",
+                      "surface-container-high": "#dce9ff",
+                      "outline": "#6e7b6c",
+                      "inverse-surface": "#213145",
+                      "primary-container": "#00873a",
+                      "on-secondary-fixed": "#151b2a",
+                      "surface-variant": "#d3e4fe",
+                      "surface-container-low": "#eff4ff",
+                      "secondary": "#585e6f",
+                      "on-surface": "#0b1c30",
+                      "background": "#FAFAF7", // Warm ivory background override
+                      "surface-container-highest": "#d3e4fe",
+                      "primary": "#006b2c",
+                      "inverse-primary": "#62df7d",
+                      "on-primary-fixed-variant": "#005320",
+                      "tertiary-fixed-dim": "#c6c7c4",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-container": "#e5eeff",
+                      "surface": "#FAFAF7", // Warm ivory background override
+                      "surface-dim": "#cbdbf5",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#454745",
+                      "on-tertiary-fixed": "#1a1c1b",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-surface-variant": "#3e4a3d",
+                      "primary-fixed": "#7ffc97",
+                      "on-primary-container": "#f7fff2",
+                      "on-secondary-container": "#5c6274",
+                      "error": "#ba1a1a",
+                      "surface-tint": "#006e2d",
+                      "tertiary-container": "#737573",
+                      "secondary-container": "#d9dff4",
+                      "on-primary-fixed": "#002109",
+                      "on-tertiary-container": "#fdfdfa",
+                      "on-secondary-fixed-variant": "#404757",
+                      "outline-variant": "#bdcaba",
+                      "on-tertiary": "#ffffff",
+                      "tertiary-fixed": "#e2e3e0",
+                      "inverse-on-surface": "#eaf1ff",
+                      "surface-bright": "#FAFAF7", // Warm ivory background override
+                      "secondary-fixed": "#dce2f6",
+                      "primary-fixed-dim": "#62df7d",
+                      "error-container": "#ffdad6",
+                      "on-secondary": "#ffffff",
+                      "on-error-container": "#93000a",
+                      "on-background": "#0b1c30",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "2xl": "1rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "container-max": "1200px",
+                      "margin-desktop": "48px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Inter", "sans-serif"],
+                      "body-md": ["Inter", "sans-serif"],
+                      "eyebrow": ["Inter", "sans-serif"],
+                      "body-lg": ["Inter", "sans-serif"],
+                      "headline-sm": ["Inter", "sans-serif"],
+                      "display-lg": ["Inter", "sans-serif"],
+                      "body-sm": ["Inter", "sans-serif"],
+                      "headline-md": ["Inter", "sans-serif"],
+                      "label-md": ["Inter", "sans-serif"],
+                      "headline-lg-mobile": ["Inter", "sans-serif"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "eyebrow": ["11px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              },
+              boxShadow: {
+                  'premium-soft': '0 4px 24px -4px rgba(11, 18, 32, 0.04), 0 2px 8px -2px rgba(11, 18, 32, 0.02)',
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .icon-fill-1 {
+            font-variation-settings: 'FILL' 1, 'wght' 300;
+        }
+        .bg-glass {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .watermark {
+            position: absolute;
+            right: -10%;
+            bottom: -10%;
+            font-size: 140px;
+            color: rgba(11, 28, 48, 0.02);
+            pointer-events: none;
+            user-select: none;
+            z-index: 0;
+            transform: rotate(-15deg);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md antialiased min-h-screen flex selection:bg-surface-variant selection:text-on-surface">
+<!-- TopNavBar -->
+<nav class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 shadow-none">
+<div class="flex items-center gap-6">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Monitrax</span>
+<!-- Search bar placeholder -->
+</div>
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low focus:outline-none">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container-low focus:outline-none">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high overflow-hidden border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">person</span>
+</div>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64 h-full shadow-none bg-background">
+<div class="p-6 pb-2 border-b border-outline-variant/30">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
+<span class="material-symbols-outlined text-primary">donut_large</span>
+</div>
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">Monitrax</h1>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant opacity-70">Wealth OS</p>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4 flex flex-col gap-1">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">group</span>
+<span class="font-label-md text-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">account_balance</span>
+<span class="font-label-md text-label-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">account_balance_wallet</span>
+<span class="font-label-md text-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">health_and_safety</span>
+<span class="font-label-md text-label-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">trending_up</span>
+<span class="font-label-md text-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 hover:bg-primary/20 transition-colors mx-0 rounded-r-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">map</span>
+<span class="font-label-md text-label-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors px-4 mx-2 rounded-md group" href="#">
+<span class="material-symbols-outlined mr-3 group-hover:scale-110 transition-transform">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+</div>
+<div class="p-4 border-t border-outline-variant/30">
+<button class="w-full h-10 bg-surface-container border border-outline-variant/50 text-on-surface font-label-md text-label-md rounded-md hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[18px]">upgrade</span>
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Main Canvas -->
+<main class="flex-1 ml-64 pt-24 pb-20 px-8 flex justify-center">
+<div class="w-full max-w-container-max flex flex-col gap-12">
+<!-- Header Section -->
+<header class="flex flex-col gap-3 max-w-3xl">
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-widest uppercase">MY GUIDE · DECISION SUPPORT</span>
+<h1 class="font-display-lg text-display-lg text-on-surface font-semibold tracking-tight">What if?</h1>
+<p class="font-body-lg text-body-lg text-secondary mt-2 leading-relaxed">
+                    See how a single move would change your 10-year picture. Pick one lever — Monitrax shows what changes, never what you should do.
+                </p>
+</header>
+<!-- Lever Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Card A: Refinance -->
+<button class="group relative text-left bg-glass rounded-2xl border border-secondary-fixed-dim/40 shadow-premium-soft overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/30">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-amber-400 to-rose-400"></div>
+<span class="material-symbols-outlined watermark">percent</span>
+<div class="p-6 relative z-10 flex flex-col h-full min-h-[220px]">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-on-surface opacity-80 text-[20px]">percent</span>
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-wider">REDUCE · DEBT</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Refinance a loan</h3>
+<p class="font-body-sm text-body-sm text-secondary flex-grow">
+                            Drop your rate. See your monthly repayment, lifetime interest, and 10-year net-worth shift.
+                        </p>
+</div>
+</button>
+<!-- Card B: Salary-sacrifice -->
+<button class="group relative text-left bg-glass rounded-2xl border border-secondary-fixed-dim/40 shadow-premium-soft overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/30">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-500 to-indigo-500"></div>
+<span class="material-symbols-outlined watermark">savings</span>
+<div class="p-6 relative z-10 flex flex-col h-full min-h-[220px]">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-on-surface opacity-80 text-[20px]">savings</span>
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-wider">INVEST · SUPER</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Salary-sacrifice to super</h3>
+<p class="font-body-sm text-body-sm text-secondary flex-grow">
+                            Add pre-tax to your retirement pot. We check your concessional cap headroom first.
+                        </p>
+</div>
+</button>
+<!-- Card C: Sell property -->
+<button class="group relative text-left bg-glass rounded-2xl border border-secondary-fixed-dim/40 shadow-premium-soft overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/30">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-violet-500 to-fuchsia-500"></div>
+<span class="material-symbols-outlined watermark">home</span>
+<div class="p-6 relative z-10 flex flex-col h-full min-h-[220px]">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-on-surface opacity-80 text-[20px]">home</span>
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-wider">LIVE · EXIT</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Sell a property</h3>
+<p class="font-body-sm text-body-sm text-secondary flex-grow">
+                            See your CGT exposure, freed equity, and what changes when the rental income stops.
+                        </p>
+</div>
+</button>
+<!-- Card D: Pay extra debt -->
+<button class="group relative text-left bg-glass rounded-2xl border border-secondary-fixed-dim/40 shadow-premium-soft overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/30">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-indigo-500 to-violet-500"></div>
+<span class="material-symbols-outlined watermark">trending_down</span>
+<div class="p-6 relative z-10 flex flex-col h-full min-h-[220px]">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-on-surface opacity-80 text-[20px]">trending_down</span>
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-wider">ANCHOR · DEBT FREEDOM</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Pay extra off a debt</h3>
+<p class="font-body-sm text-body-sm text-secondary flex-grow">
+                            Add $X above your minimum. See how many years it shaves off, and what it costs in cashflow.
+                        </p>
+</div>
+</button>
+<!-- Card E: Buy property -->
+<button class="group relative text-left bg-glass rounded-2xl border border-secondary-fixed-dim/40 shadow-premium-soft overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 focus:outline-none focus:ring-2 focus:ring-primary/30">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-sky-400 to-cyan-500"></div>
+<span class="material-symbols-outlined watermark">apartment</span>
+<div class="p-6 relative z-10 flex flex-col h-full min-h-[220px]">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-on-surface opacity-80 text-[20px]">apartment</span>
+<span class="font-eyebrow text-eyebrow text-on-surface opacity-60 tracking-wider">INVEST · PROPERTY</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-2">Buy an investment property</h3>
+<p class="font-body-sm text-body-sm text-secondary flex-grow">
+                            Model a new IP at a given price + LVR. See the year-1 cashflow drag and the 10-year wealth effect.
+                        </p>
+</div>
+</button>
+<!-- Card F: Coming soon -->
+<div class="bg-glass rounded-2xl border border-dashed border-secondary-fixed-dim/60 flex items-center justify-center p-6 min-h-[220px] opacity-70">
+<div class="text-center flex flex-col items-center gap-3">
+<span class="material-symbols-outlined text-secondary opacity-50 text-[24px]">construction</span>
+<p class="font-body-sm text-body-sm text-secondary">More levers coming · we’re working on it</p>
+</div>
+</div>
+</div>
+<!-- AFSL Footer Panel -->
+<div class="mt-8 w-full bg-glass rounded-2xl border border-secondary-fixed-dim/30 shadow-premium-soft p-6 flex flex-col md:flex-row gap-6 items-start">
+<div class="mt-1">
+<span class="material-symbols-outlined text-secondary opacity-70 text-[24px]">info</span>
+</div>
+<div class="flex-1">
+<span class="font-eyebrow text-eyebrow text-secondary tracking-widest uppercase mb-1 block">WHY NO RECOMMENDATIONS</span>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-2 text-[18px]">Monitrax shows what changes. It doesn’t tell you what to do.</h4>
+<p class="font-body-sm text-body-sm text-secondary leading-relaxed mb-4 max-w-4xl">
+                        Every lever here is information about your own numbers — never personal advice. That’s a job for a licensed financial adviser. Read the General Advice Warning.
+                    </p>
+<a class="inline-flex items-center gap-1 font-label-md text-label-md text-on-surface hover:text-primary transition-colors border-b border-transparent hover:border-primary pb-0.5" href="#">
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                        Read the warning
+                    </a>
+</div>
+</div>
+</div>
+</main>
+</body></html>

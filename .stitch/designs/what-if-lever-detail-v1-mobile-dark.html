@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=390, initial-scale=1.0" name="viewport"/>
+<title>Salary-sacrifice Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @font-face {
+      font-family: 'Inter';
+      font-feature-settings: 'tnum' on, 'lnum' on;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050913;
+      color: #e4e1f0;
+      -webkit-font-smoothing: antialiased;
+    }
+    .glass-card {
+      background: rgba(14, 20, 36, 0.7);
+      backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 20px;
+    }
+    .text-gradient-primary {
+      background: linear-gradient(135deg, #62df7d 0%, #89ceff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .text-gradient-boost {
+      background: linear-gradient(135deg, #818cf8 0%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .bg-gradient-boost {
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+    .slider-thumb::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 24px;
+      height: 24px;
+      background: #818cf8;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(129, 140, 248, 0.5);
+    }
+    .slider-thumb::-moz-range-thumb {
+      width: 24px;
+      height: 24px;
+      background: #818cf8;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 0 0 15px rgba(129, 140, 248, 0.5);
+    }
+    .chart-container {
+      position: relative;
+      height: 140px;
+      width: 100%;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#62df7d",
+            "secondary": "#89ceff",
+            "surface": "#12121d",
+            "on-surface": "#e4e1f0",
+            "surface-variant": "#34343f",
+            "on-surface-variant": "#bdcaba",
+            "outline": "#879485",
+          },
+          spacing: {
+            "container-padding-mobile": "20px",
+            "stack-xl": "64px",
+            "stack-md": "16px",
+            "stack-sm": "8px",
+          },
+          fontSize: {
+            "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600" }],
+            "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+            "headline-sm": ["24px", { "lineHeight": "32px", "letterSpacing": "0em", "fontWeight": "600" }],
+            "headline-md": ["30px", { "lineHeight": "38px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-md": ["16px", { "lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400" }],
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-32">
+<!-- Top App Bar (Shared Component Reference) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-5 py-4 bg-[#050913]/80 backdrop-blur-xl border-b border-white/5">
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px]">chevron_left</span>
+</button>
+<span class="text-on-surface-variant font-label-md text-label-md opacity-60">What If?</span>
+</div>
+<h1 class="text-on-surface font-semibold text-[16px] absolute left-1/2 -translate-x-1/2">Salary-sacrifice</h1>
+<div class="w-8"></div> <!-- Spacer for balance -->
+</header>
+<main class="pt-20 px-5 flex flex-col gap-6">
+<!-- Header Labels -->
+<div class="flex flex-col gap-3">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-secondary/10 text-secondary rounded-full font-bold text-[10px] tracking-wider uppercase">Stage I · Invest</span>
+<span class="px-3 py-1 bg-gradient-boost text-white rounded-full font-bold text-[10px] tracking-wider uppercase shadow-lg shadow-indigo-500/20">BOOST</span>
+</div>
+<div class="flex flex-col">
+<h2 class="text-white font-semibold text-[26px] leading-tight">Boost your super</h2>
+<p class="text-slate-400 font-body-md text-[13px]">Extra $500/month into super</p>
+</div>
+</div>
+<!-- RESULT HERO CARD -->
+<section class="glass-card relative overflow-hidden p-6 border-t-[3px] border-indigo-500">
+<!-- Watermark Glyph -->
+<div class="absolute -right-4 -bottom-4 opacity-[0.08] pointer-events-none">
+<span class="material-symbols-outlined text-[120px] text-indigo-300" style="font-variation-settings: 'FILL' 1;">savings</span>
+</div>
+<div class="relative z-10">
+<span class="block font-bold text-[9px] tracking-widest text-slate-400 uppercase mb-1">At Retirement (Age 65)</span>
+<div class="flex items-baseline gap-2">
+<span class="text-[48px] font-bold tabular-nums text-gradient-boost">$754,200</span>
+</div>
+<div class="flex items-center gap-1.5 text-emerald-400 mb-6">
+<span class="material-symbols-outlined text-[18px]">trending_up</span>
+<span class="text-[13px] font-medium">+$142,200 vs baseline</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 rounded bg-white/5 border border-white/5 text-[10px] text-slate-300">+12 yrs compounding</span>
+<span class="px-2 py-1 rounded bg-white/5 border border-white/5 text-[10px] text-slate-300">82% cap</span>
+<span class="px-2 py-1 rounded bg-white/5 border border-white/5 text-[10px] text-slate-300">$8.4k/yr tax saved</span>
+</div>
+</div>
+</section>
+<!-- CONTROL CARD -->
+<section class="glass-card p-6 flex flex-col gap-6">
+<div>
+<span class="block font-bold text-[10px] tracking-widest text-slate-400 uppercase mb-2">Extra monthly contribution</span>
+<div class="flex justify-between items-end">
+<span class="text-[28px] font-bold tabular-nums text-gradient-boost">$500</span>
+<div class="bg-indigo-500/20 px-2 py-1 rounded text-indigo-300 text-[11px] font-medium">Auto-adjusted for tax</div>
+</div>
+</div>
+<div class="relative pt-6 pb-2">
+<!-- Floating Tooltip -->
+<div class="absolute left-1/2 -translate-x-1/2 -top-1">
+<div class="bg-gradient-boost px-3 py-1 rounded-full text-white text-[11px] font-bold shadow-xl shadow-indigo-500/30">
+            $500/mo
+          </div>
+<div class="w-2 h-2 bg-indigo-600 rotate-45 mx-auto -mt-1 shadow-xl"></div>
+</div>
+<input class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer slider-thumb accent-indigo-500" max="2500" min="0" type="range" value="500"/>
+</div>
+<div class="grid grid-cols-2 gap-4 pt-2">
+<div class="flex flex-col gap-2">
+<div class="flex justify-between text-[11px] font-medium">
+<span class="text-slate-400">Concessional cap used</span>
+<span class="text-white">82%</span>
+</div>
+<div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+<div class="bg-indigo-500 h-full w-[82%]"></div>
+</div>
+<span class="text-[10px] text-slate-500">$22,500 / $27,500</span>
+</div>
+<div class="flex flex-col justify-center pl-4 border-l border-white/5">
+<span class="text-[11px] text-slate-400">Headroom</span>
+<span class="text-[14px] font-semibold text-emerald-400">$5,000 remaining</span>
+</div>
+</div>
+</section>
+<!-- CHART CARD -->
+<section class="glass-card p-6">
+<div class="flex justify-between items-center mb-4">
+<h3 class="text-[14px] font-semibold text-white">Projected Growth</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-0.5 border-t border-dashed border-slate-500"></div>
+<span class="text-[10px] text-slate-500">Baseline</span>
+</div>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-0.5 bg-indigo-500"></div>
+<span class="text-[10px] text-indigo-400">With Extra</span>
+</div>
+</div>
+</div>
+<div class="chart-container flex items-end justify-between px-2">
+<!-- SVG Chart Simulation -->
+<svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 100">
+<!-- Baseline dashed -->
+<path d="M 0 90 Q 25 85, 50 75 T 100 50" fill="transparent" stroke="#475569" stroke-dasharray="3,3" stroke-width="1.5"></path>
+<!-- Boosted path -->
+<path d="M 0 90 Q 25 80, 50 60 T 100 20" fill="transparent" stroke="#818cf8" stroke-width="2.5"></path>
+<!-- Area gradient -->
+<path d="M 0 90 Q 25 80, 50 60 T 100 20 V 90 H 0 Z" fill="url(#chartGradient)" opacity="0.1"></path>
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#818cf8"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</lineargradient>
+</defs>
+</svg>
+<div class="absolute right-0 top-2 bg-indigo-500/10 border border-indigo-500/20 px-1.5 py-0.5 rounded text-[10px] font-bold text-indigo-300">
+          $754k
+        </div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-slate-500 tracking-wider">
+<span>2026</span>
+<span>2035</span>
+<span>2050</span>
+</div>
+</section>
+<!-- "What this means" Card -->
+<section class="glass-card p-6">
+<h3 class="text-[14px] font-semibold text-white mb-3">What this means</h3>
+<p class="text-[13px] leading-relaxed text-slate-400">
+        By contributing from your pre-tax salary, you reduce your taxable income. In your bracket, every $500 extra only "costs" you $335 in take-home pay, but puts the full $425 (after 15% contributions tax) to work immediately. Over 24 years, this tax efficiency compounds into significant wealth.
+      </p>
+</section>
+<!-- AFSL Banner -->
+<section class="glass-card bg-emerald-500/5 border-emerald-500/20 p-4 flex items-start gap-3">
+<span class="material-symbols-outlined text-emerald-400 text-[20px]">shield</span>
+<p class="text-[12px] text-emerald-100/70 leading-snug">
+        Information only — never personal advice. Consider your objectives and read the PDS before making financial decisions.
+      </p>
+</section>
+</main>
+<!-- Sticky Bottom CTA -->
+<div class="fixed bottom-0 left-0 w-full p-5 bg-gradient-to-t from-[#050913] via-[#050913] to-transparent pt-10">
+<button class="w-full py-4 bg-gradient-boost rounded-xl text-white font-semibold text-[16px] shadow-2xl shadow-indigo-500/40 active:scale-95 transition-transform flex items-center justify-center gap-2">
+      Try another lever
+      <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+<!-- Bottom Nav (Hidden on focused task screens per protocol, but included for context if needed by framework) -->
+<!-- <nav class="fixed bottom-0 left-0 w-full ..."> ... </nav> -->
+<script>
+    // Micro-interaction for slider
+    const slider = document.querySelector('input[type="range"]');
+    const tooltip = slider.previousElementSibling;
+    const valueDisplay = slider.parentElement.previousElementSibling.querySelector('.text-gradient-boost');
+
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      const percent = (val - slider.min) / (slider.max - slider.min) * 100;
+      
+      // Basic tooltip positioning logic (simplified for prototype)
+      tooltip.style.left = `calc(${percent}% + (${12 - percent * 0.24}px))`;
+      tooltip.querySelector('div').innerText = `$${parseInt(val).toLocaleString()}/mo`;
+      valueDisplay.innerText = `$${parseInt(val).toLocaleString()}`;
+    });
+  </script>
+</body></html>
