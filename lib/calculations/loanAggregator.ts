@@ -7,8 +7,9 @@
  * Replaces scattered loan reduce() calls across API routes.
  */
 
-import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
+import { toMonthly, toAnnual, toMonthlyDecimal, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // TYPES
@@ -176,4 +177,141 @@ export function calculateLVR(
   );
 
   return (totalDebt / propertyValue) * 100;
+}
+
+// =============================================================================
+// Q-DEC PR 2.B — Decimal sibling path
+// =============================================================================
+
+export interface LoanAggregationDecimal {
+  totalPrincipal: Decimal;
+  totalRepayments: Decimal;
+  totalInterest: Decimal;
+  weightedInterestRate: Decimal;
+  byType: Record<string, { principal: Decimal; repayments: Decimal }>;
+}
+
+export interface DebtMetricsDecimal {
+  debtToIncomeRatio: Decimal;
+  debtServiceRatio: Decimal;
+  totalDebt: Decimal;
+  monthlyRepayments: Decimal;
+}
+
+/**
+ * Decimal sibling of `aggregateLoanRepayments`. Same contract.
+ *
+ * Interest portion is computed in Decimal end-to-end:
+ *   monthlyInterest = principal × interestRateAnnual / 100 / 12
+ *   annualInterest  = monthlyInterest × 12
+ */
+export function aggregateLoanRepaymentsDecimal(
+  loans: LoanInput[],
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+  ownerEntityId?: string,
+): LoanAggregationDecimal {
+  const converter = targetFrequency === 'monthly' ? toMonthlyDecimal : toAnnualDecimal;
+
+  let totalPrincipal = new Decimal(0);
+  let totalRepayments = new Decimal(0);
+  let totalInterest = new Decimal(0);
+  let weightedRateSum = new Decimal(0);
+
+  const byType: Record<string, { principal: Decimal; repayments: Decimal }> = {};
+
+  const filtered = ownerEntityId
+    ? loans.filter((l) => l.ownerEntityId === ownerEntityId)
+    : loans;
+
+  for (const loan of filtered) {
+    const principal = toDecimal(loan.principal) ?? new Decimal(0);
+    const repayment = converter(
+      loan.minRepayment ?? 0,
+      (loan.repaymentFrequency || 'MONTHLY') as Frequency,
+    );
+
+    const interestRateAnnual = toDecimal(loan.interestRateAnnual) ?? new Decimal(0);
+    const interestRateMonthly = interestRateAnnual.div(100).div(12);
+    const monthlyInterest = principal.times(interestRateMonthly);
+    const interest = targetFrequency === 'monthly' ? monthlyInterest : monthlyInterest.times(12);
+
+    totalPrincipal = totalPrincipal.plus(principal);
+    totalRepayments = totalRepayments.plus(repayment);
+    totalInterest = totalInterest.plus(interest);
+    weightedRateSum = weightedRateSum.plus(principal.times(interestRateAnnual));
+
+    const type = loan.type || 'Other';
+    if (!byType[type]) {
+      byType[type] = { principal: new Decimal(0), repayments: new Decimal(0) };
+    }
+    byType[type].principal = byType[type].principal.plus(principal);
+    byType[type].repayments = byType[type].repayments.plus(repayment);
+  }
+
+  // Guard against div-by-zero. Using `.gt(0)` (strict positive) rather
+  // than `.gt(0)` because decimal.js treats `Decimal(0).gt(0)`
+  // as truthy in some configurations.
+  const weightedInterestRate = totalPrincipal.gt(0)
+    ? weightedRateSum.div(totalPrincipal)
+    : new Decimal(0);
+
+  return {
+    totalPrincipal,
+    totalRepayments,
+    totalInterest,
+    weightedInterestRate,
+    byType,
+  };
+}
+
+/**
+ * Decimal sibling of `calculateDebtMetrics`. `monthlyNetIncome` accepts
+ * `number | Decimal` so callers in the transition can pass either path.
+ */
+export function calculateDebtMetricsDecimal(
+  loans: LoanInput[],
+  monthlyNetIncome: number | Decimal,
+): DebtMetricsDecimal {
+  const aggregation = aggregateLoanRepaymentsDecimal(loans, 'monthly');
+  const incomeDec = monthlyNetIncome instanceof Decimal
+    ? monthlyNetIncome
+    : (toDecimal(monthlyNetIncome) ?? new Decimal(0));
+
+  const debtToIncomeRatio = incomeDec.gt(0)
+    ? aggregation.totalPrincipal.div(incomeDec.times(12)).times(100)
+    : new Decimal(0);
+
+  const debtServiceRatio = incomeDec.gt(0)
+    ? aggregation.totalRepayments.div(incomeDec).times(100)
+    : new Decimal(0);
+
+  return {
+    debtToIncomeRatio,
+    debtServiceRatio,
+    totalDebt: aggregation.totalPrincipal,
+    monthlyRepayments: aggregation.totalRepayments,
+  };
+}
+
+/**
+ * Decimal sibling of `calculateLVR`.
+ */
+export function calculateLVRDecimal(
+  propertyValue: number | Decimal,
+  loans: LoanInput[],
+  propertyId: string,
+): Decimal {
+  const propertyValueDec = propertyValue instanceof Decimal
+    ? propertyValue
+    : (toDecimal(propertyValue) ?? new Decimal(0));
+
+  if (!propertyValueDec.gt(0)) return new Decimal(0);
+
+  const propertyLoans = loans.filter((l) => l.propertyId === propertyId);
+  let totalDebt = new Decimal(0);
+  for (const l of propertyLoans) {
+    totalDebt = totalDebt.plus(toDecimal(l.principal) ?? new Decimal(0));
+  }
+
+  return totalDebt.div(propertyValueDec).times(100);
 }

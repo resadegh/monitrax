@@ -8,8 +8,9 @@
  * integrating with tax engine for salary adjustments.
  */
 
-import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
+import { toMonthly, toAnnual, toMonthlyDecimal, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // TYPES
@@ -210,4 +211,145 @@ export function aggregateIncomeBySource(
   });
 
   return aggregateIncome(filtered, targetFrequency);
+}
+
+// =============================================================================
+// Q-DEC PR 2.B — Decimal sibling path
+// =============================================================================
+//
+// Mirrors the Float path's salary GROSS/NET handling exactly: when
+// salaryType === 'NET' and grossAmount is set, gross is the
+// pre-stored grossAmount (already annual). When salaryType === 'GROSS'
+// and netAmount is set, net is the pre-stored netAmount (already
+// annual). PAYG is asymmetric and is divided by 12 for monthly.
+//
+// The Float helper functions (getGrossAmount/getNetAmount/getPaygAmount)
+// stay live. We don't re-export Decimal versions of them because they
+// are internal — only `aggregateIncomeDecimal` is the public surface.
+
+export interface IncomeAggregationDecimal {
+  grossTotal: Decimal;
+  netTotal: Decimal;
+  paygWithholding: Decimal;
+  byType: Record<string, { gross: Decimal; net: Decimal }>;
+  taxableIncome: Decimal;
+  nonTaxableIncome: Decimal;
+}
+
+function getGrossAmountDecimal(
+  item: IncomeInput,
+  targetFrequency: 'monthly' | 'annual',
+): Decimal {
+  const converter = targetFrequency === 'monthly' ? toMonthlyDecimal : toAnnualDecimal;
+
+  if (item.type === 'SALARY' && item.salaryType === 'NET' && item.grossAmount != null) {
+    const gross = toDecimal(item.grossAmount) ?? new Decimal(0);
+    return targetFrequency === 'monthly' ? gross.div(12) : gross;
+  }
+  if (item.type === 'SALARY' && item.salaryType === 'GROSS') {
+    return converter(item.amount, item.frequency as Frequency);
+  }
+  return converter(item.amount, item.frequency as Frequency);
+}
+
+function getNetAmountDecimal(
+  item: IncomeInput,
+  targetFrequency: 'monthly' | 'annual',
+): Decimal {
+  const converter = targetFrequency === 'monthly' ? toMonthlyDecimal : toAnnualDecimal;
+
+  if (item.type === 'SALARY' && item.salaryType === 'GROSS' && item.netAmount != null) {
+    const net = toDecimal(item.netAmount) ?? new Decimal(0);
+    return targetFrequency === 'monthly' ? net.div(12) : net;
+  }
+  if (item.type === 'SALARY' && item.salaryType === 'NET') {
+    return converter(item.amount, item.frequency as Frequency);
+  }
+  return converter(item.amount, item.frequency as Frequency);
+}
+
+function getPaygAmountDecimal(
+  item: IncomeInput,
+  targetFrequency: 'monthly' | 'annual',
+): Decimal {
+  if (item.type !== 'SALARY' || item.paygWithholding == null) {
+    return new Decimal(0);
+  }
+  const payg = toDecimal(item.paygWithholding) ?? new Decimal(0);
+  return targetFrequency === 'monthly' ? payg.div(12) : payg;
+}
+
+/**
+ * Decimal sibling of `aggregateIncome`. Same contract — salary GROSS/NET,
+ * PAYG asymmetry, taxable vs non-taxable split.
+ */
+export function aggregateIncomeDecimal(
+  income: IncomeInput[],
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+  ownerEntityId?: string,
+): IncomeAggregationDecimal {
+  let grossTotal = new Decimal(0);
+  let netTotal = new Decimal(0);
+  let paygWithholding = new Decimal(0);
+  let taxableIncome = new Decimal(0);
+  let nonTaxableIncome = new Decimal(0);
+  const byType: Record<string, { gross: Decimal; net: Decimal }> = {};
+
+  const filtered = ownerEntityId
+    ? income.filter((i) => i.ownerEntityId === ownerEntityId)
+    : income;
+
+  for (const item of filtered) {
+    const gross = getGrossAmountDecimal(item, targetFrequency);
+    const net = getNetAmountDecimal(item, targetFrequency);
+    const payg = getPaygAmountDecimal(item, targetFrequency);
+
+    grossTotal = grossTotal.plus(gross);
+    netTotal = netTotal.plus(net);
+    paygWithholding = paygWithholding.plus(payg);
+
+    if (item.isTaxable !== false) {
+      taxableIncome = taxableIncome.plus(gross);
+    } else {
+      nonTaxableIncome = nonTaxableIncome.plus(gross);
+    }
+
+    const type = item.type || 'Other';
+    if (!byType[type]) {
+      byType[type] = { gross: new Decimal(0), net: new Decimal(0) };
+    }
+    byType[type].gross = byType[type].gross.plus(gross);
+    byType[type].net = byType[type].net.plus(net);
+  }
+
+  return {
+    grossTotal,
+    netTotal,
+    paygWithholding,
+    byType,
+    taxableIncome,
+    nonTaxableIncome,
+  };
+}
+
+/**
+ * Decimal sibling of `aggregateIncomeBySource`.
+ */
+export function aggregateIncomeBySourceDecimal(
+  income: IncomeInput[],
+  sourceType: 'property' | 'investment',
+  sourceId: string,
+  targetFrequency: 'monthly' | 'annual' = 'monthly',
+): IncomeAggregationDecimal {
+  const filtered = income.filter((i) => {
+    switch (sourceType) {
+      case 'property':
+        return i.propertyId === sourceId;
+      case 'investment':
+        return i.investmentAccountId === sourceId;
+      default:
+        return false;
+    }
+  });
+  return aggregateIncomeDecimal(filtered, targetFrequency);
 }
