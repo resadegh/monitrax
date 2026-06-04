@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>What If? Lever Picker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed-dim": "#4de082",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-container": "#5a0022",
+                        "outline-variant": "#3e4a3d",
+                        "surface-dim": "#0e150f",
+                        "inverse-primary": "#006e2d",
+                        "error": "#ffb4ab",
+                        "secondary": "#4de082",
+                        "tertiary-container": "#ec6284",
+                        "outline": "#879485",
+                        "secondary-container": "#00b55d",
+                        "surface-variant": "#30372f",
+                        "surface-container-lowest": "#09100a",
+                        "primary-fixed-dim": "#62df7d",
+                        "primary-fixed": "#7ffc97",
+                        "on-tertiary-fixed": "#3f0016",
+                        "surface": "#0e150f",
+                        "secondary-fixed": "#6dfe9c",
+                        "background": "#050913", // Custom requested surface
+                        "surface-tint": "#62df7d",
+                        "on-primary-container": "#003111",
+                        "surface-container": "#1b211a",
+                        "on-tertiary": "#660027",
+                        "on-secondary-fixed-variant": "#005227",
+                        "inverse-surface": "#dde5d9",
+                        "on-error": "#690005",
+                        "inverse-on-surface": "#2b322b",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "on-secondary-container": "#003e1c",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-high": "#252c24",
+                        "primary-container": "#1ca64d",
+                        "on-secondary-fixed": "#00210c",
+                        "surface-bright": "#343b33",
+                        "error-container": "#93000a",
+                        "on-secondary": "#003919",
+                        "primary": "#62df7d",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-surface": "#FAFAF7", // Custom requested text
+                        "on-background": "#FAFAF7",
+                        "surface-container-highest": "#30372f",
+                        "on-surface-variant": "#94A3B8", // Custom requested muted
+                        "on-primary": "#003914",
+                        "surface-container-low": "#171d16",
+                        "tertiary": "#ffb2bf",
+                        "tertiary-fixed": "#ffd9de"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px",
+                        "tile": "22px"
+                    },
+                    fontFamily: {
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["28px", {"lineHeight": "1.2", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.04);
+        }
+        .active-glow {
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.15);
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary/30 min-h-screen pb-24">
+<!-- Top App Bar (Shared Component Anchor) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-5 py-4 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center overflow-hidden">
+<img alt="Reza Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCXc2PfGPiRPIlHWVu_3Lq-0mP8i-HXEDTWFJkWxygrSuxyCXQh72cAQbe5YKY-W5cb70p6oliINAUvGcOzxWntqRuGicTJgCl7gVqVa43nka1AYOt4lRGoNixFmevEYppkm7w9djj6lq3_bhs0HjROmFivM5ZagvWnfQkSywPQwBt8NH20yap4FPs6lk363lm9iGYR9IX7I3UmpnVzLWeDO4Fj1aUyU7fo1flIE-zPBhMICip7s6theUS8b8a3IDbSXPcXr69pvjc"/>
+</div>
+<h1 class="font-headline-md text-body-md font-bold text-on-surface">Welcome back, Reza</h1>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary" data-icon="chat_bubble">chat_bubble</span>
+</button>
+</header>
+<main class="pt-24 px-5 max-w-[390px] mx-auto space-y-8">
+<!-- Header Section -->
+<section class="space-y-4">
+<div class="inline-flex items-center px-3 py-1.5 rounded-full border border-sky-400/30 bg-sky-500/15">
+<span class="text-[10px] font-bold tracking-widest text-sky-300 uppercase">STAGE I · INVEST</span>
+</div>
+<div class="space-y-1">
+<h2 class="font-headline-md text-headline-md text-on-surface">What if you tried…</h2>
+<p class="text-body-sm text-on-surface-variant">Information only — never personal advice</p>
+</div>
+</section>
+<!-- Vertical Stack of Lever Cards -->
+<section class="space-y-4">
+<!-- 1. Salary Sacrifice (Active State) -->
+<button class="w-full h-[84px] glass-card active-glow rounded-tile p-4 flex items-center relative overflow-hidden transition-all active:scale-[0.98] group">
+<div class="z-10 flex items-center w-full">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#6366F1] to-[#8B5CF6] flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="account_balance">account_balance</span>
+</div>
+<div class="ml-4 text-left flex-1 min-w-0">
+<span class="block text-[9px] font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] uppercase">INVEST · SUPER</span>
+<h3 class="text-[17px] font-semibold text-white leading-tight truncate">Salary-sacrifice to super</h3>
+<p class="text-[12px] text-on-surface-variant truncate">See your 10-year retirement balance shift</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Watermark -->
+<div class="absolute -right-4 -bottom-2 opacity-[0.18] pointer-events-none">
+<span class="material-symbols-outlined text-[80px] text-[#6366F1]" data-icon="payments">payments</span>
+</div>
+</button>
+<!-- 2. Extra Repayments -->
+<button class="w-full h-[84px] glass-card rounded-tile p-4 flex items-center relative overflow-hidden transition-all active:scale-[0.98] group">
+<div class="z-10 flex items-center w-full">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#0EA5E9] to-[#6366F1] flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="home">home</span>
+</div>
+<div class="ml-4 text-left flex-1 min-w-0">
+<span class="block text-[9px] font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#0EA5E9] to-[#6366F1] uppercase">REDUCE · DEBT</span>
+<h3 class="text-[17px] font-semibold text-white leading-tight truncate">Pay extra off a debt</h3>
+<p class="text-[12px] text-on-surface-variant truncate">See how many years off your loan</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Watermark -->
+<div class="absolute -right-4 -bottom-2 opacity-[0.12] pointer-events-none">
+<span class="material-symbols-outlined text-[80px] text-[#0EA5E9]" data-icon="house">house</span>
+</div>
+</button>
+<!-- 3. Emergency Buffer -->
+<button class="w-full h-[84px] glass-card rounded-tile p-4 flex items-center relative overflow-hidden transition-all active:scale-[0.98] group">
+<div class="z-10 flex items-center w-full">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#14B8A6] to-[#06B6D4] flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="shield_with_heart">shield_with_heart</span>
+</div>
+<div class="ml-4 text-left flex-1 min-w-0">
+<span class="block text-[9px] font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#14B8A6] to-[#06B6D4] uppercase">ANCHOR · SAFETY NET</span>
+<h3 class="text-[17px] font-semibold text-white leading-tight truncate">Build a 3-month safety net</h3>
+<p class="text-[12px] text-on-surface-variant truncate">See your buffer-month progress</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Watermark -->
+<div class="absolute -right-4 -bottom-2 opacity-[0.12] pointer-events-none">
+<span class="material-symbols-outlined text-[80px] text-[#14B8A6]" data-icon="verified_user">verified_user</span>
+</div>
+</button>
+<!-- 4. Investment Growth -->
+<button class="w-full h-[84px] glass-card rounded-tile p-4 flex items-center relative overflow-hidden transition-all active:scale-[0.98] group">
+<div class="z-10 flex items-center w-full">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#8B5CF6] to-[#D946EF] flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="trending_up">trending_up</span>
+</div>
+<div class="ml-4 text-left flex-1 min-w-0">
+<span class="block text-[9px] font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#8B5CF6] to-[#D946EF] uppercase">INVEST · GROWTH</span>
+<h3 class="text-[17px] font-semibold text-white leading-tight truncate">Increase monthly investing</h3>
+<p class="text-[12px] text-on-surface-variant truncate">See your portfolio at retirement</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Watermark -->
+<div class="absolute -right-4 -bottom-2 opacity-[0.12] pointer-events-none">
+<span class="material-symbols-outlined text-[80px] text-[#D946EF]" data-icon="monitoring">monitoring</span>
+</div>
+</button>
+<!-- 5. Retirement Timing -->
+<button class="w-full h-[84px] glass-card rounded-tile p-4 flex items-center relative overflow-hidden transition-all active:scale-[0.98] group">
+<div class="z-10 flex items-center w-full">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-[#F59E0B] to-[#F43F5E] flex items-center justify-center shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="event">event</span>
+</div>
+<div class="ml-4 text-left flex-1 min-w-0">
+<span class="block text-[9px] font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-[#F59E0B] to-[#F43F5E] uppercase">LIVE · EXIT</span>
+<h3 class="text-[17px] font-semibold text-white leading-tight truncate">Retire at <span class="tabular-nums">60</span> vs <span class="tabular-nums">65</span></h3>
+<p class="text-[12px] text-on-surface-variant truncate">See what 5 years buys you</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40 group-hover:translate-x-1 transition-transform" data-icon="chevron_right">chevron_right</span>
+</div>
+<!-- Watermark -->
+<div class="absolute -right-4 -bottom-2 opacity-[0.12] pointer-events-none">
+<span class="material-symbols-outlined text-[80px] text-[#F59E0B]" data-icon="wb_sunny">wb_sunny</span>
+</div>
+</button>
+</section>
+<!-- Footer Disclaimer -->
+<footer class="pt-4 pb-12">
+<p class="text-[11px] text-on-surface-variant text-center max-w-[280px] mx-auto leading-relaxed">
+                Information only. We don't know your personal circumstances.
+            </p>
+</footer>
+</main>
+<!-- Bottom Navigation Bar (Shared Component Anchor) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="home">home</span>
+<span class="font-label-md text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md text-[10px]">Accounts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="payments">payments</span>
+<span class="font-label-md text-[10px]">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-fixed bg-primary/10 rounded-xl px-3 py-1 shadow-[0_0_15px_rgba(98,223,125,0.15)] active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="explore">explore</span>
+<span class="font-label-md text-[10px]">Guide</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="more_horiz">more_horiz</span>
+<span class="font-label-md text-[10px]">More</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for cards
+        document.querySelectorAll('button.glass-card').forEach(button => {
+            button.addEventListener('click', () => {
+                // Add a temporary subtle flash or ripple effect if desired
+                button.classList.add('brightness-125');
+                setTimeout(() => button.classList.remove('brightness-125'), 150);
+            });
+        });
+
+        // Background Atmospheric Parallax Effect
+        window.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+            document.querySelectorAll('.absolute.opacity-\\[0\\.12\\], .absolute.opacity-\\[0\\.18\\]').forEach(icon => {
+                icon.style.transform = `translate(${moveX}px, ${moveY}px)`;
+            });
+        });
+    </script>
+</body></html>
