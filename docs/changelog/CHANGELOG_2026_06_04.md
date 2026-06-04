@@ -313,6 +313,66 @@ Operations in this PR that touch existing rows: **NONE** — additive code only.
 
 ### Next
 
-- PR 2.D — `lib/tax-engine/*` (largest sub-PR; ~6 divisions + MasterTaxPosition composer; Phase 45 PR 1 salary-sacrifice scenario blocks on this).
+- PR 2.D — `lib/tax-engine/*`. Reza scope decision 2026-06-04: 2-PR Phase-45-driven split, no CGT/trust reform engines in D.1.
 - PR 2.E — `lib/cfo/*` (scenarios + intelligence engine).
-- PR 3 — engine-by-engine cutover (route handlers + components consume Decimal; the deferred PR 2.C files adopt the Decimal path here).
+- PR 3 — engine-by-engine cutover.
+
+---
+
+## Session: qdec-pr2d1-tax-engine-core-LIlK9 (continuation after PR #980 merge)
+
+### Changes Made
+
+- **Type**: Feature / Foundation
+- **Scope**: Q-DEC PR 2.D.1 — `lib/tax-engine/core/*` Decimal siblings + inner Float-bridge in `incomeNormalizer.calculateTakeHomePayDecimal` dropped
+- **Description**: First sub-PR of Q-DEC PR 2.D. Mid-session scope refinement: given `lib/tax-engine/*` is 12,238 lines / 45 files, the "Phase 45 critical path" splits into three cohesive sub-PRs (D.1 core, D.2 super+income+position+orchestrator, D.3 rest). This PR ships D.1 — the 4 ATO regulatory math primitives that everything downstream composes through. Inner Float-bridge in PR 2.C's `calculateTakeHomePayDecimal` swapped to the Decimal core engines — Decimal chain is now end-to-end for the salary-sacrifice critical path.
+
+### Architectural notes
+
+- **Intentional ATO rounding preserved.** PAYG weekly withholding rounds to nearest WHOLE DOLLAR per NAT 1004 Schedule 1 — a regulatory rule, not a Float artefact. Decimal sibling preserves via `toDecimalPlaces(0, ROUND_HALF_EVEN)`. Same pattern for income tax, Medicare levy, LITO/SAPTO output rounding.
+- **Decimal-accepting input types.** Each *Decimal engine accepts a `*InputDecimal` type whose numeric fields are `number | string | Decimal` so callers don't lose precision at the boundary.
+- **`applyOffsetsDecimal` mirrors Float refund logic.** Non-refundable offsets floor at $0; franking credits can refund (negative netTax).
+
+### Files Modified
+
+- `lib/tax-engine/core/incomeTaxCalculator.ts` — `calculateIncomeTaxDecimal`, `calculateMarginalTaxDecimal`, `calculateDeductionSavingsDecimal`
+- `lib/tax-engine/core/paygCalculator.ts` — `calculatePAYGDecimal` (NAT 1004 round-to-dollar preserved)
+- `lib/tax-engine/core/medicareLevyCalculator.ts` — `calculateMedicareLevyDecimal`
+- `lib/tax-engine/core/taxOffsets.ts` — `calculateLITODecimal`, `calculateSAPTODecimal`, `calculateFrankingCreditOffsetDecimal`, `calculateForeignTaxOffsetDecimal`, `calculateAllOffsetsDecimal`, `applyOffsetsDecimal`
+- `lib/cashflow/incomeNormalizer.ts` — `calculateTakeHomePayDecimal` + `calculateNetSalaryDecimal` swapped to Decimal core engines
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.D row expanded with mid-session D.1 / D.2 / D.3 split
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-core.ts` — 4 shadow engines + 24 fixtures
+- `tests/tax-engine/core.decimal.test.ts` — 34 tests
+
+### Testing
+
+- [x] 34 new tests pass + 324 existing tests pass (358 total)
+- [x] `tsc --noEmit` clean
+- [x] Shadow report PASS on all 24 fixtures across 4 engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D split refined into D.1 / D.2 / D.3)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` — PR 2.D row expanded
+- `docs/changelog/CHANGELOG_2026_06_04.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions added are reform-agnostic by design (base ATO bracket / Medicare / offset primitives). Reform-aware engines all live in `lib/tax-engine/divisions/` — ship in PR 2.D.3 with their `commencementVerified`-guarded regime parameters intact (FW-1/FW-2).
+- [x] No `lib/tax-engine/divisions/*` modified.
+- [x] No schema columns added. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.2 — `super/` + `income/` + `position/` + `orchestrator/` (`super/capTracker` is the H3 hardening anchor from Phase 45 spec §4.1).
+- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/).
