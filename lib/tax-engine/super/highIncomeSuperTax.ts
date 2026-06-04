@@ -19,6 +19,7 @@ import type {
   AuthorityCitation,
   UncomputedFlag,
 } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface HighIncomeSuperTaxInput {
   /** Income for Div 293 purposes (assessable income + total reportable
@@ -161,6 +162,120 @@ export function calculateHighIncomeSuperTax(
       headroom: tbcHeadroom,
       isExceeded: tbcExceeded,
     },
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.2 — Decimal sibling path
+// =============================================================================
+
+export interface HighIncomeSuperTaxInputDecimal {
+  div293Income: number | string | Decimal;
+  concessionalContributions: number | string | Decimal;
+  totalSuperBalance: number | string | Decimal;
+  tsbEarnings?: number | string | Decimal;
+  transferBalanceUsed?: number | string | Decimal;
+}
+
+export interface HighIncomeSuperTaxResultDecimal {
+  div293: {
+    applies: boolean;
+    excessIncomeOverThreshold: Decimal;
+    taxableContributions: Decimal;
+    tax: Decimal;
+  };
+  div296: {
+    applies: boolean;
+    excessTsbProportion: Decimal;
+    earningsTaxed: Decimal;
+    tax: Decimal;
+    isPending: boolean;
+  };
+  tbc: {
+    cap: Decimal;
+    used: Decimal;
+    headroom: Decimal;
+    isExceeded: boolean;
+  };
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `calculateHighIncomeSuperTax`. Div 293 + Div 296
+ * (gated by `commencementVerified` per CLAUDE.md §12.14 FW-2) + TBC.
+ *
+ * Float doesn't pre-round any of these values; the engine returns raw
+ * arithmetic. The Decimal sibling matches — no output rounding.
+ */
+export function calculateHighIncomeSuperTaxDecimal(
+  input: HighIncomeSuperTaxInputDecimal,
+  config: TaxYearConfig,
+): HighIncomeSuperTaxResultDecimal {
+  const citations: AuthorityCitation[] = [...BASE_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+
+  const div293Income = toDecimal(input.div293Income) ?? new Decimal(0);
+  const concessionalContributions = toDecimal(input.concessionalContributions) ?? new Decimal(0);
+  const totalSuperBalance = toDecimal(input.totalSuperBalance) ?? new Decimal(0);
+  const tsbEarnings = input.tsbEarnings != null ? (toDecimal(input.tsbEarnings) ?? new Decimal(0)) : new Decimal(0);
+  const transferBalanceUsed = input.transferBalanceUsed != null
+    ? (toDecimal(input.transferBalanceUsed) ?? new Decimal(0))
+    : new Decimal(0);
+
+  // -- Division 293 ---------------------------------------------------
+  const div293Threshold = new Decimal(config.division293Threshold);
+  const div293Applies = div293Income.gt(div293Threshold);
+  const excessIncomeOverThreshold = Decimal.max(new Decimal(0), div293Income.minus(div293Threshold));
+  const taxableContributions = Decimal.min(
+    excessIncomeOverThreshold,
+    Decimal.max(new Decimal(0), concessionalContributions),
+  );
+  const div293Rate = new Decimal(config.superContributionsTaxRate);
+  const div293Tax = div293Applies ? taxableContributions.times(div293Rate) : new Decimal(0);
+
+  // -- Division 296 (gated) -------------------------------------------
+  const div296Pending = !config.div296CommencementVerified;
+  const tsbThreshold = new Decimal(config.div296TsbThreshold);
+  const tsbAboveThreshold = Decimal.max(new Decimal(0), totalSuperBalance.minus(tsbThreshold));
+  const tsbProportion = totalSuperBalance.gt(0)
+    ? tsbAboveThreshold.div(totalSuperBalance)
+    : new Decimal(0);
+  const earningsTaxed = div296Pending || input.tsbEarnings == null
+    ? new Decimal(0)
+    : Decimal.max(new Decimal(0), tsbEarnings).times(tsbProportion);
+  const div296Tax = div296Pending ? new Decimal(0) : earningsTaxed.times(config.div296Rate);
+  const div296Applies = !div296Pending && totalSuperBalance.gt(tsbThreshold);
+
+  if (div296Pending && totalSuperBalance.gt(tsbThreshold)) {
+    uncomputed.push({
+      id: 'UC-DIV-296-PENDING',
+      rationale: `TSB exceeds the proposed $${config.div296TsbThreshold.toLocaleString()} Div 296 threshold but the Bill has not received Royal Assent. No additional tax computed; once commencement is verified the calc activates automatically via config flag.`,
+      citation: { kind: 'ITAA_1997', reference: 'Div 296 (proposed)', lastReviewed: '2026-05-05' },
+    });
+  } else if (div296Applies) {
+    citations.push({ kind: 'ITAA_1997', reference: 'Div 296', lastReviewed: '2026-05-05' });
+  }
+
+  // -- Transfer Balance Cap -------------------------------------------
+  const tbcCap = new Decimal(config.transferBalanceCap);
+  const tbcHeadroom = Decimal.max(new Decimal(0), tbcCap.minus(transferBalanceUsed));
+  const tbcExceeded = transferBalanceUsed.gt(tbcCap);
+
+  if (tbcExceeded) {
+    uncomputed.push({
+      id: 'UC-TBC-EXCESS',
+      rationale: `Transfer balance ($${transferBalanceUsed.toFixed(0)}) exceeds the s294-35 cap of $${config.transferBalanceCap.toLocaleString()}. Excess transfer tax (s294-230) computation lands in a future sub-PR; the cap excess is reported here so the user can act on it.`,
+      citation: { kind: 'ITAA_1997', reference: 's294-230', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  return {
+    div293: { applies: div293Applies, excessIncomeOverThreshold, taxableContributions, tax: div293Tax },
+    div296: { applies: div296Applies, excessTsbProportion: tsbProportion, earningsTaxed, tax: div296Tax, isPending: div296Pending },
+    tbc: { cap: tbcCap, used: transferBalanceUsed, headroom: tbcHeadroom, isExceeded: tbcExceeded },
     citations,
     uncomputed,
   };
