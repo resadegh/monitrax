@@ -330,12 +330,12 @@ Every Phase 45 Stitch generation MUST produce **both** a desktop and a mobile sc
 | 2026-06-04 | A — Lever picker | v2 | DESKTOP | LIGHT | `ed9fd957a19f4511842be0ef3ba29136` | ⚠️ first §18.7.2 attempt, no hover state, no mobile companion |
 | 2026-06-04 | A — Lever picker | v3 | DESKTOP | LIGHT | `9a4fa51d1fee41698e34065d72cb8cb9` | ✅ APPROVED 2026-06-04 (Reza: "looks good, ship it"). Copied to canonical `.stitch/designs/what-if-lever-picker.{html,png}`. |
 | 2026-06-04 | A — Lever picker | v3 | MOBILE | LIGHT | `9664c0a2a86d4cd3bc2f3c62e90258b8` | ✅ APPROVED 2026-06-04. Copied to canonical `.stitch/designs/what-if-lever-picker-mobile.{html,png}`. |
-| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | LIGHT | `1d4642ec31db4e92a728715d6e55a43c` | First Screen B generation. Exercises §6.4 two-column layout + §6.8.2 chart tooltip rendered visible at year 2031 + §12.14 concessional-cap headroom check. Salary-sacrifice chosen as the showcase lever (continuation from Screen A v3 hover state). Pending Reza review. |
-| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | LIGHT | `a5d4ba2fae1a4af39bd751568383657b` | First Screen B mobile generation. §6.9.3 RESULT-HERO-ON-TOP IA (chart + headline metric above inputs). Permanently-visible slider thumb tooltip per §6.8.4. Pending Reza review. |
-| 2026-06-04 | A — Lever picker | v3 | DESKTOP | DARK | `7d1f3957a4aa48a8af07736181b78216` | Dark companion to v3 desktop. §6.10.1 tokens (`#050913` page, `#0E1424` card, white/25 hairline, black float + white-rim ambient shadow, near-white text, brighter emerald `#22C55E`). Card B (Salary-sacrifice) rendered in hover state with raised watermark + indigo halo glow. Saved as `.stitch/designs/what-if-lever-picker-dark.{html,png}`. Pending Reza review. |
-| 2026-06-04 | A — Lever picker | v3 | MOBILE | DARK | `fd72914ed53543b9b3bbee13f8ad7042` | Dark companion to v3 mobile. Same §6.10.1 tokens. Landscape lever cards stacked vertically; Salary-sacrifice card in active state with indigo halo. Saved as `.stitch/designs/what-if-lever-picker-mobile-dark.{html,png}`. Pending Reza review. NOTE: Stitch wrapped the prompt in a "Monitrax Core" preset (surface `#0e150f` vs requested `#050913`); the React port will pin tokens to `app/globals.css` `.dark` block — the Stitch render is a directional artefact, the production tokens are what ships. |
-| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | DARK | `ab6dda017382473e82918a85e6909029` | Dark companion to v1 Screen B desktop. §6.10.1 tokens + §6.10.2 indigo→violet gradient unchanged. Pinned 2031 chart tooltip + concessional-cap headroom check both preserved on navy. Sky→indigo gradient text on the $754,200 hero metric. Saved as `.stitch/designs/what-if-lever-detail-v1-desktop-dark.{html,png}`. Pending Reza review. |
-| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | DARK | `82c7f906d53845f49c76f51d87cc7ad7` | Dark companion to v1 Screen B mobile. §6.9.3 RESULT-HERO-ON-TOP IA preserved on navy. Permanently-visible slider thumb tooltip (no hover on mobile). Saved as `.stitch/designs/what-if-lever-detail-v1-mobile-dark.{html,png}`. Pending Reza review. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | LIGHT | `1d4642ec31db4e92a728715d6e55a43c` | ✅ APPROVED 2026-06-04 (Reza approved as part of "looks great, ship it" on the dark-variant review — the dark mirror validates the underlying composition). Copied to canonical `.stitch/designs/what-if-lever-detail.{html,png}`. Exercises §6.4 two-column layout + §6.8.2 chart tooltip rendered at year 2031 + §12.14 concessional-cap headroom check. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | LIGHT | `a5d4ba2fae1a4af39bd751568383657b` | ✅ APPROVED 2026-06-04. Copied to canonical `.stitch/designs/what-if-lever-detail-mobile.{html,png}`. §6.9.3 RESULT-HERO-ON-TOP IA (chart + headline metric above inputs). Permanently-visible slider thumb tooltip per §6.8.4. |
+| 2026-06-04 | A — Lever picker | v3 | DESKTOP | DARK | `7d1f3957a4aa48a8af07736181b78216` | ✅ APPROVED 2026-06-04 (Reza: "looks great, ship it"). Canonical `.stitch/designs/what-if-lever-picker-dark.{html,png}`. §6.10.1 tokens (`#050913` page, `#0E1424` card, white/25 hairline, black float + white-rim ambient shadow, near-white text, brighter emerald `#22C55E`). Card B (Salary-sacrifice) rendered in hover state with raised watermark + indigo halo glow. |
+| 2026-06-04 | A — Lever picker | v3 | MOBILE | DARK | `fd72914ed53543b9b3bbee13f8ad7042` | ✅ APPROVED 2026-06-04. Canonical `.stitch/designs/what-if-lever-picker-mobile-dark.{html,png}`. Same §6.10.1 tokens. Landscape lever cards stacked vertically; Salary-sacrifice card in active state with indigo halo. NOTE: Stitch wrapped the prompt in a "Monitrax Core" preset (surface `#0e150f` vs requested `#050913`); the React port will pin tokens to `app/globals.css` `.dark` block — the Stitch render is a directional artefact, the production tokens are what ships. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | DARK | `ab6dda017382473e82918a85e6909029` | ✅ APPROVED 2026-06-04. Copied to canonical `.stitch/designs/what-if-lever-detail-dark.{html,png}`. §6.10.1 tokens + §6.10.2 indigo→violet gradient unchanged. Pinned 2031 chart tooltip + concessional-cap headroom check both preserved on navy. Sky→indigo gradient text on the $754,200 hero metric. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | DARK | `82c7f906d53845f49c76f51d87cc7ad7` | ✅ APPROVED 2026-06-04. Copied to canonical `.stitch/designs/what-if-lever-detail-mobile-dark.{html,png}`. §6.9.3 RESULT-HERO-ON-TOP IA preserved on navy. Permanently-visible slider thumb tooltip (no hover on mobile). |
 
 ### 6.10 Dark mode (load-bearing, 2026-06-04)
 
@@ -389,16 +389,18 @@ The §6.6 iteration log gains a `Mode` column. A reviewer who sees only light va
 
 #### 6.10.4 What's already done
 
-- Screen A v3 desktop ✅ (light) — locked
-- Screen A v3 mobile ✅ (light) — locked
-- Screen B v1 desktop (Salary-sacrifice) ✅ (light) — pending review
-- Screen B v1 mobile (Salary-sacrifice) ✅ (light) — pending review
-- Screen A v3 desktop ✅ (DARK) — pending review (this PR, 2026-06-04)
-- Screen A v3 mobile ✅ (DARK) — pending review (this PR, 2026-06-04)
-- Screen B v1 desktop (Salary-sacrifice) ✅ (DARK) — pending review (this PR, 2026-06-04)
-- Screen B v1 mobile (Salary-sacrifice) ✅ (DARK) — pending review (this PR, 2026-06-04)
+All 8 variants (2 surfaces × 4 modes) are APPROVED and locked as of 2026-06-04:
 
-Full 4-variant matrix per the §18.7.2 dark-mode reviewer enforcement rule is now satisfied for both Phase 45 surfaces shipping in v1.
+- Screen A v3 desktop ✅ LIGHT — locked
+- Screen A v3 mobile ✅ LIGHT — locked
+- Screen B v1 desktop (Salary-sacrifice) ✅ LIGHT — locked
+- Screen B v1 mobile (Salary-sacrifice) ✅ LIGHT — locked
+- Screen A v3 desktop ✅ DARK — locked
+- Screen A v3 mobile ✅ DARK — locked
+- Screen B v1 desktop (Salary-sacrifice) ✅ DARK — locked
+- Screen B v1 mobile (Salary-sacrifice) ✅ DARK — locked
+
+Full 4-variant matrix per the §18.7.2 dark-mode reviewer enforcement rule is satisfied for both Phase 45 surfaces shipping in v1. **Phase 45 design pass = complete.** Next stop: PR 1 (engine composition — `salarySacrificeToSuper.ts` + `tenYearProjection.ts`), gated on Q-DEC PR 2-4 landing first.
 
 #### 6.10.5 What still needs generation
 
