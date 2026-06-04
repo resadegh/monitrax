@@ -59,6 +59,33 @@ The wedge is real because:
 - **§12.14 Phase 41E reform-awareness:** the salary-sacrifice scenario MUST read regime status per FY via the established `taxYearConfig` dispatch. If the FY is post-commencement on a measure that affects super, surface the verbatim notice (mirrors the Wealth Universe Money Flow lens pattern).
 - **Editorial palette (Reza decision 2026-06-01):** `/dashboard/cfo/what-if` matches the rest of `/dashboard/cfo` — warm-ivory + emerald + navy ink. NOT a cosmos-style dark surface.
 
+### 4.1 PR 1 hardening items — batch with engine composition (Reza 2026-06-04)
+
+Three guess-vs-traced discipline patches landed against this spec as the PR 1 deliverables get drafted. Reza directive 2026-06-04: "batch them with PR." Each item is a code + spec deliverable, not a separate PR.
+
+**H1 — Information-only sourcing rule per slider.**
+Every slider's default value MUST declare its source in the UI. Two source classes:
+- **Snapshot-traced:** `(snapshot:income.salary)`, `(loanView:loanId.interestRate)`, `(snapshot:superannuationAccounts[].balance)`, etc. Surfaced beneath the slider as muted text: "Your snapshot: 6.25% as of 2026-06-04" (with the actual `computedAt` date from the snapshot).
+- **Industry-default:** `(default:switchingCosts=1500)`, `(default:vacancyRate=0.02)`. Labelled "industry default" with the underlying number. Tooltip explains "We don't have your specific number for this — using $X as a placeholder. Set your own if you have a better one."
+This makes the guess-vs-traced distinction visible to the **user**, not just to the engineer reviewing the code. Spec deliverable: define a `SliderSource` type in `lib/cfo/scenarios/types.ts` with a discriminated union `{ kind: 'snapshot', path: string, asOf: string } | { kind: 'default', value: number, rationale: string }`. Every slider returns this alongside its default value. The UI renders the source line beneath the slider.
+
+**H2 — Reform-status badge on the Salary-sacrifice screen.**
+Per CLAUDE.md §12.14 FW-5, any UI surface displaying a per-asset / per-fund tax position must surface the regime. The Salary-sacrifice lever output is per-fund (per-super-account) and crosses FY boundaries. Spec deliverable: a `RegimeBadge` component in the result hero card showing one of `"Pre-reform — grandfathered"` / `"Post-reform — current rules"` / `"Mixed — straddles {commencement date}"`. Reads the regime via `lib/tax-engine/config/taxYearConfig.ts` per FY; if `commencementVerified === false` for the relevant measure, returns `UNCOMPUTED` and the slider locks. (Same FW-2 rule the engines already follow.)
+
+**H3 — Concessional cap headroom guard as a hard stop, not an assumption.**
+Spec §6.2 lists the headroom check; PR 1 hardens it. The slider has a **hard stop at the cap** (currently $27,500 concessional for under-50s, $30,000 over-50s — read from `taxYearConfig` per FY). At the cap, a glass tooltip surfaces:
+- Headline (15px navy): "$X / $27,500 cap"
+- Body (13px slate): "Going over the concessional cap would attract Division 293 / excess contributions tax. To increase the cap, your fund needs to confirm carry-forward unused cap from prior years."
+- Trailing link: "→ Read about carry-forward" (deep link to ATO doc OR internal explainer if we build one).
+The slider can NEVER silently model an illegal contribution. If the user's snapshot shows existing year-to-date concessional contributions, the slider's max = `cap - existingContributions` (read from `SuperContribution` records). Spec deliverable: `concessionalCapGuard(ctx, params) → { capLimit: number, headroomRemaining: number, hardStopReason?: string }` — a named utility in the salary-sacrifice scenario file, pure function, tested.
+
+**Where these land in PR 1's diff:**
+- `lib/cfo/scenarios/types.ts` — `SliderSource` discriminated union (H1)
+- `lib/cfo/scenarios/salarySacrificeToSuper.ts` — uses `concessionalCapGuard` (H3) + reads regime (H2)
+- `lib/tax-engine/config/taxYearConfig.ts` — `getConcessionalCapForFY(fy)` (H3) if not already there
+- `app/dashboard/cfo/what-if/[lever]/` React port — renders source line per slider (H1), `RegimeBadge` (H2), cap-hard-stop tooltip (H3)
+- This spec — already updated this commit
+
 ## 5. Q-DEC is the gate
 
 Reza decision 2026-06-01: Phase 45 v1 ships AFTER Q-DEC (Float→Decimal) lands. Rationale: 10-year horizons compound Float error to visibly-wrong cents; the entire product promise is "regulator-grade accuracy, every number traceable"; pre-revenue is the cheap time to fix the precision foundation.
