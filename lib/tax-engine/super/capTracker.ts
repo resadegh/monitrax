@@ -5,6 +5,7 @@
 
 import { TaxYearConfig, getCurrentFinancialYear } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // Types
@@ -370,4 +371,226 @@ export function getConcessionalCap(financialYear: string): number {
  */
 export function getNonConcessionalCap(financialYear: string): number {
   return NON_CONCESSIONAL_CAPS[financialYear] || 120000; // Default to latest known
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.2 — Decimal sibling path (H3 hardening anchor for Phase 45 §4.1)
+// =============================================================================
+//
+// `trackContributionCapsDecimal` is the foundation for the H3 hardening
+// item from Phase 45 spec §4.1: "concessionalCapGuard as a hard stop on
+// the salary-sacrifice slider — never silently model an illegal
+// contribution." The Decimal version produces a `CapTrackingResultDecimal`
+// with precise headroom/excess values that PR 1's UI uses to enforce
+// the slider's hard stop.
+
+export interface CapTrackingInputDecimal {
+  concessionalYTD: number | string | Decimal;
+  nonConcessionalYTD: number | string | Decimal;
+  carryForwardAmounts?: { financialYear: string; unusedAmount: number | string | Decimal }[];
+  totalSuperBalance?: number | string | Decimal;
+}
+
+export interface CapTrackingResultDecimal {
+  concessional: {
+    cap: Decimal;
+    used: Decimal;
+    remaining: Decimal;
+    percentageUsed: Decimal;
+    carryForwardAvailable: Decimal;
+    totalAvailable: Decimal;
+    isExceeded: boolean;
+    excessAmount: Decimal;
+  };
+  nonConcessional: {
+    cap: Decimal;
+    used: Decimal;
+    remaining: Decimal;
+    percentageUsed: Decimal;
+    bringForwardAvailable: boolean;
+    bringForwardCap: Decimal;
+    totalAvailable: Decimal;
+    isExceeded: boolean;
+    excessAmount: Decimal;
+  };
+  excessContributionsTax: Decimal;
+  warnings: string[];
+  financialYear: string;
+}
+
+const TSB_CARRY_FORWARD_THRESHOLD = new Decimal(500000);
+
+export function calculateCarryForwardDecimal(
+  carryForwardAmounts: { financialYear: string; unusedAmount: number | string | Decimal }[],
+  totalSuperBalance: number | string | Decimal,
+): {
+  available: Decimal;
+  breakdown: { financialYear: string; amount: Decimal }[];
+  eligible: boolean;
+} {
+  const tsbDec = toDecimal(totalSuperBalance) ?? new Decimal(0);
+  if (tsbDec.gte(TSB_CARRY_FORWARD_THRESHOLD)) {
+    return { available: new Decimal(0), breakdown: [], eligible: false };
+  }
+
+  const currentFY = getCurrentFinancialYear();
+  const eligibleYears = carryForwardAmounts
+    .filter((cf) => {
+      const [fyStart] = cf.financialYear.split('-');
+      const [currentStart] = currentFY.year.split('-');
+      const yearDiff = parseInt(currentStart) - parseInt(fyStart);
+      return yearDiff > 0 && yearDiff <= 5;
+    })
+    .sort((a, b) => a.financialYear.localeCompare(b.financialYear));
+
+  let totalAvailable = new Decimal(0);
+  const breakdown: { financialYear: string; amount: Decimal }[] = [];
+  for (const cf of eligibleYears) {
+    const amount = toDecimal(cf.unusedAmount) ?? new Decimal(0);
+    totalAvailable = totalAvailable.plus(amount);
+    breakdown.push({ financialYear: cf.financialYear, amount });
+  }
+  return { available: totalAvailable, breakdown, eligible: true };
+}
+
+export function calculateBringForwardDecimal(
+  totalSuperBalance: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { yearsAvailable: number; totalCap: Decimal; eligible: boolean } {
+  const tsbDec = toDecimal(totalSuperBalance) ?? new Decimal(0);
+  const baseCap = new Decimal(config.nonConcessionalCap);
+
+  if (tsbDec.gte(BRING_FORWARD_THRESHOLDS.none)) {
+    return { yearsAvailable: 1, totalCap: baseCap, eligible: false };
+  }
+  if (tsbDec.gte(BRING_FORWARD_THRESHOLDS.reduced) || tsbDec.gte(BRING_FORWARD_THRESHOLDS.full)) {
+    return { yearsAvailable: 2, totalCap: baseCap.times(2), eligible: true };
+  }
+  return { yearsAvailable: 3, totalCap: baseCap.times(3), eligible: true };
+}
+
+export function trackContributionCapsDecimal(
+  input: CapTrackingInputDecimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): CapTrackingResultDecimal {
+  const warnings: string[] = [];
+  const currentFY = getCurrentFinancialYear();
+
+  const concessionalYTD = toDecimal(input.concessionalYTD) ?? new Decimal(0);
+  const nonConcessionalYTD = toDecimal(input.nonConcessionalYTD) ?? new Decimal(0);
+  const totalSuperBalance = input.totalSuperBalance ?? 0;
+
+  const carryForward = input.carryForwardAmounts
+    ? calculateCarryForwardDecimal(input.carryForwardAmounts, totalSuperBalance)
+    : { available: new Decimal(0), breakdown: [], eligible: true };
+
+  const bringForward = calculateBringForwardDecimal(totalSuperBalance, config);
+
+  // Concessional
+  const concessionalCap = new Decimal(config.concessionalCap);
+  const concessionalTotalAvailable = concessionalCap.plus(carryForward.available);
+  const concessionalRemaining = concessionalTotalAvailable.minus(concessionalYTD);
+  const concessionalExcess = Decimal.max(new Decimal(0), concessionalYTD.minus(concessionalTotalAvailable));
+
+  // Non-concessional
+  const nonConcessionalCap = new Decimal(config.nonConcessionalCap);
+  const nonConcessionalTotalAvailable = bringForward.eligible ? bringForward.totalCap : nonConcessionalCap;
+  const nonConcessionalRemaining = nonConcessionalTotalAvailable.minus(nonConcessionalYTD);
+  const nonConcessionalExcess = Decimal.max(new Decimal(0), nonConcessionalYTD.minus(nonConcessionalTotalAvailable));
+
+  // Excess contributions tax — Float uses approx 32% on concessional + 47% on non-concessional.
+  let excessContributionsTax = new Decimal(0);
+  if (concessionalExcess.gt(0)) {
+    excessContributionsTax = excessContributionsTax.plus(concessionalExcess.times('0.32'));
+    warnings.push(
+      `Excess concessional contributions of $${concessionalExcess.toFixed(0)} will be taxed at your marginal rate (plus interest charge).`,
+    );
+  }
+  if (nonConcessionalExcess.gt(0)) {
+    excessContributionsTax = excessContributionsTax.plus(nonConcessionalExcess.times('0.47'));
+    warnings.push(
+      `Excess non-concessional contributions of $${nonConcessionalExcess.toFixed(0)} will attract 47% tax unless you elect to withdraw.`,
+    );
+  }
+  const ninety = concessionalCap.times('0.9');
+  if (concessionalYTD.gt(ninety) && concessionalYTD.lte(concessionalCap)) {
+    const pct = concessionalYTD.div(concessionalCap).times(100).toDecimalPlaces(0).toNumber();
+    warnings.push(`Concessional contributions at ${pct}% of cap. Be careful not to exceed.`);
+  }
+
+  const concessionalPercentage = concessionalTotalAvailable.gt(0)
+    ? Decimal.min(new Decimal(100), concessionalYTD.div(concessionalTotalAvailable).times(100))
+    : new Decimal(0);
+  const nonConcessionalPercentage = nonConcessionalTotalAvailable.gt(0)
+    ? Decimal.min(new Decimal(100), nonConcessionalYTD.div(nonConcessionalTotalAvailable).times(100))
+    : new Decimal(0);
+
+  return {
+    concessional: {
+      cap: concessionalCap,
+      used: concessionalYTD,
+      remaining: Decimal.max(new Decimal(0), concessionalRemaining),
+      percentageUsed: concessionalPercentage,
+      carryForwardAvailable: carryForward.available,
+      totalAvailable: concessionalTotalAvailable,
+      isExceeded: concessionalExcess.gt(0),
+      excessAmount: concessionalExcess,
+    },
+    nonConcessional: {
+      cap: nonConcessionalCap,
+      used: nonConcessionalYTD,
+      remaining: Decimal.max(new Decimal(0), nonConcessionalRemaining),
+      percentageUsed: nonConcessionalPercentage,
+      bringForwardAvailable: bringForward.eligible,
+      bringForwardCap: bringForward.totalCap,
+      totalAvailable: nonConcessionalTotalAvailable,
+      isExceeded: nonConcessionalExcess.gt(0),
+      excessAmount: nonConcessionalExcess,
+    },
+    // Float rounds excessContributionsTax to nearest dollar via Math.round; mirror.
+    excessContributionsTax: excessContributionsTax.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    warnings,
+    financialYear: currentFY.year,
+  };
+}
+
+/**
+ * Phase 45 H3 anchor — primitive headroom guard used by the salary-sacrifice
+ * UI slider's hard stop. Pure function; the result is what the React
+ * component renders on the cap-progress tooltip.
+ *
+ * `headroomRemaining` is total available (cap + carry-forward) minus YTD.
+ * A negative value means the proposed contribution exceeds the cap and the
+ * slider must reject it — never silently model an illegal contribution.
+ */
+export function concessionalCapHeadroomDecimal(
+  ytdConcessional: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+  options: {
+    carryForwardAmounts?: { financialYear: string; unusedAmount: number | string | Decimal }[];
+    totalSuperBalance?: number | string | Decimal;
+  } = {},
+): {
+  capLimit: Decimal;
+  carryForwardAvailable: Decimal;
+  totalAvailable: Decimal;
+  used: Decimal;
+  headroomRemaining: Decimal;
+  isExceeded: boolean;
+} {
+  const ytd = toDecimal(ytdConcessional) ?? new Decimal(0);
+  const carryForward = options.carryForwardAmounts && options.totalSuperBalance != null
+    ? calculateCarryForwardDecimal(options.carryForwardAmounts, options.totalSuperBalance)
+    : { available: new Decimal(0), breakdown: [], eligible: true };
+  const capLimit = new Decimal(config.concessionalCap);
+  const totalAvailable = capLimit.plus(carryForward.available);
+  const headroomRemaining = totalAvailable.minus(ytd);
+  return {
+    capLimit,
+    carryForwardAvailable: carryForward.available,
+    totalAvailable,
+    used: ytd,
+    headroomRemaining,
+    isExceeded: headroomRemaining.lt(0),
+  };
 }

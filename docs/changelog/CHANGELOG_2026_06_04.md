@@ -374,5 +374,65 @@ NONE — additive code only.
 
 ### Next
 
-- PR 2.D.2 — `super/` + `income/` + `position/` + `orchestrator/` (`super/capTracker` is the H3 hardening anchor from Phase 45 spec §4.1).
-- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/).
+- PR 2.D.2 — `super/` (3 files: capTracker, contributionCalculator, highIncomeSuperTax). H3 hardening anchor.
+- PR 2.D.2b — `income/` + `position/` + `orchestrator/`.
+- PR 2.D.3 — rest of `lib/tax-engine/*`.
+
+---
+
+## Session: qdec-pr2d2-tax-super-LIlK9 (continuation after PR #981 merge)
+
+### Changes Made
+
+- **Type**: Feature / Foundation / H3 hardening
+- **Scope**: Q-DEC PR 2.D.2 — `lib/tax-engine/super/* (3 files)` Decimal siblings + Phase 45 H3 anchor primitive
+- **Description**: Second sub-PR of Q-DEC PR 2.D. Ships Decimal siblings for the 3 superannuation engines on the salary-sacrifice critical path. Mid-session scope refinement: original D.2 plan included income/+position/+orchestrator/ alongside super/; given super/ alone is ~1000 lines of Decimal-sibling code + tests, split D.2 into super-only (this PR) and D.2b (income+position+orchestrator). The new `concessionalCapHeadroomDecimal` primitive is the H3 hardening anchor for Phase 45 spec §4.1 — the salary-sacrifice UI slider's hard stop reads from this.
+- **smsfIncomeTax** deferred to PR 2.D.3 (SMSF-specific, off the salary-sacrifice path).
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/super/capTracker.ts` — `trackContributionCapsDecimal`, `calculateCarryForwardDecimal`, `calculateBringForwardDecimal`, **`concessionalCapHeadroomDecimal`** (H3 anchor — pure primitive consumed by Phase 45 PR 1's UI slider hard stop)
+- `lib/tax-engine/super/contributionCalculator.ts` — `calculateSuperGuaranteeDecimal`, `calculateSuperContributionsDecimal`, `calculateDivision293TaxDecimal`
+- `lib/tax-engine/super/highIncomeSuperTax.ts` — `calculateHighIncomeSuperTaxDecimal` (Div 293 + Div 296 gated + TBC)
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.D.2 row flipped to `[~] IN FLIGHT` with mid-session scope refinement
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-super.ts` — 3 shadow engines with 18 fixtures total (capTracker H3 anchor fixtures + contributions + Div 293/296/TBC)
+- `tests/tax-engine/super.decimal.test.ts` — 31 tests (18 shadow + 6 H3 anchor contract + 7 Decimal sibling contracts)
+
+### Architectural notes
+
+- **H3 primitive shape locked.** `concessionalCapHeadroomDecimal(ytd, config, options)` returns `{ capLimit, carryForwardAvailable, totalAvailable, used, headroomRemaining, isExceeded }`. The salary-sacrifice slider reads `headroomRemaining` for max value + `isExceeded` to know when to render the hard-stop tooltip. Phase 45 PR 1 wires this directly.
+- **Phase 41E §12.14 FW-2 preserved.** `calculateHighIncomeSuperTaxDecimal` still gates Div 296 on `config.div296CommencementVerified`. Returns `0` + surfaces `UC-DIV-296-PENDING` when commencement is unverified. The Decimal port did not loosen any regime guard.
+- **Output rounding preserved exactly.** `excessContributionsTax` rounds to nearest dollar (Float `Math.round`); `superGuarantee` to cents (Float `Math.round * 100 / 100`); `taxSavingsFromSalarySacrifice` to nearest dollar with `Math.max(0, ...)` floor. All preserved in Decimal via `toDecimalPlaces(0/2, HALF_EVEN)`.
+
+### Testing
+
+- [x] 31 new tests pass + 944 existing tests pass — zero regression (975 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 18 fixtures across 3 super engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.2 scope refined mid-session into super-only this PR + D.2b for income/position/orchestrator)
+
+Docs updated:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.D.2 row flipped + D.2b added
+- `docs/changelog/CHANGELOG_2026_06_04.md` — this session entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-1 outcome (c) where regime-affected:** `calculateHighIncomeSuperTaxDecimal` preserves the Div 296 commencement-verified gate — returns 0 + UC-DIV-296-PENDING flag if `config.div296CommencementVerified === false`. Other super primitives (SG, contributions tax, cap tracking) are reform-agnostic by design.
+- [x] No `lib/tax-engine/divisions/*` modified.
+- [x] No schema columns added. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.2b — `income/` + `position/` + `orchestrator/` (the consumer side that composes core + super into a tax position).
+- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/, super/smsfIncomeTax).

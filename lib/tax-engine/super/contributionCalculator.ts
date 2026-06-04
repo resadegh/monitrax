@@ -5,6 +5,7 @@
 
 import { TaxYearConfig, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // Types
@@ -458,5 +459,143 @@ export function getSuperContributionSummary(
     },
     warnings,
     recommendations,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.2 — Decimal sibling path
+// =============================================================================
+//
+// Salary-sacrifice critical path for Phase 45 PR 1. Composes SG +
+// concessional contributions + Division 293 detection in Decimal.
+
+export interface SuperContributionInputDecimal {
+  grossSalary: number | string | Decimal;
+  salarySacrifice?: number | string | Decimal;
+  personalDeductible?: number | string | Decimal;
+  personalNonDeductible?: number | string | Decimal;
+  spouseContribution?: number | string | Decimal;
+}
+
+export interface SuperContributionResultDecimal {
+  superGuarantee: Decimal;
+  superGuaranteeRate: Decimal;
+  salarySacrifice: Decimal;
+  personalDeductible: Decimal;
+  totalConcessional: Decimal;
+  personalNonDeductible: Decimal;
+  spouseContribution: Decimal;
+  totalNonConcessional: Decimal;
+  totalContributions: Decimal;
+  employerTotal: Decimal;
+  employeeTotal: Decimal;
+  taxSavingsFromSalarySacrifice: Decimal;
+  contributionsTax: Decimal;
+  division293Tax: Decimal;
+}
+
+const ANNUAL_MAX_SUPER_BASE = new Decimal(MAX_SUPER_CONTRIBUTION_BASE_2024_25).times(4);
+
+/**
+ * Decimal sibling of `calculateSuperGuarantee`. SG calculated on OTE
+ * up to the annualised max super contribution base.
+ *
+ * Float rounds output to cents via `Math.round(sgAmount * 100) / 100`;
+ * Decimal mirrors via `toDecimalPlaces(2, HALF_EVEN)`.
+ */
+export function calculateSuperGuaranteeDecimal(
+  grossSalary: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { amount: Decimal; rate: Decimal } {
+  const grossDec = toDecimal(grossSalary) ?? new Decimal(0);
+  const eligibleEarnings = Decimal.min(grossDec, ANNUAL_MAX_SUPER_BASE);
+  const sgAmount = eligibleEarnings.times(config.superGuaranteeRate);
+  return {
+    amount: sgAmount.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
+    rate: new Decimal(config.superGuaranteeRate),
+  };
+}
+
+/**
+ * Decimal sibling of `calculateDivision293Tax`. Returns the additional
+ * 15% on the lesser of (concessional contributions, excess income over
+ * the $250k threshold). Float rounds to dollar via `Math.round`; mirror.
+ */
+export function calculateDivision293TaxDecimal(
+  taxableIncome: number | string | Decimal,
+  concessionalContributions: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): Decimal {
+  const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
+  const ccDec = toDecimal(concessionalContributions) ?? new Decimal(0);
+  const threshold = new Decimal(config.division293Threshold);
+  const combined = taxableDec.plus(ccDec);
+  if (combined.lte(threshold)) return new Decimal(0);
+  const excessAmount = combined.minus(threshold);
+  const taxableAmount = Decimal.min(ccDec, excessAmount);
+  return taxableAmount.times('0.15').toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+}
+
+/**
+ * Decimal sibling of `calculateSuperContributions` — composes SG +
+ * concessional + non-concessional + Div 293 in Decimal. Salary-sacrifice
+ * tax savings = sacrifice × (marginalRate − 15%).
+ */
+export function calculateSuperContributionsDecimal(
+  input: SuperContributionInputDecimal,
+  marginalRate: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): SuperContributionResultDecimal {
+  const grossSalary = toDecimal(input.grossSalary) ?? new Decimal(0);
+  const marginalRateDec = toDecimal(marginalRate) ?? new Decimal(0);
+
+  const sgResult = calculateSuperGuaranteeDecimal(grossSalary, config);
+
+  const salarySacrifice = toDecimal(input.salarySacrifice ?? 0) ?? new Decimal(0);
+  const personalDeductible = toDecimal(input.personalDeductible ?? 0) ?? new Decimal(0);
+  const totalConcessional = sgResult.amount.plus(salarySacrifice).plus(personalDeductible);
+
+  const personalNonDeductible = toDecimal(input.personalNonDeductible ?? 0) ?? new Decimal(0);
+  const spouseContribution = toDecimal(input.spouseContribution ?? 0) ?? new Decimal(0);
+  const totalNonConcessional = personalNonDeductible.plus(spouseContribution);
+
+  // Salary-sacrifice tax savings — Float rounds via Math.max(0, Math.round(...)).
+  const taxSavingsRaw = salarySacrifice.gt(0)
+    ? salarySacrifice.times(marginalRateDec.minus('0.15'))
+    : new Decimal(0);
+  const taxSavingsFromSalarySacrifice = Decimal.max(
+    new Decimal(0),
+    taxSavingsRaw.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+  );
+
+  // Contributions tax (15%) — Float rounds via Math.round.
+  const contributionsTax = totalConcessional.times('0.15').toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+
+  // Div 293
+  const division293Tax = calculateDivision293TaxDecimal(
+    grossSalary.minus(salarySacrifice),
+    totalConcessional,
+    config,
+  );
+
+  const totalContributions = totalConcessional.plus(totalNonConcessional);
+  const employerTotal = sgResult.amount;
+  const employeeTotal = salarySacrifice.plus(personalDeductible).plus(totalNonConcessional);
+
+  return {
+    superGuarantee: sgResult.amount,
+    superGuaranteeRate: sgResult.rate,
+    salarySacrifice,
+    personalDeductible,
+    totalConcessional,
+    personalNonDeductible,
+    spouseContribution,
+    totalNonConcessional,
+    totalContributions,
+    employerTotal,
+    employeeTotal,
+    taxSavingsFromSalarySacrifice,
+    contributionsTax,
+    division293Tax,
   };
 }
