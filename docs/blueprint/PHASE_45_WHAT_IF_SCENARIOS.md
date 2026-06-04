@@ -74,51 +74,143 @@ Sequencing:
 7. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens)
 8. Phase 45.1 — contextual entry points (separate PR)
 
-## 6. Stitch design pass (CLAUDE.md §18)
+## 6. Stitch design pass (CLAUDE.md §18) — §18.7.2 glass vocabulary applied to Phase 45
 
-Two canonical screens at minimum:
+### 6.0 Vocabulary anchor (load-bearing decision, 2026-06-04)
 
-### Screen A — Lever picker (`/dashboard/cfo/what-if` home)
+Phase 45's two canonical surfaces (`/dashboard/cfo/what-if` lever picker + `/dashboard/cfo/what-if/[lever]` lever detail) inherit the **Monitrax in-app glass vocabulary** documented verbatim in `CLAUDE.md §18.7.2` — the same design language Phase 39 ships on My Wealth (`components/properties/PropertyTile.tsx`, `components/properties/PropertiesHero.tsx`, `components/wealth/wealthGlyphs.tsx`).
 
-- Header: "What if?" + one-line explainer ("See how a single move could change your 10-year picture")
-- 5 lever cards in a 2 × 3 grid (one empty cell for "More coming" or a help affordance)
-- Each card: glyph + lever title + 1-line description + "Open →"
-- Footer: AFSL Why-no-recommendations explainer (links to General Advice Warning page)
+**Lesson recorded (2026-06-04):** the June 1 AskUserQuestion "Editorial palette" answer was poorly framed — it surfaced the flat **Restrained Editorial** asset (`5eb40c25ecd946828ee9ba4d60c0662c`) as the default rather than §18.7.2. The first Stitch generation (Screen A v1, screen `2093dc0bec5e4656baf06596e0749232`, 2026-06-04) rendered with flat paper-white cards and 1.5px Lucide line icons — visually correct for the home dashboard (`0·StD`) but **wrong for Phase 45**, which is a sibling of the My Wealth surface and must carry the same glass+gradient identity. Reza overruled the v1 direction; this §6 is the corrected anchor. Going forward: every Phase 45 Stitch call seeds §18.7.2 verbatim and does **not** specify the Restrained Editorial design system asset (the inline tokens dominate).
 
-### Screen B — Lever detail (`/dashboard/cfo/what-if/[lever]`)
+### 6.1 Canonical vocabulary — copy these tokens verbatim into every Phase 45 Stitch prompt
 
-- Breadcrumb: ← What if? · {Lever name}
-- Two-column layout (md+): left = inputs, right = result
-- Left column:
-  - Entity picker (only when applicable — e.g. "Which loan?")
-  - Slider(s) for the lever input(s) with current value pre-filled from the snapshot
-  - Affordances for sensible defaults (e.g. "Use current market rate")
-- Right column:
-  - Headline metric (e.g. "Monthly savings: $213")
-  - 10-year net-worth trajectory chart (sparkline-style, NOT a busy candle chart — premium reference: Wealthfront Path, Apple Health trend cards)
-  - Tax-position delta block (CGT exposure / cap impact / Div 7A risk where relevant)
-  - "How we computed this" → expands assumptions panel
-- AFSL footer (always visible)
+Reproduced from `CLAUDE.md §18.7.2` (single source of truth). Any deviation here = update CLAUDE.md first, then copy back.
 
-### Reference set (designer lens)
+| Principle | Token / rule |
+|---|---|
+| **Page surface** | Warm ivory `#FAFAF7` (never clinical white, never cool blue). Content max-width ~1200px, generous whitespace. |
+| **Glass** | `bg-card/70 backdrop-blur-xl` + 1px hairline border (entity-tinted, low opacity ~15-25%) + soft layered float shadow `shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)]`. Premium **because** of what's removed. |
+| **Radius** | Hero `rounded-[28px]`, tile `rounded-[22px]`, KPI sub-box `rounded-[12px]`, gradient icon badge `rounded-[14px]`, interactive pill `rounded-full`. No sharp corners. |
+| **Per-entity sub-palette** | Each lever carries a 3px gradient top-accent strip + an oversized faint glyph watermark (~6–12% opacity) bleeding off the right edge. |
+| **Tile anatomy** | gradient icon badge (44px `rounded-[14px]`, gradient fill, 1px ring) → tiny uppercase gradient-text type label → title + muted subtitle → glass surface → faint watermark → quiet "Open →" affordance in the gradient accent. |
+| **Money signal (Screen B only)** | Emerald `#16A34A` reserved for positive returns only (gain pill `bg-emerald-500/12 text-emerald-700 ring-emerald-500/20`). Big balance numbers use the brand sky→indigo gradient text. Amber only for genuine caution. No red except true loss. |
+| **Typography** | Inter throughout. Confident `tabular-nums` numerals with tight tracking for money. Warm plain-English microcopy. `label-sm` uppercase tracked labels (`tracking-[0.16em]`, weight 600). |
+| **Glyphs** | Lucide filled silhouettes preferred (`viewBox 0 0 120 120`, `fill='currentColor'`, no strokes) for the watermarks; standard line icons OK for the badge glyph. Reuse `components/wealth/wealthGlyphs.tsx` patterns where applicable. |
+| **Motion** | `appleEase = [0.25,0.46,0.45,0.94]`; `springSnap = { stiffness:320, damping:28, mass:0.8 }`. Tile entrance 0.55s + 40ms stagger. `prefers-reduced-motion` honoured. |
+| **Behaviour-psychology** | Celebrate the next achievable action; normalise rather than shame; no false precision, no manufactured urgency, no invented numbers. |
 
-- Apple Numbers what-if mode — focused calculator UI
-- Wealthfront Path — projection chart with assumptions tucked under
-- Stripe Atlas calculator — input-sliders + premium result card
-- Apple Health trends — sparkline + delta + context
+### 6.2 Per-lever sub-palette — TRAIL-stage + financial-domain mapping
 
-### Stitch project ID
+Each lever inherits a sub-palette in the same way Phase 39 maps entity types to colour families (Home=amber, Investment/Super=sky→indigo, Rental=teal). Phase 45 maps **lever** to a TRAIL-stage + financial-domain identity.
 
-Reuse the canonical Monitrax Stitch project `1859462351962811110` per CLAUDE.md §18.3.
+| Lever | TRAIL stage | Sub-palette gradient | Hex stops | Type label | Glyph (Lucide) |
+|---|---|---|---|---|---|
+| (a) Refinance a loan | REDUCE | amber → rose | `#F59E0B → #F43F5E` | `REDUCE · DEBT` | `Percent` |
+| (b) Salary-sacrifice to super | INVEST | emerald → indigo | `#10B981 → #6366F1` | `INVEST · SUPER` | `PiggyBank` |
+| (c) Sell a property | LIVE | violet → fuchsia | `#8B5CF6 → #D946EF` | `LIVE · EXIT` | `Home` (with subtle exit arrow if available) |
+| (d) Pay extra off a debt | ANCHOR | indigo → violet | `#6366F1 → #8B5CF6` | `ANCHOR · DEBT FREEDOM` | `TrendingDown` |
+| (e) Buy an investment property | INVEST | sky → cyan | `#0EA5E9 → #06B6D4` | `INVEST · PROPERTY` | `Building2` (with small `+` indicator) |
 
-Files committed per §18.4:
-- `.stitch/designs/what-if-lever-picker.{html,png}` — Screen A
-- `.stitch/designs/what-if-lever-detail.{html,png}` — Screen B
-- Additional iterations as `what-if-*-v2.{html,png}` etc.
+Rationale: each lever gets a structurally **distinct** gradient so the grid reads as five differentiated decisions, not a uniform palette. The TRAIL-stage anchor preserves the warm-words framework (`CLAUDE.md §14`) — every lever names which stage of the wealth journey it serves.
 
-### Editorial-palette guard rail
+### 6.3 Screen A — Lever picker (`/dashboard/cfo/what-if` home)
 
-Stitch's default design system trends cosmos-* dark. For Phase 45 the React render MUST use the editorial-* tokens (per CLAUDE.md §18.2 internal-app rule + Reza's editorial-palette decision). The Stitch prompt explicitly specifies "Monitrax editorial palette: warm-ivory bg, navy text, emerald accent, 1px hairline dividers, no dark surfaces." Mockups download as HTML for visual sign-off; React port references `08_BRAND_UI_DESIGN.md` for token names.
+Content area (sidebar + topbar are already drawn by the app shell — do NOT redraw them).
+
+1. **Page header block** (top).
+   - Eyebrow: `MY GUIDE · DECISION SUPPORT` — uppercase, navy at 60% opacity, 11px, tracked `tracking-[0.18em]`, weight 600.
+   - Headline: `What if?` — 36-40px, navy semibold, tight letter-spacing. Optionally brand sky→indigo gradient text.
+   - Explainer: "See how a single move would change your 10-year picture. Pick one lever — Monitrax shows what changes, never what you should do." — muted slate, 16px, weight 400.
+
+2. **Lever grid** — 3 columns × 2 rows. Five real lever cards per §6.2 + one quiet "More levers coming" glass placeholder (dashed-outline inner, no gradient strip, no badge).
+
+   Each lever card uses the §6.1 anatomy:
+   - 3px gradient top-accent strip (per-lever, from §6.2 table).
+   - 44px gradient icon badge top-left, `rounded-[14px]`, 1px ring at higher gradient opacity, Lucide glyph 18-20px inside in white at ~90% opacity.
+   - Tiny uppercase gradient-text type label to the right of the badge (e.g. `REDUCE · DEBT`).
+   - Lever title — 18-20px navy semibold, single line.
+   - Muted subtitle — 13-14px slate, 2 lines max.
+   - Oversized faint glyph watermark bleeding off the bottom-right corner (110-140px, opacity ~6-10%, single tone from the lever's gradient).
+   - Quiet "Open →" affordance bottom-left in the gradient accent.
+
+3. **AFSL boundary footer** below the grid (~32-48px below). Single wide glass card spanning the content column, `rounded-[28px]`:
+   - Left: Lucide `ShieldCheck` or `Info` icon, ~24px, slate.
+   - Eyebrow: `WHY NO RECOMMENDATIONS`.
+   - Headline (15px navy): "Monitrax shows what changes. It doesn't tell you what to do."
+   - Body (13px slate): "Every lever here is information about your own numbers — never personal advice. That's a job for a licensed financial adviser. Read the General Advice Warning."
+   - Trailing link: `→ Read the warning` in slate, hover shifts to navy.
+
+### 6.4 Screen B — Lever detail (`/dashboard/cfo/what-if/[lever]`)
+
+Same vocabulary as §6.1; the layout adds money numbers + sliders. Two-column layout on md+ (`grid-cols-1 md:grid-cols-[1fr_1.2fr] gap-8`).
+
+- **Breadcrumb row** (top): `← What if? · {Lever name}` — back chevron is a button. Lever-name pill carries the lever's sub-palette gradient as text-fill (per §18.7.2 "tiny uppercase gradient-text type label" rule).
+
+- **Left column — Inputs (glass card, `rounded-[28px]`).**
+  - Eyebrow: `INPUTS` + lever-stage label (`REDUCE`, `INVEST`, etc.).
+  - Entity picker if applicable (e.g. "Which loan?") — glass sub-card, `rounded-[12px]`, slim list rows.
+  - Slider(s) for the lever input(s) — track in slate-200, fill in the lever's gradient. Pre-fill with snapshot value. Show the active value as `tabular-nums` to the right of the slider.
+  - "Use current market rate" / "Use snapshot" sensible-default affordances as ghost pills (`border-foreground/10 bg-background/50 backdrop-blur`).
+  - Concessional-cap headroom check (salary-sacrifice only) — surfaces UNCOMPUTED + amber-tinted warning when input exceeds cap.
+
+- **Right column — Result (glass card, `rounded-[28px]`).**
+  - Headline metric — large `tabular-nums`, brand sky→indigo gradient text (e.g. "Monthly savings: $213").
+  - Sub-headline delta — `body-sm` slate, "vs. your current path".
+  - 10-year net-worth trajectory chart — sparkline-style (Wealthfront Path reference), 1.5px emerald line, 8% emerald area fill, dotted reference line for "current path" in navy 30%. Y-axis: minimal, just the start + end value. X-axis: year labels every 2 years.
+  - Tax-position delta block — gain pill `bg-emerald-500/12 text-emerald-700` when the move reduces tax, amber pill `bg-amber-500/12 text-amber-700` for caution (CGT exposure, cap impact, Div 7A risk). NEVER red.
+  - "How we computed this" — chevron-collapsed Assumptions panel below the chart. Lists every assumption verbatim ("annual return 7%", "inflation 2.5%", "your snapshot as of 2026-06-04"). Pre-collapsed but always visible — surfaces, not hides, the load-bearing modelling choices.
+
+- **Bottom — AFSL footer** (always visible, mirrors Screen A's panel but compact).
+
+### 6.5 The locked Stitch prompt template
+
+Every Phase 45 Stitch call uses the template below. **Do not** specify a design system asset — the inline tokens dominate (`CLAUDE.md §18.7` rule: "Do NOT let Stitch's default design system stand unchallenged"). The prompt MUST cite §6.1 vocabulary + the §6.2 per-lever sub-palette table verbatim.
+
+```
+PROJECT: 1859462351962811110 (canonical Monitrax Stitch project)
+DESIGN SYSTEM ASSET: none — inline tokens dominate
+DEVICE: DESKTOP
+MODEL: GEMINI_3_1_PRO
+
+PROMPT TEMPLATE (paste §6.1 vocabulary table + §6.2 per-lever table + the
+Screen A or Screen B layout block from §6.3 / §6.4 verbatim, ending
+with):
+
+REFERENCE FILES (ground truth for the glass vocabulary, do not redraw):
+- components/properties/PropertyTile.tsx
+- components/properties/PropertiesHero.tsx
+- components/wealth/wealthGlyphs.tsx
+- components/shell/motion.ts
+
+CONSTRAINTS (red lines):
+- NO flat paper-white cards. Every card MUST use glass.
+- NO multi-colour confetti. Each card gets ONE gradient.
+- NO red. No down-indicators in red.
+- NO pure white, NO cool blue. Background is warm ivory #FAFAF7.
+- NO emojis. NO excitement punctuation.
+- NO numerical examples on the lever picker — those live on Screen B.
+- The screen reads as a direct visual sibling of the My Wealth page
+  (Phase 39), NOT as a separate design system.
+```
+
+### 6.6 Artefacts committed to `.stitch/designs/`
+
+Per `CLAUDE.md §18.4`:
+- `.stitch/designs/what-if-lever-picker.{html,png}` — Screen A (final approved version)
+- `.stitch/designs/what-if-lever-detail.{html,png}` — Screen B (final approved version)
+- Iterations as `what-if-*-vN.{html,png}` etc. Each iteration's Stitch screen ID recorded in this section.
+
+**Iteration log:**
+
+| Date | Screen | Version | Stitch screen ID | Notes |
+|---|---|---|---|---|
+| 2026-06-04 | A — Lever picker | v1 | `2093dc0bec5e4656baf06596e0749232` | ❌ Wrong vocabulary — used Restrained Editorial flat. Reza overruled. Lesson recorded in §6.0. Kept as reference. |
+| 2026-06-04 | A — Lever picker | v2 | `ed9fd957a19f4511842be0ef3ba29136` | Generated AFTER §6 spec was locked; first attempt at §18.7.2 glass + per-lever gradients per §6.2. Pending Reza review. |
+
+### 6.7 Reviewer enforcement (CLAUDE.md §18.5)
+
+Any future Phase 45 Stitch generation that does not seed §6.1 + §6.2 + §6.5 verbatim must be rejected. The prompt text used in each `mcp__stitch__generate_screen_from_text` call should be quoted in the iteration-log row above so a reviewer can audit prompt-vs-spec alignment.
+
 
 ## 7. Composed engines — call graph
 
