@@ -15,7 +15,7 @@
 
 import { toMonthly, toAnnual, toMonthlyDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
-import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
+import { calculateTakeHomePay, calculateTakeHomePayDecimal } from '@/lib/cashflow/incomeNormalizer';
 import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
@@ -438,11 +438,12 @@ export function calculateCashflow(
 //    expected and within currency tolerance (0.005). The shadow harness
 //    PASS proves we agree to-the-cent at the user-facing surface.
 //
-// 2. **`calculateTakeHomePay` is still Float in PR 2.B.** It lives in
-//    `lib/cashflow/incomeNormalizer.ts` and gets its Decimal sibling in
-//    PR 2.C. For this PR we call the Float version and convert the
-//    result to Decimal at the boundary — that's a defensible bridge,
-//    not a permanent state.
+// 2. **`calculateTakeHomePay` Decimal sibling landed in PR 2.C.** The
+//    old PR 2.B Float-bridge is gone — `calculateIncomeAmountsDecimal`
+//    now calls `calculateTakeHomePayDecimal` directly. The inner tax
+//    calculations (PAYG / Medicare / LITO) still go through the Float
+//    `TaxEngine` for now; PR 2.D provides Decimal siblings for those
+//    and the chain becomes end-to-end Decimal.
 //
 // 3. **Aliases are dropped.** The Float result has aliases
 //    (`monthlyIncome === monthlyNetIncome`, `monthlySurplus === monthlyCashflow`,
@@ -485,7 +486,7 @@ export interface CashflowResultDecimal {
 /**
  * Compute the gross/net/PAYG monthly amounts for a salary item, in Decimal.
  * Mirrors `calculateIncomeAmounts` exactly (same conditional structure;
- * same call to `calculateTakeHomePay` for the GROSS-with-takehome branch).
+ * uses `calculateTakeHomePayDecimal` from PR 2.C for the GROSS branch).
  */
 function calculateIncomeAmountsDecimal(item: IncomeItem): {
   monthlyGross: Decimal;
@@ -510,15 +511,14 @@ function calculateIncomeAmountsDecimal(item: IncomeItem): {
         monthlyPayg = new Decimal(0);
       }
     } else {
-      // Float-bridge: PR 2.C will provide a Decimal `calculateTakeHomePay`.
-      const takeHome = calculateTakeHomePay(
+      // PR 2.C: Float-bridge dropped — now uses Decimal `calculateTakeHomePay`.
+      const takeHome = calculateTakeHomePayDecimal(
         item.amount,
         item.frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'ANNUAL',
       );
       monthlyGross = monthlyAmount;
       monthlyNet = toMonthlyDecimal(takeHome.netAmount, item.frequency as Frequency);
-      const paygPlusLevy = (toDecimal(takeHome.paygWithholding) ?? new Decimal(0))
-        .plus(toDecimal(takeHome.medicareLevy) ?? new Decimal(0));
+      const paygPlusLevy = takeHome.paygWithholding.plus(takeHome.medicareLevy);
       monthlyPayg = toMonthlyDecimal(paygPlusLevy, item.frequency as Frequency);
     }
   }

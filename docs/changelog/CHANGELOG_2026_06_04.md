@@ -245,3 +245,74 @@ Operations in this PR that touch existing rows: **NONE** — additive code only.
 - PR 2.C — `lib/cashflow/*` (daily/monthly/annual rollups + `calculateTakeHomePay` Decimal sibling — which unblocks the Float-bridge in cashflowOrchestrator).
 - PR 2.D — `lib/tax-engine/*` (largest sub-PR; salary-sacrifice depends on this for Phase 45 PR 1).
 - PR 2.E — `lib/cfo/*` (scenarios + intelligence engine).
+
+---
+
+## Session: qdec-pr2c-cashflow-LIlK9 (continuation after PR #979 merge)
+
+### Changes Made
+
+- **Type**: Feature / Foundation
+- **Scope**: Q-DEC PR 2.C — `lib/cashflow/incomeNormalizer.ts` Decimal siblings + PR 2.B Float-bridge unblocker
+- **Description**: Third sub-PR of Q-DEC PR 2. Delivers the critical PR 2.B unblocker — `calculateTakeHomePayDecimal` — and swaps `cashflowOrchestrator.calculateCashflowDecimal` off the Float-bridge introduced in PR 2.B. Also adds Decimal siblings for `normalizeIncomeStream`, `normalizeAllIncome`, `getEffectiveMonthlyIncome`, + the private `calculateNetSalary` helper. ZERO existing engine changes — every Float function on `incomeNormalizer.ts` stays live for back-compat.
+- **Scope note (deferred to PR 3):** The 4 larger files in `lib/cashflow/` (`forecasting.ts`, `optimisation.ts`, `stressTesting.ts`, `insightGenerator.ts`, ~2750 lines combined) are consumer-layer decision-support engines, not money-producers. They consume `cashflowOrchestrator` / `TaxEngine` output and produce notifications / insights / scenarios. They'll adopt the Decimal path automatically when route handlers cut over in PR 3 — no Decimal sibling required at the engine level.
+
+### Architectural improvement to the harness
+
+- **`runShadowComparison` skips non-numeric leaves.** Discovered when `normalizeAllIncome`'s result spread `IncomeStream` fields (`id`, `userId`, `name`, etc.) into the comparison surface, causing `new Decimal('fixture')` to throw. Updated the harness: numeric leaves (number, Decimal, null, undefined) compare; non-numeric leaves (string, boolean, Date, etc.) are silently skipped. A TYPE MISMATCH between paths (one numeric, one non-numeric for the same field) is surfaced as a failed field — that's a real engine bug. `isNumericLeaf` helper exported as internal. **This is the second operational lesson** in Q-DEC PR 2 (first being `Decimal(0).isPositive()` truthiness in PR 2.B).
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-cashflow.ts` — 2 shadow engines (`calculateTakeHomePayShadow` 6 fixtures + `normalizeAllIncomeShadow` 3 fixtures) + `cashflowShadowEngines` convenience export
+- `tests/cashflow/incomeNormalizer.decimal.test.ts` — 19 tests covering per-fixture shadow + Decimal-path contract checks (tax-free threshold, round-trip, high-income, branch coverage on each `normalizeIncomeStream` branch)
+
+### Files Modified
+
+- `lib/cashflow/incomeNormalizer.ts` — `calculateTakeHomePayDecimal`, `normalizeIncomeStreamDecimal`, `normalizeAllIncomeDecimal`, `getEffectiveMonthlyIncomeDecimal` + private `calculateNetSalaryDecimal` helper + `IncomeWithTaxDecimal` / `NormalizedIncomeResultDecimal` types
+- `lib/calculations/cashflowOrchestrator.ts` — swapped Float-bridge in `calculateIncomeAmountsDecimal` to use `calculateTakeHomePayDecimal`; updated comments to reflect PR 2.C state
+- `lib/calc-audit/shadowComparison.ts` — `runShadowComparison` skips non-numeric leaves; new `isNumericLeaf` private helper; type-mismatch detection surfaces as a failed field
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Phase 45 row — PR 2.C row flipped to `[~] IN FLIGHT this PR` with scope + deferred files documented
+
+### Architectural rules (CLAUDE.md §0 + §12.2)
+
+Same as PR 2.A / 2.B. New rule added this PR: shadow comparison skips non-numeric leaves and surfaces type-mismatches.
+
+### Testing
+
+- [x] All 19 new tests pass
+- [x] All 305 existing decimal/calc-audit/calculations/cashflow tests still pass — zero regression (324 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new failure-mode lesson: shadow harness throws on string leaves — harness updated to skip non-numeric leaves cleanly)
+- [x] strategic decision (PR 2.C scope: incomeNormalizer.ts IN; forecasting/optimisation/stressTesting/insightGenerator DEFERRED to PR 3 with rationale)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Phase 45 row — PR 2.C status flipped + scope detailed
+- `docs/changelog/CHANGELOG_2026_06_04.md` — this session entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions added: `calculateTakeHomePayDecimal`, `normalizeIncomeStreamDecimal`, `normalizeAllIncomeDecimal`, `getEffectiveMonthlyIncomeDecimal`, `calculateNetSalaryDecimal` — outcome **(c) gated through Float TaxEngine.calculatePAYG / Medicare / LITO during PR 2.C**. The composition arithmetic (subtract, divide, multiply) is Decimal; the inner tax calculations stay Float until PR 2.D provides Decimal siblings. NO direct dependence on reform regime — `calculateTakeHomePay` is a takehome-pay helper, not a regime-sensitive calculation. PR 2.D will revisit per §12.14 FW-1.
+- [x] No `lib/tax-engine/*` modified.
+- [x] No schema columns added to `Property` / `Investment` / `LegalEntity`.
+- [x] No new AI tool added.
+- [x] No UI surface added.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows: **NONE** — additive code only. No Prisma writes. No schema changes.
+
+### Next
+
+- PR 2.D — `lib/tax-engine/*` (largest sub-PR; ~6 divisions + MasterTaxPosition composer; Phase 45 PR 1 salary-sacrifice scenario blocks on this).
+- PR 2.E — `lib/cfo/*` (scenarios + intelligence engine).
+- PR 3 — engine-by-engine cutover (route handlers + components consume Decimal; the deferred PR 2.C files adopt the Decimal path here).
