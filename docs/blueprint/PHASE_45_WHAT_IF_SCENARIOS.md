@@ -326,10 +326,10 @@ Every Phase 45 Stitch generation MUST produce **both** a desktop and a mobile sc
 
 | Date | Screen | Version | Device | Stitch screen ID | Notes |
 |---|---|---|---|---|---|
-| 2026-06-04 | A — Lever picker | v1 | DESKTOP | `2093dc0bec5e4656baf06596e0749232` | ❌ wrong vocabulary |
-| 2026-06-04 | A — Lever picker | v2 | DESKTOP | `ed9fd957a19f4511842be0ef3ba29136` | ⚠️ doesn't yet exercise hover-states + no mobile companion. Pending Reza review. |
-| TBD | A — Lever picker | v3 | DESKTOP | TBD | Will include explicit hover state on one card per §6.8.1 |
-| TBD | A — Lever picker | v3 | MOBILE | TBD | Per §6.9.2 |
+| 2026-06-04 | A — Lever picker | v1 | DESKTOP | `2093dc0bec5e4656baf06596e0749232` | ❌ wrong vocabulary (Restrained Editorial flat) |
+| 2026-06-04 | A — Lever picker | v2 | DESKTOP | `ed9fd957a19f4511842be0ef3ba29136` | ⚠️ first §18.7.2 attempt, no hover state, no mobile companion |
+| 2026-06-04 | A — Lever picker | v3 | DESKTOP | `9a4fa51d1fee41698e34065d72cb8cb9` | First §6.8.1 hover state explicitly rendered (Card B Salary-sacrifice). Pending Reza review. |
+| 2026-06-04 | A — Lever picker | v3 | MOBILE | `9664c0a2a86d4cd3bc2f3c62e90258b8` | First §6.9.2 landscape composition (single-column stack, ~130px tall per card). Pending Reza review. |
 
 
 ## 7. Composed engines — call graph

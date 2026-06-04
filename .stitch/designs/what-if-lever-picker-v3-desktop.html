@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - What If?</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "on-tertiary-container": "#fdfcff",
+                  "on-secondary-fixed-variant": "#404757",
+                  "secondary-container": "#d9dff4",
+                  "primary-fixed-dim": "#62df7d",
+                  "secondary-fixed-dim": "#c0c6da",
+                  "tertiary-container": "#66768d",
+                  "surface-ivory": "#FAFAF7",
+                  "surface-bright": "#f4fcf0",
+                  "surface-dim": "#F1EFE8",
+                  "trail-sky": "#0EA5E9",
+                  "on-secondary-fixed": "#151b2a",
+                  "trail-emerald": "#16A34A",
+                  "on-primary-fixed-variant": "#005320",
+                  "tertiary-fixed-dim": "#b7c8e1",
+                  "primary": "#006b2c",
+                  "error": "#ba1a1a",
+                  "tertiary": "#4d5d73",
+                  "inverse-primary": "#62df7d",
+                  "outline-variant": "#bdcaba",
+                  "on-secondary-container": "#5c6274",
+                  "trail-amber": "#F59E0B",
+                  "error-red": "#DC2626",
+                  "secondary": "#585e6f",
+                  "on-tertiary-fixed-variant": "#38485d",
+                  "surface-container-lowest": "#ffffff",
+                  "primary-fixed": "#7ffc97",
+                  "surface-tint": "#006e2d",
+                  "on-error-container": "#93000a",
+                  "on-tertiary-fixed": "#0b1c30",
+                  "inverse-on-surface": "#ecf3e7",
+                  "inverse-surface": "#2b322b",
+                  "trail-violet": "#8B5CF6",
+                  "surface-container-highest": "#dde5d9",
+                  "on-primary": "#ffffff",
+                  "on-surface-variant": "#3e4a3d",
+                  "trail-indigo": "#6366F1",
+                  "on-surface": "#171d16",
+                  "tertiary-fixed": "#d3e4fe",
+                  "on-secondary": "#ffffff",
+                  "surface-container": "#e9f0e5",
+                  "surface": "#f4fcf0",
+                  "outline": "#6e7b6c",
+                  "surface-container-low": "#eff6ea",
+                  "outline-slate": "#94A3B8",
+                  "on-primary-container": "#f7fff2",
+                  "on-background": "#171d16",
+                  "error-container": "#ffdad6",
+                  "surface-container-high": "#e3eadf",
+                  "on-primary-fixed": "#002109",
+                  "on-error": "#ffffff",
+                  "background": "#f4fcf0",
+                  "surface-variant": "#dde5d9",
+                  "secondary-fixed": "#dce2f6",
+                  "primary-container": "#00873a",
+                  "on-tertiary": "#ffffff"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "section-gap": "48px",
+                  "gutter": "24px",
+                  "container-max": "1280px",
+                  "margin-mobile": "20px",
+                  "margin-desktop": "48px",
+                  "unit": "4px"
+          },
+          "fontFamily": {
+                  "label-md": ["Inter"],
+                  "headline-sm": ["Inter"],
+                  "headline-lg-mobile": ["Inter"],
+                  "body-sm": ["Inter"],
+                  "display-lg": ["Inter"],
+                  "eyebrow": ["Inter"],
+                  "data-xl": ["Inter"],
+                  "headline-lg": ["Inter"],
+                  "body-lg": ["Inter"],
+                  "body-md": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "data-lg": ["Inter"]
+          },
+          "fontSize": {
+                  "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                  "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                  "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                  "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                  "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                  "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                  "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    body {
+      background-color: #FAFAF7;
+      color: #0B1220;
+    }
+    .lever-card {
+      background-color: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(24px);
+      border-radius: 22px;
+      box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 8px 30px rgba(15,23,42,0.06);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .lever-card::after {
+      content: '';
+      position: absolute;
+      bottom: -10%;
+      right: -10%;
+      font-family: 'Material Symbols Outlined';
+      font-size: 150px;
+      color: currentColor;
+      opacity: 0.03;
+      z-index: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+    .lever-card.amber-rose {
+      border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+    .lever-card.amber-rose::after {
+      content: 'percent';
+    }
+    .lever-card.emerald-indigo {
+      border: 1px solid rgba(22, 163, 74, 0.2);
+    }
+    .lever-card.emerald-indigo::after {
+      content: 'savings';
+    }
+    .lever-card.emerald-indigo:hover {
+      background-color: rgba(255, 255, 255, 0.85);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 6px rgba(15,23,42,0.05), 0 12px 40px rgba(15,23,42,0.08);
+    }
+    .lever-card.emerald-indigo:hover::after {
+      opacity: 0.11;
+    }
+    .lever-card.emerald-indigo:hover .arrow-icon {
+      transform: translateX(2px);
+    }
+    .lever-card.violet-fuchsia {
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    .lever-card.violet-fuchsia::after {
+      content: 'home';
+    }
+    .lever-card.indigo-violet {
+      border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    .lever-card.indigo-violet::after {
+      content: 'trending_down';
+    }
+    .lever-card.sky-cyan {
+      border: 1px solid rgba(14, 165, 233, 0.2);
+    }
+    .lever-card.sky-cyan::after {
+      content: 'domain';
+    }
+    .lever-card.dashed {
+      border: 1px dashed rgba(148, 163, 184, 0.4);
+      background-color: rgba(255, 255, 255, 0.3);
+      box-shadow: none;
+    }
+    .eyebrow-text {
+      text-transform: uppercase;
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      font-weight: 600;
+      color: #64748b;
+    }
+    .gradient-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      color: white;
+    }
+    .bg-gradient-amber-rose { background: linear-gradient(135deg, #F59E0B, #E11D48); }
+    .bg-gradient-emerald-indigo { background: linear-gradient(135deg, #16A34A, #4F46E5); }
+    .bg-gradient-violet-fuchsia { background: linear-gradient(135deg, #8B5CF6, #C026D3); }
+    .bg-gradient-indigo-violet { background: linear-gradient(135deg, #6366F1, #8B5CF6); }
+    .bg-gradient-sky-cyan { background: linear-gradient(135deg, #0EA5E9, #06B6D4); }
+  </style>
+</head>
+<body class="antialiased flex font-body-md text-body-md min-h-screen">
+<!-- SideNavBar -->
+<nav aria-label="Main Navigation" class="docked left-0 h-full w-64 bg-surface-ivory border-r border-outline-variant flat no shadows flex flex-col z-40 fixed inset-y-0 left-0 hidden md:flex">
+<div class="px-6 py-8 flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-on-primary font-bold">M</div>
+<div>
+<div class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</div>
+<div class="text-xs text-on-surface-variant uppercase tracking-widest font-semibold mt-0.5">Wealth OS</div>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-1 overflow-y-auto">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">group</span>
+<span class="font-label-md text-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">account_balance</span>
+<span class="font-label-md text-label-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">account_balance_wallet</span>
+<span class="font-label-md text-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">health_and_safety</span>
+<span class="font-label-md text-label-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">trending_up</span>
+<span class="font-label-md text-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 rounded-r-lg opacity-90 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 1;">map</span>
+<span class="font-label-md text-label-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 rounded-lg hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 0;">analytics</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+</div>
+<div class="p-6 border-t border-outline-variant mt-auto">
+<button class="w-full h-11 bg-surface-container hover:bg-surface-container-high text-on-surface font-label-md text-label-md rounded-lg transition-colors border border-outline-variant">
+        Update Plan
+      </button>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-0 md:left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 flat no shadows border-b border-outline-variant/30 hidden md:flex">
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="h-9 pl-10 pr-4 bg-white border border-outline-variant rounded-full font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-64 transition-all" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="w-10 h-10 rounded-full hover:bg-surface-container flex items-center justify-center transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+</button>
+<button class="w-10 h-10 rounded-full hover:bg-surface-container flex items-center justify-center transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-9 h-9 rounded-full bg-surface-container-highest border border-outline-variant overflow-hidden cursor-pointer">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional headshot of a person, soft lighting, modern corporate style, neutral background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAthNoUxobkg09rBTfZuvaj57aXuO8S1cA5sPFGd93dliS12AUnchE5qKL5IKE_DuOvfIbBrLU4QuvNFHbDZ_6EJPZmPJwWsyRafL7phGl__A1zrfhQsIxW5MMuo3z9dSqouQVsgVaLlXfMDgCdfetL-DeVjqogF46qrUQQ6psQNUTcQba2cV10WVFEghkdWDBxkZ4-a6GhbZNJdq5nE4cnuVSNFDJl0bKpOKL4AXhL9wOSowQ_704GXYJvd1kT9qip4AiHeaPJL2o"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 ml-0 md:ml-64 pt-16 md:pt-24 pb-24 px-6 md:px-12 flex justify-center w-full">
+<div class="w-full max-w-[1200px]">
+<div class="mb-12">
+<h1 class="font-display-lg text-display-lg text-[#0B1220] mb-4">What if?</h1>
+<p class="font-body-lg text-body-lg text-secondary max-w-2xl">
+          Model potential changes to your trajectory. Select a lever below to instantly project its impact across your entire financial ecosystem.
+        </p>
+</div>
+<!-- Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
+<!-- Lever 1: Refinance -->
+<a class="lever-card amber-rose p-6 flex flex-col group cursor-pointer h-[240px] z-10 text-[#F59E0B]" href="#">
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="gradient-badge bg-gradient-amber-rose shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 20px;">percent</span>
+</div>
+<div class="eyebrow-text">Reduce · Debt</div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] mb-3 relative z-10">Refinance a loan</h3>
+<p class="font-body-sm text-body-sm text-secondary relative z-10 flex-1">
+            Drop your rate. See your monthly repayment, lifetime interest, and 10-year net-worth shift.
+          </p>
+<div class="flex justify-end mt-4 text-[#F59E0B] font-label-md text-label-md relative z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="flex items-center gap-1 arrow-icon transition-transform">Open <span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+</div>
+</a>
+<!-- Lever 2: Salary Sacrifice (Hover State simulated via class) -->
+<a class="lever-card emerald-indigo bg-white/85 -translate-y-[2px] shadow-[0_4px_6px_rgba(15,23,42,0.05),0_12px_40px_rgba(15,23,42,0.08)] p-6 flex flex-col cursor-pointer h-[240px] z-10 text-[#16A34A]" href="#">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-emerald-indigo opacity-80"></div>
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="gradient-badge bg-gradient-emerald-indigo shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 20px;">savings</span>
+</div>
+<div class="eyebrow-text">Invest · Super</div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] mb-3 relative z-10">Salary-sacrifice to super</h3>
+<p class="font-body-sm text-body-sm text-secondary relative z-10 flex-1">
+            Boost your retirement fund pre-tax. See the immediate tax savings and compounded long-term impact.
+          </p>
+<div class="flex justify-end mt-4 text-[#16A34A] font-label-md text-label-md relative z-10">
+<span class="flex items-center gap-1 translate-x-[2px]">Open <span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+</div>
+<style>
+             /* Force hover state visuals for demonstration as requested */
+             .emerald-indigo::after { opacity: 0.11 !important; }
+          </style>
+</a>
+<!-- Lever 3: Sell Property -->
+<a class="lever-card violet-fuchsia p-6 flex flex-col group cursor-pointer h-[240px] z-10 text-[#8B5CF6]" href="#">
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="gradient-badge bg-gradient-violet-fuchsia shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 20px;">home</span>
+</div>
+<div class="eyebrow-text">Live · Exit</div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] mb-3 relative z-10">Sell a property</h3>
+<p class="font-body-sm text-body-sm text-secondary relative z-10 flex-1">
+            Model the capital gains, debt clearance, and liquidity release from divesting a real estate asset.
+          </p>
+<div class="flex justify-end mt-4 text-[#8B5CF6] font-label-md text-label-md relative z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="flex items-center gap-1 arrow-icon transition-transform">Open <span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+</div>
+</a>
+<!-- Lever 4: Pay extra off debt -->
+<a class="lever-card indigo-violet p-6 flex flex-col group cursor-pointer h-[240px] z-10 text-[#6366F1]" href="#">
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="gradient-badge bg-gradient-indigo-violet shadow-sm">
+<span class="material-symbols-outlined" style="font-size: 20px;">trending_down</span>
+</div>
+<div class="eyebrow-text">Anchor · Debt Freedom</div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] mb-3 relative z-10">Pay extra off a debt</h3>
+<p class="font-body-sm text-body-sm text-secondary relative z-10 flex-1">
+            Accelerate your payoff date. Calculate interest saved and exact timeline compression.
+          </p>
+<div class="flex justify-end mt-4 text-[#6366F1] font-label-md text-label-md relative z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="flex items-center gap-1 arrow-icon transition-transform">Open <span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+</div>
+</a>
+<!-- Lever 5: Buy investment property -->
+<a class="lever-card sky-cyan p-6 flex flex-col group cursor-pointer h-[240px] z-10 text-[#0EA5E9]" href="#">
+<div class="flex items-center gap-4 mb-4 relative z-10">
+<div class="gradient-badge bg-gradient-sky-cyan shadow-sm relative">
+<span class="material-symbols-outlined" style="font-size: 20px;">domain</span>
+<span class="material-symbols-outlined absolute -top-1 -right-1 text-white text-[12px] font-bold bg-[#0EA5E9] rounded-full" style="font-variation-settings: 'wght' 700;">add</span>
+</div>
+<div class="eyebrow-text">Invest · Property</div>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220] mb-3 relative z-10">Buy an investment property</h3>
+<p class="font-body-sm text-body-sm text-secondary relative z-10 flex-1">
+            Model deposit requirements, rental yield, holding costs, and long-term capital growth potential.
+          </p>
+<div class="flex justify-end mt-4 text-[#0EA5E9] font-label-md text-label-md relative z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+<span class="flex items-center gap-1 arrow-icon transition-transform">Open <span class="material-symbols-outlined text-[16px]">arrow_forward</span></span>
+</div>
+</a>
+<!-- Lever 6: Coming Soon -->
+<div class="lever-card dashed p-6 flex flex-col items-center justify-center text-center h-[240px] z-10">
+<span class="material-symbols-outlined text-outline-slate text-[32px] mb-3 opacity-50">build_circle</span>
+<p class="font-body-md text-body-md text-secondary">
+            More levers coming · we're working on it.
+          </p>
+</div>
+</div>
+<!-- Footer Panel -->
+<div class="bg-white/60 backdrop-blur-xl rounded-[28px] border border-outline-variant/30 p-8 flex gap-6 items-start shadow-sm">
+<div class="text-tertiary mt-1">
+<span class="material-symbols-outlined text-[24px]">info</span>
+</div>
+<div>
+<h4 class="font-label-md text-label-md text-[#0B1220] uppercase tracking-wider mb-2 font-bold">Why no recommendations</h4>
+<p class="font-body-sm text-body-sm text-secondary leading-relaxed max-w-4xl">
+            Monitrax shows what changes. It doesn't tell you what to do. Every lever here is information about your own numbers — never personal advice. Read the <a class="underline decoration-outline-variant underline-offset-2 hover:text-primary transition-colors" href="#">General Advice Warning</a>.
+          </p>
+</div>
+</div>
+</div>
+</main>
+</body></html>
