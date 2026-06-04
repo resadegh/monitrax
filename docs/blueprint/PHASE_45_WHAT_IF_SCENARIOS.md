@@ -333,6 +333,72 @@ Every Phase 45 Stitch generation MUST produce **both** a desktop and a mobile sc
 | 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | `1d4642ec31db4e92a728715d6e55a43c` | First Screen B generation. Exercises §6.4 two-column layout + §6.8.2 chart tooltip rendered visible at year 2031 + §12.14 concessional-cap headroom check. Salary-sacrifice chosen as the showcase lever (continuation from Screen A v3 hover state). Pending Reza review. |
 | 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | `a5d4ba2fae1a4af39bd751568383657b` | First Screen B mobile generation. §6.9.3 RESULT-HERO-ON-TOP IA (chart + headline metric above inputs). Permanently-visible slider thumb tooltip per §6.8.4. Pending Reza review. |
 
+### 6.10 Dark mode (load-bearing, 2026-06-04)
+
+Reza directive 2026-06-04: "we will have a dark version as well right?" — confirmed. Every Phase 45 surface ships **both** a light and a dark variant. This is consistent with every other in-app surface since the Phase R2c editorial chrome fix landed (`app/globals.css` `.dark` block, 2026-05-27).
+
+#### 6.10.1 Token source
+
+The dark-mode tokens for the §18.7.2 vocabulary are documented inline in `CLAUDE.md §18.7.2` (light/dark side-by-side table, updated this PR). Canonical values live in `app/globals.css` under the `.dark { … }` block (lines ~398-426). Phase 45 surfaces do NOT introduce new dark tokens — they consume the existing editorial-* palette.
+
+Summary of the dark-mode flips that matter for Phase 45 specifically:
+
+| Element | Light | Dark |
+|---|---|---|
+| Page surface | warm ivory `#FAFAF7` | deep navy `#050913` |
+| Glass card base (`--card`) | paper `#FFFFFF` | navy-tinted `#0E1424` |
+| Hairline border opacity | 15-25% | 25-35% (entity-tint needs higher opacity on dark to stay visible) |
+| Float shadow | `0 1px 2px rgba(15,23,42,0.04), 0 8px 30px rgba(15,23,42,0.06)` | `0 1px 2px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.04)` (black float + 1px white-rim ambient) |
+| Primary text | navy `#0B1220` | near-white `#FAFAF7` |
+| Muted text | slate-500 `#64748B` | slate-400 `#94A3B8` |
+| Emerald accent | `#16A34A` | `#22C55E` (brighter for AA contrast) |
+| Sky / indigo / violet / amber | standard hex | ~10-15% brighter — see `globals.css` `.dark` block |
+| Per-lever gradient hex stops | same | same (gradients work across modes; rendered hues skew slightly brighter on dark by physics) |
+| Watermark glyph opacity | 6-10% | 10-16% (bg absorbs more tint on dark) |
+| Headline gain pill | `bg-emerald-500/12 text-emerald-700 ring-emerald-500/20` | `bg-emerald-500/14 text-emerald-300 ring-emerald-400/25` |
+| Ghost pill bg | `bg-background/50 backdrop-blur` | `bg-background/40 backdrop-blur` |
+
+#### 6.10.2 Per-lever sub-palette behaviour in dark mode
+
+The §6.2 per-lever gradients keep the same hex stops in dark mode — gradients translate cleanly across modes (the luminosity shift is automatic). The top-accent 3px strip stays at 100% opacity. The faint glyph watermark uses the lever's gradient color directly (not `currentColor`), so it carries the lever identity on both modes.
+
+| Lever | Gradient (both modes) | Light render | Dark render |
+|---|---|---|---|
+| Refinance | amber → rose `#F59E0B → #F43F5E` | warm sunset on ivory | luminous neon on navy |
+| Salary-sacrifice | emerald → indigo `#10B981 → #6366F1` | growth green-to-future-blue on ivory | electric green-to-deep-blue on navy |
+| Sell property | violet → fuchsia `#8B5CF6 → #D946EF` | regal violet on ivory | midnight violet-to-magenta on navy |
+| Pay extra debt | indigo → violet `#6366F1 → #8B5CF6` | calm depth on ivory | deep blue-violet on navy |
+| Buy IP | sky → cyan `#0EA5E9 → #06B6D4` | sky transparency on ivory | aurora cyan on navy |
+
+#### 6.10.3 Iteration discipline
+
+Every Phase 45 surface ships in a 4-variant matrix per the CLAUDE.md §18.7.2 dark-mode reviewer enforcement rule:
+
+| Variant | File | Audit purpose |
+|---|---|---|
+| Desktop light | `.stitch/designs/<name>.{html,png}` | Default in-app view |
+| Desktop dark | `.stitch/designs/<name>-dark.{html,png}` | Dark-mode user |
+| Mobile light | `.stitch/designs/<name>-mobile.{html,png}` | Phone, default theme |
+| Mobile dark | `.stitch/designs/<name>-mobile-dark.{html,png}` | Phone, dark theme |
+
+The §6.6 iteration log gains a `Mode` column. A reviewer who sees only light variants must reject the PR until dark variants ship.
+
+#### 6.10.4 What's already done
+
+- Screen A v3 desktop ✅ (light) — locked
+- Screen A v3 mobile ✅ (light) — locked
+- Screen B v1 desktop (Salary-sacrifice) ✅ (light) — pending review
+- Screen B v1 mobile (Salary-sacrifice) ✅ (light) — pending review
+
+#### 6.10.5 What still needs generation (this PR or next)
+
+- Screen A v3 desktop DARK
+- Screen A v3 mobile DARK
+- Screen B v1 desktop DARK
+- Screen B v1 mobile DARK
+- Screen B variants for the other 4 levers (Refinance / Sell / Pay-debt / Buy-IP) × 4 mode variants each = 16 additional screens to complete the full lever-detail coverage. **Deferred:** Phase 45 PR 2 (UI port) will build the React component once and parameterise by lever — so we don't need separate Stitch designs for every lever. ONE lever-detail design per mode/device (Salary-sacrifice here) is enough for the React port to validate against. The OTHER 4 levers' specifics get verified in code review.
+
+
 
 ## 7. Composed engines — call graph
 
