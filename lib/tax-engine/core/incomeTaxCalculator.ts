@@ -5,6 +5,7 @@
 
 import { TaxYearConfig, TaxBracket, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface IncomeTaxResult {
   taxableIncome: number;
@@ -148,6 +149,129 @@ export function calculateDeductionSavings(
   return {
     savings,
     effectiveRate: deductionAmount > 0 ? (savings / deductionAmount) * 100 : 0,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.1 — Decimal sibling path
+// =============================================================================
+//
+// Composes ATO progressive brackets in Decimal end-to-end. Mirrors the
+// Float `calculateIncomeTax` exactly: same `incomeInBracket = taxableIncome -
+// min + 1` formula, same `Math.max(0, ...)` floor, same bracket-walk.
+//
+// **Intentional rounding preserved.** Float's final step is
+// `Math.max(0, Math.round(tax * 100) / 100)` — round to the cent. The
+// Decimal sibling preserves this AT THE OUTPUT BOUNDARY only (we round
+// `taxPayable` to 2 dp HALF_EVEN), but keeps full precision through
+// the bracket walk. Effective rate and marginal rate stay in Decimal.
+
+export interface IncomeTaxResultDecimal {
+  taxableIncome: Decimal;
+  taxPayable: Decimal;
+  effectiveRate: Decimal;
+  marginalRate: Decimal;
+}
+
+export function calculateIncomeTaxDecimal(
+  taxableIncome: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): IncomeTaxResultDecimal {
+  const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
+
+  if (taxableDec.lte(0)) {
+    return {
+      taxableIncome: new Decimal(0),
+      taxPayable: new Decimal(0),
+      effectiveRate: new Decimal(0),
+      marginalRate: new Decimal(0),
+    };
+  }
+
+  let tax = new Decimal(0);
+  let marginalRate = new Decimal(0);
+  let appliedBracket: TaxBracket | null = null;
+
+  for (const bracket of config.brackets) {
+    const bracketMin = new Decimal(bracket.min);
+    const bracketMax = bracket.max == null ? null : new Decimal(bracket.max);
+
+    if (taxableDec.lte(bracketMin)) break;
+
+    if (bracketMax == null || taxableDec.lte(bracketMax)) {
+      // Matches Float's `taxableIncome - bracket.min + 1`.
+      const incomeInBracket = taxableDec.minus(bracketMin).plus(1);
+      tax = new Decimal(bracket.baseAmount).plus(incomeInBracket.times(bracket.rate));
+      marginalRate = new Decimal(bracket.rate);
+      appliedBracket = bracket;
+      break;
+    }
+  }
+
+  if (!appliedBracket && config.brackets.length > 0) {
+    const lastBracket = config.brackets[config.brackets.length - 1];
+    const incomeInBracket = taxableDec.minus(lastBracket.min).plus(1);
+    tax = new Decimal(lastBracket.baseAmount).plus(incomeInBracket.times(lastBracket.rate));
+    marginalRate = new Decimal(lastBracket.rate);
+  }
+
+  // Mirror Float's `Math.max(0, Math.round(tax * 100) / 100)`.
+  const taxPayable = Decimal.max(
+    new Decimal(0),
+    tax.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
+  );
+  const effectiveRate = taxableDec.gt(0)
+    ? taxPayable.div(taxableDec).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN)
+    : new Decimal(0);
+
+  return {
+    taxableIncome: taxableDec,
+    taxPayable,
+    effectiveRate,
+    marginalRate: marginalRate.times(100),
+  };
+}
+
+/**
+ * Decimal sibling of `calculateMarginalTax`.
+ */
+export function calculateMarginalTaxDecimal(
+  additionalIncome: number | string | Decimal,
+  currentTaxableIncome: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { tax: Decimal; marginalRate: Decimal } {
+  const additionalDec = toDecimal(additionalIncome) ?? new Decimal(0);
+  const currentDec = toDecimal(currentTaxableIncome) ?? new Decimal(0);
+
+  const currentTax = calculateIncomeTaxDecimal(currentDec, config).taxPayable;
+  const newTax = calculateIncomeTaxDecimal(currentDec.plus(additionalDec), config).taxPayable;
+  const tax = newTax.minus(currentTax);
+
+  return {
+    tax,
+    marginalRate: additionalDec.gt(0) ? tax.div(additionalDec).times(100) : new Decimal(0),
+  };
+}
+
+/**
+ * Decimal sibling of `calculateDeductionSavings`.
+ */
+export function calculateDeductionSavingsDecimal(
+  deductionAmount: number | string | Decimal,
+  currentTaxableIncome: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { savings: Decimal; effectiveRate: Decimal } {
+  const deductionDec = toDecimal(deductionAmount) ?? new Decimal(0);
+  const currentDec = toDecimal(currentTaxableIncome) ?? new Decimal(0);
+
+  const currentTax = calculateIncomeTaxDecimal(currentDec, config).taxPayable;
+  const reducedTaxable = Decimal.max(new Decimal(0), currentDec.minus(deductionDec));
+  const newTax = calculateIncomeTaxDecimal(reducedTaxable, config).taxPayable;
+  const savings = currentTax.minus(newTax);
+
+  return {
+    savings,
+    effectiveRate: deductionDec.gt(0) ? savings.div(deductionDec).times(100) : new Decimal(0),
   };
 }
 

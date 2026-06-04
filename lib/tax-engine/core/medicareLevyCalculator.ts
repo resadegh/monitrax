@@ -12,6 +12,7 @@
 
 import { TaxYearConfig, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface MedicareLevyResult {
   medicareLevy: number;
@@ -192,6 +193,116 @@ function calculateMedicareSurcharge(
   }
 
   return { surcharge: 0, explanation: '' };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.1 — Decimal sibling path
+// =============================================================================
+
+export interface MedicareLevyResultDecimal {
+  medicareLevy: Decimal;
+  medicareSurcharge: Decimal;
+  total: Decimal;
+  isShadeIn: boolean;
+  isExempt: boolean;
+}
+
+/**
+ * Decimal-accepting input. Same shape as `MedicareLevyInput` but
+ * `taxableIncome` accepts number/string/Decimal.
+ */
+export interface MedicareLevyInputDecimal {
+  taxableIncome: number | string | Decimal;
+  hasPrivateHealthInsurance?: boolean;
+  hasMedicareExemption?: boolean;
+  familyStatus?: 'SINGLE' | 'FAMILY';
+  dependentChildren?: number;
+  spouseIncome?: number;
+}
+
+function calculateMedicareSurchargeDecimal(
+  input: MedicareLevyInputDecimal,
+  config: TaxYearConfig,
+): { surcharge: Decimal } {
+  const { taxableIncome, hasPrivateHealthInsurance = true } = input;
+  if (hasPrivateHealthInsurance) return { surcharge: new Decimal(0) };
+
+  const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
+  const taxableNumber = taxableDec.toNumber();
+
+  for (const tier of config.medicareSurchargeThresholds) {
+    const max = tier.max ?? Infinity;
+    if (taxableNumber >= tier.min && taxableNumber <= max) {
+      if (tier.rate === 0) return { surcharge: new Decimal(0) };
+      // Mirror Float's `Math.round(surcharge * 100) / 100` rounding.
+      const surcharge = taxableDec.times(tier.rate).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+      return { surcharge };
+    }
+  }
+  return { surcharge: new Decimal(0) };
+}
+
+export function calculateMedicareLevyDecimal(
+  input: MedicareLevyInputDecimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): MedicareLevyResultDecimal {
+  const { hasMedicareExemption = false, familyStatus = 'SINGLE', dependentChildren = 0 } = input;
+  const taxableDec = toDecimal(input.taxableIncome) ?? new Decimal(0);
+
+  if (hasMedicareExemption) {
+    return {
+      medicareLevy: new Decimal(0),
+      medicareSurcharge: new Decimal(0),
+      total: new Decimal(0),
+      isShadeIn: false,
+      isExempt: true,
+    };
+  }
+
+  if (taxableDec.lte(0)) {
+    return {
+      medicareLevy: new Decimal(0),
+      medicareSurcharge: new Decimal(0),
+      total: new Decimal(0),
+      isShadeIn: false,
+      isExempt: false,
+    };
+  }
+
+  // Threshold determination — keep config values as numbers (they're
+  // constants), compute the threshold as a Decimal.
+  const baseThreshold = familyStatus === 'FAMILY'
+    ? config.medicareThresholds.family + dependentChildren * config.medicareThresholds.dependentChildIncrease
+    : config.medicareThresholds.single;
+  const threshold = new Decimal(baseThreshold);
+  const shadeOutThreshold = threshold.times(config.medicareThresholds.shadeOutMultiplier);
+
+  let medicareLevy = new Decimal(0);
+  let isShadeIn = false;
+
+  if (taxableDec.lte(threshold)) {
+    // No levy.
+  } else if (taxableDec.lt(shadeOutThreshold)) {
+    // Shade-in: 10% of excess.
+    medicareLevy = taxableDec.minus(threshold).times('0.10');
+    isShadeIn = true;
+  } else {
+    medicareLevy = taxableDec.times(config.medicareRate);
+  }
+
+  const surchargeResult = calculateMedicareSurchargeDecimal(input, config);
+
+  // Mirror Float's `Math.round(x * 100) / 100` rounding at output.
+  const roundedLevy = medicareLevy.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+  const total = roundedLevy.plus(surchargeResult.surcharge).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+
+  return {
+    medicareLevy: roundedLevy,
+    medicareSurcharge: surchargeResult.surcharge,
+    total,
+    isShadeIn,
+    isExempt: false,
+  };
 }
 
 /**

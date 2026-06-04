@@ -5,6 +5,7 @@
 
 import { TaxYearConfig, TaxOffsets, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface TaxOffsetsResult {
   offsets: TaxOffsets;
@@ -243,6 +244,185 @@ export function calculateAllOffsets(
       total: totalOffsets,
     },
     calculations,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.1 — Decimal sibling path
+// =============================================================================
+
+export interface TaxOffsetsDecimal {
+  lito: Decimal;
+  sapto: Decimal;
+  frankingCredits: Decimal;
+  foreignTax: Decimal;
+  other: Decimal;
+  total: Decimal;
+}
+
+export interface TaxOffsetsResultDecimal {
+  offsets: TaxOffsetsDecimal;
+}
+
+/**
+ * Decimal-accepting input. Same shape as `TaxOffsetsInput` but numeric
+ * fields accept number/string/Decimal.
+ */
+export interface TaxOffsetsInputDecimal {
+  taxableIncome: number | string | Decimal;
+  frankingCredits?: number | string | Decimal;
+  foreignTaxPaid?: number | string | Decimal;
+  isSenior?: boolean;
+  isCouple?: boolean;
+  hasSpouse?: boolean;
+  spouseIncome?: number;
+}
+
+export function calculateLITODecimal(
+  taxableIncome: number | string | Decimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { offset: Decimal } {
+  const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
+  const { lito } = config;
+
+  if (taxableDec.lte(0)) return { offset: new Decimal(0) };
+  if (taxableDec.lte(lito.fullThreshold)) return { offset: new Decimal(lito.maxOffset) };
+  if (taxableDec.gte(lito.cutoffThreshold)) return { offset: new Decimal(0) };
+
+  let reduction = new Decimal(0);
+  if (taxableDec.gt(lito.fullThreshold)) {
+    const tier1Cap = Decimal.min(taxableDec, new Decimal(lito.tier1.threshold));
+    const tier1Income = tier1Cap.minus(lito.fullThreshold);
+    reduction = reduction.plus(tier1Income.times(lito.tier1.withdrawalRate));
+  }
+  if (taxableDec.gt(lito.tier1.threshold)) {
+    const tier2Income = taxableDec.minus(lito.tier1.threshold);
+    reduction = reduction.plus(tier2Income.times(lito.tier2.withdrawalRate));
+  }
+
+  // Mirror Float's `Math.max(0, ...)` floor + `Math.round(offset * 100) / 100`.
+  const offset = Decimal.max(new Decimal(0), new Decimal(lito.maxOffset).minus(reduction))
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+  return { offset };
+}
+
+export function calculateSAPTODecimal(
+  taxableIncome: number | string | Decimal,
+  isSingle: boolean = true,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { offset: Decimal } {
+  const taxableDec = toDecimal(taxableIncome) ?? new Decimal(0);
+  const maxOffset = new Decimal(isSingle ? config.saptoSingle : config.saptoCoupleEach);
+  const shadeOutThreshold = new Decimal(isSingle ? 32279 : 28974);
+  const cutoffThreshold = new Decimal(isSingle ? 50119 : 41790);
+
+  if (taxableDec.lte(shadeOutThreshold)) return { offset: maxOffset };
+  if (taxableDec.gte(cutoffThreshold)) return { offset: new Decimal(0) };
+
+  const excess = taxableDec.minus(shadeOutThreshold);
+  const reduction = excess.times('0.125');
+  const offset = Decimal.max(new Decimal(0), maxOffset.minus(reduction))
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+  return { offset };
+}
+
+export function calculateFrankingCreditOffsetDecimal(
+  frankingCredits: number | string | Decimal,
+): { offset: Decimal } {
+  const fcDec = toDecimal(frankingCredits) ?? new Decimal(0);
+  if (fcDec.lte(0)) return { offset: new Decimal(0) };
+  return { offset: fcDec };
+}
+
+export function calculateForeignTaxOffsetDecimal(
+  foreignTaxPaid: number | string | Decimal,
+  australianTaxOnForeignIncome: number | string | Decimal,
+): { offset: Decimal } {
+  const foreignDec = toDecimal(foreignTaxPaid) ?? new Decimal(0);
+  if (foreignDec.lte(0)) return { offset: new Decimal(0) };
+  const austDec = toDecimal(australianTaxOnForeignIncome) ?? new Decimal(0);
+  return { offset: Decimal.min(foreignDec, austDec) };
+}
+
+export function calculateAllOffsetsDecimal(
+  input: TaxOffsetsInputDecimal,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): TaxOffsetsResultDecimal {
+  const litoResult = calculateLITODecimal(input.taxableIncome, config);
+
+  let saptoOffset = new Decimal(0);
+  if (input.isSenior) {
+    const saptoResult = calculateSAPTODecimal(input.taxableIncome, !input.hasSpouse, config);
+    saptoOffset = saptoResult.offset;
+  }
+
+  const frankingResult = calculateFrankingCreditOffsetDecimal(input.frankingCredits ?? 0);
+
+  let foreignTaxOffset = new Decimal(0);
+  if (input.foreignTaxPaid != null) {
+    const foreignDec = toDecimal(input.foreignTaxPaid);
+    if (foreignDec !== null && foreignDec.gt(0)) {
+      foreignTaxOffset = foreignDec;
+    }
+  }
+
+  const total = litoResult.offset.plus(saptoOffset).plus(frankingResult.offset).plus(foreignTaxOffset);
+
+  return {
+    offsets: {
+      lito: litoResult.offset,
+      sapto: saptoOffset,
+      frankingCredits: frankingResult.offset,
+      foreignTax: foreignTaxOffset,
+      other: new Decimal(0),
+      total,
+    },
+  };
+}
+
+/**
+ * Decimal sibling of `applyOffsets`.
+ * Non-refundable offsets reduce tax to $0; franking credits can refund.
+ */
+export function applyOffsetsDecimal(
+  grossTax: number | string | Decimal,
+  offsets: TaxOffsetsDecimal,
+): {
+  netTax: Decimal;
+  refundableAmount: Decimal;
+  usedOffsets: TaxOffsetsDecimal;
+} {
+  const grossDec = toDecimal(grossTax) ?? new Decimal(0);
+  const zero = new Decimal(0);
+
+  const nonRefundableOffsets = offsets.lito.plus(offsets.sapto).plus(offsets.foreignTax).plus(offsets.other);
+  const nonRefundableUsed = Decimal.min(nonRefundableOffsets, grossDec);
+  const taxAfterNonRefundable = grossDec.minus(nonRefundableUsed);
+  const netTax = taxAfterNonRefundable.minus(offsets.frankingCredits);
+
+  const usedLito = Decimal.min(offsets.lito, grossDec);
+  const usedSapto = Decimal.min(offsets.sapto, Decimal.max(zero, grossDec.minus(offsets.lito)));
+  const usedForeign = Decimal.min(
+    offsets.foreignTax,
+    Decimal.max(zero, grossDec.minus(offsets.lito).minus(offsets.sapto)),
+  );
+  const usedOther = Decimal.min(
+    offsets.other,
+    Decimal.max(zero, grossDec.minus(offsets.lito).minus(offsets.sapto).minus(offsets.foreignTax)),
+  );
+  const usedTotal = usedLito.plus(usedSapto).plus(offsets.frankingCredits).plus(usedForeign).plus(usedOther);
+
+  return {
+    netTax,
+    refundableAmount: netTax.lt(0) ? netTax.abs() : zero,
+    usedOffsets: {
+      lito: usedLito,
+      sapto: usedSapto,
+      frankingCredits: offsets.frankingCredits,
+      foreignTax: usedForeign,
+      other: usedOther,
+      total: usedTotal,
+    },
   };
 }
 

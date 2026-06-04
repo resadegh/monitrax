@@ -11,6 +11,7 @@
 
 import { TaxYearConfig, PAYGScale, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // PAYG Coefficients for 2024-25 (Scale 2 - With Tax Free Threshold)
@@ -235,6 +236,92 @@ export function calculateGrossFromNet(
     gross: Math.round(finalGross * 100) / 100,
     tax: fromWeeklyAmount(finalPayg.weeklyWithholding, frequency),
     iterations,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.1 — Decimal sibling path
+// =============================================================================
+//
+// **Important** — ATO REQUIRES rounding the weekly withholding to the
+// nearest whole dollar (NAT 1004 Schedule 1). That's a regulatory
+// rule, not a Float-precision artefact, so the Decimal sibling
+// preserves it exactly. The fortnightly / monthly / annual amounts
+// are derived from the rounded weekly per the ATO formula, NOT from
+// the full-precision weekly. This means the Decimal path and Float
+// path produce IDENTICAL withholding values — the shadow test should
+// see zero diff on all output fields.
+
+export interface PAYGResultDecimal {
+  weeklyWithholding: Decimal;
+  fortnightlyWithholding: Decimal;
+  monthlyWithholding: Decimal;
+  annualWithholding: Decimal;
+}
+
+/**
+ * Decimal-accepting input. Same shape as `PAYGInput` but `grossIncome`
+ * accepts number/string/Decimal so callers in the Decimal chain don't
+ * have to lose precision at the boundary.
+ */
+export interface PAYGInputDecimal {
+  grossIncome: number | string | Decimal;
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  hasTaxFreeThreshold?: boolean;
+  hasHECSDebt?: boolean;
+}
+
+function toWeeklyAmountDecimal(amount: Decimal, frequency: string): Decimal {
+  switch (frequency) {
+    case 'WEEKLY':
+      return amount;
+    case 'FORTNIGHTLY':
+      return amount.div(2);
+    case 'MONTHLY':
+      return amount.times(12).div(52);
+    case 'QUARTERLY':
+      return amount.times(4).div(52);
+    case 'ANNUALLY':
+      return amount.div(52);
+    default:
+      return amount;
+  }
+}
+
+export function calculatePAYGDecimal(input: PAYGInputDecimal): PAYGResultDecimal {
+  const { grossIncome, frequency, hasTaxFreeThreshold = true } = input;
+  const grossDec = toDecimal(grossIncome) ?? new Decimal(0);
+
+  const weeklyEarnings = toWeeklyAmountDecimal(grossDec, frequency);
+  const weeklyEarningsNumber = weeklyEarnings.toNumber();
+
+  const scale = hasTaxFreeThreshold ? PAYG_SCALE_2_2024_25 : PAYG_SCALE_1_2024_25;
+
+  let weeklyWithholding = new Decimal(0);
+  for (const range of scale) {
+    const max = range.weeklyEarningsMax ?? Infinity;
+    if (weeklyEarningsNumber >= range.weeklyEarningsMin && weeklyEarningsNumber <= max) {
+      // tax = (a × earnings) - b, floored at 0.
+      const raw = weeklyEarnings.times(range.coefficients.a).minus(range.coefficients.b);
+      weeklyWithholding = Decimal.max(new Decimal(0), raw);
+      break;
+    }
+  }
+
+  // ATO REGULATORY: round to nearest whole dollar (NAT 1004).
+  weeklyWithholding = weeklyWithholding.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+
+  // Derived amounts use the ATO formula on the ROUNDED weekly value
+  // (mirrors Float path's `Math.round(weeklyWithholding * 2)`, etc.).
+  const fortnightlyWithholding = weeklyWithholding.times(2).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+  const monthlyWithholding = weeklyWithholding.times(52).div(12).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+  const annualWithholding = weeklyWithholding.times(52);
+
+  return {
+    weeklyWithholding,
+    fortnightlyWithholding,
+    monthlyWithholding,
+    annualWithholding,
   };
 }
 

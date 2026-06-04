@@ -10,6 +10,10 @@ import type { IncomeStream } from './types';
 import { toAnnual, periodsPerYear, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 import { Decimal, toDecimal } from '@/lib/decimal';
+// PR 2.D.1: Decimal core engines used by *Decimal sibling functions.
+import { calculatePAYGDecimal } from '@/lib/tax-engine/core/paygCalculator';
+import { calculateMedicareLevyDecimal } from '@/lib/tax-engine/core/medicareLevyCalculator';
+import { calculateAllOffsetsDecimal } from '@/lib/tax-engine/core/taxOffsets';
 
 export interface IncomeWithTax extends IncomeStream {
   grossMonthlyAmount: number;
@@ -310,23 +314,17 @@ function calculateNetSalaryDecimal(grossMonthlyAmount: Decimal): {
   netMonthly: Decimal;
   paygMonthly: Decimal;
 } {
-  const config = TaxEngine.getCurrentConfig();
+  // PR 2.D.1: inner Float-bridge dropped — Decimal core engines used end-to-end.
   const annualGross = grossMonthlyAmount.times(12);
-  const annualGrossNumber = annualGross.toNumber();
 
-  const paygResult = TaxEngine.calculatePAYG({
-    grossIncome: annualGrossNumber,
+  const paygResult = calculatePAYGDecimal({
+    grossIncome: annualGross,
     frequency: 'ANNUALLY',
     hasTaxFreeThreshold: true,
   });
-  const medicareResult = TaxEngine.calculateMedicareLevy(
-    { taxableIncome: annualGrossNumber },
-    config,
-  );
+  const medicareResult = calculateMedicareLevyDecimal({ taxableIncome: annualGross });
 
-  const annualPAYG = toDecimal(paygResult.annualWithholding) ?? new Decimal(0);
-  const annualMedicare = toDecimal(medicareResult.medicareLevy) ?? new Decimal(0);
-  const annualTax = annualPAYG.plus(annualMedicare);
+  const annualTax = paygResult.annualWithholding.plus(medicareResult.medicareLevy);
   const annualNet = annualGross.minus(annualTax);
 
   return {
@@ -477,28 +475,24 @@ export function calculateTakeHomePayDecimal(
   medicareLevy: Decimal;
   effectiveTaxRate: Decimal;
 } {
+  // PR 2.D.1: inner Float-bridge dropped — Decimal core engines used end-to-end.
   const grossDec = toDecimal(grossAmount) ?? new Decimal(0);
   const annualGross = toAnnualDecimal(grossDec, frequency as Frequency);
-  const annualGrossNumber = annualGross.toNumber();
-  const config = TaxEngine.getCurrentConfig();
 
-  const paygResult = TaxEngine.calculatePAYG({
-    grossIncome: annualGrossNumber,
+  const paygResult = calculatePAYGDecimal({
+    grossIncome: annualGross,
     frequency: 'ANNUALLY',
     hasTaxFreeThreshold: true,
   });
-  const medicareResult = TaxEngine.calculateMedicareLevy(
-    { taxableIncome: annualGrossNumber },
-    config,
-  );
-  const offsetsResult = TaxEngine.calculateAllOffsets(
-    { taxableIncome: annualGrossNumber, frankingCredits: 0 },
-    config,
-  );
+  const medicareResult = calculateMedicareLevyDecimal({ taxableIncome: annualGross });
+  const offsetsResult = calculateAllOffsetsDecimal({
+    taxableIncome: annualGross,
+    frankingCredits: 0,
+  });
 
-  const annualPAYG = toDecimal(paygResult.annualWithholding) ?? new Decimal(0);
-  const annualMedicare = toDecimal(medicareResult.medicareLevy) ?? new Decimal(0);
-  const lito = toDecimal(offsetsResult.offsets.lito) ?? new Decimal(0);
+  const annualPAYG = paygResult.annualWithholding;
+  const annualMedicare = medicareResult.medicareLevy;
+  const lito = offsetsResult.offsets.lito;
 
   const grossTax = annualPAYG.plus(annualMedicare);
   const netTax = Decimal.max(new Decimal(0), grossTax.minus(lito));
