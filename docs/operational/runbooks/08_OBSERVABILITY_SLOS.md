@@ -43,7 +43,7 @@ Measured as **p95 server response time** (Vercel function duration, excludes cli
 
 | Route group | Representative routes | p95 target | p99 target | Notes |
 |---|---|---|---|---|
-| **System / health** | `/api/health` | **300 ms** | 800 ms | Just a `SELECT 1`. Anything slower means DB latency. |
+| **System / health** | `/api/health` | **300 ms** | 800 ms | `SELECT 1`, with a bounded 2-attempt / 150 ms-backoff retry (2026-06-03) so single-probe transients don't false-page A1. A slow *success* still means DB latency; a 503 now means both attempts failed (sustained). |
 | **Auth & session** | `/api/firebase-init`, admin login paths | **500 ms** | 1.2 s | Token verification + a small DB read. |
 | **Core financial read** | `/api/master-snapshot`, `/api/dashboard/*`, `/api/financial-health`, `/api/cashflow`, `/api/budget-analysis`, `/api/safety-net`, `/api/money-flow`, `/api/portfolio/snapshot` | **1.2 s** | 2.5 s | The master snapshot fans out across many tables. This is the route group users *feel* — it's the dashboard. |
 | **Entity & ledger CRUD** | `/api/accounts`, `/api/loans`, `/api/properties`, `/api/investments`, `/api/assets`, `/api/income`, `/api/expenses`, `/api/transactions`, `/api/unified-transactions`, `/api/recurring-payments`, `/api/entities`, `/api/household-*` | **800 ms** | 1.8 s | Mostly single-table reads/writes. |
