@@ -211,6 +211,126 @@ Per `CLAUDE.md §18.4`:
 
 Any future Phase 45 Stitch generation that does not seed §6.1 + §6.2 + §6.5 verbatim must be rejected. The prompt text used in each `mcp__stitch__generate_screen_from_text` call should be quoted in the iteration-log row above so a reviewer can audit prompt-vs-spec alignment.
 
+### 6.8 Interaction patterns — hover, focus, tap (load-bearing, 2026-06-04)
+
+Static mockups don't tell the story alone. The Phase 45 surfaces are **interactive decision-support** — the value is in the live feedback as the user moves a slider or hovers a lever. Every Stitch generation MUST show the hover state (typically rendered as one card in the hover state, others at rest, so reviewers can audit both).
+
+#### 6.8.1 Lever-card hover (Screen A)
+
+When pointer enters a lever card on `/dashboard/cfo/what-if`:
+
+| Element | At rest | On hover |
+|---|---|---|
+| Card surface | `bg-card/70 backdrop-blur-xl` | `bg-card/85` (slightly more opaque — the glass "wakes up") |
+| Card transform | `translateY(0)` | `translateY(-2px)` (subtle Apple-style lift; respects `prefers-reduced-motion`) |
+| Card shadow | `shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)]` | `shadow-[0_2px_4px_rgba(15,23,42,0.06),0_16px_48px_rgba(15,23,42,0.10)]` (deeper layered float) |
+| 3px gradient top-accent strip | `opacity-100` | `opacity-100` + 1px hairline glow extending outward (the lever's identity asserts itself) |
+| Gradient icon badge | static | subtle 1.5° rotation OR a 600ms gradient-sweep animation (one or the other, not both — restraint) |
+| Faint watermark | `opacity-[0.07]` | `opacity-[0.11]` (rises slightly) |
+| "Open →" affordance | gradient-text accent | gradient-text accent + arrow translates `translateX(2px)` |
+| Cursor | `cursor: pointer` on the whole card | — |
+| Hover-preview tooltip | hidden | (optional v2 polish — see §6.8.3) |
+
+Motion timing: `cubic-bezier(0.25, 0.46, 0.45, 0.94)` (`appleEase` from `components/shell/motion.ts`), duration 180-220ms. Respects `prefers-reduced-motion` — translate + scale + rotate fallback to opacity-only.
+
+Focus state (keyboard navigation) mirrors hover + adds a 2px emerald focus ring at the card's outer edge (`focus-visible:ring-2 ring-emerald-500/40 ring-offset-2`). The whole card is the click target — no nested focusable elements except the explicit "Open →" link inside.
+
+#### 6.8.2 Lever-detail interaction (Screen B)
+
+The lever-detail screen has MORE hover surfaces because of the live calculator feedback. Every visible number must have an explanation on hover.
+
+| Element | Hover behaviour |
+|---|---|
+| **Slider thumb** | While dragging: a floating value tooltip above the thumb, `tabular-nums` (e.g. "5.50%"), `rounded-full` pill in the lever's gradient. Released: the tooltip fades. |
+| **Slider track** | Hover anywhere on the track shows a "set to here" ghost thumb in slate at the cursor position. |
+| **"Use snapshot" ghost pill** | Hover: a tooltip showing "Your snapshot: 6.25% as of 2026-06-04". Anchored to the pill, slate background, navy text. |
+| **"Use current market rate" ghost pill** | Hover: a tooltip showing "ABS June 2026 average: 5.85% · refresh weekly". Same tooltip pattern. |
+| **Headline metric (e.g. "Monthly savings: $213")** | Hover: a thin underline appears in the gradient accent + a `(?)` glyph fades in at the trailing edge. Click the `(?)` → expands the assumptions panel. |
+| **10-year trajectory chart — data points** | Hover on any year tick: a tooltip showing `{year}: Net worth $X · vs current path $Y · delta $Z`. Tooltip uses the glass surface (`bg-card/90 backdrop-blur-xl` + 1px hairline border + soft shadow), `rounded-[14px]`. |
+| **10-year trajectory chart — dotted reference line** | Hover: tooltip surfaces "Current path — if you don't change anything." |
+| **Tax-position pill (e.g. "CGT exposure $12,400")** | Hover: expands a small popover showing the underlying calc — "Capital gain $X × 50% discount × marginal rate Y%" — anchored to the pill. Glass surface, same as chart tooltip. |
+| **"How we computed this" header** | Hover: subtle navy underline. Click: chevron rotates + assumptions panel slides open with `springSnap` motion. |
+| **Each assumption row** | Hover: a slate background highlight + an inline pencil icon appears (future: edit-in-place; v1 the pencil opens a modal listing where to change the source value in-app). |
+
+#### 6.8.3 Hover-preview tooltip on lever cards (Screen A, v2 polish — DEFERRED to a follow-up)
+
+Optional richer hover state for the lever cards: after 400ms of sustained hover, surface a small contextual peek of what the user would see on Screen B with their current snapshot. Example for the Refinance card: "Your loans · $543,200 across 2 mortgages · last rate 6.25%". Anchored to the right or below the card.
+
+**Decision (2026-06-04):** v1 ships without this peek. It's a nice-to-have that risks information overload on the picker — the lever's job is to invite a tap, not to show the answer. Re-evaluate after friendlies feedback.
+
+#### 6.8.4 No-hover environments
+
+Touch devices (mobile, tablet) don't fire hover. Equivalent affordances:
+- Lever cards: tap = click-through (no preview peek). Press state = same depressed shadow as the hover state.
+- Sliders: drag is the natural interaction; the value tooltip is permanently visible above the thumb while the thumb is being touched.
+- Chart tooltips: tap-to-pin (Apple Stocks pattern). A second tap or scroll dismisses.
+- Ghost pills: tap shows the tooltip for 3s, then auto-dismisses.
+
+### 6.9 Mobile / tablet layout (load-bearing, 2026-06-04)
+
+Phase 45 ships responsive from day one — the mobile composition is NOT an afterthought. Reza directive 2026-06-04: "consider mobile design as well."
+
+#### 6.9.1 Breakpoints
+
+Inherit the Phase 39 / Wealth Universe mobile breakpoints:
+- **Mobile** — `< 768px` (`md:`) — phone portrait.
+- **Tablet** — `768-1024px` — iPad portrait + small landscape.
+- **Desktop** — `≥ 1024px` (`lg:`) — laptops + above.
+
+#### 6.9.2 Lever picker — Screen A mobile
+
+Container: stays warm ivory `#FAFAF7`. Mobile-shell sidebar already covered by `MobileTabBar` / `EditorialMobileDrawer` chrome at the bottom — Phase 45 content area sits between the topbar and the bottom tab bar.
+
+Layout adjustments at `< md`:
+- **Header**: same eyebrow + headline + explainer. Headline scales from `~38px` → `~28px` (Inter semibold). Max content width = `100%` minus 16-20px gutter.
+- **Lever grid**: collapses to **single column**, full-width cards, vertical stack. Gap `16px`. Total six cards (5 real + 1 placeholder) rendered in this single column.
+- **Each lever card** at mobile:
+  - Same glass surface + 3px gradient top-accent strip + per-lever sub-palette gradient.
+  - Internal layout shifts from "badge-top-row + title + subtitle + watermark" (desktop) to a **horizontal landscape composition** so each card stays compact (~120-140px tall instead of ~280px square):
+    - Gradient icon badge sits **left** (44px square).
+    - To the right: tiny uppercase gradient-text type label → lever title (16-17px) → muted subtitle (12-13px, 2 lines max).
+    - Quiet "Open →" affordance at the bottom-right inside the card.
+    - Watermark **smaller** (~80px instead of 140px) and still bleeding off the right edge — a touch-friendlier proportion at small width.
+  - Press state (no hover): 100ms ease-out depress (`translateY(1px)` + slightly deeper shadow), then full-screen route transition on tap.
+
+- **AFSL footer panel** at mobile: same glass card spanning the content width, but the icon stacks **above** the eyebrow (not beside it) at narrow widths; body text drops to 13px; the "→ Read the warning" link sits below the body, left-aligned.
+
+#### 6.9.3 Lever detail — Screen B mobile
+
+The two-column desktop layout collapses to single-column stack.
+
+Order from top to bottom at `< md`:
+1. **Breadcrumb row** — `← What if?` text button + lever gradient pill.
+2. **Result hero** (was right column on desktop) — headline metric + 10-year trajectory chart. Promoted to the top so the user sees the **outcome first** on a small screen, even before they've tweaked the inputs. The chart is full-width, ~180-220px tall.
+3. **Tax-position delta block** — directly below the chart. Compact pills.
+4. **Inputs card** (was left column on desktop) — entity picker + slider(s) + sensible-default pills, all in one glass card. Slider thumb tooltip is permanently visible above the thumb (no hover-only state on mobile).
+5. **"How we computed this" accordion** — collapsed by default. Tap to expand the assumptions panel.
+6. **AFSL footer** — compact pinned-to-bottom-of-content variant.
+
+Rationale (behaviour-psychology lens): on a phone, the user is more likely to be "exploring" than "configuring." Putting the result hero **first** at mobile gives the user immediate feedback as they tweak a slider below — they don't have to scroll up and down between input and output. Apple Numbers calculator follows this exact pattern on iOS.
+
+#### 6.9.4 Tablet (768-1024px)
+
+In-between: the lever picker collapses from 3-column → **2-column** grid. The lever detail stays two-column at `≥ md` but the columns are narrower; the trajectory chart sits to the right at the same height as the inputs, slider tooltips appear on touch.
+
+#### 6.9.5 Mobile-specific motion + accessibility
+
+- Spring snap on tap (Framer Motion `springSnap` per `components/shell/motion.ts`) for the lever-to-detail route transition.
+- `safe-area-inset-bottom` honoured so the AFSL footer never collides with the system home-bar.
+- All tooltip variants tap-to-pin on touch + tap-elsewhere dismiss.
+- `prefers-reduced-motion`: route transitions degrade to opacity crossfade; slider tooltip stays fixed (no spring overshoot).
+
+#### 6.9.6 Iteration discipline
+
+Every Phase 45 Stitch generation MUST produce **both** a desktop and a mobile screen per surface. The iteration log (§6.6) gains a `Device` column:
+
+| Date | Screen | Version | Device | Stitch screen ID | Notes |
+|---|---|---|---|---|---|
+| 2026-06-04 | A — Lever picker | v1 | DESKTOP | `2093dc0bec5e4656baf06596e0749232` | ❌ wrong vocabulary |
+| 2026-06-04 | A — Lever picker | v2 | DESKTOP | `ed9fd957a19f4511842be0ef3ba29136` | ⚠️ doesn't yet exercise hover-states + no mobile companion. Pending Reza review. |
+| TBD | A — Lever picker | v3 | DESKTOP | TBD | Will include explicit hover state on one card per §6.8.1 |
+| TBD | A — Lever picker | v3 | MOBILE | TBD | Per §6.9.2 |
+
 
 ## 7. Composed engines — call graph
 
