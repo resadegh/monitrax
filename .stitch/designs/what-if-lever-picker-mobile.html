@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax — What if? lever picker v3 MOBILE</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "secondary-container": "#d9dff4",
+                  "inverse-surface": "#2b322b",
+                  "inverse-on-surface": "#ecf3e7",
+                  "surface-dim": "#d5dcd1",
+                  "secondary-fixed-dim": "#c0c6da",
+                  "surface": "#f4fcf0",
+                  "error": "#ba1a1a",
+                  "trail-amber": "#F59E0B",
+                  "trail-sky": "#0EA5E9",
+                  "surface-container-high": "#e3eadf",
+                  "outline-slate": "#94A3B8",
+                  "surface-container-lowest": "#ffffff",
+                  "primary-fixed-dim": "#62df7d",
+                  "on-secondary-fixed": "#151b2a",
+                  "background": "#f4fcf0",
+                  "tertiary-fixed": "#d3e4fe",
+                  "surface-ivory": "#FAFAF7",
+                  "on-primary-fixed-variant": "#005320",
+                  "on-primary": "#ffffff",
+                  "tertiary-container": "#66768d",
+                  "surface-container-highest": "#dde5d9",
+                  "outline": "#6e7b6c",
+                  "on-error": "#ffffff",
+                  "on-tertiary-fixed-variant": "#38485d",
+                  "on-surface": "#171d16",
+                  "primary-fixed": "#7ffc97",
+                  "trail-indigo": "#6366F1",
+                  "on-primary-fixed": "#002109",
+                  "on-primary-container": "#f7fff2",
+                  "on-background": "#171d16",
+                  "secondary-fixed": "#dce2f6",
+                  "on-tertiary-fixed": "#0b1c30",
+                  "surface-bright": "#f4fcf0",
+                  "on-error-container": "#93000a",
+                  "tertiary-fixed-dim": "#b7c8e1",
+                  "surface-container-low": "#eff6ea",
+                  "on-tertiary-container": "#fdfcff",
+                  "primary": "#006b2c",
+                  "tertiary": "#4d5d73",
+                  "error-red": "#DC2626",
+                  "outline-variant": "#bdcaba",
+                  "on-surface-variant": "#3e4a3d",
+                  "secondary": "#585e6f",
+                  "trail-violet": "#8B5CF6",
+                  "inverse-primary": "#62df7d",
+                  "on-secondary-container": "#5c6274",
+                  "error-container": "#ffdad6",
+                  "primary-container": "#00873a",
+                  "on-secondary": "#ffffff",
+                  "on-secondary-fixed-variant": "#404757",
+                  "surface-container": "#e9f0e5",
+                  "trail-emerald": "#16A34A",
+                  "surface-tint": "#006e2d",
+                  "on-tertiary": "#ffffff",
+                  "surface-variant": "#dde5d9"
+          },
+          "borderRadius": {
+                  "DEFAULT": "0.25rem",
+                  "lg": "0.5rem",
+                  "xl": "0.75rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "container-max": "1280px",
+                  "margin-desktop": "48px",
+                  "unit": "4px",
+                  "margin-mobile": "20px",
+                  "gutter": "24px",
+                  "section-gap": "48px"
+          },
+          "fontFamily": {
+                  "body-sm": [
+                          "Inter"
+                  ],
+                  "display-lg": [
+                          "Inter"
+                  ],
+                  "headline-lg": [
+                          "Inter"
+                  ],
+                  "headline-md": [
+                          "Inter"
+                  ],
+                  "data-lg": [
+                          "Inter"
+                  ],
+                  "body-lg": [
+                          "Inter"
+                  ],
+                  "label-md": [
+                          "Inter"
+                  ],
+                  "headline-sm": [
+                          "Inter"
+                  ],
+                  "eyebrow": [
+                          "Inter"
+                  ],
+                  "data-xl": [
+                          "Inter"
+                  ],
+                  "body-md": [
+                          "Inter"
+                  ],
+                  "headline-lg-mobile": [
+                          "Inter"
+                  ]
+          },
+          "fontSize": {
+                  "body-sm": [
+                          "14px",
+                          {
+                                  "lineHeight": "1.6",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "display-lg": [
+                          "48px",
+                          {
+                                  "lineHeight": "1.05",
+                                  "letterSpacing": "-0.03em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "headline-lg": [
+                          "32px",
+                          {
+                                  "lineHeight": "1.05",
+                                  "letterSpacing": "-0.03em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "headline-md": [
+                          "24px",
+                          {
+                                  "lineHeight": "1.05",
+                                  "letterSpacing": "-0.03em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "data-lg": [
+                          "28px",
+                          {
+                                  "lineHeight": "1.0",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "body-lg": [
+                          "18px",
+                          {
+                                  "lineHeight": "1.65",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "label-md": [
+                          "14px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "headline-sm": [
+                          "20px",
+                          {
+                                  "lineHeight": "1.1",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "eyebrow": [
+                          "12px",
+                          {
+                                  "lineHeight": "1.2",
+                                  "letterSpacing": "0.18em",
+                                  "fontWeight": "500"
+                          }
+                  ],
+                  "data-xl": [
+                          "40px",
+                          {
+                                  "lineHeight": "1.0",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "600"
+                          }
+                  ],
+                  "body-md": [
+                          "16px",
+                          {
+                                  "lineHeight": "1.65",
+                                  "letterSpacing": "0",
+                                  "fontWeight": "400"
+                          }
+                  ],
+                  "headline-lg-mobile": [
+                          "28px",
+                          {
+                                  "lineHeight": "1.1",
+                                  "letterSpacing": "-0.02em",
+                                  "fontWeight": "600"
+                          }
+                  ]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory font-body-sm text-on-surface antialiased pb-24">
+<!-- Top Navigation Shell -->
+<header class="flex justify-between items-center w-full px-margin-mobile h-16 bg-surface dark:bg-inverse-surface shadow-sm sticky top-0 z-50">
+<div class="flex items-center gap-4">
+<button class="text-primary dark:text-inverse-primary hover:bg-surface-container-high dark:hover:bg-tertiary-container transition-colors p-2 rounded-full active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined text-[24px]">menu</span>
+</button>
+<h1 class="font-headline-sm text-headline-sm font-bold text-primary dark:text-inverse-primary">Wealth OS</h1>
+</div>
+<div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-outline text-[20px]">person</span>
+</div>
+</div>
+</header>
+<main class="px-margin-mobile pt-8 pb-12">
+<!-- Page Header -->
+<div class="mb-8">
+<p class="font-eyebrow text-eyebrow text-[#0B1220]/60 uppercase tracking-widest mb-2">MY GUIDE · DECISION SUPPORT</p>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile font-semibold text-[#0B1220] mb-3">What if?</h1>
+<p class="font-body-sm text-body-sm text-outline-slate">See how a single move would change your 10-year picture. Pick one lever — Monitrax shows what changes, never what you should do.</p>
+</div>
+<!-- Lever Cards -->
+<div class="flex flex-col gap-4">
+<!-- Card 1: Refinance -->
+<button class="relative w-full text-left bg-white/70 backdrop-blur-xl rounded-[22px] overflow-hidden border border-trail-amber/20 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-amber to-[#F43F5E]"></div>
+<div class="p-4 flex gap-4 h-[130px] items-center relative z-10">
+<div class="w-11 h-11 shrink-0 rounded-[14px] bg-gradient-to-br from-trail-amber to-[#F43F5E] flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0, 'wght' 300;">percent</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<span class="text-[10px] font-semibold tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-trail-amber to-[#F43F5E] mb-1">REDUCE · DEBT</span>
+<h3 class="text-[17px] font-semibold text-[#0B1220] mb-1 leading-tight">Refinance a loan</h3>
+<p class="text-[12px] text-outline-slate leading-tight line-clamp-2">Drop your rate. See your monthly repayment + 10-year shift.</p>
+</div>
+<div class="absolute bottom-4 right-4">
+<span class="text-[12px] font-medium bg-clip-text text-transparent bg-gradient-to-r from-trail-amber to-[#F43F5E]">Open →</span>
+</div>
+</div>
+<span class="material-symbols-outlined absolute right-[-10px] bottom-[-10px] text-[80px] text-trail-amber/5 z-0 select-none pointer-events-none" style="font-variation-settings: 'FILL' 0, 'wght' 300;">percent</span>
+</button>
+<!-- Card 2: Salary Sacrifice -->
+<button class="relative w-full text-left bg-white/70 backdrop-blur-xl rounded-[22px] overflow-hidden border border-trail-emerald/20 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-emerald to-trail-indigo"></div>
+<div class="p-4 flex gap-4 h-[130px] items-center relative z-10">
+<div class="w-11 h-11 shrink-0 rounded-[14px] bg-gradient-to-br from-trail-emerald to-trail-indigo flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0, 'wght' 300;">savings</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<span class="text-[10px] font-semibold tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-trail-emerald to-trail-indigo mb-1">INVEST · SUPER</span>
+<h3 class="text-[17px] font-semibold text-[#0B1220] mb-1 leading-tight">Salary-sacrifice to super</h3>
+<p class="text-[12px] text-outline-slate leading-tight line-clamp-2">Add pre-tax. We check your cap headroom first.</p>
+</div>
+<div class="absolute bottom-4 right-4">
+<span class="text-[12px] font-medium bg-clip-text text-transparent bg-gradient-to-r from-trail-emerald to-trail-indigo">Open →</span>
+</div>
+</div>
+<span class="material-symbols-outlined absolute right-[-10px] bottom-[-10px] text-[80px] text-trail-emerald/5 z-0 select-none pointer-events-none" style="font-variation-settings: 'FILL' 0, 'wght' 300;">savings</span>
+</button>
+<!-- Card 3: Sell Property -->
+<button class="relative w-full text-left bg-white/70 backdrop-blur-xl rounded-[22px] overflow-hidden border border-trail-violet/20 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-violet to-[#D946EF]"></div>
+<div class="p-4 flex gap-4 h-[130px] items-center relative z-10">
+<div class="w-11 h-11 shrink-0 rounded-[14px] bg-gradient-to-br from-trail-violet to-[#D946EF] flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0, 'wght' 300;">home</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<span class="text-[10px] font-semibold tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-trail-violet to-[#D946EF] mb-1">LIVE · EXIT</span>
+<h3 class="text-[17px] font-semibold text-[#0B1220] mb-1 leading-tight">Sell a property</h3>
+<p class="text-[12px] text-outline-slate leading-tight line-clamp-2">CGT exposure, freed equity, lost rental.</p>
+</div>
+<div class="absolute bottom-4 right-4">
+<span class="text-[12px] font-medium bg-clip-text text-transparent bg-gradient-to-r from-trail-violet to-[#D946EF]">Open →</span>
+</div>
+</div>
+<span class="material-symbols-outlined absolute right-[-10px] bottom-[-10px] text-[80px] text-trail-violet/5 z-0 select-none pointer-events-none" style="font-variation-settings: 'FILL' 0, 'wght' 300;">home</span>
+</button>
+<!-- Card 4: Pay Extra Debt -->
+<button class="relative w-full text-left bg-white/70 backdrop-blur-xl rounded-[22px] overflow-hidden border border-trail-indigo/20 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-indigo to-trail-violet"></div>
+<div class="p-4 flex gap-4 h-[130px] items-center relative z-10">
+<div class="w-11 h-11 shrink-0 rounded-[14px] bg-gradient-to-br from-trail-indigo to-trail-violet flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0, 'wght' 300;">trending_down</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<span class="text-[10px] font-semibold tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-trail-indigo to-trail-violet mb-1">ANCHOR · DEBT FREEDOM</span>
+<h3 class="text-[17px] font-semibold text-[#0B1220] mb-1 leading-tight">Pay extra off a debt</h3>
+<p class="text-[12px] text-outline-slate leading-tight line-clamp-2">Add $X above your minimum. See how many years it shaves off.</p>
+</div>
+<div class="absolute bottom-4 right-4">
+<span class="text-[12px] font-medium bg-clip-text text-transparent bg-gradient-to-r from-trail-indigo to-trail-violet">Open →</span>
+</div>
+</div>
+<span class="material-symbols-outlined absolute right-[-10px] bottom-[-10px] text-[80px] text-trail-indigo/5 z-0 select-none pointer-events-none" style="font-variation-settings: 'FILL' 0, 'wght' 300;">trending_down</span>
+</button>
+<!-- Card 5: Buy IP -->
+<button class="relative w-full text-left bg-white/70 backdrop-blur-xl rounded-[22px] overflow-hidden border border-trail-sky/20 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-sky to-[#06B6D4]"></div>
+<div class="p-4 flex gap-4 h-[130px] items-center relative z-10">
+<div class="w-11 h-11 shrink-0 rounded-[14px] bg-gradient-to-br from-trail-sky to-[#06B6D4] flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 0, 'wght' 300;">domain_add</span>
+</div>
+<div class="flex-1 flex flex-col justify-center">
+<span class="text-[10px] font-semibold tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-trail-sky to-[#06B6D4] mb-1">INVEST · PROPERTY</span>
+<h3 class="text-[17px] font-semibold text-[#0B1220] mb-1 leading-tight">Buy an investment property</h3>
+<p class="text-[12px] text-outline-slate leading-tight line-clamp-2">Model a new IP. Year-1 cashflow drag + 10-year wealth effect.</p>
+</div>
+<div class="absolute bottom-4 right-4">
+<span class="text-[12px] font-medium bg-clip-text text-transparent bg-gradient-to-r from-trail-sky to-[#06B6D4]">Open →</span>
+</div>
+</div>
+<span class="material-symbols-outlined absolute right-[-10px] bottom-[-10px] text-[80px] text-trail-sky/5 z-0 select-none pointer-events-none" style="font-variation-settings: 'FILL' 0, 'wght' 300;">domain</span>
+</button>
+<!-- Card 6: Coming Soon -->
+<div class="relative w-full text-center bg-white/40 backdrop-blur-sm rounded-[22px] border border-dashed border-outline-variant p-6 flex flex-col items-center justify-center h-[130px]">
+<p class="font-body-sm text-body-sm text-outline-slate">More levers coming · we're working on it.</p>
+</div>
+</div>
+<!-- AFSL Footer -->
+<div class="mt-8 bg-white/70 backdrop-blur-xl rounded-[28px] border border-outline-variant/30 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] p-6 text-center">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center mx-auto mb-3">
+<span class="material-symbols-outlined text-outline-slate text-[16px]">info</span>
+</div>
+<p class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest mb-2">WHY NO RECOMMENDATIONS</p>
+<h4 class="font-body-md text-body-md font-semibold text-[#0B1220] mb-2 leading-tight">Monitrax shows what changes. It doesn't tell you what to do.</h4>
+<p class="font-body-sm text-body-sm text-outline-slate mb-4">Every lever here is information about your own numbers — never personal advice. That's a job for a licensed financial adviser. Read the General Advice Warning.</p>
+<a class="inline-block font-label-md text-label-md text-outline-slate hover:text-[#0B1220] transition-colors" href="#">→ Read the warning</a>
+</div>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface dark:bg-inverse-surface shadow-[0_-4px_12px_rgba(11,18,32,0.04)] rounded-t-xl pb-safe">
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all p-2" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">dashboard</span>
+<span class="font-label-md text-label-md text-[10px]">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all p-2" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">domain</span>
+<span class="font-label-md text-label-md text-[10px]">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary dark:text-primary-fixed-dim font-medium hover:text-primary transition-all p-2" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]" style="font-variation-settings: 'FILL' 1;">query_stats</span>
+<span class="font-label-md text-label-md text-[10px]">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container dark:text-outline-slate opacity-70 hover:text-primary transition-all p-2" href="#">
+<span class="material-symbols-outlined mb-1 text-[24px]">person</span>
+<span class="font-label-md text-label-md text-[10px]">Profile</span>
+</a>
+</nav>
+</body></html>

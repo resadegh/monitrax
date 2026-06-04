@@ -328,8 +328,10 @@ Every Phase 45 Stitch generation MUST produce **both** a desktop and a mobile sc
 |---|---|---|---|---|---|
 | 2026-06-04 | A — Lever picker | v1 | DESKTOP | `2093dc0bec5e4656baf06596e0749232` | ❌ wrong vocabulary (Restrained Editorial flat) |
 | 2026-06-04 | A — Lever picker | v2 | DESKTOP | `ed9fd957a19f4511842be0ef3ba29136` | ⚠️ first §18.7.2 attempt, no hover state, no mobile companion |
-| 2026-06-04 | A — Lever picker | v3 | DESKTOP | `9a4fa51d1fee41698e34065d72cb8cb9` | First §6.8.1 hover state explicitly rendered (Card B Salary-sacrifice). Pending Reza review. |
-| 2026-06-04 | A — Lever picker | v3 | MOBILE | `9664c0a2a86d4cd3bc2f3c62e90258b8` | First §6.9.2 landscape composition (single-column stack, ~130px tall per card). Pending Reza review. |
+| 2026-06-04 | A — Lever picker | v3 | DESKTOP | `9a4fa51d1fee41698e34065d72cb8cb9` | ✅ APPROVED 2026-06-04 (Reza: "looks good, ship it"). Copied to canonical `.stitch/designs/what-if-lever-picker.{html,png}`. |
+| 2026-06-04 | A — Lever picker | v3 | MOBILE | `9664c0a2a86d4cd3bc2f3c62e90258b8` | ✅ APPROVED 2026-06-04. Copied to canonical `.stitch/designs/what-if-lever-picker-mobile.{html,png}`. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | DESKTOP | `1d4642ec31db4e92a728715d6e55a43c` | First Screen B generation. Exercises §6.4 two-column layout + §6.8.2 chart tooltip rendered visible at year 2031 + §12.14 concessional-cap headroom check. Salary-sacrifice chosen as the showcase lever (continuation from Screen A v3 hover state). Pending Reza review. |
+| 2026-06-04 | B — Lever detail (Salary-sacrifice) | v1 | MOBILE | `a5d4ba2fae1a4af39bd751568383657b` | First Screen B mobile generation. §6.9.3 RESULT-HERO-ON-TOP IA (chart + headline metric above inputs). Permanently-visible slider thumb tooltip per §6.8.4. Pending Reza review. |
 
 
 ## 7. Composed engines — call graph
