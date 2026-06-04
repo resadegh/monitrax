@@ -99,6 +99,20 @@ export async function runShadowComparison<TInput, TOutputFloat, TOutputDecimal>(
         failedFields.push(`${path} — missing on Decimal path`);
         continue;
       }
+      // Skip non-numeric leaves (strings, booleans, Date instances, etc.).
+      // These fields aren't part of the money-precision contract — they're
+      // metadata that spreads through engine results (e.g. IncomeStream's
+      // id/name/userId on `normalizeAllIncome`'s output). A type mismatch
+      // BETWEEN paths is still a real failure, so we surface that.
+      const floatIsNumeric = isNumericLeaf(floatValue);
+      const decimalIsNumeric = isNumericLeaf(decimalValue);
+      if (!floatIsNumeric && !decimalIsNumeric) continue;
+      if (floatIsNumeric !== decimalIsNumeric) {
+        failedFields.push(
+          `${path} — type mismatch: float=${typeof floatValue}, decimal=${typeof decimalValue}`,
+        );
+        continue;
+      }
       const policy = fieldPolicy[path] ?? 'currency';
       const diff = decimalDiff(
         toNumber(floatValue),
@@ -207,6 +221,19 @@ function toNumber(value: unknown): number {
   if (value instanceof Decimal) return value.toNumber();
   if (typeof value === 'string') return Number(value);
   return 0;
+}
+
+/**
+ * Decide whether a leaf is in the money-precision comparison scope.
+ * Numbers, Decimals, and null/undefined are in scope (the latter as 0
+ * per the Float-engine convention). Strings, booleans, Date instances,
+ * and other types are metadata — skipped.
+ */
+function isNumericLeaf(value: unknown): boolean {
+  if (value === null || value === undefined) return true;
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (value instanceof Decimal) return true;
+  return false;
 }
 
 /**
