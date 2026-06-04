@@ -92,14 +92,19 @@ Reza decision 2026-06-01: Phase 45 v1 ships AFTER Q-DEC (Float→Decimal) lands.
 
 Sequencing:
 1. ✅ **Q-DEC PR 1 — additive Decimal schema (core 10 models) — MERGED PR #974 (2026-06-03)** — ~45 columns on Property/Loan/Account/Income/Expense/InvestmentAccount/InvestmentHolding/PurchaseLot/SuperannuationAccount/Asset.
-2. 🟡 **Q-DEC PR 1.5 — supplementary Decimal columns (7 models, this PR's follow-up) — IN FLIGHT** — ~23 columns on Transaction/InvestmentTransaction/CapitalGainEvent/CapitalGainLotAllocation/RecurringPayment/SmsfAnnualReturn/SuperContribution. Phase 41E models already Decimal; TaxPosition cache deferred.
-3. Q-DEC PR 2 — engine adapter layer
-4. **Phase 45 Stitch design pass begins HERE in parallel with Q-DEC PR 3** (so Reza can iterate the UI design while engine cutover proceeds)
-5. Q-DEC PR 3 — engine-by-engine cutover
-6. Q-DEC PR 4 — Float drop (after 7-day parallel-run)
-6. Phase 45 PR 1 — engine composition (salary-sacrifice scenario + `tenYearProjection.ts`)
-7. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens)
-8. Phase 45.1 — contextual entry points (separate PR)
+2. ✅ **Q-DEC PR 1.5 — supplementary Decimal columns — MERGED PR #975 (2026-06-03)** — ~23 columns on Transaction/InvestmentTransaction/CapitalGainEvent/CapitalGainLotAllocation/RecurringPayment/SmsfAnnualReturn/SuperContribution. Phase 41E models already Decimal; TaxPosition cache deferred. Every Float money column now has a Decimal sibling.
+3. ✅ **Phase 45 Stitch design pass — MERGED PR #977 (2026-06-04)** — ran in parallel with Q-DEC PR 1.5; locked the 8 canonical artefacts + §4.1 hardening queue for PR 1.
+4. ⏳ **Q-DEC PR 2 — engine adapter layer (NEXT)** — Reza decision 2026-06-04: **split by directory** for review tractability + smaller blast-radius per merge. Engines return BOTH Float and Decimal during PR 2 (back-compat); PR 3 swaps the primary; PR 4 drops Float. Five sub-PRs:
+   - **PR 2.A — foundation + `netWorthCalculator` proof** (`lib/decimal/` + shadow-comparison harness extending Phase 41I + the proof engine)
+   - **PR 2.B — rest of `lib/calculations/*`**
+   - **PR 2.C — `lib/cashflow/*`**
+   - **PR 2.D — `lib/tax-engine/*`** (most complex; salary-sacrifice depends on this)
+   - **PR 2.E — `lib/cfo/*`**
+5. Q-DEC PR 3 — engine-by-engine cutover (route handlers consume Decimal; components format via `formatCurrency()`).
+6. Q-DEC PR 4 — Float drop (after 7-day parallel-run shows zero diff; §12.11 destructive-write checklist mandatory).
+7. Phase 45 PR 1 — engine composition (salary-sacrifice scenario + `tenYearProjection.ts` + §4.1 H1/H2/H3 hardening items).
+8. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens).
+9. Phase 45.1 — contextual entry points (separate PR).
 
 ## 6. Stitch design pass (CLAUDE.md §18) — §18.7.2 glass vocabulary applied to Phase 45
 

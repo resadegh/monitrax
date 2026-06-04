@@ -89,3 +89,79 @@ Operations in this PR that touch existing rows: NONE — design-only PR. No Pris
 
 - Phase 45 PR 1 (engine composition) — `salarySacrificeToSuper.ts` + `tenYearProjection.ts`. Gated on Q-DEC PR 2-4 landing first.
 - Phase 45 PR 2 (React port) — render the approved Stitch designs with cosmos-* token pin to `app/globals.css` `.dark` block.
+
+---
+
+## Session: qdec-pr2-adapter-layer-LIlK9 (continuation after PR #977 merge)
+
+### Changes Made
+
+- **Type**: Feature / Foundation
+- **Scope**: Q-DEC PR 2.A — Decimal precision foundation + `netWorthCalculator` shadow proof
+- **Description**: First sub-PR of Q-DEC PR 2 per the Reza 2026-06-04 split decision (sub-PRs by directory; netWorthCalculator as the proof engine). Introduces the `lib/decimal/` module (pure conversion + diff + tolerance utilities), extends the Phase 41I calc-audit harness with `runShadowComparison` (parallel-run Float vs Decimal comparator), and adds `*Decimal` sibling functions to `netWorthCalculator.ts` that compose `Prisma.Decimal` end-to-end. ZERO existing engine changes — every Float function stays live for back-compat. PR 2.B-E will replicate the pattern across `lib/calculations/*`, `lib/cashflow/*`, `lib/tax-engine/*`, `lib/cfo/*`. PR 3 will swap route handlers + components to the Decimal path. PR 4 will drop the Float DB columns.
+
+### Architectural rules (CLAUDE.md §0 architect lens + §12.2 SSOT)
+
+- The ONLY entry to Decimal-land is `toDecimal` / `toDecimalRequired`.
+- The ONLY exit is `fromDecimal`.
+- Mid-computation MUST stay in Decimal. Rounding only happens at the OUTPUT boundary, policy-driven (currency 2 dp HALF_EVEN, rates 4 dp, units 4 dp, percentages 4 dp).
+- Engines compose via `sumDecimal`, `.plus`, `.minus`, `.times`, `.div` — never via `+`, `-`, `*`, `/` (which silently coerce to Float).
+- `toDecimal(number)` routes through `String()` to defuse the IEEE-754 carry-in (e.g. `0.1 + 0.2 = 0.30000000000000004` would otherwise carry the Float error into Decimal land). Test `tests/decimal/convert.test.ts` documents the trap.
+
+### Files Created
+
+- `lib/decimal/types.ts` — `Decimal`, `MoneyValue`, `RoundingPolicy`, `DecimalDiff`, `ShadowComparisonResult`, `ShadowComparisonReport`
+- `lib/decimal/convert.ts` — `toDecimal`, `toDecimalRequired`, `fromDecimal`, `sumDecimal`, `decimalDiff`, `isCloseEnough`, `getPolicyTolerance`
+- `lib/decimal/index.ts` — public surface barrel
+- `lib/calc-audit/shadowComparison.ts` — `runShadowComparison`, `runShadowComparisonReport`, `ShadowEngine<TIn, TFloat, TDec>` type
+- `lib/calc-audit/engines/decimal-netWorth.ts` — net-worth shadow engine with 4 fixtures (empty / single-home / mass-affluent persona / IEEE-754 trap)
+- `tests/decimal/convert.test.ts` — 22 tests including the IEEE-754 trap defence
+- `tests/calc-audit/shadowComparison.test.ts` — 6 tests covering PASS / DIFF / ERROR / flattened nested outputs / aggregation
+- `tests/calculations/netWorthCalculator.decimal.test.ts` — 8 tests; per-fixture shadow run + exactness proof on the IEEE-754 fixture + Phase 39.5 + Phase 41e.0 contract checks
+
+### Files Modified
+
+- `lib/calculations/netWorthCalculator.ts` — added `calculateTotalAssetsDecimal`, `calculateTotalLiabilitiesDecimal`, `calculateNetWorthDecimal` with their result types. Existing Float exports untouched.
+- `docs/IMPLEMENTATION_PLAN.md` — workstream `0·WI` Q-DEC PR 2 row expanded with the 5-sub-PR split + the PR 2.A scope.
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5 — sequencing list updated with the PR 2.A-E split + PR 1.5 ✅ + PR #977 ✅.
+
+### Testing
+
+- [x] All 36 new tests pass (`tests/decimal/`, `tests/calc-audit/shadowComparison.test.ts`, `tests/calculations/netWorthCalculator.decimal.test.ts`)
+- [x] All 182 existing calc-audit tests still pass — no regression
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 4 fixtures (including the mass-affluent persona + IEEE-754 trap)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Q-DEC PR 2 split locked in IMPLEMENTATION_PLAN; PR 2.A scope landed)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Phase row — PR 2 expanded into 5 sub-PRs with the PR 2.A scope detailed
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5 — sequencing list updated
+- `docs/changelog/CHANGELOG_2026_06_04.md` — this session entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions/tools added or modified in this PR: `calculateTotalAssetsDecimal`, `calculateTotalLiabilitiesDecimal`, `calculateNetWorthDecimal` — outcome (a) reform-agnostic by design (the input shapes don't carry regime-relevant fields; net-worth math is the same pre- vs post-reform).
+- [x] No `lib/tax-engine/*` modified.
+- [x] No schema columns added to `Property` / `Investment` / `LegalEntity`.
+- [x] No new AI tool added.
+- [x] No UI surface added.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows: NONE — additive code only. No Prisma writes. No schema changes.
+
+### Next
+
+- PR 2.B — rest of `lib/calculations/*`: `cashflowOrchestrator`, `expenseAggregator`, `incomeAggregator`, `loanAggregator`, `entityValueBreakdown`, `moneyStoryTrend`, `netWorthHistory`.
+- Branch: `claude/qdec-pr2-adapter-layer-LIlK9` (PR 2.A); new branch for 2.B.
