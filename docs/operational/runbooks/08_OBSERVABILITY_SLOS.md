@@ -79,7 +79,7 @@ Create these in **Monitoring → Alerting → Create Policy**, project `monitrax
 
 | ID | Name | Condition | Severity | Notify | Runbook |
 |---|---|---|---|---|---|
-| **A1** | App down — health check | Uptime check on `https://monitrax.com.au/api/health` fails 2 consecutive times (≥ 1 min interval) | **Critical** (P0) | PagerDuty/SMS + Email + Slack `#ops` | `runbooks/01_INCIDENT_RESPONSE.md` Scenario 1 (DB unreachable) + IRP §10 |
+| **A1** | App down — health check | Uptime check on `https://www.monitrax.com.au/api/health` (the **`www` canonical host** — the apex 308-redirects and breaks the `"healthy"` content match; see `runbooks/03_HEALTH_CHECKS.md`) fails 3 consecutive times (≥ 1 min interval) | **Critical** (P0) | PagerDuty/SMS + Email + Slack `#ops` | `runbooks/01_INCIDENT_RESPONSE.md` Scenario 1 (DB unreachable) + IRP §10 |
 | **A2** | App slow — health check latency | `/api/health` uptime-check request latency > 1.5 s for 5 min | Warning (P2) | Email + Slack `#ops` | `database/03_MONITORING_AND_ALERTS.md` (DB latency playbook) |
 | **A3** | Core dashboard slow | Synthetic canary against `/api/master-snapshot` (authenticated) p95 > 2.5 s for 10 min | Warning (P2) | Email + Slack `#ops` | `database/03_MONITORING_AND_ALERTS.md` (slow-query checks) + check for an N+1 introduced by a recent deploy |
 | **A4** | Elevated 5xx — any route group | 5xx rate > 2% of requests for 5 min (per route group; from a Vercel log drain → log-based metric, *or* from Vercel's own alerting until the drain exists) | **High** (P1) | Email + Slack `#ops` | `runbooks/01_INCIDENT_RESPONSE.md` Scenario 3 (API 500s) — first check: was there a deploy in the last hour? If yes, roll it back. |
