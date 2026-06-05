@@ -434,5 +434,59 @@ NONE — additive code only.
 
 ### Next
 
-- PR 2.D.2b — `income/` + `position/` + `orchestrator/` (the consumer side that composes core + super into a tax position).
-- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/, super/smsfIncomeTax).
+- PR 2.D.2b — `income/taxabilityRules` + `position/taxPositionCalculator` (consumer composer).
+- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/, super/smsfIncomeTax, income/salaryProcessor, orchestrator/masterTaxPosition).
+
+---
+
+## Session: qdec-pr2d2b-tax-income-position-orch-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — tax-position composer Decimal sibling
+- **Scope**: Q-DEC PR 2.D.2b — `lib/tax-engine/income/taxabilityRules.ts` + `lib/tax-engine/position/taxPositionCalculator.ts` Decimal siblings
+- **Description**: Composes Decimal core (PR 2.D.1) + Decimal taxability rules end-to-end into a full tax-position calculator. The salary-sacrifice scenario's "after-sacrifice" tax position is one of the consumers — Phase 45 PR 1 calls `calculateTaxPositionDecimal` with the modified income breakdown.
+- **Scope refinement:** `income/salaryProcessor` (uses iterative `calculateGrossFromNet` binary search; 359 lines) and `orchestrator/masterTaxPosition` (depends on D.3 engines: entity router, divisions, landTax, stampDuty, gst, boundaries) deferred to a follow-up PR alongside D.3 dependencies.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/income/taxabilityRules.ts` — `calculateFrankingCreditsDecimal`, `determineTaxabilityDecimal` + `IncomeContextDecimal`, `TaxabilityResultDecimal` types. Float `determineTaxability` is called inline (with `amountDec.toNumber()`) to inherit the classification + explanation strings; numeric fields re-computed in Decimal.
+- `lib/tax-engine/position/taxPositionCalculator.ts` — `calculateTaxPositionDecimal`, `calculateQuickTaxPositionDecimal` + the supporting `IncomeBreakdownDecimal`, `DeductionBreakdownDecimal`, `TaxCalculationDecimal`, `TaxPositionResultDecimal` types. Imports the Decimal siblings from PR 2.D.1 core (`calculateIncomeTaxDecimal`, `calculateMedicareLevyDecimal`, `calculateAllOffsetsDecimal`, `applyOffsetsDecimal`) and PR 2.D.2b taxability (`determineTaxabilityDecimal`).
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.D.2b row flipped to `[~] IN FLIGHT` with scope refinement documented.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-income-position.ts` — 2 shadow engines (`frankingCreditsShadow` × 5 fixtures, `quickTaxPositionShadow` × 7 fixtures)
+- `tests/tax-engine/income-position.decimal.test.ts` — 30 tests (12 shadow + 8 taxability contract + 5 full-position contract + 2 quick-position contract + 3 frankingCredits exactness)
+
+### Architectural notes
+
+- **`calculateTaxPositionDecimal` is the salary-sacrifice composer.** PR 1's scenario engine calls this with the modified income breakdown (gross − sacrifice). Returns the same shape as Float (income breakdown, deductions, tax, paygWithheld, estimatedRefund, superContributions including Div 293) — all as Decimal.
+- **Float-Decimal interop preserved.** `determineTaxabilityDecimal` calls Float `determineTaxability` ONCE (with `amountDec.toNumber()`) to inherit the classification + explanation + references; numeric fields are then re-computed in Decimal so precision survives. This is a defensible bridge — the classification rules are categorical, not arithmetic.
+- **Output rounding preserved.** `paygWithheld` and `estimatedRefund` round to whole dollars (Float `Math.round`); `effectiveRate` rounds to 2 dp HALF_EVEN; `quickTaxPosition.taxPayable`/`medicareLevy`/`netTax` round to whole dollars. All mirrored via `Decimal.toDecimalPlaces(0/2, ROUND_HALF_EVEN)`.
+
+### Testing
+
+- [x] 30 new tests pass
+- [x] 1067 existing Q-DEC scope tests still pass (1097 total in the calc-audit + decimal + tax-engine + cashflow + calculations + utils suites)
+- [x] `tsc --noEmit` clean on every new/touched file (one round of type tightening to handle `IncomeContextDecimal.frequency: string | undefined` → Float `IncomeContext.frequency: string` via `?? 'ANNUALLY'`)
+- [x] Shadow report PASS on all 12 fixtures across 2 engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.2b scope refined: `salaryProcessor` + `masterTaxPosition` deferred to a follow-up alongside D.3 deps)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Functions added are reform-agnostic by design (taxability classification is regime-independent; tax position composer uses the same brackets/Medicare/offsets PR 2.D.1 already established as FW-1 outcome (a))
+- [x] No `lib/tax-engine/divisions/*` modified
+- [x] No schema columns added. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/, super/smsfIncomeTax, income/salaryProcessor, orchestrator/masterTaxPosition).
