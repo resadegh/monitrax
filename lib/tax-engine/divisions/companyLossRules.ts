@@ -33,6 +33,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type CompanyLossTestOutcome = 'PASS' | 'FAIL' | 'NOT_ASSERTED';
 
@@ -172,4 +173,100 @@ export function applyCompanyLossRules(
     citations,
     uncomputed,
   };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c — Decimal sibling path
+// =============================================================================
+
+export interface CompanyLossInputDecimal {
+  priorYearLossAmount: number | string | Decimal;
+  cotOutcome: CompanyLossTestOutcome;
+  bctOutcome?: CompanyLossTestOutcome;
+  bctTestType?: 'SBT' | 'SIMILAR';
+}
+
+export interface CompanyLossResultDecimal {
+  outcome: CompanyLossOutcome;
+  deductibleLossAmount: Decimal;
+  testReport: CompanyLossResult['testReport'];
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyCompanyLossRules`. No arithmetic — the test
+ * outcome decides whether the prior-year loss passes through as
+ * `deductibleLossAmount = priorYearLossAmount` or is zeroed. Decimal
+ * preserves precision on the loss amount through the categorical
+ * dispatch.
+ */
+export function applyCompanyLossRulesDecimal(
+  input: CompanyLossInputDecimal,
+): CompanyLossResultDecimal {
+  const { cotOutcome, bctOutcome, bctTestType } = input;
+  const priorYearLossAmount = toDecimal(input.priorYearLossAmount) ?? new Decimal(0);
+
+  const citations: AuthorityCitation[] = [
+    { kind: 'ITAA_1997', reference: 'Div 165 ITAA 1997', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 's165-10 (deduction of prior losses)', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 's165-12 (Continuity of Ownership Test)', lastReviewed: '2026-05-05' },
+  ];
+  const uncomputed: UncomputedFlag[] = [];
+  const testReport: CompanyLossResult['testReport'] = [
+    { testName: 'Continuity of Ownership Test', outcome: cotOutcome, citation: 's165-12 ITAA 1997' },
+  ];
+
+  let outcome: CompanyLossOutcome;
+  let deductibleLossAmount = new Decimal(0);
+
+  if (cotOutcome === 'PASS') {
+    outcome = 'LOSSES_DEDUCTIBLE_VIA_COT';
+    deductibleLossAmount = priorYearLossAmount;
+  } else if (cotOutcome === 'NOT_ASSERTED') {
+    outcome = 'INCONCLUSIVE';
+    uncomputed.push({
+      id: 'UC-COMPANY-LOSS-COT-NOT-ASSERTED',
+      rationale:
+        'Continuity of Ownership Test (s165-12) outcome NOT_ASSERTED. v1 does not compute COT from share register history — caller must assert based on >50% maintained voting / dividend / capital rights throughout the test period. Engage a registered tax agent.',
+    });
+  } else {
+    if (bctOutcome === 'PASS') {
+      const bctCitation = bctTestType === 'SIMILAR' ? 's165-211 ITAA 1997' : 's165-210 ITAA 1997';
+      const bctName = bctTestType === 'SIMILAR' ? 'Similar Business Test' : 'Same Business Test';
+      testReport.push({ testName: bctName, outcome: 'PASS', citation: bctCitation });
+      citations.push({ kind: 'ITAA_1997', reference: bctCitation, lastReviewed: '2026-05-05' });
+      outcome = 'LOSSES_DEDUCTIBLE_VIA_BCT';
+      deductibleLossAmount = priorYearLossAmount;
+      uncomputed.push({
+        id: 'UC-COMPANY-LOSS-BCT-FACTUAL',
+        rationale: `${bctName} outcome asserted PASS. v1 does not verify SBT/Similar Business Test from business activity records — these tests turn on factual evidence (assets used, business identity, transactions entered before/after test time). Outcome is caller-asserted.`,
+      });
+    } else if (bctOutcome === 'FAIL' || bctOutcome === undefined) {
+      testReport.push({
+        testName: bctTestType === 'SIMILAR' ? 'Similar Business Test' : 'Same Business Test',
+        outcome: bctOutcome ?? 'NOT_ASSERTED',
+        citation: bctTestType === 'SIMILAR' ? 's165-211 ITAA 1997' : 's165-210 ITAA 1997',
+      });
+      outcome = 'LOSSES_DENIED';
+      uncomputed.push({
+        id: 'UC-COMPANY-LOSS-DENIED',
+        rationale: `Continuity of Ownership Test failed AND no Business Continuity Test asserted/passed. Prior-year losses of $${priorYearLossAmount.toDecimalPlaces(0).toString()} are quarantined under Div 165. Engage a registered tax agent — losses may still be utilised in future years if the company's circumstances change.`,
+      });
+    } else {
+      testReport.push({
+        testName: bctTestType === 'SIMILAR' ? 'Similar Business Test' : 'Same Business Test',
+        outcome: 'NOT_ASSERTED',
+        citation: bctTestType === 'SIMILAR' ? 's165-211 ITAA 1997' : 's165-210 ITAA 1997',
+      });
+      outcome = 'INCONCLUSIVE';
+      uncomputed.push({
+        id: 'UC-COMPANY-LOSS-BCT-NOT-ASSERTED',
+        rationale:
+          'Continuity of Ownership Test failed but BCT (s165-210 SBT or s165-211 Similar Business) outcome NOT_ASSERTED. v1 cannot conclude whether prior losses are deductible. Engage a registered tax agent.',
+      });
+    }
+  }
+
+  return { outcome, deductibleLossAmount, testReport, citations, uncomputed };
 }
