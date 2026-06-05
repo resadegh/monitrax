@@ -29,6 +29,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag, TaxYearConfig } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface CgtMinimumRateInput {
   /** The indexed gain (from `cgtIndexation.ts`). May be 0 if Measure 2 isn't live yet. */
@@ -112,4 +113,55 @@ export function applyCgtMinimumRate(input: CgtMinimumRateInput): CgtMinimumRateR
  */
 export function getCgtMinimumEffectiveRate(): number {
   return CGT_MIN_EFFECTIVE_RATE;
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3b — Decimal sibling path (§12.14 FW-2 preserved)
+// =============================================================================
+
+export interface CgtMinimumRateInputDecimal {
+  indexedGain: number | string | Decimal;
+  marginalRate: number | string | Decimal;
+  config: TaxYearConfig;
+}
+
+export interface CgtMinimumRateResultDecimal {
+  effectiveRate: Decimal;
+  taxPayable: Decimal;
+  computed: boolean;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyCgtMinimumRate`. **Stage 1 behaviour preserved
+ * exactly** — UNCOMPUTED returned until `cgtMinRateCommencementVerified`
+ * flips to true. Stage 2 throws.
+ */
+export function applyCgtMinimumRateDecimal(input: CgtMinimumRateInputDecimal): CgtMinimumRateResultDecimal {
+  const indexedGain = toDecimal(input.indexedGain) ?? new Decimal(0);
+  const marginalRate = toDecimal(input.marginalRate) ?? new Decimal(0);
+
+  if (!input.config.cgtMinRateCommencementVerified) {
+    return {
+      effectiveRate: new Decimal(0),
+      taxPayable: new Decimal(0),
+      computed: false,
+      reason:
+        'CGT 30% minimum effective rate (Phase 41E Measure 2) — awaiting Treasury exposure draft + Royal Assent. The pre-reform marginal-rate flow applies to this disposal until commencement is verified.',
+      citations: [STAGE_1_CITATION],
+      uncomputed: [
+        {
+          id: 'UC-CGT-MIN-RATE-PENDING-EXPOSURE-DRAFT',
+          rationale: `Phase 41E Measure 2 (30% minimum effective CGT rate) commences 1 Jul 2027 / FY 2027-28 but requires Treasury exposure draft + Royal Assent before the engine applies the floor. Indexed gain: $${indexedGain.toDecimalPlaces(0).toString()}; marginal rate: ${marginalRate.times(100).toFixed(1)}%. Pre-reform marginal-rate treatment applies as fallback.`,
+          citation: STAGE_1_CITATION,
+        },
+      ],
+    };
+  }
+
+  throw new Error(
+    '[Phase 41E.1] cgtMinRateCommencementVerified is true but the 30% floor mechanic is not yet implemented. Do NOT flip the flag until Stage 2 lands the floor formula + capital-loss ordering (per the published exposure draft).',
+  );
 }

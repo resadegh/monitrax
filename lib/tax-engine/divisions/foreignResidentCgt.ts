@@ -40,6 +40,7 @@
  */
 
 import type { AuthorityCitation, TaxYearConfig, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface ForeignResidentCgtInput {
   /** Entity ID (for tracing). */
@@ -145,4 +146,78 @@ export function applyForeignResidentCgt(input: ForeignResidentCgtInput): Foreign
  */
 export function getForeignResidentNotificationThresholdAud(): number {
   return NOTIFICATION_THRESHOLD_AUD;
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3b — Decimal sibling path (§12.14 FW-2 preserved)
+// =============================================================================
+
+export interface ForeignResidentCgtInputDecimal {
+  entityId: string;
+  isForeignResident: boolean | null;
+  nominalGain: number | string | Decimal;
+  isRenewablesInfrastructure?: boolean;
+  disposalValue: number | string | Decimal;
+  config: TaxYearConfig;
+  fy: string;
+}
+
+export interface ForeignResidentCgtResultDecimal {
+  inScope: boolean;
+  computed: boolean;
+  taxPayable: Decimal;
+  triggersNotification: boolean;
+  renewablesConcessionApplied: boolean;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyForeignResidentCgt`. Stage 1 behaviour
+ * preserved exactly — UNCOMPUTED returned when foreign-resident +
+ * commencement not verified. Out-of-scope (non-foreign-resident)
+ * returns 0 immediately. Stage 2 throws.
+ */
+export function applyForeignResidentCgtDecimal(input: ForeignResidentCgtInputDecimal): ForeignResidentCgtResultDecimal {
+  const disposalValue = toDecimal(input.disposalValue) ?? new Decimal(0);
+  const zero = new Decimal(0);
+
+  if (!input.isForeignResident) {
+    return {
+      inScope: false,
+      computed: true,
+      taxPayable: zero,
+      triggersNotification: false,
+      renewablesConcessionApplied: false,
+      reason: `Entity ${input.entityId} is not foreign-resident — Measure 4 (Div 855 expansion) does not apply.`,
+      citations: [],
+      uncomputed: [],
+    };
+  }
+
+  if (!input.config.foreignResidentCgtCommencementVerified) {
+    const triggersNotification = disposalValue.gte(NOTIFICATION_THRESHOLD_AUD);
+    return {
+      inScope: true,
+      computed: false,
+      taxPayable: zero,
+      triggersNotification,
+      renewablesConcessionApplied: false,
+      reason:
+        'Foreign-resident CGT regime (Phase 41E Measure 4) — Treasury exposure draft published 10 Apr 2026; awaiting Royal Assent of the implementing Bill. Existing Subdiv 115-D treatment (UC-FOREIGN-RESIDENT-CGT in `cgtDiscount.ts`) applies as fallback until commencement is verified.',
+      citations: [STAGE_1_CITATION],
+      uncomputed: [
+        {
+          id: 'UC-FR-CGT-PENDING-ROYAL-ASSENT',
+          rationale: `Phase 41E Measure 4 (Div 855 TARP expansion + 365-day PAT + >$50M notification + renewables 50% concession) — exposure draft is final but Royal Assent of the implementing Bill not yet confirmed. Entity ${input.entityId} foreign-resident with disposal value $${disposalValue.toDecimalPlaces(0).toString()}${triggersNotification ? ' (TRIGGERS >$50M notification threshold)' : ''}.`,
+          citation: STAGE_1_CITATION,
+        },
+      ],
+    };
+  }
+
+  throw new Error(
+    '[Phase 41E.1] foreignResidentCgtCommencementVerified is true but the Measure 4 mechanic is not yet implemented. Do NOT flip the flag until Stage 2 lands the TARP test + 365-day PAT + renewables concession + retrospective handling (per the published Bill).',
+  );
 }
