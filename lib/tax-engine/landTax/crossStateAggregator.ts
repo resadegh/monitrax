@@ -31,12 +31,15 @@
 import type { AuthorityCitation, UncomputedFlag } from '../types';
 import {
   calculateLandTax,
+  calculateLandTaxDecimal,
   getLandTaxConfig,
   type AustralianState,
   type LandTaxConfig,
   type LandTaxOwnershipType,
   type LandTaxResult,
+  type LandTaxResultDecimal,
 } from './stateLandTax';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface PortfolioProperty {
   /** Caller's stable id (e.g. the property's GRDCS id). */
@@ -203,6 +206,146 @@ export function calculateCrossStateLandTax(
       grandTotalGeneralTax +
       grandTotalTrustSurcharge +
       grandTotalForeignSurcharge,
+    statesAssessed: perStateAssessments.length,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3a — Decimal sibling path
+// =============================================================================
+
+export interface PortfolioPropertyDecimal {
+  propertyId: string;
+  state: AustralianState;
+  taxableLandValue: number | string | Decimal;
+  isResidential: boolean;
+}
+
+export interface CrossStateLandTaxInputDecimal {
+  properties: PortfolioPropertyDecimal[];
+  ownershipType: LandTaxOwnershipType;
+  isForeignOwner: boolean;
+  configOverrides?: Partial<Record<AustralianState, LandTaxConfig>>;
+}
+
+export interface PerStateAssessmentDecimal {
+  state: AustralianState;
+  aggregatedValue: Decimal;
+  parcelCount: number;
+  result: LandTaxResultDecimal;
+}
+
+export interface CrossStateLandTaxResultDecimal {
+  perStateAssessments: PerStateAssessmentDecimal[];
+  grandTotalGeneralTax: Decimal;
+  grandTotalTrustSurcharge: Decimal;
+  grandTotalForeignSurcharge: Decimal;
+  grandTotalTax: Decimal;
+  statesAssessed: number;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `calculateCrossStateLandTax`. Same within-state
+ * aggregation + across-state independence; Decimal arithmetic.
+ */
+export function calculateCrossStateLandTaxDecimal(
+  input: CrossStateLandTaxInputDecimal,
+): CrossStateLandTaxResultDecimal {
+  const { properties, ownershipType, isForeignOwner, configOverrides } = input;
+
+  const byState = new Map<
+    AustralianState,
+    { aggregatedValue: Decimal; parcelCount: number; isResidential: boolean }
+  >();
+  for (const p of properties) {
+    const valDec = toDecimal(p.taxableLandValue) ?? new Decimal(0);
+    const existing = byState.get(p.state);
+    if (existing) {
+      existing.aggregatedValue = existing.aggregatedValue.plus(valDec);
+      existing.parcelCount += 1;
+      existing.isResidential = existing.isResidential || p.isResidential;
+    } else {
+      byState.set(p.state, {
+        aggregatedValue: valDec,
+        parcelCount: 1,
+        isResidential: p.isResidential,
+      });
+    }
+  }
+
+  const perStateAssessments: PerStateAssessmentDecimal[] = [];
+  for (const [state, agg] of byState) {
+    const config = configOverrides?.[state] ?? getLandTaxConfig(state);
+    const result = calculateLandTaxDecimal(
+      {
+        taxableLandValue: agg.aggregatedValue,
+        ownershipType,
+        isForeignOwner,
+        isResidential: agg.isResidential,
+      },
+      config,
+    );
+    perStateAssessments.push({
+      state,
+      aggregatedValue: agg.aggregatedValue,
+      parcelCount: agg.parcelCount,
+      result,
+    });
+  }
+
+  perStateAssessments.sort((a, b) => a.state.localeCompare(b.state));
+
+  let grandTotalGeneralTax = new Decimal(0);
+  let grandTotalTrustSurcharge = new Decimal(0);
+  let grandTotalForeignSurcharge = new Decimal(0);
+  for (const a of perStateAssessments) {
+    grandTotalGeneralTax = grandTotalGeneralTax.plus(a.result.generalLandTax);
+    grandTotalTrustSurcharge = grandTotalTrustSurcharge.plus(a.result.trustSurcharge);
+    grandTotalForeignSurcharge = grandTotalForeignSurcharge.plus(a.result.foreignOwnerSurcharge);
+  }
+
+  const citationKey = (c: AuthorityCitation) => `${c.kind}|${c.reference}`;
+  const seenCit = new Set<string>();
+  const citations: AuthorityCitation[] = [];
+  for (const a of perStateAssessments) {
+    for (const c of a.result.citations) {
+      const k = citationKey(c);
+      if (!seenCit.has(k)) {
+        seenCit.add(k);
+        citations.push(c);
+      }
+    }
+  }
+
+  const seenUc = new Set<string>();
+  const uncomputed: UncomputedFlag[] = [];
+  for (const a of perStateAssessments) {
+    for (const u of a.result.uncomputed) {
+      if (!seenUc.has(u.id)) {
+        seenUc.add(u.id);
+        uncomputed.push(u);
+      }
+    }
+  }
+
+  if (perStateAssessments.length > 0) {
+    uncomputed.push({
+      id: 'UC-LAND-TAX-JOINT-OWNERSHIP',
+      rationale:
+        'Joint ownership apportionment and inter-trust grouping rules (NSW Land Tax Mgmt Act 1956 Pt 4 grouping, QLD Land Tax Act 2010 Pt 5 related corporations) are NOT computed in v1. The aggregator assumes a single owner across all parcels in `properties`. Engage a registered tax agent for joint-ownership / common-control scenarios.',
+    });
+  }
+
+  return {
+    perStateAssessments,
+    grandTotalGeneralTax,
+    grandTotalTrustSurcharge,
+    grandTotalForeignSurcharge,
+    grandTotalTax: grandTotalGeneralTax.plus(grandTotalTrustSurcharge).plus(grandTotalForeignSurcharge),
     statesAssessed: perStateAssessments.length,
     citations,
     uncomputed,

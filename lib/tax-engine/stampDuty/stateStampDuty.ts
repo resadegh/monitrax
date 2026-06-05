@@ -28,6 +28,7 @@
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
 import type { AustralianState } from '../landTax/stateLandTax';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface StampDutyBracket {
   /** Lower bound (inclusive). */
@@ -353,6 +354,122 @@ export function calculateStampDuty(
     generalDuty,
     foreignPurchaserSurcharge,
     totalDuty: generalDuty + foreignPurchaserSurcharge,
+    breakdown,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3a — Decimal sibling path
+// =============================================================================
+
+export interface StampDutyInputDecimal {
+  dutiableValue: number | string | Decimal;
+  purchaserType: PurchaserType;
+  isForeignPurchaser: boolean;
+  isResidential: boolean;
+  assertsFirstHomeOrConcession?: boolean;
+}
+
+export interface StampDutyResultDecimal {
+  generalDuty: Decimal;
+  foreignPurchaserSurcharge: Decimal;
+  totalDuty: Decimal;
+  breakdown: Array<{ label: string; amount: Decimal; citation: string }>;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+function applyBracketsDecimal(value: Decimal, brackets: StampDutyBracket[]): Decimal {
+  if (value.lte(0)) return new Decimal(0);
+  for (const b of brackets) {
+    const max = b.max == null ? null : new Decimal(b.max);
+    if (max == null || value.lte(max)) {
+      // Mirror Float's `inBracket = value - min + 1; max(0, inBracket * rate)`.
+      const inBracket = value.minus(b.min).plus(1);
+      const overBracket = Decimal.max(new Decimal(0), inBracket.times(b.rate));
+      return new Decimal(b.baseAmount).plus(overBracket);
+    }
+  }
+  const top = brackets[brackets.length - 1];
+  const inBracket = value.minus(top.min).plus(1);
+  const overBracket = Decimal.max(new Decimal(0), inBracket.times(top.rate));
+  return new Decimal(top.baseAmount).plus(overBracket);
+}
+
+/**
+ * Decimal sibling of `calculateStampDuty`. Same brackets + foreign
+ * surcharge logic; Decimal arithmetic.
+ *
+ * Float doesn't round the duty values (only the percentage label is
+ * trimmed in the breakdown string). Decimal preserves precision.
+ */
+export function calculateStampDutyDecimal(
+  input: StampDutyInputDecimal,
+  config: StampDutyConfig,
+): StampDutyResultDecimal {
+  const { isForeignPurchaser, isResidential } = input;
+  const dutiableValue = toDecimal(input.dutiableValue) ?? new Decimal(0);
+
+  const breakdown: StampDutyResultDecimal['breakdown'] = [];
+  const citations = [...config.citations];
+  const uncomputed: UncomputedFlag[] = [];
+
+  const generalDuty = applyBracketsDecimal(dutiableValue, config.brackets);
+  if (generalDuty.gt(0)) {
+    breakdown.push({
+      label: `${config.state} general transfer duty`,
+      amount: generalDuty,
+      citation: config.citations[0]?.reference ?? `${config.state} Duties Act`,
+    });
+  }
+
+  let foreignPurchaserSurcharge = new Decimal(0);
+  if (isForeignPurchaser && isResidential && config.foreignPurchaserSurchargeRate > 0) {
+    foreignPurchaserSurcharge = dutiableValue.times(config.foreignPurchaserSurchargeRate);
+    breakdown.push({
+      label: `${config.state} foreign purchaser additional duty (${(config.foreignPurchaserSurchargeRate * 100).toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}%)`,
+      amount: foreignPurchaserSurcharge,
+      citation:
+        config.citations.find((c) => {
+          const r = c.reference.toLowerCase();
+          return r.includes('foreign') || r.includes('fpad') || r.includes('afad') || r.includes('fbi');
+        })?.reference ?? `${config.state} foreign surcharge`,
+    });
+  }
+
+  if (config.state === 'NT' && isForeignPurchaser) {
+    uncomputed.push({
+      id: 'UC-STAMP-DUTY-NT-NO-FPAD',
+      rationale:
+        'NT does not levy a foreign purchaser additional duty. NT is the only Australian jurisdiction without an FPAD/AFAD/FBI regime as of 2026-05-05.',
+    });
+  }
+
+  if (input.assertsFirstHomeOrConcession) {
+    uncomputed.push({
+      id: 'UC-STAMP-DUTY-CONCESSION',
+      rationale:
+        'First-home-buyer / off-the-plan / PPR concessions are state-specific, indexed annually, and conditional on facts (purchase price thresholds, residence requirements). v1 does not compute the concession amount — engage a registered conveyancer or tax agent for the exact figure. Buyer-asserted concession was flagged.',
+    });
+  }
+
+  uncomputed.push({
+    id: 'UC-STAMP-DUTY-MULTI-PURCHASER',
+    rationale:
+      'Multi-purchaser apportionment NOT computed in v1. When multiple purchasers buy together (e.g. spouses, partnership), each state apportions FPAD by foreign-share — NSW Duties Act 1997 s104X (foreign-share calc), VIC Duties Act 2000 s28A. v1 treats the entire dutiable value as foreign or domestic uniformly.',
+  });
+  uncomputed.push({
+    id: 'UC-STAMP-DUTY-NEW-BUILD',
+    rationale:
+      'Off-the-plan / new-build / vacant-land concessions vary materially by state and indexation year. v1 does not detect or apply new-build concessions — caller must assert via a conveyancer-confirmed reduction in `dutiableValue`.',
+  });
+
+  return {
+    generalDuty,
+    foreignPurchaserSurcharge,
+    totalDuty: generalDuty.plus(foreignPurchaserSurcharge),
     breakdown,
     citations,
     uncomputed,

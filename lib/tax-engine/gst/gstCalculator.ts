@@ -33,6 +33,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export const GST_RATE = 0.1; // 10% per s9-70 GST Act
 
@@ -199,6 +200,134 @@ export function calculateGst(input: GstInput): GstResult {
       label_1A: gstCollected,
       label_1B: gstCreditsClaimable,
     },
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3a — Decimal sibling path
+// =============================================================================
+
+export interface GstTransactionDecimal {
+  transactionId: string;
+  supplyType: SupplyType;
+  classification: GstClassification;
+  amountExcludingGst: number | string | Decimal;
+  isReverseCharge?: boolean;
+  isExport?: boolean;
+}
+
+export interface GstInputDecimal {
+  transactions: GstTransactionDecimal[];
+  annualTurnover: number | string | Decimal;
+  isRegistered: boolean;
+}
+
+export interface GstResultDecimal {
+  gstCollected: Decimal;
+  gstCreditsClaimable: Decimal;
+  netGst: Decimal;
+  basLabels: {
+    G1: Decimal;
+    G2: Decimal;
+    G3: Decimal;
+    G10: Decimal;
+    G11: Decimal;
+    label_1A: Decimal;
+    label_1B: Decimal;
+  };
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+const GST_RATE_DECIMAL = new Decimal(GST_RATE);
+
+/**
+ * Decimal sibling of `calculateGst`. End-to-end Decimal — no
+ * intermediate rounding (Float path doesn't round either).
+ */
+export function calculateGstDecimal(input: GstInputDecimal): GstResultDecimal {
+  const { transactions, annualTurnover, isRegistered } = input;
+  const turnoverDec = toDecimal(annualTurnover) ?? new Decimal(0);
+
+  const citations: AuthorityCitation[] = [
+    { kind: 'ITAA_1997', reference: 'A New Tax System (GST) Act 1999 s9-70 (10% rate)', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 'GST Act s38 (GST-free supplies)', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 'GST Act s40 (input-taxed supplies)', lastReviewed: '2026-05-05' },
+    { kind: 'ITAA_1997', reference: 'GST Act s23-15 ($75k registration threshold)', lastReviewed: '2026-05-05' },
+  ];
+  const uncomputed: UncomputedFlag[] = [];
+
+  let gstCollected = new Decimal(0);
+  let gstCreditsClaimable = new Decimal(0);
+  let G1 = new Decimal(0);
+  let G2 = new Decimal(0);
+  let G3 = new Decimal(0);
+  let G10 = new Decimal(0);
+  let G11 = new Decimal(0);
+
+  for (const tx of transactions) {
+    const amountExGst = toDecimal(tx.amountExcludingGst) ?? new Decimal(0);
+    const gstAmount = tx.classification === 'TAXABLE'
+      ? amountExGst.times(GST_RATE_DECIMAL)
+      : new Decimal(0);
+    const inclGst = amountExGst.plus(gstAmount);
+
+    if (tx.supplyType === 'SALE') {
+      if (tx.classification === 'TAXABLE') {
+        gstCollected = gstCollected.plus(gstAmount);
+        G1 = G1.plus(inclGst);
+      } else if (tx.classification === 'GST_FREE') {
+        if (tx.isExport) {
+          G2 = G2.plus(amountExGst);
+        } else {
+          G3 = G3.plus(amountExGst);
+        }
+        G1 = G1.plus(amountExGst);
+      }
+      // INPUT_TAXED sales: no G1, no gstCollected (matches Float).
+    } else {
+      const isCapital = tx.supplyType === 'CAPITAL_PURCHASE';
+      if (tx.isReverseCharge) {
+        const reverseGst = amountExGst.times(GST_RATE_DECIMAL);
+        gstCollected = gstCollected.plus(reverseGst);
+        gstCreditsClaimable = gstCreditsClaimable.plus(reverseGst);
+        if (isCapital) G10 = G10.plus(amountExGst.plus(reverseGst));
+        else G11 = G11.plus(amountExGst.plus(reverseGst));
+      } else if (tx.classification === 'TAXABLE') {
+        gstCreditsClaimable = gstCreditsClaimable.plus(gstAmount);
+        if (isCapital) G10 = G10.plus(inclGst);
+        else G11 = G11.plus(inclGst);
+      } else if (tx.classification === 'INPUT_TAXED') {
+        uncomputed.push({
+          id: 'UC-GST-INPUT-TAXED-DENIAL',
+          rationale: `Input-taxed acquisition (${tx.transactionId}) — no input tax credit available per s40 GST Act. Common scenario: acquisitions made for residential rental or financial supply businesses.`,
+        });
+      }
+    }
+  }
+
+  const netGst = gstCollected.minus(gstCreditsClaimable);
+
+  if (!isRegistered && turnoverDec.gte(GST_REGISTRATION_THRESHOLD)) {
+    uncomputed.push({
+      id: 'UC-GST-REGISTRATION-REQUIRED',
+      rationale: `Annual turnover of $${turnoverDec.toFixed(0)} meets or exceeds the $75,000 registration threshold (s23-15 GST Act), but the entity is NOT registered. Registration is mandatory — engage a registered tax agent.`,
+    });
+  }
+
+  uncomputed.push({
+    id: 'UC-GST-ADVANCED-DIVISIONS',
+    rationale:
+      'Advanced GST divisions NOT computed in v1: Div 48 (GST grouping), Div 162 (GST instalments / annual reporting), Div 75 (margin scheme on real property), s38-325 (going-concern exemption), Div 142 (excess GST). Engage a registered tax agent for these scenarios.',
+  });
+
+  return {
+    gstCollected,
+    gstCreditsClaimable,
+    netGst,
+    basLabels: { G1, G2, G3, G10, G11, label_1A: gstCollected, label_1B: gstCreditsClaimable },
     citations,
     uncomputed,
   };

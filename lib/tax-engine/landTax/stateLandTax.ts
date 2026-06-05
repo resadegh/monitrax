@@ -43,6 +43,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type AustralianState = 'NSW' | 'VIC' | 'QLD' | 'SA' | 'WA' | 'TAS' | 'ACT' | 'NT';
 
@@ -522,6 +523,183 @@ export function calculateLandTax(
     trustSurcharge,
     foreignOwnerSurcharge,
     totalTax: generalLandTax + trustSurcharge + foreignOwnerSurcharge,
+    breakdown,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3a — Decimal sibling path
+// =============================================================================
+
+export interface LandTaxInputDecimal {
+  taxableLandValue: number | string | Decimal;
+  ownershipType: LandTaxOwnershipType;
+  isForeignOwner: boolean;
+  isResidential: boolean;
+}
+
+export interface LandTaxResultDecimal {
+  generalLandTax: Decimal;
+  trustSurcharge: Decimal;
+  foreignOwnerSurcharge: Decimal;
+  totalTax: Decimal;
+  breakdown: Array<{ label: string; amount: Decimal; citation: string }>;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+function applyBracketsDecimal(value: Decimal, brackets: LandTaxBracket[]): Decimal {
+  if (value.lte(0)) return new Decimal(0);
+  for (const b of brackets) {
+    const max = b.max == null ? null : new Decimal(b.max);
+    if (max == null || value.lte(max)) {
+      const inBracket = value.minus(b.min).plus(1);
+      const overBracket = Decimal.max(new Decimal(0), inBracket.times(b.rate));
+      return new Decimal(b.baseAmount).plus(overBracket);
+    }
+  }
+  const top = brackets[brackets.length - 1];
+  const inBracket = value.minus(top.min).plus(1);
+  const overBracket = Decimal.max(new Decimal(0), inBracket.times(top.rate));
+  return new Decimal(top.baseAmount).plus(overBracket);
+}
+
+/**
+ * Decimal sibling of `calculateLandTax`. End-to-end Decimal arithmetic;
+ * Float doesn't round so neither does the Decimal sibling.
+ *
+ * NSW special trust surcharge preserves the Float formula:
+ *   `min(taxableLandValue, 1075000) × 0.015`.
+ */
+export function calculateLandTaxDecimal(
+  input: LandTaxInputDecimal,
+  config: LandTaxConfig,
+): LandTaxResultDecimal {
+  const { ownershipType, isForeignOwner, isResidential } = input;
+  const taxableLandValue = toDecimal(input.taxableLandValue) ?? new Decimal(0);
+
+  const breakdown: LandTaxResultDecimal['breakdown'] = [];
+  const citations = [...config.citations];
+  const uncomputed: UncomputedFlag[] = [];
+
+  // 1. General progressive bracket.
+  const generalLandTax = taxableLandValue.gte(config.generalThreshold)
+    ? applyBracketsDecimal(taxableLandValue, config.brackets)
+    : new Decimal(0);
+
+  if (generalLandTax.gt(0)) {
+    breakdown.push({
+      label: 'General land tax (progressive scale)',
+      amount: generalLandTax,
+      citation:
+        config.state === 'NSW' ? 'NSW Land Tax Act 1956 s27' : 'VIC Land Tax Act 2005 Schedule 1',
+    });
+  } else if (taxableLandValue.gt(0) && taxableLandValue.lt(config.generalThreshold)) {
+    breakdown.push({
+      label: `Below ${config.label} threshold of $${config.generalThreshold.toLocaleString()} — no general tax`,
+      amount: new Decimal(0),
+      citation:
+        config.state === 'NSW' ? 'NSW Land Tax Act 1956 s27' : 'VIC Land Tax Act 2005 Schedule 1',
+    });
+  }
+
+  // 2. Trust surcharge.
+  let trustSurcharge = new Decimal(0);
+  const isTrustOwner =
+    ownershipType === 'DISCRETIONARY_TRUST' || ownershipType === 'UNIT_TRUST_NON_FIXED';
+  if (isTrustOwner && config.trustSurchargeRate > 0) {
+    if (config.state === 'NSW') {
+      const nswCap = new Decimal(1_075_000);
+      trustSurcharge = Decimal.min(taxableLandValue, nswCap).times('0.015');
+    } else {
+      trustSurcharge = taxableLandValue.times(config.trustSurchargeRate);
+    }
+    if (trustSurcharge.gt(0)) {
+      const trustCitation =
+        config.state === 'NSW'
+          ? 'NSW Land Tax Act 1956 s5A'
+          : config.state === 'VIC'
+          ? 'VIC Land Tax Act 2005 s46IB'
+          : config.state === 'QLD'
+          ? 'QLD Land Tax Act 2010 (trust scale)'
+          : config.state === 'SA'
+          ? 'SA Land Tax Act 1936 s13'
+          : `${config.state} trust scale`;
+      breakdown.push({
+        label: `${config.state} trust surcharge (non-fixed trust)`,
+        amount: trustSurcharge,
+        citation: trustCitation,
+      });
+    }
+    uncomputed.push({
+      id: 'UC-LAND-TAX-TRUST-SURCHARGE-NUANCE',
+      rationale:
+        'Trust surcharge calculation simplified in v1 to a flat % over the taxable value (NSW: 1.5% on first $1.075M; VIC/QLD/SA: flat % over base). Real-world calc uses a progressive trust-specific scale that varies by state. Engage a registered tax agent for exact figure on trust-held property.',
+      citation:
+        config.state === 'NSW'
+          ? { kind: 'STATE_LAND_TAX_ACT', reference: 'NSW Land Tax Act 1956 s5A', lastReviewed: '2026-05-05' }
+          : config.state === 'VIC'
+          ? { kind: 'STATE_LAND_TAX_ACT', reference: 'VIC Land Tax Act 2005 s46IB', lastReviewed: '2026-05-05' }
+          : { kind: 'STATE_LAND_TAX_ACT', reference: `${config.state} trust scale`, lastReviewed: '2026-05-05' },
+    });
+  }
+
+  // 3. Foreign / absentee surcharge.
+  let foreignOwnerSurcharge = new Decimal(0);
+  if (isForeignOwner && config.foreignOwnerSurchargeRate > 0) {
+    const residentialOnly = config.foreignSurchargeResidentialOnly ?? false;
+    const surchargeApplies = !residentialOnly || isResidential;
+    if (surchargeApplies) {
+      foreignOwnerSurcharge = taxableLandValue.times(config.foreignOwnerSurchargeRate);
+    }
+    if (foreignOwnerSurcharge.gt(0)) {
+      const pct = (config.foreignOwnerSurchargeRate * 100)
+        .toFixed(2)
+        .replace(/\.00$/, '')
+        .replace(/(\.\d)0$/, '$1');
+      breakdown.push({
+        label: `${config.state} foreign / absentee owner surcharge (${pct}%)`,
+        amount: foreignOwnerSurcharge,
+        citation:
+          config.state === 'NSW'
+            ? 'NSW Land Tax Act 1956 Sch 1A'
+            : config.state === 'VIC'
+            ? 'VIC Land Tax Act 2005 s46IC'
+            : config.state === 'QLD'
+            ? 'QLD Land Tax Act 2010 Sch 3'
+            : config.state === 'TAS'
+            ? 'TAS Land Tax Rating Act 2000 (foreign surcharge)'
+            : config.state === 'ACT'
+            ? 'ACT Rates Act 2004 (foreign ownership)'
+            : `${config.state} foreign owner surcharge`,
+      });
+    }
+  }
+
+  if (config.state === 'ACT' && taxableLandValue.gt(0)) {
+    uncomputed.push({
+      id: 'UC-ACT-RATES-VS-LAND-TAX',
+      rationale:
+        'ACT does not run a "land tax" in the same shape as NSW/VIC. ACT Rates Act 2004 charges (a) annual general rates on every parcel (separate from this calc) and (b) a residential land tax that only applies to non-owner-occupied residential properties. v1 calc applies a flat-bracketed approximation; for an exact figure consult the ACT Revenue Office or a registered tax agent.',
+      citation: { kind: 'STATE_LAND_TAX_ACT', reference: 'ACT Rates Act 2004', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  if (config.state === 'NT') {
+    uncomputed.push({
+      id: 'UC-NT-NO-LAND-TAX',
+      rationale:
+        'NT does not levy land tax. This config returns $0 for structural completeness in the cross-state aggregator. NT does levy stamp duty (lands in 41e.14).',
+    });
+  }
+
+  return {
+    generalLandTax,
+    trustSurcharge,
+    foreignOwnerSurcharge,
+    totalTax: generalLandTax.plus(trustSurcharge).plus(foreignOwnerSurcharge),
     breakdown,
     citations,
     uncomputed,
