@@ -489,4 +489,58 @@ NONE — additive code only.
 
 ### Next
 
-- PR 2.D.3 — rest of `lib/tax-engine/*` (divisions/, landTax/, stampDuty/, gst/, entity/, config/, super/smsfIncomeTax, income/salaryProcessor, orchestrator/masterTaxPosition).
+- PR 2.D.3 — rest of `lib/tax-engine/*` (~8400 lines split into 4 cohesive sub-PRs: 3a state taxes, 3b CGT, 3c other divisions, 3d composers).
+
+---
+
+## Session: qdec-pr2d3a-tax-state-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — state-tax engine Decimal siblings
+- **Scope**: Q-DEC PR 2.D.3a — `lib/tax-engine/gst/* + stampDuty/* + landTax/*` Decimal siblings (4 engines)
+- **Description**: First sub-PR of Q-DEC PR 2.D.3. Self-contained state-tax cluster with no reform dependencies. Ships Decimal siblings for `calculateGst` (BAS labels + net GST), `calculateStampDuty` (general + FPAD per state), `calculateLandTax` (general + trust + foreign per state), and `calculateCrossStateLandTax` (multi-state aggregator with within-state aggregation + alphabetical stable sort).
+- **Scope refinement**: original PR 2.D.3 plan was monolithic; given the ~8400-line scope (25 files), split into 4 sub-PRs (3a state taxes, 3b CGT, 3c other divisions, 3d composers) for review tractability.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/gst/gstCalculator.ts` — `calculateGstDecimal` + Decimal types. BAS-label aggregation, reverse-charge, registration-threshold, UNCOMPUTED flags preserved.
+- `lib/tax-engine/stampDuty/stateStampDuty.ts` — `calculateStampDutyDecimal` + Decimal types + private `applyBracketsDecimal`. NT FPAD-absent + concession + multi-purchaser UC flags preserved.
+- `lib/tax-engine/landTax/stateLandTax.ts` — `calculateLandTaxDecimal` + Decimal types + private `applyBracketsDecimal`. NSW special trust surcharge (`min(value, $1.075M) × 0.015`), VIC absentee, ACT/NT structural disclosures preserved.
+- `lib/tax-engine/landTax/crossStateAggregator.ts` — `calculateCrossStateLandTaxDecimal` + Decimal types. Within-state aggregation + cross-state independence + alphabetical stable sort + de-duped citations/UNCOMPUTED.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-state.ts` — 4 shadow engines (gst × 5, stampDuty × 6, landTax × 7, crossStateLandTax × 3 = 21 fixtures)
+- `tests/tax-engine/state.decimal.test.ts` — 30 tests (21 shadow + 8 Decimal contract checks + 1 aggregate report)
+
+### Architectural notes
+
+- **No intermediate rounding.** State-tax engines preserve full precision; shadow tests see zero diff because both paths produce identical floating output to within currency tolerance.
+- **Within-state aggregation preserved.** Cross-state aggregator uses `Map<AustralianState, ...>` to group, then aggregates Decimal values exactly.
+
+### Testing
+
+- [x] 30 new tests pass + 1097 existing Q-DEC scope tests still pass (1127 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 21 fixtures across the 4 engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.3 split into 4 sub-PRs for review tractability)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] State-tax engines are reform-agnostic by design — no §12.14 reform engines in this PR.
+- [x] No `lib/tax-engine/divisions/*` modified. No schema columns added. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.3b — CGT division engines (cgtDiscount, cgtIndexation, cgtMinimumRate, foreignResidentCgt, capitalLossNetting). Reform-aware §12.14 FW-1/FW-2.
+- PR 2.D.3c — other divisions (negative gearing, trusts, companies, classifiers).
+- PR 2.D.3d — composers + remaining (entity router, orchestrator, smsfIncomeTax, salaryProcessor).
