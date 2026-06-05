@@ -46,6 +46,7 @@ import {
   classifyS100AZones,
   type S100AClassificationResult,
 } from './s100aZoneClassifier';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 /**
  * Penalty rate applied by s99A to undistributed net income of a
@@ -479,4 +480,246 @@ export function getDistributableAmount(
   result: TrustDistributionResult,
 ): number {
   return result.totalAccountedFor - result.trusteeRetainedAmount;
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c2 — Decimal sibling path
+// =============================================================================
+
+export interface TrustBeneficiaryDecimal {
+  id: string;
+  name: string;
+  /** Decimal fraction (0..1). Decimal-typed so callers can preserve precision. */
+  presentlyEntitledShare: number | string | Decimal;
+  isNonResidentOrDisabled?: boolean;
+  streaming?: {
+    frankedDividends?: number | string | Decimal;
+    capitalGains?: number | string | Decimal;
+  };
+}
+
+export interface TrustDistributionInputDecimal {
+  trustNetIncome: number | string | Decimal;
+  beneficiaries: TrustBeneficiaryDecimal[];
+  characterPools?: {
+    frankedDividends?: number | string | Decimal;
+    capitalGains?: number | string | Decimal;
+  };
+  streamingResolutionAt?: string;
+  financialYear?: string;
+  hasFamilyTrustElection?: boolean;
+  isTestamentaryTrust?: boolean;
+  s100aFacts?: TrustDistributionInput['s100aFacts'];
+}
+
+export interface BeneficiaryDistributionDecimal {
+  beneficiaryId: string;
+  beneficiaryName: string;
+  share: Decimal;
+  amount: Decimal;
+  trusteeAssessedUnderS98: boolean;
+  character: {
+    frankedDividends: Decimal;
+    capitalGains: Decimal;
+    ordinaryIncome: Decimal;
+  };
+}
+
+export interface TrustDistributionResultDecimal {
+  distributions: BeneficiaryDistributionDecimal[];
+  trusteeRetainedAmount: Decimal;
+  trusteePenaltyTax: Decimal;
+  totalAccountedFor: Decimal;
+  s100aClassification?: S100AClassificationResult;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `allocateTrustDistribution`. Validates beneficiary
+ * shares + applies Div 6 mechanics in Decimal. Preserves the `totalShare
+ * > 1.0 + 1e-9` over-distribution throw (Float epsilon tolerance — we
+ * use `1e-9` literal directly).
+ *
+ * **`classifyS100AZones` is a categorical classifier** — we call the
+ * Float version inline (with amounts converted to numbers at the
+ * boundary) to inherit the WHITE/GREEN/BLUE/RED zone classification.
+ * The classifier doesn't do money arithmetic; only categorical logic
+ * + warning text. Same defensible bridge pattern as taxabilityRules
+ * (PR 2.D.2b).
+ */
+export function allocateTrustDistributionDecimal(
+  input: TrustDistributionInputDecimal,
+): TrustDistributionResultDecimal {
+  const zero = new Decimal(0);
+  const trustNetIncome = toDecimal(input.trustNetIncome) ?? zero;
+  const hasFamilyTrustElection = input.hasFamilyTrustElection ?? false;
+
+  // Validate beneficiary shares (mirror Float validation).
+  const beneficiariesDec = input.beneficiaries.map((b) => ({
+    id: b.id,
+    name: b.name,
+    presentlyEntitledShare: toDecimal(b.presentlyEntitledShare) ?? zero,
+    isNonResidentOrDisabled: b.isNonResidentOrDisabled,
+    streaming: b.streaming,
+  }));
+  for (const b of beneficiariesDec) {
+    if (b.presentlyEntitledShare.lt(0)) {
+      throw new Error(
+        `Beneficiary "${b.name}" (id=${b.id}) has negative share ${b.presentlyEntitledShare.toString()}. Shares must be ≥ 0.`,
+      );
+    }
+  }
+
+  let totalShare = new Decimal(0);
+  for (const b of beneficiariesDec) totalShare = totalShare.plus(b.presentlyEntitledShare);
+
+  const oneWithEpsilon = new Decimal(1).plus('1e-9');
+  if (totalShare.gt(oneWithEpsilon)) {
+    throw new Error(
+      `Sum of presently-entitled shares is ${totalShare.toString()} (> 1.0). Trust deed over-distribution.`,
+    );
+  }
+
+  // Character pools (Decimal).
+  const pools = input.characterPools ?? {};
+  const totalFrankedPool = Decimal.max(zero, toDecimal(pools.frankedDividends ?? 0) ?? zero);
+  const totalCapitalGainsPool = Decimal.max(zero, toDecimal(pools.capitalGains ?? 0) ?? zero);
+
+  const hasStreamingAllocation = beneficiariesDec.some(
+    (b) =>
+      (b.streaming?.frankedDividends != null && b.streaming.frankedDividends !== 0) ||
+      (b.streaming?.capitalGains != null && b.streaming.capitalGains !== 0),
+  );
+  const resolutionValid = isResolutionValidForFy(
+    input.streamingResolutionAt,
+    input.financialYear,
+  );
+  const streamingApplies =
+    hasStreamingAllocation &&
+    resolutionValid &&
+    (totalFrankedPool.gt(0) || totalCapitalGainsPool.gt(0));
+
+  const distributions: BeneficiaryDistributionDecimal[] = beneficiariesDec.map((b) => {
+    const amount = trustNetIncome.times(b.presentlyEntitledShare);
+    let frankedDividends: Decimal;
+    let capitalGains: Decimal;
+    if (streamingApplies) {
+      frankedDividends = Decimal.max(zero, toDecimal(b.streaming?.frankedDividends ?? 0) ?? zero);
+      capitalGains = Decimal.max(zero, toDecimal(b.streaming?.capitalGains ?? 0) ?? zero);
+    } else {
+      frankedDividends = totalFrankedPool.times(b.presentlyEntitledShare);
+      capitalGains = totalCapitalGainsPool.times(b.presentlyEntitledShare);
+    }
+    const ordinaryIncome = Decimal.max(zero, amount.minus(frankedDividends).minus(capitalGains));
+    return {
+      beneficiaryId: b.id,
+      beneficiaryName: b.name,
+      share: b.presentlyEntitledShare,
+      amount,
+      trusteeAssessedUnderS98: !!b.isNonResidentOrDisabled,
+      character: { frankedDividends, capitalGains, ordinaryIncome },
+    };
+  });
+
+  const undistributedShare = Decimal.max(zero, new Decimal(1).minus(totalShare));
+  const trusteeRetainedAmount = trustNetIncome.times(undistributedShare);
+  const trusteePenaltyTax = trusteeRetainedAmount.times(S99A_TRUSTEE_PENALTY_RATE);
+
+  let totalAccountedFor = trusteeRetainedAmount;
+  for (const d of distributions) totalAccountedFor = totalAccountedFor.plus(d.amount);
+
+  const citations: AuthorityCitation[] = [...DIV6_BASE_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+
+  if (trusteeRetainedAmount.gt(0)) {
+    citations.push({ kind: 'ITAA_1936', reference: 's99A', lastReviewed: '2026-05-05' });
+  }
+
+  if (streamingApplies) {
+    citations.push(
+      { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's115-228', lastReviewed: '2026-05-05' },
+    );
+  }
+
+  // s100A — Float classifier inherited via boundary conversion.
+  let s100aClassification: S100AClassificationResult | undefined;
+  if (input.s100aFacts && input.s100aFacts.length > 0) {
+    const factsByBenId = new Map(
+      input.s100aFacts.map((f) => [f.beneficiaryId, f]),
+    );
+    const classifierInput = {
+      beneficiaries: distributions.map((d) => {
+        const f = factsByBenId.get(d.beneficiaryId);
+        return {
+          beneficiaryId: d.beneficiaryId,
+          beneficiaryName: d.beneficiaryName,
+          amount: d.amount.toNumber(),
+          relationshipToController: f?.relationshipToController,
+          isMinor: f?.isMinor,
+          beneficiaryReceivedFunds: f?.beneficiaryReceivedFunds,
+          unpaidPresentEntitlement: f?.unpaidPresentEntitlement,
+          fundsUsedByOther: f?.fundsUsedByOther,
+        };
+      }),
+      hasFamilyTrustElection,
+      isTestamentaryTrust: !!input.isTestamentaryTrust,
+    };
+    s100aClassification = classifyS100AZones(classifierInput);
+    for (const c of s100aClassification.citations) {
+      const exists = citations.some(
+        (x) => x.kind === c.kind && x.reference === c.reference,
+      );
+      if (!exists) citations.push(c);
+    }
+    uncomputed.push(...s100aClassification.uncomputed);
+  } else {
+    uncomputed.push({
+      id: 'UC-S100A-RISK',
+      rationale: hasFamilyTrustElection
+        ? 'Family Trust Election trust — s100A reimbursement-agreement risk is generally low but not zero. Phase 41e.5 zone classifier shipped — pass `s100aFacts` per beneficiary to get a real PCG 2022/2 zone classification. Without facts, the conservative blanket flag stays.'
+        : 's100A reimbursement-agreement risk per TR 2022/4 + PCG 2022/2 — Phase 41e.5 zone classifier shipped. Pass `s100aFacts` per beneficiary (relationshipToController, beneficiaryReceivedFunds, unpaidPresentEntitlement, fundsUsedByOther) to receive a real WHITE/GREEN/BLUE/RED zone. Without facts, distributions to non-FTE adult beneficiaries should be reviewed by a registered tax agent.',
+      citation: { kind: 'TR', reference: '2022/4', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  // Div 6E streaming guards.
+  if (!streamingApplies) {
+    if (hasStreamingAllocation && !resolutionValid) {
+      uncomputed.push({
+        id: 'UC-DIV-6E-STREAMING-INVALID-RESOLUTION',
+        rationale:
+          'Beneficiaries have streaming allocations but `streamingResolutionAt` is missing or outside the FY. Per s207-58 + s115-228 the trustee resolution must be in writing on or before 30 June. Streaming ignored; character flows pro-rata. Pass a valid `streamingResolutionAt` to activate Div 6E.',
+        citation: { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
+      });
+    } else {
+      uncomputed.push({
+        id: 'UC-DIV-6E-STREAMING',
+        rationale:
+          'No Div 6E streaming requested for this distribution — character (franked dividends, capital gains) flows pro-rata to net-income share. Pass `characterPools` + per-beneficiary `streaming` + `streamingResolutionAt` to activate explicit streaming under Div 6E.',
+        citation: { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      });
+    }
+  }
+
+  if (beneficiariesDec.some((b) => b.isNonResidentOrDisabled)) {
+    uncomputed.push({
+      id: 'UC-S98-TRUSTEE-ASSESSMENT',
+      rationale:
+        'One or more beneficiaries are non-resident or under legal disability — under s98 ITAA 1936 the trustee is assessed on their share at trustee rates. v1 reports the share to the named beneficiary; the trustee-level reassessment lands in a future sub-PR.',
+      citation: { kind: 'ITAA_1936', reference: 's98', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  return {
+    distributions,
+    trusteeRetainedAmount,
+    trusteePenaltyTax,
+    totalAccountedFor,
+    s100aClassification,
+    citations,
+    uncomputed,
+  };
 }

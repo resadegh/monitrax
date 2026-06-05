@@ -40,6 +40,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface Div7ALoanInput {
   /** Stable loan id for the breakdown row. */
@@ -357,6 +358,239 @@ export function classifyDiv7ALoans(
   }
 
   // Sub-trust UPE flag — when any loan triggers it.
+  if (classifications.some((c) => c.status === 'SUB_TRUST_UPE')) {
+    citations.push({ kind: 'TR', reference: '2010/3', lastReviewed: '2026-05-05' });
+    citations.push({ kind: 'PCG', reference: '2017/13', lastReviewed: '2026-05-05' });
+    uncomputed.push({
+      id: 'UC-DIV7A-SUBTRUST-UPE',
+      rationale:
+        'One or more loans flagged as sub-trust UPE arrangements. TR 2010/3 + PCG 2017/13 set out Option 1 / 2 / 3 sub-trust regimes (interest-only with 7- or 10-year principal repayment; or 7-year principal-and-interest). v1 surfaces the flag; full classification lands in a future sub-PR.',
+      citation: { kind: 'TR', reference: '2010/3', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  return {
+    classifications,
+    totalDeemedDividend,
+    highestSeverity,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c2 — Decimal sibling path
+// =============================================================================
+
+export interface Div7ALoanInputDecimal {
+  loanId: string;
+  loanLabel?: string;
+  openingBalance: number | string | Decimal;
+  yearsRemaining: number;
+  benchmarkRate: number | string | Decimal;
+  paymentsMadeThisFy: number | string | Decimal;
+  hasComplianceAgreement: boolean;
+  isSubTrustUpe?: boolean;
+}
+
+export interface Div7AClassifyOptionsDecimal {
+  distributableSurplus?: number | string | Decimal;
+}
+
+export interface Div7ALoanClassificationDecimal {
+  loanId: string;
+  loanLabel?: string;
+  status: Div7AStatus;
+  minimumYearlyRepayment: Decimal;
+  mrpShortfall: Decimal;
+  deemedDividendAmount: Decimal;
+  reason: string;
+}
+
+export interface Div7AClassificationResultDecimal {
+  classifications: Div7ALoanClassificationDecimal[];
+  totalDeemedDividend: Decimal;
+  highestSeverity: Div7AStatus;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `calculateMinimumYearlyRepayment` — exact s109N
+ * amortising annuity formula. Preserves the degenerate-case branches:
+ * `openingBalance ≤ 0 || yearsRemaining ≤ 0 → 0`, `benchmarkRate ≤ 0 →
+ * straight-line balance/n`.
+ *
+ * Note: `Decimal.pow(base, n)` accepts an integer exponent. The Phase
+ * 41e.6 inputs always pass integer `yearsRemaining`, but we keep the
+ * Math.pow Float fallback at the boundary for safety.
+ */
+export function calculateMinimumYearlyRepaymentDecimal(
+  openingBalance: number | string | Decimal,
+  yearsRemaining: number,
+  benchmarkRate: number | string | Decimal,
+): Decimal {
+  const balance = toDecimal(openingBalance) ?? new Decimal(0);
+  if (balance.lte(0) || yearsRemaining <= 0) return new Decimal(0);
+  const rate = toDecimal(benchmarkRate) ?? new Decimal(0);
+  if (rate.lte(0)) {
+    return balance.div(yearsRemaining);
+  }
+  // (1 + r)^n via decimal.js Decimal.pow (preserves precision through
+  // the exponentiation). Integer `n` keeps this exact.
+  const onePlusR = rate.plus(1);
+  const onePlusRtoN = onePlusR.pow(yearsRemaining);
+  const numerator = rate.times(onePlusRtoN);
+  const denominator = onePlusRtoN.minus(1);
+  return balance.times(numerator.div(denominator));
+}
+
+function classifyLoanDecimal(input: Div7ALoanInputDecimal): Div7ALoanClassificationDecimal {
+  const { loanId, loanLabel, yearsRemaining } = input;
+  const openingBalance = toDecimal(input.openingBalance) ?? new Decimal(0);
+  const paymentsMadeThisFy = toDecimal(input.paymentsMadeThisFy) ?? new Decimal(0);
+
+  const mrp = calculateMinimumYearlyRepaymentDecimal(
+    openingBalance,
+    yearsRemaining,
+    input.benchmarkRate,
+  );
+
+  if (input.isSubTrustUpe) {
+    return {
+      loanId,
+      loanLabel,
+      status: 'SUB_TRUST_UPE',
+      minimumYearlyRepayment: mrp,
+      mrpShortfall: new Decimal(0),
+      deemedDividendAmount: new Decimal(0),
+      reason:
+        'Sub-trust UPE arrangement (TR 2010/3 + PCG 2017/13). v1 flags for review — Option 1 / 2 / 3 sub-trust classification + 7- vs 10-year term analysis lands in a future sub-PR. Deemed-dividend exposure is NOT zero — engage a registered tax agent.',
+    };
+  }
+
+  if (!input.hasComplianceAgreement) {
+    return {
+      loanId,
+      loanLabel,
+      status: 'NO_AGREEMENT',
+      minimumYearlyRepayment: mrp,
+      mrpShortfall: new Decimal(0),
+      deemedDividendAmount: openingBalance,
+      reason:
+        'No written Div 7A-compliant loan agreement. Per s109D the entire opening balance is treated as an unfranked dividend to the borrower, capped at distributable surplus (s109Y). Engage a registered tax agent before lodgment.',
+    };
+  }
+
+  const shortfall = Decimal.max(new Decimal(0), mrp.minus(paymentsMadeThisFy));
+  if (shortfall.gt(0)) {
+    return {
+      loanId,
+      loanLabel,
+      status: 'MRP_SHORTFALL',
+      minimumYearlyRepayment: mrp,
+      mrpShortfall: shortfall,
+      deemedDividendAmount: shortfall,
+      reason: `MRP for FY is $${mrp.toDecimalPlaces(0).toString()}; payments made $${paymentsMadeThisFy.toDecimalPlaces(0).toString()}. Shortfall of $${shortfall.toDecimalPlaces(0).toString()} treated as unfranked dividend per s109D, capped at distributable surplus (s109Y).`,
+    };
+  }
+
+  return {
+    loanId,
+    loanLabel,
+    status: 'COMPLIANT',
+    minimumYearlyRepayment: mrp,
+    mrpShortfall: new Decimal(0),
+    deemedDividendAmount: new Decimal(0),
+    reason: `Compliant — payments ($${paymentsMadeThisFy.toDecimalPlaces(0).toString()}) meet or exceed the s109N MRP of $${mrp.toDecimalPlaces(0).toString()}.`,
+  };
+}
+
+/**
+ * Decimal sibling of `classifyDiv7ALoans`. Preserves the Phase 41f.3
+ * distributable-surplus cap with Decimal-precise pro-rata distribution.
+ *
+ * Float Math.round(x * 100) / 100 on capped deemed-dividends mirrored
+ * via `toDecimalPlaces(2, ROUND_HALF_EVEN)`.
+ */
+export function classifyDiv7ALoansDecimal(
+  loans: Div7ALoanInputDecimal[],
+  options: Div7AClassifyOptionsDecimal = {},
+): Div7AClassificationResultDecimal {
+  if (loans.length === 0) {
+    return {
+      classifications: [],
+      totalDeemedDividend: new Decimal(0),
+      highestSeverity: 'COMPLIANT',
+      citations: BASE_CITATIONS,
+      uncomputed: [],
+    };
+  }
+
+  const classifications = loans.map((l) => classifyLoanDecimal(l));
+  let grossDeemedDividend = new Decimal(0);
+  for (const c of classifications) {
+    grossDeemedDividend = grossDeemedDividend.plus(c.deemedDividendAmount);
+  }
+
+  let totalDeemedDividend = grossDeemedDividend;
+  let surplusCapApplied = false;
+  let surplus: Decimal | null = null;
+  if (options.distributableSurplus != null) {
+    const surplusCandidate = toDecimal(options.distributableSurplus);
+    if (
+      surplusCandidate !== null &&
+      surplusCandidate.gte(0) &&
+      grossDeemedDividend.gt(surplusCandidate)
+    ) {
+      surplus = surplusCandidate;
+      const capRatio = surplusCandidate.div(grossDeemedDividend);
+      for (const c of classifications) {
+        if (c.deemedDividendAmount.gt(0)) {
+          c.deemedDividendAmount = c.deemedDividendAmount
+            .times(capRatio)
+            .toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+        }
+      }
+      totalDeemedDividend = surplusCandidate;
+      surplusCapApplied = true;
+    }
+  }
+
+  const highestSeverity = classifications.reduce<Div7AStatus>((acc, c) => {
+    return SEVERITY_RANK[c.status] > SEVERITY_RANK[acc] ? c.status : acc;
+  }, 'COMPLIANT');
+
+  const citations = [...BASE_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+
+  if (options.distributableSurplus != null) {
+    citations.push({ kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' });
+    if (surplusCapApplied && surplus !== null) {
+      uncomputed.push({
+        id: 'UC-DIV7A-SURPLUS-CAPPED',
+        rationale: `Aggregate deemed-dividend exposure of $${grossDeemedDividend.toDecimalPlaces(0).toString()} exceeded the company's simplified s109Y distributable surplus of $${surplus.toDecimalPlaces(0).toString()}. Per s109Y the deemed-dividend amount cannot exceed the surplus; per-loan amounts have been pro-rata reduced. The simplified surplus uses retained earnings + net profit after tax — the full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions, which require off-Xero data. Engage a registered tax agent before lodgment.`,
+        citation: { kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' },
+      });
+    }
+    if (grossDeemedDividend.gt(0)) {
+      uncomputed.push({
+        id: 'UC-DIV7A-DISTRIBUTABLE-SURPLUS-ESTIMATE',
+        rationale:
+          'The s109Y surplus used here is the simplified estimate (retained earnings + net profit after tax, floored at 0). The full s109Y formula additionally accounts for paid-up capital + non-commercial loans + prior-year frankable distributions; those values require off-Xero data (typically the prior FY tax return). Treat this surplus as a best-estimate; engage a registered tax agent for the binding figure.',
+        citation: { kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' },
+      });
+    }
+  } else if (grossDeemedDividend.gt(0)) {
+    citations.push({ kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' });
+    uncomputed.push({
+      id: 'UC-DIV7A-DISTRIBUTABLE-SURPLUS',
+      rationale:
+        'Deemed-dividend amounts under s109D are capped by the company\'s distributable surplus (s109Y). v1 reports the structural Div 7A exposure; the s109Y calc — net assets + paid-up capital + repayments + non-commercial loans, less prior-year frankable distributions — is its own beast and lands in a future sub-PR. Engage a registered tax agent.',
+      citation: { kind: 'ITAA_1936', reference: 's109Y', lastReviewed: '2026-05-05' },
+    });
+  }
+
   if (classifications.some((c) => c.status === 'SUB_TRUST_UPE')) {
     citations.push({ kind: 'TR', reference: '2010/3', lastReviewed: '2026-05-05' });
     citations.push({ kind: 'PCG', reference: '2017/13', lastReviewed: '2026-05-05' });
