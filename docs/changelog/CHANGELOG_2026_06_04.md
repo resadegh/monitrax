@@ -600,3 +600,60 @@ NONE — additive code only.
 
 - PR 2.D.3c — other divisions (negativeGearing(+Regime), trustDistribution, trustMinimumTax, trustLossRules, trustDeedValidation, companyLossRules, lossRefundability, div7aLoanClassifier, div152SmallBusinessConcessions, fteIeeClassifier, psiClassifier, s100aZoneClassifier, smsfTriumvirateClassifier).
 - PR 2.D.3d — composers + remaining (entity/, orchestrator/masterTaxPosition, super/smsfIncomeTax, income/salaryProcessor).
+
+---
+
+## Session: qdec-pr2d3c-tax-other-divisions-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — loss-treatment Decimal siblings (§12.14 reform-aware)
+- **Scope**: Q-DEC PR 2.D.3c — `lib/tax-engine/divisions/{negativeGearing,companyLossRules,trustLossRules,trustMinimumTax,lossRefundability}` Decimal siblings
+- **Description**: Third sub-PR of Q-DEC PR 2.D.3. Ships the cohesive "loss treatment / quarantine" theme: negative gearing (real arithmetic + Measure 1 regime), company + trust loss-test dispatch, Measure 3 (trust min tax) skeleton, Measure 5 (loss carry-back) skeleton.
+- **Scope refinement**: original PR 2.D.3c plan was 13 files; given session tractability, narrowed to the 5 "loss treatment / quarantine" engines as a cohesive theme. Deferred to PR 2.D.3c2 (or fold into 3d): `trustDistribution`, `div7aLoanClassifier`, `div152SmallBusinessConcessions`. The remaining 5 files (fteIeeClassifier, psiClassifier, s100aZoneClassifier, smsfTriumvirateClassifier, trustDeedValidation, negativeGearingRegime) are categorical classifiers that don't return money values — no Decimal sibling needed.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/divisions/negativeGearing.ts` — `applyNegativeGearingDecimal` + Decimal types. **§12.14 FW-1 Measure 1 regime guard preserved bit-for-bit** — POST_REFORM_RESTRICTED quarantines the loss; UC_* regimes (UC_PROPERTY_CONTRACT_DATE_UNKNOWN / UC_NEW_BUILD_UNCONFIRMED) fall back to pre-reform behaviour conservatively + surface UC flag. Entity-aware treatment preserved (individual/sole-trader/partnership/SMSF offsets; trust/company traps).
+- `lib/tax-engine/divisions/companyLossRules.ts` — `applyCompanyLossRulesDecimal` + Decimal types. Div 165 COT/BCT dispatch; `deductibleLossAmount` Decimal-typed (preserved as Decimal through the pass-through).
+- `lib/tax-engine/divisions/trustLossRules.ts` — `applyTrustLossRulesDecimal` + Decimal types. Sch 2F test-outcome dispatch per trust type (FTE / fixed / non-fixed / excepted).
+- `lib/tax-engine/divisions/trustMinimumTax.ts` — `applyTrustMinimumTaxDecimal` + Decimal types. **§12.14 FW-2 stage-1 UNCOMPUTED preserved** — out-of-scope for non-DISCRETIONARY trusts; UNCOMPUTED when `trustMinTaxCommencementVerified === false`. Stage 2 throws.
+- `lib/tax-engine/divisions/lossRefundability.ts` — `applyLossRefundabilityDecimal` + Decimal types. **§12.14 FW-2 preserved** — out-of-scope for non-COMPANY / turnover > $1B / no current-FY loss; UNCOMPUTED when `lossCarryBackCommencementVerified === false`. Stage 2 throws.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-loss.ts` — 1 shadow engine (negativeGearing × 8 fixtures). Other 4 engines exercised via direct contract tests (categorical or skeleton, not shadow-amenable).
+- `tests/tax-engine/loss-treatment.decimal.test.ts` — 30 tests (8 shadow + 6 negativeGearing contract + 4 companyLossRules contract + 4 trustLossRules contract + 7 skeleton FW-2 contract + 1 aggregate report).
+
+### Architectural notes
+
+- **`Math.max(0, otherIncome)` preserved.** `Decimal.max(new Decimal(0), otherIncome)` mirrors Float's floor when otherIncome is negative — produces same `absorbed = min(lossAmount, max(0, otherIncome))` result.
+- **`Math.abs(netResult)` preserved** via `netResult.abs()`.
+- **§12.14 FW-1 conjunction preserved bit-for-bit** on negativeGearing — regime === POST_REFORM_RESTRICTED is the single trigger for quarantine; UC_* regimes fall back conservatively.
+- **§12.14 FW-2 preserved** on trustMinimumTax + lossRefundability — both gate on their respective `*CommencementVerified` flags and throw at stage 2 if flag flipped without mechanic.
+
+### Testing
+
+- [x] 30 new tests pass + 1158 existing Q-DEC scope tests still pass (1188 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 8 negativeGearing fixtures
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.3c scope refined to loss-treatment theme; new PR 2.D.3c2 row added for remaining math engines)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-1 preserved (Measure 1):** `applyNegativeGearingDecimal` takes optional `regime` param; defaults to PRE_REFORM_GRANDFATHERED. POST_REFORM_RESTRICTED branch quarantines loss; UC_* regimes fall back + surface UC flag.
+- [x] **FW-2 preserved (Measure 3, Measure 5):** `applyTrustMinimumTaxDecimal` + `applyLossRefundabilityDecimal` both return UNCOMPUTED when their respective `*CommencementVerified` flag is false. Stage 2 defensive throw.
+- [x] No new schema columns. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.3c2 — beneficiary allocation + business concessions (trustDistribution, div7aLoanClassifier, div152SmallBusinessConcessions).
+- PR 2.D.3d — composers + remaining (entity/, orchestrator/masterTaxPosition, super/smsfIncomeTax, income/salaryProcessor).

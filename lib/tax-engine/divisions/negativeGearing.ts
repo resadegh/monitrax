@@ -55,6 +55,7 @@
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
 import type { NegativeGearingRegime } from './negativeGearingRegime';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type LossTreatmentEntity =
   | 'PERSONAL_NAME'
@@ -311,4 +312,175 @@ export function entityCanOffsetLossesCurrentFy(
   entityType: LossTreatmentEntity,
 ): boolean {
   return ENTITY_OFFSETS_OWN_INCOME[entityType];
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c — Decimal sibling path (§12.14 FW-1 preserved)
+// =============================================================================
+
+export interface NegativeGearingInputDecimal {
+  entityType: LossTreatmentEntity;
+  grossIncome: number | string | Decimal;
+  deductibleExpenses: number | string | Decimal;
+  otherIncome: number | string | Decimal;
+  regime?: NegativeGearingRegime;
+}
+
+export interface NegativeGearingResultDecimal {
+  netResult: Decimal;
+  lossTreatment: LossTreatment;
+  lossAbsorbedThisFy: Decimal;
+  lossCarriedForward: Decimal;
+  taxableIncomeAtEntity: Decimal;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyNegativeGearing`. **§12.14 FW-1 Measure 1
+ * regime guard preserved bit-for-bit** — POST_REFORM_RESTRICTED branch
+ * quarantines the loss; UC_* regimes surface UNCOMPUTED + fall back to
+ * pre-reform behaviour conservatively.
+ */
+export function applyNegativeGearingDecimal(
+  input: NegativeGearingInputDecimal,
+): NegativeGearingResultDecimal {
+  const { entityType } = input;
+  const grossIncome = toDecimal(input.grossIncome) ?? new Decimal(0);
+  const deductibleExpenses = toDecimal(input.deductibleExpenses) ?? new Decimal(0);
+  const otherIncome = toDecimal(input.otherIncome) ?? new Decimal(0);
+  const regime: NegativeGearingRegime = input.regime ?? 'PRE_REFORM_GRANDFATHERED';
+
+  const netResult = grossIncome.minus(deductibleExpenses);
+  const citations = [...BASE_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+
+  if (netResult.gte(0)) {
+    return {
+      netResult,
+      lossTreatment: 'NO_LOSS',
+      lossAbsorbedThisFy: new Decimal(0),
+      lossCarriedForward: new Decimal(0),
+      taxableIncomeAtEntity: otherIncome.plus(netResult),
+      reason: `Net result $${netResult.toDecimalPlaces(0).toString()} (income ≥ expenses) — no loss treatment required.`,
+      citations,
+      uncomputed,
+    };
+  }
+
+  const lossAmount = netResult.abs();
+
+  if (regime === 'POST_REFORM_RESTRICTED') {
+    uncomputed.push({
+      id: 'UC-NEG-GEARING-QUARANTINE-SCOPE-PENDING-DRAFT',
+      rationale:
+        'Phase 41E Measure 1 — residential property contracted after 7:30pm AEST 12 May 2026 + not a new build → loss does not offset other income from FY 2027-28 (negative-gearing reform). The precise scope of the loss quarantine (per-property vs per-entity) awaits the Treasury exposure draft. v1 reports the full carry-forward at the entity level conservatively.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 (proposed Phase 41E Measure 1 amendments)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+    return {
+      netResult,
+      lossTreatment: 'TRAPPED_AT_ENTITY',
+      lossAbsorbedThisFy: new Decimal(0),
+      lossCarriedForward: lossAmount,
+      taxableIncomeAtEntity: otherIncome,
+      reason: `Negative gearing — restricted by Phase 41E Measure 1 (property contracted after 12 May 2026 7:30pm AEST, not a new build). $${lossAmount.toDecimalPlaces(0).toString()} cannot offset other income from FY 2027-28; carries forward against future property income.`,
+      citations,
+      uncomputed,
+    };
+  }
+
+  if (regime === 'UC_PROPERTY_CONTRACT_DATE_UNKNOWN') {
+    uncomputed.push({
+      id: 'UC-PROPERTY-CONTRACT-DATE-UNKNOWN',
+      rationale:
+        'Property is residential and the target FY is post-1 Jul 2027, but `acquisitionContractDate` is missing. Cannot determine if grandfathered or post-reform. Treating as pre-reform (conservative — gives the user the benefit) until contract date is confirmed.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 + s109-5 (CGT event A1 / contract date)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+  } else if (regime === 'UC_NEW_BUILD_UNCONFIRMED') {
+    uncomputed.push({
+      id: 'UC-NEW-BUILD-UNCONFIRMED',
+      rationale:
+        'Property contracted after 12 May 2026 7:30pm AEST cut-over. Whether it qualifies as a new build (negative gearing still permitted) or restricted (negative gearing denied) needs user confirmation via `Property.isNewBuild` + `Property.newBuildEvidence`. Treating as pre-reform (conservative) until confirmed.',
+      citation: {
+        kind: 'ITAA_1997',
+        reference: 'Div 36 (proposed Phase 41E Measure 1 — new build definition)',
+        lastReviewed: '2026-05-16',
+      },
+    });
+  }
+
+  if (ENTITY_OFFSETS_OWN_INCOME[entityType]) {
+    const absorbed = Decimal.min(lossAmount, Decimal.max(new Decimal(0), otherIncome));
+    const carriedForward = lossAmount.minus(absorbed);
+    const remaining = otherIncome.minus(absorbed);
+
+    if (carriedForward.gt(0)) {
+      uncomputed.push({
+        id: 'UC-TAX-LOSS-CARRY-FORWARD',
+        rationale: `Loss exceeds other income at entity level. $${carriedForward.toDecimalPlaces(0).toString()} carries to next FY as a tax loss. Multi-year tax-loss tracking (Div 36 with prior-year balances) lands in a future sub-PR — caller must persist this carry-forward in the user's tax-loss register.`,
+        citation: { kind: 'ITAA_1997', reference: 'Div 36', lastReviewed: '2026-05-05' },
+      });
+    }
+
+    return {
+      netResult,
+      lossTreatment: 'OFFSET_OTHER_INCOME',
+      lossAbsorbedThisFy: absorbed,
+      lossCarriedForward: carriedForward,
+      taxableIncomeAtEntity: remaining,
+      reason:
+        entityType === 'PERSONAL_NAME' || entityType === 'SOLE_TRADER'
+          ? `Negative gearing — $${lossAmount.toDecimalPlaces(0).toString()} loss offsets other income (Div 8 + Div 36). $${absorbed.toDecimalPlaces(0).toString()} absorbed; $${carriedForward.toDecimalPlaces(0).toString()} carries forward.`
+          : entityType === 'PARTNERSHIP'
+            ? `Partnership loss — flows to partners per agreement (s92). Partners offset against their own income; v1 treats partnership-level same as individual.`
+            : `SMSF investment loss — offset against other fund income at fund level. Non-arm's-length loss test (NALI) deferred to 41e.11.`,
+      citations,
+      uncomputed,
+    };
+  }
+
+  // Trust / company — trap at entity.
+  const trustOrCompany =
+    entityType === 'DISCRETIONARY_TRUST' ||
+    entityType === 'UNIT_TRUST' ||
+    entityType === 'COMPANY';
+
+  if (trustOrCompany) {
+    citations.push(
+      entityType === 'COMPANY'
+        ? { kind: 'ITAA_1997', reference: 'Div 165', lastReviewed: '2026-05-05' }
+        : { kind: 'ITAA_1936', reference: 'Sch 2F', lastReviewed: '2026-05-05' },
+    );
+    uncomputed.push({
+      id: entityType === 'COMPANY' ? 'UC-COMPANY-LOSS-TESTS' : 'UC-TRUST-LOSS-TESTS',
+      rationale:
+        entityType === 'COMPANY'
+          ? `Company tax losses are subject to Continuity of Ownership Test (s165) OR Same Business Test (s165-13). v1 reports the carry-forward amount; loss-test classifier lands with 41e.15.`
+          : `Trust tax losses are subject to Sch 2F tests (Income Injection, Pattern of Distributions). v1 reports the carry-forward amount; loss-test classifier lands with 41e.15.`,
+      citation:
+        entityType === 'COMPANY'
+          ? { kind: 'ITAA_1997', reference: 'Div 165', lastReviewed: '2026-05-05' }
+          : { kind: 'ITAA_1936', reference: 'Sch 2F', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  return {
+    netResult,
+    lossTreatment: 'TRAPPED_AT_ENTITY',
+    lossAbsorbedThisFy: new Decimal(0),
+    lossCarriedForward: lossAmount,
+    taxableIncomeAtEntity: otherIncome,
+    reason: `${entityType} loss of $${lossAmount.toDecimalPlaces(0).toString()} is trapped at the entity level — carries forward (subject to loss-tests in 41e.15). Other income at the entity ($${otherIncome.toDecimalPlaces(0).toString()}) is taxed independently this FY.`,
+    citations,
+    uncomputed,
+  };
 }

@@ -36,6 +36,7 @@
  */
 
 import type { AuthorityCitation, TaxYearConfig, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type LossRefundabilityEntityType = 'COMPANY' | 'OTHER';
 
@@ -179,4 +180,110 @@ export function applyLossRefundability(input: LossRefundabilityInput): LossRefun
 /** Convenience — turnover ceiling for AI advisor narration. */
 export function getLossCarryBackTurnoverCapAud(): number {
   return TURNOVER_CAP_AUD;
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c — Decimal sibling path (§12.14 FW-2 preserved)
+// =============================================================================
+
+export interface CompanyFyTaxPositionDecimal {
+  fy: string;
+  taxablePosition: number | string | Decimal;
+  taxPaid: number | string | Decimal;
+  frankingAccountBalance: number | string | Decimal;
+}
+
+export interface LossRefundabilityInputDecimal {
+  entityId: string;
+  entityType: LossRefundabilityEntityType;
+  annualTurnoverCurrentFy: number | string | Decimal;
+  currentFy: CompanyFyTaxPositionDecimal;
+  priorFy1?: CompanyFyTaxPositionDecimal;
+  priorFy2?: CompanyFyTaxPositionDecimal;
+  config: TaxYearConfig;
+}
+
+export interface LossRefundabilityResultDecimal {
+  inScope: boolean;
+  computed: boolean;
+  refundEligible: Decimal;
+  perPriorFyBreakdown: Array<{
+    fy: string;
+    refundFromThisFy: Decimal;
+    cappedByFrankingBalance: boolean;
+  }>;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyLossRefundability`. **Stage 1 behaviour
+ * preserved** — out-of-scope for non-COMPANY / over-$1B turnover /
+ * no current-FY loss; UNCOMPUTED when carry-back commencement
+ * unverified. Stage 2 throws.
+ */
+export function applyLossRefundabilityDecimal(input: LossRefundabilityInputDecimal): LossRefundabilityResultDecimal {
+  const zero = new Decimal(0);
+  const turnover = toDecimal(input.annualTurnoverCurrentFy) ?? zero;
+  const currentTaxablePosition = toDecimal(input.currentFy.taxablePosition) ?? zero;
+
+  if (input.entityType !== 'COMPANY') {
+    return {
+      inScope: false,
+      computed: true,
+      refundEligible: zero,
+      perPriorFyBreakdown: [],
+      reason: `Entity ${input.entityId} is ${input.entityType} — Measure 5 carry-back applies only to COMPANY entities with turnover < $${TURNOVER_CAP_AUD.toLocaleString()}.`,
+      citations: [],
+      uncomputed: [],
+    };
+  }
+
+  if (turnover.gte(TURNOVER_CAP_AUD)) {
+    return {
+      inScope: false,
+      computed: true,
+      refundEligible: zero,
+      perPriorFyBreakdown: [],
+      reason: `Company turnover $${turnover.toDecimalPlaces(0).toString()} exceeds the $${TURNOVER_CAP_AUD.toLocaleString()} carry-back ceiling. Existing loss-carry-forward (Phase 41e.15) applies.`,
+      citations: [STAGE_1_CITATION],
+      uncomputed: [],
+    };
+  }
+
+  if (currentTaxablePosition.gte(0)) {
+    return {
+      inScope: false,
+      computed: true,
+      refundEligible: zero,
+      perPriorFyBreakdown: [],
+      reason: `Company ${input.entityId} has no current-FY loss (taxable position $${currentTaxablePosition.toDecimalPlaces(0).toString()}). Carry-back not applicable.`,
+      citations: [STAGE_1_CITATION],
+      uncomputed: [],
+    };
+  }
+
+  if (!input.config.lossCarryBackCommencementVerified) {
+    return {
+      inScope: true,
+      computed: false,
+      refundEligible: zero,
+      perPriorFyBreakdown: [],
+      reason:
+        'Loss carry-back (Phase 41E Measure 5) — awaiting Royal Assent of the implementing Bill. Existing loss-carry-forward flow applies until commencement is verified.',
+      citations: [STAGE_1_CITATION],
+      uncomputed: [
+        {
+          id: 'UC-LOSS-CARRYBACK-PENDING-BILL',
+          rationale: `Phase 41E Measure 5 (loss carry-back for companies < $1B turnover) — Royal Assent of the implementing Bill not yet confirmed. Company ${input.entityId} eligible by turnover ($${turnover.toDecimalPlaces(0).toString()}) and current-FY loss ($${currentTaxablePosition.toDecimalPlaces(0).toString()}). Will compute eligible refund once commencement verified.`,
+          citation: STAGE_1_CITATION,
+        },
+      ],
+    };
+  }
+
+  throw new Error(
+    '[Phase 41E.1] lossCarryBackCommencementVerified is true but the Measure 5 mechanic is not yet implemented. Do NOT flip the flag until Stage 2 lands the carry-back mechanic + franking-balance cap (per the published Bill).',
+  );
 }

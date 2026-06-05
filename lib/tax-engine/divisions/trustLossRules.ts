@@ -33,6 +33,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type TrustTypeForLossRules =
   | 'FAMILY_TRUST_FTE' // FTE in force per s272-80
@@ -191,4 +192,90 @@ export function applyTrustLossRules(input: TrustLossInput): TrustLossResult {
     citations,
     uncomputed,
   };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c — Decimal sibling path
+// =============================================================================
+
+export interface TrustLossInputDecimal {
+  trustType: TrustTypeForLossRules;
+  lossAmount: number | string | Decimal;
+  testOutcomes: TrustLossInput['testOutcomes'];
+}
+
+export interface TrustLossResultDecimal {
+  outcome: TrustLossOutcome;
+  deductibleLossAmount: Decimal;
+  testReport: TrustLossResult['testReport'];
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyTrustLossRules`. Same Sch 2F test-outcome
+ * dispatch; Decimal preserves precision on the loss amount.
+ */
+export function applyTrustLossRulesDecimal(input: TrustLossInputDecimal): TrustLossResultDecimal {
+  const { trustType, testOutcomes } = input;
+  const lossAmount = toDecimal(input.lossAmount) ?? new Decimal(0);
+  const tests = requiredTests(trustType);
+
+  const citations: AuthorityCitation[] = [
+    { kind: 'ITAA_1936', reference: 'Sch 2F ITAA 1936', lastReviewed: '2026-05-05' },
+  ];
+  const uncomputed: UncomputedFlag[] = [];
+  const testReport: TrustLossResult['testReport'] = [];
+
+  let anyFail = false;
+  let anyNotAsserted = false;
+
+  for (const t of tests) {
+    const outcome = testOutcomes[t] ?? 'NOT_ASSERTED';
+    testReport.push({
+      testName: TEST_DISPLAY_NAMES[t],
+      required: true,
+      outcome,
+      citation: TEST_CITATIONS[t],
+    });
+    citations.push({
+      kind: 'ITAA_1936',
+      reference: TEST_CITATIONS[t],
+      lastReviewed: '2026-05-05',
+    });
+    if (outcome === 'FAIL') anyFail = true;
+    if (outcome === 'NOT_ASSERTED') anyNotAsserted = true;
+  }
+
+  if (trustType === 'EXCEPTED_TRUST') {
+    citations.push({
+      kind: 'ITAA_1936',
+      reference: 'Sch 2F ITAA 1936 Div 268 (Excepted Trusts)',
+      lastReviewed: '2026-05-05',
+    });
+  }
+
+  let outcome: TrustLossOutcome;
+  let deductibleLossAmount: Decimal;
+
+  if (anyFail) {
+    outcome = 'LOSSES_DENIED';
+    deductibleLossAmount = new Decimal(0);
+    uncomputed.push({
+      id: 'UC-TRUST-LOSS-DENIED',
+      rationale: `One or more required Sch 2F tests failed for ${trustType}. Loss of $${lossAmount.toDecimalPlaces(0).toString()} is quarantined and may NOT be deducted in the current year. Engage a registered tax agent for carry-forward / utilisation in future years.`,
+    });
+  } else if (anyNotAsserted) {
+    outcome = 'INCONCLUSIVE';
+    deductibleLossAmount = new Decimal(0);
+    uncomputed.push({
+      id: 'UC-TRUST-LOSS-INCONCLUSIVE',
+      rationale: `One or more required Sch 2F tests for ${trustType} are NOT_ASSERTED. v1 does not compute pass/fail from historical facts — Pattern of Distributions, Control, and Same Business tests turn on multi-year evidence the caller must supply. Engage a registered tax agent.`,
+    });
+  } else {
+    outcome = 'LOSSES_DEDUCTIBLE';
+    deductibleLossAmount = lossAmount;
+  }
+
+  return { outcome, deductibleLossAmount, testReport, citations, uncomputed };
 }
