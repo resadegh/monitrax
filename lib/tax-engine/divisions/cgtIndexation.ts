@@ -32,6 +32,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag, TaxYearConfig } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface CgtIndexationInput {
   /** Pre-reform cost base — acquisition cost + improvements + incidental. */
@@ -110,6 +111,59 @@ export function applyCgtIndexation(input: CgtIndexationInput): CgtIndexationResu
   // future session flips the flag without also implementing the
   // formula, the calc fails loudly rather than silently producing
   // wrong numbers (CLAUDE.md §12.8 "fail loudly at boundaries").
+  throw new Error(
+    '[Phase 41E.1] cgtIndexationCommencementVerified is true but the indexation mechanic is not yet implemented. Do NOT flip the flag until Stage 2 lands the per-quarter CPI lookup + the indexed-cost-base formula (per the published exposure draft).',
+  );
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3b — Decimal sibling path (§12.14 FW-2 preserved)
+// =============================================================================
+
+export interface CgtIndexationInputDecimal {
+  costBase: number | string | Decimal;
+  acquisitionQuarter: string;
+  disposalQuarter: string;
+  saleProceeds: number | string | Decimal;
+  config: TaxYearConfig;
+}
+
+export interface CgtIndexationResultDecimal {
+  indexedCostBase: Decimal;
+  indexedGain: Decimal;
+  computed: boolean;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyCgtIndexation`. **Stage 1 behaviour preserved
+ * exactly** — UNCOMPUTED returned for every input until
+ * `cgtIndexationCommencementVerified` flips to true. Stage 2 throws
+ * (defensive boundary) until the mechanic ships.
+ */
+export function applyCgtIndexationDecimal(input: CgtIndexationInputDecimal): CgtIndexationResultDecimal {
+  const costBase = toDecimal(input.costBase) ?? new Decimal(0);
+
+  if (!input.config.cgtIndexationCommencementVerified) {
+    return {
+      indexedCostBase: new Decimal(0),
+      indexedGain: new Decimal(0),
+      computed: false,
+      reason:
+        'CGT indexation regime (Phase 41E Measure 2) — awaiting Treasury exposure draft + Royal Assent of the implementing Bill. The pre-reform 50% discount (Div 115) applies to this disposal until commencement is verified.',
+      citations: [STAGE_1_CITATION],
+      uncomputed: [
+        {
+          id: 'UC-CGT-INDEXATION-PENDING-EXPOSURE-DRAFT',
+          rationale: `Phase 41E Measure 2 (CGT cost-base indexation) commences 1 Jul 2027 / FY 2027-28 but requires Treasury exposure draft + Royal Assent before the engine activates the indexation mechanic. Acquisition: ${input.acquisitionQuarter}; disposal: ${input.disposalQuarter}; cost base: $${costBase.toDecimalPlaces(0).toString()}. Pre-reform 50% discount applies as fallback.`,
+          citation: STAGE_1_CITATION,
+        },
+      ],
+    };
+  }
+
   throw new Error(
     '[Phase 41E.1] cgtIndexationCommencementVerified is true but the indexation mechanic is not yet implemented. Do NOT flip the flag until Stage 2 lands the per-quarter CPI lookup + the indexed-cost-base formula (per the published exposure draft).',
   );

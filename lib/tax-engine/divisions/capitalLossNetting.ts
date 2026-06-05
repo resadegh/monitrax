@@ -27,10 +27,13 @@
 
 import {
   calculateCgtDiscount,
+  calculateCgtDiscountDecimal,
   type CgtEligibleEntityType,
   type CgtDiscountResult,
+  type CgtDiscountResultDecimal,
 } from './cgtDiscount';
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 /** A single CGT event (asset disposal / loss-realising event). */
 export interface CgtEvent {
@@ -251,6 +254,192 @@ export function applyCapitalLossNetting(
   // the v1 simplification above. Only when relevant.
   if (
     netGainBeforeDiscount > 0 &&
+    gainEvents.some((e) => e.monthsHeld < 12) &&
+    gainEvents.some((e) => e.monthsHeld >= 12)
+  ) {
+    uncomputed.push({
+      id: 'UC-CGT-MIXED-HOLDING',
+      rationale:
+        'Mixed holding periods — some gain events met the 12-month rule, others did not. v1 applies the entity discount to the qualifying-share proportion of the net gain. Per-event proration with full Subdiv 115-A rule lands in a future sub-PR.',
+    });
+  }
+
+  return {
+    totalNominalGains,
+    totalCurrentYearLosses,
+    totalPriorYearLosses,
+    netGainBeforeDiscount,
+    discountResult,
+    assessableNetCapitalGain,
+    carryForwardOut,
+    breakdown,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3b — Decimal sibling path
+// =============================================================================
+
+export interface CgtEventDecimal {
+  id: string;
+  monthsHeld: number;
+  nominalAmount: number | string | Decimal;
+  label?: string;
+}
+
+export interface CarryForwardLossDecimal {
+  financialYear: string;
+  amount: number | string | Decimal;
+}
+
+export interface CapitalLossNettingInputDecimal {
+  entityType: CgtEligibleEntityType;
+  events: CgtEventDecimal[];
+  carryForwardLosses?: CarryForwardLossDecimal[];
+  isComplying?: boolean;
+  isForeignResident?: boolean;
+}
+
+export interface NettingBreakdownRowDecimal {
+  eventId: string;
+  label?: string;
+  nominalAmount: Decimal;
+  appliedFraction: Decimal;
+}
+
+export interface CapitalLossNettingResultDecimal {
+  totalNominalGains: Decimal;
+  totalCurrentYearLosses: Decimal;
+  totalPriorYearLosses: Decimal;
+  netGainBeforeDiscount: Decimal;
+  discountResult: CgtDiscountResultDecimal | null;
+  assessableNetCapitalGain: Decimal;
+  carryForwardOut: Decimal;
+  breakdown: NettingBreakdownRowDecimal[];
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyCapitalLossNetting`. Same s100-50 + s115-100
+ * ordering, blended-discount logic, mixed-holding UNCOMPUTED flag.
+ * Composes `calculateCgtDiscountDecimal` for the net-gain discount step.
+ */
+export function applyCapitalLossNettingDecimal(
+  input: CapitalLossNettingInputDecimal,
+): CapitalLossNettingResultDecimal {
+  const {
+    entityType,
+    events,
+    carryForwardLosses = [],
+    isComplying = true,
+    isForeignResident = false,
+  } = input;
+  const zero = new Decimal(0);
+
+  // Coerce nominal amounts once.
+  const eventsDec = events.map((e) => ({
+    id: e.id,
+    monthsHeld: e.monthsHeld,
+    nominalAmount: toDecimal(e.nominalAmount) ?? zero,
+    label: e.label,
+  }));
+
+  const sortedPriorLosses = [...carryForwardLosses].sort((a, b) =>
+    a.financialYear.localeCompare(b.financialYear),
+  );
+  let totalPriorYearLosses = new Decimal(0);
+  for (const l of sortedPriorLosses) {
+    const amt = toDecimal(l.amount) ?? zero;
+    totalPriorYearLosses = totalPriorYearLosses.plus(Decimal.max(zero, amt));
+  }
+
+  const gainEvents = eventsDec.filter((e) => e.nominalAmount.gt(0));
+  const lossEvents = eventsDec.filter((e) => e.nominalAmount.lt(0));
+
+  let totalNominalGains = new Decimal(0);
+  for (const e of gainEvents) totalNominalGains = totalNominalGains.plus(e.nominalAmount);
+  let totalCurrentYearLosses = new Decimal(0);
+  for (const e of lossEvents) totalCurrentYearLosses = totalCurrentYearLosses.plus(e.nominalAmount.abs());
+
+  const totalLosses = totalPriorYearLosses.plus(totalCurrentYearLosses);
+
+  const netGainBeforeDiscount = Decimal.max(zero, totalNominalGains.minus(totalLosses));
+  const carryForwardOut = Decimal.max(zero, totalLosses.minus(totalNominalGains));
+
+  const breakdown: NettingBreakdownRowDecimal[] = eventsDec.map((e) => {
+    let appliedFraction = new Decimal(1);
+    if (e.nominalAmount.lt(0)) {
+      if (totalLosses.lte(totalNominalGains)) {
+        appliedFraction = new Decimal(1);
+      } else {
+        // Mirror Float's formula:
+        //   |amount| / totalLosses × (totalNominalGains / totalLosses === 0 ? 0 : 1)
+        // The inner ternary is zero only when totalNominalGains is 0;
+        // otherwise it's effectively 1, so the fraction = |amount| / totalLosses.
+        appliedFraction = totalNominalGains.isZero()
+          ? new Decimal(0)
+          : e.nominalAmount.abs().div(totalLosses);
+      }
+    }
+    return {
+      eventId: e.id,
+      label: e.label,
+      nominalAmount: e.nominalAmount,
+      appliedFraction,
+    };
+  });
+
+  let discountResult: CgtDiscountResultDecimal | null = null;
+  let assessableNetCapitalGain = netGainBeforeDiscount;
+
+  if (netGainBeforeDiscount.gt(0)) {
+    const qualifyingEvents = gainEvents.filter((e) => e.monthsHeld >= 12);
+    const anyQualifies = qualifyingEvents.length > 0;
+    const blendedMonths = anyQualifies
+      ? Math.max(...qualifyingEvents.map((e) => e.monthsHeld))
+      : 0;
+
+    discountResult = calculateCgtDiscountDecimal({
+      entityType,
+      monthsHeld: blendedMonths,
+      nominalGain: netGainBeforeDiscount,
+      isComplying,
+      isForeignResident,
+    });
+
+    if (anyQualifies && qualifyingEvents.length < gainEvents.length) {
+      let qualifyingGains = new Decimal(0);
+      for (const e of qualifyingEvents) qualifyingGains = qualifyingGains.plus(e.nominalAmount);
+      const qualifyingShare = totalNominalGains.gt(0)
+        ? qualifyingGains.div(totalNominalGains)
+        : new Decimal(0);
+      const discountedPortion = netGainBeforeDiscount
+        .times(qualifyingShare)
+        .times(discountResult.discountRate);
+      assessableNetCapitalGain = netGainBeforeDiscount.minus(discountedPortion);
+    } else {
+      assessableNetCapitalGain = discountResult.discountedGain;
+    }
+  }
+
+  const citations: AuthorityCitation[] = [...NETTING_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+
+  if (discountResult) {
+    for (const c of discountResult.citations) {
+      const key = `${c.kind}:${c.reference}`;
+      if (!citations.some((x) => `${x.kind}:${x.reference}` === key)) {
+        citations.push(c);
+      }
+    }
+    uncomputed.push(...discountResult.uncomputed);
+  }
+
+  if (
+    netGainBeforeDiscount.gt(0) &&
     gainEvents.some((e) => e.monthsHeld < 12) &&
     gainEvents.some((e) => e.monthsHeld >= 12)
   ) {

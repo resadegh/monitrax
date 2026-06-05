@@ -31,6 +31,7 @@ import type {
   UncomputedFlag,
 } from '../types';
 import { classifyAcquisitionGrandfathering } from '../config/reformConstants';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export type CgtEligibleEntityType =
   | 'PERSONAL_NAME'
@@ -304,4 +305,143 @@ export function getCgtDiscountRate(
 ): number {
   if (entityType === 'SMSF' && !isComplying) return 0;
   return ENTITY_DISCOUNT_RATE[entityType];
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3b — Decimal sibling path (§12.14 FW-1/FW-2 preserved)
+// =============================================================================
+
+export interface CgtDiscountInputDecimal {
+  entityType: CgtEligibleEntityType;
+  monthsHeld: number;
+  nominalGain: number | string | Decimal;
+  isComplying?: boolean;
+  isForeignResident?: boolean;
+  acquisitionContractDate?: Date | null;
+  disposalFy?: string;
+  config?: TaxYearConfig;
+}
+
+export interface CgtDiscountResultDecimal {
+  discountRate: Decimal;
+  discountAmount: Decimal;
+  discountedGain: Decimal;
+  metHoldingPeriod: boolean;
+  reason: string;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `calculateCgtDiscount`. **§12.14 FW-1/FW-2 regime
+ * gate preserved bit-for-bit** — Measure 2 post-reform branch fires only
+ * when `cgtIndexationCommencementVerified === true` AND grandfathering
+ * resolves to `POST_REFORM` AND `disposalFy` is FY 2027-28+.
+ *
+ * Float doesn't pre-round the discount amount; Decimal preserves full
+ * precision (callers round at the output boundary).
+ */
+export function calculateCgtDiscountDecimal(input: CgtDiscountInputDecimal): CgtDiscountResultDecimal {
+  const {
+    entityType,
+    monthsHeld,
+    isComplying = true,
+    isForeignResident = false,
+  } = input;
+  const nominalGain = toDecimal(input.nominalGain) ?? new Decimal(0);
+
+  const uncomputed: UncomputedFlag[] = [];
+  const citations: AuthorityCitation[] = [...COMMON_CITATIONS];
+
+  // §12.14 FW-1/FW-2 regime guard. Preserve the Float branch logic
+  // exactly — never silent post-reform numbers.
+  if (
+    input.config?.cgtIndexationCommencementVerified === true &&
+    input.acquisitionContractDate &&
+    input.disposalFy
+  ) {
+    const grandfathering = classifyAcquisitionGrandfathering(input.acquisitionContractDate);
+    const isPostReformDisposal = /^20\d{2}-\d{2}$/.test(input.disposalFy)
+      && Number(input.disposalFy.slice(0, 4)) >= 2027;
+    if (grandfathering === 'POST_REFORM' && isPostReformDisposal) {
+      return {
+        discountRate: new Decimal(0),
+        discountAmount: new Decimal(0),
+        discountedGain: nominalGain,
+        metHoldingPeriod: monthsHeld >= MIN_HOLDING_MONTHS,
+        reason:
+          'POST_REFORM — Phase 41E Measure 2 regime. The 50% CGT discount does not apply. Route this disposal through `cgtIndexation` + `cgtMinimumRate` for the indexed-cost-base + 30%-floor calculation.',
+        citations: [
+          ...citations,
+          {
+            kind: 'ITAA_1997',
+            reference: 'Div 114 + s115-100 (Phase 41E Measure 2 amendments)',
+            lastReviewed: '2026-05-16',
+          },
+        ],
+        uncomputed: [],
+      };
+    }
+  }
+
+  if (monthsHeld < MIN_HOLDING_MONTHS) {
+    return {
+      discountRate: new Decimal(0),
+      discountAmount: new Decimal(0),
+      discountedGain: nominalGain,
+      metHoldingPeriod: false,
+      reason: `Held ${monthsHeld} months — full nominal gain is taxable per ITAA 1997 s115-25 (12-month rule).`,
+      citations,
+      uncomputed,
+    };
+  }
+
+  if (entityType === 'SMSF' && !isComplying) {
+    return {
+      discountRate: new Decimal(0),
+      discountAmount: new Decimal(0),
+      discountedGain: nominalGain,
+      metHoldingPeriod: true,
+      reason: 'No discount — non-complying SMSF (ITAA 1997 s115-100 carve-out).',
+      citations: [
+        ...citations,
+        { kind: 'ITAA_1997', reference: 's115-100', lastReviewed: '2026-05-05' },
+      ],
+      uncomputed,
+    };
+  }
+
+  if (isForeignResident) {
+    uncomputed.push({
+      id: 'UC-FOREIGN-RESIDENT-CGT',
+      rationale:
+        'Foreign-resident CGT discount apportionment (Subdiv 115-D, post 8 May 2012) is not computed in v1. The full nominal gain may be taxable depending on residency dates. Confirm with a registered tax agent.',
+      citation: { kind: 'ITAA_1997', reference: 'Subdiv 115-D', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  // Entity-aware rate dispatch — Decimal arithmetic.
+  // Mirror Float's `Math.max(0, nominalGain) × discountRate`.
+  const discountRate = new Decimal(ENTITY_DISCOUNT_RATE[entityType]);
+  const discountAmount = Decimal.max(new Decimal(0), nominalGain).times(discountRate);
+  const discountedGain = nominalGain.minus(discountAmount);
+  const reason = PER_ENTITY_REASON[entityType];
+
+  if (entityType === 'COMPANY') {
+    citations.push({
+      kind: 'ITAA_1997',
+      reference: 's115-280',
+      lastReviewed: '2026-05-05',
+    });
+  }
+
+  return {
+    discountRate,
+    discountAmount,
+    discountedGain,
+    metHoldingPeriod: true,
+    reason,
+    citations,
+    uncomputed,
+  };
 }

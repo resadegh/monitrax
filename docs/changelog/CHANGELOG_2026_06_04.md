@@ -544,3 +544,59 @@ NONE — additive code only.
 - PR 2.D.3b — CGT division engines (cgtDiscount, cgtIndexation, cgtMinimumRate, foreignResidentCgt, capitalLossNetting). Reform-aware §12.14 FW-1/FW-2.
 - PR 2.D.3c — other divisions (negative gearing, trusts, companies, classifiers).
 - PR 2.D.3d — composers + remaining (entity router, orchestrator, smsfIncomeTax, salaryProcessor).
+
+---
+
+## Session: qdec-pr2d3b-tax-cgt-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — CGT division Decimal siblings (§12.14 reform-aware)
+- **Scope**: Q-DEC PR 2.D.3b — `lib/tax-engine/divisions/{cgtDiscount,cgtIndexation,cgtMinimumRate,foreignResidentCgt,capitalLossNetting}` Decimal siblings
+- **Description**: Second sub-PR of Q-DEC PR 2.D.3. Ships Decimal siblings for the 5 CGT division engines. Two engines have real arithmetic (cgtDiscount + capitalLossNetting); the other three are stage-1 skeletons that return UNCOMPUTED until Royal Assent (preserved bit-for-bit on the Decimal path per §12.14 FW-2).
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/divisions/cgtDiscount.ts` — `calculateCgtDiscountDecimal` + `CgtDiscountInputDecimal`, `CgtDiscountResultDecimal` types. **§12.14 FW-1 Measure 2 regime guard preserved bit-for-bit** — post-reform branch only fires when ALL THREE gates align: `cgtIndexationCommencementVerified === true` + acquisitionContractDate post-cut-over + disposalFy ≥ 2027-28. Entity-rate dispatch (50% / 33.33% / 0%) preserved.
+- `lib/tax-engine/divisions/capitalLossNetting.ts` — `applyCapitalLossNettingDecimal` + Decimal types. s100-50 FIFO prior-loss ordering, s115-100 blended-discount logic (apply discount to NET gain, not gross), UC-CGT-MIXED-HOLDING flag for mixed-holding-period scenarios. Composes `calculateCgtDiscountDecimal` for the net-gain discount step.
+- `lib/tax-engine/divisions/cgtIndexation.ts` — `applyCgtIndexationDecimal` + Decimal types. **§12.14 FW-2 stage-1 UNCOMPUTED preserved** — returns `UC-CGT-INDEXATION-PENDING-EXPOSURE-DRAFT` when `cgtIndexationCommencementVerified === false`. Stage 2 throws defensive boundary error.
+- `lib/tax-engine/divisions/cgtMinimumRate.ts` — `applyCgtMinimumRateDecimal` + Decimal types. Same FW-2 pattern.
+- `lib/tax-engine/divisions/foreignResidentCgt.ts` — `applyForeignResidentCgtDecimal` + Decimal types. Domestic-entity scope gate returns inScope=false; foreign + unverified returns UNCOMPUTED + surfaces >$50M notification flag.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-cgt.ts` — 2 shadow engines (cgtDiscount × 8 fixtures, capitalLossNetting × 7 fixtures = 15 fixtures)
+- `tests/tax-engine/cgt.decimal.test.ts` — 31 tests (15 shadow + 11 Decimal contract + 3 §12.14 FW-1 regime guard + 2 aggregate report)
+
+### Architectural notes
+
+- **§12.14 FW-1/FW-2 preserved bit-for-bit on every Decimal sibling.** No regime gate loosened during port. POST_REFORM branch on `calculateCgtDiscountDecimal` only fires when commencement verified AND grandfathering POST_REFORM AND disposal FY ≥ 2027-28 — identical conjunction to Float path. Stage-1 UNCOMPUTED returned on all 3 reform skeletons (indexation/minRate/foreignResident) until Royal Assent.
+- **`Math.max(0, gain) × rate` preserved.** Decimal `Decimal.max(0, gain).times(rate)` mirrors Float's discount-floor behaviour — negative nominalGain produces discountAmount=0 (loss is just passed through).
+- **`applyCapitalLossNettingDecimal` composes `calculateCgtDiscountDecimal`.** Same `s115-100` rule — discount applied to NET gain (after losses), not gross. Blended-discount qualifying-share logic preserved exactly.
+- **Stage-1 skeleton modules return UNCOMPUTED with Decimal-typed zero fields.** Shape preserved (computed: false, indexedCostBase: Decimal(0), indexedGain: Decimal(0), etc.) so callers checking `computed === false` continue working unchanged.
+
+### Testing
+
+- [x] 31 new tests pass + 1127 existing Q-DEC scope tests still pass (1158 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 15 fixtures across the 2 testable CGT engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.3b row flipped to IN FLIGHT this PR)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-1 outcome (b/c) preserved:** `calculateCgtDiscountDecimal` takes `acquisitionContractDate` + `disposalFy` + `config` as optional regime params; defaults to PRE_REFORM_GRANDFATHERED behaviour when omitted. POST_REFORM branch gated behind `cgtIndexationCommencementVerified` flag (FW-2).
+- [x] **FW-2 preserved:** `applyCgtIndexationDecimal`, `applyCgtMinimumRateDecimal`, `applyForeignResidentCgtDecimal` all return UNCOMPUTED when their respective `*CommencementVerified` flag is false. Never silent post-reform numbers.
+- [x] No new schema columns. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.3c — other divisions (negativeGearing(+Regime), trustDistribution, trustMinimumTax, trustLossRules, trustDeedValidation, companyLossRules, lossRefundability, div7aLoanClassifier, div152SmallBusinessConcessions, fteIeeClassifier, psiClassifier, s100aZoneClassifier, smsfTriumvirateClassifier).
+- PR 2.D.3d — composers + remaining (entity/, orchestrator/masterTaxPosition, super/smsfIncomeTax, income/salaryProcessor).
