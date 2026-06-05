@@ -15,12 +15,13 @@ import {
   parseFinancialYear,
 } from '../types';
 import { getCurrentTaxYearConfig, getTaxYearConfig } from '../config/taxYearConfig';
-import { calculateIncomeTax, calculateMarginalTax } from '../core/incomeTaxCalculator';
-import { calculateMedicareLevy } from '../core/medicareLevyCalculator';
-import { calculateAllOffsets, applyOffsets } from '../core/taxOffsets';
-import { toAnnual } from '@/lib/utils/frequencies';
+import { calculateIncomeTax, calculateMarginalTax, calculateIncomeTaxDecimal } from '../core/incomeTaxCalculator';
+import { calculateMedicareLevy, calculateMedicareLevyDecimal } from '../core/medicareLevyCalculator';
+import { calculateAllOffsets, applyOffsets, calculateAllOffsetsDecimal, applyOffsetsDecimal } from '../core/taxOffsets';
+import { toAnnual, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
-import { determineTaxability } from '../income/taxabilityRules';
+import { determineTaxability, determineTaxabilityDecimal } from '../income/taxabilityRules';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // Types
@@ -494,6 +495,314 @@ export function calculateQuickTaxPosition(
     effectiveRate: netTaxableIncome > 0
       ? Math.round((offsetApplication.netTax / netTaxableIncome) * 10000) / 100
       : 0,
+    marginalRate: incomeTax.marginalRate,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.2b — Decimal sibling path
+// =============================================================================
+//
+// `calculateTaxPositionDecimal` composes the Decimal core (PR 2.D.1) +
+// Decimal taxability rules (this PR) end-to-end. Salary-sacrifice's
+// "after-sacrifice" tax position is one of the consumers — PR 1's
+// scenario engine calls this with the modified income breakdown.
+
+export interface IncomeBreakdownDecimal {
+  salary: Decimal;
+  rental: Decimal;
+  dividends: Decimal;
+  interest: Decimal;
+  capitalGains: Decimal;
+  other: Decimal;
+  total: Decimal;
+  frankingCredits: Decimal;
+}
+
+export interface DeductionBreakdownDecimal {
+  workRelated: Decimal;
+  property: Decimal;
+  investment: Decimal;
+  depreciation: Decimal;
+  other: Decimal;
+  total: Decimal;
+}
+
+export interface TaxOffsetsDecimalShape {
+  lito: Decimal;
+  sapto: Decimal;
+  frankingCredits: Decimal;
+  foreignTax: Decimal;
+  other: Decimal;
+  total: Decimal;
+}
+
+export interface TaxCalculationDecimal {
+  assessableIncome: Decimal;
+  taxableIncome: Decimal;
+  taxOnIncome: Decimal;
+  medicareLevy: Decimal;
+  medicareSurcharge: Decimal;
+  grossTax: Decimal;
+  offsets: TaxOffsetsDecimalShape;
+  netTax: Decimal;
+  effectiveRate: Decimal;
+  marginalRate: Decimal;
+}
+
+export interface TaxPositionResultDecimal {
+  financialYear: string;
+  income: IncomeBreakdownDecimal;
+  deductions: DeductionBreakdownDecimal;
+  tax: TaxCalculationDecimal;
+  paygWithheld: Decimal;
+  estimatedRefund: Decimal;
+  superContributions: {
+    concessional: Decimal;
+    nonConcessional: Decimal;
+    total: Decimal;
+    division293Tax: Decimal;
+  };
+}
+
+function annualizeDecimal(amount: Decimal | number, frequency: string): Decimal {
+  return toAnnualDecimal(amount, frequency as Frequency);
+}
+
+function calculateDivision293TaxAmountDecimal(
+  taxableIncome: Decimal,
+  concessionalContributions: Decimal,
+  config: TaxYearConfig,
+): Decimal {
+  const combined = taxableIncome.plus(concessionalContributions);
+  const threshold = new Decimal(config.division293Threshold);
+  if (combined.lte(threshold)) return new Decimal(0);
+  const excess = combined.minus(threshold);
+  const taxable = Decimal.min(concessionalContributions, excess);
+  return taxable.times('0.15').toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+}
+
+/**
+ * Decimal sibling of `calculateTaxPosition`. End-to-end Decimal:
+ * annualisation, taxability classification, bracket walk, Medicare,
+ * offsets, refund estimate — all in Decimal. The recommendations and
+ * warnings stay Float-string-typed (presentational, not numeric).
+ */
+export function calculateTaxPositionDecimal(
+  input: TaxPositionCalculationInput,
+  config?: TaxYearConfig,
+): TaxPositionResultDecimal {
+  const fyConfig = config || getCurrentTaxYearConfig();
+  const currentFY = getCurrentFinancialYear();
+  const financialYear = input.financialYear || currentFY.year;
+  const zero = new Decimal(0);
+
+  const incomeBreakdown: IncomeBreakdownDecimal = {
+    salary: new Decimal(0),
+    rental: new Decimal(0),
+    dividends: new Decimal(0),
+    interest: new Decimal(0),
+    capitalGains: new Decimal(0),
+    other: new Decimal(0),
+    total: new Decimal(0),
+    frankingCredits: new Decimal(0),
+  };
+
+  let totalPaygWithheld = new Decimal(0);
+
+  for (const income of input.incomes) {
+    const annualAmount = income.grossAmount != null
+      ? (toDecimal(income.grossAmount) ?? new Decimal(0))
+      : annualizeDecimal(income.amount, income.frequency);
+
+    const taxResult = determineTaxabilityDecimal({
+      incomeType: income.type,
+      amount: annualAmount,
+      frequency: income.frequency,
+      propertyId: income.propertyId,
+      investmentAccountId: income.investmentAccountId,
+      frankingPercentage: income.frankingPercentage,
+    });
+
+    const incomeType = income.type?.toUpperCase();
+    switch (incomeType) {
+      case 'SALARY':
+        incomeBreakdown.salary = incomeBreakdown.salary.plus(taxResult.taxableAmount);
+        if (income.paygWithholding != null) {
+          totalPaygWithheld = totalPaygWithheld.plus(toDecimal(income.paygWithholding) ?? new Decimal(0));
+        }
+        break;
+      case 'RENT':
+      case 'RENTAL':
+        incomeBreakdown.rental = incomeBreakdown.rental.plus(taxResult.taxableAmount);
+        break;
+      case 'DIVIDEND':
+      case 'INVESTMENT':
+        incomeBreakdown.dividends = incomeBreakdown.dividends.plus(taxResult.taxableAmount);
+        incomeBreakdown.frankingCredits = incomeBreakdown.frankingCredits.plus(taxResult.frankingCredits);
+        break;
+      case 'INTEREST':
+        incomeBreakdown.interest = incomeBreakdown.interest.plus(taxResult.taxableAmount);
+        break;
+      case 'CAPITAL_GAIN':
+        incomeBreakdown.capitalGains = incomeBreakdown.capitalGains.plus(taxResult.taxableAmount);
+        break;
+      default:
+        incomeBreakdown.other = incomeBreakdown.other.plus(taxResult.taxableAmount);
+    }
+  }
+
+  incomeBreakdown.total = incomeBreakdown.salary
+    .plus(incomeBreakdown.rental)
+    .plus(incomeBreakdown.dividends)
+    .plus(incomeBreakdown.interest)
+    .plus(incomeBreakdown.capitalGains)
+    .plus(incomeBreakdown.other);
+
+  const deductionBreakdown: DeductionBreakdownDecimal = {
+    workRelated: new Decimal(0),
+    property: new Decimal(0),
+    investment: new Decimal(0),
+    depreciation: new Decimal(0),
+    other: new Decimal(0),
+    total: new Decimal(0),
+  };
+
+  for (const expense of input.expenses) {
+    if (!expense.isTaxDeductible) continue;
+    const annualAmount = annualizeDecimal(expense.amount, expense.frequency);
+
+    if (expense.propertyId) {
+      deductionBreakdown.property = deductionBreakdown.property.plus(annualAmount);
+    } else if (expense.investmentAccountId) {
+      deductionBreakdown.investment = deductionBreakdown.investment.plus(annualAmount);
+    } else {
+      const category = expense.category?.toUpperCase();
+      if (category === 'LOAN_INTEREST') {
+        deductionBreakdown.investment = deductionBreakdown.investment.plus(annualAmount);
+      } else {
+        deductionBreakdown.other = deductionBreakdown.other.plus(annualAmount);
+      }
+    }
+  }
+
+  for (const depreciation of input.depreciations) {
+    const dep = toDecimal(depreciation.currentYearDeduction) ?? new Decimal(0);
+    deductionBreakdown.depreciation = deductionBreakdown.depreciation.plus(dep);
+    deductionBreakdown.property = deductionBreakdown.property.plus(dep);
+  }
+
+  deductionBreakdown.total = deductionBreakdown.workRelated
+    .plus(deductionBreakdown.property)
+    .plus(deductionBreakdown.investment)
+    .plus(deductionBreakdown.other);
+
+  const assessableIncome = incomeBreakdown.total;
+  const taxableIncome = Decimal.max(zero, assessableIncome.minus(deductionBreakdown.total));
+
+  const incomeTaxResult = calculateIncomeTaxDecimal(taxableIncome, fyConfig);
+  const medicareResult = calculateMedicareLevyDecimal({ taxableIncome }, fyConfig);
+  const offsetsResult = calculateAllOffsetsDecimal(
+    { taxableIncome, frankingCredits: incomeBreakdown.frankingCredits },
+    fyConfig,
+  );
+
+  const offsets: TaxOffsetsDecimalShape = {
+    lito: offsetsResult.offsets.lito,
+    sapto: new Decimal(0),
+    frankingCredits: offsetsResult.offsets.frankingCredits,
+    foreignTax: new Decimal(0),
+    other: new Decimal(0),
+    total: offsetsResult.offsets.total,
+  };
+
+  const grossTax = incomeTaxResult.taxPayable.plus(medicareResult.total);
+  const offsetApplication = applyOffsetsDecimal(grossTax, offsetsResult.offsets);
+  const netTax = offsetApplication.netTax;
+
+  // Mirror Float's `Math.round(effectiveRate * 100) / 100`.
+  const effectiveRate = taxableIncome.gt(0)
+    ? netTax.div(taxableIncome).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN)
+    : new Decimal(0);
+
+  const taxCalculation: TaxCalculationDecimal = {
+    assessableIncome,
+    taxableIncome,
+    taxOnIncome: incomeTaxResult.taxPayable,
+    medicareLevy: medicareResult.medicareLevy,
+    medicareSurcharge: medicareResult.medicareSurcharge,
+    grossTax,
+    offsets,
+    netTax,
+    effectiveRate,
+    marginalRate: incomeTaxResult.marginalRate,
+  };
+
+  const estimatedRefund = totalPaygWithheld.minus(netTax);
+
+  const sccConcessional = toDecimal(input.superContributions?.concessional ?? 0) ?? new Decimal(0);
+  const sccNonConcessional = toDecimal(input.superContributions?.nonConcessional ?? 0) ?? new Decimal(0);
+
+  return {
+    financialYear,
+    income: incomeBreakdown,
+    deductions: deductionBreakdown,
+    tax: taxCalculation,
+    // Float rounds paygWithheld + estimatedRefund to dollar via Math.round; mirror.
+    paygWithheld: totalPaygWithheld.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    estimatedRefund: estimatedRefund.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    superContributions: {
+      concessional: sccConcessional,
+      nonConcessional: sccNonConcessional,
+      total: sccConcessional.plus(sccNonConcessional),
+      division293Tax: calculateDivision293TaxAmountDecimal(taxableIncome, sccConcessional, fyConfig),
+    },
+  };
+}
+
+/**
+ * Decimal sibling of `calculateQuickTaxPosition` — the lightweight
+ * scenario calc the AI advisor uses.
+ */
+export function calculateQuickTaxPositionDecimal(
+  taxableIncome: number | string | Decimal,
+  deductions: number | string | Decimal = 0,
+  frankingCredits: number | string | Decimal = 0,
+  financialYear?: string,
+): {
+  taxableIncome: Decimal;
+  taxPayable: Decimal;
+  medicareLevy: Decimal;
+  netTax: Decimal;
+  effectiveRate: Decimal;
+  marginalRate: Decimal;
+} {
+  const config = financialYear ? getTaxYearConfig(financialYear) : getCurrentTaxYearConfig();
+  const inputTaxable = toDecimal(taxableIncome) ?? new Decimal(0);
+  const inputDeductions = toDecimal(deductions) ?? new Decimal(0);
+  const inputFranking = toDecimal(frankingCredits) ?? new Decimal(0);
+
+  const netTaxableIncome = Decimal.max(new Decimal(0), inputTaxable.minus(inputDeductions));
+  const incomeTax = calculateIncomeTaxDecimal(netTaxableIncome, config);
+  const medicare = calculateMedicareLevyDecimal({ taxableIncome: netTaxableIncome }, config);
+  const offsets = calculateAllOffsetsDecimal(
+    { taxableIncome: netTaxableIncome, frankingCredits: inputFranking },
+    config,
+  );
+
+  const grossTax = incomeTax.taxPayable.plus(medicare.total);
+  const offsetApplication = applyOffsetsDecimal(grossTax, offsets.offsets);
+
+  return {
+    taxableIncome: netTaxableIncome,
+    // Float rounds taxPayable + medicare + netTax to dollar; mirror.
+    taxPayable: incomeTax.taxPayable.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    medicareLevy: medicare.total.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    netTax: offsetApplication.netTax.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN),
+    // Float: Math.round((netTax / taxable) * 10000) / 100 — 2 dp percentage.
+    effectiveRate: netTaxableIncome.gt(0)
+      ? offsetApplication.netTax.div(netTaxableIncome).times(100).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN)
+      : new Decimal(0),
     marginalRate: incomeTax.marginalRate,
   };
 }

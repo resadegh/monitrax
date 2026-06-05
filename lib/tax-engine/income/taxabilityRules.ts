@@ -7,6 +7,7 @@
  */
 
 import { TaxabilityResult, IncomeContext } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // Corporate tax rate for franking credit calculations
 const CORPORATE_TAX_RATE = 0.30;
@@ -314,4 +315,153 @@ export function getTaxTreatmentSummary(context: IncomeContext): {
       : 'Tax exempt',
     shortExplanation: result.explanation.split('.')[0] + '.',
   };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.2b — Decimal sibling path
+// =============================================================================
+
+export interface IncomeContextDecimal {
+  incomeType: string;
+  amount: number | string | Decimal;
+  frequency?: string;
+  propertyId?: string;
+  investmentAccountId?: string;
+  frankingPercentage?: number;
+  paymentType?: string;
+}
+
+export interface TaxabilityResultDecimal {
+  category: TaxabilityResult['category'];
+  taxableAmount: Decimal;
+  exemptAmount: Decimal;
+  frankingCredits: Decimal;
+  grossedUpAmount: Decimal;
+  explanation: string;
+  references: string[];
+}
+
+/**
+ * Decimal sibling of `calculateFrankingCredits`.
+ *
+ * Formula: amount × (frankingPct/100) × (corporateTaxRate / (1 - corporateTaxRate)).
+ * For 30% corporate tax: × 0.4286...
+ *
+ * Float rounds to cents via `Math.round(x * 100) / 100`; mirror with
+ * `toDecimalPlaces(2, HALF_EVEN)`.
+ */
+export function calculateFrankingCreditsDecimal(
+  dividendAmount: number | string | Decimal,
+  frankingPercentage: number | string | Decimal,
+): Decimal {
+  const div = toDecimal(dividendAmount) ?? new Decimal(0);
+  const pct = toDecimal(frankingPercentage) ?? new Decimal(0);
+  if (pct.lte(0) || div.lte(0)) return new Decimal(0);
+
+  const frankingFraction = pct.div(100);
+  const corporateRate = new Decimal(CORPORATE_TAX_RATE);
+  const creditMultiplier = corporateRate.div(new Decimal(1).minus(corporateRate));
+
+  return div
+    .times(frankingFraction)
+    .times(creditMultiplier)
+    .toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+}
+
+/**
+ * Decimal sibling of `determineTaxability`. Same classification rules;
+ * Decimal arithmetic for the grossed-up amount + franking credits.
+ */
+export function determineTaxabilityDecimal(context: IncomeContextDecimal): TaxabilityResultDecimal {
+  const { incomeType, frankingPercentage = 0 } = context;
+  const amountDec = toDecimal(context.amount) ?? new Decimal(0);
+  const zero = new Decimal(0);
+
+  // Run the Float classification with the numeric amount so we inherit the
+  // same category + explanation + references. Then re-compute the numeric
+  // fields in Decimal to preserve precision.
+  const floatResult = determineTaxability({
+    incomeType,
+    amount: amountDec.toNumber(),
+    frequency: context.frequency ?? 'ANNUALLY',
+    propertyId: context.propertyId,
+    investmentAccountId: context.investmentAccountId,
+    frankingPercentage,
+    paymentType: context.paymentType,
+  });
+
+  switch (incomeType.toUpperCase()) {
+    case 'DIVIDEND':
+    case 'INVESTMENT': {
+      if (frankingPercentage > 0) {
+        const frankingCredits = calculateFrankingCreditsDecimal(amountDec, frankingPercentage);
+        const grossedUpAmount = amountDec.plus(frankingCredits);
+        return {
+          category: floatResult.category,
+          taxableAmount: grossedUpAmount,
+          exemptAmount: zero,
+          frankingCredits,
+          grossedUpAmount,
+          explanation: floatResult.explanation,
+          references: floatResult.references,
+        };
+      }
+      return {
+        category: floatResult.category,
+        taxableAmount: amountDec,
+        exemptAmount: zero,
+        frankingCredits: zero,
+        grossedUpAmount: amountDec,
+        explanation: floatResult.explanation,
+        references: floatResult.references,
+      };
+    }
+    case 'GIFT':
+    case 'INHERITANCE':
+    case 'INSURANCE':
+    case 'INSURANCE_PAYOUT':
+      return {
+        category: floatResult.category,
+        taxableAmount: zero,
+        exemptAmount: amountDec,
+        frankingCredits: zero,
+        grossedUpAmount: zero,
+        explanation: floatResult.explanation,
+        references: floatResult.references,
+      };
+    case 'CENTRELINK':
+    case 'GOVERNMENT': {
+      if (floatResult.taxableAmount === 0) {
+        return {
+          category: floatResult.category,
+          taxableAmount: zero,
+          exemptAmount: amountDec,
+          frankingCredits: zero,
+          grossedUpAmount: zero,
+          explanation: floatResult.explanation,
+          references: floatResult.references,
+        };
+      }
+      return {
+        category: floatResult.category,
+        taxableAmount: amountDec,
+        exemptAmount: zero,
+        frankingCredits: zero,
+        grossedUpAmount: amountDec,
+        explanation: floatResult.explanation,
+        references: floatResult.references,
+      };
+    }
+    default:
+      // Default = fully taxable.
+      return {
+        category: floatResult.category,
+        taxableAmount: amountDec,
+        exemptAmount: zero,
+        frankingCredits: zero,
+        grossedUpAmount: amountDec,
+        explanation: floatResult.explanation,
+        references: floatResult.references,
+      };
+  }
 }
