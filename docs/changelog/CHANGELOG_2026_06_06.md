@@ -342,3 +342,71 @@ NONE — additive code only.
 - **Q-DEC PR 2 is COMPLETE** once this PR lands (16 sub-PRs total: 1, 1.5, 2.A, 2.B, 2.C, 2.D.1, 2.D.2, 2.D.2b, 2.D.3a/b/c/c2/d, 2.E.1/2/3/4).
 - PR 3 — engine-by-engine cutover. Route handlers + AI tools + UI consumers switched from `*` to `*Decimal`. `entityTaxRouter` and `masterTaxPosition` get their Decimal siblings created at this layer once downstream consumers are Decimal too. Async `calculateCFO*Insights` wrappers in `decisionSupport/*` and `getCFODashboardData` in `intelligenceEngine` get their Decimal-flow swap at this layer.
 - PR 4 — Float column drop (after 7-day parallel-run shows zero diff; §12.11 destructive-write checklist mandatory). Unblocks Phase 45 PR 1 (engine composition).
+
+---
+
+## Session: qdec-pr3a-tax-composers-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — composer-tier Decimal siblings (Q-DEC PR 3.A — first PR 3 sub-PR)
+- **Scope**: Q-DEC PR 3.A — `lib/tax-engine/entity/entityTaxRouter.ts:calculateEntityTaxPositionDecimal` + `lib/tax-engine/orchestrator/masterTaxPosition.ts:buildMasterTaxPositionDecimal`. These were INTENTIONALLY DEFERRED from PR 2.D.3d per the scope decision documented in CHANGELOG_2026_06_06 (PR #989 entry): pure aggregating routers with no marginal benefit at Decimal until downstream consumers are also Decimal. PR 3 is when those consumers swap, so this PR ships the composer Decimal siblings as the foundation.
+- **Description**: First sub-PR of Q-DEC PR 3 cutover. Adds the two deferred composer Decimal siblings without changing any caller — PR 3.B-E are the consumer swaps. Splits PR 3 into 5 sub-PRs (A composers / B tax routes / C cfo routes / D AI tools / E UI) matching PR 2's tractability discipline.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/entity/entityTaxRouter.ts` — `calculateEntityTaxPositionDecimal` + `EntityTaxPositionDecimal`. Same routing logic as Float (PERSONAL_NAME / SOLE_TRADER → `calculateTaxPositionDecimal`; DISCRETIONARY_TRUST / UNIT_TRUST with distribution data → `allocateTrustDistributionDecimal`; SMSF with dispatch data → `trackContributionCapsDecimal` + `calculateHighIncomeSuperTaxDecimal` + `calculateSmsfIncomeTaxDecimal`; COMPANY with div7a → `classifyDiv7ALoansDecimal`; UNCOMPUTED branches preserve the same flag IDs as Float). CGT side calc via `applyCapitalLossNettingDecimal` runs independent of income-tax dispatch — preserves the "COMPANY with cgtEvents → income tax UNCOMPUTED + CGT computed" pattern from Float.
+- `lib/tax-engine/orchestrator/masterTaxPosition.ts` — `buildMasterTaxPositionDecimal` + `MasterTaxPositionDecimal` + `CrossCuttingTaxResultDecimal`. Same 5-step pipeline as Float (per-entity dispatch → cross-cutting modules → per-entity overlays → totals aggregation → boundary footer); each downstream engine call is the `*Decimal` sibling already shipped by PR 2.D sub-PRs. Totals aggregation accumulates `assessableIncome + taxableIncome + netTax + paygWithheld` in Decimal across entities; `estimatedRefund = paygWithheld − netTax`. Trust-deed validation overlay reuses the Float result type (categorical — citations + UNCOMPUTED only, no numeric leaves).
+
+### Files Created
+
+- `tests/tax-engine/composers.decimal.routerOrchestrator.test.ts` — 15 tests covering the COMPOSITION layer:
+  1. PERSONAL_NAME / SOLE_TRADER dispatch returns Decimal result.
+  2. UNCOMPUTED branches (PARTNERSHIP / COMPANY without div7a / DISCRETIONARY_TRUST without distribution / SMSF without dispatch) preserve the same flag IDs as Float.
+  3. CGT side calc surfaces Decimal `cgtResult` even when income tax is UNCOMPUTED (the "never false silence" pattern).
+  4. Orchestrator aggregates Decimal totals; `estimatedRefund = paygWithheld − netTax`.
+  5. Cross-cutting GST runs on Decimal path when input provided.
+  6. UNCOMPUTED-only households produce 0 totals (no false numbers from the orchestrator).
+
+### Architectural notes
+
+- **Composition-layer testing only.** Numerical agreement with Float is validated by the existing 11-engine Decimal shadow-comparison suite (PR 2.D sub-PRs) — every downstream engine the router dispatches to is already shadow-tested. This PR's tests focus on the COMPOSITION layer (right dispatch per entity type, right Decimal types flow through, right aggregation in the orchestrator). No new shadow engine added.
+- **Trust-deed validation overlay reuses Float result type.** `validateTrustDistributionAgainstDeed` returns a categorical result (citations + UNCOMPUTED only, no numeric leaves). The Decimal sibling reuses the Float result type — no Decimal sibling needed.
+- **Stamp-duty Float input → Decimal stamp-duty engine.** `MasterTaxPositionInput.stampDutyTransactions` carries Float `StampDutyInput`. `calculateStampDutyDecimal` accepts the same input shape (both Float and Decimal engines coerce via `toDecimal()` at the boundary).
+- **GST input shape parity.** Float `GstInput` and Decimal `GstInputDecimal` are structurally identical (`transactions[] + annualTurnover + isRegistered`). No mapping needed.
+- **§12.14 reform-agnosticism.** Both composers are reform-agnostic — they're pure dispatch/aggregation routers. The reform-aware engines they dispatch to (negativeGearing, cgtDiscount, trustMinimumTax, etc.) carry their own FW-1/FW-2 guards. The composer-tier engines don't need a regime parameter. FW-1 outcome (a).
+
+### Testing
+
+- [x] 15 new tests pass (composition-layer dispatch + types + aggregation).
+- [x] `npx tsc --noEmit` clean.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (Q-DEC PR 2 ✅ COMPLETE; PR 3 expanded from single row to 5 sub-PR rows; PR 3.A IN FLIGHT this PR)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 3 expanded into A/B/C/D/E sub-PRs (A IN FLIGHT this PR; B/C/D/E queued); Last touched flipped to reflect PR 2 completion + PR 3.A in flight.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Both composer-tier engines are reform-agnostic — they dispatch to reform-aware engines (negativeGearing, cgtDiscount, trustMinimumTax) which carry their own FW-1/FW-2 guards. No regime parameter required at the composer layer. FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 3.B — `/api/tax/*` route handlers swap from Float composers to `buildMasterTaxPositionDecimal`. Response shape unchanged (JSON `number` at the boundary via `.toNumber()`).
+- PR 3.C — `/api/cfo/*` route handlers swap to PR 2.E Decimal engines.
+- PR 3.D — `lib/ai/tax-advisor/tools/*` consume the Decimal engines.
+- PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary, format via `formatCurrency()`.

@@ -28,26 +28,34 @@
 
 import {
   calculateTaxPosition,
+  calculateTaxPositionDecimal,
   type IncomeItem,
   type ExpenseItem,
   type DepreciationItem,
+  type TaxPositionResultDecimal,
 } from '../position/taxPositionCalculator';
 import {
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '../config/taxYearConfig';
-import { allocateTrustDistribution } from '../divisions/trustDistribution';
+import {
+  allocateTrustDistribution,
+  allocateTrustDistributionDecimal,
+  type TrustDistributionResultDecimal,
+} from '../divisions/trustDistribution';
 import {
   applyCapitalLossNetting,
+  applyCapitalLossNettingDecimal,
   type CapitalLossNettingResult,
+  type CapitalLossNettingResultDecimal,
   type CgtEvent,
   type CarryForwardLoss,
 } from '../divisions/capitalLossNetting';
 import type { CgtEligibleEntityType } from '../divisions/cgtDiscount';
-import { trackContributionCaps } from '../super/capTracker';
-import { calculateHighIncomeSuperTax } from '../super/highIncomeSuperTax';
-import { calculateSmsfIncomeTax } from '../super/smsfIncomeTax';
-import { classifyDiv7ALoans } from '../divisions/div7aLoanClassifier';
+import { trackContributionCaps, trackContributionCapsDecimal, type CapTrackingResultDecimal } from '../super/capTracker';
+import { calculateHighIncomeSuperTax, calculateHighIncomeSuperTaxDecimal, type HighIncomeSuperTaxResultDecimal } from '../super/highIncomeSuperTax';
+import { calculateSmsfIncomeTax, calculateSmsfIncomeTaxDecimal, type SmsfIncomeTaxResultDecimal } from '../super/smsfIncomeTax';
+import { classifyDiv7ALoans, classifyDiv7ALoansDecimal, type Div7AClassificationResultDecimal } from '../divisions/div7aLoanClassifier';
 import type {
   AuthorityCitation,
   EntityTaxFacts,
@@ -482,4 +490,326 @@ export function entityHasConditionalComputedTax(
     entityType === 'UNIT_TRUST' ||
     entityType === 'SMSF'
   );
+}
+
+// ============================================================================
+// Q-DEC PR 3.A — Decimal sibling
+// ============================================================================
+
+import { Decimal } from '@/lib/decimal';
+
+/**
+ * Decimal-typed mirror of `EntityTaxPosition`. Same shape; `result` and
+ * `cgtResult` are still `unknown` but the values inside come from
+ * Decimal sibling engines (`TaxPositionResultDecimal`,
+ * `TrustDistributionResultDecimal`, `CapitalLossNettingResultDecimal`,
+ * etc.). Per-branch result types listed in the JSDoc for documentation.
+ *
+ * Why `result: unknown`: the Float-side `EntityTaxPosition.result` is
+ * `unknown` for the same reason — the polymorphism across entity types
+ * doesn't tile cleanly into a discriminated union without a layer of
+ * unnecessary indirection. Callers narrow via `entityType`.
+ */
+export interface EntityTaxPositionDecimal {
+  entityId: string;
+  entityType: EntityTaxFacts['entityType'];
+  fy: EntityTaxPosition['fy'];
+  /**
+   * Per-branch result type:
+   *   - PERSONAL_NAME / SOLE_TRADER → `TaxPositionResultDecimal`
+   *   - DISCRETIONARY_TRUST / UNIT_TRUST → `TrustDistributionResultDecimal`
+   *   - SMSF → `{ capResult?: CapTrackingResultDecimal; highIncomeSuperTax?: HighIncomeSuperTaxResultDecimal; smsfIncomeTax?: SmsfIncomeTaxResultDecimal }`
+   *   - COMPANY → `{ div7aClassification: Div7AClassificationResultDecimal }`
+   *   - Other UNCOMPUTED branches → `null`
+   */
+  result: unknown;
+  cgtResult?: CapitalLossNettingResultDecimal;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+function dispatchCgtIfPresentDecimal(
+  facts: EntityTaxFacts,
+): CapitalLossNettingResultDecimal | undefined {
+  if (!facts.cgtEvents || facts.cgtEvents.length === 0) return undefined;
+  if (!isCgtEligibleEntityType(facts.entityType)) return undefined;
+  return applyCapitalLossNettingDecimal({
+    entityType: facts.entityType,
+    events: facts.cgtEvents.map((e) => ({
+      id: e.id,
+      monthsHeld: e.monthsHeld,
+      nominalAmount: e.nominalAmount,
+      label: e.label,
+    })) as CgtEvent[],
+    carryForwardLosses: facts.carryForwardCapitalLosses?.map((l) => ({
+      financialYear: l.financialYear,
+      amount: l.amount,
+    })) as CarryForwardLoss[] | undefined,
+    isComplying: facts.smsfIsComplying,
+    isForeignResident: facts.isForeignResident,
+  });
+}
+
+function mergeCgtDecimal(
+  citations: AuthorityCitation[],
+  uncomputed: UncomputedFlag[],
+  cgt: CapitalLossNettingResultDecimal,
+): { citations: AuthorityCitation[]; uncomputed: UncomputedFlag[] } {
+  const seenCit = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
+  const mergedCitations = [...citations];
+  for (const c of cgt.citations) {
+    const key = `${c.kind}:${c.reference}`;
+    if (!seenCit.has(key)) {
+      seenCit.add(key);
+      mergedCitations.push(c);
+    }
+  }
+  const seenFlags = new Set(uncomputed.map((u) => u.id));
+  const mergedUncomputed = [...uncomputed];
+  for (const u of cgt.uncomputed) {
+    if (!seenFlags.has(u.id)) {
+      seenFlags.add(u.id);
+      mergedUncomputed.push(u);
+    }
+  }
+  return { citations: mergedCitations, uncomputed: mergedUncomputed };
+}
+
+/**
+ * Decimal sibling of `calculateEntityTaxPosition`. Same routing logic;
+ * each downstream engine is the `*Decimal` sibling already shipped by
+ * the PR 2.D sub-PRs. Categorical UNCOMPUTED branches (where no
+ * downstream engine runs) return the same UNCOMPUTED flags as Float.
+ *
+ * Deferred from PR 2.D.3d per the scope decision: a composer-tier
+ * Decimal sibling has no marginal benefit until downstream consumers
+ * are also Decimal. PR 3 is when those consumers swap, so this PR ships
+ * the composer-tier sibling alongside the consumer swaps.
+ */
+export function calculateEntityTaxPositionDecimal(
+  facts: EntityTaxFacts,
+): EntityTaxPositionDecimal {
+  const config = facts.fy.financialYear
+    ? getTaxYearConfig(facts.fy.financialYear)
+    : getCurrentTaxYearConfig();
+
+  const cgt = dispatchCgtIfPresentDecimal(facts);
+
+  // PERSONAL_NAME / SOLE_TRADER — Phase 20 dispatch on Decimal path.
+  if (facts.entityType === 'PERSONAL_NAME' || facts.entityType === 'SOLE_TRADER') {
+    const result: TaxPositionResultDecimal = calculateTaxPositionDecimal(
+      {
+        incomes: facts.incomes as unknown as IncomeItem[],
+        expenses: facts.expenses as unknown as ExpenseItem[],
+        depreciations: facts.depreciations as unknown as DepreciationItem[],
+        superContributions: facts.superContributions,
+        financialYear: facts.fy.financialYear,
+      },
+      config,
+    );
+    const baseCitations = BASE_CITATIONS[facts.entityType] ?? [];
+    const merged = cgt
+      ? mergeCgtDecimal(baseCitations, [], cgt)
+      : { citations: baseCitations, uncomputed: [] };
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result,
+      cgtResult: cgt,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
+    };
+  }
+
+  // TRUST entities with distribution data — Div 6 on Decimal path.
+  if (
+    (facts.entityType === 'DISCRETIONARY_TRUST' ||
+      facts.entityType === 'UNIT_TRUST') &&
+    facts.trustDistribution
+  ) {
+    const distributionResult: TrustDistributionResultDecimal = allocateTrustDistributionDecimal({
+      trustNetIncome: facts.trustDistribution.trustNetIncome,
+      beneficiaries: facts.trustDistribution.beneficiaries.map((b) => ({
+        id: b.id,
+        name: b.name,
+        presentlyEntitledShare: b.presentlyEntitledShare,
+        isNonResidentOrDisabled: b.isNonResidentOrDisabled,
+        streaming: b.streaming
+          ? {
+              frankedDividends: b.streaming.frankedDividends,
+              capitalGains: b.streaming.capitalGains,
+            }
+          : undefined,
+      })),
+      hasFamilyTrustElection: facts.trustDistribution.hasFamilyTrustElection,
+      characterPools: facts.trustDistribution.characterPools,
+      streamingResolutionAt: facts.trustDistribution.streamingResolutionAt,
+      financialYear: facts.fy.financialYear,
+      isTestamentaryTrust: facts.trustDistribution.isTestamentaryTrust,
+      s100aFacts: facts.trustDistribution.s100aFacts,
+    });
+
+    const merged = cgt
+      ? mergeCgtDecimal(distributionResult.citations, distributionResult.uncomputed, cgt)
+      : {
+          citations: distributionResult.citations,
+          uncomputed: distributionResult.uncomputed,
+        };
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: distributionResult,
+      cgtResult: cgt,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
+    };
+  }
+
+  // SMSF entities — Phase 41e.2/3 + Phase 44 Part 2c-i on Decimal path.
+  if (
+    facts.entityType === 'SMSF' &&
+    (facts.smsfContributions || facts.highIncomeSuper || facts.smsfIncomeTax)
+  ) {
+    const capResult: CapTrackingResultDecimal | undefined = facts.smsfContributions
+      ? trackContributionCapsDecimal(
+          {
+            concessionalYTD: facts.smsfContributions.concessionalYTD,
+            nonConcessionalYTD: facts.smsfContributions.nonConcessionalYTD,
+            totalSuperBalance: facts.smsfContributions.totalSuperBalance,
+            carryForwardAmounts: facts.smsfContributions.carryForwardAmounts?.map(
+              (c) => ({ financialYear: c.financialYear, unusedAmount: c.unusedAmount }),
+            ),
+          },
+          config,
+        )
+      : undefined;
+
+    const highIncomeResult: HighIncomeSuperTaxResultDecimal | undefined = facts.highIncomeSuper
+      ? calculateHighIncomeSuperTaxDecimal(facts.highIncomeSuper, config)
+      : undefined;
+
+    const smsfIncomeResult: SmsfIncomeTaxResultDecimal | undefined = facts.smsfIncomeTax
+      ? calculateSmsfIncomeTaxDecimal(facts.smsfIncomeTax, config)
+      : undefined;
+
+    const smsfCitations: AuthorityCitation[] = [
+      { kind: 'ITAA_1997', reference: 's291-20', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1997', reference: 's292-85', lastReviewed: '2026-05-05' },
+      { kind: 'SIS_ACT', reference: 'Pt 8 (in-house asset cap)', lastReviewed: '2026-05-05' },
+    ];
+    const smsfUncomputed: UncomputedFlag[] = [
+      {
+        id: 'UC-SMSF-SOLE-PURPOSE',
+        rationale:
+          'Sole purpose test (SIS Act s62) + in-house asset 5% cap (Pt 8 SIS) + LRBA compliance per PCG 2016/5 — full SMSF triumvirate dispatch lands with Phase 41e.11. Until then, SMSF figures cover contribution-cap headroom only.',
+        citation: { kind: 'SIS_ACT', reference: 's62', lastReviewed: '2026-05-05' },
+      },
+    ];
+
+    const citations = smsfCitations;
+    const uncomputed = smsfUncomputed;
+    const mergeInto = (
+      cs: AuthorityCitation[] | undefined,
+      us: UncomputedFlag[] | undefined,
+    ): void => {
+      if (cs) {
+        const seenC = new Set(citations.map((c) => `${c.kind}:${c.reference}`));
+        for (const c of cs) {
+          const key = `${c.kind}:${c.reference}`;
+          if (!seenC.has(key)) {
+            seenC.add(key);
+            citations.push(c);
+          }
+        }
+      }
+      if (us) {
+        const seenU = new Set(uncomputed.map((u) => u.id));
+        for (const u of us) {
+          if (!seenU.has(u.id)) {
+            seenU.add(u.id);
+            uncomputed.push(u);
+          }
+        }
+      }
+    };
+    if (highIncomeResult) mergeInto(highIncomeResult.citations, highIncomeResult.uncomputed);
+    if (smsfIncomeResult) mergeInto(smsfIncomeResult.citations, smsfIncomeResult.uncomputed);
+
+    const merged = cgt ? mergeCgtDecimal(citations, uncomputed, cgt) : { citations, uncomputed };
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: {
+        capResult,
+        highIncomeSuperTax: highIncomeResult,
+        smsfIncomeTax: smsfIncomeResult,
+      },
+      cgtResult: cgt,
+      citations: merged.citations,
+      uncomputed: merged.uncomputed,
+    };
+  }
+
+  // COMPANY entities with div7a loans — Phase 41e.6 on Decimal path.
+  if (
+    facts.entityType === 'COMPANY' &&
+    facts.div7aLoans &&
+    facts.div7aLoans.length > 0
+  ) {
+    const div7aResult: Div7AClassificationResultDecimal = classifyDiv7ALoansDecimal(
+      facts.div7aLoans.map((l) => ({
+        loanId: l.loanId,
+        loanLabel: l.loanLabel,
+        openingBalance: l.openingBalance,
+        yearsRemaining: l.yearsRemaining,
+        benchmarkRate: l.benchmarkRate,
+        paymentsMadeThisFy: l.paymentsMadeThisFy,
+        hasComplianceAgreement: l.hasComplianceAgreement,
+        isSubTrustUpe: l.isSubTrustUpe,
+      })),
+    );
+
+    const companyFlag = UNCOMPUTED_ENTITY_TAX.COMPANY!;
+    let citations: AuthorityCitation[] = [...div7aResult.citations];
+    let uncomputed: UncomputedFlag[] = [companyFlag, ...div7aResult.uncomputed];
+
+    if (cgt) {
+      const m = mergeCgtDecimal(citations, uncomputed, cgt);
+      citations = m.citations;
+      uncomputed = m.uncomputed;
+    }
+
+    return {
+      entityId: facts.entityId,
+      entityType: facts.entityType,
+      fy: facts.fy,
+      result: { div7aClassification: div7aResult },
+      cgtResult: cgt,
+      citations,
+      uncomputed,
+    };
+  }
+
+  // Net-new entity types without slice-D dispatch data — income tax
+  // UNCOMPUTED; CGT side calc may still surface.
+  const flag = UNCOMPUTED_ENTITY_TAX[facts.entityType];
+  const baseUncomputed: UncomputedFlag[] = flag ? [flag] : [];
+  const merged = cgt
+    ? mergeCgtDecimal([], baseUncomputed, cgt)
+    : { citations: [] as AuthorityCitation[], uncomputed: baseUncomputed };
+
+  return {
+    entityId: facts.entityId,
+    entityType: facts.entityType,
+    fy: facts.fy,
+    result: null,
+    cgtResult: cgt,
+    citations: merged.citations,
+    uncomputed: merged.uncomputed,
+  };
 }
