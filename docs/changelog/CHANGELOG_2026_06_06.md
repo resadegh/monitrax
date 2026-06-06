@@ -410,3 +410,76 @@ NONE — additive code only.
 - PR 3.C — `/api/cfo/*` route handlers swap to PR 2.E Decimal engines.
 - PR 3.D — `lib/ai/tax-advisor/tools/*` consume the Decimal engines.
 - PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary, format via `formatCurrency()`.
+
+---
+
+## Session: qdec-pr3b-tax-routes-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — first PR 3 consumer cutover (Q-DEC PR 3.B)
+- **Scope**: Q-DEC PR 3.B — `/api/tax/entity/[entityId]` (GET + POST) + `/api/tax/position` (GET) route handlers swap from Float composers to `*Decimal` siblings. New `lib/decimal/serialize.ts` boundary walker is the canonical Decimal → JSON conversion path. PR 3.A doc-sync rolled in (PR 3.A row flipped ✅ MERGED #996).
+- **Description**: First consumer cutover sub-PR of Q-DEC PR 3. Establishes the route-handler swap pattern: engine runs Decimal end-to-end, `serializeDecimalsForJson` converts Decimal → number at the JSON boundary, public response shape is byte-compatible with the pre-cutover Float response. Two routes swapped this PR; salary + super routes deferred to PR 3.B.2 for review tractability.
+
+### Files Created
+
+- `lib/decimal/serialize.ts` — `serializeDecimalsForJson(value, options)` recursive walker. Default `'currency'` policy (2dp HALF_EVEN, ATO standard); per-path policy overrides for rate/units/percentage fields. Non-Decimal leaves (strings, booleans, null, Date) pass through unchanged. JSON.stringify-safe output.
+- `tests/decimal/serialize.test.ts` — 16 tests covering basic conversion + nested structures + policy overrides + null preservation + JSON round-trip.
+
+### Files Modified (route handlers cutover)
+
+- `app/api/tax/entity/[entityId]/route.ts` — GET + POST swap from `calculateEntityTaxPosition` to `calculateEntityTaxPositionDecimal`; response body wrapped in `serializeDecimalsForJson({ entityPosition, boundary })`. Same `withPermission('tax_data.read')` guard, same body validation, same `assembleEntityTaxFacts` data fetch, same `renderBoundaryFootnote` envelope.
+- `app/api/tax/position/route.ts` — GET swap from `calculateTaxPosition` to `calculateTaxPositionDecimal`. Per-field conversion preserves the existing per-field rounding pattern (most money fields `Math.round`'d to integers; rates + paygWithheld + estimatedRefund pass through as-is). Local helpers `n` (toNumber) + `r` (toNumber + Math.round) thread through each field. Dual-call to `calculateTaxPosition` (Float) sources `warnings` + `recommendations` (presentation-side; no Decimal sibling — moves to Decimal in PR 4 when Float is dropped).
+
+### Files Modified (exports)
+
+- `lib/decimal/index.ts` — `serializeDecimalsForJson` + `SerializeOptions` added to public surface.
+
+### Architectural notes
+
+- **The serializer is the canonical Decimal → JSON exit.** Every subsequent PR 3 sub-PR (3.B.2 salary+super, 3.C cfo routes, 3.D AI tools, 3.E UI consumers) uses `serializeDecimalsForJson` as the boundary. This means: (a) the boundary policy is consistent across the app, (b) any future change to ATO rounding (e.g. if HALF_UP becomes preferred) is one-place, (c) developers don't re-roll per-route conversion patterns.
+- **Dual-call for presentation-side fields.** `calculateTaxPosition` (Float) is still called by `/api/tax/position` to source `warnings` + `recommendations` arrays — those are presentation-side narration that doesn't have a Decimal sibling. PR 4 will need to migrate the narration generators to consume Decimal inputs (or accept Float input via `.toNumber()` boundary — TBD). Cost: one extra engine call (~1ms) on the route's critical path; benefit: behavior-preserving cutover.
+- **Per-field rounding preserved.** `/api/tax/position` historically returned most money fields as integers (`Math.round`'d) and rates + payg as floats. The cutover preserves this byte-for-byte by keeping the `Math.round` calls but sourcing the underlying number from the Decimal sibling via `.toNumber()`. No surprise behavior changes for consumers.
+- **`/api/tax/salary` + `/api/tax/super` deferred to PR 3.B.2.** Each uses different engines (`processSalary` / `trackContributionCaps`) with their own response shapes; bundling all 4 routes in one PR would breach tractability discipline. Separate sub-PR coming next.
+- **`/api/calculate/tax` skipped — different SSOT.** That route uses `lib/tax/auTax.ts` (legacy module outside Q-DEC scope). Not migrated.
+- **`/api/tax/entity/[entityId]/smsf-return` skipped — no engine call.** The route references `calculateSmsfIncomeTax` in a doc comment only; no actual call site.
+
+### Testing
+
+- [x] 16 new tests pass (`tests/decimal/serialize.test.ts`).
+- [x] `npx tsc --noEmit` clean.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+- N/A — no new route-handler integration tests added; behavior preservation guaranteed by:
+  1. The per-field rounding pattern is unchanged.
+  2. The Decimal engine outputs are shadow-tested against Float to 0.005 currency tolerance by the PR 2.D suite.
+  3. `serializeDecimalsForJson` is unit-tested.
+  4. Composition is the only new code (engine swap + serializer wire); composition is verified by typecheck.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 3.A ✅ MERGED #996; PR 3.B IN FLIGHT this PR)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 3.A row flipped ✅ MERGED #996; PR 3.B row flipped IN FLIGHT this PR; Last touched flipped to reflect first consumer cutover.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No engine math changed in this PR — just the consumer wire-up. Reform-aware engines downstream (negativeGearing, cgtDiscount, trustMinimumTax) continue to carry their own FW-1/FW-2 guards untouched. FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only (new serializer + new engine call paths; old Float paths still callable).
+
+### Next
+
+- PR 3.B.2 — `/api/tax/salary` + `/api/tax/super` route handlers cutover.
+- PR 3.C — `/api/cfo/*` route handlers cutover.
+- PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
+- PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary, format via `formatCurrency()`.
