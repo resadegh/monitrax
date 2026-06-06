@@ -11,7 +11,8 @@
  * recompute it here would violate §12.2 SSOT.
  */
 
-import type { ScenarioContext, ScenarioResult } from './types';
+import { Decimal, toDecimal } from '@/lib/decimal';
+import type { ScenarioContext, ScenarioResult, ScenarioResultDecimal, ScenarioImpactDecimal } from './types';
 
 export interface SellPropertyParams {
   propertyId: string;
@@ -153,4 +154,142 @@ function formatCurrency(value: number): string {
     currency: 'AUD',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+// =============================================================================
+// Q-DEC PR 2.E.1 — Decimal sibling
+// =============================================================================
+
+export function sellPropertyScenarioDecimal(
+  ctx: ScenarioContext,
+  params: SellPropertyParams,
+): ScenarioResultDecimal {
+  const { snapshot } = ctx;
+  const property = snapshot.properties.find((p) => p.id === params.propertyId);
+
+  if (!property) {
+    return {
+      type: 'sellProperty',
+      title: 'Sell property',
+      summary: 'Property not found in current snapshot.',
+      impacts: [],
+      warnings: [{ severity: 'critical', message: `No property with id ${params.propertyId}.` }],
+      assumptions: [],
+      computedAt: new Date().toISOString(),
+    };
+  }
+
+  const sellingCostsPct = toDecimal(params.sellingCostsPercent ?? DEFAULT_SELLING_COSTS_PCT) ?? new Decimal(0);
+  const grossProceeds = toDecimal(property.currentValue) ?? new Decimal(0);
+  const sellingCosts = grossProceeds.times(sellingCostsPct);
+  const loanPayoff = toDecimal(property.loanBalance) ?? new Decimal(0);
+  const netCashFreed = grossProceeds.minus(sellingCosts).minus(loanPayoff);
+
+  const monthlyCashflowBefore = toDecimal(snapshot.quickMetrics.monthlyCashflow) ?? new Decimal(0);
+  const propertyMonthlyCashflow = toDecimal(property.monthlyCashflow) ?? new Decimal(0);
+  const monthlyCashflowAfter = monthlyCashflowBefore.minus(propertyMonthlyCashflow);
+
+  const netWorthBefore = toDecimal(snapshot.netWorth.netWorth) ?? new Decimal(0);
+  const netWorthAfter = netWorthBefore.minus(sellingCosts);
+
+  const liquidCashBefore = toDecimal(snapshot.quickMetrics.liquidCash) ?? new Decimal(0);
+  const liquidCashAfter = liquidCashBefore.plus(netCashFreed);
+
+  const propertyEquity = toDecimal(property.equity) ?? new Decimal(0);
+  const propertyPortfolioValueBefore = toDecimal(snapshot.propertyPortfolioValue) ?? new Decimal(0);
+  const propertyPortfolioValueAfter = propertyPortfolioValueBefore.minus(grossProceeds);
+
+  const warnings = [];
+  if (propertyMonthlyCashflow.lt(0)) {
+    warnings.push({
+      severity: 'info' as const,
+      message: `${property.name} is currently negative-geared by ${formatCurrency(
+        Math.abs(property.monthlyCashflow),
+      )}/mo. Selling removes that drag.`,
+    });
+  }
+  if (propertyMonthlyCashflow.gt(0)) {
+    warnings.push({
+      severity: 'caution' as const,
+      message: `${property.name} is positively-geared by ${formatCurrency(
+        property.monthlyCashflow,
+      )}/mo. Selling removes this income stream.`,
+    });
+  }
+  warnings.push({
+    severity: 'caution' as const,
+    message:
+      'Capital Gains Tax may apply on the disposal. The estimate above does not include CGT — consult the Tax tab and your accountant for a precise figure.',
+  });
+  if (propertyEquity.lt(0)) {
+    warnings.push({
+      severity: 'critical' as const,
+      message: `${property.name} is in negative equity (loan exceeds value by ${formatCurrency(
+        Math.abs(property.equity),
+      )}). Sale proceeds will not cover the loan payoff.`,
+    });
+  }
+
+  const impacts: ScenarioImpactDecimal[] = [
+    {
+      label: 'Liquid cash',
+      before: liquidCashBefore,
+      after: liquidCashAfter,
+      delta: netCashFreed,
+      format: 'currency',
+      direction: netCashFreed.gt(0) ? 'positive' : 'negative',
+    },
+    {
+      label: 'Monthly cashflow',
+      before: monthlyCashflowBefore,
+      after: monthlyCashflowAfter,
+      delta: propertyMonthlyCashflow.neg(),
+      format: 'currency',
+      direction: propertyMonthlyCashflow.lt(0)
+        ? 'positive'
+        : propertyMonthlyCashflow.gt(0)
+          ? 'negative'
+          : 'neutral',
+    },
+    {
+      label: 'Net worth (excl. CGT)',
+      before: netWorthBefore,
+      after: netWorthAfter,
+      delta: sellingCosts.neg(),
+      format: 'currency',
+      direction: 'negative',
+    },
+    {
+      label: 'Property portfolio value',
+      before: propertyPortfolioValueBefore,
+      after: propertyPortfolioValueAfter,
+      delta: grossProceeds.neg(),
+      format: 'currency',
+      direction: 'neutral',
+    },
+  ];
+
+  return {
+    type: 'sellProperty',
+    title: `Sell ${property.name}`,
+    summary: `Disposing of ${property.name} at its current value of ${formatCurrency(
+      property.currentValue,
+    )} would free ${formatCurrency(netCashFreed.toNumber())} after selling costs and loan payoff${
+      propertyMonthlyCashflow.lt(0)
+        ? `, and remove ${formatCurrency(Math.abs(property.monthlyCashflow))}/mo of negative cashflow`
+        : propertyMonthlyCashflow.gt(0)
+          ? `, but you'd lose ${formatCurrency(property.monthlyCashflow)}/mo of positive cashflow`
+          : ''
+    }.`,
+    impacts,
+    warnings,
+    assumptions: [
+      `Sale price = current recorded value (${formatCurrency(property.currentValue)}).`,
+      `Selling costs = ${(sellingCostsPct.toNumber() * 100).toFixed(1)}% of sale price (agent fees + legals + marketing).`,
+      `Loan payoff = current loan balance against this property (${formatCurrency(loanPayoff.toNumber())}).`,
+      'CGT not included — see Tax tab for portfolio-level CGT estimate.',
+      'Excludes opportunity cost of not redeploying the freed capital.',
+    ],
+    computedAt: new Date().toISOString(),
+  };
 }

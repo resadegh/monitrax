@@ -13,6 +13,7 @@
  */
 
 import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import type { Decimal } from '@/lib/decimal';
 
 export type ScenarioType =
   | 'sellProperty'
@@ -72,4 +73,27 @@ export interface LoanView {
 export interface ScenarioContext {
   snapshot: MasterFinancialSnapshot;
   loans?: LoanView[];
+}
+
+// =============================================================================
+// Q-DEC PR 2.E.1 — Decimal sibling types
+// =============================================================================
+
+export interface ScenarioImpactDecimal {
+  label: string;
+  before: Decimal;
+  after: Decimal;
+  delta: Decimal;
+  format: 'currency' | 'percent' | 'number';
+  direction: 'positive' | 'negative' | 'neutral';
+}
+
+export interface ScenarioResultDecimal {
+  type: ScenarioType;
+  title: string;
+  summary: string;
+  impacts: ScenarioImpactDecimal[];
+  warnings: ScenarioWarning[];
+  assumptions: string[];
+  computedAt: string;
 }

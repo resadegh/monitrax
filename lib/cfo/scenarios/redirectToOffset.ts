@@ -8,8 +8,11 @@
 import {
   calculateEffectivePrincipal,
   calculateInterestForPeriod,
+  calculateEffectivePrincipalDecimal,
+  calculateInterestForPeriodDecimal,
 } from '@/lib/utils/calculations';
-import type { ScenarioContext, ScenarioResult } from './types';
+import { Decimal, toDecimal } from '@/lib/decimal';
+import type { ScenarioContext, ScenarioResult, ScenarioResultDecimal, ScenarioImpactDecimal } from './types';
 
 export interface RedirectToOffsetParams {
   loanId: string;
@@ -118,4 +121,111 @@ function formatCurrency(value: number): string {
     currency: 'AUD',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+// =============================================================================
+// Q-DEC PR 2.E.1 — Decimal sibling
+// =============================================================================
+
+export function redirectToOffsetScenarioDecimal(
+  ctx: ScenarioContext,
+  params: RedirectToOffsetParams,
+): ScenarioResultDecimal {
+  const loan = ctx.loans?.find((l) => l.id === params.loanId);
+
+  if (!loan) {
+    return {
+      type: 'redirectToOffset',
+      title: 'Park cash in offset',
+      summary: 'Loan not found in current snapshot.',
+      impacts: [],
+      warnings: [{ severity: 'critical', message: `No loan with id ${params.loanId}.` }],
+      assumptions: [],
+      computedAt: new Date().toISOString(),
+    };
+  }
+
+  const principal = toDecimal(loan.principal) ?? new Decimal(0);
+  const offsetBalance = toDecimal(loan.offsetBalance) ?? new Decimal(0);
+  const interestRate = toDecimal(loan.interestRate) ?? new Decimal(0);
+  const amount = toDecimal(params.amount) ?? new Decimal(0);
+
+  const interestBefore = calculateInterestForPeriodDecimal(
+    calculateEffectivePrincipalDecimal(principal, offsetBalance),
+    interestRate,
+    12,
+  );
+  const interestAfter = calculateInterestForPeriodDecimal(
+    calculateEffectivePrincipalDecimal(principal, offsetBalance.plus(amount)),
+    interestRate,
+    12,
+  );
+  const monthlyInterestSaved = interestBefore.minus(interestAfter);
+  const annualInterestSaved = monthlyInterestSaved.times(12);
+
+  const liquidCashBefore = toDecimal(ctx.snapshot.quickMetrics.liquidCash) ?? new Decimal(0);
+  const liquidCashAfter = liquidCashBefore; // offset balance still counts as liquid
+
+  const warnings = [];
+  if (amount.gt(liquidCashBefore)) {
+    warnings.push({
+      severity: 'caution' as const,
+      message: `You only have ${formatCurrency(
+        liquidCashBefore.toNumber(),
+      )} of liquid cash. Parking ${formatCurrency(
+        params.amount,
+      )} would require redirecting from another account.`,
+    });
+  }
+  if (calculateEffectivePrincipalDecimal(principal, offsetBalance).isZero()) {
+    warnings.push({
+      severity: 'caution' as const,
+      message: `${loan.name} is already fully offset — adding more cash here produces no further interest reduction.`,
+    });
+  }
+
+  const impacts: ScenarioImpactDecimal[] = [
+    {
+      label: 'Interest saved (monthly)',
+      before: new Decimal(0),
+      after: monthlyInterestSaved,
+      delta: monthlyInterestSaved,
+      format: 'currency',
+      direction: 'positive',
+    },
+    {
+      label: 'Interest saved (annual)',
+      before: new Decimal(0),
+      after: annualInterestSaved,
+      delta: annualInterestSaved,
+      format: 'currency',
+      direction: 'positive',
+    },
+    {
+      label: 'Liquid cash (unchanged — offset is still accessible)',
+      before: liquidCashBefore,
+      after: liquidCashAfter,
+      delta: new Decimal(0),
+      format: 'currency',
+      direction: 'neutral',
+    },
+  ];
+
+  return {
+    type: 'redirectToOffset',
+    title: `Park ${formatCurrency(params.amount)} in ${loan.name} offset`,
+    summary: `Adding ${formatCurrency(
+      params.amount,
+    )} to the offset against ${loan.name} would save ${formatCurrency(
+      monthlyInterestSaved.toNumber(),
+    )}/mo (${formatCurrency(annualInterestSaved.toNumber())}/yr) in interest. Cash remains liquid and accessible.`,
+    impacts,
+    warnings,
+    assumptions: [
+      `Loan rate (${(loan.interestRate * 100).toFixed(2)}%) held constant.`,
+      'Offset reduces interest accrual at the loan rate (which exceeds typical savings rates after tax).',
+      'Annual figure assumes the offset balance is held constant for 12 months.',
+    ],
+    computedAt: new Date().toISOString(),
+  };
 }

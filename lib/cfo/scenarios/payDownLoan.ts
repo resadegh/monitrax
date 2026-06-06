@@ -7,8 +7,9 @@
  * primitive added (CLAUDE.md §12.2).
  */
 
-import { calculateInterestForPeriod } from '@/lib/utils/calculations';
-import type { ScenarioContext, ScenarioResult } from './types';
+import { calculateInterestForPeriod, calculateInterestForPeriodDecimal } from '@/lib/utils/calculations';
+import { Decimal, toDecimal } from '@/lib/decimal';
+import type { ScenarioContext, ScenarioResult, ScenarioResultDecimal, ScenarioImpactDecimal } from './types';
 
 export interface PayDownLoanParams {
   loanId: string;
@@ -136,4 +137,126 @@ function formatCurrency(value: number): string {
     currency: 'AUD',
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+// =============================================================================
+// Q-DEC PR 2.E.1 — Decimal sibling
+// =============================================================================
+
+function walkAmortisationDecimal(
+  startingPrincipal: Decimal,
+  annualRate: Decimal,
+  monthlyRepayment: Decimal,
+  extraMonthly: Decimal,
+): { months: number; totalInterest: Decimal } {
+  let principal = startingPrincipal;
+  let totalInterest = new Decimal(0);
+  let months = 0;
+  const cap = 600;
+  const stopThreshold = new Decimal('0.01');
+  while (principal.gt(stopThreshold) && months < cap) {
+    const interest = calculateInterestForPeriodDecimal(principal, annualRate, 12);
+    const principalPayment = Decimal.max(new Decimal(0), monthlyRepayment.minus(interest)).plus(extraMonthly);
+    if (principalPayment.lte(0)) {
+      months = cap;
+      break;
+    }
+    const applied = Decimal.min(principalPayment, principal);
+    principal = principal.minus(applied);
+    totalInterest = totalInterest.plus(interest);
+    months += 1;
+  }
+  return { months, totalInterest };
+}
+
+export function payDownLoanScenarioDecimal(
+  ctx: ScenarioContext,
+  params: PayDownLoanParams,
+): ScenarioResultDecimal {
+  const loan = ctx.loans?.find((l) => l.id === params.loanId);
+
+  if (!loan) {
+    return {
+      type: 'payDownLoan',
+      title: 'Extra repayments',
+      summary: 'Loan not found in current snapshot.',
+      impacts: [],
+      warnings: [{ severity: 'critical', message: `No loan with id ${params.loanId}.` }],
+      assumptions: [],
+      computedAt: new Date().toISOString(),
+    };
+  }
+
+  const principal = toDecimal(loan.principal) ?? new Decimal(0);
+  const annualRate = toDecimal(loan.interestRate) ?? new Decimal(0);
+  const monthlyRepayment = toDecimal(loan.monthlyRepayment) ?? new Decimal(0);
+  const extraMonthly = toDecimal(params.extraMonthly) ?? new Decimal(0);
+
+  const baseline = walkAmortisationDecimal(principal, annualRate, monthlyRepayment, new Decimal(0));
+  const accelerated = walkAmortisationDecimal(principal, annualRate, monthlyRepayment, extraMonthly);
+
+  const interestSaved = baseline.totalInterest.minus(accelerated.totalInterest);
+  const monthsReduced = baseline.months - accelerated.months;
+
+  const monthlyCashflowBefore = toDecimal(ctx.snapshot.quickMetrics.monthlyCashflow) ?? new Decimal(0);
+  const monthlyCashflowAfter = monthlyCashflowBefore.minus(extraMonthly);
+
+  const warnings = [];
+  if (monthlyCashflowAfter.lt(0)) {
+    warnings.push({
+      severity: 'caution' as const,
+      message: `Adding ${formatCurrency(params.extraMonthly)}/mo to repayments would push your monthly cashflow into deficit (${formatCurrency(monthlyCashflowAfter.toNumber())}).`,
+    });
+  }
+  if (loan.loanType?.toLowerCase().includes('fixed')) {
+    warnings.push({
+      severity: 'caution' as const,
+      message: `${loan.name} appears to be on a fixed rate. Many lenders cap extra repayments on fixed loans (often $10–30k/yr) — confirm with your lender before committing.`,
+    });
+  }
+
+  const impacts: ScenarioImpactDecimal[] = [
+    {
+      label: 'Interest saved (lifetime)',
+      before: baseline.totalInterest,
+      after: accelerated.totalInterest,
+      delta: interestSaved.neg(),
+      format: 'currency',
+      direction: 'positive',
+    },
+    {
+      label: 'Months to payoff',
+      before: new Decimal(baseline.months),
+      after: new Decimal(accelerated.months),
+      delta: new Decimal(-monthsReduced),
+      format: 'number',
+      direction: 'positive',
+    },
+    {
+      label: 'Monthly cashflow',
+      before: monthlyCashflowBefore,
+      after: monthlyCashflowAfter,
+      delta: extraMonthly.neg(),
+      format: 'currency',
+      direction: 'negative',
+    },
+  ];
+
+  return {
+    type: 'payDownLoan',
+    title: `Extra ${formatCurrency(params.extraMonthly)}/mo on ${loan.name}`,
+    summary: `Adding ${formatCurrency(
+      params.extraMonthly,
+    )} to your monthly repayment on ${loan.name} would save ${formatCurrency(
+      interestSaved.toNumber(),
+    )} in total interest and clear the loan ${monthsReduced} months sooner.`,
+    impacts,
+    warnings,
+    assumptions: [
+      `Current rate (${(loan.interestRate * 100).toFixed(2)}%) held constant for the remaining term.`,
+      'Extra payments applied each month to principal after interest accrues.',
+      'No re-fix, redraw, or rate change events modelled.',
+    ],
+    computedAt: new Date().toISOString(),
+  };
 }
