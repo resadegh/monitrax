@@ -38,12 +38,14 @@ export type {
   AIAdviceSuggestedScenario,
   AIAdviceHeadline,
 } from './aiAdvisor';
-export { runScenario, SCENARIO_TYPES } from './scenarios';
+export { runScenario, runScenarioDecimal, SCENARIO_TYPES } from './scenarios';
 export type {
   ScenarioContext,
   ScenarioResult,
+  ScenarioResultDecimal,
   ScenarioType,
   ScenarioImpact,
+  ScenarioImpactDecimal,
   ScenarioWarning,
   AnyScenarioParams,
   LoanView,

@@ -15,12 +15,13 @@ import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import {
-  runScenario,
+  runScenarioDecimal,
   SCENARIO_TYPES,
   type AnyScenarioParams,
   type LoanView,
   type ScenarioType,
 } from '@/lib/cfo';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 
@@ -95,7 +96,11 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       fetchLoanViews(auth.userId),
     ]);
 
-    const result = runScenario({ snapshot, loans }, {
+    // Q-DEC PR 3.C — Decimal scenario engine; serialize at the JSON
+    // boundary. The response shape (impacts[*].{before,after,delta})
+    // stays `number` — `serializeDecimalsForJson` rounds Decimal →
+    // number at currency policy (2dp HALF_EVEN, ATO standard).
+    const result = runScenarioDecimal({ snapshot, loans }, {
       type,
       params,
     } as unknown as AnyScenarioParams);
@@ -112,7 +117,7 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       }),
     }).catch(() => {});
 
-    return NextResponse.json({ success: true, data: result });
+    return NextResponse.json({ success: true, data: serializeDecimalsForJson(result) });
   } catch (error) {
     console.error('[/api/cfo/scenarios/run] failed:', error);
     return NextResponse.json(

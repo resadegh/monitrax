@@ -6,30 +6,38 @@
  * `/api/cfo/scenarios/run` endpoint. Pure functions only — no I/O.
  */
 
-import { sellPropertyScenario, type SellPropertyParams } from './sellProperty';
-import { payDownLoanScenario, type PayDownLoanParams } from './payDownLoan';
-import { refinanceLoanScenario, type RefinanceLoanParams } from './refinanceLoan';
-import { redirectToOffsetScenario, type RedirectToOffsetParams } from './redirectToOffset';
-import { cutSpendCategoryScenario, type CutSpendCategoryParams } from './cutSpendCategory';
-import { addInvestmentScenario, type AddInvestmentParams } from './addInvestment';
-import type { ScenarioContext, ScenarioResult, ScenarioType } from './types';
+import { sellPropertyScenario, sellPropertyScenarioDecimal, type SellPropertyParams } from './sellProperty';
+import { payDownLoanScenario, payDownLoanScenarioDecimal, type PayDownLoanParams } from './payDownLoan';
+import { refinanceLoanScenario, refinanceLoanScenarioDecimal, type RefinanceLoanParams } from './refinanceLoan';
+import { redirectToOffsetScenario, redirectToOffsetScenarioDecimal, type RedirectToOffsetParams } from './redirectToOffset';
+import { cutSpendCategoryScenario, cutSpendCategoryScenarioDecimal, type CutSpendCategoryParams } from './cutSpendCategory';
+import { addInvestmentScenario, addInvestmentScenarioDecimal, type AddInvestmentParams } from './addInvestment';
+import type { ScenarioContext, ScenarioResult, ScenarioResultDecimal, ScenarioType } from './types';
 
 export type {
   ScenarioContext,
   ScenarioResult,
+  ScenarioResultDecimal,
   ScenarioType,
   ScenarioImpact,
+  ScenarioImpactDecimal,
   ScenarioWarning,
   LoanView,
 } from './types';
 
 export {
   sellPropertyScenario,
+  sellPropertyScenarioDecimal,
   payDownLoanScenario,
+  payDownLoanScenarioDecimal,
   refinanceLoanScenario,
+  refinanceLoanScenarioDecimal,
   redirectToOffsetScenario,
+  redirectToOffsetScenarioDecimal,
   cutSpendCategoryScenario,
+  cutSpendCategoryScenarioDecimal,
   addInvestmentScenario,
+  addInvestmentScenarioDecimal,
 };
 
 export type AnyScenarioParams =
@@ -57,6 +65,37 @@ export function runScenario(
       return cutSpendCategoryScenario(ctx, request.params);
     case 'addInvestment':
       return addInvestmentScenario(ctx, request.params);
+    default: {
+      const _exhaustive: never = request;
+      throw new Error(`Unknown scenario type: ${JSON.stringify(_exhaustive)}`);
+    }
+  }
+}
+
+/**
+ * Q-DEC PR 3.C — Decimal sibling dispatcher. Routes each scenario type
+ * to its `*Decimal` sibling shipped in PR 2.E.1. The route handler /
+ * AI tool consumer is the boundary that calls
+ * `serializeDecimalsForJson` on the result before returning the JSON
+ * response.
+ */
+export function runScenarioDecimal(
+  ctx: ScenarioContext,
+  request: AnyScenarioParams
+): ScenarioResultDecimal {
+  switch (request.type) {
+    case 'sellProperty':
+      return sellPropertyScenarioDecimal(ctx, request.params);
+    case 'payDownLoan':
+      return payDownLoanScenarioDecimal(ctx, request.params);
+    case 'refinanceLoan':
+      return refinanceLoanScenarioDecimal(ctx, request.params);
+    case 'redirectToOffset':
+      return redirectToOffsetScenarioDecimal(ctx, request.params);
+    case 'cutSpendCategory':
+      return cutSpendCategoryScenarioDecimal(ctx, request.params);
+    case 'addInvestment':
+      return addInvestmentScenarioDecimal(ctx, request.params);
     default: {
       const _exhaustive: never = request;
       throw new Error(`Unknown scenario type: ${JSON.stringify(_exhaustive)}`);

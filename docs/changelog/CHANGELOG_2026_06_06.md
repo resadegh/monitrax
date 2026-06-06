@@ -542,3 +542,63 @@ NONE — additive code only.
 - PR 3.C — `/api/cfo/*` route handlers cutover (~6-10 routes consuming the PR 2.E Decimal engines).
 - PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
 - PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary.
+
+---
+
+## Session: qdec-pr3c-cfo-routes-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — first CFO route consumer cutover (Q-DEC PR 3.C)
+- **Scope**: Q-DEC PR 3.C — `/api/cfo/scenarios/run` (POST) route handler cutover + new `runScenarioDecimal` dispatcher exported from `lib/cfo/scenarios/index.ts`. PR 3.B.2 doc-sync rolled in (PR 3.B.2 row flipped ✅ MERGED #998).
+- **Description**: First CFO route consumer cutover. The scenarios run endpoint is the most direct PR 2.E.1 consumer — each lever the UI exposes (or the AI advisor tool-call) routes through `runScenario` → one of 6 scenario engines. Adds the Decimal dispatcher counterpart, swaps the route, and serializes via the canonical `serializeDecimalsForJson` boundary walker shipped in PR 3.B.
+
+### Files Modified
+
+- `lib/cfo/scenarios/index.ts` — `runScenarioDecimal(ctx, request): ScenarioResultDecimal` dispatcher added. Routes each of the 6 scenario types (`sellProperty` / `payDownLoan` / `refinanceLoan` / `redirectToOffset` / `cutSpendCategory` / `addInvestment`) to its `*Decimal` sibling shipped in PR 2.E.1. Also re-exports the `*Decimal` scenario functions + `ScenarioResultDecimal` + `ScenarioImpactDecimal` types for direct consumers (AI tool dispatcher in PR 3.D).
+- `lib/cfo/index.ts` — barrel exports `runScenarioDecimal`, `ScenarioResultDecimal`, `ScenarioImpactDecimal`.
+- `app/api/cfo/scenarios/run/route.ts` — POST swapped from `runScenario` → `runScenarioDecimal`. Response body wrapped in `serializeDecimalsForJson(result)` — `result.impacts[*].{before,after,delta}` Decimal leaves convert to numbers at currency policy (2dp HALF_EVEN). Categorical fields (`type`, `title`, `summary`, `warnings[]`, `assumptions[]`, `computedAt`) flow through unchanged.
+
+### Architectural notes
+
+- **Dispatcher-level Decimal sibling is the right abstraction.** The Decimal scenario engines already exist (PR 2.E.1); the dispatcher just routes by `request.type` and there's no engine-tier composition to migrate. Adding `runScenarioDecimal` as a sibling preserves the SSOT pattern — one dispatcher per execution path; route handlers consume the dispatcher, not individual scenarios.
+- **AI advisor tool-call cutover is PR 3.D.** The AI advisor calls `runScenario` via its closed `ToolKind` registry. Swapping that consumer is PR 3.D scope; the route + dispatcher in this PR are independent paths to the same scenario engines.
+- **CFO dashboard routes deferred.** `/api/cfo` (`getCFODashboardData`) and `/api/cfo/advice/*` (`generateOrFetchAdvice`) compose many engines but their wrapper-level Decimal siblings don't exist yet. PR 2.E.2/3/4 shipped Decimal siblings at the inner-helper level (`scoreCalculator` / `riskRadar` summary / decision-support helpers / `intelligenceEngine` helpers); the async wrappers around them are presentation + I/O composition. Those wrappers either get their own Decimal siblings (in a follow-up sub-PR) or get cut over once PR 4 drops the Float path and the wrappers can be simplified.
+- **`serializeDecimalsForJson` is the canonical boundary.** Same pattern as PR 3.B routes — engine runs Decimal end-to-end; serializer converts at the JSON boundary. The currency-policy default (2dp HALF_EVEN, ATO standard) applies to every numeric leaf in the scenario result, including non-money fields (`emergencyFundMonths`, `months to payoff`). For Phase 45 What-If 10-year horizons, this becomes critical — every accumulation runs in exact Decimal, only the final display rounds.
+
+### Testing
+
+- [x] `npx tsc --noEmit` clean.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+- N/A — no new route-handler tests added; behavior preservation guaranteed by:
+  1. The 6 scenario Decimal engines are shadow-tested against Float to 0.005 currency tolerance by PR 2.E.1's 28-fixture suite.
+  2. `serializeDecimalsForJson` is unit-tested.
+  3. The dispatcher is a literal switch; verified by typecheck (exhaustive `never` branch).
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 3.B.2 ✅ MERGED #998; PR 3.C IN FLIGHT this PR; cfo dashboard/advice routes deferred to follow-up)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 3.B.2 ✅ MERGED #998; PR 3.C IN FLIGHT (scope refined to scenarios route only); Last touched flipped.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No engine math changed — consumer wire-up + dispatcher. The 6 scenarios are reform-agnostic by construction (Phase 45 What-If levers don't model regime branching at the scenario level — Phase 45 PR 1 will add regime-aware tax-position composition on top). FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A) — `runScenarioDecimal` is a programmatic dispatcher, not an AI tool.
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
+- PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary.
+- Follow-up — cfo dashboard / advice routes once async-wrapper Decimal siblings exist (or cut over post-PR 4 when Float drops).
