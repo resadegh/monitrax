@@ -1,3 +1,5 @@
+import { Decimal, toDecimal } from '@/lib/decimal';
+
 /**
  * Calculate Loan to Value Ratio (LVR)
  * @param loanBalance Total loan balance
@@ -76,4 +78,64 @@ export function calculatePIRepayment(
   const denominator = Math.pow(1 + monthlyRate, termMonths) - 1;
 
   return numerator / denominator;
+}
+
+// =============================================================================
+// Q-DEC PR 2.E.1 — Decimal sibling primitives
+// =============================================================================
+
+/**
+ * Decimal sibling of `calculateEffectivePrincipal`.
+ * `max(0, principal - offsetBalance)`. Mirrors Float floor.
+ */
+export function calculateEffectivePrincipalDecimal(
+  principal: number | string | Decimal,
+  offsetBalance: number | string | Decimal,
+): Decimal {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const o = toDecimal(offsetBalance) ?? new Decimal(0);
+  return Decimal.max(new Decimal(0), p.minus(o));
+}
+
+/**
+ * Decimal sibling of `calculateInterestForPeriod`.
+ * `principal × (annualRate / periodsPerYear)`. Returns Decimal — no
+ * rounding (callers decide).
+ */
+export function calculateInterestForPeriodDecimal(
+  principal: number | string | Decimal,
+  annualRate: number | string | Decimal,
+  periodsPerYear: number,
+): Decimal {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const r = toDecimal(annualRate) ?? new Decimal(0);
+  if (periodsPerYear === 0) return new Decimal(0);
+  const periodicRate = r.div(periodsPerYear);
+  return p.times(periodicRate);
+}
+
+/**
+ * Decimal sibling of `calculatePIRepayment`. Exact amortising-annuity
+ * formula via `Decimal.pow` with integer exponent. Degenerate cases
+ * (`termMonths === 0` or `annualRate === 0`) fall back to straight-line
+ * `principal / max(1, termMonths)` to mirror Float.
+ */
+export function calculatePIRepaymentDecimal(
+  principal: number | string | Decimal,
+  annualRate: number | string | Decimal,
+  termMonths: number,
+): Decimal {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const r = toDecimal(annualRate) ?? new Decimal(0);
+
+  if (termMonths === 0 || r.isZero()) {
+    return p.div(Math.max(1, termMonths));
+  }
+
+  const monthlyRate = r.div(12);
+  const onePlusRPow = new Decimal(1).plus(monthlyRate).pow(termMonths);
+  const numerator = p.times(monthlyRate).times(onePlusRPow);
+  const denominator = onePlusRPow.minus(1);
+
+  return numerator.div(denominator);
 }

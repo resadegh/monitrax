@@ -69,3 +69,74 @@ NONE — additive code only. No Prisma writes, no schema changes.
 
 - PR 2.D.3 complete (all four sub-PRs landed: 3a state taxes / 3b CGT / 3c loss treatment + 3c2 beneficiary + 3d composers).
 - PR 3 — cutover. Route handlers + AI tools + UI consumers switched from `*` to `*Decimal`. `entityTaxRouter` and `masterTaxPosition` get their Decimal siblings created at this layer once their downstream consumers are Decimal too (avoids the type-churn dance of dual-typing an aggregating router).
+
+---
+
+## Session: qdec-pr2e-cfo-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — `lib/cfo/scenarios/*` Decimal siblings (Q-DEC PR 2.E.1)
+- **Scope**: Q-DEC PR 2.E.1 — Decimal siblings for the 6 deterministic What-If scenarios (`refinanceLoan` / `payDownLoan` / `redirectToOffset` / `sellProperty` / `cutSpendCategory` / `addInvestment`) + 3 supporting primitive Decimal siblings on `lib/utils/calculations.ts` (`calculatePIRepaymentDecimal` — exact amortising annuity via `Decimal.pow`; `calculateInterestForPeriodDecimal`; `calculateEffectivePrincipalDecimal`).
+- **Description**: First sub-PR of Q-DEC PR 2.E. Splits the ~6.6k-LOC `lib/cfo/*` into 4 cohesive sub-PRs by theme; this PR is the Phase 45 What-If critical path — every lever the UI exposes runs through one of these engines, and the 10-year projection composer (Phase 45 PR 1) will consume the Decimal outputs directly without a Float-bridge.
+- **Scope refinement**: original PR 2.E was monolithic; given lib/cfo/ is 19 files / 6,568 LOC, split into 4 sub-PRs (E.1 scenarios, E.2 score+risk, E.3 decision-support, E.4 actions+AI+intelligence) for review tractability — same pattern as PR 2.D.3 split.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/utils/calculations.ts` — `calculateEffectivePrincipalDecimal` (max(0, p − offset) mirror), `calculateInterestForPeriodDecimal` (p × rate/n; zero-period guard), `calculatePIRepaymentDecimal` (exact amortising annuity via `Decimal.pow`; degenerate cases — zero rate falls back to straight-line, zero term floors at max(1, term) — preserved bit-for-bit).
+- `lib/cfo/scenarios/types.ts` — `ScenarioImpactDecimal` + `ScenarioResultDecimal` types; mirror Float shape with `Decimal` typed `before/after/delta`.
+- `lib/cfo/scenarios/refinanceLoan.ts` — `refinanceLoanScenarioDecimal`. Calls `calculatePIRepaymentDecimal` for new repayment; lifetime savings + break-even months + cashflow delta in Decimal.
+- `lib/cfo/scenarios/payDownLoan.ts` — `payDownLoanScenarioDecimal` + `walkAmortisationDecimal` (private Decimal amortisation walk; same 600-month cap + $0.01 stop threshold + max-payment-floor as Float).
+- `lib/cfo/scenarios/redirectToOffset.ts` — `redirectToOffsetScenarioDecimal`. Composes `calculateEffectivePrincipalDecimal` + `calculateInterestForPeriodDecimal`.
+- `lib/cfo/scenarios/sellProperty.ts` — `sellPropertyScenarioDecimal`. Net cash freed = grossProceeds − sellingCosts − loanPayoff; net worth delta = −sellingCosts.
+- `lib/cfo/scenarios/cutSpendCategory.ts` — `cutSpendCategoryScenarioDecimal`. Realised reduction = `min(requested, currentSpend)`; savings rate recompute preserves Float's divide-by-zero guard; emergency months recompute = liquid / monthlyExpensesAfter.
+- `lib/cfo/scenarios/addInvestment.ts` — `addInvestmentScenarioDecimal`. Future-value of monthly annuity via `Decimal.pow` with integer-month exponent; zero-return fallback preserved.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-cfo-scenarios.ts` — 6 shadow engines × ~5 fixtures each = 28 fixtures total. Synthetic `MasterFinancialSnapshot` helper populates only the fields each scenario reads (the snapshot is large but the per-scenario read-surface is narrow). Aggregate export `cfoScenarioShadowEngines`.
+- `tests/cfo/scenarios.decimal.test.ts` — 53 tests (6 primitive contract + 28 shadow + 18 scenario contract + 1 aggregate report).
+
+### Architectural notes
+
+- **`Decimal.pow(integer)` for annuity exponent**. Both `calculatePIRepaymentDecimal` and `addInvestmentScenarioDecimal` raise `(1 + rate)` to an integer month count — exact, no series approximation. Float's `Math.pow` agrees on the same numbers to within currency tolerance (verified by all 28 shadow fixtures).
+- **Amortisation walk preserved bit-for-bit**. `walkAmortisationDecimal` mirrors the Float walk's structure: 600-month cap, $0.01 stop threshold (`stopThreshold = new Decimal('0.01')`), `Decimal.max(new Decimal(0), monthlyRepayment.minus(interest))` floors the principal payment (mirrors Float's `Math.max(0, ...)`), `Decimal.min(principalPayment, principal)` caps the applied amount.
+- **String fields skipped by harness**. Each `ScenarioResult` carries `title` / `summary` / `warnings[].message` / `assumptions[]` strings — the shadow harness `isNumericLeaf` check skips these cleanly. Only `impacts[*].{before, after, delta}` numeric leaves are compared.
+- **Savings-rate field policy**. `cutSpendCategory.impacts[2]` is a percentage (not currency); Float doesn't pre-round it via `Math.round`, so `'percentage'` tolerance fits. Override is the only non-default in any fieldPolicy.
+- **Float-bridge avoided**. No scenario reaches into Float math from the Decimal sibling — all primitives have Decimal siblings shipped in this PR; the supporting `lib/utils/calculations.ts` math is now fully Decimal-capable for the scenario surface.
+- **§12.14 reform-agnosticism.** All 6 scenarios are reform-agnostic — none invoke a reform-aware tax engine. (CGT is explicitly delegated to the tax engine via a warning, not recomputed in-engine — `sellPropertyScenario` warns about CGT but doesn't compute it; §12.2 SSOT preserved.) No regime parameter required, no `commencementVerified` gate needed (FW-1/FW-2 outcome (a)).
+
+### Testing
+
+- [x] 53 new tests pass (6 primitive contract + 28 shadow + 18 scenario contract + 1 aggregate report).
+- [x] `npx tsc --noEmit` clean.
+- [x] Shadow report PASS on all 28 fixtures across all 6 scenarios.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed via baseline — out of scope, predate this branch.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.E.1 row added under new PR 2.E section split; PR 2.E.2/3/4 queued)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.E expanded from single row to 4 sub-PR rows (E.1 IN FLIGHT this PR; E.2/3/4 queued); Last touched flipped to 2026-06-06.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] All 6 scenarios are reform-agnostic (FW-1 outcome (a)) — `sellProperty` explicitly delegates CGT to the tax engine via a warning rather than recomputing in-engine, preserving §12.2 SSOT + reform-awareness already in the tax engine.
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only. No Prisma writes, no schema changes.
+
+### Next
+
+- PR 2.E.2 — `scoreCalculator` (financial health) + `riskRadar` (cross-engine risk surfacing).
+- PR 2.E.3 — `decisionSupport/{property, loan, investment, taxIntegration}`.
+- PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine`.
