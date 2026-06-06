@@ -15,6 +15,7 @@ import {
 } from './types';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency, RepaymentFrequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // ============================================================================
 // Risk Thresholds
@@ -604,6 +605,47 @@ function calculateSummary(risks: FinancialRisk[]): RiskSummary {
     medium: risks.filter(r => r.severity === 'medium').length,
     low: risks.filter(r => r.severity === 'low').length,
     totalImpact: risks.reduce((sum, r) => sum + r.impact, 0),
+    topRisk: risks[0] || null,
+  };
+}
+
+// ============================================================================
+// Q-DEC PR 2.E.2 — Decimal sibling summary
+// ============================================================================
+
+/**
+ * Decimal-typed mirror of `RiskSummary`. `totalImpact` carries the
+ * aggregate dollar impact across all risks; counts stay as numbers
+ * (categorical). Used by the intelligence engine (PR 2.E.4) to compose
+ * risk-aware score deltas without re-converting each individual impact.
+ *
+ * Why no per-detector Decimal sibling: each of the 10 detectors is a
+ * categorical-output engine — it compares a ratio against a threshold,
+ * then conditionally emits a `FinancialRisk` object whose `impact` is
+ * already rounded for display. The actual money-math is shallow (no
+ * compounding, no amortisation walks). The Decimal sibling lives at
+ * the summary layer where impact aggregation accumulates without
+ * Float-rounding drift.
+ */
+export interface RiskSummaryDecimal {
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  totalImpact: Decimal;
+  topRisk: FinancialRisk | null;
+}
+
+export function calculateSummaryDecimal(risks: FinancialRisk[]): RiskSummaryDecimal {
+  return {
+    critical: risks.filter((r) => r.severity === 'critical').length,
+    high: risks.filter((r) => r.severity === 'high').length,
+    medium: risks.filter((r) => r.severity === 'medium').length,
+    low: risks.filter((r) => r.severity === 'low').length,
+    totalImpact: risks.reduce(
+      (acc, r) => acc.plus(toDecimal(r.impact) ?? new Decimal(0)),
+      new Decimal(0),
+    ),
     topRisk: risks[0] || null,
   };
 }

@@ -140,3 +140,75 @@ NONE — additive code only. No Prisma writes, no schema changes.
 - PR 2.E.2 — `scoreCalculator` (financial health) + `riskRadar` (cross-engine risk surfacing).
 - PR 2.E.3 — `decisionSupport/{property, loan, investment, taxIntegration}`.
 - PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine`.
+
+---
+
+## Session: qdec-pr2e2-cfo-score-risk-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — `scoreCalculator` + `riskRadar` Decimal siblings (Q-DEC PR 2.E.2)
+- **Scope**: Q-DEC PR 2.E.2 — Decimal siblings for `lib/cfo/scoreCalculator.ts` (6 component sub-scores + composer + weighted-overall) and `lib/cfo/riskRadar.ts` (`calculateSummaryDecimal`).
+- **Description**: Second sub-PR of Q-DEC PR 2.E. Ships the financial-health scoring engine on the Decimal path. Each of the 6 component sub-scores (`cashflowStrength` / `debtCoverage` / `emergencyBuffer` / `investmentDiversification` / `spendingControl` / `savingsRate`) is a pure step-function with linear interpolation between thresholds — the math compounds via the weighted-overall composer, so real Decimal siblings matter. `riskRadar` gets a summary-layer Decimal sibling only — per-detector Decimal siblings deferred because each detector is categorical (ratio → conditional risk object) with shallow money math + already-rounded per-risk `impact`.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/cfo/scoreCalculator.ts` — 8 exports appended:
+  - `CFOScoreComponentsDecimal` — Decimal-typed mirror of `CFOScoreComponents`.
+  - `calculateCashflowStrengthDecimal` — cashflow-ratio step function, 7 tiers preserved, divide-by-zero floor.
+  - `calculateDebtCoverageDecimal` — DSR step function, 6 tiers preserved, zero-income + zero-debt special case (100), zero-income + nonzero debt (0).
+  - `calculateEmergencyBufferDecimal` — months-covered step function, 4 tiers preserved, zero-essential-expenses split (100 if liquid, else 50).
+  - `calculateInvestmentDiversificationDecimal` — asset-class count + balance + concentration penalty, max-100 floor preserved.
+  - `calculateSpendingControlDecimal` — discretionary-ratio step function, 5 tiers preserved + final linear-decay floor (`max(0, 20 - (ratio - 0.5) × 40)`).
+  - `calculateSavingsRateDecimal` — post-loan savings-rate step function, 5 tiers preserved, zero-income + negative-rate floors.
+  - `calculateComponentsDecimal` — composer; returns UN-rounded Decimal sub-scores (Float path rounds at this layer; Decimal path defers rounding to the API boundary).
+  - `calculateOverallScoreDecimal` — weighted-overall composition using the existing `SCORE_WEIGHTS` constants.
+- `lib/cfo/riskRadar.ts` — `RiskSummaryDecimal` + `calculateSummaryDecimal` appended. Counts stay as numbers (categorical); `totalImpact` accumulated in Decimal so 10× $123.45 sums exactly to $1,234.50 (vs Float `0.1 + 0.2 !== 0.3` drift category).
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-cfo-score-risk.ts` — 8 shadow engines × ~5 fixtures each = 41 fixtures. Float-side helpers re-derived in this file (the originals in `scoreCalculator.ts` are NOT exported); each re-derivation tagged with the source-file line range for audit. Aggregate export `cfoScoreRiskShadowEngines`.
+- `tests/cfo/score-risk.decimal.test.ts` — 71 tests (41 shadow + 26 contract + 4 aggregate including `calculateSummaryDecimal` precision check).
+
+### Architectural notes
+
+- **Step-function thresholds preserved bit-for-bit.** Each component's tier boundaries (`0.3 / 0.2 / 0.1 / 0 / -0.1 / -0.2` for cashflow; `0.2 / 0.3 / 0.4 / 0.5 / 0.6` for DSR; etc.) translated as `'0.3' / '0.2' / ...` string literals into Decimal constants — avoids any IEEE-754 representation issues at the boundary itself.
+- **Component rounding deferred to API boundary.** Float-side `calculateComponents` rounds each sub-score to integer BEFORE the weighted composition; Decimal path keeps the raw sub-score then weights, then rounds at the API. For shadow comparison the harness's `currency` tolerance (0.005) absorbs the typically <0.5 rounding-order difference per fixture.
+- **Re-derived Float helpers in shadow file.** The Float helpers in `scoreCalculator.ts` (`calculateCashflowStrength` etc.) are not exported and re-deriving them in the shadow file keeps the test harness self-contained — any drift between paths surfaces as a real DIFF rather than a transcription error. Each re-derivation cites the source-file line range.
+- **`riskRadar` summary-only Decimal sibling — rationale.** Each of the 10 detectors (`detectLowBalanceRisks`, `detectCashflowShortfallRisks`, etc.) is structurally categorical: compute one ratio (e.g. payment / income), compare against a threshold (0.2 / 0.3 / 0.5 / 0.7), conditionally emit a `FinancialRisk` object whose `impact` is `Math.round(...)`-rounded for display. The threshold comparisons are float-stable (no compounding). The aggregator at the summary layer is where impact precision starts to matter — summing N impacts across detectors. That's where the Decimal sibling lives.
+- **§12.14 reform-agnosticism.** Both engines are reform-agnostic — `scoreCalculator`'s 6 components measure cashflow / debt / liquidity / diversification / spending / savings ratios; none are in scope of any 2026-27 reform measure. `riskRadar` summarises detector outputs without reform-aware math. FW-1/FW-2 outcome (a).
+
+### Testing
+
+- [x] 71 new tests pass (41 shadow + 26 contract + 4 aggregate).
+- [x] `npx tsc --noEmit` clean.
+- [x] Shadow report PASS on all 41 fixtures across all 8 shadow engines.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.E.1 row marked ✅ MERGED #991; PR 2.E.2 row flipped IN FLIGHT this PR)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.E.1 ✅ MERGED #991; PR 2.E.2 IN FLIGHT this PR; Last touched flipped 2026-06-06 / E.2.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] All 6 component sub-scores are reform-agnostic — cashflow / debt / liquidity / diversification / spending / savings ratios are not in scope of any 2026-27 reform measure. FW-1 outcome (a).
+- [x] `riskRadar.calculateSummary` is reform-agnostic — aggregates detector outputs. FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only. No Prisma writes, no schema changes.
+
+### Next
+
+- PR 2.E.3 — `lib/cfo/decisionSupport/{propertyDecisionSupport, loanDecisionSupport, investmentDecisionSupport, taxIntegration}` Decimal siblings.
+- PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine` Decimal siblings.

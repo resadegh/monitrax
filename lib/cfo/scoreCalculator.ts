@@ -9,8 +9,9 @@ import {
   CFOScoreComponents,
   CFOScoreHistory,
 } from './types';
-import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
+import { toAnnual, toMonthly, toMonthlyDecimal } from '@/lib/utils/frequencies';
 import { Frequency, RepaymentFrequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // ============================================================================
 // Score Weights
@@ -416,4 +417,322 @@ export async function saveCFOScore(
 ): Promise<void> {
   // In production, this would save to a CFOScoreHistory table
   // For now, no-op
+}
+
+// ============================================================================
+// Q-DEC PR 2.E.2 — Decimal sibling pure-math functions
+// ============================================================================
+
+/**
+ * Decimal-typed mirror of `CFOScoreComponents`. Component sub-scores
+ * are computed in Decimal first; the public `CFOScore.components` rounds
+ * to integer 0-100 at the API boundary. Decimal consumers (intelligence
+ * engine, PR 2.E.4) read these without the boundary rounding.
+ */
+export interface CFOScoreComponentsDecimal {
+  cashflowStrength: Decimal;
+  debtCoverage: Decimal;
+  emergencyBuffer: Decimal;
+  investmentDiversification: Decimal;
+  spendingControl: Decimal;
+  savingsRate: Decimal;
+}
+
+const ZERO = new Decimal(0);
+const HUNDRED = new Decimal(100);
+const ONE = new Decimal(1);
+
+function sumMonthlyDecimal<T extends { amount: number; frequency: Frequency | RepaymentFrequency | string }>(
+  items: T[],
+  amountKey: keyof T,
+  freqKey: keyof T,
+): Decimal {
+  return items.reduce((acc, item) => {
+    const amount = item[amountKey] as unknown as number;
+    const freq = item[freqKey] as unknown as Frequency;
+    return acc.plus(toMonthlyDecimal(amount, freq));
+  }, ZERO);
+}
+
+/**
+ * Decimal sibling of `calculateCashflowStrength`. Same step-function with
+ * linear interpolation between thresholds; preserves the divide-by-zero
+ * floor (`monthlyIncome === 0 → 0`).
+ */
+export function calculateCashflowStrengthDecimal(
+  incomes: IncomeData[],
+  expenses: ExpenseData[],
+  loans: LoanData[],
+): Decimal {
+  const monthlyIncome = incomes.reduce(
+    (acc, i) => acc.plus(toMonthlyDecimal(i.amount, i.frequency)),
+    ZERO,
+  );
+  const monthlyExpenses = expenses.reduce(
+    (acc, e) => acc.plus(toMonthlyDecimal(e.amount, e.frequency)),
+    ZERO,
+  );
+  const monthlyLoanPayments = loans.reduce(
+    (acc, l) => acc.plus(toMonthlyDecimal(l.minRepayment, l.repaymentFrequency)),
+    ZERO,
+  );
+
+  if (monthlyIncome.isZero()) return ZERO;
+
+  const netCashflow = monthlyIncome.minus(monthlyExpenses).minus(monthlyLoanPayments);
+  const cashflowRatio = netCashflow.div(monthlyIncome);
+
+  if (cashflowRatio.gte('0.3')) return HUNDRED;
+  if (cashflowRatio.gte('0.2')) return new Decimal(85).plus(cashflowRatio.minus('0.2').times(150));
+  if (cashflowRatio.gte('0.1')) return new Decimal(70).plus(cashflowRatio.minus('0.1').times(150));
+  if (cashflowRatio.gte(0)) return new Decimal(50).plus(cashflowRatio.times(200));
+  if (cashflowRatio.gte('-0.1')) return new Decimal(30).plus(cashflowRatio.plus('0.1').times(200));
+  if (cashflowRatio.gte('-0.2')) return new Decimal(10).plus(cashflowRatio.plus('0.2').times(200));
+  return ZERO;
+}
+
+/**
+ * Decimal sibling of `calculateDebtCoverage`. DSR-based step function.
+ * Preserves the `monthlyIncome === 0` branch: returns 100 when totalDebt
+ * is also 0 (debt-free), else 0.
+ */
+export function calculateDebtCoverageDecimal(
+  incomes: IncomeData[],
+  loans: LoanData[],
+): Decimal {
+  const monthlyIncome = incomes.reduce(
+    (acc, i) => acc.plus(toMonthlyDecimal(i.amount, i.frequency)),
+    ZERO,
+  );
+  const totalDebt = loans.reduce((acc, l) => acc.plus(toDecimal(l.principal) ?? ZERO), ZERO);
+  const monthlyPayments = loans.reduce(
+    (acc, l) => acc.plus(toMonthlyDecimal(l.minRepayment, l.repaymentFrequency)),
+    ZERO,
+  );
+
+  if (monthlyIncome.isZero()) return totalDebt.isZero() ? HUNDRED : ZERO;
+
+  const dsr = monthlyPayments.div(monthlyIncome);
+
+  if (dsr.lte('0.2')) return HUNDRED;
+  if (dsr.lte('0.3')) return new Decimal(80).plus(new Decimal('0.3').minus(dsr).times(200));
+  if (dsr.lte('0.4')) return new Decimal(60).plus(new Decimal('0.4').minus(dsr).times(200));
+  if (dsr.lte('0.5')) return new Decimal(40).plus(new Decimal('0.5').minus(dsr).times(200));
+  if (dsr.lte('0.6')) return new Decimal(20).plus(new Decimal('0.6').minus(dsr).times(200));
+  return ZERO;
+}
+
+/**
+ * Decimal sibling of `calculateEmergencyBuffer`. Months-covered step
+ * function. Same divide-by-zero special-case:
+ *   monthlyEssentialExpenses === 0 →
+ *     liquidBalances > 0 ? 100 : 50.
+ */
+export function calculateEmergencyBufferDecimal(
+  accounts: AccountData[],
+  expenses: ExpenseData[],
+): Decimal {
+  const liquidBalances = accounts
+    .filter((a) => LIQUID_ACCOUNT_TYPES.includes(a.type as (typeof LIQUID_ACCOUNT_TYPES)[number]))
+    .reduce((acc, a) => acc.plus(toDecimal(a.currentBalance) ?? ZERO), ZERO);
+
+  const monthlyEssentialExpenses = expenses
+    .filter((e) => e.isEssential)
+    .reduce((acc, e) => acc.plus(toMonthlyDecimal(e.amount, e.frequency)), ZERO);
+
+  if (monthlyEssentialExpenses.isZero()) {
+    return liquidBalances.gt(0) ? HUNDRED : new Decimal(50);
+  }
+
+  const monthsCovered = liquidBalances.div(monthlyEssentialExpenses);
+
+  if (monthsCovered.gte(6)) return HUNDRED;
+  if (monthsCovered.gte(3)) {
+    return new Decimal(75).plus(monthsCovered.minus(3).times(new Decimal(25).div(3)));
+  }
+  if (monthsCovered.gte(1)) {
+    return new Decimal(40).plus(monthsCovered.minus(1).times(new Decimal(35).div(2)));
+  }
+  return monthsCovered.times(40);
+}
+
+/**
+ * Decimal sibling of `calculateInvestmentDiversification`. Asset-class
+ * count + balance-by-class + concentration penalty. Categorical
+ * components (asset-class booleans) stay JS-native; only the monetary
+ * concentrations and final score arithmetic move to Decimal.
+ */
+export function calculateInvestmentDiversificationDecimal(
+  investments: InvestmentData[],
+  properties: PropertyData[],
+): Decimal {
+  let hasEquities = false;
+  let hasBonds = false;
+  const hasProperty = properties.length > 0;
+  let hasCrypto = false;
+
+  for (const account of investments) {
+    for (const holding of account.holdings) {
+      if (['SHARE', 'ETF'].includes(holding.type)) hasEquities = true;
+      if (holding.type === 'MANAGED_FUND') hasBonds = true;
+      if (holding.type === 'CRYPTO') hasCrypto = true;
+    }
+  }
+
+  let equityValue = ZERO;
+  let otherValue = ZERO;
+  const propertyValue = properties.reduce(
+    (acc, p) => acc.plus(toDecimal(p.currentValue) ?? ZERO),
+    ZERO,
+  );
+
+  for (const account of investments) {
+    for (const holding of account.holdings) {
+      const units = toDecimal(holding.units) ?? ZERO;
+      const price = toDecimal(holding.averagePrice) ?? ZERO;
+      const value = units.times(price);
+      if (['SHARE', 'ETF'].includes(holding.type)) {
+        equityValue = equityValue.plus(value);
+      } else {
+        otherValue = otherValue.plus(value);
+      }
+    }
+  }
+
+  const totalValue = equityValue.plus(otherValue).plus(propertyValue);
+  if (totalValue.isZero()) return new Decimal(50);
+
+  const assetClassCount = [hasEquities, hasBonds, hasProperty, hasCrypto].filter(Boolean).length;
+  const classScore = new Decimal(Math.min(40, assetClassCount * 10));
+
+  const concentrations = [
+    equityValue.div(totalValue),
+    otherValue.div(totalValue),
+    propertyValue.div(totalValue),
+  ].filter((c) => c.gt(0));
+
+  const maxConcentration = concentrations.length > 0
+    ? concentrations.reduce((max, c) => (c.gt(max) ? c : max), ZERO)
+    : ZERO;
+
+  const balanceScore = maxConcentration.gt('0.8')
+    ? ZERO
+    : maxConcentration.gt('0.6')
+      ? new Decimal(20)
+      : new Decimal(40);
+  const concentrationPenalty = maxConcentration.gt('0.8') ? ZERO : new Decimal(20);
+
+  return Decimal.min(HUNDRED, classScore.plus(balanceScore).plus(concentrationPenalty));
+}
+
+/**
+ * Decimal sibling of `calculateSpendingControl`. Discretionary ratio
+ * step function. Preserves the `monthlyIncome === 0` branch:
+ *   monthlyDiscretionary === 0 ? 100 : 0.
+ */
+export function calculateSpendingControlDecimal(
+  incomes: IncomeData[],
+  expenses: ExpenseData[],
+): Decimal {
+  const monthlyIncome = incomes.reduce(
+    (acc, i) => acc.plus(toMonthlyDecimal(i.amount, i.frequency)),
+    ZERO,
+  );
+  const monthlyDiscretionary = expenses
+    .filter((e) => !e.isEssential)
+    .reduce((acc, e) => acc.plus(toMonthlyDecimal(e.amount, e.frequency)), ZERO);
+
+  if (monthlyIncome.isZero()) return monthlyDiscretionary.isZero() ? HUNDRED : ZERO;
+
+  const ratio = monthlyDiscretionary.div(monthlyIncome);
+
+  if (ratio.lte('0.1')) return HUNDRED;
+  if (ratio.lte('0.2')) return new Decimal(80).plus(new Decimal('0.2').minus(ratio).times(200));
+  if (ratio.lte('0.3')) return new Decimal(60).plus(new Decimal('0.3').minus(ratio).times(200));
+  if (ratio.lte('0.4')) return new Decimal(40).plus(new Decimal('0.4').minus(ratio).times(200));
+  if (ratio.lte('0.5')) return new Decimal(20).plus(new Decimal('0.5').minus(ratio).times(200));
+  // Beyond 0.5 — falls off linearly, floored at 0.
+  return Decimal.max(ZERO, new Decimal(20).minus(ratio.minus('0.5').times(40)));
+}
+
+/**
+ * Decimal sibling of `calculateSavingsRate`. Savings rate after expenses
+ * AND loan repayments. Preserves the `monthlyIncome === 0 → 0` floor
+ * and the negative-savings-rate → 0 floor.
+ */
+export function calculateSavingsRateDecimal(
+  incomes: IncomeData[],
+  expenses: ExpenseData[],
+  loans: LoanData[],
+): Decimal {
+  const monthlyIncome = incomes.reduce(
+    (acc, i) => acc.plus(toMonthlyDecimal(i.amount, i.frequency)),
+    ZERO,
+  );
+  const monthlyExpenses = expenses.reduce(
+    (acc, e) => acc.plus(toMonthlyDecimal(e.amount, e.frequency)),
+    ZERO,
+  );
+  const monthlyLoanRepayments = loans.reduce(
+    (acc, l) => acc.plus(toMonthlyDecimal(l.minRepayment, l.repaymentFrequency)),
+    ZERO,
+  );
+
+  if (monthlyIncome.isZero()) return ZERO;
+
+  const savingsRate = monthlyIncome
+    .minus(monthlyExpenses)
+    .minus(monthlyLoanRepayments)
+    .div(monthlyIncome);
+
+  if (savingsRate.gte('0.3')) return HUNDRED;
+  if (savingsRate.gte('0.2')) return new Decimal(80).plus(savingsRate.minus('0.2').times(200));
+  if (savingsRate.gte('0.1')) return new Decimal(60).plus(savingsRate.minus('0.1').times(200));
+  if (savingsRate.gte('0.05')) return new Decimal(40).plus(savingsRate.minus('0.05').times(400));
+  if (savingsRate.gte(0)) return new Decimal(20).plus(savingsRate.times(400));
+  return ZERO;
+}
+
+/**
+ * Decimal sibling of `calculateComponents` — returns Decimal-typed
+ * sub-scores (NOT pre-rounded to integer, unlike the Float path which
+ * rounds at this layer). Rounding happens at the API boundary (where
+ * `CFOScoreComponents` is consumed).
+ */
+export function calculateComponentsDecimal(
+  accounts: AccountData[],
+  loans: LoanData[],
+  incomes: IncomeData[],
+  expenses: ExpenseData[],
+  investments: InvestmentData[],
+  properties: PropertyData[],
+): CFOScoreComponentsDecimal {
+  return {
+    cashflowStrength: calculateCashflowStrengthDecimal(incomes, expenses, loans),
+    debtCoverage: calculateDebtCoverageDecimal(incomes, loans),
+    emergencyBuffer: calculateEmergencyBufferDecimal(accounts, expenses),
+    investmentDiversification: calculateInvestmentDiversificationDecimal(investments, properties),
+    spendingControl: calculateSpendingControlDecimal(incomes, expenses),
+    savingsRate: calculateSavingsRateDecimal(incomes, expenses, loans),
+  };
+}
+
+/**
+ * Decimal sibling of the weighted-overall computation. Takes the
+ * UN-rounded Decimal component sub-scores and produces the weighted
+ * overall (also UN-rounded — callers round at the boundary).
+ *
+ * Note the Float path rounds each component BEFORE weighting; this
+ * Decimal path weights the raw sub-scores then rounds at the API
+ * boundary. For shadow comparison, the comparator rounds the Decimal
+ * result to align the precision.
+ */
+export function calculateOverallScoreDecimal(components: CFOScoreComponentsDecimal): Decimal {
+  return components.cashflowStrength
+    .times(SCORE_WEIGHTS.cashflowStrength)
+    .plus(components.debtCoverage.times(SCORE_WEIGHTS.debtCoverage))
+    .plus(components.emergencyBuffer.times(SCORE_WEIGHTS.emergencyBuffer))
+    .plus(components.investmentDiversification.times(SCORE_WEIGHTS.investmentDiversification))
+    .plus(components.spendingControl.times(SCORE_WEIGHTS.spendingControl))
+    .plus(components.savingsRate.times(SCORE_WEIGHTS.savingsRate));
 }
