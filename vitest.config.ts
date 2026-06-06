@@ -2,6 +2,14 @@ import { defineConfig } from 'vitest/config';
 import path from 'path';
 
 export default defineConfig({
+  // Next.js handles JSX via SWC in app code; tsconfig.json sets
+  // "jsx": "preserve". Vitest uses esbuild and defaults to the classic
+  // runtime, which would require `import React from 'react'` in every
+  // component. Setting "automatic" mirrors Next.js's production behavior
+  // so components don't need to import React just to pass tests.
+  esbuild: {
+    jsx: 'automatic',
+  },
   test: {
     globals: true,
     environment: 'node',

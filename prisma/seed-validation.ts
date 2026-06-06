@@ -1136,13 +1136,26 @@ async function main() {
   }
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Only auto-run when invoked as a CLI script (`ts-node prisma/seed-validation.ts`).
+// Tests import constants from this file (GOLDEN_VALUES, TEST_USER_A_ID, TEST_USER_B_ID)
+// and must NOT trigger the seed pipeline on import — that connected to Prisma,
+// failed in the test env, and `process.exit(1)` poisoned the entire test file.
+//
+// Detection: when invoked via `npx ts-node prisma/seed-validation.ts`,
+// `process.argv[1]` ends with `seed-validation.ts` (or `.js` after compile).
+// When imported by Vitest, `process.argv[1]` points at the Vitest CLI binary.
+const invokedFile = process.argv[1] ?? '';
+const isCliEntry = /seed-validation\.(t|j)s$/.test(invokedFile);
+
+if (isCliEntry) {
+  main()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
 
 export { main as seedValidation, TEST_USER_A_ID, TEST_USER_B_ID };

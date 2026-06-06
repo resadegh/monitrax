@@ -151,9 +151,9 @@ describe('getTrustDeedRules (FACT_LOOKUP)', () => {
     }
   });
 
-  it('is registered as the 11th canonical tool', () => {
+  it('is registered as a canonical tool (post-41E.2 the registry has 13 tools total)', () => {
     const all = taxAdvisorToolRegistry.list();
-    expect(all.length).toBe(11);
+    expect(all.length).toBe(13);
     expect(all.find((t) => t.name === 'getTrustDeedRules')).toBeDefined();
   });
 });

@@ -44,11 +44,18 @@ describe('Phase 41E.3 — TaxReformBanner copy spec (per Phase doc §11.1)', () 
   });
 
   it('source does NOT use urgency / manufactured-FOMO language (behaviour-psychologist guard)', () => {
-    const source = require('fs').readFileSync(
+    const fullSource = require('fs').readFileSync(
       require('path').resolve(__dirname, '../../components/cfo/TaxReformBanner.tsx'),
       'utf8',
     );
-    // No "act now", no "limited time", no "deadline", no "miss out"
+    // Strip JSDoc + line comments — the docstring legitimately names the
+    // anti-patterns ("no countdown, no FOMO") as a reviewer guard, which is
+    // the OPPOSITE of using them in user-facing copy. Scan only the runtime
+    // JSX/string-literal source.
+    const source = fullSource
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/[^\n]*/g, '');
+    // No "act now", no "limited time", no "deadline", no "miss out", no countdown
     expect(source).not.toMatch(/\bact now\b/i);
     expect(source).not.toMatch(/\blimited time\b/i);
     expect(source).not.toMatch(/\bdeadline\b/i);

@@ -26,18 +26,23 @@ beforeEach(() => {
   bootstrapTaxAdvisorRegistry();
 });
 
-describe('Phase 41h.5/6 + 41f.4-extension — registry contains 11 tools (4 SCENARIO_RUN + 7 FACT_LOOKUP)', () => {
-  it('registry size = 11', () => {
-    expect(taxAdvisorToolRegistry.size()).toBe(11);
+describe('Phase 41h.5/6 + 41f.4-extension + 41E.2 — registry contains 13 tools (5 SCENARIO_RUN + 8 FACT_LOOKUP)', () => {
+  it('registry size = 13', () => {
+    // Phase 41h.5 (4) + 41h.6 (3 SCENARIO_RUN additions) + 41h.0 (3) +
+    // 41f.4-ext (getTrustDeedRules) + 41E.2 (getReformedTaxRegimeStatus +
+    // getReformImpactSummaryForUser). See `lib/ai/tax-advisor/index.ts`
+    // CANONICAL_TOOLS docstring for the running count.
+    expect(taxAdvisorToolRegistry.size()).toBe(13);
   });
 
-  it('exactly four SCENARIO_RUN tools registered (41h.5 + 41h.6)', () => {
+  it('exactly five SCENARIO_RUN tools registered (41h.5 + 41h.6 + 41E.2)', () => {
     const scenarios = taxAdvisorToolRegistry
       .list()
       .filter((t) => t.kind === 'SCENARIO_RUN')
       .map((t) => t.name)
       .sort();
     expect(scenarios).toEqual([
+      'getReformImpactSummaryForUser',
       'runCgtScenario',
       'runContributionScenario',
       'runDiv7aRefinanceScenario',
@@ -47,7 +52,7 @@ describe('Phase 41h.5/6 + 41f.4-extension — registry contains 11 tools (4 SCEN
 
   it('all other tools remain FACT_LOOKUP', () => {
     const facts = taxAdvisorToolRegistry.list().filter((t) => t.kind === 'FACT_LOOKUP');
-    expect(facts).toHaveLength(7);
+    expect(facts).toHaveLength(8);
   });
 
   it('every 41h.5 tool name appears in the registry', () => {
