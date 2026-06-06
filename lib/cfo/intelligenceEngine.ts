@@ -11,6 +11,7 @@ import { calculateCFOTaxInsights } from './decisionSupport/taxIntegration';
 import { calculateCFOLoanInsights } from './decisionSupport/loanDecisionSupport';
 import { calculateCFOPropertyInsights } from './decisionSupport/propertyDecisionSupport';
 import { calculateCFOInvestmentInsights } from './decisionSupport/investmentDecisionSupport';
+import { Decimal, toDecimal } from '@/lib/decimal';
 import {
   CFODashboardData,
   CFOScore,
@@ -335,3 +336,64 @@ export async function getActions(userId: string): Promise<ActionPrioritisationOu
 // ============================================================================
 // Helpers - Use centralized frequency utilities from lib/utils/frequencies.ts
 // ============================================================================
+
+// ============================================================================
+// Q-DEC PR 2.E.4 — Decimal sibling helpers
+// ============================================================================
+
+/**
+ * Decimal sibling of the private projected-month-end-balance computation
+ * inside `calculateQuickStats`. Pure: `liquidBalance − dailyBurn × daysRemaining`.
+ *
+ * Used by the dashboard quick-stats tile to show "where will I land at
+ * month end" — composes Decimal `totalLiquid` (from `netWorthCalculator`
+ * Decimal sibling, PR 2.A) and Decimal `dailyBurn` (from
+ * `expenseAggregator` Decimal sibling, PR 2.B), so once PR 3 cutover
+ * lands the Decimal flow runs end-to-end here without Float-bridge.
+ */
+export function calculateProjectedMonthEndBalanceDecimal(
+  liquidBalance: number | string | Decimal,
+  dailyBurn: number | string | Decimal,
+  daysRemaining: number,
+): Decimal {
+  const zero = new Decimal(0);
+  const lb = toDecimal(liquidBalance) ?? zero;
+  const db = toDecimal(dailyBurn) ?? zero;
+  return lb.minus(db.times(daysRemaining));
+}
+
+/**
+ * Decimal sibling of the private net-worth aggregation inside
+ * `calculateMonthlyProgress`. Mirrors the inline math bit-for-bit:
+ * `accountBalances + propertyValues + investmentValues − totalDebt`.
+ *
+ * Note: a more comprehensive net-worth engine already ships in PR 2.A
+ * (`netWorthCalculator.calculateNetWorthDecimal` — includes proper
+ * liability classification + cost-base costs). This helper exists for
+ * the intelligence-engine local composition only, where the simulated
+ * `lastMonthNetWorth = currentNetWorth × 0.98` placeholder downstream
+ * makes the canonical engine's extra precision moot.
+ */
+export function calculateMonthlyProgressNetWorthDecimal(input: {
+  accountBalances: ReadonlyArray<{ currentBalance: number | string | Decimal }>;
+  propertyValues: ReadonlyArray<{ currentValue: number | string | Decimal }>;
+  investmentHoldings: ReadonlyArray<{ units: number | string | Decimal; averagePrice: number | string | Decimal }>;
+  totalDebt: number | string | Decimal;
+}): Decimal {
+  const zero = new Decimal(0);
+  const accounts = input.accountBalances.reduce(
+    (acc, a) => acc.plus(toDecimal(a.currentBalance) ?? zero),
+    zero,
+  );
+  const properties = input.propertyValues.reduce(
+    (acc, p) => acc.plus(toDecimal(p.currentValue) ?? zero),
+    zero,
+  );
+  const investments = input.investmentHoldings.reduce((acc, h) => {
+    const units = toDecimal(h.units) ?? zero;
+    const price = toDecimal(h.averagePrice) ?? zero;
+    return acc.plus(units.times(price));
+  }, zero);
+  const debt = toDecimal(input.totalDebt) ?? zero;
+  return accounts.plus(properties).plus(investments).minus(debt);
+}

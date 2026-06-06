@@ -275,3 +275,70 @@ NONE — additive code only.
 ### Next
 
 - PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine` Decimal siblings.
+
+---
+
+## Session: qdec-pr2e4-cfo-actions-ai-intel-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — `lib/cfo/intelligenceEngine` Decimal siblings (Q-DEC PR 2.E.4 — **final 2.E sub-PR**)
+- **Scope**: Q-DEC PR 2.E.4 — Decimal siblings for the 2 pure-math helpers in `intelligenceEngine.ts`. `actionEngine.ts` + `aiAdvisor.ts` SHIPPED WITHOUT Decimal siblings — full rationale below.
+- **Description**: Final sub-PR of Q-DEC PR 2.E (and thus of Q-DEC PR 2 overall). The original PR 2.E.4 brief was "`actionEngine` + `aiAdvisor` + `intelligenceEngine`". On inspection, only `intelligenceEngine` had pure-math helpers worth a Decimal sibling. `actionEngine` and `aiAdvisor` are categorical/presentation-side — Decimal siblings would be wasteful churn with zero precision benefit. The skip rationale is documented in code (header of `lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts`) so the next session doesn't re-litigate.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/cfo/intelligenceEngine.ts` — 2 helpers:
+  - `calculateProjectedMonthEndBalanceDecimal(liquidBalance, dailyBurn, daysRemaining)` — pure: `liquidBalance − dailyBurn × daysRemaining`. Composes Decimal `totalLiquid` (from `netWorthCalculator` Decimal sibling, PR 2.A) and Decimal `dailyBurn` (from `expenseAggregator` Decimal sibling, PR 2.B), so once PR 3 cutover lands the Decimal flow runs end-to-end here without Float-bridge.
+  - `calculateMonthlyProgressNetWorthDecimal({accountBalances, propertyValues, investmentHoldings, totalDebt})` — pure: `accounts + properties + holdings × price − debt`. Note documented: a more comprehensive net-worth engine already ships in PR 2.A (`calculateNetWorthDecimal`); this helper exists for the intelligence-engine local composition only, where the downstream `lastMonthNetWorth = currentNetWorth × 0.98` simulated placeholder makes the canonical engine's extra precision moot.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts` — 2 shadow engines × 5 fixtures each = 10 fixtures. Header documents the full scope-discipline rationale for why `actionEngine` + `aiAdvisor` have no Decimal siblings.
+- `tests/cfo/actions-ai-intel.decimal.test.ts` — 19 tests (10 shadow + 8 contract + 1 aggregate).
+
+### Architectural notes — why NO Decimal sibling for actionEngine + aiAdvisor
+
+- **`actionEngine.ts` — categorical recommendation generator.** Functions like `generateScoreImprovementActions` emit `CFOAction` objects with hard-coded display amounts (`amount: 5000`, `amount: 200`, `amount: 1000`) used as priority thresholds (`impact.amount > 500` / `> 1000` in `determinePriority`). The threshold comparisons are float-stable (no compounding). The numeric leaves are recommendation copy, not computed money. A Decimal sibling here would be wasteful churn — the threshold comparisons produce the same `'do_now' | 'upcoming' | 'consider_soon' | 'background'` categorical output under both paths.
+- **`aiAdvisor.ts` — Gemini tool-call dispatcher + prompt construction.** The 3 numeric helpers (`bucket`, `round`, `clamp`) are all display-side / range-guard utilities. The actual money math the advisor narrates over is the scenario engine output (Decimal siblings shipped PR 2.E.1) and the master tax position (Decimal siblings shipped PR 2.D.2b). PR 3 cutover swaps these consumers to Decimal at the input boundary; aiAdvisor stays as a presentation-side narrator.
+
+### Architectural notes — what was shipped
+
+- **Local net-worth aggregation in intelligence engine.** The canonical net-worth engine in `netWorthCalculator.calculateNetWorthDecimal` (PR 2.A) is the SSOT for proper liability classification + cost-base costs + accounting hygiene. The intelligence-engine local aggregation is a smaller composition for the dashboard's "monthly progress" tile, which downstream multiplies by a simulated `× 0.98` placeholder for "last month net worth". The extra precision of the canonical engine is moot when the downstream is a placeholder constant. This helper exists so the intelligence-engine's composition is fully Decimal once PR 3 cuts over — not to compete with the canonical engine.
+- **Projected month-end balance precision.** This is real money math the user sees on the dashboard's "Where you'll land" tile. Float would drift by epsilon on 31-day × $X/day multiplications across a household with many recurring expense components. Decimal accumulates exact.
+- **§12.14 reform-agnosticism.** Both helpers are reform-agnostic — net-worth aggregation + projected balance are not in scope of any 2026-27 reform measure. FW-1/FW-2 outcome (a).
+
+### Testing
+
+- [x] 19 new tests pass (10 shadow + 8 contract + 1 aggregate).
+- [x] `npx tsc --noEmit` clean.
+- [x] Shadow report PASS on all 10 fixtures across both shadow engines.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.E.4 IN FLIGHT this PR; after merge, **entire Q-DEC PR 2 is complete**)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.E.4 IN FLIGHT this PR; Last touched flipped to reflect 2.E completion.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Both Decimal helpers are reform-agnostic — net-worth aggregation + projected balance are not in scope of any 2026-27 reform measure. FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A) — `aiAdvisor.ts` intentionally not modified.
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- **Q-DEC PR 2 is COMPLETE** once this PR lands (16 sub-PRs total: 1, 1.5, 2.A, 2.B, 2.C, 2.D.1, 2.D.2, 2.D.2b, 2.D.3a/b/c/c2/d, 2.E.1/2/3/4).
+- PR 3 — engine-by-engine cutover. Route handlers + AI tools + UI consumers switched from `*` to `*Decimal`. `entityTaxRouter` and `masterTaxPosition` get their Decimal siblings created at this layer once downstream consumers are Decimal too. Async `calculateCFO*Insights` wrappers in `decisionSupport/*` and `getCFODashboardData` in `intelligenceEngine` get their Decimal-flow swap at this layer.
+- PR 4 — Float column drop (after 7-day parallel-run shows zero diff; §12.11 destructive-write checklist mandatory). Unblocks Phase 45 PR 1 (engine composition).
