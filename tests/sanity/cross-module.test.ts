@@ -13,11 +13,17 @@ const prisma = new PrismaClient();
 const TEST_USER_A_ID = '00000000-0000-0000-0000-000000000001';
 const TEST_USER_B_ID = '00000000-0000-0000-0000-000000000002';
 
+// Integration tests — require a seeded Prisma DB (Portfolio A + B fixtures).
+// The default `npx vitest run` has no DB; CI / `npm run test:sanity` provisions
+// one. Skip by default; opt-in with `RUN_REGRESSION=true`.
+const runRegression = process.env.RUN_REGRESSION === 'true';
+const describeRegression = runRegression ? describe : describe.skip;
+
 // =============================================================================
 // ACCOUNTING IDENTITY CHECKS
 // =============================================================================
 
-describe('Accounting Identity Checks', () => {
+describeRegression('Accounting Identity Checks', () => {
   describe('Assets = Liabilities + Equity (for properties)', () => {
     it('should satisfy accounting equation for Portfolio A', async () => {
       const properties = await prisma.property.findMany({
@@ -72,7 +78,7 @@ describe('Accounting Identity Checks', () => {
 // REFERENTIAL INTEGRITY CHECKS
 // =============================================================================
 
-describe('Referential Integrity Checks', () => {
+describeRegression('Referential Integrity Checks', () => {
   describe('All Foreign Keys Resolve', () => {
     it('should have valid propertyId on all loans', async () => {
       const loans = await prisma.loan.findMany({
@@ -153,7 +159,7 @@ describe('Referential Integrity Checks', () => {
 // CALCULATION CONSISTENCY CHECKS
 // =============================================================================
 
-describe('Calculation Consistency Checks', () => {
+describeRegression('Calculation Consistency Checks', () => {
   describe('Interest Rate Bounds', () => {
     it('should have interest rates between 0% and 30%', async () => {
       const loans = await prisma.loan.findMany();
@@ -279,7 +285,7 @@ describe('Calculation Consistency Checks', () => {
 // BUSINESS RULE CHECKS
 // =============================================================================
 
-describe('Business Rule Checks', () => {
+describeRegression('Business Rule Checks', () => {
   describe('Offset Account Rules', () => {
     it('should only link offset to one loan', async () => {
       const offsets = await prisma.account.findMany({
@@ -364,7 +370,7 @@ describe('Business Rule Checks', () => {
 // DATA QUALITY CHECKS
 // =============================================================================
 
-describe('Data Quality Checks', () => {
+describeRegression('Data Quality Checks', () => {
   describe('No Orphaned Records', () => {
     it('should not have expenses without a user', async () => {
       const orphanedExpenses = await prisma.expense.findMany({

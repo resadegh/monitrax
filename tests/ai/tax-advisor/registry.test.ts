@@ -35,8 +35,8 @@ beforeEach(() => {
 });
 
 describe('Tool registry — bootstrap + listing', () => {
-  it('registers exactly 11 canonical tools at bootstrap (3 from 41h.0 + 4 from 41h.5 + 3 from 41h.6 + 1 from 41f.4-extension)', () => {
-    expect(taxAdvisorToolRegistry.size()).toBe(11);
+  it('registers exactly 13 canonical tools at bootstrap (3 from 41h.0 + 4 from 41h.5 + 3 from 41h.6 + 1 from 41f.4-extension + 2 from 41E.2)', () => {
+    expect(taxAdvisorToolRegistry.size()).toBe(13);
   });
 
   it('lists tools alphabetically', () => {
@@ -48,6 +48,8 @@ describe('Tool registry — bootstrap + listing', () => {
       'getEntityTaxPosition',
       'getInHouseAssetRatio',
       'getLandTaxPosition',
+      'getReformedTaxRegimeStatus',
+      'getReformImpactSummaryForUser',
       'getTrustDeedRules',
       'runCgtScenario',
       'runContributionScenario',
@@ -371,11 +373,13 @@ describe('ToolSession utilities', () => {
 });
 
 describe('Tool descriptions — HR-1 / HR-2 contract language', () => {
-  it('every tool description identifies kind FACT_LOOKUP and disclaims recommendation', () => {
+  it('every tool description identifies its kind and disclaims recommendation', () => {
     for (const tool of taxAdvisorToolRegistry.list()) {
       const lc = tool.description.toLowerCase();
-      // Must clearly state the tool is a fact-lookup, not a recommendation.
-      expect(lc).toMatch(/fact_lookup|fact lookup|does not recommend/);
+      // Must clearly state the tool is a FACT_LOOKUP / SCENARIO_RUN, not a
+      // recommendation. Phase 41E.2's `getReformImpactSummaryForUser` uses
+      // "never a recommendation" — accepted alongside "does not recommend".
+      expect(lc).toMatch(/fact_lookup|fact lookup|scenario_run|scenario run|does not recommend|never a recommendation/);
     }
   });
 
