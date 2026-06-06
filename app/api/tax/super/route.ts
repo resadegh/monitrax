@@ -8,6 +8,7 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { TaxEngine } from '@/lib/tax-engine';
+import { trackContributionCapsDecimal } from '@/lib/tax-engine/super/capTracker';
 import { getCurrentFinancialYear, SuperContributionType } from '@/lib/tax-engine/types';
 import { createAuditLog } from '@/lib/security/auditLog';
 
@@ -141,8 +142,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
     // Get config for caps
     const config = TaxEngine.getCurrentConfig();
 
-    // Track caps
-    const capTracking = TaxEngine.trackContributionCaps({
+    // Q-DEC PR 3.B.2 — Decimal cap tracker. Each Decimal leaf is converted
+    // to number at the JSON boundary; categorical fields (isExceeded,
+    // bringForwardAvailable, warnings) flow through unchanged.
+    const capTracking = trackContributionCapsDecimal({
       concessionalYTD: totalConcessionalYTD,
       nonConcessionalYTD: totalNonConcessionalYTD,
       totalSuperBalance: totalBalance,
@@ -192,19 +195,19 @@ export const GET = withPermission('report.read', async (request, auth) => {
       caps: {
         concessional: {
           cap: config.concessionalCap,
-          used: Math.round(capTracking.concessional.used),
-          remaining: Math.round(capTracking.concessional.remaining),
-          percentageUsed: Math.round(capTracking.concessional.percentageUsed),
-          carryForwardAvailable: Math.round(capTracking.concessional.carryForwardAvailable),
+          used: Math.round(capTracking.concessional.used.toNumber()),
+          remaining: Math.round(capTracking.concessional.remaining.toNumber()),
+          percentageUsed: Math.round(capTracking.concessional.percentageUsed.toNumber()),
+          carryForwardAvailable: Math.round(capTracking.concessional.carryForwardAvailable.toNumber()),
           isExceeded: capTracking.concessional.isExceeded,
         },
         nonConcessional: {
           cap: config.nonConcessionalCap,
-          used: Math.round(capTracking.nonConcessional.used),
-          remaining: Math.round(capTracking.nonConcessional.remaining),
-          percentageUsed: Math.round(capTracking.nonConcessional.percentageUsed),
+          used: Math.round(capTracking.nonConcessional.used.toNumber()),
+          remaining: Math.round(capTracking.nonConcessional.remaining.toNumber()),
+          percentageUsed: Math.round(capTracking.nonConcessional.percentageUsed.toNumber()),
           bringForwardAvailable: capTracking.nonConcessional.bringForwardAvailable,
-          bringForwardCap: capTracking.nonConcessional.bringForwardCap,
+          bringForwardCap: capTracking.nonConcessional.bringForwardCap.toNumber(),
           isExceeded: capTracking.nonConcessional.isExceeded,
         },
       },

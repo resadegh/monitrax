@@ -6,6 +6,7 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { TaxEngine } from '@/lib/tax-engine';
+import { processSalaryDecimal } from '@/lib/tax-engine/income/salaryProcessor';
 
 export const POST = withPermission('income.write', async (request, auth) => {
   try {
@@ -52,8 +53,11 @@ export const POST = withPermission('income.write', async (request, auth) => {
       ? TaxEngine.getConfig(financialYear)
       : TaxEngine.getCurrentConfig();
 
-    // Process salary
-    const result = TaxEngine.processSalary(
+    // Q-DEC PR 3.B.2 — Decimal engine for numeric output. Dual-call to
+    // the Float engine sources the `calculations[]` narration array
+    // (presentational — no Decimal sibling). PR 4 will migrate narration
+    // to Decimal when Float is dropped.
+    const resultFloat = TaxEngine.processSalary(
       {
         amount,
         salaryType: salaryType as 'GROSS' | 'NET',
@@ -65,9 +69,23 @@ export const POST = withPermission('income.write', async (request, auth) => {
       },
       config
     );
+    const result = processSalaryDecimal(
+      {
+        amount,
+        salaryType: salaryType as 'GROSS' | 'NET',
+        payFrequency: payFrequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+        salarySacrifice,
+        salarySacrificeFrequency: salarySacrificeFrequency || payFrequency,
+        hasTaxFreeThreshold,
+        hasHECSDebt,
+      },
+      config
+    );
+    const grossSalary = result.grossSalary.toNumber();
 
-    // Calculate optimal salary sacrifice recommendation
-    const optimization = TaxEngine.calculateOptimalSalarySacrifice(result.grossSalary, config);
+    // Calculate optimal salary sacrifice recommendation (Float — no
+    // Decimal sibling; this is a recommendation engine, not money math).
+    const optimization = TaxEngine.calculateOptimalSalarySacrifice(grossSalary, config);
 
     return NextResponse.json({
       success: true,
@@ -80,23 +98,29 @@ export const POST = withPermission('income.write', async (request, auth) => {
         hasTaxFreeThreshold,
       },
       result: {
-        grossSalary: result.grossSalary,
-        netSalary: result.netSalary,
-        taxableIncome: result.taxableIncome,
+        grossSalary,
+        netSalary: result.netSalary.toNumber(),
+        taxableIncome: result.taxableIncome.toNumber(),
         tax: {
-          payg: result.paygWithholding,
-          medicareLevy: result.medicareLevy,
-          total: result.totalTax,
+          payg: result.paygWithholding.toNumber(),
+          medicareLevy: result.medicareLevy.toNumber(),
+          total: result.totalTax.toNumber(),
         },
         super: {
-          guarantee: result.superGuarantee,
-          salarySacrifice: result.salarySacrifice,
-          total: result.totalSuper,
+          guarantee: result.superGuarantee.toNumber(),
+          salarySacrifice: result.salarySacrifice.toNumber(),
+          total: result.totalSuper.toNumber(),
           guaranteeRate: config.superGuaranteeRate * 100,
         },
-        perPeriod: result.perPeriod,
-        effectiveTaxRate: result.grossSalary > 0
-          ? Math.round((result.totalTax / result.grossSalary) * 10000) / 100
+        perPeriod: {
+          gross: result.perPeriod.gross.toNumber(),
+          super: result.perPeriod.super.toNumber(),
+          tax: result.perPeriod.tax.toNumber(),
+          net: result.perPeriod.net.toNumber(),
+          frequency: result.perPeriod.frequency,
+        },
+        effectiveTaxRate: grossSalary > 0
+          ? Math.round((result.totalTax.toNumber() / grossSalary) * 10000) / 100
           : 0,
       },
       optimization: {
@@ -105,7 +129,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
         netImpact: optimization.netImpact,
         explanation: optimization.reason,
       },
-      calculations: result.calculations,
+      calculations: resultFloat.calculations,
     });
   } catch (error) {
     console.error('Salary calculation error:', error);

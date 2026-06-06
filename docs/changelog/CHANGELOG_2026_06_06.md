@@ -483,3 +483,62 @@ NONE — additive code only (new serializer + new engine call paths; old Float p
 - PR 3.C — `/api/cfo/*` route handlers cutover.
 - PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
 - PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary, format via `formatCurrency()`.
+
+---
+
+## Session: qdec-pr3b2-tax-salary-super-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — second tax-route consumer cutover (Q-DEC PR 3.B.2)
+- **Scope**: Q-DEC PR 3.B.2 — `/api/tax/salary` (POST) + `/api/tax/super` (GET) route handlers cutover. PR 3.B doc-sync rolled in (PR 3.B row flipped ✅ MERGED #997).
+- **Description**: Second tax-route consumer cutover. Same pattern as PR 3.B — engine swaps to `*Decimal`; dual-call to Float sources presentational fields that don't have Decimal siblings; per-field `.toNumber()` at the JSON boundary preserves the existing response shape byte-for-byte.
+
+### Files Modified (route handlers cutover)
+
+- `app/api/tax/salary/route.ts` — `TaxEngine.processSalary` → `processSalaryDecimal`. Dual-call to Float `processSalary` sources the `calculations[]` narration array (12-step explainer; presentational). All numeric output (`grossSalary` / `netSalary` / `taxableIncome` / `tax.payg` / `tax.medicareLevy` / `tax.total` / `super.guarantee` / `super.salarySacrifice` / `super.total` / `perPeriod.{gross,super,tax,net}` / `effectiveTaxRate`) converted via `.toNumber()`. `TaxEngine.calculateOptimalSalarySacrifice` stays Float — recommendation engine, not money math; it consumes the Decimal `grossSalary` via `.toNumber()` boundary.
+- `app/api/tax/super/route.ts` — `TaxEngine.trackContributionCaps` → `trackContributionCapsDecimal`. Per-field conversion preserves the existing `Math.round(...)` integer-dollar pattern: `used`/`remaining`/`percentageUsed`/`carryForwardAvailable` for both concessional + non-concessional + `bringForwardCap`. Categorical fields (`isExceeded`, `bringForwardAvailable`, `warnings[]`) flow through unchanged.
+
+### Architectural notes
+
+- **Dual-call for presentation fields.** `calculations[]` (salary narration) and Float-side `warnings[]` (super recommendations) are presentation-side arrays the Decimal siblings deliberately don't dual-write. The route handlers call both engines, use Decimal for numbers, use Float for those arrays. Cost: one extra engine call (~1ms) per request; benefit: behavior-preserving cutover without a separate presentation-engine refactor. PR 4 migrates the narration generators or accepts Float-bridge input.
+- **`calculateOptimalSalarySacrifice` stays Float.** It's a recommendation engine (returns `optimalAmount` / `taxSavings` / `netImpact` / `reason` — `reason` is a narrative string, not a number). The numbers it returns are derived from compound `calculateSuperContributions` + `calculateIncomeTax` arithmetic; migrating it would mean its own sub-PR. For PR 3.B.2 we feed it `grossSalary.toNumber()` and call it as before. PR 3.C will revisit.
+- **`bringForwardCap.toNumber()` is unconditional.** The Decimal sibling returns `Decimal` (not nullable) for `bringForwardCap`, mirroring the Float result. Confirmed by reading `lib/tax-engine/super/capTracker.ts:411`.
+- **Per-route response shape unchanged.** Both routes preserve the same JSON keys, key order, type signatures, and rounding pattern as the pre-cutover Float responses. Consumers (`SalaryInput` form on `/dashboard/income`, super-position tile on `/dashboard/cfo`) need no changes.
+
+### Testing
+
+- [x] `npx tsc --noEmit` clean.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+- N/A — no new route-handler integration tests added; behavior preservation guaranteed by:
+  1. Per-field rounding pattern unchanged.
+  2. Decimal engine outputs shadow-tested vs Float to 0.005 currency tolerance (PR 2.D.3d for `processSalary`; PR 2.D.2 for `trackContributionCaps`).
+  3. Composition is the only new code; verified by typecheck.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 3.B ✅ MERGED #997; PR 3.B.2 IN FLIGHT this PR)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 3.B row flipped ✅ MERGED #997; PR 3.B.2 row added IN FLIGHT; Last touched flipped.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No engine math changed — consumer wire-up only. Both engines (`processSalary`, `trackContributionCaps`) reform-agnostic by construction (salary PAYG + super caps are not in scope of any 2026-27 reform measure). FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 3.C — `/api/cfo/*` route handlers cutover (~6-10 routes consuming the PR 2.E Decimal engines).
+- PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
+- PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary.
