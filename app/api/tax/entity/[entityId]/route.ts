@@ -28,17 +28,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
-import { calculateEntityTaxPosition } from '@/lib/tax-engine/entity/entityTaxRouter';
+import { calculateEntityTaxPositionDecimal } from '@/lib/tax-engine/entity/entityTaxRouter';
 import { renderBoundaryFootnote } from '@/lib/tax-engine/boundaries';
 import {
   getTaxYearConfig,
   getCurrentTaxYearConfig,
 } from '@/lib/tax-engine/config/taxYearConfig';
 import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   EntityTaxFacts,
   FYReference,
-  EntityTaxPosition,
 } from '@/lib/tax-engine/types';
 
 type RouteContext = { params: Promise<{ entityId: string }> };
@@ -77,7 +77,11 @@ export const GET = withPermission<RouteContext>(
         );
       }
 
-      const entityPosition: EntityTaxPosition = calculateEntityTaxPosition(facts);
+      // Q-DEC PR 3.B — Decimal cutover. Engine runs on Decimal end-to-
+      // end; we serialize Decimal → number at the JSON boundary so the
+      // public response shape is byte-compatible with the pre-cutover
+      // Float response.
+      const entityPosition = calculateEntityTaxPositionDecimal(facts);
 
       const boundary = renderBoundaryFootnote({
         citations: entityPosition.citations,
@@ -87,10 +91,7 @@ export const GET = withPermission<RouteContext>(
 
       return NextResponse.json({
         success: true,
-        data: {
-          entityPosition,
-          boundary,
-        },
+        data: serializeDecimalsForJson({ entityPosition, boundary }),
       });
     } catch (error) {
       console.error('Per-entity tax position error:', error);
@@ -481,7 +482,8 @@ export const POST = withPermission<RouteContext>(
         smsfIncomeTax,
       };
 
-      const entityPosition = calculateEntityTaxPosition(facts);
+      // Q-DEC PR 3.B — Decimal cutover (see GET handler note).
+      const entityPosition = calculateEntityTaxPositionDecimal(facts);
       const boundary = renderBoundaryFootnote({
         citations: entityPosition.citations,
         uncomputed: entityPosition.uncomputed,
@@ -490,7 +492,7 @@ export const POST = withPermission<RouteContext>(
 
       return NextResponse.json({
         success: true,
-        data: { entityPosition, boundary },
+        data: serializeDecimalsForJson({ entityPosition, boundary }),
       });
     } catch (error) {
       console.error('Per-entity tax POST error:', error);

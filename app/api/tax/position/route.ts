@@ -12,6 +12,7 @@ import {
   calculateQuickTaxPosition,
   getCurrentFinancialYear,
 } from '@/lib/tax-engine';
+import { calculateTaxPositionDecimal } from '@/lib/tax-engine/position/taxPositionCalculator';
 import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
 
 // Types for Prisma query results
@@ -164,70 +165,91 @@ export const GET = withPermission('report.read', async (request, auth) => {
       { concessional: 0, nonConcessional: 0 }
     );
 
-    // Calculate tax position
-    const taxPosition = calculateTaxPosition({
+    // Q-DEC PR 3.B — Decimal engine for numeric output; convert Decimal
+    // → number at the JSON boundary. Same per-field rounding pattern as
+    // the pre-cutover Float path (most money fields integer-rounded via
+    // Math.round; rates + paygWithheld + estimatedRefund pass through
+    // as-is). The Float path is also called to source `warnings` +
+    // `recommendations` (presentational, not numeric — no Decimal sibling
+    // exists; presentation-side warnings/recommendations move to Decimal
+    // in PR 4 when Float is dropped).
+    const taxPositionFloat = calculateTaxPosition({
       incomes: incomeItems,
       expenses: expenseItems,
       depreciations: depreciationItems,
       superContributions: superTotals,
       financialYear,
     });
+    const taxPosition = calculateTaxPositionDecimal({
+      incomes: incomeItems,
+      expenses: expenseItems,
+      depreciations: depreciationItems,
+      superContributions: superTotals,
+      financialYear,
+    });
+    const n = (d: { toNumber(): number }): number => d.toNumber();
+    const r = (d: { toNumber(): number }): number => Math.round(d.toNumber());
 
     return NextResponse.json({
       success: true,
       financialYear: taxPosition.financialYear,
       isCurrent: taxPosition.financialYear === currentFY.year,
       summary: {
-        totalIncome: Math.round(taxPosition.income.total),
-        totalDeductions: Math.round(taxPosition.deductions.total),
-        taxableIncome: Math.round(taxPosition.tax.taxableIncome),
-        taxPayable: Math.round(taxPosition.tax.netTax),
-        paygWithheld: taxPosition.paygWithheld,
-        estimatedRefund: taxPosition.estimatedRefund,
-        isRefund: taxPosition.estimatedRefund >= 0,
-        effectiveRate: taxPosition.tax.effectiveRate,
-        marginalRate: taxPosition.tax.marginalRate,
+        totalIncome: r(taxPosition.income.total),
+        totalDeductions: r(taxPosition.deductions.total),
+        taxableIncome: r(taxPosition.tax.taxableIncome),
+        taxPayable: r(taxPosition.tax.netTax),
+        paygWithheld: n(taxPosition.paygWithheld),
+        estimatedRefund: n(taxPosition.estimatedRefund),
+        isRefund: taxPosition.estimatedRefund.gte(0),
+        effectiveRate: n(taxPosition.tax.effectiveRate),
+        marginalRate: n(taxPosition.tax.marginalRate),
       },
       income: {
-        salary: Math.round(taxPosition.income.salary),
-        rental: Math.round(taxPosition.income.rental),
-        dividends: Math.round(taxPosition.income.dividends),
-        interest: Math.round(taxPosition.income.interest),
-        capitalGains: Math.round(taxPosition.income.capitalGains),
-        other: Math.round(taxPosition.income.other),
-        total: Math.round(taxPosition.income.total),
-        frankingCredits: Math.round(taxPosition.income.frankingCredits),
+        salary: r(taxPosition.income.salary),
+        rental: r(taxPosition.income.rental),
+        dividends: r(taxPosition.income.dividends),
+        interest: r(taxPosition.income.interest),
+        capitalGains: r(taxPosition.income.capitalGains),
+        other: r(taxPosition.income.other),
+        total: r(taxPosition.income.total),
+        frankingCredits: r(taxPosition.income.frankingCredits),
       },
       deductions: {
-        workRelated: Math.round(taxPosition.deductions.workRelated),
-        property: Math.round(taxPosition.deductions.property),
-        investment: Math.round(taxPosition.deductions.investment),
-        depreciation: Math.round(taxPosition.deductions.depreciation),
-        other: Math.round(taxPosition.deductions.other),
-        total: Math.round(taxPosition.deductions.total),
+        workRelated: r(taxPosition.deductions.workRelated),
+        property: r(taxPosition.deductions.property),
+        investment: r(taxPosition.deductions.investment),
+        depreciation: r(taxPosition.deductions.depreciation),
+        other: r(taxPosition.deductions.other),
+        total: r(taxPosition.deductions.total),
       },
       tax: {
-        assessableIncome: Math.round(taxPosition.tax.assessableIncome),
-        taxableIncome: Math.round(taxPosition.tax.taxableIncome),
-        taxOnIncome: Math.round(taxPosition.tax.taxOnIncome),
-        medicareLevy: Math.round(taxPosition.tax.medicareLevy),
-        medicareSurcharge: Math.round(taxPosition.tax.medicareSurcharge),
-        grossTax: Math.round(taxPosition.tax.grossTax),
+        assessableIncome: r(taxPosition.tax.assessableIncome),
+        taxableIncome: r(taxPosition.tax.taxableIncome),
+        taxOnIncome: r(taxPosition.tax.taxOnIncome),
+        medicareLevy: r(taxPosition.tax.medicareLevy),
+        medicareSurcharge: r(taxPosition.tax.medicareSurcharge),
+        grossTax: r(taxPosition.tax.grossTax),
         offsets: {
-          lito: Math.round(taxPosition.tax.offsets.lito),
-          sapto: Math.round(taxPosition.tax.offsets.sapto),
-          frankingCredits: Math.round(taxPosition.tax.offsets.frankingCredits),
-          foreignTax: Math.round(taxPosition.tax.offsets.foreignTax),
-          other: Math.round(taxPosition.tax.offsets.other),
-          total: Math.round(taxPosition.tax.offsets.total),
+          lito: r(taxPosition.tax.offsets.lito),
+          sapto: r(taxPosition.tax.offsets.sapto),
+          frankingCredits: r(taxPosition.tax.offsets.frankingCredits),
+          foreignTax: r(taxPosition.tax.offsets.foreignTax),
+          other: r(taxPosition.tax.offsets.other),
+          total: r(taxPosition.tax.offsets.total),
         },
-        netTax: Math.round(taxPosition.tax.netTax),
-        effectiveRate: taxPosition.tax.effectiveRate,
-        marginalRate: taxPosition.tax.marginalRate,
+        netTax: r(taxPosition.tax.netTax),
+        effectiveRate: n(taxPosition.tax.effectiveRate),
+        marginalRate: n(taxPosition.tax.marginalRate),
       },
-      super: taxPosition.superContributions,
-      warnings: taxPosition.warnings,
-      recommendations: taxPosition.recommendations,
+      super: {
+        concessional: n(taxPosition.superContributions.concessional),
+        nonConcessional: n(taxPosition.superContributions.nonConcessional),
+        total: n(taxPosition.superContributions.total),
+        division293Tax: n(taxPosition.superContributions.division293Tax),
+      },
+      warnings: taxPositionFloat.warnings,
+      recommendations: taxPositionFloat.recommendations,
       metadata: {
         incomeCount: incomeItems.length,
         expenseCount: expenseItems.length,

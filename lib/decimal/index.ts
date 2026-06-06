@@ -47,3 +47,8 @@ export {
   isCloseEnough,
   getPolicyTolerance,
 } from './convert';
+
+export {
+  serializeDecimalsForJson,
+  type SerializeOptions,
+} from './serialize';
