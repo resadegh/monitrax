@@ -33,6 +33,7 @@
  */
 
 import type { TaxYearConfig, AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface SmsfIncomeTaxInput {
   /**
@@ -251,6 +252,171 @@ export function calculateSmsfIncomeTax(
   // Complying fund — franking credits are refundable (s67-25). In pension
   // phase, the exempt pool's franking credits still refund in cash.
   const { netTaxPayable, frankingRefund } = applyFranking(grossTax, frankingCredits, true);
+
+  return {
+    tax: grossTax,
+    investmentIncomeTax,
+    contributionsTax,
+    naliTax,
+    ecpiExemptAmount,
+    frankingCredits,
+    netTaxPayable,
+    frankingRefund,
+    isComplying: true,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3d — Decimal sibling path
+// =============================================================================
+
+export interface SmsfIncomeTaxInputDecimal {
+  assessableInvestmentIncome: number | string | Decimal;
+  deductions: number | string | Decimal;
+  assessableContributions: number | string | Decimal;
+  nonArmsLengthIncome: number | string | Decimal;
+  isComplying: boolean;
+  isInPensionPhase: boolean;
+  ecpiExemptProportion?: number | string | Decimal;
+  frankingCredits?: number | string | Decimal;
+}
+
+export interface SmsfIncomeTaxResultDecimal {
+  tax: Decimal | null;
+  investmentIncomeTax: Decimal | null;
+  contributionsTax: Decimal;
+  naliTax: Decimal;
+  ecpiExemptAmount: Decimal | null;
+  frankingCredits: Decimal;
+  netTaxPayable: Decimal | null;
+  frankingRefund: Decimal | null;
+  isComplying: boolean;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+function clampProportionDecimal(value: Decimal): Decimal {
+  if (value.isNaN()) return new Decimal(0);
+  return Decimal.min(new Decimal(1), Decimal.max(new Decimal(0), value));
+}
+
+function applyFrankingDecimal(
+  grossTax: Decimal | null,
+  frankingCredits: Decimal,
+  refundable: boolean,
+): { netTaxPayable: Decimal | null; frankingRefund: Decimal | null } {
+  if (grossTax === null) return { netTaxPayable: null, frankingRefund: null };
+  if (refundable) {
+    return {
+      netTaxPayable: grossTax.minus(frankingCredits),
+      frankingRefund: Decimal.max(new Decimal(0), frankingCredits.minus(grossTax)),
+    };
+  }
+  return {
+    netTaxPayable: Decimal.max(new Decimal(0), grossTax.minus(frankingCredits)),
+    frankingRefund: new Decimal(0),
+  };
+}
+
+/**
+ * Decimal sibling of `calculateSmsfIncomeTax`. Preserves the
+ * UC-SMSF-ECPI-PROPORTION honesty discipline — pension phase with
+ * undefined ecpiExemptProportion returns `tax: null` etc., never a
+ * guessed number.
+ */
+export function calculateSmsfIncomeTaxDecimal(
+  input: SmsfIncomeTaxInputDecimal,
+  config: TaxYearConfig,
+): SmsfIncomeTaxResultDecimal {
+  const zero = new Decimal(0);
+  const concessionalRate = new Decimal(config.superContributionsTaxRate);
+  const topRate = new Decimal(config.brackets[config.brackets.length - 1]?.rate ?? 0.45);
+
+  const citations: AuthorityCitation[] = [
+    { kind: 'ITAA_1997', reference: 'Div 295', lastReviewed: REVIEWED },
+  ];
+  const uncomputed: UncomputedFlag[] = [];
+
+  const assessableInvestmentIncome = toDecimal(input.assessableInvestmentIncome) ?? zero;
+  const deductions = toDecimal(input.deductions) ?? zero;
+  const netInvestmentIncome = Decimal.max(zero, assessableInvestmentIncome.minus(deductions));
+  const nali = Decimal.max(zero, toDecimal(input.nonArmsLengthIncome) ?? zero);
+  const contributions = Decimal.max(zero, toDecimal(input.assessableContributions) ?? zero);
+  const frankingCredits = Decimal.max(zero, toDecimal(input.frankingCredits ?? 0) ?? zero);
+  if (frankingCredits.gt(0)) {
+    citations.push(
+      { kind: 'ITAA_1997', reference: 'Div 207', lastReviewed: REVIEWED },
+      { kind: 'ITAA_1997', reference: 's67-25', lastReviewed: REVIEWED },
+    );
+  }
+
+  // Non-complying fund — top rate on all assessable income.
+  if (!input.isComplying) {
+    const investmentIncomeTax = netInvestmentIncome.times(topRate);
+    const contributionsTax = contributions.times(topRate);
+    const naliTax = nali.times(topRate);
+    const grossTax = investmentIncomeTax.plus(contributionsTax).plus(naliTax);
+    const { netTaxPayable, frankingRefund } = applyFrankingDecimal(grossTax, frankingCredits, false);
+    return {
+      tax: grossTax,
+      investmentIncomeTax,
+      contributionsTax,
+      naliTax,
+      ecpiExemptAmount: zero,
+      frankingCredits,
+      netTaxPayable,
+      frankingRefund,
+      isComplying: false,
+      citations: [...citations, { kind: 'ITAA_1997', reference: 's295-605', lastReviewed: REVIEWED }],
+      uncomputed,
+    };
+  }
+
+  // Complying fund.
+  const naliTax = nali.times(topRate);
+  if (nali.gt(0)) {
+    citations.push({ kind: 'ITAA_1997', reference: 's295-550', lastReviewed: REVIEWED });
+  }
+  const contributionsTax = contributions.times(concessionalRate);
+
+  // ECPI honesty discipline preserved.
+  if (input.isInPensionPhase && input.ecpiExemptProportion === undefined) {
+    uncomputed.push({
+      id: 'UC-SMSF-ECPI-PROPORTION',
+      rationale:
+        'This fund has retirement-phase (pension) accounts, but the exempt-current-pension-income proportion has not been supplied — the segregated method, or a proportionate-method actuary’s certificate. The fund’s investment-income tax cannot be computed without it; ECPI is never estimated. Contributions tax and NALI tax (where ECPI does not apply) are still shown.',
+      citation: { kind: 'ITAA_1997', reference: 's295-385', lastReviewed: REVIEWED },
+    });
+    return {
+      tax: null,
+      investmentIncomeTax: null,
+      contributionsTax,
+      naliTax,
+      ecpiExemptAmount: null,
+      frankingCredits,
+      netTaxPayable: null,
+      frankingRefund: null,
+      isComplying: true,
+      citations,
+      uncomputed,
+    };
+  }
+
+  const exemptProportion = input.isInPensionPhase
+    ? clampProportionDecimal(toDecimal(input.ecpiExemptProportion ?? 0) ?? zero)
+    : zero;
+  const ecpiExemptAmount = netInvestmentIncome.times(exemptProportion);
+  const assessableInvestmentIncomeAfterEcpi = netInvestmentIncome.minus(ecpiExemptAmount);
+  const investmentIncomeTax = assessableInvestmentIncomeAfterEcpi.times(concessionalRate);
+
+  if (exemptProportion.gt(0)) {
+    citations.push({ kind: 'ITAA_1997', reference: 's295-385', lastReviewed: REVIEWED });
+  }
+
+  const grossTax = investmentIncomeTax.plus(contributionsTax).plus(naliTax);
+  const { netTaxPayable, frankingRefund } = applyFrankingDecimal(grossTax, frankingCredits, true);
 
   return {
     tax: grossTax,
