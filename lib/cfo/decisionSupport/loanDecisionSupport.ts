@@ -9,6 +9,7 @@
 import { prisma } from '@/lib/db';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 import {
   aggregateLoanRepayments,
   calculateDebtMetrics,
@@ -660,6 +661,89 @@ function calculateTotalInterest(
 ): number {
   const totalPayments = monthlyPayment * months;
   return Math.max(0, totalPayments - principal);
+}
+
+// ============================================================================
+// Q-DEC PR 2.E.3 — Decimal sibling helpers
+// ============================================================================
+
+/**
+ * Decimal sibling of the private `calculateMonthlyPayment` (amortising
+ * annuity). Mirrors degenerate cases: rate 0 OR months 0 → straight-line
+ * `principal / max(1, months)` (or 0 if months is 0).
+ *
+ * Note this is structurally identical to `calculatePIRepaymentDecimal`
+ * in `lib/utils/calculations.ts` shipped in PR 2.E.1; the only difference
+ * is the Float-side degenerate case here returns `principal / months`
+ * (no `max(1, months)` floor when `months > 0`). Preserved bit-for-bit.
+ */
+export function calculateMonthlyPaymentDecimal(
+  principal: number | string | Decimal,
+  annualRate: number | string | Decimal,
+  months: number,
+): Decimal {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const r = toDecimal(annualRate) ?? new Decimal(0);
+
+  if (r.isZero() || months === 0) {
+    return months > 0 ? p.div(months) : new Decimal(0);
+  }
+
+  const monthlyRate = r.div(12);
+  const onePlusRPow = new Decimal(1).plus(monthlyRate).pow(months);
+  return p.times(monthlyRate).times(onePlusRPow).div(onePlusRPow.minus(1));
+}
+
+/**
+ * Decimal sibling of the private `calculatePayoffMonths`. Mirrors:
+ *   - monthlyPayment ≤ 0 → 999
+ *   - monthlyPayment ≤ monthlyInterest → 999 (loan never paid off)
+ *   - normal case: `ceil(-ln(1 - P×r/M) / ln(1 + r))`, capped at 600
+ *
+ * The logarithm function is not on `decimal.js`'s core API; we bridge
+ * to Float via `.toNumber()` for the `Math.log` step. The drift is
+ * negligible at sub-1-month precision (the output is `Math.ceil`'d to
+ * an integer month count anyway).
+ */
+export function calculatePayoffMonthsDecimal(
+  principal: number | string | Decimal,
+  annualRate: number | string | Decimal,
+  monthlyPayment: number | string | Decimal,
+): number {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const r = toDecimal(annualRate) ?? new Decimal(0);
+  const m = toDecimal(monthlyPayment) ?? new Decimal(0);
+
+  if (m.lte(0)) return 999;
+
+  const monthlyRate = r.div(12);
+  const monthlyInterest = p.times(monthlyRate);
+
+  if (m.lte(monthlyInterest)) return 999;
+
+  // Bridge to Float for the logarithm — see jsdoc.
+  const factor = new Decimal(1).minus(p.times(monthlyRate).div(m));
+  const num = -Math.log(factor.toNumber());
+  const denom = Math.log(new Decimal(1).plus(monthlyRate).toNumber());
+  const months = Math.ceil(num / denom);
+
+  return Math.min(months, 600);
+}
+
+/**
+ * Decimal sibling of the private `calculateTotalInterest`. Simple:
+ * `max(0, monthlyPayment × months − principal)`.
+ */
+export function calculateTotalInterestDecimal(
+  principal: number | string | Decimal,
+  annualRate: number | string | Decimal, // unused — kept for signature parity
+  monthlyPayment: number | string | Decimal,
+  months: number,
+): Decimal {
+  const p = toDecimal(principal) ?? new Decimal(0);
+  const m = toDecimal(monthlyPayment) ?? new Decimal(0);
+  const totalPayments = m.times(months);
+  return Decimal.max(new Decimal(0), totalPayments.minus(p));
 }
 
 // ============================================================================

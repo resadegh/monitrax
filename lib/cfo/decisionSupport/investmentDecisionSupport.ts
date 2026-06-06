@@ -16,6 +16,7 @@ import {
   CFORebalanceAction,
   CFOPerformanceMetrics,
 } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // ============================================================================
 // Constants
@@ -502,4 +503,62 @@ function createEmptyInsights(): CFOInvestmentInsights {
       holdingsCount: 0,
     },
   };
+}
+
+// ============================================================================
+// Q-DEC PR 2.E.3 — Decimal sibling helpers
+// ============================================================================
+
+/**
+ * Shape compatible with `DetailedHolding` but with only the fields the
+ * Decimal helpers actually read. Avoids exporting the private type.
+ */
+export interface InvestmentHoldingDecimalInput {
+  currentValue: number | string | Decimal;
+  frankingPercentage?: number | null;
+}
+
+/**
+ * Decimal sibling of the private `calculateDividendYield`. Same yield
+ * model: franked holdings @ 4%, unfranked @ 2%, blended by share of
+ * total value. Returns a percentage Decimal (0-100). Divide-by-zero
+ * floor preserved.
+ */
+export function calculateDividendYieldDecimal(
+  holdings: InvestmentHoldingDecimalInput[],
+  totalValue: number | string | Decimal,
+): Decimal {
+  const zero = new Decimal(0);
+  const tv = toDecimal(totalValue) ?? zero;
+  if (tv.isZero()) return zero;
+
+  const frankedValue = holdings
+    .filter((h) => h.frankingPercentage !== null && h.frankingPercentage !== undefined && h.frankingPercentage > 0)
+    .reduce((acc, h) => acc.plus(toDecimal(h.currentValue) ?? zero), zero);
+
+  const unfrankedValue = tv.minus(frankedValue);
+  const estimatedDividends = frankedValue.times('0.04').plus(unfrankedValue.times('0.02'));
+
+  return estimatedDividends.div(tv).times(100);
+}
+
+/**
+ * Concentration risk — single-holding share of portfolio. Returns
+ * Decimal % (0-100). Pure Decimal aggregation.
+ */
+export function calculateMaxConcentrationDecimal(
+  holdings: InvestmentHoldingDecimalInput[],
+  totalValue: number | string | Decimal,
+): Decimal {
+  const zero = new Decimal(0);
+  const tv = toDecimal(totalValue) ?? zero;
+  if (tv.isZero() || holdings.length === 0) return zero;
+
+  let maxPct = zero;
+  for (const h of holdings) {
+    const v = toDecimal(h.currentValue) ?? zero;
+    const pct = v.div(tv).times(100);
+    if (pct.gt(maxPct)) maxPct = pct;
+  }
+  return maxPct;
 }

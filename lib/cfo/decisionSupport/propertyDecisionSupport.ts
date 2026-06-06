@@ -11,6 +11,7 @@ import {
   CFOPropertyAlert,
   CFOPropertyPerformance,
 } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // ============================================================================
 // Property Insights Calculator
@@ -222,4 +223,71 @@ function findPerformanceExtremes(properties: PropertyMetrics[]): {
   }
 
   return { topPerformer, underperformer };
+}
+
+// ============================================================================
+// Q-DEC PR 2.E.3 — Decimal sibling
+// ============================================================================
+
+export interface CFOPropertyPortfolioSummaryDecimal {
+  totalProperties: number;
+  totalValue: Decimal;
+  totalEquity: Decimal;
+  averageLVR: Decimal;
+  totalMonthlyIncome: Decimal;
+  totalMonthlyCashflow: Decimal;
+}
+
+/**
+ * Decimal sibling of the portfolio-summary computation inside
+ * `calculateCFOPropertyInsights`. Pure aggregation: totals + weighted
+ * LVR + monthly income from annual rental. Final outputs UN-rounded
+ * (Float path rounds via `Math.round`/`Math.round(... * 10) / 10`;
+ * Decimal path defers rounding to the API boundary).
+ */
+export function calculatePortfolioSummaryDecimal(
+  properties: PropertyMetrics[],
+): CFOPropertyPortfolioSummaryDecimal {
+  const zero = new Decimal(0);
+
+  if (properties.length === 0) {
+    return {
+      totalProperties: 0,
+      totalValue: zero,
+      totalEquity: zero,
+      averageLVR: zero,
+      totalMonthlyIncome: zero,
+      totalMonthlyCashflow: zero,
+    };
+  }
+
+  const totalValue = properties.reduce(
+    (acc, p) => acc.plus(toDecimal(p.currentValue) ?? zero),
+    zero,
+  );
+  const totalEquity = properties.reduce(
+    (acc, p) => acc.plus(toDecimal(p.equity) ?? zero),
+    zero,
+  );
+  const totalLoanBalance = totalValue.minus(totalEquity);
+  const averageLVR = totalValue.gt(0)
+    ? totalLoanBalance.div(totalValue).times(100)
+    : zero;
+  const totalMonthlyIncome = properties.reduce(
+    (acc, p) => acc.plus((toDecimal(p.annualRentalIncome) ?? zero).div(12)),
+    zero,
+  );
+  const totalMonthlyCashflow = properties.reduce(
+    (acc, p) => acc.plus(toDecimal(p.monthlyCashflow) ?? zero),
+    zero,
+  );
+
+  return {
+    totalProperties: properties.length,
+    totalValue,
+    totalEquity,
+    averageLVR,
+    totalMonthlyIncome,
+    totalMonthlyCashflow,
+  };
 }

@@ -212,3 +212,66 @@ NONE — additive code only. No Prisma writes, no schema changes.
 
 - PR 2.E.3 — `lib/cfo/decisionSupport/{propertyDecisionSupport, loanDecisionSupport, investmentDecisionSupport, taxIntegration}` Decimal siblings.
 - PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine` Decimal siblings.
+
+---
+
+## Session: qdec-pr2e3-cfo-decision-support-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — `lib/cfo/decisionSupport/*` Decimal siblings (Q-DEC PR 2.E.3)
+- **Scope**: Q-DEC PR 2.E.3 — Pure-math Decimal siblings across all 4 decision-support files: `propertyDecisionSupport`, `loanDecisionSupport`, `investmentDecisionSupport`, `taxIntegration`. 8 helpers total.
+- **Description**: Third sub-PR of Q-DEC PR 2.E. The 4 files in `lib/cfo/decisionSupport/` are ~1,927 LOC combined. Each one mixes pure money math with async/Prisma fetching + categorical alert generation. This PR ships Decimal siblings for the pure-math helpers only — the async `calculateCFO*Insights` wrappers + categorical alert/risk/performance generators are deferred to PR 3 cutover (their outputs are presentation objects, not numeric, so they swap with the route handlers).
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/cfo/decisionSupport/propertyDecisionSupport.ts` — `CFOPropertyPortfolioSummaryDecimal` + `calculatePortfolioSummaryDecimal`. Aggregates totals (value / equity / monthly income from annual / monthly cashflow) + weighted LVR (`(totalValue − totalEquity) / totalValue × 100`). Empty-portfolio + zero-value floors preserved. UN-rounded outputs (Float path rounds via `Math.round`; Decimal defers to API boundary).
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts` — `calculateMonthlyPaymentDecimal` (amortising annuity, degenerate `rate=0 OR months=0` falls back to `principal/max(1,months)`), `calculatePayoffMonthsDecimal` (months-to-payoff via `-ln(1 − P×r/M) / ln(1+r)`; logarithm bridged via `.toNumber()` because `decimal.js` doesn't ship `log` on the core API; output is `Math.ceil`'d to integer months anyway so sub-1-month drift is irrelevant; capped at 600), `calculateTotalInterestDecimal` (`max(0, payment × months − principal)`).
+- `lib/cfo/decisionSupport/investmentDecisionSupport.ts` — `calculateDividendYieldDecimal` (franked @ 4%, unfranked @ 2%, blended by share of total value — pre-rounded `'0.04'`/`'0.02'` strings to avoid IEEE-754 representation issues) + `calculateMaxConcentrationDecimal` (single-holding share of portfolio, returns % Decimal). Both with divide-by-zero guards. New exported types `InvestmentHoldingDecimalInput`.
+- `lib/cfo/decisionSupport/taxIntegration.ts` — `calculateUnrealisedCGTDecimal` (per-holding gain × 50% CGT discount; loss-excluded; null `currentPrice` falls back to `averagePrice` → 0 gain) + `calculateNegativeGearingBenefitDecimal` (per-INVESTMENT property `annualIncome − annualExpenses − annualLoanInterest`; negative net × `marginalRate/100`). New exported types `CgtHoldingDecimalInput` + `NegativeGearingPropertyDecimalInput`. **§12.14 FW-1 note**: this helper is a portfolio-overview heuristic assuming pre-reform grandfathered treatment; the canonical reform-aware engine is `applyNegativeGearingDecimal` in `lib/tax-engine/divisions/negativeGearing.ts` (shipped in PR 2.D.3c). FW-1 outcome (a) here — the caller-side regime gating happens in the AI advisor + master tax position.
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-cfo-decision-support.ts` — 8 shadow engines × ~3-5 fixtures each = 33 fixtures. Float-side helpers re-derived in this file (the originals in `loanDecisionSupport.ts` are NOT exported; the property/investment/tax-integration helpers are exported as Decimal siblings but their Float counterparts are private). Aggregate export `cfoDecisionSupportShadowEngines`.
+- `tests/cfo/decision-support.decimal.test.ts` — 61 tests (33 shadow + 27 contract + 1 aggregate).
+
+### Architectural notes
+
+- **Logarithm bridge in `calculatePayoffMonthsDecimal`.** `decimal.js` core API doesn't export `log`/`ln`; using the `decimal.js` extended API would mean importing the `decimal.js/decimal.js` build instead of `decimal.js/decimal.js-light`. Rather than churn the bundle dep, the helper bridges to Float `Math.log` after the divide-and-subtract step. The output is `Math.ceil`'d to an integer month count, so sub-1-month logarithm drift is irrelevant. Shadow comparison validates this end-to-end (Float and Decimal agree on `Math.ceil` integer output for all fixtures).
+- **Categorical helpers deferred.** Each of `generatePropertyAlerts`, `generateInvestmentAlerts`, `calculateRefinanceOpportunities`, `generateRateAlerts`, `detectLoanRisks`, `detectTaxRisks`, `findPerformanceExtremes`, `calculateAllocationAnalysis`, `identifyMissedDeductions` produces structured objects (alerts/risks/performance/rebalance actions) with rounded `Math.round(...)` numeric leaves for display. The threshold comparisons that gate alert emission are float-stable (no compounding). PR 3 cutover swaps the consumer route handlers from Float to Decimal at the inputs; these categorical generators stay on the Float path until then.
+- **Async wrappers deferred to PR 3.** `calculateCFOPropertyInsights`, `calculateCFOLoanInsights`, `calculateCFOInvestmentInsights`, `calculateCFOTaxInsights` are all async + Prisma-fetching. PR 3 swaps the route-handler-side consumer pattern, at which point these wrappers either compose the Decimal helpers shipped here OR get their own Decimal sibling wrappers (TBD per consumer needs).
+- **§12.14 reform-agnosticism.** 7 of the 8 helpers are reform-agnostic by construction (portfolio sums, amortisation, dividend yield, concentration, CGT discount heuristic). The 8th — `calculateNegativeGearingBenefitDecimal` — is documented as a pre-reform-grandfathered heuristic that defers regime gating to the canonical `applyNegativeGearingDecimal` engine in `lib/tax-engine/divisions/negativeGearing.ts`. FW-1 outcome (a).
+
+### Testing
+
+- [x] 61 new tests pass (33 shadow + 27 contract + 1 aggregate).
+- [x] `npx tsc --noEmit` clean.
+- [x] Shadow report PASS on all 33 fixtures across all 8 shadow engines.
+- [x] Pre-existing failures (58 in `tools-41h5` + `cross-module` + `regression/api`) confirmed out of scope.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.E.2 marked ✅ MERGED #992; PR 2.E.3 IN FLIGHT this PR)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 2.E.2 ✅ MERGED #992; PR 2.E.3 IN FLIGHT this PR; Last touched flipped to 2026-06-06 / E.3.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] 7 of 8 helpers are reform-agnostic by construction (portfolio sums, amortisation, dividend yield, concentration, CGT discount heuristic). FW-1 outcome (a).
+- [x] `calculateNegativeGearingBenefitDecimal` documented as pre-reform-grandfathered portfolio-overview heuristic; canonical reform-aware engine is `applyNegativeGearingDecimal` in `lib/tax-engine/divisions/negativeGearing.ts` (shipped PR 2.D.3c). FW-1 outcome (a) — regime gating happens at the AI advisor + master tax position layers, not in this helper.
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] No new AI tool (FW-4 N/A).
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.E.4 — `actionEngine` + `aiAdvisor` + `intelligenceEngine` Decimal siblings.
