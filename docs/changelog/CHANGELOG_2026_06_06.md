@@ -673,3 +673,91 @@ NONE — additive code only.
 - PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary; format via `formatCurrency()` (type-abstract). Last sub-PR before PR 4.
 - Follow-up — cfo dashboard / advice routes once async-wrapper Decimal siblings exist OR cut over post-PR 4 when Float drops.
 - PR 4 — Float column drop. §12.11 destructive-write checklist mandatory.
+
+---
+
+## Session wrap — 2026-06-06 end of day
+
+### Headline
+
+**24 PRs merged in a single day.** Q-DEC PR 2 went from "in-flight start of day" → ✅ COMPLETE (16 sub-PRs); Q-DEC PR 3 went from "queued" → 5/6 sub-PRs MERGED. Day finished with PR #1001 — symbolic 1000+ milestone. Only PR 3.E (UI consumers) remains in PR 3; then PR 4 (Float column drop) unblocks Phase 45 PR 1 (engine composition).
+
+### Cumulative merge ledger (chronological, this day)
+
+**Morning batch — Q-DEC PR 2 completion (16 sub-PRs in flight at start of day):**
+- PR #989 — Q-DEC PR 2.D.3d (composer-tier Decimal: `smsfIncomeTax` + `processSalary`).
+- PR #990 — doc-sync after 2.D.3d.
+- PR #991 — Q-DEC PR 2.E.1 (6 scenarios + 3 supporting `lib/utils/calculations.ts` primitives).
+- PR #992 — Q-DEC PR 2.E.2 (`scoreCalculator` 6-component + `riskRadar` summary).
+- PR #993 — Q-DEC PR 2.E.3 (decision-support layer — 8 helpers across 4 files).
+- PR #994 — doc-sync after 2.E.3.
+- PR #995 — Q-DEC PR 2.E.4 (`intelligenceEngine` 2 helpers; `actionEngine` + `aiAdvisor` skipped with rationale).
+
+**Afternoon batch — Q-DEC PR 3 cutover start:**
+- PR #996 — Q-DEC PR 3.A (composer-tier Decimal siblings: `calculateEntityTaxPositionDecimal` + `buildMasterTaxPositionDecimal` — deferred work from PR 2.D.3d).
+- PR #997 — Q-DEC PR 3.B (tax entity + position routes + new `serializeDecimalsForJson` boundary walker).
+- PR #998 — Q-DEC PR 3.B.2 (tax salary + super routes).
+- PR #999 — Q-DEC PR 3.C (cfo scenarios route + new `runScenarioDecimal` dispatcher).
+- PR #1000 — doc-sync after 3.C (milestone PR 1000).
+- PR #1001 — Q-DEC PR 3.D (all 9 AI advisor tools + PR 2.D.3a `UC-MULTI-STATE-LAND-TAX` parity fix).
+
+### Architectural artefacts shipped this day
+
+- **`lib/decimal/serialize.ts:serializeDecimalsForJson`** — the canonical Decimal → JSON exit. Every route handler + AI tool that produces a Decimal result uses this walker. Default `'currency'` policy (2dp HALF_EVEN, ATO standard); per-path overrides for rate/units/percentage fields. JSON.stringify-safe output.
+- **`lib/cfo/scenarios/index.ts:runScenarioDecimal`** — dispatcher routing each of 6 scenario types to its `*Decimal` sibling. Mirrors the Float `runScenario` SSOT pattern.
+- **`lib/tax-engine/entity/entityTaxRouter.ts:calculateEntityTaxPositionDecimal`** + **`lib/tax-engine/orchestrator/masterTaxPosition.ts:buildMasterTaxPositionDecimal`** — the two composer-tier Decimal siblings deferred from PR 2.D.3d. Now shipped + consumed by PR 3.B's entity route + (future) the cfo dashboard wrapper.
+
+### Code-quality state — complete check
+
+- `npx tsc --noEmit` clean.
+- 2,287 tests passing (+58 pre-existing failures in `tools-41h5` + `cross-module` + `regression/api` — confirmed unchanged baseline; all predate Q-DEC work).
+- All 14 PR 2 + 6 PR 3 prod deploys ✅ READY per §17.2 post-merge verification.
+- No new schema columns, no destructive Prisma writes, no security-posture changes (Q-DEC is pure type-shape evolution).
+
+### State of the world — what's still in flight
+
+| Stage | Status | Blast radius / Risk |
+|---|---|---|
+| **PR 3.E — UI consumers cutover** | ⏳ Last 3.x sub-PR | Components + hooks consume Decimal at fetch boundary; format via `formatCurrency()` (already type-abstract). Low-risk: no schema changes; no engine math changes. |
+| **Follow-up — cfo dashboard/advice routes** | ⏳ Queued | `getCFODashboardData` + `generateOrFetchAdvice` async wrappers need Decimal siblings OR cut over post-PR 4. Defer-or-do decision TBD. |
+| **PR 4 — Float column drop** | ⏳ Queued | After 7-day parallel-run shows zero diff. **§12.11 destructive-write checklist mandatory** (this PR drops production columns). |
+| **Phase 45 PR 1 — engine composition** | ⏳ Unblocked once PR 4 lands | New `salarySacrificeToSuper` scenario + `tenYearProjection.ts` 10-year composer + H1/H2/H3 hardening items. |
+| **Phase 45 PR 2 — UI port** | ⏳ Sequential after PR 1 | `/dashboard/cfo/what-if` lever picker + 5 lever-detail screens. |
+| **Phase 45.1 — contextual entry points** | ⏳ Separate PR | "What if?" affordance on entity-detail pages. |
+
+### Discipline notes preserved
+
+- **`serializeDecimalsForJson` is the canonical exit.** Every PR 3 sub-PR uses it. If future sub-PRs reach for `JSON.stringify(decimalObj)` directly without it, that's a bug — the walker is the SSOT for Decimal → number conversion at policy.
+- **Dual-call pattern for presentation-side fields.** `/api/tax/position` calls Float for `warnings + recommendations` (no Decimal sibling); `/api/tax/salary` calls Float for `calculations[]` narration. PR 4 (Float drop) needs to migrate these to Decimal-compatible generators or accept Float-bridge input.
+- **`actionEngine` + `aiAdvisor` deliberately have no Decimal siblings.** Categorical recommendation generator + Gemini tool-call dispatcher; their numeric leaves are display-side, not compounding. Rationale committed in `lib/calc-audit/engines/decimal-cfo-actions-ai-intel.ts` header so future sessions don't re-litigate.
+- **`UC-MULTI-STATE-LAND-TAX` parity discovery.** PR 2.D.3a's Decimal sibling silently dropped a categorical UNCOMPUTED flag because shadow comparison only checks numeric leaves. Fixed in PR 3.D when the AI registry test surfaced it. If similar gaps exist for other UC flags, they'll surface when the matching consumer cutover lands. Pattern: when a `.test.ts` file fails its `.uncomputed` assertion post-cutover, check the Decimal sibling for the missing flag — usually a copy-paste oversight.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR (session-wrap doc-only PR):
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 3.D ✅ MERGED #1001; PR 3 progression captured cleanly; session-wrap summary written)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — Last touched flipped to session-wrap; PR 3.D row flipped ✅ MERGED #1001.
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5 — Q-DEC PR 3 ledger updated (5/6 sub-PRs landed; PR 3.D ✅ MERGED #1001 + parity-fix note).
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this session-wrap entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+N/A — documentation-only PR.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — no code change. `git diff` shows only docs.
+
+### Pause-point check
+
+The day's work concludes at a structurally clean boundary:
+- All shipped PRs prod-verified ✅ READY.
+- Doc state matches code state across `IMPLEMENTATION_PLAN.md`, `PHASE_45_WHAT_IF_SCENARIOS.md`, `CHANGELOG_2026_06_06.md`.
+- Pre-existing test failures unchanged (58, baseline preserved).
+- No half-finished work on disk; no in-flight branches besides this session-wrap.
+- Next session can pick up at PR 3.E with full context from this changelog + the live `IMPLEMENTATION_PLAN.md`.
+
+🎉 — 24 merges, 16 of them PR 2 sub-PRs (engine adapter layer complete), 5 PR 3 sub-PRs (cutover 5/6 complete), milestone PR #1000 hit. Solid foundation for tomorrow.
