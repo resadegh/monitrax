@@ -20,9 +20,10 @@
  */
 
 import {
-  classifyDiv7ALoans,
+  classifyDiv7ALoansDecimal,
   type Div7ALoanInput,
 } from '@/lib/tax-engine/divisions/div7aLoanClassifier';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -85,7 +86,8 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
     required: ['currentLoans', 'loanIdsToRefinance'],
   },
   execute: (input) => {
-    const baseline = classifyDiv7ALoans(input.currentLoans);
+    // Q-DEC PR 3.D — Decimal engine.
+    const baseline = classifyDiv7ALoansDecimal(input.currentLoans);
 
     const refinancedSet = new Set(input.loanIdsToRefinance);
     const scenarioLoans: Div7ALoanInput[] = input.currentLoans.map((loan) => {
@@ -97,7 +99,7 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
         benchmarkRate: input.overrideBenchmarkRate ?? loan.benchmarkRate,
       };
     });
-    const scenario = classifyDiv7ALoans(scenarioLoans);
+    const scenario = classifyDiv7ALoansDecimal(scenarioLoans);
 
     const citations: IdentifiedCitation[] = scenario.citations.map((c, i) => ({
       ...c,
@@ -116,7 +118,7 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
       // Baseline
       {
         path: 'scenario.baseline.totalDeemedDividend',
-        value: baseline.totalDeemedDividend,
+        value: baseline.totalDeemedDividend.toNumber(),
         unit: 'AUD',
         label: 'Baseline aggregate deemed-dividend exposure',
         citationIds: allCitationIds,
@@ -146,7 +148,7 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
       // Scenario result
       {
         path: 'scenario.result.totalDeemedDividend',
-        value: scenario.totalDeemedDividend,
+        value: scenario.totalDeemedDividend.toNumber(),
         unit: 'AUD',
         label: 'Resulting aggregate deemed-dividend exposure (with hypothetical refinance)',
         citationIds: allCitationIds,
@@ -161,8 +163,7 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
       // Delta
       {
         path: 'scenario.delta.totalDeemedDividend',
-        value:
-          scenario.totalDeemedDividend - baseline.totalDeemedDividend,
+        value: scenario.totalDeemedDividend.minus(baseline.totalDeemedDividend).toNumber(),
         unit: 'AUD',
         label: 'Change in aggregate deemed-dividend exposure (scenario − baseline)',
         citationIds: allCitationIds,
@@ -178,7 +179,7 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
 
     const narrativeText = [
       `Scenario: modelling ${input.loanIdsToRefinance.length} loan(s) flipped to compliant Div 7A agreement [cit:cit-1].`,
-      `Baseline aggregate deemed-dividend exposure: $${baseline.totalDeemedDividend.toLocaleString()}; resulting: $${scenario.totalDeemedDividend.toLocaleString()}.`,
+      `Baseline aggregate deemed-dividend exposure: $${baseline.totalDeemedDividend.toNumber().toLocaleString()}; resulting: $${scenario.totalDeemedDividend.toNumber().toLocaleString()}.`,
       `COMPLIANT loan count shifts from ${baselineCompliantCount} to ${scenarioCompliantCount}.`,
     ].join(' ');
 
@@ -189,11 +190,11 @@ export const runDiv7aRefinanceScenarioTool: TaxAdvisorTool<RunDiv7aRefinanceScen
       citations,
       uncomputed: scenario.uncomputed ?? [],
       narrativeText,
-      raw: {
+      raw: serializeDecimalsForJson({
         baseline,
         scenario,
         refinancedCount: input.loanIdsToRefinance.length,
-      },
+      }),
     };
     return out;
   },

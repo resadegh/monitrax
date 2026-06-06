@@ -695,6 +695,14 @@ export function calculateLandTaxDecimal(
     });
   }
 
+  // Q-DEC PR 3.D — parity fix with Float sibling (line 504): always
+  // surface the multi-state aggregation flag so callers know.
+  uncomputed.push({
+    id: 'UC-MULTI-STATE-LAND-TAX',
+    rationale:
+      'Land tax is assessed per-state. Multi-state aggregation rules (NSW grouping in Pt 4, VIC trustee aggregation in Pt 3 Div 4) require facts the caller must supply per state. v1 calc covers a single-state assessment; cross-state owner aggregation lands with 41e.13 (rest-of-states + cross-state aggregator).',
+  });
+
   return {
     generalLandTax,
     trustSurcharge,

@@ -12,8 +12,9 @@
  */
 
 import {
-  calculateEntityTaxPosition,
+  calculateEntityTaxPositionDecimal,
 } from '@/lib/tax-engine/entity/entityTaxRouter';
+import { serializeDecimalsForJson, Decimal } from '@/lib/decimal';
 import type { EntityTaxFacts } from '@/lib/tax-engine/types';
 import type { TaxAdvisorTool, ToolResult, NumericField, IdentifiedCitation } from '../types';
 
@@ -50,71 +51,67 @@ export const getEntityTaxPositionTool: TaxAdvisorTool<EntityTaxFacts> = {
     required: ['entityId', 'entityType', 'financialYear'],
   },
   execute: (input) => {
-    const position = calculateEntityTaxPosition(input);
+    // Q-DEC PR 3.D — Decimal engine; downstream `numericFields[].value`
+    // stay `number` (display-typed for the AI's narrative grounding).
+    const position = calculateEntityTaxPositionDecimal(input);
 
-    // Promote calc-engine citations to identified citations.
     const citations: IdentifiedCitation[] = position.citations.map((c, i) => ({
       ...c,
       id: `cit-${i + 1}`,
     }));
     const allCitationIds = citations.map((c) => c.id);
 
-    // Extract canonical numeric fields from `position.result`. The
-    // result shape varies by entity type; PERSONAL_NAME / SOLE_TRADER
-    // returns `{ tax: { assessableIncome, taxableIncome, netTax }, paygWithheld, estimatedRefund, ... }`.
-    // For other entity types, `result` may be `null` (UNCOMPUTED) — in
-    // that case we surface only the UNCOMPUTED flags + 0 numericFields.
     const numericFields: NumericField[] = [];
     const r = position.result as
       | {
-          tax?: { assessableIncome?: number; taxableIncome?: number; netTax?: number };
-          paygWithheld?: number;
-          estimatedRefund?: number;
+          tax?: { assessableIncome?: Decimal; taxableIncome?: Decimal; netTax?: Decimal };
+          paygWithheld?: Decimal;
+          estimatedRefund?: Decimal;
         }
       | null
       | undefined;
 
     if (r && typeof r === 'object') {
-      if (typeof r.tax?.assessableIncome === 'number') {
+      if (r.tax?.assessableIncome instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.assessableIncome`,
-          value: r.tax.assessableIncome,
+          value: r.tax.assessableIncome.toNumber(),
           unit: 'AUD',
           label: `${input.entityType} assessable income for ${input.fy.label}`,
           citationIds: allCitationIds,
         });
       }
-      if (typeof r.tax?.taxableIncome === 'number') {
+      if (r.tax?.taxableIncome instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.taxableIncome`,
-          value: r.tax.taxableIncome,
+          value: r.tax.taxableIncome.toNumber(),
           unit: 'AUD',
           label: `${input.entityType} taxable income for ${input.fy.label}`,
           citationIds: allCitationIds,
         });
       }
-      if (typeof r.tax?.netTax === 'number') {
+      if (r.tax?.netTax instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.netTax`,
-          value: r.tax.netTax,
+          value: r.tax.netTax.toNumber(),
           unit: 'AUD',
           label: `${input.entityType} net tax payable`,
           citationIds: allCitationIds,
         });
       }
-      if (typeof r.paygWithheld === 'number') {
+      if (r.paygWithheld instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.paygWithheld`,
-          value: r.paygWithheld,
+          value: r.paygWithheld.toNumber(),
           unit: 'AUD',
           label: 'PAYG withheld YTD',
           citationIds: allCitationIds,
         });
       }
-      if (typeof r.estimatedRefund === 'number') {
+      if (r.estimatedRefund instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.estimatedRefund`,
-          value: r.estimatedRefund,
+          value: r.estimatedRefund.toNumber(),
           unit: 'AUD',
           label: 'Estimated refund (or balance owing)',
           citationIds: allCitationIds,
@@ -122,27 +119,15 @@ export const getEntityTaxPositionTool: TaxAdvisorTool<EntityTaxFacts> = {
       }
     }
 
-    const cgt = position.cgtResult as
-      | { netCapitalGain?: number; discountAmount?: number }
-      | null
-      | undefined;
-    if (cgt && typeof cgt === 'object') {
-      if (typeof cgt.netCapitalGain === 'number') {
+    const cgt = position.cgtResult;
+    if (cgt) {
+      if (cgt.assessableNetCapitalGain instanceof Decimal) {
         numericFields.push({
           path: `entity.${input.entityId}.netCapitalGain`,
-          value: cgt.netCapitalGain,
+          value: cgt.assessableNetCapitalGain.toNumber(),
           unit: 'AUD',
           label: `${input.entityType} net capital gain after netting + discount`,
           citationIds: citations.filter((c) => c.reference.includes('Div 115') || c.reference.includes('s115') || c.reference.includes('Div 102')).map((c) => c.id),
-        });
-      }
-      if (typeof cgt.discountAmount === 'number') {
-        numericFields.push({
-          path: `entity.${input.entityId}.cgtDiscountAmount`,
-          value: cgt.discountAmount,
-          unit: 'AUD',
-          label: 'CGT discount applied (Div 115)',
-          citationIds: citations.filter((c) => c.reference.includes('Div 115') || c.reference.includes('s115')).map((c) => c.id),
         });
       }
     }
@@ -172,7 +157,7 @@ export const getEntityTaxPositionTool: TaxAdvisorTool<EntityTaxFacts> = {
       citations,
       uncomputed: position.uncomputed,
       narrativeText: narrativeParts.join(' '),
-      raw: position,
+      raw: serializeDecimalsForJson(position),
     };
     return out;
   },

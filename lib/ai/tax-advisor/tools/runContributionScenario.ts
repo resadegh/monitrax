@@ -30,10 +30,11 @@
  */
 
 import {
-  trackContributionCaps,
-  type CapTrackingInput,
+  trackContributionCapsDecimal,
+  type CapTrackingInputDecimal,
 } from '@/lib/tax-engine/super/capTracker';
 import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -93,26 +94,27 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
     ],
   },
   execute: (input) => {
+    // Q-DEC PR 3.D — Decimal engine; per-field `.toNumber()` boundary.
     const config = getTaxYearConfig(input.financialYear);
 
-    const baselineInput: CapTrackingInput = {
+    const baselineInput: CapTrackingInputDecimal = {
       concessionalYTD: input.currentConcessionalYTD,
       nonConcessionalYTD: input.currentNonConcessionalYTD,
       totalSuperBalance: input.totalSuperBalance,
       carryForwardAmounts: input.carryForwardAmounts,
     };
-    const baseline = trackContributionCaps(baselineInput, config);
+    const baseline = trackContributionCapsDecimal(baselineInput, config);
 
     const additionalC = input.additionalConcessional ?? 0;
     const additionalNC = input.additionalNonConcessional ?? 0;
 
-    const scenarioInput: CapTrackingInput = {
+    const scenarioInput: CapTrackingInputDecimal = {
       concessionalYTD: input.currentConcessionalYTD + additionalC,
       nonConcessionalYTD: input.currentNonConcessionalYTD + additionalNC,
       totalSuperBalance: input.totalSuperBalance,
       carryForwardAmounts: input.carryForwardAmounts,
     };
-    const scenario = trackContributionCaps(scenarioInput, config);
+    const scenario = trackContributionCapsDecimal(scenarioInput, config);
 
     const citations: IdentifiedCitation[] = [
       {
@@ -139,21 +141,21 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
       // Baseline
       {
         path: 'scenario.baseline.concessional.remaining',
-        value: baseline.concessional.remaining,
+        value: baseline.concessional.remaining.toNumber(),
         unit: 'AUD',
         label: 'Baseline concessional cap headroom',
         citationIds: ['cit-1'],
       },
       {
         path: 'scenario.baseline.nonConcessional.remaining',
-        value: baseline.nonConcessional.remaining,
+        value: baseline.nonConcessional.remaining.toNumber(),
         unit: 'AUD',
         label: 'Baseline non-concessional cap headroom',
         citationIds: ['cit-2'],
       },
       {
         path: 'scenario.baseline.excessContributionsTax',
-        value: baseline.excessContributionsTax,
+        value: baseline.excessContributionsTax.toNumber(),
         unit: 'AUD',
         label: 'Baseline excess contributions tax',
         citationIds: ['cit-3'],
@@ -176,21 +178,21 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
       // Scenario outcome
       {
         path: 'scenario.result.concessional.remaining',
-        value: scenario.concessional.remaining,
+        value: scenario.concessional.remaining.toNumber(),
         unit: 'AUD',
         label: 'Resulting concessional cap headroom (after hypothetical)',
         citationIds: ['cit-1'],
       },
       {
         path: 'scenario.result.nonConcessional.remaining',
-        value: scenario.nonConcessional.remaining,
+        value: scenario.nonConcessional.remaining.toNumber(),
         unit: 'AUD',
         label: 'Resulting non-concessional cap headroom (after hypothetical)',
         citationIds: ['cit-2'],
       },
       {
         path: 'scenario.result.excessContributionsTax',
-        value: scenario.excessContributionsTax,
+        value: scenario.excessContributionsTax.toNumber(),
         unit: 'AUD',
         label: 'Resulting excess contributions tax (after hypothetical)',
         citationIds: ['cit-3'],
@@ -198,15 +200,14 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
       // Delta (computed in-tool — still numeric facts, never AI-authored)
       {
         path: 'scenario.delta.concessionalRemaining',
-        value: scenario.concessional.remaining - baseline.concessional.remaining,
+        value: scenario.concessional.remaining.minus(baseline.concessional.remaining).toNumber(),
         unit: 'AUD',
         label: 'Change in concessional headroom (scenario − baseline)',
         citationIds: ['cit-1'],
       },
       {
         path: 'scenario.delta.excessContributionsTax',
-        value:
-          scenario.excessContributionsTax - baseline.excessContributionsTax,
+        value: scenario.excessContributionsTax.minus(baseline.excessContributionsTax).toNumber(),
         unit: 'AUD',
         label: 'Change in excess contributions tax (scenario − baseline)',
         citationIds: ['cit-3'],
@@ -215,10 +216,10 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
 
     const narrativeText = [
       `Scenario: contributing an additional $${additionalC.toLocaleString()} concessional + $${additionalNC.toLocaleString()} non-concessional in ${input.financialYear} [cit:cit-1] [cit:cit-2].`,
-      `Resulting concessional headroom: $${scenario.concessional.remaining.toLocaleString()} (was $${baseline.concessional.remaining.toLocaleString()}).`,
-      `Resulting non-concessional headroom: $${scenario.nonConcessional.remaining.toLocaleString()} (was $${baseline.nonConcessional.remaining.toLocaleString()}).`,
-      scenario.excessContributionsTax > baseline.excessContributionsTax
-        ? `Excess contributions tax exposure increases to $${scenario.excessContributionsTax.toLocaleString()} [cit:cit-3].`
+      `Resulting concessional headroom: $${scenario.concessional.remaining.toNumber().toLocaleString()} (was $${baseline.concessional.remaining.toNumber().toLocaleString()}).`,
+      `Resulting non-concessional headroom: $${scenario.nonConcessional.remaining.toNumber().toLocaleString()} (was $${baseline.nonConcessional.remaining.toNumber().toLocaleString()}).`,
+      scenario.excessContributionsTax.gt(baseline.excessContributionsTax)
+        ? `Excess contributions tax exposure increases to $${scenario.excessContributionsTax.toNumber().toLocaleString()} [cit:cit-3].`
         : 'No new excess contributions tax exposure.',
     ].join(' ');
 
@@ -229,7 +230,7 @@ export const runContributionScenarioTool: TaxAdvisorTool<RunContributionScenario
       citations,
       uncomputed: [],
       narrativeText,
-      raw: { baseline, scenario, additionalC, additionalNC },
+      raw: serializeDecimalsForJson({ baseline, scenario, additionalC, additionalNC }),
     };
     return out;
   },

@@ -11,9 +11,10 @@
  */
 
 import {
-  applyCapitalLossNetting,
+  applyCapitalLossNettingDecimal,
   type CapitalLossNettingInput,
 } from '@/lib/tax-engine/divisions/capitalLossNetting';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -51,7 +52,8 @@ export const getCgtExposureTool: TaxAdvisorTool<CapitalLossNettingInput> = {
     required: ['entityType', 'events'],
   },
   execute: (input) => {
-    const result = applyCapitalLossNetting(input);
+    // Q-DEC PR 3.D — Decimal engine; per-field `.toNumber()` boundary.
+    const result = applyCapitalLossNettingDecimal(input);
 
     const citations: IdentifiedCitation[] = result.citations.map((c, i) => ({
       ...c,
@@ -70,35 +72,35 @@ export const getCgtExposureTool: TaxAdvisorTool<CapitalLossNettingInput> = {
     const numericFields: NumericField[] = [
       {
         path: 'cgt.totalNominalGains',
-        value: result.totalNominalGains,
+        value: result.totalNominalGains.toNumber(),
         unit: 'AUD',
         label: 'Total nominal capital gains (sum of all positive events)',
         citationIds: allCitationIds,
       },
       {
         path: 'cgt.totalCurrentYearLosses',
-        value: result.totalCurrentYearLosses,
+        value: result.totalCurrentYearLosses.toNumber(),
         unit: 'AUD',
         label: 'Total current-year capital losses',
         citationIds: allCitationIds,
       },
       {
         path: 'cgt.totalPriorYearLosses',
-        value: result.totalPriorYearLosses,
+        value: result.totalPriorYearLosses.toNumber(),
         unit: 'AUD',
         label: 'Carry-forward losses available from prior FYs',
         citationIds: allCitationIds,
       },
       {
         path: 'cgt.netGainBeforeDiscount',
-        value: result.netGainBeforeDiscount,
+        value: result.netGainBeforeDiscount.toNumber(),
         unit: 'AUD',
         label: 'Net gain after s100-50 loss netting (before discount)',
         citationIds: allCitationIds,
       },
       {
         path: 'cgt.assessableNetCapitalGain',
-        value: result.assessableNetCapitalGain,
+        value: result.assessableNetCapitalGain.toNumber(),
         unit: 'AUD',
         label: 'Assessable net capital gain (Div 102-A — flows to taxable income)',
         citationIds: allCitationIds,
@@ -108,14 +110,14 @@ export const getCgtExposureTool: TaxAdvisorTool<CapitalLossNettingInput> = {
     if (result.discountResult) {
       numericFields.push({
         path: 'cgt.discountAmount',
-        value: result.discountResult.discountAmount,
+        value: result.discountResult.discountAmount.toNumber(),
         unit: 'AUD',
         label: 'CGT discount applied',
         citationIds: div115Citations,
       });
       numericFields.push({
         path: 'cgt.discountRate',
-        value: result.discountResult.discountRate,
+        value: result.discountResult.discountRate.toNumber(),
         unit: 'RATIO',
         label: 'Applicable discount rate (0.5 / 0.333 / 0)',
         citationIds: div115Citations,
@@ -123,9 +125,9 @@ export const getCgtExposureTool: TaxAdvisorTool<CapitalLossNettingInput> = {
     }
 
     const narrativeText = [
-      `Net assessable capital gain: $${result.assessableNetCapitalGain.toLocaleString()} [cit:cit-1].`,
-      result.netGainBeforeDiscount > 0
-        ? `Pre-discount net gain: $${result.netGainBeforeDiscount.toLocaleString()} after applying $${result.totalCurrentYearLosses.toLocaleString()} current-year + $${result.totalPriorYearLosses.toLocaleString()} prior-year losses (s100-50 ordering).`
+      `Net assessable capital gain: $${result.assessableNetCapitalGain.toNumber().toLocaleString()} [cit:cit-1].`,
+      result.netGainBeforeDiscount.gt(0)
+        ? `Pre-discount net gain: $${result.netGainBeforeDiscount.toNumber().toLocaleString()} after applying $${result.totalCurrentYearLosses.toNumber().toLocaleString()} current-year + $${result.totalPriorYearLosses.toNumber().toLocaleString()} prior-year losses (s100-50 ordering).`
         : 'No net assessable gain — losses absorbed all gains for the FY.',
     ].join(' ');
 
@@ -136,7 +138,7 @@ export const getCgtExposureTool: TaxAdvisorTool<CapitalLossNettingInput> = {
       citations,
       uncomputed: result.uncomputed ?? [],
       narrativeText,
-      raw: result,
+      raw: serializeDecimalsForJson(result),
     };
     return out;
   },
