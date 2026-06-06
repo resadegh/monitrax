@@ -11,9 +11,10 @@
  */
 
 import {
-  calculateCrossStateLandTax,
+  calculateCrossStateLandTaxDecimal,
   type CrossStateLandTaxInput,
 } from '@/lib/tax-engine/landTax/crossStateAggregator';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type { TaxAdvisorTool, ToolResult, NumericField, IdentifiedCitation } from '../types';
 
 export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
@@ -44,7 +45,8 @@ export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
     required: ['ownershipType', 'isForeignOwner', 'properties'],
   },
   execute: (input) => {
-    const result = calculateCrossStateLandTax(input);
+    // Q-DEC PR 3.D — Decimal engine.
+    const result = calculateCrossStateLandTaxDecimal(input);
 
     // Promote calc-engine citations to identified citations the AI may reference.
     const citations: IdentifiedCitation[] = result.citations.map((c, i) => ({
@@ -55,28 +57,28 @@ export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
     const numericFields: NumericField[] = [
       {
         path: 'landTax.grandTotalTax',
-        value: result.grandTotalTax,
+        value: result.grandTotalTax.toNumber(),
         unit: 'AUD',
         label: 'Total land tax (across all states)',
         citationIds: citations.map((c) => c.id),
       },
       {
         path: 'landTax.grandTotalGeneralTax',
-        value: result.grandTotalGeneralTax,
+        value: result.grandTotalGeneralTax.toNumber(),
         unit: 'AUD',
         label: 'General land tax component',
         citationIds: citations.filter((c) => !c.reference.toLowerCase().includes('foreign') && !c.reference.toLowerCase().includes('trust')).map((c) => c.id),
       },
       {
         path: 'landTax.grandTotalTrustSurcharge',
-        value: result.grandTotalTrustSurcharge,
+        value: result.grandTotalTrustSurcharge.toNumber(),
         unit: 'AUD',
         label: 'Trust surcharge component',
         citationIds: citations.filter((c) => c.reference.toLowerCase().includes('trust') || c.reference.toLowerCase().includes('s5a') || c.reference.toLowerCase().includes('s46ib')).map((c) => c.id),
       },
       {
         path: 'landTax.grandTotalForeignSurcharge',
-        value: result.grandTotalForeignSurcharge,
+        value: result.grandTotalForeignSurcharge.toNumber(),
         unit: 'AUD',
         label: 'Foreign / absentee owner surcharge component',
         citationIds: citations.filter((c) => c.reference.toLowerCase().includes('foreign') || c.reference.toLowerCase().includes('absentee') || c.reference.toLowerCase().includes('sch 1a') || c.reference.toLowerCase().includes('s46ic')).map((c) => c.id),
@@ -94,14 +96,14 @@ export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
     for (const a of result.perStateAssessments) {
       numericFields.push({
         path: `landTax.${a.state}.aggregatedValue`,
-        value: a.aggregatedValue,
+        value: a.aggregatedValue.toNumber(),
         unit: 'AUD',
         label: `${a.state} aggregated taxable land value (within-state)`,
         citationIds: [],
       });
       numericFields.push({
         path: `landTax.${a.state}.totalTax`,
-        value: a.result.totalTax,
+        value: a.result.totalTax.toNumber(),
         unit: 'AUD',
         label: `${a.state} total land tax`,
         citationIds: citations
@@ -118,10 +120,10 @@ export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
     }
 
     const narrativeParts = [
-      `Total land tax across ${result.statesAssessed} state(s): $${result.grandTotalTax.toLocaleString()}.`,
+      `Total land tax across ${result.statesAssessed} state(s): $${result.grandTotalTax.toNumber().toLocaleString()}.`,
       ...result.perStateAssessments.map(
         (a) =>
-          `${a.state}: $${a.result.totalTax.toLocaleString()} on aggregated taxable land value $${a.aggregatedValue.toLocaleString()} (${a.parcelCount} parcel${a.parcelCount === 1 ? '' : 's'}).`,
+          `${a.state}: $${a.result.totalTax.toNumber().toLocaleString()} on aggregated taxable land value $${a.aggregatedValue.toNumber().toLocaleString()} (${a.parcelCount} parcel${a.parcelCount === 1 ? '' : 's'}).`,
       ),
     ];
 
@@ -132,7 +134,7 @@ export const getLandTaxPositionTool: TaxAdvisorTool<CrossStateLandTaxInput> = {
       citations,
       uncomputed: result.uncomputed,
       narrativeText: narrativeParts.join(' '),
-      raw: result,
+      raw: serializeDecimalsForJson(result),
     };
     return out;
   },

@@ -602,3 +602,74 @@ NONE — additive code only.
 - PR 3.D — `lib/ai/tax-advisor/tools/*` consume Decimal engines.
 - PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary.
 - Follow-up — cfo dashboard / advice routes once async-wrapper Decimal siblings exist (or cut over post-PR 4 when Float drops).
+
+---
+
+## Session: qdec-pr3d-ai-tools-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — AI advisor tools cutover (Q-DEC PR 3.D)
+- **Scope**: Q-DEC PR 3.D — all 9 tax-engine-consuming tools in `lib/ai/tax-advisor/tools/*` swapped from Float engines to `*Decimal` siblings. Bonus: one PR 2.D.3a Decimal-sibling parity gap closed.
+- **Description**: Third PR 3 consumer cutover. Each AI tool wraps a tax-engine function and surfaces results to the Gemini advisor via `ToolResult.numericFields[]` (number-typed) + `raw` (unknown). The cutover keeps the AI-facing shape identical — `numericFields[].value` stays `number`, sourced from `.toNumber()` on the Decimal result. The `raw` field is wrapped in `serializeDecimalsForJson` so JSON.stringify works correctly when the AI consumes the result as context. PR 3.C doc-sync rolled in (PR 3.C row flipped ✅ MERGED #999).
+
+### Files Modified (9 AI tools swapped)
+
+- `lib/ai/tax-advisor/tools/getEntityTaxPosition.ts` — `calculateEntityTaxPosition` → `calculateEntityTaxPositionDecimal`. The result type-narrowing pattern updated to check `instanceof Decimal` instead of `typeof === 'number'`. `cgtResult.netCapitalGain` field renamed to `assessableNetCapitalGain` (the actual field on the Decimal sibling).
+- `lib/ai/tax-advisor/tools/getContributionCapHeadroom.ts` — `trackContributionCaps` → `trackContributionCapsDecimal`. 10 `value:` fields converted via `.toNumber()`; narrative `.toLocaleString()` calls fixed via `.toNumber().toLocaleString()`; `> 0` guards swapped to `.gt(0)`.
+- `lib/ai/tax-advisor/tools/getCgtExposure.ts` — `applyCapitalLossNetting` → `applyCapitalLossNettingDecimal`. 7 fields converted; narrative `> 0` swapped to `.gt(0)`.
+- `lib/ai/tax-advisor/tools/getDiv7aRisk.ts` — `classifyDiv7ALoans` → `classifyDiv7ALoansDecimal`. Per-loan `c.deemedDividendAmount` guard swapped from `&& > 0` to `&& .gt(0)`.
+- `lib/ai/tax-advisor/tools/getLandTaxPosition.ts` — `calculateCrossStateLandTax` → `calculateCrossStateLandTaxDecimal`. 6 fields converted + per-state breakdown loop.
+- `lib/ai/tax-advisor/tools/runContributionScenario.ts` — `trackContributionCaps` → `trackContributionCapsDecimal` (×2 — baseline + scenario). Delta fields compute via `.minus().toNumber()` instead of `-`.
+- `lib/ai/tax-advisor/tools/runCgtScenario.ts` — `applyCapitalLossNetting` → `applyCapitalLossNettingDecimal` (×2). Delta fields via `.minus().toNumber()`.
+- `lib/ai/tax-advisor/tools/runLandTaxScenario.ts` — `calculateCrossStateLandTax` → `calculateCrossStateLandTaxDecimal` (×2). Delta fields via `.minus().toNumber()`.
+- `lib/ai/tax-advisor/tools/runDiv7aRefinanceScenario.ts` — `classifyDiv7ALoans` → `classifyDiv7ALoansDecimal` (×2). Delta field via `.minus().toNumber()`.
+
+### Bonus parity fix — `lib/tax-engine/landTax/stateLandTax.ts`
+
+The Decimal sibling `calculateLandTaxDecimal` was missing the `UC-MULTI-STATE-LAND-TAX` UNCOMPUTED flag that the Float sibling emits unconditionally at line 504. This was a gap in PR 2.D.3a (state taxes Decimal siblings, MERGED PR #984) — the Decimal sibling shipped without the flag, and shadow-comparison didn't catch it because UNCOMPUTED flags are categorical, not numeric. The cutover in `getLandTaxPosition` surfaced the gap because the registry test explicitly asserts the flag exists. **Fix**: added the same unconditional `uncomputed.push({ id: 'UC-MULTI-STATE-LAND-TAX', rationale: ... })` push to the Decimal sibling. Both Float and Decimal paths now have parity.
+
+### Architectural notes
+
+- **AI-facing shape preserved byte-for-byte.** Each tool's `ToolResult.numericFields[].value` is `number`-typed. The cutover swaps the engine but keeps the conversion at the boundary — `.toNumber()` on each Decimal field at the push site. The Gemini advisor sees the same JSON shape as before; only the underlying calc engine changed.
+- **`raw` field wrapped in `serializeDecimalsForJson`.** Several tools pass the engine result through to `raw: result`. Without serialization, `JSON.stringify(Decimal)` produces a string (Decimal's `toJSON` returns `toString()`), which would break the AI's expectation of nested `number` leaves. The walker converts Decimal → number at currency policy (2dp HALF_EVEN) for consistent JSON output.
+- **Categorical guards swapped to Decimal predicates.** `value > 0` → `value.gt(0)`; `value - other` → `value.minus(other)`. The non-Decimal branches (e.g. `bringForwardAvailable` boolean) stay unchanged.
+- **`getReformImpactSummaryForUser` and `getReformedTaxRegimeStatus` not modified.** Those tools read reform-config metadata, not engine output. No tax-engine cutover needed.
+- **§12.14 reform-agnosticism preserved.** All swapped tools were already reform-agnostic at the tool layer — they consume engine output. The reform-aware engines downstream (negativeGearing, cgtDiscount, trustMinimumTax) continue to carry their own FW-1/FW-2 guards.
+
+### Testing
+
+- [x] `npx tsc --noEmit` clean.
+- [x] 58 pre-existing failures unchanged after the parity fix (one new failure introduced by the Decimal swap on `getLandTaxPosition` was the `UC-MULTI-STATE-LAND-TAX` test — fixed by the parity update to `calculateLandTaxDecimal`).
+- N/A — no new tool integration tests added; behavior preservation guaranteed by:
+  1. Each engine the tools call is shadow-tested against Float to 0.005 currency tolerance by PR 2.D's per-engine shadow suite.
+  2. Per-field `.toNumber()` boundary preserves the AI-facing `number` shape.
+  3. Composition is the only new code; verified by typecheck.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 3.C ✅ MERGED #999; PR 3.D IN FLIGHT this PR; PR 2.D.3a parity gap closed)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — PR 3.C ✅ MERGED #999; PR 3.D IN FLIGHT; Last touched flipped.
+- `docs/changelog/CHANGELOG_2026_06_06.md` — this entry.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] All 9 swapped tools were reform-agnostic at the tool layer. The reform-aware engines downstream (negativeGearing, cgtDiscount, trustMinimumTax) continue to carry their own FW-1/FW-2 guards. FW-1 outcome (a).
+- [x] No `commencementVerified` gate needed (FW-2 outcome (a)).
+- [x] No new schema columns (FW-3 N/A).
+- [x] **Tools modified are NOT new AI tools** — they're existing tools with engine swaps (FW-4 N/A — tagged knowledge-pack status not changed). The reform-aware tools that DO carry knowledge-pack tags (`getReformImpactSummaryForUser`, `getReformedTaxRegimeStatus`) were NOT modified.
+- [x] No per-asset tax-position UI surface (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 3.E — UI consumers (components + hooks) consume Decimal at fetch boundary; format via `formatCurrency()` (type-abstract). Last sub-PR before PR 4.
+- Follow-up — cfo dashboard / advice routes once async-wrapper Decimal siblings exist OR cut over post-PR 4 when Float drops.
+- PR 4 — Float column drop. §12.11 destructive-write checklist mandatory.

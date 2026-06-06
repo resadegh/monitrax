@@ -11,9 +11,10 @@
  */
 
 import {
-  classifyDiv7ALoans,
+  classifyDiv7ALoansDecimal,
   type Div7ALoanInput,
 } from '@/lib/tax-engine/divisions/div7aLoanClassifier';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -43,7 +44,8 @@ export const getDiv7aRiskTool: TaxAdvisorTool<GetDiv7aRiskInput> = {
     required: ['loans'],
   },
   execute: (input) => {
-    const result = classifyDiv7ALoans(input.loans);
+    // Q-DEC PR 3.D — Decimal engine.
+    const result = classifyDiv7ALoansDecimal(input.loans);
 
     const citations: IdentifiedCitation[] = result.citations.map((c, i) => ({
       ...c,
@@ -54,7 +56,7 @@ export const getDiv7aRiskTool: TaxAdvisorTool<GetDiv7aRiskInput> = {
     const numericFields: NumericField[] = [
       {
         path: 'div7a.totalDeemedDividend',
-        value: result.totalDeemedDividend,
+        value: result.totalDeemedDividend.toNumber(),
         unit: 'AUD',
         label: 'Aggregate deemed-dividend exposure across all loans',
         citationIds: allCitationIds,
@@ -84,10 +86,10 @@ export const getDiv7aRiskTool: TaxAdvisorTool<GetDiv7aRiskInput> = {
 
     // Per-loan deemed-dividend amounts.
     for (const c of result.classifications) {
-      if (c.deemedDividendAmount && c.deemedDividendAmount > 0) {
+      if (c.deemedDividendAmount && c.deemedDividendAmount.gt(0)) {
         numericFields.push({
           path: `div7a.loan.${c.loanId}.deemedDividend`,
-          value: c.deemedDividendAmount,
+          value: c.deemedDividendAmount.toNumber(),
           unit: 'AUD',
           label: `Deemed dividend for loan ${c.loanId} (${c.status})`,
           citationIds: allCitationIds,
@@ -107,8 +109,8 @@ export const getDiv7aRiskTool: TaxAdvisorTool<GetDiv7aRiskInput> = {
       `Div 7A classification across ${result.classifications.length} loan(s) [cit:cit-1].`,
       `Highest severity: ${result.highestSeverity}.`,
       statusSummary ? `Breakdown: ${statusSummary}.` : '',
-      result.totalDeemedDividend > 0
-        ? `Aggregate deemed dividend: $${result.totalDeemedDividend.toLocaleString()}.`
+      result.totalDeemedDividend.gt(0)
+        ? `Aggregate deemed dividend: $${result.totalDeemedDividend.toNumber().toLocaleString()}.`
         : 'No deemed-dividend exposure — all loans currently compliant or in safe-harbour arrangements.',
     ]
       .filter(Boolean)
@@ -121,7 +123,7 @@ export const getDiv7aRiskTool: TaxAdvisorTool<GetDiv7aRiskInput> = {
       citations,
       uncomputed: result.uncomputed ?? [],
       narrativeText,
-      raw: result,
+      raw: serializeDecimalsForJson(result),
     };
     return out;
   },

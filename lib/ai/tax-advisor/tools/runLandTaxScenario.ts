@@ -20,10 +20,11 @@
  */
 
 import {
-  calculateCrossStateLandTax,
+  calculateCrossStateLandTaxDecimal,
   type CrossStateLandTaxInput,
   type PortfolioProperty,
 } from '@/lib/tax-engine/landTax/crossStateAggregator';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -88,13 +89,14 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       isForeignOwner: input.isForeignOwner,
       properties: input.currentProperties,
     };
-    const baseline = calculateCrossStateLandTax(baselineInput);
+    // Q-DEC PR 3.D — Decimal engine.
+    const baseline = calculateCrossStateLandTaxDecimal(baselineInput);
 
     const scenarioInput: CrossStateLandTaxInput = {
       ...baselineInput,
       properties: [...input.currentProperties, ...input.hypotheticalProperties],
     };
-    const scenario = calculateCrossStateLandTax(scenarioInput);
+    const scenario = calculateCrossStateLandTaxDecimal(scenarioInput);
 
     const citations: IdentifiedCitation[] = scenario.citations.map((c, i) => ({
       ...c,
@@ -106,7 +108,7 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       // Baseline
       {
         path: 'scenario.baseline.grandTotalTax',
-        value: baseline.grandTotalTax,
+        value: baseline.grandTotalTax.toNumber(),
         unit: 'AUD',
         label: 'Baseline total land tax across all states',
         citationIds: allCitationIds,
@@ -139,7 +141,7 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       // Scenario result
       {
         path: 'scenario.result.grandTotalTax',
-        value: scenario.grandTotalTax,
+        value: scenario.grandTotalTax.toNumber(),
         unit: 'AUD',
         label: 'Resulting total land tax (with hypothetical)',
         citationIds: allCitationIds,
@@ -153,14 +155,14 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       },
       {
         path: 'scenario.result.grandTotalGeneralTax',
-        value: scenario.grandTotalGeneralTax,
+        value: scenario.grandTotalGeneralTax.toNumber(),
         unit: 'AUD',
         label: 'Resulting general land tax component',
         citationIds: allCitationIds,
       },
       {
         path: 'scenario.result.grandTotalForeignSurcharge',
-        value: scenario.grandTotalForeignSurcharge,
+        value: scenario.grandTotalForeignSurcharge.toNumber(),
         unit: 'AUD',
         label: 'Resulting foreign / absentee owner surcharge component',
         citationIds: allCitationIds,
@@ -168,16 +170,14 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       // Delta
       {
         path: 'scenario.delta.grandTotalTax',
-        value: scenario.grandTotalTax - baseline.grandTotalTax,
+        value: scenario.grandTotalTax.minus(baseline.grandTotalTax).toNumber(),
         unit: 'AUD',
         label: 'Change in total land tax (scenario − baseline)',
         citationIds: allCitationIds,
       },
       {
         path: 'scenario.delta.grandTotalForeignSurcharge',
-        value:
-          scenario.grandTotalForeignSurcharge -
-          baseline.grandTotalForeignSurcharge,
+        value: scenario.grandTotalForeignSurcharge.minus(baseline.grandTotalForeignSurcharge).toNumber(),
         unit: 'AUD',
         label:
           'Change in foreign-owner surcharge component (scenario − baseline)',
@@ -187,8 +187,8 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
 
     const narrativeText = [
       `Scenario: appending ${input.hypotheticalProperties.length} hypothetical property(ies) [cit:cit-1].`,
-      `Baseline land tax: $${baseline.grandTotalTax.toLocaleString()} across ${baseline.statesAssessed} state(s); resulting: $${scenario.grandTotalTax.toLocaleString()} across ${scenario.statesAssessed} state(s).`,
-      `Net change: $${(scenario.grandTotalTax - baseline.grandTotalTax).toLocaleString()}.`,
+      `Baseline land tax: $${baseline.grandTotalTax.toNumber().toLocaleString()} across ${baseline.statesAssessed} state(s); resulting: $${scenario.grandTotalTax.toNumber().toLocaleString()} across ${scenario.statesAssessed} state(s).`,
+      `Net change: $${scenario.grandTotalTax.minus(baseline.grandTotalTax).toNumber().toLocaleString()}.`,
     ].join(' ');
 
     const out: ToolResult = {
@@ -198,11 +198,11 @@ export const runLandTaxScenarioTool: TaxAdvisorTool<RunLandTaxScenarioInput> = {
       citations,
       uncomputed: scenario.uncomputed,
       narrativeText,
-      raw: {
+      raw: serializeDecimalsForJson({
         baseline,
         scenario,
         hypotheticalCount: input.hypotheticalProperties.length,
-      },
+      }),
     };
     return out;
   },

@@ -22,11 +22,12 @@
  */
 
 import {
-  applyCapitalLossNetting,
+  applyCapitalLossNettingDecimal,
   type CapitalLossNettingInput,
   type CgtEvent,
   type CarryForwardLoss,
 } from '@/lib/tax-engine/divisions/capitalLossNetting';
+import { serializeDecimalsForJson } from '@/lib/decimal';
 import type {
   TaxAdvisorTool,
   ToolResult,
@@ -96,13 +97,14 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
       isComplying: input.isComplying,
       isForeignResident: input.isForeignResident,
     };
-    const baseline = applyCapitalLossNetting(baselineInput);
+    // Q-DEC PR 3.D — Decimal engine.
+    const baseline = applyCapitalLossNettingDecimal(baselineInput);
 
     const scenarioInput: CapitalLossNettingInput = {
       ...baselineInput,
       events: [...input.currentEvents, ...input.hypotheticalEvents],
     };
-    const scenario = applyCapitalLossNetting(scenarioInput);
+    const scenario = applyCapitalLossNettingDecimal(scenarioInput);
 
     // Pull citations from baseline (both runs share the same authority).
     const citations: IdentifiedCitation[] = baseline.citations.map((c, i) => ({
@@ -123,14 +125,14 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
     const numericFields: NumericField[] = [
       {
         path: 'scenario.baseline.assessableNetCapitalGain',
-        value: baseline.assessableNetCapitalGain,
+        value: baseline.assessableNetCapitalGain.toNumber(),
         unit: 'AUD',
         label: 'Baseline assessable net capital gain (no hypothetical)',
         citationIds: allCitationIds,
       },
       {
         path: 'scenario.baseline.netGainBeforeDiscount',
-        value: baseline.netGainBeforeDiscount,
+        value: baseline.netGainBeforeDiscount.toNumber(),
         unit: 'AUD',
         label: 'Baseline net gain after losses, before discount',
         citationIds: allCitationIds,
@@ -158,23 +160,21 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
       },
       {
         path: 'scenario.result.assessableNetCapitalGain',
-        value: scenario.assessableNetCapitalGain,
+        value: scenario.assessableNetCapitalGain.toNumber(),
         unit: 'AUD',
         label: 'Resulting assessable net capital gain (with hypothetical)',
         citationIds: allCitationIds,
       },
       {
         path: 'scenario.result.netGainBeforeDiscount',
-        value: scenario.netGainBeforeDiscount,
+        value: scenario.netGainBeforeDiscount.toNumber(),
         unit: 'AUD',
         label: 'Resulting net gain after losses, before discount',
         citationIds: allCitationIds,
       },
       {
         path: 'scenario.delta.assessableNetCapitalGain',
-        value:
-          scenario.assessableNetCapitalGain -
-          baseline.assessableNetCapitalGain,
+        value: scenario.assessableNetCapitalGain.minus(baseline.assessableNetCapitalGain).toNumber(),
         unit: 'AUD',
         label:
           'Change in assessable net capital gain (scenario − baseline)',
@@ -182,8 +182,7 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
       },
       {
         path: 'scenario.delta.netGainBeforeDiscount',
-        value:
-          scenario.netGainBeforeDiscount - baseline.netGainBeforeDiscount,
+        value: scenario.netGainBeforeDiscount.minus(baseline.netGainBeforeDiscount).toNumber(),
         unit: 'AUD',
         label:
           'Change in pre-discount net gain (scenario − baseline)',
@@ -193,8 +192,8 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
 
     const narrativeText = [
       `Scenario: appending ${input.hypotheticalEvents.length} hypothetical CGT event(s) — $${sumHypotheticalGain.toLocaleString()} hypothetical gains, $${sumHypotheticalLoss.toLocaleString()} hypothetical losses [cit:cit-1].`,
-      `Baseline assessable net CG: $${baseline.assessableNetCapitalGain.toLocaleString()}; resulting: $${scenario.assessableNetCapitalGain.toLocaleString()}.`,
-      `Pre-discount net gain shifts from $${baseline.netGainBeforeDiscount.toLocaleString()} to $${scenario.netGainBeforeDiscount.toLocaleString()}.`,
+      `Baseline assessable net CG: $${baseline.assessableNetCapitalGain.toNumber().toLocaleString()}; resulting: $${scenario.assessableNetCapitalGain.toNumber().toLocaleString()}.`,
+      `Pre-discount net gain shifts from $${baseline.netGainBeforeDiscount.toNumber().toLocaleString()} to $${scenario.netGainBeforeDiscount.toNumber().toLocaleString()}.`,
     ].join(' ');
 
     const out: ToolResult = {
@@ -207,11 +206,11 @@ export const runCgtScenarioTool: TaxAdvisorTool<RunCgtScenarioInput> = {
         ...(scenario.uncomputed ?? []),
       ],
       narrativeText,
-      raw: {
+      raw: serializeDecimalsForJson({
         baseline,
         scenario,
         hypotheticalEventCount: input.hypotheticalEvents.length,
-      },
+      }),
     };
     return out;
   },
