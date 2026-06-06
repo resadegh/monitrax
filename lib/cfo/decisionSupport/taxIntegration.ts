@@ -12,8 +12,9 @@ import {
   getCurrentFinancialYear,
 } from '@/lib/tax-engine';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
-import { toAnnual } from '@/lib/utils/frequencies';
+import { toAnnual, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 import type { IncomeItem, ExpenseItem, DepreciationItem } from '@/lib/tax-engine/position/taxPositionCalculator';
 
 // ============================================================================
@@ -526,3 +527,105 @@ function calculateConfidenceLevel(
 // ============================================================================
 
 export { calculateDaysUntilEOFY };
+
+// ============================================================================
+// Q-DEC PR 2.E.3 — Decimal sibling helpers
+// ============================================================================
+
+/**
+ * Compact shape compatible with `getDetailedHoldings` rows — only the
+ * fields `calculateUnrealisedCGT` reads. Avoids exporting `any[]`.
+ */
+export interface CgtHoldingDecimalInput {
+  units: number | string | Decimal;
+  averagePrice: number | string | Decimal;
+  currentPrice: number | string | Decimal | null;
+}
+
+/**
+ * Decimal sibling of the private `calculateUnrealisedCGT`. Per-holding
+ * gain = `units × (currentPrice ?? averagePrice − averagePrice) × units`;
+ * 50% CGT discount applied to positive gains only. Returns total
+ * unrealised CGT-discountable gain in Decimal.
+ *
+ * Note this preserves the Float-side simplification — it ALWAYS applies
+ * the 50% discount, NOT conditionally on the >12-month hold (per the
+ * Float-side comment "simplified"). The reform-aware CGT engines in
+ * `lib/tax-engine/divisions/cgt*` are the SSOT for proper holding-period
+ * + regime gating; this helper is a portfolio-overview heuristic only.
+ */
+export function calculateUnrealisedCGTDecimal(
+  holdings: CgtHoldingDecimalInput[],
+): Decimal {
+  const zero = new Decimal(0);
+  let total = zero;
+  for (const h of holdings) {
+    const units = toDecimal(h.units) ?? zero;
+    const avg = toDecimal(h.averagePrice) ?? zero;
+    const cur = toDecimal(h.currentPrice ?? avg) ?? avg;
+    const currentValue = units.times(cur);
+    const costBase = units.times(avg);
+    const gain = currentValue.minus(costBase);
+    if (gain.gt(0)) {
+      total = total.plus(gain.times('0.5'));
+    }
+  }
+  return total;
+}
+
+/**
+ * Compact shape compatible with the property rows `calculateNegativeGearingBenefit`
+ * reads (only the fields it actually uses).
+ */
+export interface NegativeGearingPropertyDecimalInput {
+  type: string;
+  income: Array<{ amount: number | string | Decimal; frequency: string }>;
+  expenses: Array<{ amount: number | string | Decimal; frequency: string }>;
+  loans: Array<{ principal: number | string | Decimal; interestRateAnnual?: number | string | Decimal | null }>;
+}
+
+/**
+ * Decimal sibling of the private `calculateNegativeGearingBenefit`. Per
+ * INVESTMENT property: `annualIncome − annualExpenses − annualLoanInterest`.
+ * Negative net income is treated as a tax deduction at the user's marginal
+ * rate (passed as percentage, e.g. 37 = 37%). Mirrors Float bit-for-bit.
+ *
+ * Reform-aware: §12.14 FW-1 Measure 1 (negative gearing → new-builds only
+ * for post-cutover acquisitions) is enforced in the canonical
+ * `applyNegativeGearingDecimal` engine in `lib/tax-engine/divisions/negativeGearing.ts`.
+ * This helper is a portfolio-overview heuristic that aggregates net
+ * property cashflow assuming pre-reform grandfathered treatment — the
+ * caller-side regime gating happens in the AI advisor + the master tax
+ * position. FW-1 outcome (a) here.
+ */
+export function calculateNegativeGearingBenefitDecimal(
+  properties: NegativeGearingPropertyDecimalInput[],
+  marginalRate: number | string | Decimal,
+): Decimal {
+  const zero = new Decimal(0);
+  const mRate = (toDecimal(marginalRate) ?? zero).div(100);
+  let total = zero;
+  for (const property of properties) {
+    if (property.type !== 'INVESTMENT') continue;
+
+    const annualIncome = property.income.reduce(
+      (acc, i) => acc.plus(toAnnualDecimal(i.amount, i.frequency as Frequency)),
+      zero,
+    );
+    const annualExpenses = property.expenses.reduce(
+      (acc, e) => acc.plus(toAnnualDecimal(e.amount, e.frequency as Frequency)),
+      zero,
+    );
+    const annualLoanInterest = property.loans.reduce((acc, l) => {
+      const p = toDecimal(l.principal) ?? zero;
+      const r = toDecimal(l.interestRateAnnual ?? 0) ?? zero;
+      return acc.plus(p.times(r));
+    }, zero);
+
+    const netPropertyIncome = annualIncome.minus(annualExpenses).minus(annualLoanInterest);
+    if (netPropertyIncome.lt(0)) {
+      total = total.plus(netPropertyIncome.abs().times(mRate));
+    }
+  }
+  return total;
+}
