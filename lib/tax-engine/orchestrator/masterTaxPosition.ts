@@ -376,3 +376,277 @@ export function buildMasterTaxPosition(
     computedAt: new Date().toISOString(),
   };
 }
+
+// ============================================================================
+// Q-DEC PR 3.A — Decimal sibling
+// ============================================================================
+
+import { Decimal } from '@/lib/decimal';
+import {
+  calculateEntityTaxPositionDecimal,
+  type EntityTaxPositionDecimal,
+} from '../entity/entityTaxRouter';
+import {
+  calculateCrossStateLandTaxDecimal,
+  type CrossStateLandTaxResultDecimal,
+} from '../landTax/crossStateAggregator';
+import {
+  calculateStampDutyDecimal,
+  type StampDutyResultDecimal,
+} from '../stampDuty/stateStampDuty';
+import {
+  calculateGstDecimal,
+  type GstResultDecimal,
+} from '../gst/gstCalculator';
+import {
+  applyTrustLossRulesDecimal,
+  type TrustLossResultDecimal,
+} from '../divisions/trustLossRules';
+import {
+  applyCompanyLossRulesDecimal,
+  type CompanyLossResultDecimal,
+} from '../divisions/companyLossRules';
+
+export interface CrossCuttingTaxResultDecimal {
+  landTax?: CrossStateLandTaxResultDecimal;
+  stampDuty?: {
+    perTransaction: Array<{
+      transactionId: string;
+      state: AustralianState;
+      result: StampDutyResultDecimal;
+    }>;
+    total: Decimal;
+  };
+  gst?: GstResultDecimal;
+  trustLossByEntity?: Record<string, TrustLossResultDecimal>;
+  companyLossByEntity?: Record<string, CompanyLossResultDecimal>;
+  /** Phase 41f.4 deed-validation overlay — categorical (citations + UNCOMPUTED only); reuses Float result type. */
+  trustDeedValidationByEntity?: Record<string, TrustDeedValidationResult>;
+}
+
+export interface MasterTaxPositionDecimal {
+  userId: string;
+  fy: FYReference;
+  entities: EntityTaxPositionDecimal[];
+  totals: {
+    assessableIncome: Decimal;
+    taxableIncome: Decimal;
+    netTax: Decimal;
+    paygWithheld: Decimal;
+    estimatedRefund: Decimal;
+  };
+  crossCutting?: CrossCuttingTaxResultDecimal;
+  authoritySources: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+  boundary: BoundaryFootnote;
+  modulesInvoked: string[];
+  computedAt: string;
+}
+
+/**
+ * Decimal sibling of `buildMasterTaxPosition`. Same pipeline; each
+ * downstream engine call is the `*Decimal` sibling. Totals aggregation
+ * stays in Decimal. Categorical overlays (trust-deed validation) reuse
+ * the Float result type since their numeric leaves are absent —
+ * citations + UNCOMPUTED only.
+ *
+ * Deferred from PR 2.D.3d per the scope decision: the composer-tier
+ * Decimal sibling has no marginal benefit until downstream engines AND
+ * the entity router are Decimal-capable. The entity router Decimal
+ * sibling ships in the same PR as this one.
+ */
+export function buildMasterTaxPositionDecimal(
+  input: MasterTaxPositionInput,
+): MasterTaxPositionDecimal {
+  const modulesInvoked: string[] = ['entityTaxRouter'];
+  const zero = new Decimal(0);
+
+  // 1. Per-entity dispatch — Decimal path.
+  const entities: EntityTaxPositionDecimal[] = input.entities.map((facts) =>
+    calculateEntityTaxPositionDecimal(facts),
+  );
+
+  // 2. Cross-cutting modules — each on Decimal path.
+  const crossCutting: CrossCuttingTaxResultDecimal = {};
+
+  if (input.landTax && input.landTax.properties.length > 0) {
+    crossCutting.landTax = calculateCrossStateLandTaxDecimal(input.landTax);
+    modulesInvoked.push('crossStateLandTax');
+  }
+
+  if (input.stampDutyTransactions && input.stampDutyTransactions.length > 0) {
+    const perTransaction: NonNullable<CrossCuttingTaxResultDecimal['stampDuty']>['perTransaction'] = [];
+    let total = zero;
+    for (const tx of input.stampDutyTransactions) {
+      const config = getStampDutyConfig(tx.state);
+      const stampInput: StampDutyInput = {
+        purchaserType: 'INDIVIDUAL',
+        ...tx.input,
+      };
+      const result = calculateStampDutyDecimal(stampInput, config);
+      perTransaction.push({
+        transactionId: tx.transactionId,
+        state: tx.state,
+        result,
+      });
+      total = total.plus(result.totalDuty);
+    }
+    crossCutting.stampDuty = { perTransaction, total };
+    modulesInvoked.push('stampDuty');
+  }
+
+  if (input.gst) {
+    crossCutting.gst = calculateGstDecimal(input.gst);
+    modulesInvoked.push('gst');
+  }
+
+  // 3. Per-entity loss-rule overlays.
+  if (input.trustLossByEntity) {
+    crossCutting.trustLossByEntity = {};
+    for (const [entityId, lossInput] of Object.entries(input.trustLossByEntity)) {
+      crossCutting.trustLossByEntity[entityId] = applyTrustLossRulesDecimal(lossInput);
+    }
+    modulesInvoked.push('trustLossRules');
+  }
+
+  if (input.companyLossByEntity) {
+    crossCutting.companyLossByEntity = {};
+    for (const [entityId, lossInput] of Object.entries(input.companyLossByEntity)) {
+      crossCutting.companyLossByEntity[entityId] = applyCompanyLossRulesDecimal(lossInput);
+    }
+    modulesInvoked.push('companyLossRules');
+  }
+
+  // 3.5 Trust-deed validation overlay (categorical — Float result reused).
+  if (input.confirmedDeedRulesByEntity) {
+    crossCutting.trustDeedValidationByEntity = {};
+    let ranAtLeastOnce = false;
+    for (const facts of input.entities) {
+      const deed = input.confirmedDeedRulesByEntity[facts.entityId];
+      if (!deed) continue;
+      const result = validateTrustDistributionAgainstDeed(facts, deed);
+      if (result.citations.length > 0 || result.uncomputed.length > 0) {
+        crossCutting.trustDeedValidationByEntity[facts.entityId] = result;
+      }
+      ranAtLeastOnce = true;
+    }
+    if (ranAtLeastOnce) modulesInvoked.push('trustDeedValidation');
+  }
+
+  // 4. Aggregate household totals from entities — Decimal arithmetic.
+  let assessableIncome = zero;
+  let taxableIncome = zero;
+  let netTax = zero;
+  let paygWithheld = zero;
+
+  for (const entity of entities) {
+    // PERSONAL_NAME / SOLE_TRADER result shape — TaxPositionResultDecimal.
+    // Other entity types: result either has no `tax` block or is null;
+    // totals aggregate only what's present, mirroring the Float behaviour.
+    const r = entity.result as
+      | {
+          tax?: { assessableIncome?: Decimal; taxableIncome?: Decimal; netTax?: Decimal };
+          paygWithheld?: Decimal;
+        }
+      | null
+      | undefined;
+    if (r && typeof r === 'object') {
+      if (r.tax?.assessableIncome) assessableIncome = assessableIncome.plus(r.tax.assessableIncome);
+      if (r.tax?.taxableIncome) taxableIncome = taxableIncome.plus(r.tax.taxableIncome);
+      if (r.tax?.netTax) netTax = netTax.plus(r.tax.netTax);
+      if (r.paygWithheld) paygWithheld = paygWithheld.plus(r.paygWithheld);
+    }
+  }
+
+  const estimatedRefund = paygWithheld.minus(netTax);
+
+  // 4b. Aggregate citations + UNCOMPUTED.
+  const citationKey = (c: AuthorityCitation) => `${c.kind}|${c.reference}`;
+  const seenCit = new Set<string>();
+  const authoritySources: AuthorityCitation[] = [];
+  const seenUc = new Set<string>();
+  const uncomputed: UncomputedFlag[] = [];
+
+  const ingestCitations = (cs: AuthorityCitation[] | undefined) => {
+    if (!cs) return;
+    for (const c of cs) {
+      const k = citationKey(c);
+      if (!seenCit.has(k)) {
+        seenCit.add(k);
+        authoritySources.push(c);
+      }
+    }
+  };
+  const ingestUncomputed = (us: UncomputedFlag[] | undefined) => {
+    if (!us) return;
+    for (const u of us) {
+      if (!seenUc.has(u.id)) {
+        seenUc.add(u.id);
+        uncomputed.push(u);
+      }
+    }
+  };
+
+  for (const entity of entities) {
+    ingestCitations(entity.citations);
+    ingestUncomputed(entity.uncomputed);
+  }
+  if (crossCutting.landTax) {
+    ingestCitations(crossCutting.landTax.citations);
+    ingestUncomputed(crossCutting.landTax.uncomputed);
+  }
+  if (crossCutting.stampDuty) {
+    for (const tx of crossCutting.stampDuty.perTransaction) {
+      ingestCitations(tx.result.citations);
+      ingestUncomputed(tx.result.uncomputed);
+    }
+  }
+  if (crossCutting.gst) {
+    ingestCitations(crossCutting.gst.citations);
+    ingestUncomputed(crossCutting.gst.uncomputed);
+  }
+  if (crossCutting.trustLossByEntity) {
+    for (const r of Object.values(crossCutting.trustLossByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.companyLossByEntity) {
+    for (const r of Object.values(crossCutting.companyLossByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+  if (crossCutting.trustDeedValidationByEntity) {
+    for (const r of Object.values(crossCutting.trustDeedValidationByEntity)) {
+      ingestCitations(r.citations);
+      ingestUncomputed(r.uncomputed);
+    }
+  }
+
+  const boundary = renderBoundaryFootnote({
+    citations: authoritySources,
+    uncomputed,
+    fyLabel: input.fy.financialYear ?? 'current FY',
+  });
+
+  return {
+    userId: input.userId,
+    fy: input.fy,
+    entities,
+    totals: {
+      assessableIncome,
+      taxableIncome,
+      netTax,
+      paygWithheld,
+      estimatedRefund,
+    },
+    crossCutting:
+      Object.keys(crossCutting).length > 0 ? crossCutting : undefined,
+    authoritySources,
+    uncomputed,
+    boundary,
+    modulesInvoked,
+    computedAt: new Date().toISOString(),
+  };
+}
