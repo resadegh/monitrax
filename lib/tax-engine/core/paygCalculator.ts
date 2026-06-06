@@ -352,3 +352,68 @@ export function getPAYGSummary(
     effectiveRate: annualGross > 0 ? (payg.annualWithholding / annualGross) * 100 : 0,
   };
 }
+
+/**
+ * Decimal sibling of `calculateGrossFromNet`. Iterative binary search
+ * — same convergence behaviour as Float (tolerance 0.01, max 50
+ * iterations). Internal arithmetic in Decimal; PAYG lookup via
+ * `calculatePAYGDecimal`.
+ */
+export function calculateGrossFromNetDecimal(
+  netIncome: number | string | Decimal,
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+  hasTaxFreeThreshold: boolean = true,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): { gross: Decimal; tax: Decimal; iterations: number } {
+  const netDec = toDecimal(netIncome) ?? new Decimal(0);
+  let low = netDec;
+  let high = netDec.times(2);
+  let iterations = 0;
+  const maxIterations = 50;
+  const tolerance = new Decimal('0.01');
+
+  // Convert weekly withholding to caller frequency.
+  const fromWeeklyDecimal = (weekly: Decimal): Decimal => {
+    switch (frequency) {
+      case 'WEEKLY':
+        return weekly;
+      case 'FORTNIGHTLY':
+        return weekly.times(2);
+      case 'MONTHLY':
+        return weekly.times(52).div(12);
+      case 'QUARTERLY':
+        return weekly.times(52).div(4);
+      case 'ANNUALLY':
+        return weekly.times(52);
+    }
+  };
+
+  while (iterations < maxIterations) {
+    const mid = low.plus(high).div(2);
+    const payg = calculatePAYGDecimal({ grossIncome: mid, frequency, hasTaxFreeThreshold });
+    const taxAtFrequency = fromWeeklyDecimal(payg.weeklyWithholding);
+    const calculatedNet = mid.minus(taxAtFrequency);
+
+    if (calculatedNet.minus(netDec).abs().lt(tolerance)) {
+      return {
+        gross: mid.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
+        tax: taxAtFrequency,
+        iterations,
+      };
+    }
+    if (calculatedNet.lt(netDec)) {
+      low = mid;
+    } else {
+      high = mid;
+    }
+    iterations += 1;
+  }
+
+  const finalGross = low.plus(high).div(2);
+  const finalPayg = calculatePAYGDecimal({ grossIncome: finalGross, frequency, hasTaxFreeThreshold });
+  return {
+    gross: finalGross.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
+    tax: fromWeeklyDecimal(finalPayg.weeklyWithholding),
+    iterations,
+  };
+}

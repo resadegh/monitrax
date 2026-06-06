@@ -5,10 +5,11 @@
 
 import { TaxYearConfig, SalaryInput, SalaryBreakdown, CalculationStep } from '../types';
 import { getCurrentTaxYearConfig } from '../config/taxYearConfig';
-import { calculatePAYG, calculateGrossFromNet } from '../core/paygCalculator';
-import { calculateMedicareLevy } from '../core/medicareLevyCalculator';
-import { toAnnual, periodsPerYear } from '@/lib/utils/frequencies';
+import { calculatePAYG, calculateGrossFromNet, calculatePAYGDecimal, calculateGrossFromNetDecimal } from '../core/paygCalculator';
+import { calculateMedicareLevy, calculateMedicareLevyDecimal } from '../core/medicareLevyCalculator';
+import { toAnnual, periodsPerYear, toAnnualDecimal } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 // =============================================================================
 // Frequency Conversion Helpers - Use centralized utilities from lib/utils/frequencies.ts
@@ -354,6 +355,121 @@ export function compareSalaryScenarios(
       net: result2.netSalary - result1.netSalary,
       tax: result2.totalTax - result1.totalTax,
       super: result2.totalSuper - result1.totalSuper,
+    },
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3d — Decimal sibling path
+// =============================================================================
+
+export interface SalaryBreakdownDecimal {
+  grossSalary: Decimal;
+  netSalary: Decimal;
+  superGuarantee: Decimal;
+  salarySacrifice: Decimal;
+  totalSuper: Decimal;
+  taxableIncome: Decimal;
+  paygWithholding: Decimal;
+  medicareLevy: Decimal;
+  totalTax: Decimal;
+  perPeriod: {
+    gross: Decimal;
+    super: Decimal;
+    tax: Decimal;
+    net: Decimal;
+    frequency: SalaryInput['payFrequency'];
+  };
+}
+
+/**
+ * Decimal sibling of `processSalary`. Composes:
+ *   - `toAnnualDecimal` for frequency annualisation
+ *   - `calculateGrossFromNetDecimal` (binary search) for NET → GROSS
+ *   - `calculatePAYGDecimal` (NAT 1004 with whole-dollar rounding preserved)
+ *   - `calculateMedicareLevyDecimal` (shade-in + surcharge)
+ *
+ * Final outputs rounded to 2 dp HALF_EVEN to match Float's
+ * `Math.round(x * 100) / 100`.
+ */
+export function processSalaryDecimal(
+  input: SalaryInput,
+  config: TaxYearConfig = getCurrentTaxYearConfig(),
+): SalaryBreakdownDecimal {
+  const {
+    amount,
+    salaryType,
+    payFrequency,
+    salarySacrifice = 0,
+    salarySacrificeFrequency = payFrequency,
+    hasTaxFreeThreshold = true,
+  } = input;
+
+  const amountDec = toDecimal(amount) ?? new Decimal(0);
+  const annualizeDecimal = (val: number | string | Decimal, freq: string): Decimal =>
+    toAnnualDecimal(val, freq as Frequency);
+
+  let annualGross: Decimal;
+  let annualNet: Decimal = new Decimal(0);
+  let userProvidedNet = false;
+
+  if (salaryType === 'GROSS') {
+    annualGross = annualizeDecimal(amountDec, payFrequency);
+  } else {
+    const annualNetInput = annualizeDecimal(amountDec, payFrequency);
+    annualNet = annualNetInput;
+    userProvidedNet = true;
+    const reverseCalc = calculateGrossFromNetDecimal(annualNetInput, 'ANNUALLY', hasTaxFreeThreshold, config);
+    annualGross = reverseCalc.gross;
+  }
+
+  const annualSalarySacrifice = annualizeDecimal(salarySacrifice, salarySacrificeFrequency);
+  const taxableIncome = annualGross.minus(annualSalarySacrifice);
+
+  const paygResult = calculatePAYGDecimal({
+    grossIncome: taxableIncome,
+    frequency: 'ANNUALLY',
+    hasTaxFreeThreshold,
+  });
+  const medicareResult = calculateMedicareLevyDecimal({ taxableIncome }, config);
+  const totalTax = paygResult.annualWithholding.plus(medicareResult.total);
+
+  if (!userProvidedNet) {
+    annualNet = annualGross.minus(totalTax).minus(annualSalarySacrifice);
+  }
+
+  const superGuarantee = annualGross.times(config.superGuaranteeRate);
+  const totalSuper = superGuarantee.plus(annualSalarySacrifice);
+
+  const periodsPerYearDec = new Decimal(periodsPerYear(payFrequency as Frequency));
+  const deannualizeDec = (annual: Decimal): Decimal => annual.div(periodsPerYearDec);
+
+  const perPeriod = {
+    gross: deannualizeDec(annualGross),
+    super: deannualizeDec(totalSuper),
+    tax: deannualizeDec(totalTax),
+    net: deannualizeDec(annualNet),
+    frequency: payFrequency,
+  };
+
+  const round2 = (v: Decimal): Decimal => v.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
+
+  return {
+    grossSalary: round2(annualGross),
+    netSalary: round2(annualNet),
+    superGuarantee: round2(superGuarantee),
+    salarySacrifice: round2(annualSalarySacrifice),
+    totalSuper: round2(totalSuper),
+    taxableIncome: round2(taxableIncome),
+    paygWithholding: round2(paygResult.annualWithholding),
+    medicareLevy: round2(medicareResult.total),
+    totalTax: round2(totalTax),
+    perPeriod: {
+      gross: round2(perPeriod.gross),
+      super: round2(perPeriod.super),
+      tax: round2(perPeriod.tax),
+      net: round2(perPeriod.net),
+      frequency: perPeriod.frequency,
     },
   };
 }
