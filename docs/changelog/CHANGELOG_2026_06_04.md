@@ -657,3 +657,55 @@ NONE — additive code only.
 
 - PR 2.D.3c2 — beneficiary allocation + business concessions (trustDistribution, div7aLoanClassifier, div152SmallBusinessConcessions).
 - PR 2.D.3d — composers + remaining (entity/, orchestrator/masterTaxPosition, super/smsfIncomeTax, income/salaryProcessor).
+
+---
+
+## Session: qdec-pr2d3c2-trustdist-div7a-div152-LIlK9
+
+### Changes Made
+
+- **Type**: Feature / Foundation — beneficiary allocation + business concessions
+- **Scope**: Q-DEC PR 2.D.3c2 — `trustDistribution.allocateTrustDistribution`, `div7aLoanClassifier.calculateMinimumYearlyRepayment + classifyDiv7ALoans`, `div152SmallBusinessConcessions.applyDiv152` Decimal siblings
+- **Description**: Follow-up to PR 2.D.3c that ships the deferred "math-bearing" division engines from the original D.3c plan. Three engines with real arithmetic — Div 6 beneficiary share allocation, Div 7A amortising-annuity MRP + surplus cap pro-rata, Div 152 four-concession stack.
+
+### Files Modified (Decimal siblings appended)
+
+- `lib/tax-engine/divisions/trustDistribution.ts` — `allocateTrustDistributionDecimal` + Decimal types. Same Div 6 mechanism: share validation (negative throws, totalShare > 1 + 1e-9 throws), pro-rata character-pool distribution (or explicit streaming when valid), s99A trustee penalty arithmetic. `classifyS100AZones` (categorical) called inline with `.toNumber()` boundary — same defensible bridge as taxabilityRules in PR 2.D.2b.
+- `lib/tax-engine/divisions/div7aLoanClassifier.ts` — `calculateMinimumYearlyRepaymentDecimal` (exact amortising annuity via `Decimal.pow`) + `classifyDiv7ALoansDecimal`. Surplus-cap pro-rata preserved (`toDecimalPlaces(2, ROUND_HALF_EVEN)` mirrors Float's `Math.round(x * 100) / 100`). Degenerate cases preserved: openingBalance ≤ 0 / yearsRemaining ≤ 0 → 0; benchmarkRate ≤ 0 → straight-line balance/n.
+- `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` — `applyDiv152Decimal`. 15-year exemption → 50% reduction → retirement (capped $500k lifetime via `Decimal.min` + `Decimal.max`) → rollover. UC-DIV152-AGGREGATION boundary trigger preserved (`maxNetAssetValue` between 80%-120% of threshold).
+
+### Files Created
+
+- `lib/calc-audit/engines/decimal-tax-engine-beneficiary-concessions.ts` — 3 shadow engines (trustDistribution × 5, div7a × 5, div152 × 6 = 16 fixtures)
+- `tests/tax-engine/beneficiary-concessions.decimal.test.ts` — 33 tests (16 shadow + 16 contract + 1 aggregate)
+
+### Architectural notes
+
+- **`Math.pow` preserved via `Decimal.pow(yearsRemaining)`** — integer exponent keeps the annuity formula exact. Both paths produce ~9603.62 MRP for $50k/7yr/8% (Float `Math.pow` and Decimal `.pow` agree to within currency tolerance).
+- **`totalShare > 1.0 + 1e-9` over-distribution check preserved literally** — `new Decimal(1).plus('1e-9')` mirrors Float's epsilon tolerance.
+- **`Math.round(deemedDividendAmount * capRatio * 100) / 100` preserved** as `.toDecimalPlaces(2, ROUND_HALF_EVEN)` on the surplus-cap pro-rata branch.
+- **`classifyS100AZones` Float-bridge** — categorical classifier (returns string zones + uncomputed flags), no money math. Decimal sibling calls Float version with `.toNumber()` boundary conversion. Same defensible bridge pattern as PR 2.D.2b's `determineTaxabilityDecimal`.
+
+### Testing
+
+- [x] 33 new tests pass + 1188 existing Q-DEC scope tests still pass (1221 total)
+- [x] `tsc --noEmit` clean on every new/touched file
+- [x] Shadow report PASS on all 16 fixtures across the 3 engines
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+- [ ] visual / design / config / GCP / identity / deploy / security / runbook
+- [x] strategic decision (PR 2.D.3c2 row flipped to IN FLIGHT)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No reform-aware engines in this PR — trustDistribution / div7a / div152 are reform-agnostic (FW-1 outcome a).
+- [x] No new schema columns. No new AI tool. No UI surface.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — additive code only.
+
+### Next
+
+- PR 2.D.3d — composers + remaining (entity/, orchestrator/masterTaxPosition, super/smsfIncomeTax, income/salaryProcessor).

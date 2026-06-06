@@ -44,6 +44,7 @@
  */
 
 import type { AuthorityCitation, UncomputedFlag } from '../types';
+import { Decimal, toDecimal } from '@/lib/decimal';
 
 export interface Div152Input {
   /**
@@ -284,6 +285,201 @@ export function applyDiv152(input: Div152Input): Div152Result {
     citations.push({ kind: 'ITAA_1997', reference: 's152-410', lastReviewed: '2026-05-05' });
     rolloverApplied = runningGain;
     runningGain = 0;
+    steps.push({
+      concession: 'Small business rollover (s152-410)',
+      reduction: rolloverApplied,
+      runningGain,
+      citation: 's152-410',
+    });
+    uncomputed.push({
+      id: 'UC-DIV152-ROLLOVER',
+      rationale:
+        'Small business rollover under s152-410 deferred. Caller must acquire replacement asset (or improve existing) within 2 years OR the deferred gain is recognised in the FY the replacement period ends. Replacement-asset tracking lands in a future sub-PR.',
+      citation: { kind: 'ITAA_1997', reference: 's152-410', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  return {
+    basicConditionsMet: true,
+    fifteenYearExemptionApplied: false,
+    activeAssetReductionApplied,
+    retirementExemptionApplied,
+    rolloverApplied,
+    assessableGain: runningGain,
+    steps,
+    citations,
+    uncomputed,
+  };
+}
+
+// =============================================================================
+// Q-DEC PR 2.D.3c2 — Decimal sibling path
+// =============================================================================
+
+export interface Div152InputDecimal {
+  gainAfterDiv115: number | string | Decimal;
+  maxNetAssetValue: number | string | Decimal;
+  aggregatedTurnover: number | string | Decimal;
+  isActiveAsset: boolean;
+  monthsHeld: number;
+  isRetirementOrIncapacity: boolean;
+  electActiveAssetReduction?: boolean;
+  electRetirementExemption?: boolean;
+  retirementExemptionUsedToDate?: number | string | Decimal;
+  electRollover?: boolean;
+}
+
+export interface Div152ResultDecimal {
+  basicConditionsMet: boolean;
+  fifteenYearExemptionApplied: boolean;
+  activeAssetReductionApplied: boolean;
+  retirementExemptionApplied: Decimal;
+  rolloverApplied: Decimal;
+  assessableGain: Decimal;
+  steps: Array<{
+    concession: string;
+    reduction: Decimal;
+    runningGain: Decimal;
+    citation: string;
+  }>;
+  citations: AuthorityCitation[];
+  uncomputed: UncomputedFlag[];
+}
+
+/**
+ * Decimal sibling of `applyDiv152`. Stacks: 15-year exemption → 50%
+ * active asset reduction → retirement exemption (capped $500k lifetime)
+ * → rollover. Preserves the s152-310 lifetime cap arithmetic via
+ * `Decimal.min` + `Decimal.max`.
+ */
+export function applyDiv152Decimal(input: Div152InputDecimal): Div152ResultDecimal {
+  const zero = new Decimal(0);
+  const gainAfterDiv115 = toDecimal(input.gainAfterDiv115) ?? zero;
+  const maxNetAssetValue = toDecimal(input.maxNetAssetValue) ?? zero;
+  const aggregatedTurnover = toDecimal(input.aggregatedTurnover) ?? zero;
+  const retirementExemptionUsedToDate = toDecimal(input.retirementExemptionUsedToDate ?? 0) ?? zero;
+  const {
+    isActiveAsset,
+    monthsHeld,
+    isRetirementOrIncapacity,
+    electActiveAssetReduction = true,
+    electRetirementExemption = false,
+    electRollover = false,
+  } = input;
+
+  const citations: AuthorityCitation[] = [...BASE_CITATIONS];
+  const uncomputed: UncomputedFlag[] = [];
+  const steps: Div152ResultDecimal['steps'] = [];
+
+  const mnavThreshold = new Decimal(MNAV_THRESHOLD);
+  const turnoverThreshold = new Decimal(TURNOVER_THRESHOLD);
+  const passesMnav = maxNetAssetValue.lte(mnavThreshold);
+  const passesTurnover = aggregatedTurnover.lte(turnoverThreshold);
+  const basicConditionsMet = isActiveAsset && (passesMnav || passesTurnover);
+
+  // Boundary-aggregation warning — same 80%-120% range as Float.
+  const mnavLow = mnavThreshold.times('0.8');
+  const mnavHigh = mnavThreshold.times('1.2');
+  const turnoverLow = turnoverThreshold.times('0.8');
+  const turnoverHigh = turnoverThreshold.times('1.2');
+  if (
+    (maxNetAssetValue.gte(mnavLow) && maxNetAssetValue.lte(mnavHigh)) ||
+    (aggregatedTurnover.gte(turnoverLow) && aggregatedTurnover.lte(turnoverHigh))
+  ) {
+    uncomputed.push({
+      id: 'UC-DIV152-AGGREGATION',
+      rationale:
+        'MNAV or aggregated turnover is near the s152-15/s152-20 threshold. Per s152-15(2) the taxpayer must aggregate connected entities + affiliates — v1 takes caller-provided figures at face value. Engage a registered tax agent to confirm aggregation before claiming Div 152 concessions.',
+      citation: { kind: 'ITAA_1997', reference: 's152-15', lastReviewed: '2026-05-05' },
+    });
+  }
+
+  if (!basicConditionsMet) {
+    return {
+      basicConditionsMet: false,
+      fifteenYearExemptionApplied: false,
+      activeAssetReductionApplied: false,
+      retirementExemptionApplied: zero,
+      rolloverApplied: zero,
+      assessableGain: gainAfterDiv115,
+      steps: [
+        { concession: 'Basic conditions not met', reduction: zero, runningGain: gainAfterDiv115, citation: 's152-10' },
+      ],
+      citations,
+      uncomputed,
+    };
+  }
+
+  let runningGain = Decimal.max(zero, gainAfterDiv115);
+
+  // 15-year exemption.
+  if (monthsHeld >= FIFTEEN_YEAR_MONTHS && isRetirementOrIncapacity) {
+    citations.push({ kind: 'ITAA_1997', reference: 's152-105', lastReviewed: '2026-05-05' });
+    steps.push({
+      concession: '15-year exemption (s152-105)',
+      reduction: runningGain,
+      runningGain: zero,
+      citation: 's152-105',
+    });
+    return {
+      basicConditionsMet: true,
+      fifteenYearExemptionApplied: true,
+      activeAssetReductionApplied: false,
+      retirementExemptionApplied: zero,
+      rolloverApplied: zero,
+      assessableGain: zero,
+      steps,
+      citations,
+      uncomputed,
+    };
+  }
+
+  // 50% active asset reduction.
+  let activeAssetReductionApplied = false;
+  if (electActiveAssetReduction) {
+    citations.push({ kind: 'ITAA_1997', reference: 's152-205', lastReviewed: '2026-05-05' });
+    const reduction = runningGain.times('0.5');
+    runningGain = runningGain.minus(reduction);
+    activeAssetReductionApplied = true;
+    steps.push({
+      concession: '50% active asset reduction (s152-205)',
+      reduction,
+      runningGain,
+      citation: 's152-205',
+    });
+  }
+
+  // Retirement exemption — capped at $500k lifetime.
+  let retirementExemptionApplied = zero;
+  if (electRetirementExemption && runningGain.gt(0)) {
+    citations.push({ kind: 'ITAA_1997', reference: 's152-305', lastReviewed: '2026-05-05' });
+    const cap = new Decimal(RETIREMENT_LIFETIME_CAP);
+    const remainingLifetimeCap = Decimal.max(zero, cap.minus(retirementExemptionUsedToDate));
+    retirementExemptionApplied = Decimal.min(runningGain, remainingLifetimeCap);
+    const gainBeforeRetirementExemption = runningGain;
+    runningGain = runningGain.minus(retirementExemptionApplied);
+    steps.push({
+      concession: 'Retirement exemption (s152-305)',
+      reduction: retirementExemptionApplied,
+      runningGain,
+      citation: 's152-305',
+    });
+    // Float's lifetime-cap warning fires when remaining cap < pre-exemption gain.
+    if (remainingLifetimeCap.lt(gainBeforeRetirementExemption)) {
+      uncomputed.push({
+        id: 'UC-DIV152-RETIREMENT-CAP',
+        rationale: `Retirement exemption capped at $${remainingLifetimeCap.toDecimalPlaces(0).toString()} (remaining lifetime cap). Cumulative cap is $${RETIREMENT_LIFETIME_CAP.toLocaleString()} per s152-310.`,
+        citation: { kind: 'ITAA_1997', reference: 's152-310', lastReviewed: '2026-05-05' },
+      });
+    }
+  }
+
+  // Rollover.
+  let rolloverApplied = zero;
+  if (electRollover && runningGain.gt(0)) {
+    citations.push({ kind: 'ITAA_1997', reference: 's152-410', lastReviewed: '2026-05-05' });
+    rolloverApplied = runningGain;
+    runningGain = zero;
     steps.push({
       concession: 'Small business rollover (s152-410)',
       reduction: rolloverApplied,
