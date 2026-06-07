@@ -711,3 +711,99 @@ N/A — refactor + new test file + doc updates only. No Prisma operations.
 - **Q-DEC PR 4 (Float column drop):** time-gated on 7-day parallel-run window — earliest 2026-06-13.
 - **Phase 45 PR 1 (engine composition):** gated on Q-DEC PR 4.
 - **MA workstream:** STRUCTURALLY COMPLETE. The intel-engine divergence is fully resolved.
+
+---
+
+## Session: Q-DEC PR 4 DRAFT — drop dormant Decimal columns (INVERSE of original plan)
+
+**Branch:** `claude/qdec-pr4-float-drop-LIlK9` (named for the original plan; actual scope inverted)
+**Status:** DRAFT — held for merge 2026-06-13 per Reza directive to preserve 7-day parallel-run window even though structurally a no-op for this scope.
+
+### Strategic finding
+
+Q-DEC was originally documented as "PR 4 drops the Float columns." Audit 2026-06-07 ahead of the planned ship revealed Q-DEC's actual code state is different from the plan:
+
+| Layer | Status |
+|---|---|
+| Schema | Float columns are canonical (single source of truth at data layer) |
+| Engine boundary | Engines read Float from Prisma, immediately convert via `toDecimal()` |
+| Engine arithmetic | All math happens in Decimal precision (decimal.js) |
+| `*Decimal` schema columns | Populated by PR 1/1.5 backfill but NEVER READ |
+
+**Verification:** Grep over `lib/`, `app/`, `components/`, `tests/`:
+- Zero `.purchasePriceDecimal` / `.currentBalanceDecimal` / `.principalDecimal` / `.amountDecimal` reads
+- Zero Prisma `select: { *Decimal: true }` clauses
+- Function names like `getGrossAmountDecimal()` exist, but they're DECIMAL-PRODUCING functions reading from the FLOAT column via `toDecimal()` — they don't read the schema's `*Decimal` column
+
+**Conclusion:** the originally-planned "drop Float" would have broken every engine (35+ files reference `.purchasePrice`, 74+ reference `.currentBalance`, 86+ reference `.principal`). The structurally correct move is to drop the DORMANT `*Decimal` columns. Q-DEC's precision foundation is achieved at the ENGINE boundary, not the DATA layer.
+
+### Reza directive
+
+User picked "Drop the DORMANT `*Decimal` columns (Recommended)" via AskUserQuestion 2026-06-07. Inverted-scope PR 4 approved.
+
+### What changed
+
+1. **`prisma/schema.prisma`** — removed 63 `*Decimal` field declarations across 17 models (Property, Loan, Account, Income, Expense, Transaction, InvestmentAccount, InvestmentHolding, InvestmentTransaction, PurchaseLot, CapitalGainEvent, CapitalGainLotAllocation, RecurringPayment, SuperannuationAccount, SmsfAnnualReturn, SuperContribution, Asset). Also removed 18 orphaned Q-DEC comment lines describing the now-deleted columns.
+
+2. **`prisma/migrations/20260613120000_q_dec_pr4_drop_dormant_decimal_columns/migration.sql`** — NEW. 63 `ALTER TABLE ... DROP COLUMN IF EXISTS` statements with §12.11 destructive-write checklist + rollback runbook embedded as SQL comments.
+
+3. **`docs/IMPLEMENTATION_PLAN.md`** — Q-DEC PR 4 entry updated to document the strategic inversion + the audit finding + the Reza directive.
+
+### Why this is §12.11-safe
+
+The §12.11 destructive-write checklist asks:
+1. **What rows could match?** Every row in each table (schema-level operation, not row-level).
+2. **What columns am I dropping?** 63 `*Decimal` columns. Each is POPULATED but NOT READ by any application code.
+3. **What guard ensures this only affects unused data?** The Grep verification above — zero matches across `lib/`, `app/`, `components/`, `tests/`. Dropping unused columns cannot break callers by definition.
+
+User confirmation: GRANTED 2026-06-07 (Reza via AskUserQuestion).
+
+### Why this preserves the 7-day parallel-run window
+
+The original 7-day gate was designed to surface latent Float vs Decimal divergence before destroying the Decimal sibling data. Since the actual engine flow already produces Decimal precision from Float (via `toDecimal()` at boundary), the parallel-run divergence concern is structurally absent. Dropping the dormant Decimal columns CANNOT introduce regression because they were never the source of truth.
+
+**Nonetheless, the PR is held DRAFT for merge 2026-06-13** to preserve the documented safety window. The 7-day gate becomes belt-and-braces rather than load-bearing.
+
+### Build / test status
+
+- Typecheck: ✅ clean (`npx tsc --noEmit` after `npx prisma generate`)
+- Full vitest sweep: ✅ **2,321 passing, 69 skipped, 0 failures** — zero regressions from the schema change, confirming the columns were truly dormant
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / GCP / identity / deploy / security
+- [x] config (Prisma schema — additive removal of unused columns)
+- [x] operational procedure (migration + audit-findings documentation)
+- [x] strategic decision (Q-DEC closure pivot — drop *Decimal not Float)
+
+Docs updated in this PR:
+- `prisma/schema.prisma` — 63 `*Decimal` declarations + 18 orphaned comments removed
+- `prisma/migrations/20260613120000_q_dec_pr4_drop_dormant_decimal_columns/migration.sql` — NEW
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — Q-DEC PR 4 entry rewritten to reflect strategic inversion
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No reform-aware path changed. The Float columns (which carry reform-affected fields like `Property.acquisitionContractDate` companion data) remain canonical. Engine reform-branching (FW-1/FW-2) unchanged.
+- [x] No new schema columns added (FW-3 N/A — we're REMOVING columns).
+- [x] No new AI tools (FW-4 N/A).
+- [x] No new per-asset tax UI (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+Operations in this PR that touch existing rows:
+- `prisma/migrations/.../migration.sql` — 63 `ALTER TABLE ... DROP COLUMN IF EXISTS` statements
+
+For each operation:
+1. **WHERE clause matches:** every row in each table (schema-level, not row-level)
+2. **Columns dropped:** 63 `*Decimal` columns, each verified DORMANT (zero application reads)
+3. **Guard ensuring this only mutates rows I created:** by structural argument, dropping unused columns cannot affect any application behaviour. The columns were added by Q-DEC PR 1/1.5 migrations specifically as parallel-storage scaffolding; the rollback path is documented in the migration file (re-apply the original ADD COLUMN + backfill statements from `20260603120000_q_dec_pr1_additive_decimal_columns` and `20260603130000_q_dec_pr1_5_supplementary_decimal_columns`).
+
+User confirmation: GRANTED on (2026-06-07) via AskUserQuestion — Reza selected "Drop the DORMANT *Decimal columns (Recommended)".
+
+### Next
+
+- **Merge 2026-06-13** (or whenever Reza ships): closes Q-DEC structurally. Phase 45 PR 1 fully unblocked from all gates.
+- **Phase 45 PR 1 (engine composition):** unblocked after merge.
+- **MA.2-001 closure:** Float `Math.round` HALF_AWAY_FROM_ZERO remains at the Float-only data layer; Decimal `ROUND_HALF_EVEN` at the engine boundary. Each layer internally consistent — no cross-layer rounding drift since Decimal results are derived from Float reads via the `toDecimal()` boundary call.
