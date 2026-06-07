@@ -244,7 +244,8 @@ The comment at line 88 says "1 Jan 2025 (already law; ban runs until 30 Jun 2029
 |---|---|---|
 | MA.1-001 Income tax brackets FY24-25 | — | ✅ VERIFIED (re-verify queued in MA.1b) |
 | MA.1-002 PAYG bracket boundaries (integer vs $X.99) | Cosmetic | ⚠️ Add code comment (shipped PR #1005) |
-| MA.1-003 Medicare Levy thresholds FY24-25 indexation | Medium | 🛑 **AUTHORITY CONFIRMED in MA.1b §3a.1** — fix PR cleared to ship |
+| MA.1-003 Medicare Levy thresholds FY24-25 indexation | Medium | ✅ FIXED (`claude/ma1-003-fix-medicare-thresholds-LIlK9`) |
+| **MA.4-001 🟨 Parallel/competing engine `lib/tax/auTax.ts` (FY23-24 brackets baked in)** | **Medium-High structural** | **🟨 LOGGED — retirement queued in MA.4 pass** |
 | MA.1-004 FOREIGN_PURCHASE_BAN commencement 24h off | Low | ✅ Fixed (shipped PR #1005) |
 | **MA.1-005 🛑 PAYG formula missing `+ 0.99` adjustment (LFC-surfaced)** | **Medium-High** | **✅ FIXED (this PR — `claude/ma1-005-fix-payg-formula-LIlK9`)** |
 | LITO | — | ✅ VERIFIED (re-verify queued in MA.1b) |
@@ -267,20 +268,35 @@ The comment at line 88 says "1 Jan 2025 (already law; ban runs until 30 Jun 2029
 **Started:** 2026-06-07
 **Purpose:** apply the LFC rule retroactively to MA.1's findings + cross-check every constant against primary ATO/Treasury authority fetched in this session.
 
-### 3a.1 Medicare Levy thresholds FY24-25 — ✅ AUTHORITY CONFIRMED (MA.1-003 fix unblocked)
+### 3a.1 Medicare Levy thresholds FY24-25 — ✅ FIXED (MA.1-003)
 
 > "The amount of weekly earnings with no Medicare levy is $523 (which equates to an annual amount of $27,222)."
 
 Verified-via: https://www.ato.gov.au/tax-rates-and-codes/tax-table-weekly-with-no-and-half-medicare-levy — retrieved 2026-06-07 (via WebSearch literal-quote, ATO returns 403 to WebFetch direct).
 
-| Threshold | Code (current) | Authority (FY24-25) | Action |
+| Threshold | Pre-fix | Post-fix (FY24-25) | Status |
 |---|---|---|---|
-| Single | $26,000 | **$27,222** | MA.1-003 fix PR queued |
-| Family | $43,846 | **$45,907** | MA.1-003 fix PR queued |
-| Dependent child increase | $4,027 | **$4,216** | MA.1-003 fix PR queued |
+| Single | $26,000 | **$27,222** | ✅ Fixed in `lib/tax-engine/config/taxYearConfig.ts:53` |
+| Family | $43,846 | **$45,907** | ✅ Fixed in `:54` |
+| Dependent child increase | $4,027 | **$4,216** | ✅ Fixed in `:55` |
 | Shade-out multiplier | 1.25 | 1.25 (single upper = 1.25 × 27,222 = $34,027.50, matches ATO upper $34,027) | No change |
 
 LFC-5 corroboration: ATO `tax-table-weekly` (NAT 1005) shows the matching weekly earnings range "with no/half levy" begins at $523/week which annualises to $27,222 = single threshold (×52). Two-source confirmation satisfied.
+
+**Branch:** `claude/ma1-003-fix-medicare-thresholds-LIlK9`. FY25-26 inherits via `TAX_YEAR_2024_25.medicareThresholds` reference (`taxYearConfig.ts:157`) so it automatically picks up the FY24-25 values — comment already says "pending ATO update" so the semantic is preserved (queued for FY25-26 indexation verification).
+
+### 3a.1b 🟨 NEW FINDING (MA.4-001 preview) — Parallel/competing tax engine `lib/tax/auTax.ts`
+
+While fixing MA.1-003, surfaced a parallel tax engine at `lib/tax/auTax.ts` which violates CLAUDE.md §12.2 + §12.3 (Single Calculation Engine). Worse:
+
+- Brackets `AU_TAX_BRACKETS_2024_25:25-31` are **FY23-24 values** (19% middle rate, $5,092/$32,092/$52,442 base amounts, $180k top-bracket start) — NOT the Stage 3 FY24-25 cuts. Active since 2024-07-01 per the Tax Laws Amendment Act 2024.
+- Medicare constants were also stale (fixed in this PR for safety).
+- Single live reference: `/api/calculate/tax/route.ts:4` → `import { calculateTaxPosition } from '@/lib/tax/auTax'`.
+- No frontend caller — only mentioned as a TEXT NOTE in `/api/portfolio/snapshot/route.ts:1028`'s `_note` field. The endpoint is reachable via curl but unused in practice.
+
+**Severity:** Medium-High structural — anyone curl'ing `/api/calculate/tax` gets wrong tax amounts (FY23-24 brackets applied to current data). Per CLAUDE.md §12.1 ("No dead code") + §12.4 ("One Endpoint Per Concern") this is a clear violation.
+
+**Action:** Logged as **MA.4-001** in the MA.4 pass (Cross-engine consistency). Surgical fix in this PR (Medicare constants only) keeps blast radius contained; retirement is a separate workstream (migrate `/api/calculate/tax` to `lib/tax-engine/orchestrator/masterTaxPosition.ts` → `buildMasterTaxPositionDecimal`, then delete `lib/tax/auTax.ts`). Added to IMPLEMENTATION_PLAN.md Dead Code section.
 
 ### 3a.2 SAPTO FY24-25 — ✅ AUTHORITY CONFIRMED
 

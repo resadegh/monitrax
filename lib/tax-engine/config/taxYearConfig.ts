@@ -48,11 +48,21 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   taxFreeThreshold: 18200,
 
   // Medicare Levy (2%)
+  // MA.1-003 (2026-06-07): updated to FY24-25 indexed values. Pre-fix
+  // values ($26,000 / $43,846 / $4,027) were FY23-24 numbers shipped
+  // before ATO's FY24-25 indexation publication; FY24-25 single
+  // threshold is $27,222 with weekly equivalent $523 (×52 = 27,222),
+  // family $45,907, dependent child uplift $4,216.
+  // Verified-via:
+  //   - https://www.ato.gov.au/tax-rates-and-codes/tax-table-weekly-with-no-and-half-medicare-levy
+  //     (NAT 1005 — quotes "$523 weekly = $27,222 annual")
+  //   - https://www.ato.gov.au/individuals/medicare-and-private-health-insurance/medicare-levy/
+  //   - Retrieved 2026-06-07.
   medicareRate: 0.02,
   medicareThresholds: {
-    single: 26000,
-    family: 43846,
-    dependentChildIncrease: 4027,
+    single: 27222, // FY24-25 (was $26,000 FY23-24)
+    family: 45907, // FY24-25 (was $43,846 FY23-24)
+    dependentChildIncrease: 4216, // FY24-25 (was $4,027 FY23-24)
     shadeOutMultiplier: 1.25, // Shade-in ends at 125% of threshold
   },
 

@@ -1,18 +1,20 @@
 /**
  * Australian Tax Calculation Engine
- * Tax year 2024-2025 (current as of implementation)
  *
- * Resident tax rates:
- * $0 – $18,200: Nil
- * $18,201 – $45,000: 19c for each $1 over $18,200
- * $45,001 – $135,000: $5,092 plus 30c for each $1 over $45,000
- * $135,001 – $190,000: $32,092 plus 37c for each $1 over $135,000
- * $190,001 and above: $52,442 plus 45c for each $1 over $190,000
+ * **@deprecated 2026-06-07 (MA.1-003 + MA.4-001 audit).** This file
+ * is a parallel/competing tax engine that conflicts with the canonical
+ * `lib/tax-engine/` (CLAUDE.md §12.2 + §12.3 — Single Calculation
+ * Engine). The brackets baked into `AU_TAX_BRACKETS_2024_25` below
+ * are FY23-24 (19% middle rate, $5,092 / $32,092 / $52,442 / $180k
+ * top bracket = $180k start) — NOT the Stage-3 FY24-25 brackets
+ * applied since 1 Jul 2024. The Medicare constants were also stale
+ * (fixed in this PR to indexed FY24-25 values for safety, since
+ * `/api/calculate/tax` is technically still reachable).
  *
- * Medicare Levy: 2% of taxable income with thresholds
- * - Below threshold: $0
- * - Shaded-in range: 10% of excess over threshold
- * - Full levy: 2% of taxable income
+ * **Retirement plan (MA.4-001):** migrate `/api/calculate/tax` to
+ * `lib/tax-engine/orchestrator/masterTaxPosition.ts` →
+ * `buildMasterTaxPositionDecimal`, then delete this file. Tracked in
+ * `IMPLEMENTATION_PLAN.md` dead-code section.
  */
 
 export interface TaxBracket {
@@ -31,10 +33,17 @@ export const AU_TAX_BRACKETS_2024_25: TaxBracket[] = [
 ];
 
 // Medicare Levy constants for 2024-25 (single, no dependents)
+// MA.1-003 (2026-06-07): updated to FY24-25 indexed values:
+//   - single threshold: $27,222 (was $26,000 FY23-24)
+//   - shade-out upper: $34,028 = ceil(27,222 × 1.25) (was $32,500)
+// Source: ATO tax-table-weekly-with-no-and-half-medicare-levy NAT 1005,
+// retrieved 2026-06-07. SSOT lives in `lib/tax-engine/config/taxYearConfig.ts`;
+// these constants are kept aligned only because this legacy engine is
+// still technically reachable via `/api/calculate/tax`.
 export const MEDICARE_LEVY_RATE = 0.02;
 export const MEDICARE_LEVY_SHADE_IN_RATE = 0.10; // 10% of excess over threshold
-export const MEDICARE_LEVY_THRESHOLD_SINGLE = 26000; // Below this: no levy
-export const MEDICARE_LEVY_SHADE_OUT_SINGLE = 32500; // Above this: full 2% levy
+export const MEDICARE_LEVY_THRESHOLD_SINGLE = 27222; // FY24-25 indexed
+export const MEDICARE_LEVY_SHADE_OUT_SINGLE = 34028; // ceil(27222 × 1.25)
 
 // Medicare Levy Surcharge thresholds (placeholder - not activated)
 export const MLS_TIER_1_THRESHOLD = 93000; // Base tier for MLS
