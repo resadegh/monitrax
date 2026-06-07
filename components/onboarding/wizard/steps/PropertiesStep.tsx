@@ -89,7 +89,12 @@ import {
   EMPTY_PROPERTIES_SNAPSHOT,
   type PropertiesSnapshot,
 } from '@/lib/onboarding/propertiesSync';
+import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 import '@/styles/wizard-animations.css';
+
+// CLAUDE.md §12.14 NON-NEGOTIABLE: no other file may hard-code the cut-over
+// timestamp; import the canonical SSOT instead.
+const REFORM_CUT_OVER_UTC_MS = REFORM_CUT_OVER_UTC.getTime();
 
 // =============================================================================
 // CONSTANTS
@@ -372,7 +377,6 @@ function PropertyCard({
            * because they drive the reform regime classification.
            */}
           {(() => {
-            const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
             const purchaseDateMs = property.purchaseDate
               ? new Date(property.purchaseDate).getTime()
               : null;

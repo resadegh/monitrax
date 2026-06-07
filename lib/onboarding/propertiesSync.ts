@@ -96,6 +96,7 @@ import type {
   PropertyLoanInput,
   PropertyExpenseInput,
 } from '@/components/onboarding/wizard/types';
+import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
 // ============================================================================
 // Snapshot shape — what `readProperties()` returns and what the wizard holds
@@ -189,13 +190,14 @@ export const EMPTY_PROPERTIES_SNAPSHOT: PropertiesSnapshot = {
 // ============================================================================
 
 /**
- * 7:30pm AEST 12 May 2026 = `2026-05-12T09:30:00Z`. Mirrors
- * `bulk-create`'s constant and `REFORM_CUT_OVER_UTC` in
- * `lib/tax-engine/config/reformConstants.ts`. Used only to decide the
- * `acquisitionContractDate` backfill on write — F.2 stores reform INPUTS,
- * it never applies post-reform MATH (FW-2: no silent post-reform numbers).
+ * 7:30pm AEST 12 May 2026 = `2026-05-12T09:30:00Z`. Imported from the
+ * canonical SSOT `lib/tax-engine/config/reformConstants.ts` — CLAUDE.md
+ * §12.14 NON-NEGOTIABLE forbids hard-coding the cut-over timestamp
+ * anywhere else. Used only to decide the `acquisitionContractDate`
+ * backfill on write — F.2 stores reform INPUTS, it never applies
+ * post-reform MATH (FW-2: no silent post-reform numbers).
  */
-const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
+const REFORM_CUT_OVER_UTC_MS = REFORM_CUT_OVER_UTC.getTime();
 
 // ============================================================================
 // READ — `readProperties()`

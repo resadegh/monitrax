@@ -1025,7 +1025,7 @@ export const GET = withPermission('report.read', async (request, auth) => {
           estimatedTaxableIncome: taxableIncome - deductibleExpenses,
           projectedTax: 0, // TODO: Calculate using tax engine
           cgtExposure: 0, // TODO: Implement proper CGT calculation
-          _note: 'Tax projections are estimates. Use /api/calculate/tax for accurate calculations.',
+          _note: 'Tax projections are estimates. Use /api/tax/position for accurate calculations.',
         },
 
         // Entity counts for quick reference

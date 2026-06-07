@@ -3,16 +3,20 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 /**
  * Phase 41E reform cut-over (CLAUDE.md §12.14): 7:30pm AEST 12 May 2026 =
- * 2026-05-12T09:30:00Z. Pre-cut-over purchases auto-fill
- * `acquisitionContractDate := purchaseDate`; post-cut-over keep the
- * user-confirmed value or null. Reform INPUTS only — no post-reform math.
+ * 2026-05-12T09:30:00Z. Imported from the canonical SSOT
+ * `lib/tax-engine/config/reformConstants.ts` — §12.14 NON-NEGOTIABLE
+ * forbids hard-coding the cut-over timestamp anywhere else. Pre-cut-over
+ * purchases auto-fill `acquisitionContractDate := purchaseDate`;
+ * post-cut-over keep the user-confirmed value or null. Reform INPUTS only
+ * — no post-reform math.
  */
-const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
+const REFORM_CUT_OVER_UTC_MS = REFORM_CUT_OVER_UTC.getTime();
 
 export const GET = withPermission<RouteContext>('property.read', async (request, auth, context) => {
     try {
