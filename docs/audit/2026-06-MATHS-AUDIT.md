@@ -47,11 +47,11 @@ Five passes, each its own sub-PR:
 | Pass | Scope | Status |
 |---|---|---|
 | **MA.1** | Tax formulas vs ATO authority | ✅ Shipped PR #1005 (first pass) |
-| **MA.1b** | Authority re-verification under LFC rule | ✅ CLOSED — all constants re-cited against primary authority, zero new bugs surfaced |
-| MA.2 | Cashflow + frequency math | ⏳ Queued |
-| MA.3 | Data-relationship audit (GRDCS hygiene) | ⏳ Queued |
-| MA.4 | Cross-engine formula consistency | ⏳ Queued (MA.4-001 logged — legacy parallel engine retirement) |
-| MA.5 | Reform-aware formula correctness (Phase 41E) | ⏳ Queued |
+| **MA.1b** | Authority re-verification under LFC rule | ✅ CLOSED PR #1009 — all constants re-cited; zero new bugs |
+| **MA.2** | Cashflow + frequency math | ✅ Verified (this PR §4.2) — MA.2-001 latent rounding-mode drift logged for follow-up |
+| **MA.3** | Data-relationship audit (GRDCS hygiene) | ✅ Verified (this PR §4.3) — zero findings |
+| **MA.4** | Cross-engine formula consistency | ✅ Audit complete (this PR §4.4) — MA.4-001 retirement DONE + MA.4-002 logged |
+| **MA.5** | Reform-aware formula correctness (Phase 41E) | ✅ Audit complete (this PR §4.5) — MA.5-001 §12.14 violation FIXED + FW-1/FW-2 verified |
 
 **Output conventions:**
 - Each finding is tagged `MA.<pass>-<NNN>`.
@@ -514,7 +514,161 @@ After re-verifying every MA.1 constant against primary authority under the LFC r
 
 ---
 
-*Last updated: 2026-06-07 (MA.1b closed; all MA.1 constants LFC-compliant)*
-*MA.1 first pass: PR #1005 (merged 2026-06-07). MA.1b LFC closure: this PR. MA.1-005 PAYG fix: PR #1007. MA.1-003 Medicare fix: PR #1008.*
+## 4. MA.2 / MA.3 / MA.4 / MA.5 combined pass (this PR)
+
+This PR completes the remaining four MA passes + the MA.4-001 retirement in one bundled audit. Each pass below documents what was read, what was found, and what was fixed (or logged for follow-up). All findings stamped with primary-authority citations per LFC.
+
+### 4.1 MA.4-001 retirement — ✅ COMPLETED
+
+**Action:** deleted both legacy files in this PR.
+- `app/api/calculate/tax/route.ts` — endpoint deleted. No frontend caller (verified via `Grep` — only mentioned in a TEXT NOTE inside `/api/portfolio/snapshot/route.ts:1028`).
+- `lib/tax/auTax.ts` — legacy parallel tax engine deleted (FY23-24 brackets, `@deprecated` markered in PR #1008).
+- `_note` field in `/api/portfolio/snapshot/route.ts` updated to point at the canonical `/api/tax/position` endpoint instead.
+- Dead Code #29 row closed.
+
+Verification:
+- Typecheck clean (after `.next/types` cache clear).
+- Full vitest sweep: 2,309 passing, 69 skipped, 0 failures.
+- CLAUDE.md §12.2 + §12.3 SSOT restored — only `lib/tax-engine/` carries the canonical engine.
+
+### 4.2 MA.2 — Cashflow + frequency math — ✅ VERIFIED
+
+**Files audited:** `lib/utils/frequencies.ts`, `lib/calculations/cashflowOrchestrator.ts`, `lib/calculations/expenseAggregator.ts`, `lib/calculations/incomeAggregator.ts`.
+
+**Period conversion ratios:**
+
+| Frequency | Multiplier (to annual) | ATO Schedule 1 §3 | Verdict |
+|---|---|---|---|
+| WEEKLY | × 52 | × 52 (`weekly × 52`) | ✅ |
+| FORTNIGHTLY | × 26 | × 26 (`fortnightly × 26`) | ✅ |
+| MONTHLY | × 12 | × 12 (`monthly × 12`) | ✅ |
+| QUARTERLY | × 4 | × 4 (`quarterly × 4`) | ✅ |
+| ANNUAL | × 1 | × 1 | ✅ |
+
+Float and Decimal sibling paths (`toAnnualDecimal`, `toMonthlyDecimal`) use identical multipliers. Q-DEC PR 2 shadow comparison already validates Float ≡ Decimal.
+
+**SSOT compliance:**
+- `cashflowOrchestrator.ts` is the canonical engine. `expenseAggregator.ts` + `incomeAggregator.ts` are the canonical aggregators.
+- All known callers (`/api/financial-health`, `/api/cashflow`, `/api/portfolio/snapshot`, `masterFinancialService`) use these.
+
+**MA.2-001 🟨 LOGGED (low priority — Float/Decimal rounding policy divergence):**
+`Math.round()` (Float path, `paygCalculator.ts:158`) uses HALF_AWAY_FROM_ZERO (JS native); `Decimal.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN)` (Decimal sibling) uses HALF_EVEN. Manifests only at exactly X.5 boundaries which PAYG math (coefficients with 4 decimal places) rarely produces — Q-DEC shadow comparison passes because the 7 fixtures don't hit X.5. ATO doesn't explicitly publish a rounding-mode requirement for PAYG (just "round to nearest dollar"). Latent inconsistency; not visibly wrong but worth aligning. **Defer to a follow-up** — verify ATO rounding-mode requirement first, then align both paths.
+
+Verified-via: ATO Schedule 1 NAT 1004 (retrieved 2026-06-07) — silent on rounding mode beyond "round to the nearest whole dollar."
+
+### 4.3 MA.3 — Data-relationship audit (GRDCS hygiene) — ✅ VERIFIED
+
+**Files audited:** `prisma/schema.prisma` (6,935 lines).
+
+**FK pattern consistency** — verified all major relationships use the GRDCS-correct cascade behaviour:
+
+| Relationship class | Pattern | Examples |
+|---|---|---|
+| **User → owned data** | `onDelete: Cascade` | `Property.userId`, `Loan.userId`, `Account.userId`, `Income.userId`, `Expense.userId`, `Investment*.userId`, `Asset.userId` |
+| **LegalEntity → asset/liability ownership** | `onDelete: Restrict` | `Property.ownerEntityId`, `Loan.ownerEntityId`, `Account.ownerEntityId`, `Income.ownerEntityId`, `Expense.ownerEntityId`, `InvestmentAccount.ownerEntityId`, `Asset.ownerEntityId` |
+| **Cross-entity soft refs** | `onDelete: SetNull` | `Loan.propertyId`, `Expense.{propertyId,loanId,investmentAccountId,assetId}`, `Income.{propertyId,investmentAccountId}`, `UnifiedTransaction.{incomeId,expenseId}` |
+| **Sub-entity ownership** | `onDelete: Cascade` | `PurchaseLot → InvestmentAccount`, `InvestmentTransaction → Holding`, `CapitalGainEvent → Account` |
+| **Entity hierarchy** | `onDelete: SetNull` (parent), `Cascade` (relationship rows) | `LegalEntity.parentEntityId → LegalEntity` (SetNull); `EntityRelationship.from/toEntityId → LegalEntity` (Cascade) |
+
+**SMSF double-count guard verified:** `SuperannuationAccount.ownerEntityId` uses `SetNull` (not Restrict) per the documented Phase 39.5 design — SMSF member accounts revert to user-owned if the SMSF is deleted; this is correct because the SMSF's owned assets (already summed) carry the wealth. Documented in `netWorthCalculator.ts:73-81`.
+
+**Orphan-row risk surface:** None. Every nullable cross-entity reference uses `SetNull` so referential integrity is maintained; required parent refs use `Restrict` to prevent orphaning.
+
+**Findings:** None. GRDCS schema is well-formed and CLAUDE.md §6.5 compliant.
+
+### 4.4 MA.4 — Cross-engine formula consistency — 🛑 MA.4-002 LOGGED
+
+**Files audited:** `lib/calculations/netWorthCalculator.ts` (canonical), `lib/services/masterFinancialService.ts` (consumes canonical), `lib/intelligence/portfolioEngine.ts` (divergent), `lib/strategy/core/dataCollector.ts` (consumer of divergent).
+
+**🛑 MA.4-002 NEW FINDING — Strategy engine + AI advisor consume a divergent `calculateNetWorth`.**
+
+| Aspect | Canonical (`netWorthCalculator.ts`) | Intelligence (`portfolioEngine.ts:245`) |
+|---|---|---|
+| Superannuation | ✅ Included (excludes SMSF members for Phase 39.5 double-count guard) | 🛑 EXCLUDED — `superannuation` not even an input field |
+| Personal assets | ✅ Included | 🛑 EXCLUDED — `assets` not an input |
+| Investment price fallback | `currentPrice || averagePrice` | `units × currentPrice` only — `null` price → $0 |
+| Entity-scoping (`ownerEntityId`) | ✅ Supported | 🛑 NOT supported |
+| Loan classification | HOME/INVESTMENT/CREDIT_CARD/else (4 buckets) | All non-credit-card → mortgage (2 buckets) |
+| Credit-card accounting | classified via `type === 'CREDIT_CARD'` | `Math.abs(currentBalance)` → liability |
+
+**Live consumers of the divergent function:**
+- `lib/strategy/core/dataCollector.ts:69-73` → `generatePortfolioSnapshot` → `intelligenceEngine.calculateNetWorth` → strategy engine
+- `/api/strategy/forecast` → strategy module
+- `/api/ai/advisor`, `/api/ai/ask`, `/api/ai/goal`, `/api/ai/scenario` → all consume `dataCollector`
+- `/api/debug/intelligence` (debug endpoint)
+
+**User-visible impact:** **the AI advisor's net-worth number differs from the user's dashboard net-worth number** for any user with super, personal assets, investments lacking `currentPrice`, or entity-scoped views. The AI may say "$400k" while the dashboard shows "$850k". Breaks §12.2 SSOT and user trust.
+
+**Severity:** Medium-High structural. Not fixed in this PR — scope is substantial (refactor portfolioEngine OR migrate dataCollector to call masterFinancialService; either way involves test refactoring and behavioural verification across the strategy + AI surface).
+
+**Action:** Logged as Dead Code #30 — retirement of the divergent functions in `portfolioEngine.ts`. Bundle with a dedicated MA.4-002 remediation PR.
+
+**Confidence in canonical net-worth math:** **MAXIMUM.** The canonical `calculateNetWorth` is correct per Phase 39.5 SMSF double-count guard and includes all asset/liability classes. The bug is that a divergent SECOND implementation exists and feeds different consumers.
+
+### 4.5 MA.5 — Reform-aware formula correctness — 🛑 MA.5-001 FIXED
+
+**Files audited:** `lib/tax-engine/config/reformConstants.ts` (canonical SSOT), every consumer of `REFORM_CUT_OVER_UTC` / `classifyAcquisitionGrandfathering` / `isPostCommencementFy`.
+
+**🛑 MA.5-001 — CLAUDE.md §12.14 NON-NEGOTIABLE violation (4 files hard-coding the cut-over timestamp) — ✅ FIXED in this PR.**
+
+CLAUDE.md §12.14 explicitly states:
+> Every grandfathering test in the engine uses `REFORM_CUT_OVER_UTC`.
+> **No other file may hard-code the cut-over timestamp.**
+
+But 4 files duplicated the literal `Date.UTC(2026, 4, 12, 9, 30, 0)`:
+
+| File | Line | Status |
+|---|---|---|
+| `app/api/properties/route.ts` | 16 | ✅ Fixed — imports `REFORM_CUT_OVER_UTC` |
+| `app/api/properties/[id]/route.ts` | 15 | ✅ Fixed — imports `REFORM_CUT_OVER_UTC` |
+| `lib/onboarding/propertiesSync.ts` | 198 | ✅ Fixed — imports `REFORM_CUT_OVER_UTC` |
+| `components/onboarding/wizard/steps/PropertiesStep.tsx` | 375 | ✅ Fixed — imports `REFORM_CUT_OVER_UTC` |
+
+The literal values matched the canonical constant (verified arithmetically: month index 4 = May), so no observed user-impact. But the §12.14 rule prohibits hardcoding *because if Treasury moved the date*, all 5 files would need synchronized updates — a structural fragility eliminated by this fix.
+
+**FW-1 / FW-2 audit (§12.14 forward-looking rules):**
+- FW-1 (regime is a first-class input): verified across `lib/tax-engine/divisions/cgtDiscount.ts`, `negativeGearingRegime.ts`, `lib/services/wealthGraphService.ts`. All take regime/derive from `acquisitionContractDate` via `classifyAcquisitionGrandfathering` or check `isPostCommencementFy` with the measure name.
+- FW-2 (no silent post-reform numbers): verified — post-reform branches gated by `taxYearConfig.<measure>CommencementVerified` flag. The `foreignResidentCgtCommencementVerified: false` gate is correctly preventing M4 application until Royal Assent.
+
+**Phase 41E measure commencement constants (re-verified in PR #1009):** all 9 measures' commencement dates byte-correct against Treasury Budget 2026-27 fact sheet + ATO new-legislation pages.
+
+**Test coverage:** 19 reform-constants tests pass (`tests/tax-engine/config/reformConstants.test.ts`). Boundary case at `REFORM_CUT_OVER_UTC` exact second pinned. M1-M9 `isPostCommencementFy` across FY25-26 → FY28-29 all asserted.
+
+---
+
+## 5. Combined findings summary (this PR)
+
+| Finding | Severity | Status |
+|---|---|---|
+| MA.4-001 Legacy parallel engine `lib/tax/auTax.ts` retirement | Medium-High structural | ✅ FIXED — both files deleted + Dead Code #29 closed |
+| MA.5-001 CLAUDE.md §12.14 NON-NEGOTIABLE — 4 files hard-coding cut-over timestamp | Medium-High process violation | ✅ FIXED — all 4 now import canonical `REFORM_CUT_OVER_UTC` |
+| MA.4-002 Divergent `calculateNetWorth` in `portfolioEngine.ts` consumed by strategy + AI advisor | Medium-High structural | 🟨 LOGGED — Dead Code #30 + dedicated remediation PR queued |
+| MA.2-001 Float/Decimal rounding-mode policy drift (HALF_AWAY_FROM_ZERO vs HALF_EVEN) | Low — latent, no observed user impact | 🟨 LOGGED — verify ATO rounding-mode rule first, then align |
+| MA.2 frequency conversion ratios | — | ✅ VERIFIED against ATO Schedule 1 §3 |
+| MA.3 GRDCS schema FK design | — | ✅ VERIFIED — Cascade/Restrict/SetNull patterns consistent |
+| MA.5 FW-1 regime input + FW-2 commencement gate | — | ✅ VERIFIED across all consumers |
+
+**Test status:** Typecheck clean. Full vitest sweep `2,309 passing, 69 skipped, 0 failures`.
+
+---
+
+## 6. Outstanding follow-up PRs (after this PR lands)
+
+| Workstream | Scope | Estimated effort |
+|---|---|---|
+| **MA.4-002 remediation** | Retire `lib/intelligence/portfolioEngine.ts` divergent functions. Migrate strategy engine + AI advisor to consume `masterFinancialService` (or refactor portfolioEngine to consume canonical). | 1-2 days |
+| **MA.2-001 cleanup** | Verify ATO rounding-mode standard for PAYG. Align Float `Math.round` ↔ Decimal `ROUND_HALF_EVEN`. | 1-3 hours |
+| **FY25-26 indexation re-cite** | Once ATO publishes FY25-26 indexed thresholds (post-Budget May 2026), update + re-cite under LFC. | <1 day |
+| **ATO NAT 1005 integration test** | When ATO published tax table can be retrieved as primary source, pin 5 representative annual salaries against published values. | 2-4 hours |
+
+---
+
+## 7. Audit conclusion
+
+**ALL FIVE MA PASSES NOW COMPLETE.** MA.1 + MA.1b (PRs #1005-#1009) + MA.2/3/4/5 + MA.4-001 (this PR) close the full audit scope. All MA.1 constants are LFC-compliant with primary-authority citations stamped 2026-06-07. The two material bugs found (MA.1-005 PAYG `+0.99`, MA.1-003 Medicare indexation) are fixed. The two structural findings logged (MA.4-002 + MA.2-001) are tractable follow-ups. **Phase 45 PR 1 (engine composition) is now unblocked from the audit-gate side.**
+
+---
+
+*Last updated: 2026-06-07 (MA.2/3/4/5 + MA.4-001 retirement combined PR)*
+*All MA passes complete. PR history: #1005 (MA.1 first pass), #1006 (LFC rule), #1007 (MA.1-005 PAYG fix), #1008 (MA.1-003 Medicare fix + MA.4-001 surfaced), #1009 (MA.1b closure), this PR (MA.2/3/4/5 + MA.4-001 retirement).*
 *Sign-off: pending Reza review*
-*LFC rule codified: 2026-06-07 per Reza directive (PR #1006)*

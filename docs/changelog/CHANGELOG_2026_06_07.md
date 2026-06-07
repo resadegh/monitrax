@@ -448,3 +448,111 @@ N/A — doc-only PR.
 - **MA.3 (GRDCS data relationships):** queued.
 - **MA.4 (cross-engine consistency, main pass):** queued — bundled with MA.4-001.
 - **MA.5 (Phase 41E reform-aware correctness):** queued.
+
+---
+
+## Session: MA.2/3/4/5 + MA.4-001 combined audit + retirement PR
+
+**Branch:** `claude/ma2-5-full-audit-LIlK9`
+**Status:** in flight — combined audit + 2 fixes + 2 logged findings, single PR.
+
+### Scope
+
+Per Reza directive 2026-06-07: *"complete all math audit passes at once, give the findings summary and one pr"*. This PR closes the remaining four MA passes (MA.2/3/4/5) AND the MA.4-001 legacy-engine retirement in one bundled audit.
+
+### What was deleted (MA.4-001 retirement)
+
+- `app/api/calculate/tax/route.ts` — endpoint deleted, no real frontend caller.
+- `lib/tax/auTax.ts` — legacy parallel tax engine with FY23-24 brackets deleted.
+- `_note` field in `app/api/portfolio/snapshot/route.ts:1028` updated to point at canonical `/api/tax/position`.
+- Dead Code #29 closed.
+
+### What was fixed (MA.5-001 — CLAUDE.md §12.14 NON-NEGOTIABLE violation)
+
+Four files were hard-coding `Date.UTC(2026, 4, 12, 9, 30, 0)` instead of importing canonical `REFORM_CUT_OVER_UTC`:
+1. `app/api/properties/route.ts:16` — fixed
+2. `app/api/properties/[id]/route.ts:15` — fixed
+3. `lib/onboarding/propertiesSync.ts:198` — fixed
+4. `components/onboarding/wizard/steps/PropertiesStep.tsx:375` — fixed
+
+CLAUDE.md §12.14 explicitly states "no other file may hard-code the cut-over timestamp." All four now import canonical `REFORM_CUT_OVER_UTC` from `@/lib/tax-engine/config/reformConstants`. Literal values matched (no observed user-impact), but the structural fragility — risk of desync if Treasury moves the date — is eliminated.
+
+### Findings logged for follow-up (NOT fixed in this PR)
+
+**🛑 MA.4-002 — Divergent `calculateNetWorth` in `lib/intelligence/portfolioEngine.ts`:**
+
+Second implementation of net worth at `portfolioEngine.ts:245` consumed by:
+- `lib/strategy/core/dataCollector.ts:69-73` → strategy engine
+- `/api/strategy/forecast`, `/api/ai/advisor`, `/api/ai/ask`, `/api/ai/goal`, `/api/ai/scenario`
+
+Differences from canonical (`lib/calculations/netWorthCalculator.ts`):
+
+| Aspect | Canonical | Divergent |
+|---|---|---|
+| Super | Included (excludes SMSF members per Phase 39.5) | EXCLUDED — not even an input field |
+| Personal assets | Included | EXCLUDED |
+| Investment price fallback | `currentPrice \|\| averagePrice` | `units × currentPrice` only |
+| Entity scoping | Supported | Not supported |
+| Loan classification | HOME/INVESTMENT/CREDIT_CARD/else | All non-CC → mortgage |
+
+**User-visible impact:** AI advisor net-worth differs from dashboard net-worth for any user with super, personal assets, investments lacking `currentPrice`, or entity-scoped views. Breaks §12.2 SSOT + user trust.
+
+**Severity:** Medium-High structural. Logged as Dead Code #30. Scope too large for this PR — dedicated remediation PR needed.
+
+**🟨 MA.2-001 — Float/Decimal rounding-mode drift (low priority):**
+
+`Math.round()` (Float path) uses HALF_AWAY_FROM_ZERO; Decimal sibling uses `Decimal.ROUND_HALF_EVEN`. Latent (PAYG coefficients with 4 decimal places rarely hit X.5 boundary). Q-DEC shadow comparison passes because the 7 fixtures don't hit X.5. ATO doesn't explicitly mandate rounding mode beyond "round to nearest dollar." Logged for follow-up; verify ATO rule first, then align.
+
+### What was verified (all clean)
+
+- **MA.2 frequency math:** `lib/utils/frequencies.ts` ratios (× 52 / × 26 / × 12 / × 4) match ATO Schedule 1 §3 byte-for-byte. Float and Decimal siblings identical.
+- **MA.2 SSOT:** `cashflowOrchestrator.ts`, `expenseAggregator.ts`, `incomeAggregator.ts` are canonical. All known callers route through them.
+- **MA.3 GRDCS schema:** FK design (Cascade/Restrict/SetNull) consistent across all 6,935 lines. SMSF double-count guard documented + correct (`SuperannuationAccount.ownerEntityId` SetNull for the Phase 39.5 reason). Zero findings.
+- **MA.5 FW-1 + FW-2:** every reform consumer (`cgtDiscount.ts`, `negativeGearingRegime.ts`, `wealthGraphService.ts`) takes regime as input or derives it from `acquisitionContractDate`. Post-reform branches gated by `taxYearConfig.<measure>CommencementVerified`. `foreignResidentCgtCommencementVerified: false` correctly preventing M4 application until Royal Assent.
+- **Phase 41E reform constants:** all 9 measure commencement dates byte-correct (re-verified in PR #1009).
+
+### Combined findings summary table
+
+| # | Finding | Severity | Status |
+|---|---|---|---|
+| MA.4-001 | Legacy `lib/tax/auTax.ts` retirement | Medium-High structural | ✅ FIXED in this PR |
+| MA.5-001 | §12.14 NON-NEGOTIABLE — 4 files hard-coding cut-over timestamp | Medium-High process | ✅ FIXED in this PR |
+| MA.4-002 | Divergent `calculateNetWorth` in `portfolioEngine.ts` | Medium-High structural | 🟨 LOGGED — Dead Code #30, follow-up PR |
+| MA.2-001 | Float HALF_AWAY_FROM_ZERO vs Decimal HALF_EVEN | Low — latent | 🟨 LOGGED — follow-up |
+| MA.2 frequencies | — | — | ✅ VERIFIED |
+| MA.3 GRDCS schema | — | — | ✅ VERIFIED |
+| MA.5 FW-1/FW-2 | — | — | ✅ VERIFIED |
+
+### Build / test status
+
+- Typecheck: ✅ clean (`npx tsc --noEmit`, after `.next/types` cache clear)
+- Full vitest sweep: ✅ **2,309 passing, 69 skipped, 0 failures**
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (combined audit doc + 4 import-fix call sites)
+- [x] strategic decision (ALL MA passes CLOSED; Phase 45 PR 1 unblocked from audit gate)
+
+Docs updated in this PR:
+- `docs/audit/2026-06-MATHS-AUDIT.md` §4 + §5 + §6 + §7 — combined pass + findings summary + follow-up backlog + audit conclusion
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — all five passes closed + Dead Code #29 closed + Dead Code #30 added
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] §12.14 NON-NEGOTIABLE rule "no other file may hard-code the cut-over timestamp" now enforced — 4 files fixed.
+- [x] FW-1 (regime as first-class input) verified across all consumers.
+- [x] FW-2 (no silent post-reform numbers, gated by `commencementVerified`) verified.
+- [x] No new schema columns / AI tools / per-asset tax UI in this PR.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — file deletions (legacy engine retirement) + import-refactor only, no Prisma operations.
+
+### Next
+
+- **MA.4-002 remediation (queued):** retire divergent `portfolioEngine.ts` functions. Migrate strategy engine + AI advisor to canonical `masterFinancialService`. Est 1-2 days.
+- **MA.2-001 cleanup (queued):** verify ATO rounding-mode rule, align Float ↔ Decimal. Est 1-3 hours.
+- **Phase 45 PR 1 (engine composition):** now UNBLOCKED from audit gate. Other gates (Q-DEC PR 4 Float drop) still applicable.

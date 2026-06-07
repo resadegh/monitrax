@@ -4,16 +4,19 @@ import { withPermission } from '@/lib/auth/guards';
 import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
 /**
  * Phase 41E reform cut-over (CLAUDE.md §12.14): 7:30pm AEST 12 May 2026 =
- * 2026-05-12T09:30:00Z. Same constant `bulk-create` uses. Pre-cut-over
- * purchases auto-fill `acquisitionContractDate := purchaseDate`
+ * 2026-05-12T09:30:00Z. Imported from the canonical SSOT
+ * `lib/tax-engine/config/reformConstants.ts` — §12.14 NON-NEGOTIABLE
+ * forbids hard-coding the cut-over timestamp anywhere else.
+ * Pre-cut-over purchases auto-fill `acquisitionContractDate := purchaseDate`
  * (unambiguously grandfathered); post-cut-over keep the user-confirmed
  * contract date or null. This route stores reform INPUTS only — no
  * post-reform math (FW-2: no silent post-reform numbers).
  */
-const REFORM_CUT_OVER_UTC_MS = Date.UTC(2026, 4, 12, 9, 30, 0);
+const REFORM_CUT_OVER_UTC_MS = REFORM_CUT_OVER_UTC.getTime();
 
 export const GET = withPermission('property.read', async (request, auth) => {
     try {
