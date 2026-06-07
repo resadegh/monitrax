@@ -283,3 +283,91 @@ N/A — code change only, no Prisma operations.
 - **MA.1-003 fix PR (next, queued):** patch Medicare Levy thresholds to indexed FY24-25 values ($27,222 / $45,907 / $4,216).
 - **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants re-cite against SGC Act + ITAA, CGT 50% re-cite against s115-25, REFORM_CUT_OVER_UTC re-cite against Treasury 2026-27 Budget fact sheet, M1-M9 commencement dates per measure.
 - **ATO NAT 1005 integration test (deferred):** when authoritative table can be retrieved (or when Reza confirms via the Vercel preview that the fix matches a payslip from his own tax-table reference), pin 5 representative annual salaries against published values.
+
+---
+
+## Session: MA.1-003 fix PR — Medicare Levy FY24-25 thresholds + MA.4-001 surfaced
+
+**Branch:** `claude/ma1-003-fix-medicare-thresholds-LIlK9`
+**Status:** in flight — code + tests + docs landed locally; PR queued for open.
+
+### Authority (LFC-7 — blockquoted)
+
+> "The amount of weekly earnings with no Medicare levy is $523 (which equates to an annual amount of $27,222)."
+
+- ATO `tax-table-weekly-with-no-and-half-medicare-levy` (NAT 1005) — retrieved 2026-06-07
+- ATO `individuals/medicare-and-private-health-insurance/medicare-levy/` — retrieved 2026-06-07
+
+### What changed
+
+1. **`lib/tax-engine/config/taxYearConfig.ts:50-66`** — Medicare thresholds bumped to FY24-25 indexed values:
+   - Single: `$26,000 → $27,222`
+   - Family: `$43,846 → $45,907`
+   - Dependent child increase: `$4,027 → $4,216`
+   - Shade-out multiplier: `1.25` (unchanged — verified `1.25 × $27,222 = $34,027.50` matches ATO upper $34,027).
+   - Block comment cites ATO NAT 1005 + retrieval date per LFC-1, LFC-3, LFC-4.
+   - FY25-26 inherits via `TAX_YEAR_2024_25.medicareThresholds` reference (`taxYearConfig.ts:157`) — the existing "pending ATO update" comment remains accurate. FY25-26 verification queued for MA.1b continuation.
+
+2. **`lib/tax/auTax.ts`** — DUPLICATE constants in the legacy parallel engine also patched for safety:
+   - File header marked `@deprecated 2026-06-07 (MA.1-003 + MA.4-001)` — documents that this engine carries FY23-24 brackets, conflicts with SSOT, and is queued for retirement in MA.4.
+   - `MEDICARE_LEVY_THRESHOLD_SINGLE`: `26000 → 27222`
+   - `MEDICARE_LEVY_SHADE_OUT_SINGLE`: `32500 → 34028` (= `ceil(27222 × 1.25)`)
+   - Comment notes the SSOT lives in `taxYearConfig.ts`; these are kept aligned only because `/api/calculate/tax` is technically still reachable via curl.
+
+3. **`docs/audit/2026-06-MATHS-AUDIT.md`** — MA.1-003 status flipped 🛑 → ✅ FIXED. New finding **MA.4-001** logged (parallel/competing engine) with severity Medium-High structural.
+
+4. **`docs/IMPLEMENTATION_PLAN.md`** — workstream `0·MA` MA.1-003 bullet flipped to ✅ FIXED. Dead Code section gains row **#29** (`lib/tax/auTax.ts` retirement queued for MA.4 pass).
+
+### What this PR does NOT change
+
+- FY23-24 bracket schedule in `lib/tax/auTax.ts` — wrong (FY23-24 brackets, not Stage 3 FY24-25) but lives behind a no-frontend-caller endpoint. Scope of fix would be deletion + endpoint migration; that's the MA.4-001 retirement workstream, not this surgical PR.
+- FY25-26 thresholds — currently inherited via reference. ATO publishes FY25-26 indexation around the Budget; queued for primary-authority verification in MA.1b continuation.
+- The MA.1-002 / MA.1-005 boundary-equivalence + `+0.99` adjustments — already shipped (PRs #1005, #1007).
+
+### MA.4-001 finding — parallel engine `lib/tax/auTax.ts` (surfaced during this work)
+
+While checking for duplicate Medicare constants, surfaced `lib/tax/auTax.ts` — a parallel/competing tax engine with:
+- FY23-24 brackets (`AU_TAX_BRACKETS_2024_25` const named for FY24-25 but holds FY23-24 values: 19% middle rate, $5,092/$32,092/$52,442 base amounts, $180k top-bracket start).
+- Medicare constants that were also stale (fixed in this PR).
+- Single live importer: `app/api/calculate/tax/route.ts:4`.
+- No frontend caller (only mentioned as a text NOTE in `/api/portfolio/snapshot/route.ts:1028` `_note` field).
+- Reachable via curl → returns wrong tax amounts for any user data.
+
+**Severity:** Medium-High structural. Logged as MA.4-001 (Cross-engine consistency). Retirement plan = migrate `/api/calculate/tax/route.ts` to `lib/tax-engine/orchestrator/masterTaxPosition.ts` → `buildMasterTaxPositionDecimal`, OR delete the endpoint entirely (no real caller), then delete `lib/tax/auTax.ts`. Tracked in IMPLEMENTATION_PLAN Dead Code #29.
+
+### Build / test status
+
+- Typecheck: ✅ clean (`npx tsc --noEmit`)
+- Tax-engine suite (39 files): ✅ **847 passing, 0 failures**
+- Full vitest sweep (127 files): ✅ **2,309 passing, 69 skipped, 0 failures**
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (audit doc updates per LFC-7 + new MA.4-001 finding)
+- [x] strategic decision (MA.1-003 ✅ FIXED + MA.4-001 logged; Dead Code #29 added)
+
+Docs updated in this PR:
+- `lib/tax-engine/config/taxYearConfig.ts:50-66` — inline LFC comment block
+- `lib/tax/auTax.ts` — `@deprecated` header + Medicare constants
+- `docs/audit/2026-06-MATHS-AUDIT.md` §3 + §3a.1 + §3a.1b — status flipped + MA.4-001 logged
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` MA.1-003 ✅ + Dead Code #29
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Medicare Levy is pre-reform Australian tax. FY-scoped via `TaxYearConfig`. No regime-aware branch needed (FW-1 N/A).
+- [x] No schema changes (FW-3 N/A).
+- [x] No new AI tools (FW-4 N/A).
+- [x] No per-asset tax UI (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — constant value updates only, no Prisma operations.
+
+### Next
+
+- **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants vs SGC Act + ITAA, CGT 50% vs s115-25, REFORM_CUT_OVER_UTC vs Treasury 2026-27 Budget fact sheet, M1-M9 commencements per measure.
+- **MA.4-001 retirement (queued):** migrate `/api/calculate/tax` or delete the endpoint; delete `lib/tax/auTax.ts`. Bundle with MA.4 pass.
+- **MA.2 / MA.3 / MA.5:** queued.
