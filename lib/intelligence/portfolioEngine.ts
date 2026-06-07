@@ -17,17 +17,15 @@
  * `generatePortfolioSnapshot` now also queries `SuperannuationAccount`
  * + `Asset` (personal assets) so the input feeds the full picture.
  *
- * **Why `calculateCashflow` is NOT refactored to canonical:** the
- * stress-test math in `calculateDebtStressTest` (line 512) assumes
- * `monthlyExpenses` includes INTEREST-ONLY loan cost (the cashflow
- * function adds it that way at line 309-315), then subtracts it back
- * out to compute `baseExpensesExcludingLoans`. The canonical
- * `cashflowOrchestrator` uses min-repayment (P+I) which would
- * contaminate that subtraction. Refactoring cashflow here requires
- * refactoring the whole stress-test math — that's a separate workstream
- * and the strategy-engine stress-test is a documented design choice
- * (interest-only is the worst-case scenario assumption). Net-worth was
- * the headline finding; cashflow divergence is documented + scoped.
+ * **MA.4-002 follow-on (2026-06-07):** `calculateCashflow` now also
+ * delegates to the canonical `lib/calculations/cashflowOrchestrator.ts`
+ * SSOT for income (PAYG-aware NET salary computation) and base expense
+ * aggregation. The interest-only loan-cost addition is preserved as a
+ * deliberate strategy-engine design choice: it represents the worst-case
+ * stress-test scenario assumption, and `calculateDebtStressTest`
+ * subtracts the interest-only cost from `monthlyExpenses` to compute
+ * `baseExpensesExcludingLoans` for +2/+3/+4% rate stress modelling.
+ * See `calculateCashflow` for the full JSDoc.
  */
 
 import {
@@ -35,6 +33,7 @@ import {
   type SuperInput as CanonicalSuperInput,
   type AssetInput as CanonicalPersonalAssetInput,
 } from '@/lib/calculations/netWorthCalculator';
+import { calculateSimpleCashflow as canonicalCalculateSimpleCashflow } from '@/lib/calculations/cashflowOrchestrator';
 
 // =============================================================================
 // TYPES
@@ -336,36 +335,76 @@ export function calculateNetWorth(input: PortfolioInput): NetWorthAnalysis {
 
 /**
  * Calculate cashflow analysis.
+ *
+ * MA.4-002 follow-on (2026-06-07): income + base expenses now come from
+ * the canonical `lib/calculations/cashflowOrchestrator.ts` SSOT
+ * (CLAUDE.md §12.2). This brings strategy-engine + AI-advisor cashflow
+ * math into line with the user's dashboard for income (NET salary via
+ * PAYG-aware computation) and base expenses (proper aggregation).
+ *
+ * **What this engine deliberately KEEPS from the legacy implementation:**
+ * loan cost added to `monthlyExpenses` is **interest-only** (effective
+ * principal × annual rate / 12), NOT the canonical min-repayment (P+I).
+ * This is a documented strategy-engine design choice: the interest-only
+ * model is the worst-case stress-test scenario assumption, and
+ * `calculateDebtStressTest` (below) subtracts the interest-only cost
+ * from `monthlyExpenses` to compute `baseExpensesExcludingLoans` for
+ * stress modelling at +2/+3/+4% rate scenarios. Switching to canonical
+ * min-repayment would require simultaneously refactoring the whole
+ * stress-test path — preserved deliberately to keep semantics stable
+ * for downstream strategy + AI-advisor consumers.
  */
 export function calculateCashflow(input: PortfolioInput): CashflowAnalysis {
-  // Income
-  let monthlyIncome = 0;
-  const incomeByType: Record<string, number> = {};
+  // Income + base expenses via canonical SSOT (PAYG-aware income +
+  // proper category aggregation). Loans empty here — we compute them
+  // ourselves below as interest-only for stress-test semantics.
+  const canonical = canonicalCalculateSimpleCashflow({
+    income: input.income.map((i) => ({
+      amount: i.amount,
+      frequency: i.frequency,
+      type: i.type,
+      isTaxable: i.isTaxable,
+      name: i.name,
+    })),
+    expenses: input.expenses.map((e) => ({
+      amount: e.amount,
+      frequency: e.frequency,
+      category: e.name, // intel engine keys by name; canonical accepts the same
+      isEssential: e.isEssential,
+      isTaxDeductible: e.isTaxDeductible,
+    })),
+    loans: [],
+  });
 
+  // Build incomeByType (canonical's simple result doesn't expose this;
+  // recompute from the input — same semantics as the pre-fix version).
+  const incomeByType: Record<string, number> = {};
   for (const inc of input.income) {
     const monthly = toMonthly(inc.amount, inc.frequency);
-    monthlyIncome += monthly;
     incomeByType[inc.type] = (incomeByType[inc.type] || 0) + monthly;
   }
 
-  // Expenses
-  let monthlyExpenses = 0;
+  // Build expenseByCategory keyed by expense name (legacy semantics).
   const expenseByCategory: Record<string, number> = {};
-
   for (const exp of input.expenses) {
     const monthly = toMonthly(exp.amount, exp.frequency);
-    monthlyExpenses += monthly;
-    expenseByCategory[exp.name] = monthly;
+    expenseByCategory[exp.name] = (expenseByCategory[exp.name] ?? 0) + monthly;
   }
 
-  // Add loan repayments to expenses (simplified - interest only for this calc)
+  // Interest-only loan cost (preserved from legacy for stress-test).
+  let interestOnlyLoanCost = 0;
   for (const loan of input.loans) {
     const effectivePrincipal = Math.max(0, loan.principal - (loan.offsetBalance || 0));
     const monthlyInterest = effectivePrincipal * (loan.interestRate / 12);
-    monthlyExpenses += monthlyInterest;
-    expenseByCategory['Loan Interest'] = (expenseByCategory['Loan Interest'] || 0) + monthlyInterest;
+    interestOnlyLoanCost += monthlyInterest;
+  }
+  if (interestOnlyLoanCost > 0) {
+    expenseByCategory['Loan Interest'] =
+      (expenseByCategory['Loan Interest'] ?? 0) + interestOnlyLoanCost;
   }
 
+  const monthlyIncome = canonical.monthlyIncome;
+  const monthlyExpenses = canonical.monthlyExpenses + interestOnlyLoanCost;
   const monthlySurplus = monthlyIncome - monthlyExpenses;
   const savingsRate = monthlyIncome > 0 ? (monthlySurplus / monthlyIncome) * 100 : 0;
 

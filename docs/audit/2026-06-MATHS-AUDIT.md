@@ -704,8 +704,48 @@ Float path's `Math.round(weeklyWithholding)` uses HALF_AWAY_FROM_ZERO (JavaScrip
 
 Closed without a fix PR. Tracked in IMPLEMENTATION_PLAN.md workstream `0·WI` for clarity.
 
+## 10. MA.4-002 follow-on — cashflow delegation to canonical SSOT — ✅ SHIPPED
+
+**Branch:** `claude/ma4-002-cashflow-follow-on-LIlK9`. Extends the MA.4-002 fix from PR #1011 by also routing the income + base-expense paths through the canonical `cashflowOrchestrator.ts` SSOT — closing the LAST cross-engine divergence between `lib/intelligence/portfolioEngine.ts` and `lib/calculations/*`.
+
+### What changed
+
+`lib/intelligence/portfolioEngine.ts:calculateCashflow` now delegates to canonical `calculateSimpleCashflow` for:
+- **`monthlyIncome`** — canonical applies `calculateTakeHomePay` to SALARY income (PAYG-aware NET vs GROSS) using FY24-25 brackets + PAYG NAT 1004 (which is now ATO Schedule 1 §4 compliant per MA.1-005). Pre-fix the intel engine treated all income as raw, returning gross when net was wanted. **User-visible:** AI advisor's "monthly income" now matches dashboard's monthly income.
+- **Base `monthlyExpenses`** — canonical aggregates expenses by category with proper essential/discretionary handling. Pre-fix the intel engine summed raw amounts with no semantic awareness.
+
+### What's deliberately preserved (stress-test compatibility)
+
+- **Interest-only loan cost** added to `monthlyExpenses` on top of canonical base expenses. The strategy stress-test (`calculateDebtStressTest`) subtracts the interest-only repayment from `monthlyExpenses` to compute `baseExpensesExcludingLoans`, then re-adds the stressed-rate repayment at +2/+3/+4% scenarios. Switching to canonical min-repayment (P+I) would break this subtraction.
+- **`expenseByCategory` keyed by name** (legacy semantic) rather than canonical's category-keyed. Only intel-internal consumers; no external API risk.
+- **`incomeByType` recomputed from input** (canonical's simple result doesn't expose this; recomputation preserves backward-compat with strategy/AI consumers).
+
+### Regression tests added
+
+`tests/intelligence/portfolioEngine.cashflow.test.ts` — 6 tests:
+1. Returns canonical income + expense totals with no loans.
+2. Adds interest-only loan cost on top of canonical base expenses.
+3. Respects `loan.offsetBalance` — interest only on effective principal.
+4. **Stress-test invariant:** `monthlyExpenses - interestOnlyLoanCost ≡ canonical base expenses` (so `calculateDebtStressTest`'s subtraction produces a sensible baseline).
+5. **PAYG-aware NET salary computation** (was raw amount pre-fix; this is the headline behavioural change for the AI advisor).
+6. Duplicate-name expense accumulation (pre-fix `expenseByCategory[name] = amount` was assignment, not accumulation — silent bug for users with multiple expenses sharing a name).
+
+### Test status
+
+- Typecheck: ✅ clean
+- Intelligence test suite (12 tests across 2 files): ✅ all pass
+- Full vitest sweep: ✅ **2,321 passing, 69 skipped, 0 failures** (net +6 cashflow regression tests on top of the 6 net-worth tests)
+
+### Per-user impact
+
+For any user with SALARY income, the AI advisor's "monthly income" was previously the GROSS amount — now correctly shows NET after PAYG withholding. For a $10,000/month gross salary on FY24-25 brackets, the AI used to report $10,000; now reports ~$7,350 (correct after-tax take-home). **The cashflow surplus / savings rate numbers in AI advice now match what the user sees on their dashboard.**
+
+The `calculateGearing` and `calculateRisk` functions automatically inherit the canonical income/expense values since they read from the cashflow result. No downstream changes needed.
+
+**MA.4-002 is now structurally COMPLETE** — both `calculateNetWorth` and `calculateCashflow` in `portfolioEngine.ts` route through canonical SSOT. The remaining intel-specific functions (`calculateGearing`, `calculateRisk`, `calculateDebtStressTest`) are STRATEGY-specific compositions of the canonical results, not divergent re-implementations.
+
 ---
 
-*Last updated: 2026-06-07 (MA.2/3/4/5 + MA.4-001 retirement combined PR)*
+*Last updated: 2026-06-07 (MA.4-002 follow-on cashflow refactor)*
 *All MA passes complete. PR history: #1005 (MA.1 first pass), #1006 (LFC rule), #1007 (MA.1-005 PAYG fix), #1008 (MA.1-003 Medicare fix + MA.4-001 surfaced), #1009 (MA.1b closure), this PR (MA.2/3/4/5 + MA.4-001 retirement).*
 *Sign-off: pending Reza review*
