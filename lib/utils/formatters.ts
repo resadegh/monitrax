@@ -11,10 +11,36 @@ export interface CurrencyFormatOptions {
 }
 
 /**
- * Format a number as currency
+ * Anything that formatCurrency can render. Q-DEC PR 3.E:
+ *
+ *   - `number` — the legacy path; JSON-parsed responses produce `number`
+ *     after `serializeDecimalsForJson` runs on the API boundary.
+ *   - `{ toNumber(): number }` — duck-types `Decimal` (Prisma.Decimal /
+ *     decimal.js). Lets components accept Decimal directly without an
+ *     intermediate `.toNumber()` call site. Defensive: if a server
+ *     component reads a Prisma Decimal column directly (no JSON exit),
+ *     `formatCurrency` still does the right thing.
+ *   - `null` / `undefined` — render the empty placeholder (`"—"`) so
+ *     "no data" surfaces consistently instead of `$NaN`.
+ */
+export type CurrencyFormatInput =
+  | number
+  | { toNumber(): number }
+  | null
+  | undefined;
+
+/**
+ * Empty-state placeholder for null/undefined amounts. Matches the
+ * editorial empty-state across the app (My Wealth glass vocabulary).
+ */
+const EMPTY_PLACEHOLDER = '—';
+
+/**
+ * Format an amount as currency. See `CurrencyFormatInput` for the
+ * accepted input shapes.
  */
 export function formatCurrency(
-  amount: number,
+  amount: CurrencyFormatInput,
   options?: CurrencyFormatOptions
 ): string {
   const {
@@ -24,14 +50,18 @@ export function formatCurrency(
     abbreviate = false,
   } = options || {};
 
+  if (amount === null || amount === undefined) return EMPTY_PLACEHOLDER;
+  const value = typeof amount === 'number' ? amount : amount.toNumber();
+  if (!Number.isFinite(value)) return EMPTY_PLACEHOLDER;
+
   // Handle abbreviation for large numbers
   if (abbreviate) {
-    if (Math.abs(amount) >= 1_000_000) {
-      const abbreviated = amount / 1_000_000;
+    if (Math.abs(value) >= 1_000_000) {
+      const abbreviated = value / 1_000_000;
       return `$${abbreviated.toFixed(1)}M`;
     }
-    if (Math.abs(amount) >= 1_000) {
-      const abbreviated = amount / 1_000;
+    if (Math.abs(value) >= 1_000) {
+      const abbreviated = value / 1_000;
       return `$${abbreviated.toFixed(0)}K`;
     }
   }
@@ -41,7 +71,7 @@ export function formatCurrency(
     currency,
     minimumFractionDigits: showCents ? 2 : 0,
     maximumFractionDigits: showCents ? 2 : 0,
-  }).format(amount);
+  }).format(value);
 }
 
 export interface PercentageFormatOptions {

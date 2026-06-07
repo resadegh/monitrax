@@ -89,13 +89,30 @@ describe('formatCurrency', () => {
     });
 
     it('handles NaN gracefully', () => {
+      // PR 3.E: non-finite inputs render as the empty placeholder so users
+      // never see "$NaN" / "$∞". Same defensive behaviour for null/undefined.
       const result = formatCurrency(NaN);
-      expect(result).toBe('$NaN');
+      expect(result).toBe('—');
     });
 
     it('handles Infinity', () => {
       const result = formatCurrency(Infinity);
-      expect(result).toBe('$∞');
+      expect(result).toBe('—');
+    });
+
+    it('handles null gracefully (PR 3.E defensive)', () => {
+      expect(formatCurrency(null)).toBe('—');
+    });
+
+    it('handles undefined gracefully (PR 3.E defensive)', () => {
+      expect(formatCurrency(undefined)).toBe('—');
+    });
+
+    it('accepts a Decimal-like { toNumber } input (PR 3.E forward-compat)', () => {
+      // Duck-types Prisma.Decimal / decimal.js.
+      const fakeDecimal = { toNumber: () => 1234.56 };
+      const result = formatCurrency(fakeDecimal, { showCents: true });
+      expect(result).toMatch(/\$1,234\.56/);
     });
   });
 
