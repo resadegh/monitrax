@@ -631,3 +631,83 @@ N/A — refactor + new test file + doc updates only, no Prisma write operations.
 - **Q-DEC PR 4 (Float column drop):** orthogonal to MA, can ship anytime after 7-day parallel-run window. After Q-DEC PR 4 ships, MA.2-001 is structurally resolved.
 - **Phase 45 PR 1 (engine composition):** UNBLOCKED from audit gate. Other gates (Q-DEC PR 4) still applicable in series.
 - **MA workstream:** CLOSED. All five passes + all logged findings have a tracked outcome.
+
+---
+
+## Session: MA.4-002 follow-on — cashflow delegates to canonical SSOT
+
+**Branch:** `claude/ma4-002-cashflow-follow-on-LIlK9`
+**Status:** in flight — closes the last cross-engine divergence in `portfolioEngine.ts`.
+
+### Why this PR
+
+PR #1011 (MA.4-002 fix) refactored `calculateNetWorth` to delegate to canonical SSOT but deferred `calculateCashflow` as scope-bounded. After the dust settled on PR #1011, the cashflow refactor is the natural next step — it closes the last cross-engine divergence between `lib/intelligence/portfolioEngine.ts` and the canonical `lib/calculations/*` engines. The technical concern (stress-test math depending on interest-only loan modeling) is preserved by computing the loan cost separately from the canonical engine.
+
+### What changed
+
+1. **`lib/intelligence/portfolioEngine.ts:calculateCashflow`** — now delegates income + base expense computation to canonical `calculateSimpleCashflow`:
+   - **`monthlyIncome`** comes from canonical (PAYG-aware NET salary via `calculateTakeHomePay` with FY24-25 brackets + post-MA.1-005 ATO-compliant PAYG NAT 1004 formula). Pre-fix returned raw amount.
+   - **Base `monthlyExpenses`** from canonical aggregator. Pre-fix summed raw amounts.
+   - **Interest-only loan cost** added on top (preserved from legacy for stress-test math).
+   - **`expenseByCategory`** keyed by name (legacy semantic preserved).
+   - **`incomeByType`** recomputed from input (canonical's simple result doesn't expose it; preserved for back-compat).
+   - **Duplicate-name expense bug** fixed: pre-fix `expenseByCategory[name] = amount` was assignment, not accumulation — multiple expenses with same name silently overwrote each other. Now uses `?? 0) + amount`.
+
+2. **`lib/intelligence/portfolioEngine.ts` file-header JSDoc** — updated to document the cashflow follow-on alongside the net-worth fix.
+
+3. **`tests/intelligence/portfolioEngine.cashflow.test.ts`** — NEW. 6 regression tests:
+   - Canonical income + expense totals with no loans
+   - Interest-only loan cost added on top
+   - `loan.offsetBalance` respected (interest on effective principal)
+   - **Stress-test invariant** (critical): `monthlyExpenses - interestOnlyLoanCost ≡ canonical base expenses`
+   - PAYG-aware NET salary computation (was raw amount pre-fix — headline behavioural change)
+   - Duplicate-name expense accumulation (pre-fix silent bug)
+
+### Per-user impact
+
+For any user with SALARY income, AI advisor's "monthly income" was previously GROSS — now correctly shows NET after PAYG. For a $10k/month gross salary on FY24-25 brackets:
+- Pre-fix: AI reported $10,000
+- Post-fix: AI reports ~$7,350 (correct after-tax take-home)
+
+The cashflow surplus / savings rate numbers in AI advice now match the user's dashboard. This is a **strict improvement** — the pre-fix numbers were misleadingly optimistic.
+
+### What does NOT change
+
+- `calculateGearing` + `calculateRisk` automatically inherit canonical income/expense values via the cashflow result. No changes needed.
+- `calculateDebtStressTest` — same; the interest-only loan cost preserved at the cashflow layer means the subtraction math still works.
+
+### Build / test status
+
+- Typecheck: ✅ clean
+- Intelligence test suite (12 tests across 2 files — net-worth + cashflow): ✅ all pass
+- Full vitest sweep: ✅ **2,321 passing, 69 skipped, 0 failures** (net +6 cashflow tests on top of the 6 net-worth tests from PR #1011)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (audit doc + cashflow refactor)
+- [x] strategic decision (MA.4-002 STRUCTURALLY COMPLETE — both net-worth and cashflow now route through canonical SSOT)
+
+Docs updated in this PR:
+- `lib/intelligence/portfolioEngine.ts` — cashflow refactor + file-header JSDoc
+- `tests/intelligence/portfolioEngine.cashflow.test.ts` — NEW
+- `docs/audit/2026-06-MATHS-AUDIT.md` §10 — cashflow follow-on documented
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Reform-aware paths unchanged. Canonical engines route through reform-aware tax math via `calculateTakeHomePay` (which uses the canonical PAYG calculator that gets reform-treatment via taxYearConfig).
+- [x] No schema changes (FW-3 N/A).
+- [x] No new AI tools (FW-4 N/A).
+- [x] No new per-asset tax UI (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — refactor + new test file + doc updates only. No Prisma operations.
+
+### Next
+
+- **Q-DEC PR 4 (Float column drop):** time-gated on 7-day parallel-run window — earliest 2026-06-13.
+- **Phase 45 PR 1 (engine composition):** gated on Q-DEC PR 4.
+- **MA workstream:** STRUCTURALLY COMPLETE. The intel-engine divergence is fully resolved.
