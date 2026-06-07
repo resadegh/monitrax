@@ -96,7 +96,11 @@ export const MEASURE_COMMENCEMENT: Record<ReformMeasure, Date> = {
   TRUST_MINIMUM_TAX: new Date('2028-06-30T14:00:00Z'), // 1 Jul 2028 00:00 AEST
   FOREIGN_RESIDENT_CGT: new Date('2026-12-31T13:00:00Z'), // placeholder; gate on commencementVerified
   LOSS_REFUNDABILITY: new Date('2026-06-30T14:00:00Z'), // 1 Jul 2026 00:00 AEST (current FY)
-  FOREIGN_PURCHASE_BAN: new Date('2025-01-01T13:00:00Z'), // already in force
+  // Audit MA.1-004 (2026-06-07): 1 Jan 2025 00:00 AEDT = 2024-12-31T13:00:00Z
+  // (AEDT = UTC+11, January is summer DST in Australia). Previous value
+  // `2025-01-01T13:00:00Z` was 2 Jan 2025 00:00 AEDT (24h late). No
+  // observed impact at FY-level granularity; fixed for per-asset checks.
+  FOREIGN_PURCHASE_BAN: new Date('2024-12-31T13:00:00Z'), // 1 Jan 2025 00:00 AEDT, already in force
   VC_CAPS_LIFTED: new Date('2027-06-30T14:00:00Z'),
   EV_FBT_PHASED: new Date('2027-03-31T13:00:00Z'), // 1 Apr 2027 00:00 AEDT
   DYNAMIC_PAYG: new Date('2027-06-30T14:00:00Z'),
