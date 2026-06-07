@@ -18,6 +18,20 @@ import { Decimal, toDecimal } from '@/lib/decimal';
 // These coefficients are used in the formula: tax = (a × earnings) - b
 // =============================================================================
 
+// Scale 2 - With Tax Free Threshold (TFN provided, claim TFT)
+// FY24-25 ATO NAT 1004 coefficients.
+//
+// Bracket-boundary note (audit MA.1-002, 2026-06-07): the ATO publishes
+// the bands as `0 – $361.99`, `$362 – $499.99`, etc. The integer upper
+// bounds below (`weeklyEarningsMax: 361`) appear narrower than the ATO
+// spec, but the formula is continuous across boundaries by construction
+// (a × earnings − b produces ≈$0 at each boundary), and the final
+// `Math.round` on line 144 absorbs the cents-level fraction. At
+// `$361.99` the integer-bound code returns `0.16 × 361.99 − 57.8462 ≈
+// $0.07 → rounded to $0`, byte-identical to the ATO's intended $0.
+// Do NOT "fix" the boundaries to $X.99 — that breaks the integer math
+// elsewhere in `weeklyEarningsMin`/`Max` consumers without changing the
+// observed result.
 const PAYG_SCALE_2_2024_25: PAYGScale[] = [
   // Weekly earnings thresholds and coefficients
   { weeklyEarningsMin: 0, weeklyEarningsMax: 361, coefficients: { a: 0, b: 0 } },
