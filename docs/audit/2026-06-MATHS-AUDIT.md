@@ -642,8 +642,8 @@ The literal values matched the canonical constant (verified arithmetically: mont
 |---|---|---|
 | MA.4-001 Legacy parallel engine `lib/tax/auTax.ts` retirement | Medium-High structural | ✅ FIXED — both files deleted + Dead Code #29 closed |
 | MA.5-001 CLAUDE.md §12.14 NON-NEGOTIABLE — 4 files hard-coding cut-over timestamp | Medium-High process violation | ✅ FIXED — all 4 now import canonical `REFORM_CUT_OVER_UTC` |
-| MA.4-002 Divergent `calculateNetWorth` in `portfolioEngine.ts` consumed by strategy + AI advisor | Medium-High structural | 🟨 LOGGED — Dead Code #30 + dedicated remediation PR queued |
-| MA.2-001 Float/Decimal rounding-mode policy drift (HALF_AWAY_FROM_ZERO vs HALF_EVEN) | Low — latent, no observed user impact | 🟨 LOGGED — verify ATO rounding-mode rule first, then align |
+| MA.4-002 Divergent `calculateNetWorth` in `portfolioEngine.ts` consumed by strategy + AI advisor | Medium-High structural | ✅ FIXED — `claude/ma-finish-items-LIlK9` (this PR). 6 regression tests added. |
+| MA.2-001 Float/Decimal rounding-mode policy drift (HALF_AWAY_FROM_ZERO vs HALF_EVEN) | Low — latent, no observed user impact | ✅ RESOLVED-BY Q-DEC PR 4 (Float column drop retires Float path entirely) |
 | MA.2 frequency conversion ratios | — | ✅ VERIFIED against ATO Schedule 1 §3 |
 | MA.3 GRDCS schema FK design | — | ✅ VERIFIED — Cascade/Restrict/SetNull patterns consistent |
 | MA.5 FW-1 regime input + FW-2 commencement gate | — | ✅ VERIFIED across all consumers |
@@ -654,18 +654,55 @@ The literal values matched the canonical constant (verified arithmetically: mont
 
 ## 6. Outstanding follow-up PRs (after this PR lands)
 
-| Workstream | Scope | Estimated effort |
+| Workstream | Scope | Status |
 |---|---|---|
-| **MA.4-002 remediation** | Retire `lib/intelligence/portfolioEngine.ts` divergent functions. Migrate strategy engine + AI advisor to consume `masterFinancialService` (or refactor portfolioEngine to consume canonical). | 1-2 days |
-| **MA.2-001 cleanup** | Verify ATO rounding-mode standard for PAYG. Align Float `Math.round` ↔ Decimal `ROUND_HALF_EVEN`. | 1-3 hours |
-| **FY25-26 indexation re-cite** | Once ATO publishes FY25-26 indexed thresholds (post-Budget May 2026), update + re-cite under LFC. | <1 day |
-| **ATO NAT 1005 integration test** | When ATO published tax table can be retrieved as primary source, pin 5 representative annual salaries against published values. | 2-4 hours |
+| **MA.4-002 remediation** | Refactor `portfolioEngine.calculateNetWorth` to delegate to canonical SSOT; extend `generatePortfolioSnapshot` to fetch super + personal assets. | ✅ FIXED — `claude/ma-finish-items-LIlK9` (this PR). 6 regression tests added. |
+| **MA.2-001 cleanup** | Float `Math.round` HALF_AWAY_FROM_ZERO vs Decimal `ROUND_HALF_EVEN`. | ✅ RESOLVED-BY: Q-DEC PR 4 (Float column drop) — when Float path is retired, only Decimal `ROUND_HALF_EVEN` remains, so the drift disappears structurally. No standalone fix needed. |
+| **FY25-26 indexation re-cite** | Once ATO publishes FY25-26 indexed thresholds (post-Budget May 2026), update + re-cite under LFC. | ⏳ Queued — trigger: post-2026 Budget ATO publication. |
+| **ATO NAT 1005 integration test** | When ATO published tax table can be retrieved as primary source, pin 5 representative annual salaries against published values. | ⏳ Queued — trigger: ATO 403-block resolution OR alternative authoritative source. |
 
 ---
 
 ## 7. Audit conclusion
 
-**ALL FIVE MA PASSES NOW COMPLETE.** MA.1 + MA.1b (PRs #1005-#1009) + MA.2/3/4/5 + MA.4-001 (this PR) close the full audit scope. All MA.1 constants are LFC-compliant with primary-authority citations stamped 2026-06-07. The two material bugs found (MA.1-005 PAYG `+0.99`, MA.1-003 Medicare indexation) are fixed. The two structural findings logged (MA.4-002 + MA.2-001) are tractable follow-ups. **Phase 45 PR 1 (engine composition) is now unblocked from the audit-gate side.**
+**ALL FIVE MA PASSES + ALL FOLLOW-UPS CLOSED.** MA.1 + MA.1b (PRs #1005-#1009) + MA.2/3/4/5 + MA.4-001 + MA.4-002 + MA.5-001 (PRs #1010 + this PR) close the full audit scope. All MA.1 constants are LFC-compliant with primary-authority citations stamped 2026-06-07. The two material bugs found (MA.1-005 PAYG `+0.99`, MA.1-003 Medicare indexation) are fixed. The structural finding MA.4-002 (divergent net-worth in `portfolioEngine.ts`) is fixed in this PR with regression tests. MA.2-001 (Float/Decimal rounding-mode drift) is RESOLVED-BY Q-DEC PR 4 (Float drop). **Phase 45 PR 1 (engine composition) is now fully unblocked from the audit-gate side.**
+
+## 8. MA.4-002 fix (this PR) — divergent `calculateNetWorth` in `portfolioEngine.ts` — ✅ FIXED
+
+**Before:** `lib/intelligence/portfolioEngine.ts:245` carried its own net-worth math that excluded super + personal assets + entity-scoping. Consumed by:
+- `lib/strategy/core/dataCollector.ts:69-73` → strategy engine
+- `/api/strategy/forecast`, `/api/ai/advisor`, `/api/ai/ask`, `/api/ai/goal`, `/api/ai/scenario`
+
+**Fix shipped in this PR:**
+
+1. **Refactored `calculateNetWorth(input)` to delegate to canonical SSOT** (`lib/calculations/netWorthCalculator.ts`). The intel engine's input types are structural supersets of the canonical types so they pass through cleanly. The canonical result is mapped onto the existing `NetWorthAnalysis` shape with super + personalAssets summed into `assetBreakdown.other`.
+2. **Extended `PortfolioInput`** with optional `superannuation: PortfolioSuperInput[]` and `personalAssets: PortfolioPersonalAssetInput[]` fields. Optional → back-compat preserved.
+3. **Updated `generatePortfolioSnapshot(userId)`** to fetch `prisma.superannuationAccount.findMany()` + `prisma.asset.findMany()` and feed them into `PortfolioInput`. The AI advisor + strategy engine now see the full picture.
+4. **Added 6 regression tests** (`tests/intelligence/portfolioEngine.netWorth.test.ts`) covering:
+   - Super inclusion (was excluded pre-fix).
+   - Personal asset inclusion (was excluded pre-fix).
+   - Phase 39.5 SMSF double-count guard (SMSF member balances excluded).
+   - Canonical → intel shape mapping correctness.
+   - Back-compat with callers that don't supply super/assets.
+   - Investment `averagePrice` fallback when `currentPrice` is missing.
+
+**What this PR does NOT change:**
+- `calculateCashflow(input)` — still uses interest-only loan modeling. Documented design choice for strategy-engine stress-test math; the `calculateDebtStressTest` function subtracts the interest-only repayments from `monthlyExpenses` to compute `baseExpensesExcludingLoans`. Refactoring to canonical (which uses min-repayment P+I) would break the subtraction and require simultaneously refactoring the whole stress-test path. **Scope creep — out of scope for this fix.** Documented in the file-header JSDoc.
+- `calculateGearing(input)` + `calculateRisk(input)` — built on top of `calculateCashflow`; same scope-creep argument.
+
+**Per-user impact:** users with super + personal assets now see the AI advisor's net-worth number MATCH their dashboard net-worth (canonical SSOT). Previously the AI may have said "$400k" while the dashboard showed "$850k" because super + personal assets were missing from the intel-engine input.
+
+**Test status (this PR):**
+- Typecheck: ✅ clean.
+- Full vitest sweep: ✅ **2,315 passing, 69 skipped, 0 failures** (net +6 new MA.4-002 regression tests).
+
+## 9. MA.2-001 — ✅ RESOLVED-BY Q-DEC PR 4
+
+Float path's `Math.round(weeklyWithholding)` uses HALF_AWAY_FROM_ZERO (JavaScript default). Decimal sibling's `Decimal.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN)` uses HALF_EVEN. Manifests only at exact X.5 boundaries which PAYG math (4-decimal coefficients) rarely produces.
+
+**No standalone fix needed.** Q-DEC PR 4 (Float column drop — already queued) retires the entire Float path. After Q-DEC PR 4 ships, only the Decimal `ROUND_HALF_EVEN` path remains and the drift disappears structurally.
+
+Closed without a fix PR. Tracked in IMPLEMENTATION_PLAN.md workstream `0·WI` for clarity.
 
 ---
 

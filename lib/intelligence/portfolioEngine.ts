@@ -7,7 +7,34 @@
  * - Cashflow analysis
  * - Gearing analysis
  * - Risk analysis
+ *
+ * **MA.4-002 fix (2026-06-07):** `calculateNetWorth` now delegates to
+ * the canonical `lib/calculations/netWorthCalculator.ts` SSOT
+ * (CLAUDE.md §12.2). Previously this engine carried its own divergent
+ * net-worth math that excluded super + personal assets and lacked
+ * entity-scoping, so the AI advisor + strategy engine returned
+ * different net-worth numbers than the user's dashboard.
+ * `generatePortfolioSnapshot` now also queries `SuperannuationAccount`
+ * + `Asset` (personal assets) so the input feeds the full picture.
+ *
+ * **Why `calculateCashflow` is NOT refactored to canonical:** the
+ * stress-test math in `calculateDebtStressTest` (line 512) assumes
+ * `monthlyExpenses` includes INTEREST-ONLY loan cost (the cashflow
+ * function adds it that way at line 309-315), then subtracts it back
+ * out to compute `baseExpensesExcludingLoans`. The canonical
+ * `cashflowOrchestrator` uses min-repayment (P+I) which would
+ * contaminate that subtraction. Refactoring cashflow here requires
+ * refactoring the whole stress-test math — that's a separate workstream
+ * and the strategy-engine stress-test is a documented design choice
+ * (interest-only is the worst-case scenario assumption). Net-worth was
+ * the headline finding; cashflow divergence is documented + scoped.
  */
+
+import {
+  calculateNetWorth as canonicalCalculateNetWorth,
+  type SuperInput as CanonicalSuperInput,
+  type AssetInput as CanonicalPersonalAssetInput,
+} from '@/lib/calculations/netWorthCalculator';
 
 // =============================================================================
 // TYPES
@@ -26,6 +53,29 @@ export interface PortfolioInput {
   expenses: ExpenseInput[];
   // Investments
   investments: InvestmentInput[];
+  /**
+   * MA.4-002 (2026-06-07): superannuation balances. Optional for
+   * backwards-compatibility with older callers that didn't surface this
+   * data — when omitted, super contributes $0 to net worth. Modern
+   * callers (`generatePortfolioSnapshot`) populate this field so the AI
+   * advisor's net-worth number matches the user's dashboard.
+   */
+  superannuation?: PortfolioSuperInput[];
+  /**
+   * MA.4-002 (2026-06-07): personal assets (Asset table — vehicles,
+   * jewellery, etc.). Same back-compat pattern as `superannuation`.
+   */
+  personalAssets?: PortfolioPersonalAssetInput[];
+}
+
+export interface PortfolioSuperInput {
+  balance: number;
+  /** Phase 39.5: SMSF member balances are excluded from net-worth super sum. */
+  fundType?: 'INDUSTRY' | 'RETAIL' | 'SMSF' | null;
+}
+
+export interface PortfolioPersonalAssetInput {
+  currentValue: number;
 }
 
 export interface PropertyInput {
@@ -241,40 +291,42 @@ export function toAnnual(amount: number, frequency: string): number {
 
 /**
  * Calculate net worth analysis.
+ *
+ * MA.4-002 (2026-06-07): delegates to the canonical
+ * `lib/calculations/netWorthCalculator.ts` SSOT (CLAUDE.md §12.2).
+ * The intel-engine input types are structural supersets of the
+ * canonical types so they pass through cleanly. The canonical result
+ * is then mapped onto this engine's narrower `NetWorthAnalysis` shape
+ * so existing consumers (`calculateGearing`, `calculateRisk`, strategy
+ * engine, AI advisor) don't break. **The mapping puts super +
+ * personalAssets into `assetBreakdown.other`** so the AI advisor's
+ * net-worth number now matches the user's dashboard.
  */
 export function calculateNetWorth(input: PortfolioInput): NetWorthAnalysis {
-  // Assets
-  const propertyValue = input.properties.reduce((sum, p) => sum + p.currentValue, 0);
-  const investmentValue = input.investments.reduce((sum, i) => sum + i.units * i.currentPrice, 0);
-  const cashValue = input.accounts
-    .filter(a => a.type !== 'CREDIT_CARD')
-    .reduce((sum, a) => sum + a.currentBalance, 0);
-
-  const totalAssets = propertyValue + investmentValue + cashValue;
-
-  // Liabilities
-  const mortgageDebt = input.loans.reduce((sum, l) => sum + l.principal, 0);
-  const creditCardDebt = input.accounts
-    .filter(a => a.type === 'CREDIT_CARD')
-    .reduce((sum, a) => sum + Math.abs(a.currentBalance), 0);
-
-  const totalLiabilities = mortgageDebt + creditCardDebt;
+  const canonical = canonicalCalculateNetWorth(
+    input.properties,
+    input.accounts,
+    input.investments,
+    input.loans,
+    (input.superannuation ?? []) as CanonicalSuperInput[],
+    (input.personalAssets ?? []) as CanonicalPersonalAssetInput[],
+  );
 
   return {
-    totalAssets,
-    totalLiabilities,
-    netWorth: totalAssets - totalLiabilities,
+    totalAssets: canonical.assets.total,
+    totalLiabilities: canonical.liabilities.total,
+    netWorth: canonical.netWorth,
     assetBreakdown: {
-      properties: propertyValue,
-      investments: investmentValue,
-      cash: cashValue,
-      other: 0
+      properties: canonical.assets.properties,
+      investments: canonical.assets.investments,
+      cash: canonical.assets.accounts,
+      other: canonical.assets.superannuation + canonical.assets.personalAssets,
     },
     liabilityBreakdown: {
-      mortgages: mortgageDebt,
-      creditCards: creditCardDebt,
-      other: 0
-    }
+      mortgages: canonical.liabilities.mortgages,
+      creditCards: canonical.liabilities.creditCards,
+      other: canonical.liabilities.personalLoans,
+    },
   };
 }
 
@@ -553,8 +605,14 @@ export async function generatePortfolioSnapshot(userId: string) {
   // Import prisma dynamically to avoid circular dependencies
   const { default: prisma } = await import('@/lib/db');
 
-  // Fetch all user's financial data
-  const [properties, loans, accounts, income, expenses, investmentAccounts] = await Promise.all([
+  // Fetch all user's financial data.
+  // MA.4-002 (2026-06-07): also query SuperannuationAccount + Asset so
+  // the net-worth calc routed through `canonicalCalculateNetWorth`
+  // sees the full picture (super + personal assets). Previously the
+  // strategy engine and AI advisor only saw properties + investments
+  // + cash, producing net-worth numbers that diverged from the
+  // dashboard.
+  const [properties, loans, accounts, income, expenses, investmentAccounts, superAccounts, personalAssets] = await Promise.all([
     prisma.property.findMany({ where: { userId } }),
     prisma.loan.findMany({ where: { userId } }),
     prisma.account.findMany({ where: { userId } }),
@@ -564,6 +622,8 @@ export async function generatePortfolioSnapshot(userId: string) {
       where: { userId },
       include: { holdings: true }
     }),
+    prisma.superannuationAccount.findMany({ where: { userId } }),
+    prisma.asset.findMany({ where: { userId } }),
   ]);
 
   // Flatten investment holdings
@@ -620,6 +680,15 @@ export async function generatePortfolioSnapshot(userId: string) {
       averagePrice: Number(inv.averagePrice || 0),
       currentPrice: Number(inv.averagePrice || 0), // Use averagePrice as currentPrice since no market data yet
       type: (inv.type as any) || 'SHARE',
+    })),
+    // MA.4-002 (2026-06-07): feed super + personal assets through to
+    // the canonical net-worth engine.
+    superannuation: superAccounts.map((s: any) => ({
+      balance: Number(s.currentBalance || 0),
+      fundType: (s.fundType as 'INDUSTRY' | 'RETAIL' | 'SMSF' | null) ?? null,
+    })),
+    personalAssets: personalAssets.map((a: any) => ({
+      currentValue: Number(a.currentValue || 0),
     })),
   };
 
