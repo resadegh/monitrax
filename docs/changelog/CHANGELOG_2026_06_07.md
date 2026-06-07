@@ -371,3 +371,80 @@ N/A — constant value updates only, no Prisma operations.
 - **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants vs SGC Act + ITAA, CGT 50% vs s115-25, REFORM_CUT_OVER_UTC vs Treasury 2026-27 Budget fact sheet, M1-M9 commencements per measure.
 - **MA.4-001 retirement (queued):** migrate `/api/calculate/tax` or delete the endpoint; delete `lib/tax/auTax.ts`. Bundle with MA.4 pass.
 - **MA.2 / MA.3 / MA.5:** queued.
+
+---
+
+## Session: MA.1b CLOSURE — authority re-cite, zero new bugs surfaced
+
+**Branch:** `claude/ma1b-authority-recite-LIlK9`
+**Status:** in flight — doc-only PR closing the MA.1b re-verification arm.
+
+### What this PR does
+
+Re-cites every MA.1 constant against primary authority under the LFC rule codified in PR #1006. Per Reza directive 2026-06-07: *"Don't guess, cross check everything against the real rules to make sure they are fact checked and exact."* MA.1's first pass was matched against memory/code; MA.1b re-verifies every entry against the literal source text, retrieval-dated.
+
+### Constants re-cited (all ✅ VERIFIED against authority)
+
+1. **Stage 3 income tax brackets FY24-25** — ATO `tax-rates-australian-residents` + Treasury Budget fact sheet. Rates (0/16/30/37/45) + thresholds ($18,200/$45,000/$135,000/$190,000) + base amounts ($0/$0/$4,288/$31,288/$51,638) all confirmed.
+2. **Super Guarantee + caps + Div 293 + TBC** — ATO `key-superannuation-rates-and-thresholds`. SG 11.5% FY24-25 (12% FY25-26), concessional $30,000, Div 293 $250,000 + 15% rate, TBC $1.9M (not indexed FY24-25), non-concessional $120,000 = 4× concessional, super contributions tax 15% per s295-485, carry-forward TSB $500,000 per s291-20(3).
+3. **LITO** — ATO `low-income-tax-offset`. Max $700, full threshold $37,500, Tier 1 5c/$, Tier 1 upper $45,000, Tier 2 1.5c/$, cutoff $66,667.
+4. **CGT 50% discount + 12-month rule** — AustLII ITAA 1997 s115-25 + ATO TD 2002/10. Discount 0.5, holding period 12 months minimum.
+5. **REFORM_CUT_OVER_UTC `2026-05-12T09:30:00Z`** — ATO + Treasury Budget 2026-27 tax reform page. 7:30pm AEST (UTC+10) → 9:30am UTC confirmed.
+6. **Phase 41E measure commencements M1-M9** — each cited per measure:
+   - M1 Negative gearing: 1 Jul 2027 ✓
+   - M2 CGT indexation: 1 Jul 2027 ✓
+   - M3 Trust min tax: 1 Jul 2028 ✓
+   - M4 Foreign-resident CGT: placeholder + `commencementVerified` gate (Treasury exposure draft April 2026; not yet enacted) ✓
+   - M5 Loss refundability: 1 Jul 2026 ✓
+   - M6 Foreign-purchase ban: 1 Jan 2025 AEDT (already law) ✓
+   - M7 VC caps lifted: 1 Jul 2027 ✓
+   - M8 EV FBT phased: 1 Apr 2027 (Phase 2) → 1 Apr 2029 (Phase 3) ✓
+   - M9 Dynamic PAYG: 1 Jul 2027 ✓
+
+### LFC compliance
+
+- **LFC-1 (no memory-based assertions):** every constant carries a `Verified-via:` URL fetched 2026-06-07.
+- **LFC-2 (primary > secondary):** ATO direct + Treasury direct = primary. AustLII for ITAA sections. Practitioner firms (Baker McKenzie, Clayton Utz, Holding Redlich, Grant Thornton, Ashurst, Greenmount, Perpetual, DLA Piper, PwC) used as LFC-5 redundancy only.
+- **LFC-3 (retrieval-dated):** all citations stamped 2026-06-07.
+- **LFC-4 (FY-anchored):** every numeric assertion names the FY.
+- **LFC-5 (two-source redundancy):** every load-bearing constant has at least two independent corroborating sources.
+
+### Net finding
+
+**Zero new bugs surfaced.** Every Stage 3 bracket, super constant, LITO component, CGT discount + 12-month rule, REFORM_CUT_OVER_UTC, and M1-M9 commencement date matches authority byte-for-byte. MA.1b CLOSED.
+
+The MA.1 baseline is now at MAXIMUM confidence. Combined with the bugs found and fixed by MA.1's first pass (PR #1005 + #1007 + #1008), the entire MA.1 scope is LFC-compliant.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (audit doc citation update per LFC-1 through LFC-5)
+- [x] strategic decision (MA.1b CLOSED with zero new bugs — first MA pass officially LFC-compliant)
+
+Docs updated in this PR:
+- `docs/audit/2026-06-MATHS-AUDIT.md` §3a.4–§3a.10 — Stage 3 / super / LITO / CGT / REFORM_CUT_OVER_UTC / M1-M9 re-cite sections + methodology table flipped MA.1b → CLOSED + closing metadata
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.1b closure noted with full citation summary
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] Doc-only PR; no engine code touched.
+- [x] All Phase 41E reform constants (REFORM_CUT_OVER_UTC + M1-M9 commencement dates) re-verified against primary authority — FW-1/FW-2 gates unchanged. The §12.14 §13.1 list audit (which functions are reform-aware) is unaffected.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — doc-only PR.
+
+### Test status
+
+- Typecheck: N/A (no code changes)
+- Full vitest sweep: N/A (no code changes)
+
+### Next
+
+- **MA.4-001 retirement (next, queued):** migrate or delete `/api/calculate/tax`; delete `lib/tax/auTax.ts`. Single small PR.
+- **MA.2 (cashflow + frequency math):** queued. Conversion ratios vs ATO Schedule 1 §3, rounding-policy consistency.
+- **MA.3 (GRDCS data relationships):** queued.
+- **MA.4 (cross-engine consistency, main pass):** queued — bundled with MA.4-001.
+- **MA.5 (Phase 41E reform-aware correctness):** queued.
