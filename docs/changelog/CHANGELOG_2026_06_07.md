@@ -556,3 +556,78 @@ N/A — file deletions (legacy engine retirement) + import-refactor only, no Pri
 - **MA.4-002 remediation (queued):** retire divergent `portfolioEngine.ts` functions. Migrate strategy engine + AI advisor to canonical `masterFinancialService`. Est 1-2 days.
 - **MA.2-001 cleanup (queued):** verify ATO rounding-mode rule, align Float ↔ Decimal. Est 1-3 hours.
 - **Phase 45 PR 1 (engine composition):** now UNBLOCKED from audit gate. Other gates (Q-DEC PR 4 Float drop) still applicable.
+
+---
+
+## Session: MA-finish — close MA.4-002 + close MA.2-001
+
+**Branch:** `claude/ma-finish-items-LIlK9`
+**Status:** in flight — MA audit follow-ups closed.
+
+### MA.4-002 — Divergent `calculateNetWorth` in `portfolioEngine.ts` — ✅ FIXED
+
+Refactored `lib/intelligence/portfolioEngine.ts:calculateNetWorth` to delegate to canonical `lib/calculations/netWorthCalculator.ts` SSOT (CLAUDE.md §12.2). Previously the strategy engine + every AI advisor route consumed a divergent net-worth implementation that excluded superannuation + personal assets + entity-scoping.
+
+**Changes:**
+1. **`lib/intelligence/portfolioEngine.ts`:**
+   - File-header JSDoc documents the MA.4-002 fix + the scope-bounded rationale for leaving `calculateCashflow` untouched (interest-only stress-test math).
+   - `PortfolioInput` extended with optional `superannuation: PortfolioSuperInput[]` + `personalAssets: PortfolioPersonalAssetInput[]` (back-compat: omitted → contributes $0).
+   - `calculateNetWorth(input)` now delegates to `canonicalCalculateNetWorth`; result mapped onto existing `NetWorthAnalysis` shape with super + personalAssets in `assetBreakdown.other`.
+   - `generatePortfolioSnapshot(userId)` now queries `prisma.superannuationAccount.findMany()` + `prisma.asset.findMany()` and feeds them into `PortfolioInput`.
+
+2. **`tests/intelligence/portfolioEngine.netWorth.test.ts` (NEW):** 6 regression tests
+   - Super inclusion (was excluded pre-fix)
+   - Personal asset inclusion (was excluded pre-fix)
+   - Phase 39.5 SMSF double-count guard (SMSF member balances excluded)
+   - Canonical → intel shape mapping correctness ($800k property + $25k cash + $10k investments + $150k super + $20k asset = $1,005,000 assets; $400k mortgage = $605k net worth)
+   - Back-compat with callers omitting super/assets
+   - Investment `averagePrice` fallback when `currentPrice` is missing
+
+**What this PR does NOT change:**
+- `calculateCashflow(input)` — still uses interest-only loan modeling. Documented design choice for strategy stress-test math (`calculateDebtStressTest` subtracts the interest-only repayments from `monthlyExpenses` to compute `baseExpensesExcludingLoans`). Refactoring would require simultaneously refactoring the stress-test path. Scope creep — out of scope for this fix; documented in file-header JSDoc.
+
+**Per-user impact:** users with super + personal assets now see the AI advisor's net-worth number MATCH their dashboard net-worth. Previously the AI may have said "$400k" while the dashboard showed "$850k".
+
+### MA.2-001 — Float/Decimal rounding-mode drift — ✅ RESOLVED-BY Q-DEC PR 4
+
+Float `Math.round(weeklyWithholding)` uses HALF_AWAY_FROM_ZERO; Decimal `Decimal.toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN)` uses HALF_EVEN. Manifests only at exact X.5 boundaries (rare given 4-decimal PAYG coefficients).
+
+**No standalone fix needed.** Q-DEC PR 4 (Float column drop — already queued in workstream `0·WI`) retires the entire Float path. After Q-DEC PR 4 ships, only the Decimal `ROUND_HALF_EVEN` path remains and the drift disappears structurally.
+
+Closed without a fix PR; tracked in IMPLEMENTATION_PLAN.md.
+
+### Build / test status
+
+- Typecheck: ✅ clean
+- Full vitest sweep: ✅ **2,315 passing, 69 skipped, 0 failures** (net +6 new MA.4-002 regression tests)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (audit doc updates + MA.4-002 fix)
+- [x] strategic decision (MA.4-002 ✅ FIXED; MA.2-001 ✅ RESOLVED-BY Q-DEC PR 4; ALL MA workstreams now CLOSED)
+
+Docs updated in this PR:
+- `lib/intelligence/portfolioEngine.ts` — refactor + file-header JSDoc
+- `tests/intelligence/portfolioEngine.netWorth.test.ts` — NEW regression tests
+- `docs/audit/2026-06-MATHS-AUDIT.md` §6 + §7 + §8 + §9 — follow-ups closed
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.4-002 ✅ + MA.2-001 ✅; Dead Code #30 closed
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No engine code change to reform-aware paths. FW-1/FW-2 unchanged. The canonical `netWorthCalculator.ts` SSOT was already reform-aware (Phase 39.5 SMSF double-count guard).
+- [x] No schema changes (FW-3 N/A).
+- [x] No new AI tools (FW-4 N/A).
+- [x] No new per-asset tax UI (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — refactor + new test file + doc updates only, no Prisma write operations.
+
+### Next
+
+- **Q-DEC PR 4 (Float column drop):** orthogonal to MA, can ship anytime after 7-day parallel-run window. After Q-DEC PR 4 ships, MA.2-001 is structurally resolved.
+- **Phase 45 PR 1 (engine composition):** UNBLOCKED from audit gate. Other gates (Q-DEC PR 4) still applicable in series.
+- **MA workstream:** CLOSED. All five passes + all logged findings have a tracked outcome.
