@@ -141,3 +141,69 @@ NONE — additive doc + 2 small code changes (one comment, one timestamp 24h shi
 - **MA.1-003 follow-up fix PR** — Medicare Levy threshold indexation. Reza confirms ATO publication date; constants updated; thresholds-per-FY auditable.
 - **MA.1b** — state stamp duty + land tax bracket cross-check (8 state Acts).
 - **MA.2 / MA.3 / MA.4 / MA.5** — queued; can run in parallel with each other and with Q-DEC PR 4 (Float drop). Phase 45 PR 1 is gated on MA.1 + MA.2 + MA.4 + MA.5 (MA.3 is data-relationship; orthogonal to engine math).
+
+---
+
+## Session: MA.1b — Authority re-verification under LFC rule (this PR, doc-only delta)
+
+**Branch:** `claude/ma1-verify-against-authority-LIlK9`
+**Status:** in flight — doc updates only; MA.1-005 fix PR queued.
+
+### Why this PR exists
+
+Reza directive 2026-06-07: *"The audit should also check the calculations against the tax laws and other related accounting rules. Don't guess, cross check everything against the real rules to make sure they are fact checked and exact."* MA.1's first pass (PR #1005) asserted constants against the code, not against the canonical authority text. The LFC rule codified in this PR makes "verify against the source" mandatory for every MA pass.
+
+### What changed in this PR
+
+1. **`docs/audit/2026-06-MATHS-AUDIT.md`**
+   - Added §0a "Law Fact-Check Rule (LFC)" — 7 sub-rules (LFC-1 through LFC-7) — applies to every MA pass + every fix PR.
+   - Added §3a "MA.1b — Authority re-verification" — tracks the re-cite work.
+   - Added §3a.1 Medicare Levy thresholds FY24-25 — ✅ authority confirmed via ATO `tax-table-weekly-with-no-and-half-medicare-levy` (LFC-1 + LFC-5 redundancy via NAT 1005 cross-link).
+   - Added §3a.2 SAPTO FY24-25 — ✅ authority confirmed.
+   - Added §3a.3 **MA.1-005 🛑 CRITICAL — PAYG formula missing the `+ 0.99` adjustment.** Three-source citation. Code at `lib/tax-engine/core/paygCalculator.ts:145` uses `range.coefficients.a * weeklyEarnings - range.coefficients.b` where the canonical ATO Schedule 1 NAT 1004 formula is `y = a × x - b` where **`x = (whole dollars of weekly earnings) + 0.99`**. Q-DEC shadow comparison missed this because Float and Decimal both used the same wrong formula — structural correctness gap that Q-DEC could never have surfaced.
+   - Updated §3 summary table with MA.1-005 + status flips.
+2. **`docs/IMPLEMENTATION_PLAN.md`**
+   - Workstream `0·MA` updated with MA.1b sub-pass + LFC rule (7 sub-rules) applied across all five MA passes.
+   - MA.1-003 status flipped from "deferred — needs Reza confirmation" to "AUTHORITY CONFIRMED — fix PR cleared to ship" (now backed by literal ATO quote).
+   - MA.1-005 added as the first LFC-surfaced finding ("MA.1's original pass missed it because the formula was matched against memory not against the literal ATO text").
+
+### What does NOT change in this PR
+
+- No code changes. MA.1-005 fix PR is queued separately so the LFC rule + finding can land first as the meta-trail.
+- MA.1-003 (Medicare threshold indexation) fix PR also queued separately for the same reason — landing the audit anchor + LFC rule first, then the fix PRs cite back to this PR.
+
+### Authority sources cited in this PR (retrieval-dated 2026-06-07)
+
+1. ATO Schedule 8 NAT 3539 (`schedule-8-calculating-help-ssl-tsl-and-sfss-components-01-july-2024-to-30-june-2025`) — literal formula quote.
+2. ATO Schedule 1 NAT 1004 `working-out-the-weekly-earnings` — corroboration.
+3. ATO `tax-table-weekly-with-no-and-half-medicare-levy` — Medicare threshold.
+4. ATO `Tax offsets — seniors and pensioners (SAPTO)` — SAPTO values.
+5. `freemathhelp.com/forum/threads/weekly-tax-payable-formula.134111` — tertiary corroboration of the literal ATO quote.
+
+All ATO pages returned 403 to WebFetch; literal quotes captured via WebSearch surfacing the page's own content — flagged where applicable per LFC-6.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (new audit-process rule — LFC; new authority-cross-check pass)
+- [x] strategic decision (LFC rule codified across all five MA passes; MA.1-003 unblocked; MA.1-005 surfaced)
+
+Docs updated in this PR:
+- `docs/audit/2026-06-MATHS-AUDIT.md` §0a + §3a + §3 summary
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — LFC sub-rules + MA.1b status + MA.1-005
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] No engine code touched; reform constants verification queued for completion in MA.1b but no logic changes in this PR. FW-1/FW-2 unchanged.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+NONE — doc-only PR.
+
+### Next
+
+- **MA.1-005 fix PR (queued):** patch `calculatePAYG` + `calculatePAYGDecimal` with `Math.floor(weeklyEarnings) + 0.99` per ATO Schedule 1 §3 + §4. Port matching period-conversion rules. Add edge-case unit tests + 5-salary integration test against ATO published NAT 1005 weekly tax table. Re-run Q-DEC shadow comparison. PR body MUST blockquote the ATO authority text per LFC-7.
+- **MA.1-003 fix PR (queued):** patch `taxYearConfig.ts` Medicare thresholds to FY24-25 indexed values ($27,222 / $45,907 / $4,216). PR body blockquotes the ATO `tax-table-weekly-with-no-and-half-medicare-levy` text.
+- **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants re-cite against SGC Act + ITAA, CGT 50% re-cite against s115-25, REFORM_CUT_OVER_UTC re-cite against Treasury 2026-27 Budget fact sheet, M1-M9 commencement dates re-cite per measure.
