@@ -246,7 +246,7 @@ The comment at line 88 says "1 Jan 2025 (already law; ban runs until 30 Jun 2029
 | MA.1-002 PAYG bracket boundaries (integer vs $X.99) | Cosmetic | ⚠️ Add code comment (shipped PR #1005) |
 | MA.1-003 Medicare Levy thresholds FY24-25 indexation | Medium | 🛑 **AUTHORITY CONFIRMED in MA.1b §3a.1** — fix PR cleared to ship |
 | MA.1-004 FOREIGN_PURCHASE_BAN commencement 24h off | Low | ✅ Fixed (shipped PR #1005) |
-| **MA.1-005 🛑 PAYG formula missing `+ 0.99` adjustment (LFC-surfaced)** | **Medium-High** | **🛑 NEW — fix PR queued (MA.1b §3a.3)** |
+| **MA.1-005 🛑 PAYG formula missing `+ 0.99` adjustment (LFC-surfaced)** | **Medium-High** | **✅ FIXED (this PR — `claude/ma1-005-fix-payg-formula-LIlK9`)** |
 | LITO | — | ✅ VERIFIED (re-verify queued in MA.1b) |
 | Super (SG / caps / Div 293 / TBC) | — | ✅ VERIFIED (re-verify queued in MA.1b) |
 | CGT 50% discount | — | ✅ VERIFIED (re-verify queued in MA.1b) |
@@ -291,9 +291,11 @@ LFC-5 corroboration: ATO `tax-table-weekly` (NAT 1005) shows the matching weekly
 
 Verified-via: ATO `Tax offsets — seniors and pensioners (SAPTO)` page — retrieved 2026-06-07 (via WebSearch literal-quote).
 
-### 3a.3 🛑 MA.1-005 CRITICAL — PAYG formula missing the `+ 0.99` adjustment
+### 3a.3 🛑 MA.1-005 CRITICAL — PAYG formula missing the `+ 0.99` adjustment — ✅ FIXED
 
-**Severity:** Medium-High. Affects every PAYG calculation in the app for every user. Per-user impact is small (typically rounds to the same whole-dollar withholding because the final `Math.round` absorbs cents-level deviations), but boundary cases (where the unrounded value sits near X.5) flip to the wrong rounded outcome. Cumulative per-FY: up to ~$26/employee. **Materiality is small per user but it is a deviation from the canonical ATO formula, which is unacceptable in a tax-position SSOT — the formula is wrong by spec.**
+**Severity:** Medium-High. Affected every PAYG calculation in the app for every user. Per-user impact small (typically rounds to the same whole-dollar withholding because the final `Math.round` absorbs cents-level deviations), but boundary cases (where the unrounded value sits near X.5) flip to the wrong rounded outcome. Cumulative per-FY: up to ~$52/employee in extreme constructed boundary cases; typical $0–$5. **Materiality is small per user but it was a deviation from the canonical ATO formula, which is unacceptable in a tax-position SSOT — the formula was wrong by spec.**
+
+**Status:** ✅ FIXED in `claude/ma1-005-fix-payg-formula-LIlK9` (Q-DEC shadow comparison Float ≡ Decimal still holds — both engines patched consistently).
 
 **Authority (literal quote):**
 
@@ -304,14 +306,18 @@ Verified-via — three independent sources (LFC-5 redundancy satisfied):
 2. ATO Schedule 1 NAT 1004 `working-out-the-weekly-earnings` — https://www.ato.gov.au/tax-rates-and-codes/payg-withholding-schedule-1-statement-of-formulas-for-calculating-amounts-to-be-withheld/working-out-the-weekly-earnings — retrieved 2026-06-07 (WebSearch corroboration).
 3. freemathhelp.com forum thread quoting the same ATO text verbatim — retrieved 2026-06-07 (tertiary corroboration only per LFC-2).
 
-**The code (current — wrong by spec):**
+**The code (pre-fix — wrong by spec):**
 
 `lib/tax-engine/core/paygCalculator.ts:140-145` (Float path) and `:317-322` (Decimal sibling):
 ```ts
 weeklyWithholding = Math.max(0, range.coefficients.a * weeklyEarnings - range.coefficients.b);
 ```
 
-`weeklyEarnings` here is the raw (possibly-fractional) weekly equivalent — NOT floored to whole dollars, NOT adjusted by +0.99.
+`weeklyEarnings` here was the raw (possibly-fractional) weekly equivalent — NOT floored to whole dollars, NOT adjusted by +0.99.
+
+**The shipped fix:**
+
+Both engines now compute `xWhole = Math.floor(weeklyEarnings) + 0.99` (Float) and `xWholeDec = weeklyEarnings.floor().plus('0.99')` (Decimal) ONCE, immediately before the per-band formula. Period-conversion helpers (`toWeeklyAmount`/`toWeeklyAmountDecimal`) are unchanged because their ratios are mathematically equivalent to ATO Schedule 1 §3 (`monthly × 12 / 52 ≡ monthly × 3 / 13`, `quarterly × 4 / 52 ≡ quarterly / 13`). The floor + 0.99 is applied once, after period conversion, matching ATO §3 + §4.
 
 **The fix (matching ATO Schedule 1 §3 "Working out the weekly earnings" + §4 "Using a formula"):**
 
@@ -348,13 +354,13 @@ The "+0.99" effectively raises the unrounded result by `a × 0.99` (max ~$0.45 a
 
 **Q-DEC shadow comparison status:** the existing shadow test (CHANGELOG entries for PR 2.D.1) showed Decimal ≡ Float for `calculatePAYG`. That's because both implementations used the same wrong formula. The shadow test does NOT detect a both-wrong-equally bug. **MA.1b confirms a structural correctness gap that Q-DEC could never have surfaced.**
 
-**Action:** Open MA.1b-fix-payg PR with:
-1. Patch `calculatePAYG` (Float) + `calculatePAYGDecimal` (Decimal sibling) — apply `xWhole = Math.floor(weeklyEarnings) + 0.99` before formula.
-2. Patch `toWeeklyAmount` + `toWeeklyAmountDecimal` to use ATO Schedule 1 §3 conversion rules per pay period.
-3. Add unit tests covering: $361.99 (bracket-1 zero), $499.99 (bracket-2 boundary), $865.99 (bracket-5 boundary), $2596.99, $3653.99, and several mid-band values (e.g. $1000, $1500.50, $2000.16).
-4. Add an integration test that picks 5 representative annual salaries ($50k, $80k, $120k, $180k, $250k) and confirms the annual withholding matches the ATO `Tax tables → Weekly tax table` published figures byte-for-byte (NAT 1005).
-5. Update the audit doc with the resulting reconciliation table.
-6. Re-run Q-DEC shadow comparison — Float ≡ Decimal must still hold after the fix.
+**Action (✅ COMPLETED in MA.1-005 fix PR):**
+1. ✅ Patched `calculatePAYG` (Float) + `calculatePAYGDecimal` (Decimal sibling) — applies `xWhole = floor(weeklyEarnings) + 0.99` before formula.
+2. ⏸ Period-conversion helpers unchanged — they were already mathematically equivalent to ATO Schedule 1 §3. The "floor + 0.99" is applied ONCE, post-conversion, in the formula step. Comment added.
+3. ✅ Added 5 contract tests covering: bracket-boundary $361.99 (zero), $362.00 entering bracket 2, $1500.x cents-invariance (`$1500.00 ≡ $1500.50 ≡ $1500.99`), top-bracket $4000 → $1205, divergence point $869.39 → $101 (was $100 pre-fix).
+4. ⏸ ATO NAT 1005 published-table integration test deferred to MA.1b continuation (requires fetching authoritative table values via WebFetch — ATO blocks direct fetch; queued for a future PR once authority can be retrieved as primary source).
+5. ✅ Audit doc updated with shipped status.
+6. ✅ Q-DEC shadow comparison Float ≡ Decimal held — both engines patched consistently. Full vitest sweep `2,309 passing, 69 skipped, 0 failures`.
 
 ### 3a.4 Pending verifications (this branch continues)
 

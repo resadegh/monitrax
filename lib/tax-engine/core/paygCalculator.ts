@@ -7,6 +7,33 @@
  *
  * Note: This implements the formula method for regular payments.
  * The ATO provides coefficients that approximate the tax tables.
+ *
+ * **Canonical formula (audit MA.1-005, 2026-06-07).** ATO Schedule 1 §4
+ * "Using a formula" defines the withholding linear equation as:
+ *
+ *   y = a × x − b
+ *
+ * where:
+ *   - y = weekly withholding amount expressed in dollars
+ *   - **x = (number of whole dollars in the weekly earnings) + 0.99**
+ *   - a, b = coefficients per earnings band
+ *
+ * The "+ 0.99" trick ensures every cent-value within $X.00 - $X.99
+ * produces the SAME withholding — that is the ATO's published behaviour.
+ * Verified-via:
+ *   - https://www.ato.gov.au/tax-rates-and-codes/schedule-8-calculating-help-ssl-tsl-and-sfss-components-01-july-2024-to-30-june-2025
+ *     (Schedule 8 NAT 3539 — quotes the Schedule-1 formula format)
+ *   - https://www.ato.gov.au/tax-rates-and-codes/payg-withholding-schedule-1-statement-of-formulas-for-calculating-amounts-to-be-withheld/working-out-the-weekly-earnings
+ *   - Retrieved 2026-06-07.
+ *
+ * Per ATO Schedule 1 §3 "Working out the weekly earnings", the floor +
+ * 0.99 adjustment applies AFTER period conversion (so monthly →
+ * weeklyEquivalent → floor + 0.99). The period conversion ratios
+ * themselves are mathematically equivalent to the developer convention
+ * (`monthly × 12 / 52 = monthly × 3 / 13` etc.), so the period helpers
+ * `toWeeklyAmount`/`toWeeklyAmountDecimal` are unchanged — the floor +
+ * 0.99 is applied ONCE, inside `calculatePAYG`/`calculatePAYGDecimal`,
+ * immediately before the formula coefficients are applied.
  */
 
 import { TaxYearConfig, PAYGScale, CalculationStep } from '../types';
@@ -136,18 +163,24 @@ export function calculatePAYG(input: PAYGInput): PAYGResult {
   // Select the appropriate scale
   const scale = hasTaxFreeThreshold ? PAYG_SCALE_2_2024_25 : PAYG_SCALE_1_2024_25;
 
+  // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
+  // Audit MA.1-005 (2026-06-07): see file header for the literal ATO
+  // formula. Bracket selection still uses raw `weeklyEarnings` against
+  // the integer band bounds (MA.1-002 boundary-equivalence applies).
+  const xWhole = Math.floor(weeklyEarnings) + 0.99;
+
   // Find the applicable coefficient range
   let weeklyWithholding = 0;
   for (const range of scale) {
     const max = range.weeklyEarningsMax ?? Infinity;
     if (weeklyEarnings >= range.weeklyEarningsMin && weeklyEarnings <= max) {
-      // Apply formula: tax = (a × earnings) - b
-      weeklyWithholding = Math.max(0, range.coefficients.a * weeklyEarnings - range.coefficients.b);
+      // Apply ATO Schedule 1 formula: y = (a × x) - b, where x = floor(earnings) + 0.99.
+      weeklyWithholding = Math.max(0, range.coefficients.a * xWhole - range.coefficients.b);
 
       calculations.push({
         label: 'PAYG Formula',
         value: weeklyWithholding,
-        explanation: `(${range.coefficients.a} × $${weeklyEarnings.toFixed(2)}) - $${range.coefficients.b}`,
+        explanation: `(${range.coefficients.a} × $${xWhole.toFixed(2)}) - $${range.coefficients.b}`,
       });
 
       break;
@@ -311,12 +344,16 @@ export function calculatePAYGDecimal(input: PAYGInputDecimal): PAYGResultDecimal
 
   const scale = hasTaxFreeThreshold ? PAYG_SCALE_2_2024_25 : PAYG_SCALE_1_2024_25;
 
+  // ATO Schedule 1 §4: x = (whole dollars of weekly earnings) + 0.99.
+  // Audit MA.1-005 (2026-06-07) — Decimal sibling matches Float path.
+  const xWholeDec = weeklyEarnings.floor().plus('0.99');
+
   let weeklyWithholding = new Decimal(0);
   for (const range of scale) {
     const max = range.weeklyEarningsMax ?? Infinity;
     if (weeklyEarningsNumber >= range.weeklyEarningsMin && weeklyEarningsNumber <= max) {
-      // tax = (a × earnings) - b, floored at 0.
-      const raw = weeklyEarnings.times(range.coefficients.a).minus(range.coefficients.b);
+      // y = (a × x) - b where x = floor(earnings) + 0.99, floored at 0.
+      const raw = xWholeDec.times(range.coefficients.a).minus(range.coefficients.b);
       weeklyWithholding = Decimal.max(new Decimal(0), raw);
       break;
     }
