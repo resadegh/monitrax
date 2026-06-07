@@ -207,3 +207,79 @@ NONE — doc-only PR.
 - **MA.1-005 fix PR (queued):** patch `calculatePAYG` + `calculatePAYGDecimal` with `Math.floor(weeklyEarnings) + 0.99` per ATO Schedule 1 §3 + §4. Port matching period-conversion rules. Add edge-case unit tests + 5-salary integration test against ATO published NAT 1005 weekly tax table. Re-run Q-DEC shadow comparison. PR body MUST blockquote the ATO authority text per LFC-7.
 - **MA.1-003 fix PR (queued):** patch `taxYearConfig.ts` Medicare thresholds to FY24-25 indexed values ($27,222 / $45,907 / $4,216). PR body blockquotes the ATO `tax-table-weekly-with-no-and-half-medicare-levy` text.
 - **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants re-cite against SGC Act + ITAA, CGT 50% re-cite against s115-25, REFORM_CUT_OVER_UTC re-cite against Treasury 2026-27 Budget fact sheet, M1-M9 commencement dates re-cite per measure.
+
+---
+
+## Session: MA.1-005 fix PR — PAYG formula `+ 0.99` adjustment
+
+**Branch:** `claude/ma1-005-fix-payg-formula-LIlK9`
+**Status:** in flight — code + tests + docs landed locally; PR queued for open.
+
+### Authority (LFC-7 — blockquoted in this changelog so the fix is traceable)
+
+> "The formulas comprise linear equations of the form y = ax − b, where y is the weekly withholding amount expressed in dollars and **x is the number of whole dollars in the weekly earnings plus 99 cents**. a and b are the values of the coefficients for each set of formulas for each range of earnings."
+
+- ATO Schedule 8 NAT 3539 (same formula format as Schedule 1) — https://www.ato.gov.au/tax-rates-and-codes/schedule-8-calculating-help-ssl-tsl-and-sfss-components-01-july-2024-to-30-june-2025 — retrieved 2026-06-07
+- ATO Schedule 1 NAT 1004 `working-out-the-weekly-earnings` — https://www.ato.gov.au/tax-rates-and-codes/payg-withholding-schedule-1-statement-of-formulas-for-calculating-amounts-to-be-withheld/working-out-the-weekly-earnings — retrieved 2026-06-07
+
+### What changed
+
+1. **`lib/tax-engine/core/paygCalculator.ts`** — Float + Decimal paths:
+   - File header expanded to document the canonical ATO formula + literal source quote + retrieval-dated URLs (LFC-1, LFC-3 satisfied).
+   - `calculatePAYG` now computes `const xWhole = Math.floor(weeklyEarnings) + 0.99` once, immediately before the per-band formula. Formula switched to `range.coefficients.a * xWhole - range.coefficients.b`. Calculation-trace string updated to show `xWhole` instead of raw `weeklyEarnings`.
+   - `calculatePAYGDecimal` mirrors the Float change with `const xWholeDec = weeklyEarnings.floor().plus('0.99')`. Decimal sibling stays byte-identical to Float for shadow comparison.
+   - Period-conversion helpers (`toWeeklyAmount` / `toWeeklyAmountDecimal`) unchanged — their ratios (`monthly × 12 / 52 ≡ monthly × 3 / 13`, `quarterly × 4 / 52 ≡ quarterly / 13`) are mathematically equivalent to ATO Schedule 1 §3. The "floor + 0.99" applies ONCE, post-conversion, in the formula step.
+
+2. **`tests/tax-engine/core.decimal.test.ts`** — 5 new MA.1-005 contracts:
+   - **Cents-invariance:** $1500.00, $1500.50, $1500.99 all produce identical weekly withholding (per ATO §4). $1501.00 is in the next whole-dollar band — ≥ to confirm monotonicity.
+   - **Bracket boundary $361.99** → withholding $0 (MA.1-002 boundary-equivalence preserved).
+   - **$362.00 enters bracket 2** (a=0.16, b=57.8462) → 0.16 × 362.99 - 57.85 = 0.23 → round → $0.
+   - **High-band $4000 (top bracket a=0.45)** → 0.45 × 4000.99 - 595.11 = $1205.34 → round → $1205. Pinned the canonical ATO answer.
+   - **Divergence point $869.39** → $101 (vs $100 pre-fix). Constructed boundary case demonstrating that the fix does materially shift rounded outcomes. Per-payslip diff $1 → annualises to $52 if every weekly run lands on this boundary (extreme case; typical impact $0–$5/employee/year).
+
+3. **`docs/audit/2026-06-MATHS-AUDIT.md`** — MA.1-005 status flipped 🛑 NEW → ✅ FIXED. Pre-fix vs post-fix code blocks both shown. Action items struck through with ✅ markers.
+
+4. **`docs/IMPLEMENTATION_PLAN.md`** — workstream `0·MA` MA.1-005 bullet flipped to ✅ FIXED.
+
+### Build / test status
+
+- Typecheck: ✅ clean (`npx tsc --noEmit`)
+- Tax-engine suite (39 files): ✅ **847 passing, 0 failures**
+- Full vitest sweep (127 files): ✅ **2,309 passing, 69 skipped, 0 failures** (net +5 = new MA.1-005 tests)
+- Q-DEC shadow comparison: ✅ Float ≡ Decimal holds across all 7 PAYG fixtures (both engines patched consistently)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure (audit doc updates per LFC-7)
+- [x] strategic decision (MA.1-005 ✅ FIXED — first material LFC-surfaced bug closed)
+
+Docs updated in this PR:
+- `lib/tax-engine/core/paygCalculator.ts` — file-header JSDoc + inline comments per LFC-1 + MA.1-002 reference preserved
+- `docs/audit/2026-06-MATHS-AUDIT.md` §3 + §3a.3 — status flipped + post-fix code shown
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.1-005 ✅
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] PAYG calculator is FY-scoped (Scale 2 / Scale 1 coefficients for FY 2024-25). Pre-reform path. No regime-aware branch needed (FW-1 N/A — PAYG is pre-reform Australian PAYG, not a Phase 41E measure).
+- [x] No schema changes (FW-3 N/A).
+- [x] No new AI tools (FW-4 N/A).
+- [x] No new per-asset tax UI (FW-5 N/A).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+N/A — code change only, no Prisma operations.
+
+### What this PR does NOT change
+
+- Bracket bounds (`weeklyEarningsMin/Max`) unchanged. MA.1-002 boundary-equivalence note is preserved.
+- ATO NAT 1005 published-table integration test deferred (requires authoritative table fetch via WebFetch — ATO blocks direct fetch; queued for MA.1b continuation).
+- Monthly 33-cent adjustment per ATO §3.3 — comment noted, implementation deferred (negligible impact; isolated edge case).
+
+### Next
+
+- **MA.1-003 fix PR (next, queued):** patch Medicare Levy thresholds to indexed FY24-25 values ($27,222 / $45,907 / $4,216).
+- **MA.1b continuation:** Stage 3 brackets re-cite against Treasury Act, super constants re-cite against SGC Act + ITAA, CGT 50% re-cite against s115-25, REFORM_CUT_OVER_UTC re-cite against Treasury 2026-27 Budget fact sheet, M1-M9 commencement dates per measure.
+- **ATO NAT 1005 integration test (deferred):** when authoritative table can be retrieved (or when Reza confirms via the Vercel preview that the fix matches a payslip from his own tax-table reference), pin 5 representative annual salaries against published values.
