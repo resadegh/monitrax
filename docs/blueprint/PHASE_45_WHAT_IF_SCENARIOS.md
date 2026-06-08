@@ -483,18 +483,24 @@ The 10-year composer is the new piece. Per Reza decision, the existing scenarios
 
 ## 9. Acceptance criteria
 
+PR 1 (engine composition) — ✅ shipped 2026-06-07:
+- [x] Salary-sacrifice scenario composed from existing super engines (no new calc)
+- [x] 10-year trajectory composer (pure function, deterministic)
+- [x] Salary-sacrifice scenario returns `UNCOMPUTED` when input exceeds concessional cap headroom (H3)
+- [x] §12.14 reform-awareness applied to salary-sacrifice via `getRegimeStatus` reading `taxYearConfig.div296CommencementVerified` (H2)
+- [x] No new calc engine introduced (every output traces to existing primitives) — verified by file headers + reviewer enforcement
+- [x] H1 `SliderSource` discriminated union shipped on `types.ts` + `salarySacrificeSliderSources` helper for UI consumption
+- [x] Tests: scenario contract tests (21) + 10-year composer determinism tests (13) + concessional-cap-guard tests (covered in scenario suite)
+- [x] All numbers traceable to canonical engine output via Q-DEC adapter layer (engines read Float → `toDecimal()` at boundary; PR 1's Decimal-first composition consumes the Decimal siblings directly)
+
+PR 2 (UI port) — pending:
 - [ ] All 5 levers render at `/dashboard/cfo/what-if/[lever]` with snapshot-defaulted inputs
 - [ ] Each lever returns: year-1 cashflow impact + 10-year trajectory + tax-position delta
 - [ ] Assumptions panel present on every lever (collapsed by default)
 - [ ] General Advice Warning footer on every lever output
-- [ ] Salary-sacrifice scenario returns `UNCOMPUTED` when input exceeds concessional cap headroom
-- [ ] No new calc engine introduced (every output traces to existing primitives)
 - [ ] Editorial palette throughout (no cosmos-* tokens on internal surface)
-- [ ] Stitch designs committed to `.stitch/designs/what-if-*.{html,png}` BEFORE React port begins
-- [ ] §12.14 reform-awareness applied to salary-sacrifice (FY-aware regime classification)
-- [ ] All numbers traceable to canonical engine output via Q-DEC adapter layer
+- [ ] Stitch designs committed to `.stitch/designs/what-if-*.{html,png}` BEFORE React port begins (canonical light+dark+mobile artefacts already locked PR #977)
 - [ ] No `Float`-derived projection numbers cross the API boundary (post Q-DEC)
-- [ ] Tests: scenario contract tests + 10-year composer determinism tests + concessional-cap-guard tests
 
 ## 10. Open questions for v1
 

@@ -12,6 +12,17 @@ import { refinanceLoanScenario, refinanceLoanScenarioDecimal, type RefinanceLoan
 import { redirectToOffsetScenario, redirectToOffsetScenarioDecimal, type RedirectToOffsetParams } from './redirectToOffset';
 import { cutSpendCategoryScenario, cutSpendCategoryScenarioDecimal, type CutSpendCategoryParams } from './cutSpendCategory';
 import { addInvestmentScenario, addInvestmentScenarioDecimal, type AddInvestmentParams } from './addInvestment';
+import {
+  salarySacrificeToSuperScenario,
+  salarySacrificeToSuperScenarioDecimal,
+  concessionalCapGuard,
+  salarySacrificeSliderSources,
+  getRegimeStatus,
+  type SalarySacrificeToSuperParams,
+  type ConcessionalCapGuardResult,
+  type SalarySacrificeRegimeStatus,
+} from './salarySacrificeToSuper';
+import { tenYearProjection, projectScenarioForward } from './tenYearProjection';
 import type { ScenarioContext, ScenarioResult, ScenarioResultDecimal, ScenarioType } from './types';
 
 export type {
@@ -23,7 +34,17 @@ export type {
   ScenarioImpactDecimal,
   ScenarioWarning,
   LoanView,
+  SliderSource,
+  TenYearProjectionPoint,
+  TenYearProjectionParams,
+  TenYearProjectionResult,
 } from './types';
+
+export type {
+  SalarySacrificeToSuperParams,
+  ConcessionalCapGuardResult,
+  SalarySacrificeRegimeStatus,
+};
 
 export {
   sellPropertyScenario,
@@ -38,6 +59,13 @@ export {
   cutSpendCategoryScenarioDecimal,
   addInvestmentScenario,
   addInvestmentScenarioDecimal,
+  salarySacrificeToSuperScenario,
+  salarySacrificeToSuperScenarioDecimal,
+  concessionalCapGuard,
+  salarySacrificeSliderSources,
+  getRegimeStatus,
+  tenYearProjection,
+  projectScenarioForward,
 };
 
 export type AnyScenarioParams =
@@ -46,7 +74,8 @@ export type AnyScenarioParams =
   | { type: 'refinanceLoan'; params: RefinanceLoanParams }
   | { type: 'redirectToOffset'; params: RedirectToOffsetParams }
   | { type: 'cutSpendCategory'; params: CutSpendCategoryParams }
-  | { type: 'addInvestment'; params: AddInvestmentParams };
+  | { type: 'addInvestment'; params: AddInvestmentParams }
+  | { type: 'salarySacrificeToSuper'; params: SalarySacrificeToSuperParams };
 
 export function runScenario(
   ctx: ScenarioContext,
@@ -65,6 +94,8 @@ export function runScenario(
       return cutSpendCategoryScenario(ctx, request.params);
     case 'addInvestment':
       return addInvestmentScenario(ctx, request.params);
+    case 'salarySacrificeToSuper':
+      return salarySacrificeToSuperScenario(ctx, request.params);
     default: {
       const _exhaustive: never = request;
       throw new Error(`Unknown scenario type: ${JSON.stringify(_exhaustive)}`);
@@ -96,6 +127,8 @@ export function runScenarioDecimal(
       return cutSpendCategoryScenarioDecimal(ctx, request.params);
     case 'addInvestment':
       return addInvestmentScenarioDecimal(ctx, request.params);
+    case 'salarySacrificeToSuper':
+      return salarySacrificeToSuperScenarioDecimal(ctx, request.params);
     default: {
       const _exhaustive: never = request;
       throw new Error(`Unknown scenario type: ${JSON.stringify(_exhaustive)}`);
@@ -110,4 +143,5 @@ export const SCENARIO_TYPES: ScenarioType[] = [
   'redirectToOffset',
   'cutSpendCategory',
   'addInvestment',
+  'salarySacrificeToSuper',
 ];

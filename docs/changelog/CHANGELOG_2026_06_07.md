@@ -807,3 +807,87 @@ User confirmation: GRANTED on (2026-06-07) via AskUserQuestion — Reza selected
 - **Merge 2026-06-13** (or whenever Reza ships): closes Q-DEC structurally. Phase 45 PR 1 fully unblocked from all gates.
 - **Phase 45 PR 1 (engine composition):** unblocked after merge.
 - **MA.2-001 closure:** Float `Math.round` HALF_AWAY_FROM_ZERO remains at the Float-only data layer; Decimal `ROUND_HALF_EVEN` at the engine boundary. Each layer internally consistent — no cross-layer rounding drift since Decimal results are derived from Float reads via the `toDecimal()` boundary call.
+
+---
+
+## Session: Phase 45 PR 1 — engine composition (salary-sacrifice + 10-year projection)
+
+**Branch:** `claude/phase45-pr1-engine-composition-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Predecessor:** Q-DEC PR 4 merged 2026-06-07 11:28 UTC — the precision-foundation gate; engines read Float → `toDecimal()` at the boundary, all Phase 45 composition runs in Decimal.
+**Status:** open, draft. Reza will merge when ready.
+
+### What shipped
+
+Engine composition only — ZERO new calc engines per CLAUDE.md §12.3 + Phase 45 §4.
+
+1. **`lib/cfo/scenarios/types.ts`** — added `'salarySacrificeToSuper'` to `ScenarioType`; new `SliderSource` discriminated union (H1) — `{ kind: 'snapshot', path, asOf } | { kind: 'default', value, rationale }`; new `TenYearProjectionPoint` + `TenYearProjectionParams` + `TenYearProjectionResult` types.
+
+2. **`lib/cfo/scenarios/salarySacrificeToSuper.ts`** — NEW (~440 LOC). Decimal-first scenario composing the existing super engines:
+   - `calculateSuperContributionsDecimal` (SG + sacrifice + Div 293 + contributions-tax)
+   - `concessionalCapHeadroomDecimal` (cap + carry-forward arithmetic)
+   - `getCurrentTaxYearConfig` + `getMarginalRate` (per-FY brackets + Div 296 commencement flags)
+
+   **Exports:**
+   - `salarySacrificeToSuperScenarioDecimal(ctx, params): ScenarioResultDecimal` — canonical Decimal path
+   - `salarySacrificeToSuperScenario(ctx, params): ScenarioResult` — Float wrapper for AI advisor parity
+   - `concessionalCapGuard(ctx, params, config?): ConcessionalCapGuardResult` — H3 named utility (pure function), produces `{ capLimit, headroomRemaining, hardStopReason?, isExceeded, ... }`
+   - `getRegimeStatus(superBalance, config): SalarySacrificeRegimeStatus` — H2 reform check (UNAFFECTED / DIV296_UNCOMPUTED / DIV296_VERIFIED)
+   - `salarySacrificeSliderSources(ctx, params): Record<string, SliderSource>` — H1 per-slider source declarations for PR 2's UI
+
+   **Hard-stop behaviour:** scenario returns UNCOMPUTED ScenarioResult (empty impacts, critical warning) when EITHER (a) proposed contribution exceeds cap + carry-forward, OR (b) super balance ≥ $3M and `div296CommencementVerified === false`. Mirrors the Phase 41E `trustMinimumTax.ts` UNCOMPUTED pattern.
+
+3. **`lib/cfo/scenarios/tenYearProjection.ts`** — NEW (~155 LOC). Pure-function deterministic composer.
+   - Per-year compounding: non-super assets × `assetGrowthRate` (default 4% real), super × `superGrowthRate` (default 6% real) + `annualSuperContribution`, cashflow delta wage-indexed at `cashflowGrowthRate` (default 2.5%).
+   - Returns trajectory of length `years + 1` (year 0 + years 1..N) — each point with `netWorth`, `cumulativeCashflowDelta`, `cumulativeTaxDelta`, `superBalance?`.
+   - `projectScenarioForward(baseNetWorth, yearOneCashflowDelta, yearOneTaxDelta, opts)` convenience helper accepts numbers + Decimals interchangeably.
+
+   **PR 1 simplification documented in file header:** per-year scalar compound, NOT full `cashflowOrchestrator × masterTaxPosition` re-run. Rationale: re-running the entire tax engine 10× is gold-plating for v1, especially given the brackets are stable in real terms over a 10-year horizon. PR 2 may revisit if user feedback requires mid-horizon bracket-crossing modelling.
+
+4. **`lib/cfo/scenarios/index.ts`** — wired `salarySacrificeToSuper` into `runScenario` (Float wrapper) + `runScenarioDecimal` (canonical) dispatchers; added to `SCENARIO_TYPES`; exported all PR 1 types + utilities.
+
+5. **`lib/cfo/aiAdvisor.ts`** — `validateScenarioParams` switch case added for `salarySacrificeToSuper` (accepts `monthlySacrifice` ≥ 0 + optional `grossSalaryAnnual` / `ytdConcessional` / `currentSuperBalance` overrides). Pre-existing exhaustive-switch typecheck error closed.
+
+6. **`tests/cfo/salarySacrificeToSuper.test.ts`** — 21 contract tests:
+   - `concessionalCapGuard` (H3): under-cap, at-cap, over-cap, explicit-YTD-vs-default, zero-sacrifice baseline, FY25-26 SG 12% math
+   - `getRegimeStatus` (H2): UNAFFECTED below $3M, UNCOMPUTED unverified, VERIFIED with override, edge at exactly $3M
+   - Scenario: zero-salary critical warning, over-cap UNCOMPUTED, Div 296 UNCOMPUTED, normal case 5 impacts, low-headroom warning, Div 293 high-income case
+   - Float wrapper parity with Decimal within rounding tolerance
+   - `salarySacrificeSliderSources` (H1): snapshot-traced default, override-as-default, monthlySacrifice always default
+
+7. **`tests/cfo/tenYearProjection.test.ts`** — 13 determinism + math tests:
+   - Trajectory length, zero-delta compounding, positive cashflow effect, super-balance growth, deterministic same-input-same-output, cumulative wage-indexed accumulation, custom years, defensive `years=0` floor, positive tax delta reduces net worth, assumptions surface all rates
+   - `projectScenarioForward` helper: number/Decimal interchangeability, opts passthrough
+
+### Build / test status
+
+- **Typecheck:** ✅ `npx tsc --noEmit` clean
+- **Full vitest sweep:** ✅ **2,355 passing, 69 skipped, 0 failures** (+34 net vs 2,321 baseline pre-PR 1; the 34 new tests + no regressions)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security
+- [x] operational procedure — three new pure functions in the scenario layer: `salarySacrificeToSuperScenarioDecimal` + `concessionalCapGuard` + `tenYearProjection`. Documented in file headers + tests; reviewer enforcement = "no new calc engine" rule (§12.3) — composition only, every primitive already exists.
+- [x] strategic decision — PR 1 simplification: per-year scalar compound for the 10-year projection vs the §7 call-graph spec's per-year cashflowOrchestrator+masterTaxPosition re-run. Rationale documented in file header (gold-plating for v1, revisitable in PR 2). Tracked in PHASE_45 §9 acceptance criteria + §7 call-graph footnote.
+
+Docs updated in this PR:
+- `lib/cfo/scenarios/salarySacrificeToSuper.ts` — file-header JSDoc documents architecture + Q-HOOK-AFSL discipline + H1/H2/H3 placement
+- `lib/cfo/scenarios/tenYearProjection.ts` — file-header JSDoc documents the simplification rationale + default growth rates' sources (ASIC MoneySmart-aligned)
+- `lib/cfo/scenarios/types.ts` — JSDoc on `SliderSource` documents the H1 contract
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §9 acceptance criteria — PR 1 ticks ticked, PR 2 ticks left for the UI port
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — Phase 45 PR 1 entry flipped from `[ ]` to `[x]` with full deliverable summary
+- `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-1 regime input:** the salary-sacrifice scenario doesn't take an explicit regime parameter (it operates on the SAME super math regardless of reform). The reform measure that COULD affect super (Div 296 high-balance tax) is gated separately via `getRegimeStatus` (H2).
+- [x] **FW-2 commencement gate:** `getRegimeStatus` reads `config.div296CommencementVerified` and returns DIV296_UNCOMPUTED when false + balance ≥ $3M. Scenario returns UNCOMPUTED in that case — never silently applies post-reform math.
+- [x] **FW-3 schema columns:** none added.
+- [x] **FW-4 AI tools:** no new AI tools in this PR (existing tax-advisor tools are unaffected; the scenario is exposed via `runScenario` + `aiAdvisor.validateScenarioParams` for future AI-advisor invocation, but no new tool file).
+- [x] **FW-5 per-asset UI surface:** PR 1 is engine-only; the UI surfacing the regime badge ships in PR 2 alongside the lever-detail React port. `getRegimeStatus` returns the label string the UI badge will consume.
+
+### Next
+
+- **Phase 45 PR 2 — UI port.** `/dashboard/cfo/what-if` lever picker + 5 lever-detail screens. Stitch designs already locked (PR #977 — 8 artefacts in `.stitch/designs/`). H1/H2/H3 are now backend-ready; UI just renders them. AFSL discipline copy (Assumptions panel collapsed, GAW footer, never "you should…").
+- Q-DEC structurally complete (PR #1013 merged); MA.2-001 closed (Float HALF_AWAY at data layer, Decimal HALF_EVEN at engine boundary, layers internally consistent).

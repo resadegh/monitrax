@@ -968,6 +968,18 @@ function validateScenarioParams(
       if (years != null) out.years = years;
       return out;
     }
+    case 'salarySacrificeToSuper': {
+      const monthlySacrifice = num(params.monthlySacrifice);
+      if (monthlySacrifice == null || monthlySacrifice < 0) return null;
+      const out: Record<string, unknown> = { monthlySacrifice };
+      const grossSalaryAnnual = num(params.grossSalaryAnnual);
+      if (grossSalaryAnnual != null) out.grossSalaryAnnual = grossSalaryAnnual;
+      const ytdConcessional = num(params.ytdConcessional);
+      if (ytdConcessional != null) out.ytdConcessional = ytdConcessional;
+      const currentSuperBalance = num(params.currentSuperBalance);
+      if (currentSuperBalance != null) out.currentSuperBalance = currentSuperBalance;
+      return out;
+    }
   }
 }
 

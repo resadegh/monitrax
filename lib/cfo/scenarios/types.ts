@@ -21,7 +21,8 @@ export type ScenarioType =
   | 'refinanceLoan'
   | 'redirectToOffset'
   | 'cutSpendCategory'
-  | 'addInvestment';
+  | 'addInvestment'
+  | 'salarySacrificeToSuper';
 
 export interface ScenarioRequest {
   type: ScenarioType;
@@ -96,4 +97,60 @@ export interface ScenarioResultDecimal {
   warnings: ScenarioWarning[];
   assumptions: string[];
   computedAt: string;
+}
+
+// =============================================================================
+// Phase 45 PR 1 — H1 SliderSource discriminated union
+// =============================================================================
+
+/**
+ * Phase 45 PR 1 §4.1 H1 — every slider's default value MUST declare its source
+ * so the user sees guess-vs-traced. Two source classes:
+ *
+ * - `snapshot` — value traced from the user's MasterFinancialSnapshot via the
+ *   given `path` (e.g. `'income.primary.grossTotal'`, `'loanView:loanId.interestRate'`).
+ *   `asOf` is the snapshot's `computedAt` ISO timestamp.
+ * - `default` — industry-default constant the engine fell back to when the
+ *   snapshot didn't carry the field. `rationale` explains why this number was
+ *   chosen — surfaces to the user as "we don't have your specific X — using $Y
+ *   as a placeholder."
+ *
+ * AFSL discipline: this is information-only sourcing. The UI MUST render the
+ * source line beneath every slider so the user can override defaults they
+ * disagree with — never silently use a default behind the user's back.
+ */
+export type SliderSource =
+  | { kind: 'snapshot'; path: string; asOf: string }
+  | { kind: 'default'; value: number; rationale: string };
+
+// =============================================================================
+// Phase 45 PR 1 — 10-year projection composer types
+// =============================================================================
+
+export interface TenYearProjectionPoint {
+  year: number; // 0 = today, 1..N = years from now
+  netWorth: Decimal;
+  cumulativeCashflowDelta: Decimal;
+  cumulativeTaxDelta: Decimal;
+  superBalance?: Decimal; // only set for scenarios that touch super
+}
+
+export interface TenYearProjectionParams {
+  baseNetWorth: Decimal;
+  yearOneCashflowDelta: Decimal; // per year — projected over horizon
+  yearOneTaxDelta: Decimal; // negative for tax savings, positive for tax paid
+  baseSuperBalance?: Decimal; // optional — for sacrifice scenarios
+  annualSuperContribution?: Decimal; // optional — for sacrifice scenarios
+  assetGrowthRate?: number; // default 0.04 — real return on non-super assets
+  superGrowthRate?: number; // default 0.06 — real net-of-fees return on super
+  cashflowGrowthRate?: number; // default 0.025 — wage indexation of the cashflow delta
+  years?: number; // default 10
+}
+
+export interface TenYearProjectionResult {
+  baseNetWorth: Decimal;
+  trajectory: TenYearProjectionPoint[]; // length = years + 1 (year 0 + years 1..N)
+  finalNetWorth: Decimal;
+  totalDelta: Decimal; // finalNetWorth − baseNetWorth (over projection horizon)
+  assumptions: string[];
 }
