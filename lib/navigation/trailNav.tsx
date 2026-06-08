@@ -138,6 +138,7 @@ export const trailNavItems: NavItem[] = [
     matchRoutes: [
       '/dashboard/cfo',
       '/dashboard/cfo/ask',
+      '/dashboard/cfo/what-if',
       '/health',
       '/dashboard/tax',
     ],
@@ -145,6 +146,7 @@ export const trailNavItems: NavItem[] = [
       { name: 'Actions', href: '/dashboard/cfo' },
       { name: 'Health', href: '/health' },
       { name: 'Tax', href: '/dashboard/tax' },
+      { name: 'What If?', href: '/dashboard/cfo/what-if' },
       { name: 'Ask the Advisor', href: '/dashboard/cfo/ask' },
     ],
   },
