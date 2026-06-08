@@ -89,3 +89,61 @@ Docs updated in this PR:
 ### Next
 
 - **Phase 45 PR 2.B — lever detail.** Interactive sliders + 10-year projection chart + H1 SliderSource info-line per slider + H2 RegimeBadge + H3 cap-hard-stop tooltip + collapsible Assumptions panel + GAW footer. Salary-sacrifice as the showcase lever (Stitch artefact `.stitch/designs/what-if-lever-detail*.{html,png}` already locked). Other 4 levers parameterised by the same React component. New `/api/cfo/scenarios/snapshot` (or extend existing) to fetch the snapshot defaults for sliders.
+
+---
+
+## Session: Phase 45 PR 2.A.1 — Div 296 TSB aggregation fix (APRA + SMSF)
+
+**Branch:** `claude/phase45-pr2a1-tsb-smsf-fix-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Triggered by:** Reza question 2026-06-08 — "Is salary sacrifice designed for both SMSF and super account?" Surfaced a bug I introduced in PR 1: the H2 Div 296 regime check read TSB from `snapshot.netWorth.assets.superannuation`, which by Phase 39.5 design EXCLUDES SMSF member balances (no double-counting in net worth, since SMSF wealth flows through the SMSF LegalEntity's owned assets). For net worth that's correct; for the ATO TSB definition it's wrong.
+
+### The bug
+
+Pre-PR-2.A.1: a user with $1.5M AustralianSuper + $2M SMSF member balance read as $1.5M TSB. The Div 296 H2 regime check never triggered for this user even though their actual TSB ($3.5M) was above the $3M threshold. Salary-sacrifice would silently apply post-reform math (when commencement is unverified) rather than returning UNCOMPUTED per CLAUDE.md §12.14 FW-2.
+
+### The fix
+
+Extended `ScenarioContext` with an optional `superAccounts: SuperAccountView[]` field. When present, the salary-sacrifice scenario sums every account (un-deduplicated, including SMSF) for the Div 296 TSB check. When absent (back-compat), falls back to the snapshot's `netWorth.assets.superannuation` field — that fallback is correct for users with no SMSF.
+
+### What changed
+
+1. **`lib/cfo/scenarios/types.ts`** — added `SuperAccountView` interface (mirrors `SuperInput` in `netWorthCalculator.ts` but with `id` + `name` for UI). Added `superAccounts?: SuperAccountView[]` to `ScenarioContext`. JSDoc explains the TSB vs net-worth distinction.
+
+2. **`lib/cfo/scenarios/salarySacrificeToSuper.ts:sumSuperBalance`** — rewrote with full doc-block. Now prefers `ctx.superAccounts` when supplied (sums every account regardless of fundType). Falls back to `ctx.snapshot.netWorth.assets.superannuation` when not — preserving back-compat.
+
+3. **`lib/cfo/scenarios/index.ts` + `lib/cfo/index.ts`** — re-exported `SuperAccountView`.
+
+4. **`app/api/cfo/scenarios/run/route.ts`** — new `fetchSuperAccounts(userId)` helper pulls every super account from Prisma (no SMSF exclusion). Wired into the existing `Promise.all` alongside `loans`. Passed into `ctx.superAccounts`.
+
+5. **`tests/cfo/salarySacrificeToSuper.test.ts`** — added a new describe block "Phase 45 PR 2.A.1 — Div 296 TSB aggregation" with 5 cases:
+   - back-compat: no `ctx.superAccounts` → falls back to snapshot field
+   - the bug case: $1.5M APRA + $2M SMSF → correctly triggers DIV296_UNCOMPUTED
+   - APRA only via `ctx.superAccounts`: correct TSB summation
+   - $2.9M aggregate below threshold: UNAFFECTED
+   - empty `ctx.superAccounts` array: falls back to snapshot (no crash)
+
+### Build / test status
+
+- **Typecheck:** ✅ `npx tsc --noEmit` clean
+- **Full vitest sweep:** ✅ **2,372 passing, 69 skipped, 0 failures** (+5 net from 2,367 PR 2.A baseline)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [ ] visual / design / config / GCP / identity / deploy / security / strategic
+- [x] **operational procedure** — surfaces the TSB ≠ net-worth-super distinction; engine + API wiring + regression tests for the fix
+
+Docs updated in this PR:
+- `lib/cfo/scenarios/types.ts` — `SuperAccountView` JSDoc + `ScenarioContext.superAccounts` JSDoc
+- `lib/cfo/scenarios/salarySacrificeToSuper.ts:sumSuperBalance` — full doc-block explaining TSB vs net-worth + the pre-PR-2.A.1 bug
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-2 commencement gate**: this PR HARDENS the Div 296 commencement gate. Pre-fix, the gate could miss-fire (under-counted TSB → never triggered UNCOMPUTED → silently applied post-reform math). Post-fix, the gate fires correctly when the real TSB crosses $3M. NEVER applies post-reform math while `div296CommencementVerified === false`.
+- FW-1/3/4/5 N/A.
+
+### Next
+
+- **Phase 45 PR 2.B — lever detail UI** (now unblocked). Interactive sliders + 10-year projection chart + H1 SliderSource info-line + H2 RegimeBadge + H3 cap-hard-stop tooltip + per-fund destination selector (consumes `ctx.superAccounts` for the fund list) + collapsible Assumptions panel + GAW footer.

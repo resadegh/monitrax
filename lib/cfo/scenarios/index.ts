@@ -34,6 +34,7 @@ export type {
   ScenarioImpactDecimal,
   ScenarioWarning,
   LoanView,
+  SuperAccountView,
   SliderSource,
   TenYearProjectionPoint,
   TenYearProjectionParams,

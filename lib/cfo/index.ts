@@ -49,6 +49,7 @@ export type {
   ScenarioWarning,
   AnyScenarioParams,
   LoanView,
+  SuperAccountView,
 } from './scenarios';
 
 // TRAIL stage detection (Phase 17 spec — wired up in Phase 40).
