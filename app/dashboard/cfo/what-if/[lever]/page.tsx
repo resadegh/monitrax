@@ -24,7 +24,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
@@ -221,6 +221,12 @@ function formatCompactCurrency(value: number): string {
 export default function LeverDetailPage() {
   const { token } = useAuth();
   const params = useParams<{ lever: string }>();
+  // Phase 45.1 — deep-link from entity detail pages (loans / properties /
+  // super) via `?loanId=X` / `?propertyId=Y`. Pre-populates the picker
+  // instead of falling back to the largest-balance default.
+  const searchParams = useSearchParams();
+  const deepLinkLoanId = searchParams.get('loanId');
+  const deepLinkPropertyId = searchParams.get('propertyId');
   const leverParam = params.lever;
   const isValid = typeof leverParam === 'string' && isScenarioType(leverParam);
   const lever = isValid ? leverParam : null;
@@ -278,19 +284,30 @@ export default function LeverDetailPage() {
         const choices = apraAccts.length > 0 ? apraAccts : data.superAccounts;
         const largest = [...choices].sort((a, b) => b.currentBalance - a.currentBalance)[0];
         if (largest) setSelectedFundId(largest.id);
-        // Default loan/property selection: largest principal / current-value.
+        // Default loan/property selection: deep-link param wins; else largest
+        // principal / current-value. Phase 45.1 — deep-link from entity-
+        // detail pages pre-populates the picker so the user doesn't have to
+        // re-find the loan/property they just came from.
+        const deepLinkedLoan = deepLinkLoanId
+          ? data.loans.find((l) => l.id === deepLinkLoanId)
+          : null;
         const largestLoan = [...data.loans].sort((a, b) => b.principal - a.principal)[0];
-        if (largestLoan) {
+        const chosenLoan = deepLinkedLoan ?? largestLoan;
+        if (chosenLoan) {
           setRefinanceState((s) => ({
             ...s,
-            loanId: largestLoan.id,
-            newRate: Math.max(0.035, largestLoan.interestRate - 0.005), // 50bp below current as a sensible default
+            loanId: chosenLoan.id,
+            newRate: Math.max(0.035, chosenLoan.interestRate - 0.005), // 50bp below current as a sensible default
           }));
-          setPayDownState((s) => ({ ...s, loanId: largestLoan.id }));
+          setPayDownState((s) => ({ ...s, loanId: chosenLoan.id }));
         }
+        const deepLinkedProperty = deepLinkPropertyId
+          ? data.properties.find((p) => p.id === deepLinkPropertyId)
+          : null;
         const largestProperty = [...data.properties].sort((a, b) => b.currentValue - a.currentValue)[0];
-        if (largestProperty) {
-          setSellPropertyState((s) => ({ ...s, propertyId: largestProperty.id }));
+        const chosenProperty = deepLinkedProperty ?? largestProperty;
+        if (chosenProperty) {
+          setSellPropertyState((s) => ({ ...s, propertyId: chosenProperty.id }));
         }
       })
       .catch((err) => {
@@ -299,7 +316,8 @@ export default function LeverDetailPage() {
     return () => {
       active = false;
     };
-  }, [token, lever]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, lever, deepLinkLoanId, deepLinkPropertyId]);
 
   // Build the scenario-run request body for the current lever. Returns
   // null when the lever's required inputs aren't filled in yet (e.g. no

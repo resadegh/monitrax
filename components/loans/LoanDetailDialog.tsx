@@ -78,9 +78,11 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import Link from 'next/link';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { HelpTooltip } from '@/components/help/HelpTooltip';
+import { Percent, TrendingDown as TrendingDownIcon, ArrowRight as ArrowRightIcon } from 'lucide-react';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
 import { formatCurrency } from '@/lib/utils/formatters';
 import {
@@ -419,6 +421,13 @@ export function LoanDetailDialog({
                     )}
                   </CardContent>
                 </Card>
+
+                {/*
+                  Phase 45.1 — Contextual "What If?" affordances. Deep-links
+                  into the lever-detail page with this loan pre-selected so
+                  the user doesn't have to re-find it.
+                */}
+                <WhatIfLoanAffordances loanId={loan.id} loanName={loan.name} />
               </TabsContent>
 
               <TabsContent value="property" className="space-y-4 pt-4">
@@ -727,5 +736,50 @@ export function LoanDetailDialog({
         </AlertDialog>
       )}
     </>
+  );
+}
+
+// ============================================================================
+// Phase 45.1 — Contextual "What If?" affordances on the loan dialog.
+// ============================================================================
+
+function WhatIfLoanAffordances({ loanId, loanName }: { loanId: string; loanName: string }) {
+  return (
+    <div className="rounded-[16px] border border-foreground/10 bg-card/70 p-5 backdrop-blur-xl">
+      <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-foreground/60">
+        What if?
+      </p>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Model how a change to {loanName} would affect your 10-year picture.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          href={`/dashboard/cfo/what-if/refinanceLoan?loanId=${encodeURIComponent(loanId)}`}
+          className="group flex items-center gap-3 rounded-xl border border-foreground/10 bg-background/50 p-3 transition-all hover:border-amber-500/40 hover:bg-amber-500/5"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400/20 to-rose-400/20">
+            <Percent className="h-4 w-4 text-amber-600 dark:text-amber-400" strokeWidth={2} />
+          </span>
+          <span className="flex-1">
+            <p className="text-sm font-medium text-foreground">Refinance this loan</p>
+            <p className="text-xs text-muted-foreground">Drop your rate — see the 10-year shift</p>
+          </span>
+          <ArrowRightIcon className="h-4 w-4 text-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60" strokeWidth={2} />
+        </Link>
+        <Link
+          href={`/dashboard/cfo/what-if/payDownLoan?loanId=${encodeURIComponent(loanId)}`}
+          className="group flex items-center gap-3 rounded-xl border border-foreground/10 bg-background/50 p-3 transition-all hover:border-indigo-500/40 hover:bg-indigo-500/5"
+        >
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-400/20 to-blue-400/20">
+            <TrendingDownIcon className="h-4 w-4 text-indigo-600 dark:text-indigo-400" strokeWidth={2} />
+          </span>
+          <span className="flex-1">
+            <p className="text-sm font-medium text-foreground">Pay extra each month</p>
+            <p className="text-xs text-muted-foreground">Accelerate your payoff date</p>
+          </span>
+          <ArrowRightIcon className="h-4 w-4 text-foreground/30 transition-transform group-hover:translate-x-0.5 group-hover:text-foreground/60" strokeWidth={2} />
+        </Link>
+      </div>
+    </div>
   );
 }

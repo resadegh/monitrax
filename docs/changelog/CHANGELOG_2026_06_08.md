@@ -332,3 +332,85 @@ Docs updated in this PR:
 
 - **Phase 45.1 — contextual entry points** (separate workstream): "What if?" affordance on `/dashboard/loans/[id]`, `/dashboard/properties/[id]`, super tile, income tile — pre-populated with the entity's data, returns to source page.
 - **Phase 45 polish backlog** (optional): hover-preview tooltip on lever cards (§6.8.3); cashflowOrchestrator × masterTaxPosition re-run per year (§7 call-graph) instead of the PR 1 scalar-compound simplification — only if user feedback surfaces bracket-crossing issues.
+
+---
+
+## Session: Phase 45.1 — contextual entry points
+
+**Branch:** `claude/phase451-contextual-entry-points-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Predecessor:** Phase 45 v1 complete (PR 1 + PR 2.A + PR 2.A.1 + PR 2.B + PR 2.C all merged 2026-06-08).
+**Status:** open, draft.
+
+### Why this PR
+
+Phase 45 v1 makes the What-If lever a destination users have to navigate to. Phase 45.1 turns it into a "right when you're looking at this loan / property / super, here's what could change" affordance — multiplies the engagement value of everything PR 1-2.C shipped.
+
+### What shipped
+
+1. **Lever-detail page (`app/dashboard/cfo/what-if/[lever]/page.tsx`)** — extended to read `?loanId=X` / `?propertyId=Y` from URL via `useSearchParams()`. Deep-linked IDs override the largest-balance default — the user lands on the lever with their loan/property pre-selected. Context-fetch effect dep array updated to re-run when the deep-link params change. Falls back to largest-balance default when params absent (back-compat).
+
+2. **LoanDetailDialog (`components/loans/LoanDetailDialog.tsx`)** — new `WhatIfLoanAffordances` component rendered at the bottom of the Overview tab. Two CTAs in a responsive 2-col grid:
+   - **Refinance this loan** — amber→rose gradient, Percent glyph, deep-links to `/dashboard/cfo/what-if/refinanceLoan?loanId={id}`
+   - **Pay extra each month** — indigo→blue gradient, TrendingDown glyph, deep-links to `/dashboard/cfo/what-if/payDownLoan?loanId={id}`
+   Each tile carries a small `→` icon that slides on hover (matches the lever-picker tile micro-motion).
+
+3. **Property strategy page (`app/dashboard/properties/[id]/strategy/page.tsx`)** — added "What if you sold this property?" card beneath the existing Strategy Recommendations card. Violet-toned (matches sellProperty lever sub-palette). Deep-links to `/dashboard/cfo/what-if/sellProperty?propertyId={id}`. Information-only copy ("Model the capital gains, debt clearance, and liquidity release") — AFSL-disciplined.
+
+4. **Super page (`app/dashboard/investments/super/page.tsx`)** — new "What if you salary-sacrificed?" CTA placed BENEATH the `SuperCapMeter` (the cap-aware context surface). Emerald→indigo gradient with PiggyBank glyph + `ArrowUpRight` chevron. Deep-links to `/dashboard/cfo/what-if/salarySacrificeToSuper`. The position is load-bearing: users see the cap meter first ("here's how much cap you've used"), then immediately get the affordance to model a sacrifice change.
+
+5. **Income page entry-point deferred** — overlaps with super page; would add complexity without unique value. Revisit if user feedback demands it.
+
+### Build / test status
+
+- **Typecheck:** ✅ `npx tsc --noEmit` clean
+- **Full vitest sweep:** ✅ **2,423 passing, 69 skipped, 0 failures** (+19 net vs 2,404 PR 2.C baseline)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — new `WhatIfLoanAffordances` component pattern; per-CTA lever-palette mapping (amber/rose for refinance, indigo/blue for payDown, violet for sellProperty, emerald/indigo for sacrifice); reuses existing §18.7.2 glass tokens
+- [ ] application config / GCP / identity / deploy / security / strategic
+- [x] **operational procedure** — deep-link URL convention established (`?loanId=` / `?propertyId=`); tests pattern-assert the convention
+
+Docs updated in this PR:
+- `app/dashboard/cfo/what-if/[lever]/page.tsx` — `useSearchParams` import + deep-link reading + dep-array
+- `components/loans/LoanDetailDialog.tsx` — new component + Overview tab mount
+- `app/dashboard/properties/[id]/strategy/page.tsx` — new "What If" card
+- `app/dashboard/investments/super/page.tsx` — new CTA beneath cap meter
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — Phase 45.1 entry flipped to `[x]`
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- All entry points deep-link into the lever-detail page; the lever-detail page is already FW-2 compliant (RegimeLockedBadge for salary-sacrifice when Div 296 fires). Entry points themselves don't display per-asset tax position, so FW-5 N/A at the entry-point layer.
+- FW-1/2/3/4/5 N/A for this PR (all delegated to lever-detail page already-compliant).
+
+### AFSL discipline checks
+
+- No prescriptive copy added in any of the 3 new entry points (negative-grep tests assert this)
+- All CTAs frame as "What if you...?" or "Model the..." — never "You should refinance/sell/sacrifice"
+- No product names, no broker links, no manufactured urgency
+
+### Test plan
+
+- 19 new tests in `tests/components/WhatIfContextualEntryPoints.test.tsx`:
+  - lever-detail page reads `useSearchParams`, both `loanId` + `propertyId`
+  - deep-linked entity overrides the largest-balance default
+  - context-fetch effect deps include deep-link IDs (re-fires on change)
+  - LoanDetailDialog renders WhatIfLoanAffordances on Overview tab
+  - Per-CTA URLs use `encodeURIComponent` (defense against IDs with special chars)
+  - Per-CTA gradients match the lever-picker sub-palette
+  - AFSL discipline: no "you should X" copy
+  - Property strategy card uses violet sub-palette + matches sellProperty lever
+  - Super page CTA positioned BENEATH SuperCapMeter (cap-aware context)
+  - Super page CTA uses emerald/indigo gradient (matches sacrifice lever)
+
+### Next
+
+- **Phase 45 v1 + 45.1 are now COMPLETE.** Lever picker + 5 fully-wired lever-detail screens + 3 contextual entry points (loans / properties / super).
+- **Potential follow-ups (not yet queued):**
+  - Income page entry-point (deferred — overlap with super)
+  - Hover-preview tooltip on lever cards (§6.8.3)
+  - Per-year cashflowOrchestrator × masterTaxPosition re-run (§7 call-graph) — only if user feedback surfaces bracket-crossing issues
+  - Property tile inline "scenarios" link (more discoverable than buried in strategy sub-page)
