@@ -26,6 +26,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import DashboardLayout from '@/components/DashboardLayout';
 import {
   ArrowLeft,
@@ -506,7 +507,37 @@ export default function LeverDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+        {/*
+          Phase 45.1.3 — Cremorne pattern (CLAUDE.md §18.7.4) applied to the
+          sellProperty lever once a property is selected. L1 (photo bleed)
+          renders at page-container level — ~33% × 50% bottom-right on
+          desktop, taller crop on mobile. L2 (atmospheric halo) wraps the
+          left input GlassPanel below. L3 (next-item ghost) intentionally
+          skipped — page already has 3 protagonists (inputs / chart /
+          results); a 4th ghost would add noise.
+
+          Stitch reference (project 5991501424852019479 / 1859462351962811110):
+            d6f34e902fb448909b0ca829d6d46703 (desktop light)
+            609fb548b455406ab40ed0e187bc7e07 (desktop dark)
+            36afec8b70a0416eb3e5e4888f1434b2 (mobile light)
+            65bfbf6b592e4235becba9146a0a6eaa (mobile dark)
+        */}
+        {lever === 'sellProperty' && sellPropertyState.propertyId && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute bottom-0 right-0 -z-20 h-1/2 w-2/3 opacity-40 dark:opacity-30 md:w-1/3 [mask-image:linear-gradient(to_top,black,transparent)]"
+          >
+            <Image
+              src="/decor/cremorne-apartment.jpg"
+              alt=""
+              fill
+              sizes="(min-width: 768px) 33vw, 66vw"
+              className="object-cover object-bottom"
+            />
+          </div>
+        )}
+
         <LeverHeader meta={meta} />
 
         {ctxError && (
@@ -523,50 +554,60 @@ export default function LeverDetailPage() {
 
         {ctx && (
           <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
-            {/* Left column — inputs */}
-            <GlassPanel topStrip={meta.topStripClass}>
-              {lever === 'salarySacrificeToSuper' && (
-                <SacrificeInputs
-                  ctx={ctx}
-                  monthlySacrifice={monthlySacrifice}
-                  setMonthlySacrifice={setMonthlySacrifice}
-                  cap={cap}
-                  sliderMax={sliderMax}
-                  selectedFundId={selectedFundId}
-                  setSelectedFundId={setSelectedFundId}
+            {/* Left column — inputs. For sellProperty with a property selected,
+                wraps the GlassPanel in a relative container so the §18.7.4 L2
+                atmospheric halo can extend beyond the card edges. */}
+            <div className="relative">
+              {lever === 'sellProperty' && sellPropertyState.propertyId && (
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-violet-400/[0.12] to-fuchsia-500/[0.12] blur-[40px] dark:from-violet-400/[0.08] dark:to-fuchsia-500/[0.08] md:-inset-10 md:blur-[60px]"
                 />
               )}
-              {lever === 'refinanceLoan' && (
-                <RefinanceInputs
-                  ctx={ctx}
-                  state={refinanceState}
-                  setState={setRefinanceState}
-                />
-              )}
-              {lever === 'payDownLoan' && (
-                <PayDownInputs
-                  ctx={ctx}
-                  state={payDownState}
-                  setState={setPayDownState}
-                />
-              )}
-              {lever === 'sellProperty' && (
-                <SellPropertyInputs
-                  ctx={ctx}
-                  state={sellPropertyState}
-                  setState={setSellPropertyState}
-                />
-              )}
-              {lever === 'addInvestment' && (
-                <AddInvestmentInputs
-                  state={addInvestmentState}
-                  setState={setAddInvestmentState}
-                />
-              )}
-              {(lever === 'redirectToOffset' || lever === 'cutSpendCategory') && (
-                <StubInputs meta={meta} />
-              )}
-            </GlassPanel>
+              <GlassPanel topStrip={meta.topStripClass}>
+                {lever === 'salarySacrificeToSuper' && (
+                  <SacrificeInputs
+                    ctx={ctx}
+                    monthlySacrifice={monthlySacrifice}
+                    setMonthlySacrifice={setMonthlySacrifice}
+                    cap={cap}
+                    sliderMax={sliderMax}
+                    selectedFundId={selectedFundId}
+                    setSelectedFundId={setSelectedFundId}
+                  />
+                )}
+                {lever === 'refinanceLoan' && (
+                  <RefinanceInputs
+                    ctx={ctx}
+                    state={refinanceState}
+                    setState={setRefinanceState}
+                  />
+                )}
+                {lever === 'payDownLoan' && (
+                  <PayDownInputs
+                    ctx={ctx}
+                    state={payDownState}
+                    setState={setPayDownState}
+                  />
+                )}
+                {lever === 'sellProperty' && (
+                  <SellPropertyInputs
+                    ctx={ctx}
+                    state={sellPropertyState}
+                    setState={setSellPropertyState}
+                  />
+                )}
+                {lever === 'addInvestment' && (
+                  <AddInvestmentInputs
+                    state={addInvestmentState}
+                    setState={setAddInvestmentState}
+                  />
+                )}
+                {(lever === 'redirectToOffset' || lever === 'cutSpendCategory') && (
+                  <StubInputs meta={meta} />
+                )}
+              </GlassPanel>
+            </div>
 
             {/* Right column — projection */}
             <GlassPanel topStrip={meta.topStripClass}>

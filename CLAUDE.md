@@ -1802,10 +1802,11 @@ Stitch artefact: `.stitch/designs/polish/property-tile-whatif-affordance.{html,p
 
 ##### Where to replicate next (queue)
 
-- `/dashboard/properties/[id]` detail page — single focal property; the bedroom/interior photo could replace the current placeholder hero.
-- `/dashboard/investments/[id]` detail page — single focal investment account; institutional photo or sector imagery.
-- `/dashboard/investments/super/[id]` SMSF detail — institutional lobby photo for the trustee structure.
-- CFO what-if lever detail (`/dashboard/cfo/what-if/sellProperty`) when an entity is selected — extend L1 with the chosen property's photo to deepen the "what if this specific asset" framing.
+- `/dashboard/properties/[id]` detail page — single focal property; the bedroom/interior photo could replace the current placeholder hero. **(NB: detail route doesn't exist yet — scoping is "build detail route + apply pattern", not "apply pattern to existing route".)**
+- `/dashboard/investments/[id]` detail page — single focal investment account; institutional photo or sector imagery. **(NB: detail route doesn't exist yet.)**
+- `/dashboard/investments/super/[id]` SMSF detail — institutional lobby photo for the trustee structure. **(NB: detail route doesn't exist yet — `/super` is currently list-only.)**
+- ~~CFO what-if lever detail (`/dashboard/cfo/what-if/sellProperty`) when an entity is selected~~ ✅ **shipped Phase 45.1.3, PR #1022 (2026-06-08).** Per-surface tuning that future replications can learn from: (a) **photo placement is page-container level on desktop, NOT card-level** — the lever's two-column grid has its own visual gravity, and a card-level photo would compete with the projection chart on the right. Page-level lets the photo be ambient (33% × 50% bottom-right) without pulling focus. (b) **Halo lives at left-column wrapper** (around the protagonist GlassPanel only) because the right column is the projection card, not a protagonist — putting a halo behind both would split focus. (c) **Mobile keeps the photo at page-container level too** (not card-level as the Stitch design suggested) — sticking the photo behind the LAST stacked card on a long mobile scroll actually grounds the page better than burying it inside the inputs card, where it'd vanish above the fold for most users. (d) **L3 next-item ghost skipped** as predicted — the page has three protagonists (inputs / chart / results); a fourth ghost would add noise. (e) **Photo source** is a single decor asset at `/public/decor/cremorne-apartment.jpg`, ~80KB, `next/image` with `fill`+responsive `sizes`. CDR-sourced "actual asset" photos aren't available yet — this fallback is obviously decorative (no "your property" framing) per §18.7.4 "decor not evidence" rule.
+- **Income-page CTA banner** — could carry a faint coin/jar background bleed at L1, emerald halo at L2. Lower priority; the CTA is a banner not a protagonist, so the pattern may not pay off there.
 
 Future PRs that apply the pattern MUST update this queue: tick off the surface that shipped, and (designer lens) document any tuning the surface needed so the pattern stays a living standard, not a frozen artefact.
 
