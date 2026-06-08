@@ -323,6 +323,28 @@ export default function SuperannuationPage() {
               <p className="text-sm text-amber-800 dark:text-amber-200">{insight}</p>
             </div>
           )}
+          {/*
+            Phase 45.1 — Contextual "What If?" affordance for salary-sacrifice.
+            Lands on the lever-detail page with current snapshot defaults +
+            the un-deduplicated TSB aggregation from PR 2.A.1.
+          */}
+          <Link
+            href="/dashboard/cfo/what-if/salarySacrificeToSuper"
+            className="group mt-5 flex items-center gap-3 rounded-[14px] border border-emerald-400/30 bg-emerald-500/5 px-4 py-3 transition-all hover:bg-emerald-500/10"
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-400/20 to-indigo-400/20">
+              <PiggyBank className="h-4 w-4 text-emerald-600 dark:text-emerald-400" strokeWidth={2} />
+            </span>
+            <span className="flex-1">
+              <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                What if you salary-sacrificed?
+              </p>
+              <p className="text-xs text-foreground/60">
+                See the year-1 tax savings + 10-year super impact
+              </p>
+            </span>
+            <ArrowUpRight className="h-4 w-4 text-foreground/40 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+          </Link>
         </div>
       )}
 

@@ -228,6 +228,29 @@ export default function PropertyStrategyPage() {
               />
             </CardContent>
           </Card>
+
+          {/*
+            Phase 45.1 — Contextual "What If?" affordance. Deep-links into
+            the sellProperty lever with this property pre-selected so the
+            user doesn't have to re-find it.
+          */}
+          <Card className="border-violet-500/20 bg-violet-500/[0.02]">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">What if you sold this property?</CardTitle>
+              <CardDescription>
+                Model the capital gains, debt clearance, and liquidity release.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href={`/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(propertyId)}`}
+                className="group inline-flex items-center gap-2 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-2.5 text-sm font-medium text-violet-700 transition-all hover:bg-violet-500/10 dark:text-violet-300"
+              >
+                Open the What-If scenario
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+              </Link>
+            </CardContent>
+          </Card>
         </div>
 
         {/* AI Advisor Panel */}
