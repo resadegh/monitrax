@@ -1699,3 +1699,52 @@ interface SuperCapMeterProps {
 Any future surface that shows super cap usage (e.g. a CFO recommendation
 card, an SMSF cap view) MUST consume `SuperCapMeter` rather than re-deriving
 the bar — do not fork the cap math.
+
+---
+
+## Contextual atmospheric decor — the "Cremorne pattern" (Phase 45.1.1, 2026-06-08)
+
+> **Reza directive 2026-06-08:** *"document this design in design principles as one that I like with the background picture and other elements to be used later in other parts of the app."*
+
+A reusable **three-layer atmospheric system** that elevates a hero/spotlight
+surface from "card with data" to "card that feels like a place." Origin:
+PropertyTile what-if affordance Stitch design pass (`929d25f22321425a9a0317d331fca3f8`).
+**Canonical rules live in `CLAUDE.md` §18.7.4 — this section is the
+implementation pointer.** Stale or contradictory copy here = process
+violation; the principles in CLAUDE.md win.
+
+### Quick reference (full detail: CLAUDE.md §18.7.4)
+
+| Layer | What it does | Composition |
+|---|---|---|
+| **L1 Photo bleed** | Sense-of-place ground for abstract financial data | `<img>` bottom-right, `[mask-image:linear-gradient(to_top,black,transparent)]`, `opacity-40` light / `opacity-30` dark, `-z-20` |
+| **L2 Atmospheric halo** | Telegraphs the focal tile as protagonist | Sky→indigo (or per-stage palette) radial behind tile, `blur-[60px]`, `-z-10`, hover-opacity transition |
+| **L3 Next-item ghost** | Continuation cue without competing | Scaled-down + blurred + faded skeleton of next item, `pointer-events-none`, optional |
+
+### When to reach for it
+
+✅ **Use:** hero / spotlight surfaces with a single focal asset (a property
+in a what-if scenario, a super fund being inspected, an investment in
+detail). Containers ≥520px wide. Pages where lived reality grounds an
+abstract number.
+
+❌ **Don't use:** tile grids (cap at one atmospheric tile per page), mobile
+surfaces without a responsive crop pass, lists or transaction tables (calm
+scanning beats atmosphere), surfaces where a stock photo could mislead
+about data provenance.
+
+### Reference artefact
+
+Stitch HTML + PNG locked in `.stitch/designs/polish/property-tile-whatif-affordance.{html,png}`
+(+ `-dark.{html,png}`). Proportions, mask-gradient stops, and per-layer
+opacity values are calibrated there — any future application of this
+pattern starts by viewing those artefacts.
+
+### Where this should replicate next
+
+Tracked in CLAUDE.md §18.7.4 — `/dashboard/properties/[id]` detail page,
+`/dashboard/investments/[id]` detail page, super fund SMSF detail, CFO
+what-if lever detail when an entity is selected.
+
+Future PRs that apply the pattern MUST tick off the surface they ship in
+the §18.7.4 queue and document any tuning the new surface needed.

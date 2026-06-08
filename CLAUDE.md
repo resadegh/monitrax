@@ -1756,6 +1756,7 @@ Canonical source files: `components/properties/PropertyTile.tsx`, `components/pr
 | **Typography** | Inter throughout. Confident `tabular-nums` numerals with tight tracking for money; warm, plain-English microcopy; `label-sm` uppercase tracked labels for categories. | Same. Reduce font weight by ~25-50 units on numerals if they read too heavy on the lighter foreground (Inter 600 → 550) — but only as a fine-tune, not a default change. |
 | **Motion** | `appleEase = [0.25,0.46,0.45,0.94]`; `springSnap = { stiffness:320, damping:28, mass:0.8 }`; tile entrance 0.55s + 40ms stagger; hero 0.6s. Full `prefers-reduced-motion` support — every animation has a reduced fallback. | Same — motion timings are mode-independent. Hover-lift opacity ramps may need a 5-10% tweak on dark (the lift reads less because shadows are weaker on dark bg). |
 | **Glyphs** | Filled silhouettes, `viewBox 0 0 120 120`, `fill='currentColor'`, no strokes. Reuse `wealthGlyphs.tsx` (e.g. `SuperFilledGlyph` = classical column). Never invent a one-off glyph when one exists. | Same. `fill='currentColor'` naturally inverts with `--editorial-ink` flipping to near-white. Watermark glyphs use the lever's gradient color directly (not `currentColor`) so they keep their identity on both modes. |
+| **Contextual decor (the "Cremorne pattern" — see §18.7.4)** | Optional lived-reality photo bleeding into the bottom-right of a HERO tile/surface, masked with `linear-gradient(to_top, black, transparent)` and `opacity-40`. Paired with a sky→indigo atmospheric halo behind the focal element (`absolute -inset-10 bg-gradient-to-br from-sky-400/10 to-indigo-500/10 blur-[60px]`) and an optional next-item ghost (40% opacity + blur). Reserved for hero/spotlight surfaces — never every tile in a grid. | Same composition. Photo opacity dims to `opacity-30` to compensate for navy ground absorbing more brightness. Halo opacity dims ~40-50% (same rule as Stage-I atmosphere). Next-item ghost opacity drops to ~30% (the dark bg already provides separation). |
 | **Behaviour-psychology** | Celebrate the next achievable action; normalise rather than shame; no false precision, no manufactured urgency, no invented numbers (a projection without an engine is a lie — cut it). | Same — psychology rules are mode-independent. |
 
 **Dark-mode reviewer enforcement.** Every Stitch generation for an in-app surface MUST produce BOTH a light AND a dark variant (per device — so DESKTOP-light + DESKTOP-dark + MOBILE-light + MOBILE-dark = 4 screens per surface for a full audit). Same vocabulary, mode-flipped tokens. The dark variants commit alongside light variants under `<file>-dark.{html,png}`. A reviewer who sees only light variants must reject the PR until dark variants ship.
@@ -1766,6 +1767,47 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 1. Generates/edits a Monitrax Stitch screen without seeding the §18.7.2 principles (or the matching public/internal design-system doc) into the prompt — evidence: the prompt text in the session changelog.
 2. Changes the design language without updating §18.7.2 AND the canonical `06_/08_/Phase` doc in the same PR.
 3. Lets Stitch's default design system (cool blue, flat cards, generic spacing) ship as the Monitrax look.
+4. Applies the §18.7.4 "Cremorne pattern" (contextual photo + atmospheric halo + next-item ghost) to a context that violates its scope rules — e.g. every tile in a grid, mobile-first surfaces without the responsive crop pass, or surfaces where the photo could plausibly mislead the user about provenance of the underlying data (the photo is decor, never evidence).
+
+#### 18.7.4 Reusable atmospheric decor — the "Cremorne pattern" (Phase 45.1.1, 2026-06-08)
+
+> **Origin.** Surfaced in the Phase 45.1.1 Stitch design pass for the PropertyTile what-if affordance — Reza explicitly called out *"I like the background photo of the apartment. Nice touch"* (2026-06-08). The pattern landed because the apartment interior grounded an otherwise-abstract financial tile in lived reality without overwhelming the data. Documenting it here so future surfaces can reach for it intentionally instead of re-inventing.
+
+This is a **three-layer atmospheric system** that elevates a hero/spotlight surface from "card with data" to "card that feels like a place." It is NOT a per-tile decoration system — applying it to every tile in a grid cancels the effect.
+
+##### The three layers (composed bottom-up by `z-index`)
+
+| Layer | Purpose | Mechanics |
+|---|---|---|
+| **L1 — Contextual photo bleed** | Sense-of-place. Grounds the abstract financial data ("$1,247,200 equity") in the lived-reality the data refers to (the actual apartment). | `<img>` absolutely positioned bottom-right, ~33% width × 50% height of the container, `object-cover object-bottom`, masked with `[mask-image:linear-gradient(to_top,black,transparent)]` so the photo fades upward into the page background. `opacity-40` light / `opacity-30` dark. `-z-20` so it sits behind both the tile and the halo. Image must be in landscape orientation that crops cleanly to the bottom-right corner. |
+| **L2 — Atmospheric halo** | Focal-point telegraphing. Tells the eye *"this tile is the protagonist of the page."* | `<div className="absolute -inset-10 bg-gradient-to-br from-{stage-color}-400/10 to-{stage-color2}-500/10 blur-[60px] rounded-full">`. Stage I (Invest) = sky→indigo. Stage III (Anchor) = emerald. Match the focal tile's per-entity sub-palette so the halo extends the tile's identity. `transition-opacity duration-700` on hover for tactile lift. `-z-10`. |
+| **L3 — Next-item ghost (optional)** | Continuation cue. Tells the user *"there's more — keep going"* without showing a second full tile that competes with the protagonist. | A scaled-down (`scale-95`), blurred (`blur-[2px]`), faded (`opacity-40` light / `opacity-30` dark) skeleton of the next item placed in the absolute-positioned space to the right of the focal tile, `pointer-events-none` so it never steals focus. Use sparingly — only when there's a real "next item" the user could navigate to. |
+
+##### When to use
+
+- **Hero / spotlight surfaces only** — a single focal asset on a page: the chosen property in a what-if scenario, the active investment in a portfolio drill-down, the SMSF being inspected.
+- **Pages where lived reality grounds the abstraction** — properties (interior photo), super funds (institutional lobby / cityscape), investments (skyline / industry photo).
+- **When the surface has room** — minimum container ~520px wide. Below that the photo crops to a smudge and the halo overpowers.
+
+##### When NOT to use
+
+- **Tile grids** — applying L1/L2 to every tile in a grid creates visual noise; the eye loses the protagonist. Cap usage at ONE atmospheric tile per page.
+- **Mobile-first surfaces without a responsive crop pass** — landscape photos crop poorly on portrait phones. Either ship a portrait crop or drop L1 below `md:` breakpoint.
+- **Surfaces where the photo could mislead** — never use a stock photo that could be mistaken for "this is your actual asset" (e.g. a generic skyline behind a real super fund balance — implies provenance the data doesn't have). The photo must be obviously decorative *or* obviously the user's own asset (CDR-sourced where applicable, future).
+- **Wealth lists, transaction tables, dashboards** — these need calm scanning; atmospheric decor pulls focus.
+
+##### Canonical reference
+
+Stitch artefact: `.stitch/designs/polish/property-tile-whatif-affordance.{html,png}` + `-dark.{html,png}` (project `5991501424852019479`, screen IDs `929d25f22321425a9a0317d331fca3f8` / `f88ce0a309464ccfa4234ac0ba0d366b`). The Stitch render is the source of truth for proportions, mask-gradient stops, and per-layer opacity. Any future application of this pattern MUST start by viewing those artefacts.
+
+##### Where to replicate next (queue)
+
+- `/dashboard/properties/[id]` detail page — single focal property; the bedroom/interior photo could replace the current placeholder hero.
+- `/dashboard/investments/[id]` detail page — single focal investment account; institutional photo or sector imagery.
+- `/dashboard/investments/super/[id]` SMSF detail — institutional lobby photo for the trustee structure.
+- CFO what-if lever detail (`/dashboard/cfo/what-if/sellProperty`) when an entity is selected — extend L1 with the chosen property's photo to deepen the "what if this specific asset" framing.
+
+Future PRs that apply the pattern MUST update this queue: tick off the surface that shipped, and (designer lens) document any tuning the surface needed so the pattern stays a living standard, not a frozen artefact.
 
 ---
 

@@ -512,3 +512,73 @@ Docs updated in this PR:
 - Manual: open `/dashboard/income` on a user with NO salary income → CTA banner absent (guard rendering correct).
 - Manual: open `/dashboard/properties` on a user with only HOME and RENTAL properties → sparkles icon absent (guard rendering correct).
 - Manual: toggle dark mode → both surfaces render with §18.7.2 dark-mode tokens (deeper navy background, brightened emerald `#22C55E`, near-white text).
+
+---
+
+## Session: Phase 45.1.2 — codify the "Cremorne pattern" into design principles
+
+**Branch:** `claude/design-principles-contextual-decor-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios (polish docs continuation).
+**Predecessor:** Phase 45.1.1 polish backlog (PR #1020, merged 2026-06-08).
+
+### Why this PR
+
+Reza directive 2026-06-08 after approving the Phase 45.1.1 PropertyTile what-if Stitch design: *"document this design in design principles as one that I like with the background picture and other elements to be used later in other parts of the app."*
+
+The PropertyTile what-if Stitch design landed with a memorable atmospheric composition — sun-drenched Cremorne apartment interior bleeding into the bottom-right of the focal tile, paired with a sky→indigo halo and a faint ghost of the next tile peeking from the right edge. Reza flagged it as a reusable pattern. This PR codifies it so future surfaces can reach for it intentionally rather than re-discovering it ad hoc.
+
+### What shipped
+
+1. **`CLAUDE.md` §18.7.2 table** — new row "Contextual decor (the Cremorne pattern — see §18.7.4)" covering light + dark rendering rules at table-row granularity.
+
+2. **`CLAUDE.md` §18.7.4 (NEW sub-section)** — full pattern documentation:
+   - **Origin** quote from Reza
+   - **The three layers** table (L1 photo bleed / L2 atmospheric halo / L3 next-item ghost) with per-layer purpose + mechanics
+   - **When to use** rules (hero/spotlight surfaces, ≥520px containers, lived-reality grounding)
+   - **When NOT to use** rules (tile grids, mobile without crop pass, surfaces where photo could mislead about data provenance, calm-scanning surfaces)
+   - **Canonical reference** — Stitch artefact path + project ID + screen IDs
+   - **Where to replicate next** — queued surfaces (property detail, investment detail, SMSF detail, what-if lever detail) with the discipline that future PRs MUST tick off + document tuning
+
+3. **`CLAUDE.md` §18.7.3 reviewer enforcement** — extended with a 4th rule rejecting PRs that apply the §18.7.4 pattern to a scope-violating context.
+
+4. **`docs/architecture/06_UI_UX_FOUNDATION.md`** — new section "Contextual atmospheric decor — the 'Cremorne pattern' (Phase 45.1.1, 2026-06-08)" with quick-reference table + when-to-use + reference artefact + replicate queue. Defers to CLAUDE.md §18.7.4 as the SSOT — never duplicates rules.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — new canonical "Cremorne pattern" added to CLAUDE.md §18.7.2/§18.7.4 design-principles digest + foundation doc pointer; future PRs that apply or adjust the pattern MUST update both per §18.7.1 rule 3
+- [ ] application config / GCP / identity / deploy / security
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `CLAUDE.md` §18.7.2 (new table row) + §18.7.3 (4th reviewer rule) + §18.7.4 (NEW full sub-section)
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new "Contextual atmospheric decor" section pointing at CLAUDE.md §18.7.4
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — new `[x]` Phase 45.1.2 entry
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+N/A — docs-only PR. No code, no tax-engine, no schema, no AI tool, no per-asset tax UI.
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A — no Prisma operations.
+
+### Schema migration (CLAUDE.md §12.12)
+
+N/A — no schema changes.
+
+### Build / test status
+
+N/A — docs-only PR. No build artefact changes.
+
+### Why this matters
+
+This is the lens-discipline payoff: a design pattern that landed well in a single Stitch render becomes documented vocabulary instead of an ad-hoc "we liked it that one time." Future design passes can either reach for the Cremorne pattern intentionally (and the principle table tells them how) or consciously choose not to (and the principle table tells them what they'd be passing up). Either way, the decision is informed.
+
+Aligns with the four-lens advisory mindset (CLAUDE.md §0):
+- **Designer** — codifies a premium pattern that's restrained, layered, and Apple-music-dark-friendly.
+- **Architect** — patterns live in the SSOT (CLAUDE.md) with implementation pointers, never duplicated.
+- **Behaviour psychologist** — the "queue of next surfaces to replicate" + "document tuning" discipline ensures the pattern stays a living standard, not a frozen artefact (Bandura self-efficacy applied to the design system itself).
+- **Financial adviser** — the "when NOT to use" rule about misleading photo provenance protects the user from being led to assume the photo represents their actual data (CDR-provenance discipline applied to decor).
