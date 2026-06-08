@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -611,6 +612,12 @@ function IncomePageContent() {
   // Use net monthly for display (matches dashboard)
   const totalMonthly = totalNetMonthly;
 
+  // Phase 45.1 polish — show the salary-sacrifice What-If affordance only
+  // when the user has at least one SALARY income source (otherwise the CTA
+  // is irrelevant). Keeps the page calm for users who haven't entered salary
+  // yet, while quietly multiplying engagement for those who have.
+  const hasSalaryIncome = income.some(i => i.type === 'SALARY');
+
   const getIncomeTypeBadge = (type: Income['type']) => {
     switch (type) {
       case 'SALARY':
@@ -825,6 +832,43 @@ function IncomePageContent() {
           </Button>
         }
       />
+
+      {/* Phase 45.1.1 polish — contextual "What if you salary-sacrificed?"
+          CTA. Deep-links into the salarySacrificeToSuper lever where the
+          user lands on the scenario with the correct context loaded.
+          Stage I (Invest) emerald accent; AFSL footnote keeps the
+          financial-advisor lens honest. Stitch screen IDs (project
+          5991501424852019479): light 62e3d46cc4964462b0d40195e3b606d0,
+          dark d4da3f3f4d41467998d2dd7217e1e73f. */}
+      {hasSalaryIncome && (
+        <section className="mb-4">
+          <Link
+            href="/dashboard/cfo/what-if/salarySacrificeToSuper"
+            className="group flex w-full items-center justify-between rounded-[14px] border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-3 backdrop-blur-xl transition-colors hover:bg-emerald-500/[0.12] dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15"
+          >
+            <div className="flex min-w-0 items-center gap-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-indigo-500 text-white shadow-sm">
+                <PiggyBank className="h-4 w-4" />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
+                  What if you salary-sacrificed?
+                </h3>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Model how a monthly sacrifice would affect your year-1 tax + 10-year superannuation projection.
+                </p>
+              </div>
+            </div>
+            <div className="hidden shrink-0 items-center gap-2 text-foreground/40 transition-colors group-hover:text-foreground md:flex">
+              <span className="text-[10px] font-bold uppercase tracking-widest">Explore scenarios</span>
+              <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+            </div>
+          </Link>
+          <p className="mt-2 px-1 text-[10px] text-muted-foreground/70">
+            AFSL 523411 compliant: hypothetical illustrations based on current tax legislation; individual circumstances may vary.
+          </p>
+        </section>
+      )}
 
       {/* Search and Filter */}
       {income.length > 0 && (
