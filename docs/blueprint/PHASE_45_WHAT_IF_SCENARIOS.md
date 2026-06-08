@@ -122,6 +122,16 @@ Sequencing:
 8. Phase 45 PR 2 — UI port (`/dashboard/cfo/what-if` + 5 lever-detail screens).
 9. Phase 45.1 — contextual entry points (separate PR).
 
+### 5.1 Polish backlog shipped 2026-06-08
+
+All three landed as additive polish on top of Phase 45 v1 + 45.1 contextual entry points. Detail entries live in `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` and `docs/changelog/CHANGELOG_2026_06_08.md`.
+
+- **Phase 45.1.1 — PropertyTile sparkles + income salary-sacrifice CTA** (PR #1020, merged). Adds the missing contextual entry points the original Phase 45.1 deferred: a violet-tinted Sparkles button in the PropertyTile action cluster (INVESTMENT type only, deep-links to sellProperty lever), and an emerald glass CTA banner on `/dashboard/income` (only when the user has a SALARY income, deep-links to salarySacrificeToSuper).
+- **Phase 45.1.2 — codify the "Cremorne pattern" into design principles** (PR #1021, merged). After Reza approved the apartment-photo decor on the Phase 45.1.1 PropertyTile what-if Stitch, codified the three-layer atmospheric system into CLAUDE.md §18.7.4 (L1 photo bleed + L2 atmospheric halo + L3 next-item ghost) with when-to-use / when-NOT rules + reusable replicate queue. Matching pointer added to `docs/architecture/06_UI_UX_FOUNDATION.md` per §16.3 doc-sync requirement.
+- **Phase 45.1.3 — first Cremorne application: sellProperty lever** (PR #1022, merged). L1 photo (page-container level, 33% × 50% bottom-right desktop / 66% × 50% mobile, masked + opacity-stepped for dark mode) + L2 violet→fuchsia halo (around the left input GlassPanel only). Gated on `lever === 'sellProperty' && sellPropertyState.propertyId` so layers only render once a property is picked. Per-surface tuning learnings documented in the §18.7.4 replicate queue so future applications can either reuse the approach or consciously deviate.
+
+**§18.7.4 replicate queue remaining (queued, no commitment):** properties detail hero · investments detail hero · SMSF detail hero — each needs the detail route scaffolded first (separate workstreams, not pure visual polish). Income-page banner application is a lower-priority candidate.
+
 ## 6. Stitch design pass (CLAUDE.md §18) — §18.7.2 glass vocabulary applied to Phase 45
 
 ### 6.0 Vocabulary anchor (load-bearing decision, 2026-06-04)
