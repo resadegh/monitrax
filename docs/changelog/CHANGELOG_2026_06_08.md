@@ -582,3 +582,92 @@ Aligns with the four-lens advisory mindset (CLAUDE.md §0):
 - **Architect** — patterns live in the SSOT (CLAUDE.md) with implementation pointers, never duplicated.
 - **Behaviour psychologist** — the "queue of next surfaces to replicate" + "document tuning" discipline ensures the pattern stays a living standard, not a frozen artefact (Bandura self-efficacy applied to the design system itself).
 - **Financial adviser** — the "when NOT to use" rule about misleading photo provenance protects the user from being led to assume the photo represents their actual data (CDR-provenance discipline applied to decor).
+
+---
+
+## Session: Phase 45.1.3 — first Cremorne-pattern application (sellProperty lever)
+
+**Branch:** `claude/cremorne-sellproperty-design-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Predecessors:** Phase 45.1.2 codification (PR #1021, merged), Phase 45.1.1 polish (PR #1020, merged).
+
+### Why this PR
+
+Phase 45.1.2 codified the Cremorne pattern (CLAUDE.md §18.7.4) and queued four surfaces to replicate it on. Reza confirmed "yes" to starting with the sellProperty lever — smallest-scope, highest-payoff (the route + property-picker logic already exist; only the L1 + L2 atmospheric layers needed adding). Surfaces A/B/C (properties/investments/SMSF detail pages) need detail routes scaffolded first; separate workstreams.
+
+### What shipped
+
+**Stitch artefacts** (4-variant matrix per §18.7.2 reviewer enforcement; locked + committed under `.stitch/designs/polish/`):
+
+| Variant | Screen ID |
+|---|---|
+| Desktop light | `d6f34e902fb448909b0ca829d6d46703` |
+| Desktop dark | `609fb548b455406ab40ed0e187bc7e07` |
+| Mobile light | `36afec8b70a0416eb3e5e4888f1434b2` |
+| Mobile dark | `65bfbf6b592e4235becba9146a0a6eaa` |
+
+Canonical Monitrax Stitch project: `1859462351962811110` (same project as Phase 45 v1 lever-detail Stitch history per CLAUDE.md §18.3).
+
+**React port** (`app/dashboard/cfo/what-if/[lever]/page.tsx`):
+
+1. **L1 — Photo bleed**: `next/image` with `fill`+responsive `sizes`, sourced from a new asset `/public/decor/cremorne-apartment.jpg` (~80KB). Positioned at the OUTER page-container level (`absolute bottom-0 right-0 -z-20`), `h-1/2 w-2/3 md:w-1/3`, `[mask-image:linear-gradient(to_top,black,transparent)]`, `opacity-40 dark:opacity-30`. Gated by `lever === 'sellProperty' && sellPropertyState.propertyId` so it only renders once a property is picked.
+2. **L2 — Atmospheric halo**: violet→fuchsia gradient halo wrapping the LEFT input GlassPanel (the protagonist). `absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-violet-400/[0.12] to-fuchsia-500/[0.12] blur-[40px] dark:from-violet-400/[0.08] dark:to-fuchsia-500/[0.08] md:-inset-10 md:blur-[60px]`. Same gating condition as L1.
+3. **L3 — Skipped** per §18.7.4 mobile + protagonist count rules (page has 3 protagonists; a 4th ghost would add noise).
+
+**Page container** changes:
+- Outer `<div>` upgraded from `mx-auto max-w-[1200px] px-4 py-8 sm:px-6 lg:px-8` to add `relative overflow-hidden` so L1 absolute positioning works and the photo bleed clips at the 1200px container edge instead of bleeding into the viewport.
+- Left grid column wrapped in a `<div className="relative">` so L2 halo can absolutely position around the GlassPanel and extend beyond its edges (the GlassPanel itself has `overflow-hidden` which would clip an inner halo).
+
+**Asset**: `public/decor/cremorne-apartment.jpg` — Stitch-generated apartment interior photo (512×512 JPEG, ~80KB). Used as a tasteful representative fallback until CDR-sourced "actual asset" photos become available. Per §18.7.4 "decor not evidence" rule, the photo is obviously decorative — no "your property" framing, no provenance implication.
+
+### Per-surface tuning learnings (added to §18.7.4 replicate queue)
+
+(a) **Desktop photo placement is page-container level, NOT card-level.** The lever's two-column grid has its own visual gravity (inputs left, projection right); a card-level photo would compete with the right column. Page-level keeps the photo ambient.
+(b) **Halo lives at the left-column wrapper only.** The right column is the projection card, not a protagonist; haloes on both would split focus.
+(c) **Mobile keeps photo at page-container level too** (not card-level as the Stitch design suggested). Putting the photo behind the LAST stacked card on a long mobile scroll grounds the page better than burying it inside the inputs card (where it'd vanish above the fold for most users).
+(d) **L3 next-item ghost** skipped as predicted — page has 3 protagonists; 4th ghost adds noise.
+(e) **Photo source** is a single decor asset; CDR-sourced photos aren't available yet, and the fallback is obviously decorative.
+
+These learnings are captured in the §18.7.4 queue so future replicate PRs can either reuse the same approach or consciously deviate.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — first application of the §18.7.4 Cremorne pattern. Updated CLAUDE.md §18.7.4 replicate queue with shipped status + per-surface tuning notes (per the discipline established by §18.7.4: "Future PRs that apply the pattern MUST update this queue").
+- [ ] application config / GCP / identity / deploy / security
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `app/dashboard/cfo/what-if/[lever]/page.tsx` — L1 + L2 layers + inline JSDoc citing CLAUDE.md §18.7.4 + Stitch screen IDs
+- `public/decor/cremorne-apartment.jpg` — NEW production asset
+- `.stitch/designs/polish/sellproperty-lever-cremorne{,-dark,-mobile,-mobile-dark}.{html,png}` — 4 Stitch artefacts (committed in predecessor commits on this branch)
+- `CLAUDE.md` §18.7.4 — replicate queue updated: sellProperty ticked off, per-surface tuning notes added, income-page banner added as low-priority candidate
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — new `[x]` Phase 45.1.3 entry
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+N/A — visual layer only. No `lib/tax-engine/*` touched, no tax calculations added, no schema columns on `Property` / `Investment` / `LegalEntity`, no new AI tools, no new per-asset tax position UI (the lever-detail page is already FW-2 compliant for sellProperty via the engine).
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A — no Prisma operations.
+
+### Schema migration (CLAUDE.md §12.12)
+
+N/A — no `prisma/schema.prisma` changes.
+
+### AFSL discipline
+
+- No prescriptive copy added. The photo + halo are visual decor only; the AFSL-disciplined "Monitrax shows what changes" framing from Phase 45 PR 2.B remains untouched.
+- The photo is obviously decorative per §18.7.4 "decor not evidence" rule — no risk of misleading the user about asset provenance.
+
+### Test plan
+
+- [ ] Manual: open `/dashboard/cfo/what-if/sellProperty` on a user with at least one property → pick a property in the picker → photo bleeds in bottom-right of page + violet halo appears behind inputs card → toggle dark mode → photo opacity drops to 30%, halo opacity drops to /8.
+- [ ] Manual: open `/dashboard/cfo/what-if/refinanceLoan` (or any other lever) → photo + halo absent (correct gating).
+- [ ] Manual: open `/dashboard/cfo/what-if/sellProperty` BEFORE picking a property → photo + halo absent (correct gating on `sellPropertyState.propertyId`).
+- [ ] Mobile: open on a small viewport → photo width grows to ~66% (vs 33% on desktop), single-column stack, photo still grounds the bottom of the page.
+- [x] tsc --noEmit clean ✅
+- [x] eslint clean ✅ (0 errors, 0 warnings after `<img>` → `next/image` conversion)
