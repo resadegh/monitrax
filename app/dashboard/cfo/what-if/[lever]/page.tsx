@@ -143,13 +143,32 @@ interface SuperAccountResp {
   fundType: 'INDUSTRY' | 'RETAIL' | 'SMSF' | null;
 }
 
+interface LoanResp {
+  id: string;
+  name: string;
+  principal: number;
+  interestRate: number;
+  termMonths: number;
+  remainingMonths: number;
+  monthlyRepayment: number;
+  loanType: string;
+  offsetBalance: number;
+}
+
+interface PropertyResp {
+  id: string;
+  name: string;
+  currentValue: number;
+  equity: number;
+}
+
 interface LeverContext {
   grossSalaryAnnual: number;
   monthlyCashflow: number;
   totalSuperBalance: number;
   superAccounts: SuperAccountResp[];
-  loans: unknown[];
-  properties: unknown[];
+  loans: LoanResp[];
+  properties: PropertyResp[];
   computedAt: string;
 }
 
@@ -210,9 +229,29 @@ export default function LeverDetailPage() {
   const [ctx, setCtx] = useState<LeverContext | null>(null);
   const [ctxError, setCtxError] = useState<string | null>(null);
 
-  // Slider state — salary-sacrifice is the showcase; other levers stub.
+  // Per-lever slider state — each lever stores its own params so switching
+  // between levers preserves user input.
   const [monthlySacrifice, setMonthlySacrifice] = useState<number>(500);
   const [selectedFundId, setSelectedFundId] = useState<string | null>(null);
+  const [refinanceState, setRefinanceState] = useState<{ loanId: string | null; newRate: number; switchingCosts: number }>({
+    loanId: null,
+    newRate: 0.055,
+    switchingCosts: 1500,
+  });
+  const [payDownState, setPayDownState] = useState<{ loanId: string | null; extraMonthly: number }>({
+    loanId: null,
+    extraMonthly: 200,
+  });
+  const [sellPropertyState, setSellPropertyState] = useState<{ propertyId: string | null; sellingCostsPercent: number }>({
+    propertyId: null,
+    sellingCostsPercent: 0.025,
+  });
+  const [addInvestmentState, setAddInvestmentState] = useState<{ monthlyAmount: number; expectedAnnualReturn: number; years: number }>({
+    monthlyAmount: 500,
+    expectedAnnualReturn: 0.07,
+    years: 10,
+  });
+
   const [result, setResult] = useState<ScenarioResultResp | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
@@ -239,6 +278,20 @@ export default function LeverDetailPage() {
         const choices = apraAccts.length > 0 ? apraAccts : data.superAccounts;
         const largest = [...choices].sort((a, b) => b.currentBalance - a.currentBalance)[0];
         if (largest) setSelectedFundId(largest.id);
+        // Default loan/property selection: largest principal / current-value.
+        const largestLoan = [...data.loans].sort((a, b) => b.principal - a.principal)[0];
+        if (largestLoan) {
+          setRefinanceState((s) => ({
+            ...s,
+            loanId: largestLoan.id,
+            newRate: Math.max(0.035, largestLoan.interestRate - 0.005), // 50bp below current as a sensible default
+          }));
+          setPayDownState((s) => ({ ...s, loanId: largestLoan.id }));
+        }
+        const largestProperty = [...data.properties].sort((a, b) => b.currentValue - a.currentValue)[0];
+        if (largestProperty) {
+          setSellPropertyState((s) => ({ ...s, propertyId: largestProperty.id }));
+        }
       })
       .catch((err) => {
         if (active) setCtxError(err?.message ?? 'Failed to load context.');
@@ -248,9 +301,64 @@ export default function LeverDetailPage() {
     };
   }, [token, lever]);
 
-  // 2. Re-run scenario whenever the slider value changes (debounced).
+  // Build the scenario-run request body for the current lever. Returns
+  // null when the lever's required inputs aren't filled in yet (e.g. no
+  // loan selected on a refinance — don't fire a doomed request).
+  const buildRequest = (): { type: ScenarioType; params: Record<string, unknown> } | null => {
+    switch (lever) {
+      case 'salarySacrificeToSuper':
+        return { type: 'salarySacrificeToSuper', params: { monthlySacrifice } };
+      case 'refinanceLoan':
+        if (!refinanceState.loanId) return null;
+        return {
+          type: 'refinanceLoan',
+          params: {
+            loanId: refinanceState.loanId,
+            newRate: refinanceState.newRate,
+            switchingCosts: refinanceState.switchingCosts,
+          },
+        };
+      case 'payDownLoan':
+        if (!payDownState.loanId || payDownState.extraMonthly <= 0) return null;
+        return {
+          type: 'payDownLoan',
+          params: {
+            loanId: payDownState.loanId,
+            extraMonthly: payDownState.extraMonthly,
+          },
+        };
+      case 'sellProperty':
+        if (!sellPropertyState.propertyId) return null;
+        return {
+          type: 'sellProperty',
+          params: {
+            propertyId: sellPropertyState.propertyId,
+            sellingCostsPercent: sellPropertyState.sellingCostsPercent,
+          },
+        };
+      case 'addInvestment':
+        if (addInvestmentState.monthlyAmount <= 0) return null;
+        return {
+          type: 'addInvestment',
+          params: {
+            monthlyAmount: addInvestmentState.monthlyAmount,
+            expectedAnnualReturn: addInvestmentState.expectedAnnualReturn,
+            years: addInvestmentState.years,
+          },
+        };
+      default:
+        return null;
+    }
+  };
+
+  // 2. Re-run scenario whenever any lever input changes (debounced 250ms).
   useEffect(() => {
-    if (!token || !ctx || lever !== 'salarySacrificeToSuper') return;
+    if (!token || !ctx || !lever) return;
+    const request = buildRequest();
+    if (!request) {
+      setResult(null);
+      return;
+    }
     const handle = window.setTimeout(() => {
       setRunning(true);
       setRunError(null);
@@ -260,10 +368,7 @@ export default function LeverDetailPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          type: 'salarySacrificeToSuper',
-          params: { monthlySacrifice },
-        }),
+        body: JSON.stringify(request),
       })
         .then(async (r) => {
           const body = await r.json();
@@ -279,9 +384,10 @@ export default function LeverDetailPage() {
           setRunError(err?.message ?? 'Scenario run failed.');
         })
         .finally(() => setRunning(false));
-    }, 250); // 250ms debounce — feels live without spamming.
+    }, 250); // feels live without spamming.
     return () => window.clearTimeout(handle);
-  }, [token, ctx, lever, monthlySacrifice]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, ctx, lever, monthlySacrifice, refinanceState, payDownState, sellPropertyState, addInvestmentState]);
 
   // 3. Derive H3 cap-headroom + H2 regime locally from the result.
   const annualSacrifice = monthlySacrifice * 12;
@@ -378,7 +484,6 @@ export default function LeverDetailPage() {
     );
   }
 
-  const isSacrifice = lever === 'salarySacrificeToSuper';
   const isUncomputed = result !== null && result.impacts.length === 0;
 
   return (
@@ -402,7 +507,7 @@ export default function LeverDetailPage() {
           <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-2">
             {/* Left column — inputs */}
             <GlassPanel topStrip={meta.topStripClass}>
-              {isSacrifice ? (
+              {lever === 'salarySacrificeToSuper' && (
                 <SacrificeInputs
                   ctx={ctx}
                   monthlySacrifice={monthlySacrifice}
@@ -412,14 +517,42 @@ export default function LeverDetailPage() {
                   selectedFundId={selectedFundId}
                   setSelectedFundId={setSelectedFundId}
                 />
-              ) : (
+              )}
+              {lever === 'refinanceLoan' && (
+                <RefinanceInputs
+                  ctx={ctx}
+                  state={refinanceState}
+                  setState={setRefinanceState}
+                />
+              )}
+              {lever === 'payDownLoan' && (
+                <PayDownInputs
+                  ctx={ctx}
+                  state={payDownState}
+                  setState={setPayDownState}
+                />
+              )}
+              {lever === 'sellProperty' && (
+                <SellPropertyInputs
+                  ctx={ctx}
+                  state={sellPropertyState}
+                  setState={setSellPropertyState}
+                />
+              )}
+              {lever === 'addInvestment' && (
+                <AddInvestmentInputs
+                  state={addInvestmentState}
+                  setState={setAddInvestmentState}
+                />
+              )}
+              {(lever === 'redirectToOffset' || lever === 'cutSpendCategory') && (
                 <StubInputs meta={meta} />
               )}
             </GlassPanel>
 
             {/* Right column — projection */}
             <GlassPanel topStrip={meta.topStripClass}>
-              {isSacrifice ? (
+              {lever === 'salarySacrificeToSuper' && (
                 <SacrificeProjection
                   ctx={ctx}
                   result={result}
@@ -429,7 +562,21 @@ export default function LeverDetailPage() {
                   isUncomputed={isUncomputed}
                   runError={runError}
                 />
-              ) : (
+              )}
+              {(lever === 'refinanceLoan' ||
+                lever === 'payDownLoan' ||
+                lever === 'sellProperty' ||
+                lever === 'addInvestment') && (
+                <GenericLeverProjection
+                  lever={lever}
+                  ctx={ctx}
+                  result={result}
+                  running={running}
+                  isUncomputed={isUncomputed}
+                  runError={runError}
+                />
+              )}
+              {(lever === 'redirectToOffset' || lever === 'cutSpendCategory') && (
                 <StubProjection meta={meta} />
               )}
             </GlassPanel>
@@ -1000,6 +1147,741 @@ function GAWFooter() {
           </Link>
         </p>
       </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PR 2.C — Per-lever Inputs (refinance / payDown / sellProperty / addInvestment)
+// =============================================================================
+
+/**
+ * Shared EntityPicker — used by refinance / payDown (loans) and
+ * sellProperty (properties). Renders a selectable list of entities with
+ * a subtitle showing the relevant balance.
+ */
+function EntityPicker<T extends { id: string; name: string }>({
+  label,
+  items,
+  selectedId,
+  onSelect,
+  subtitle,
+  emptyMessage,
+}: {
+  label: string;
+  items: T[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  subtitle: (item: T) => string;
+  emptyMessage: string;
+}) {
+  if (items.length === 0) {
+    return (
+      <div className="border-t border-foreground/5 pt-5">
+        <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-foreground/60">
+          {label}
+        </p>
+        <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+      </div>
+    );
+  }
+  return (
+    <div className="border-t border-foreground/5 pt-5">
+      <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-foreground/60">
+        {label}
+      </p>
+      <ul className="space-y-2">
+        {items.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              onClick={() => onSelect(item.id)}
+              className={`w-full rounded-xl border p-3 text-left transition-all ${
+                selectedId === item.id
+                  ? 'border-emerald-500/40 bg-emerald-500/5'
+                  : 'border-foreground/10 bg-background/30 hover:border-foreground/20'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{item.name}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{subtitle(item)}</p>
+                </div>
+                {selectedId === item.id && (
+                  <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                )}
+              </div>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Refinance loan
+// ---------------------------------------------------------------------------
+
+function RefinanceInputs({
+  ctx,
+  state,
+  setState,
+}: {
+  ctx: LeverContext;
+  state: { loanId: string | null; newRate: number; switchingCosts: number };
+  setState: React.Dispatch<
+    React.SetStateAction<{ loanId: string | null; newRate: number; switchingCosts: number }>
+  >;
+}) {
+  const selectedLoan = ctx.loans.find((l) => l.id === state.loanId);
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-amber-700 dark:text-amber-300">
+          Inputs · Reduce · Debt
+        </p>
+        <h2 className="text-lg font-semibold text-foreground">
+          What rate could you refinance to?
+        </h2>
+      </div>
+
+      {/* New rate slider */}
+      <div className="pt-2">
+        <div className="mb-3 flex items-center justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-amber-500 to-rose-500 px-4 py-1.5 text-base font-semibold text-white shadow-md">
+            {(state.newRate * 100).toFixed(2)}%
+            <span className="text-xs font-normal text-white/80">/yr</span>
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0.03}
+          max={0.09}
+          step={0.0005}
+          value={state.newRate}
+          onChange={(e) => setState((s) => ({ ...s, newRate: Number(e.target.value) }))}
+          className="w-full accent-amber-500"
+          aria-label="Proposed new interest rate"
+        />
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+          <span>3.00%</span>
+          <span>9.00%</span>
+        </div>
+        {selectedLoan && (
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Your snapshot: {selectedLoan.name} at{' '}
+            {(selectedLoan.interestRate * 100).toFixed(2)}%
+            {state.newRate < selectedLoan.interestRate
+              ? ` · ${((selectedLoan.interestRate - state.newRate) * 100).toFixed(2)}% lower`
+              : state.newRate > selectedLoan.interestRate
+              ? ` · ${((state.newRate - selectedLoan.interestRate) * 100).toFixed(2)}% HIGHER`
+              : ' · same rate'}
+          </p>
+        )}
+      </div>
+
+      {/* Switching costs slider */}
+      <div className="rounded-xl border border-foreground/10 bg-background/30 p-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground/70">Switching costs (legal + discharge + new app)</span>
+          <span className="font-semibold text-foreground">
+            {formatCurrency(state.switchingCosts)}
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={5000}
+          step={100}
+          value={state.switchingCosts}
+          onChange={(e) =>
+            setState((s) => ({ ...s, switchingCosts: Number(e.target.value) }))
+          }
+          className="mt-2 w-full accent-amber-500"
+          aria-label="Switching costs"
+        />
+      </div>
+
+      <EntityPicker
+        label="Which loan?"
+        items={ctx.loans}
+        selectedId={state.loanId}
+        onSelect={(id) => setState((s) => ({ ...s, loanId: id }))}
+        subtitle={(l) =>
+          `${formatCompactCurrency(l.principal)} principal · ${(l.interestRate * 100).toFixed(2)}% · ${l.remainingMonths} mo remaining`
+        }
+        emptyMessage="No loans on your snapshot — add one in My Accounts to use this lever."
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pay down loan
+// ---------------------------------------------------------------------------
+
+function PayDownInputs({
+  ctx,
+  state,
+  setState,
+}: {
+  ctx: LeverContext;
+  state: { loanId: string | null; extraMonthly: number };
+  setState: React.Dispatch<React.SetStateAction<{ loanId: string | null; extraMonthly: number }>>;
+}) {
+  const selectedLoan = ctx.loans.find((l) => l.id === state.loanId);
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+          Inputs · Anchor · Debt Freedom
+        </p>
+        <h2 className="text-lg font-semibold text-foreground">
+          How much extra per month?
+        </h2>
+      </div>
+
+      <div className="pt-2">
+        <div className="mb-3 flex items-center justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-indigo-500 to-blue-500 px-4 py-1.5 text-base font-semibold text-white shadow-md">
+            ${state.extraMonthly.toLocaleString()}
+            <span className="text-xs font-normal text-white/80">/mo extra</span>
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={2000}
+          step={50}
+          value={state.extraMonthly}
+          onChange={(e) =>
+            setState((s) => ({ ...s, extraMonthly: Number(e.target.value) }))
+          }
+          className="w-full accent-indigo-500"
+          aria-label="Extra monthly repayment"
+        />
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+          <span>$0</span>
+          <span>$2,000/mo</span>
+        </div>
+        {selectedLoan && (
+          <p className="mt-3 text-[11px] text-muted-foreground">
+            Your snapshot: {selectedLoan.name} · current monthly{' '}
+            {formatCurrency(selectedLoan.monthlyRepayment)} · new total{' '}
+            {formatCurrency(selectedLoan.monthlyRepayment + state.extraMonthly)}
+          </p>
+        )}
+        <p className="mt-3 text-[11px] text-muted-foreground">
+          Cashflow check: {formatCurrency(ctx.monthlyCashflow)} available now.
+          {state.extraMonthly > ctx.monthlyCashflow && (
+            <span className="ml-1 font-medium text-rose-600 dark:text-rose-400">
+              Exceeds your current cashflow — check this fits.
+            </span>
+          )}
+        </p>
+      </div>
+
+      <EntityPicker
+        label="Which loan?"
+        items={ctx.loans}
+        selectedId={state.loanId}
+        onSelect={(id) => setState((s) => ({ ...s, loanId: id }))}
+        subtitle={(l) =>
+          `${formatCompactCurrency(l.principal)} principal · ${(l.interestRate * 100).toFixed(2)}% · ${l.remainingMonths} mo remaining`
+        }
+        emptyMessage="No loans on your snapshot — add one in My Accounts to use this lever."
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sell property
+// ---------------------------------------------------------------------------
+
+function SellPropertyInputs({
+  ctx,
+  state,
+  setState,
+}: {
+  ctx: LeverContext;
+  state: { propertyId: string | null; sellingCostsPercent: number };
+  setState: React.Dispatch<
+    React.SetStateAction<{ propertyId: string | null; sellingCostsPercent: number }>
+  >;
+}) {
+  const selectedProperty = ctx.properties.find((p) => p.id === state.propertyId);
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-violet-700 dark:text-violet-300">
+          Inputs · Live · Exit
+        </p>
+        <h2 className="text-lg font-semibold text-foreground">
+          Which property would you sell?
+        </h2>
+      </div>
+
+      {selectedProperty && (
+        <div className="rounded-xl border border-violet-500/20 bg-violet-500/5 p-4">
+          <p className="text-xs text-foreground/70">
+            Selling <span className="font-semibold">{selectedProperty.name}</span>
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <p className="text-muted-foreground">Current value</p>
+              <p className="font-semibold text-foreground tabular-nums">
+                {formatCurrency(selectedProperty.currentValue)}
+              </p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Your equity</p>
+              <p className="font-semibold text-foreground tabular-nums">
+                {formatCurrency(selectedProperty.equity)}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Selling-costs slider */}
+      <div className="rounded-xl border border-foreground/10 bg-background/30 p-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground/70">
+            Selling costs (agent + legal + marketing)
+          </span>
+          <span className="font-semibold text-foreground">
+            {(state.sellingCostsPercent * 100).toFixed(1)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0.01}
+          max={0.05}
+          step={0.001}
+          value={state.sellingCostsPercent}
+          onChange={(e) =>
+            setState((s) => ({ ...s, sellingCostsPercent: Number(e.target.value) }))
+          }
+          className="mt-2 w-full accent-violet-500"
+          aria-label="Selling costs percent"
+        />
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Industry default 2.5% — typical AU agent commission + ad spend +
+          conveyancing. Adjust for your actual quote.
+        </p>
+      </div>
+
+      <EntityPicker
+        label="Which property?"
+        items={ctx.properties.map((p) => ({ ...p, name: p.name }))}
+        selectedId={state.propertyId}
+        onSelect={(id) => setState((s) => ({ ...s, propertyId: id }))}
+        subtitle={(p) =>
+          `${formatCompactCurrency(p.currentValue)} value · ${formatCompactCurrency(p.equity)} equity`
+        }
+        emptyMessage="No properties on your snapshot — add one in My Wealth to use this lever."
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add investment property
+// ---------------------------------------------------------------------------
+
+function AddInvestmentInputs({
+  state,
+  setState,
+}: {
+  state: { monthlyAmount: number; expectedAnnualReturn: number; years: number };
+  setState: React.Dispatch<
+    React.SetStateAction<{
+      monthlyAmount: number;
+      expectedAnnualReturn: number;
+      years: number;
+    }>
+  >;
+}) {
+  return (
+    <div className="space-y-6">
+      <div>
+        <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-teal-700 dark:text-teal-300">
+          Inputs · Invest · Property
+        </p>
+        <h2 className="text-lg font-semibold text-foreground">
+          How much per month would you invest?
+        </h2>
+      </div>
+
+      <div className="pt-2">
+        <div className="mb-3 flex items-center justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-teal-500 to-cyan-500 px-4 py-1.5 text-base font-semibold text-white shadow-md">
+            ${state.monthlyAmount.toLocaleString()}
+            <span className="text-xs font-normal text-white/80">/mo</span>
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={3000}
+          step={50}
+          value={state.monthlyAmount}
+          onChange={(e) =>
+            setState((s) => ({ ...s, monthlyAmount: Number(e.target.value) }))
+          }
+          className="w-full accent-teal-500"
+          aria-label="Monthly investment contribution"
+        />
+        <div className="mt-1 flex justify-between text-xs text-muted-foreground">
+          <span>$0</span>
+          <span>$3,000/mo</span>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-foreground/10 bg-background/30 p-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground/70">Expected annual return (real, net of fees)</span>
+          <span className="font-semibold text-foreground">
+            {(state.expectedAnnualReturn * 100).toFixed(1)}%
+          </span>
+        </div>
+        <input
+          type="range"
+          min={0.02}
+          max={0.10}
+          step={0.005}
+          value={state.expectedAnnualReturn}
+          onChange={(e) =>
+            setState((s) => ({ ...s, expectedAnnualReturn: Number(e.target.value) }))
+          }
+          className="mt-2 w-full accent-teal-500"
+          aria-label="Expected annual return"
+        />
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Industry default 7% — historic AU equities-heavy diversified portfolio
+          long-term real return. Lower this if you&apos;re cash-heavy or
+          near retirement.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-foreground/10 bg-background/30 p-4">
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-foreground/70">Horizon</span>
+          <span className="font-semibold text-foreground">{state.years} years</span>
+        </div>
+        <input
+          type="range"
+          min={1}
+          max={30}
+          step={1}
+          value={state.years}
+          onChange={(e) => setState((s) => ({ ...s, years: Number(e.target.value) }))}
+          className="mt-2 w-full accent-teal-500"
+          aria-label="Investment horizon in years"
+        />
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// PR 2.C — Generic projection panel for the 4 non-sacrifice levers
+// =============================================================================
+
+/**
+ * GenericLeverProjection — renders the result for refinance / payDown /
+ * sellProperty / addInvestment. The salary-sacrifice lever has its own
+ * specialised projection (SacrificeProjection) because of the cap-aware
+ * + regime-aware logic; the other 4 levers share this panel.
+ *
+ * Per-lever copy is keyed off the lever id; the chart re-uses the same
+ * `tenYearProjection` composer as salary-sacrifice but the year-1
+ * deltas come from the scenario's impacts array.
+ */
+function GenericLeverProjection({
+  lever,
+  ctx,
+  result,
+  running,
+  isUncomputed,
+  runError,
+}: {
+  lever: ScenarioType;
+  ctx: LeverContext;
+  result: ScenarioResultResp | null;
+  running: boolean;
+  isUncomputed: boolean;
+  runError: string | null;
+}) {
+  // Headline copy per lever. Pulled from the scenario's impacts to stay
+  // in sync with the engine output.
+  const headline = useMemo(() => {
+    if (!result || isUncomputed) return null;
+    switch (lever) {
+      case 'refinanceLoan': {
+        const monthly = result.impacts.find((i) => i.label === 'Monthly cashflow');
+        const lifetime = result.impacts.find((i) =>
+          i.label.startsWith('Lifetime savings'),
+        );
+        if (!monthly || !lifetime) return null;
+        return {
+          big: `${formatCurrency(monthly.delta)}/mo`,
+          sub: `${formatCurrency(lifetime.delta)} lifetime savings (net of switching costs)`,
+        };
+      }
+      case 'payDownLoan': {
+        const interest = result.impacts.find((i) =>
+          i.label.startsWith('Interest saved'),
+        );
+        const months = result.impacts.find((i) =>
+          i.label.startsWith('Months to payoff'),
+        );
+        if (!interest) return null;
+        return {
+          big: `${formatCurrency(interest.delta)} interest saved`,
+          sub: months
+            ? `Payoff in ${Math.round(months.after)} months (down from ${Math.round(months.before)})`
+            : '',
+        };
+      }
+      case 'sellProperty': {
+        const liquidCash = result.impacts.find((i) => i.label === 'Liquid cash');
+        const networth = result.impacts.find((i) =>
+          i.label.startsWith('Net worth'),
+        );
+        if (!liquidCash) return null;
+        return {
+          big: `${formatCurrency(liquidCash.delta)} freed up`,
+          sub: networth
+            ? `Net worth change: ${formatCurrency(networth.delta)} (after selling costs + CGT)`
+            : '',
+        };
+      }
+      case 'addInvestment': {
+        const portfolio = result.impacts.find((i) =>
+          i.label.startsWith('Projected portfolio'),
+        );
+        const growth = result.impacts.find((i) =>
+          i.label.startsWith('Of which is compounding growth'),
+        );
+        if (!portfolio) return null;
+        return {
+          big: `${formatCompactCurrency(portfolio.after)} portfolio`,
+          sub: growth
+            ? `${formatCompactCurrency(growth.after)} from compounding growth`
+            : '',
+        };
+      }
+      default:
+        return null;
+    }
+  }, [lever, result, isUncomputed]);
+
+  // Generic 10-year projection. For levers with a monthly cashflow delta
+  // (refinance / payDown), compose `tenYearProjection` to show the
+  // marginal net-worth growth from the saved/redirected dollars. For
+  // sellProperty / addInvestment, the scenario already produces a
+  // multi-year projection in its impacts — we surface it as-is.
+  const projection = useMemo<TenYearProjectionResult | null>(() => {
+    if (!ctx || !result || isUncomputed) return null;
+    if (lever === 'refinanceLoan') {
+      const monthly = result.impacts.find((i) => i.label === 'Monthly cashflow');
+      if (!monthly) return null;
+      // Monthly savings compounded as if invested at 4% (canonical asset
+      // growth in tenYearProjection). Tax-neutral — savings stay in
+      // post-tax dollars.
+      return tenYearProjection({
+        baseNetWorth: new Decimal(0),
+        yearOneCashflowDelta: new Decimal(monthly.delta).times(12),
+        yearOneTaxDelta: new Decimal(0),
+        years: 10,
+      });
+    }
+    if (lever === 'payDownLoan') {
+      const interest = result.impacts.find((i) =>
+        i.label.startsWith('Interest saved'),
+      );
+      if (!interest) return null;
+      // Interest saved over loan lifetime, distributed pro-rata over 10
+      // years for the chart. Approximate; the headline number is the
+      // canonical engine output.
+      const perYear = new Decimal(interest.delta).div(10);
+      return tenYearProjection({
+        baseNetWorth: new Decimal(0),
+        yearOneCashflowDelta: perYear,
+        yearOneTaxDelta: new Decimal(0),
+        years: 10,
+      });
+    }
+    if (lever === 'addInvestment') {
+      // The addInvestment scenario already runs a multi-year projection
+      // internally with its own annualReturn + years. Re-compose the
+      // tenYearProjection with the same monthly contribution + return so
+      // the chart matches the scenario headline.
+      const monthly = result.impacts.find((i) => i.label === 'Monthly cashflow');
+      const portfolio = result.impacts.find((i) =>
+        i.label.startsWith('Projected portfolio'),
+      );
+      if (!monthly || !portfolio) return null;
+      // monthly.delta is negative (drawn from cashflow); the contribution
+      // BECOMES the portfolio (asset growth).
+      return tenYearProjection({
+        baseNetWorth: new Decimal(0),
+        yearOneCashflowDelta: new Decimal(0), // cashflow drawn = portfolio built; net-worth flat
+        yearOneTaxDelta: new Decimal(0),
+        baseSuperBalance: new Decimal(0),
+        annualSuperContribution: new Decimal(Math.abs(monthly.delta) * 12), // re-use super annuity math
+        superGrowthRate: 0.07,
+        years: 10,
+      });
+    }
+    if (lever === 'sellProperty') {
+      // sellProperty is a discrete year-1 event; the chart shows the
+      // freed liquid cash compounded from year 1.
+      const liquidCash = result.impacts.find((i) => i.label === 'Liquid cash');
+      if (!liquidCash) return null;
+      return tenYearProjection({
+        baseNetWorth: new Decimal(liquidCash.delta),
+        yearOneCashflowDelta: new Decimal(0),
+        yearOneTaxDelta: new Decimal(0),
+        years: 10,
+      });
+    }
+    return null;
+  }, [ctx, lever, result, isUncomputed]);
+
+  return (
+    <div>
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-[11px] font-medium uppercase tracking-wider text-foreground/60">
+          Projection
+        </p>
+        {running && <span className="text-xs text-muted-foreground">Updating…</span>}
+      </div>
+
+      {runError && (
+        <div className="mb-3 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3 text-xs text-rose-700 dark:text-rose-300">
+          {runError}
+        </div>
+      )}
+
+      {isUncomputed && result && (
+        <div className="mb-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-700 dark:text-amber-300">
+          {result.summary}
+        </div>
+      )}
+
+      {!result && !runError && (
+        <p className="text-sm text-muted-foreground">
+          Adjust the inputs to see the projection.
+        </p>
+      )}
+
+      {headline && (
+        <div className="mb-4">
+          <p className="text-2xl font-semibold text-emerald-600 dark:text-emerald-400">
+            {headline.big}
+          </p>
+          {headline.sub && (
+            <p className="mt-1 text-xs text-muted-foreground">{headline.sub}</p>
+          )}
+        </div>
+      )}
+
+      {projection && (
+        <SimpleProjectionChart projection={projection} />
+      )}
+
+      {result && !isUncomputed && (
+        <GenericResultPills result={result} />
+      )}
+
+      {/* AFSL discipline reminder */}
+      {result && !isUncomputed && (
+        <p className="mt-4 text-[11px] text-muted-foreground">
+          This is a projection, not a forecast. Numbers in today&apos;s dollars.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function SimpleProjectionChart({ projection }: { projection: TenYearProjectionResult }) {
+  const data = projection.trajectory.map((p) => ({
+    year: p.year,
+    label: `${2026 + p.year}`,
+    value: p.netWorth.toNumber(),
+  }));
+  return (
+    <div className="h-56 w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.18)" />
+          <XAxis
+            dataKey="label"
+            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            tickFormatter={(v) => formatCompactCurrency(v)}
+            tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+            tickLine={false}
+            axisLine={false}
+            width={60}
+          />
+          <Tooltip
+            contentStyle={{
+              borderRadius: 12,
+              border: '1px solid rgba(148,163,184,0.2)',
+              backgroundColor: 'hsl(var(--card))',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 8px 30px rgba(15,23,42,0.08)',
+              fontSize: 12,
+            }}
+            formatter={(value: number) => [formatCurrency(value), 'Trajectory']}
+            labelFormatter={(label) => `Year ${label}`}
+          />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke="#10b981"
+            strokeWidth={2.5}
+            dot={false}
+          />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function GenericResultPills({ result }: { result: ScenarioResultResp }) {
+  // Pick the top 2 currency-formatted impacts whose delta is non-zero —
+  // the scenario engines order their impacts headliner-first.
+  const currencyImpacts = result.impacts.filter(
+    (i) => i.format === 'currency' && Math.abs(i.delta) > 0.5,
+  );
+  const showcased = currencyImpacts.slice(0, 2);
+  if (showcased.length === 0) return null;
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {showcased.map((impact) => {
+        const positive = impact.direction === 'positive';
+        return (
+          <span
+            key={impact.label}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ring-1 ${
+              positive
+                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 ring-emerald-500/20'
+                : 'bg-foreground/5 text-foreground/80 ring-foreground/10'
+            }`}
+          >
+            {impact.label}: {formatCurrency(impact.delta)}
+          </span>
+        );
+      })}
     </div>
   );
 }
