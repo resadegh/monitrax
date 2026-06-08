@@ -121,6 +121,21 @@ function makeCtx(opts: Parameters<typeof makeSnapshot>[0] = {}): ScenarioContext
   return { snapshot: makeSnapshot(opts) };
 }
 
+function makeCtxWithSuper(
+  opts: Parameters<typeof makeSnapshot>[0] = {},
+  superAccounts: Array<{ balance: number; fundType: 'INDUSTRY' | 'RETAIL' | 'SMSF' | null }> = [],
+): ScenarioContext {
+  return {
+    snapshot: makeSnapshot(opts),
+    superAccounts: superAccounts.map((s, i) => ({
+      id: `sup-${i}`,
+      name: `Fund ${i}`,
+      currentBalance: s.balance,
+      fundType: s.fundType,
+    })),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // concessionalCapGuard
 // ---------------------------------------------------------------------------
@@ -303,6 +318,81 @@ describe('salarySacrificeToSuperScenarioDecimal', () => {
     expect(r.impacts.length).toBeGreaterThan(0);
     const div293 = r.warnings.find((w) => w.message.includes('Division 293'));
     expect(div293).toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// PR 2.A.1 — Div 296 TSB aggregation across APRA + SMSF
+// ---------------------------------------------------------------------------
+
+describe('Phase 45 PR 2.A.1 — Div 296 TSB aggregation', () => {
+  it('without ctx.superAccounts: falls back to netWorth.assets.superannuation (back-compat)', () => {
+    // Existing behaviour pre-PR-2.A.1: a user with only APRA-regulated
+    // super (no SMSF) reads from the snapshot field correctly.
+    const ctx = makeCtx({ grossSalary: 200_000, superannuationBalance: 2_500_000 });
+    const r = salarySacrificeToSuperScenarioDecimal(ctx, { monthlySacrifice: 100 });
+    // $2.5M < $3M Div 296 threshold → UNAFFECTED regime → scenario continues
+    expect(r.impacts.length).toBeGreaterThan(0);
+  });
+
+  it('with ctx.superAccounts: sums every account including SMSF (correct TSB)', () => {
+    // The pre-PR-2.A.1 BUG: a user with $1.5M AustralianSuper + $2M SMSF
+    // member balance reads as $1.5M TSB via the snapshot field (Phase 39.5
+    // excludes SMSF from net-worth) — Div 296 never triggers even though
+    // the real TSB is $3.5M.
+    //
+    // After PR 2.A.1: ctx.superAccounts (un-deduplicated) gives the
+    // correct TSB and Div 296 fires.
+    const ctx = makeCtxWithSuper(
+      // snapshot.netWorth.assets.superannuation = $1.5M (APRA only,
+      // Phase 39.5 excludes SMSF — that's what the snapshot field shows)
+      { grossSalary: 200_000, superannuationBalance: 1_500_000 },
+      [
+        { balance: 1_500_000, fundType: 'INDUSTRY' }, // AustralianSuper
+        { balance: 2_000_000, fundType: 'SMSF' },     // SMSF member balance
+      ],
+    );
+    const r = salarySacrificeToSuperScenarioDecimal(ctx, { monthlySacrifice: 100 });
+    // TSB = $3.5M > $3M → DIV296_UNCOMPUTED → scenario returns UNCOMPUTED
+    expect(r.impacts).toHaveLength(0);
+    expect(r.warnings[0].severity).toBe('critical');
+    expect(r.summary).toContain('High-balance super tax');
+  });
+
+  it('ctx.superAccounts of only APRA accounts: sums them (no SMSF) — TSB = total balance', () => {
+    const ctx = makeCtxWithSuper(
+      { grossSalary: 200_000, superannuationBalance: 800_000 },
+      [
+        { balance: 800_000, fundType: 'INDUSTRY' },
+        { balance: 500_000, fundType: 'RETAIL' },
+        // No SMSF
+      ],
+    );
+    const r = salarySacrificeToSuperScenarioDecimal(ctx, { monthlySacrifice: 100 });
+    // TSB = $1.3M < $3M → UNAFFECTED
+    expect(r.impacts.length).toBeGreaterThan(0);
+  });
+
+  it('ctx.superAccounts only at $2.9M aggregate: UNAFFECTED (below threshold)', () => {
+    const ctx = makeCtxWithSuper(
+      { grossSalary: 200_000 },
+      [
+        { balance: 2_400_000, fundType: 'INDUSTRY' },
+        { balance: 500_000, fundType: 'SMSF' },
+      ],
+    );
+    const r = salarySacrificeToSuperScenarioDecimal(ctx, { monthlySacrifice: 100 });
+    // TSB = $2.9M < $3M → UNAFFECTED
+    expect(r.impacts.length).toBeGreaterThan(0);
+  });
+
+  it('empty ctx.superAccounts array: falls back to snapshot field (no crash)', () => {
+    const ctx = makeCtxWithSuper(
+      { grossSalary: 100_000, superannuationBalance: 100_000 },
+      [], // empty
+    );
+    const r = salarySacrificeToSuperScenarioDecimal(ctx, { monthlySacrifice: 100 });
+    expect(r.impacts.length).toBeGreaterThan(0);
   });
 });
 

@@ -74,6 +74,37 @@ export interface LoanView {
 export interface ScenarioContext {
   snapshot: MasterFinancialSnapshot;
   loans?: LoanView[];
+  /**
+   * Phase 45 PR 2.A.1 — TSB aggregation across APRA + SMSF for the Div 296
+   * regime check on salary-sacrifice. The snapshot's
+   * `netWorth.assets.superannuation` field EXCLUDES SMSF member balances
+   * per Phase 39.5 (no double-counting in the net-worth view, since the
+   * SMSF LegalEntity's owned assets are summed separately). For the
+   * **Div 296 high-balance super tax** the ATO defines TSB as the
+   * individual's interest across ALL super funds (APRA + SMSF), so the
+   * scenario layer needs the un-deduplicated sum.
+   *
+   * Callers populate this from `prisma.superannuationAccount.findMany()`
+   * — every super account the user holds membership in, regardless of
+   * `fundType`. Salary-sacrifice falls back to `netWorth.assets.superannuation`
+   * when this is absent (back-compat for users with no SMSF).
+   */
+  superAccounts?: SuperAccountView[];
+}
+
+/**
+ * Phase 45 PR 2.A.1 — per-account super view consumed by scenarios that
+ * need the un-deduplicated TSB (currently: `salarySacrificeToSuper` for
+ * the Div 296 H2 regime check). Mirrors `SuperInput` in `netWorthCalculator.ts`.
+ */
+export interface SuperAccountView {
+  id: string;
+  /** Display name (e.g. "AustralianSuper Member 12345"). */
+  name?: string;
+  /** Current balance (member-account level for SMSFs). */
+  currentBalance: number;
+  /** APRA-regulated (INDUSTRY/RETAIL) vs SMSF — used by the per-fund destination selector in PR 2.B. */
+  fundType: 'INDUSTRY' | 'RETAIL' | 'SMSF' | null;
 }
 
 // =============================================================================

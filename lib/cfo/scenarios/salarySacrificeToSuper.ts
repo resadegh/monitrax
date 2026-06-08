@@ -250,15 +250,41 @@ export function getRegimeStatus(
 // =============================================================================
 
 /**
- * Reads the canonical super balance from the snapshot's net-worth
- * aggregation (SSOT — `lib/calculations/netWorthCalculator.ts`). Per
- * Phase 39.5, SMSF member accounts are EXCLUDED from this sum (each
- * SMSF member's balance is tracked via the SMSF separately). For PR 1
- * the scenario uses the same canonical figure; per-fund regime checks
- * would need a richer ScenarioContext shape (queued for Phase 45.1
- * contextual entry points).
+ * Total Super Balance (TSB) for the Div 296 H2 regime check.
+ *
+ * **The ATO TSB definition** (PR 2.A.1 audit 2026-06-08) — Div 296
+ * high-balance super tax measures the individual's interest across
+ * ALL super funds (APRA + SMSF). The TSB threshold is $3M; if the
+ * user's total is above and `div296CommencementVerified === false`
+ * for the FY, the scenario MUST return UNCOMPUTED per CLAUDE.md
+ * §12.14 FW-2.
+ *
+ * **Why this differs from the snapshot's `netWorth.assets.superannuation`**:
+ * the net-worth aggregation EXCLUDES SMSF member balances per Phase 39.5
+ * (`lib/calculations/netWorthCalculator.ts:74`) because the SMSF's owned
+ * assets — property, investments, cash — are already summed via the
+ * SMSF LegalEntity, and counting the member balance too would double-
+ * count the fund. That's correct for net-worth. It's WRONG for TSB:
+ * the ATO doesn't care that you've already counted the SMSF's
+ * underlying assets in your personal net worth — Div 296 reads the
+ * member-account-level balance as your "interest in super," full stop.
+ *
+ * **Resolution**: prefer `ctx.superAccounts` (un-deduplicated, sums
+ * every super account regardless of fundType) when callers supply it.
+ * Fall back to the snapshot field for back-compat — that fallback is
+ * correct for users with no SMSF, undercount for users with one.
+ *
+ * Pre-PR-2.A.1 bug: a user with $1.5M AustralianSuper + $2M SMSF
+ * member balance read as $1.5M TSB, so the Div 296 regime check
+ * never triggered even though the real TSB is $3.5M.
  */
 function sumSuperBalance(ctx: ScenarioContext): Decimal {
+  if (ctx.superAccounts && ctx.superAccounts.length > 0) {
+    return ctx.superAccounts.reduce<Decimal>(
+      (acc, a) => acc.plus(toDecimal(a.currentBalance) ?? new Decimal(0)),
+      new Decimal(0),
+    );
+  }
   return toDecimal(ctx.snapshot.netWorth.assets.superannuation) ?? new Decimal(0);
 }
 

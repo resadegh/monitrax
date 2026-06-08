@@ -20,10 +20,37 @@ import {
   type AnyScenarioParams,
   type LoanView,
   type ScenarioType,
+  type SuperAccountView,
 } from '@/lib/cfo';
 import { serializeDecimalsForJson } from '@/lib/decimal';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+
+/**
+ * Phase 45 PR 2.A.1 — un-deduplicated super accounts for the Div 296
+ * TSB aggregation. The snapshot's `netWorth.assets.superannuation`
+ * excludes SMSF member balances per Phase 39.5 (no double-counting
+ * in net worth); Div 296 needs them included. See
+ * `lib/cfo/scenarios/salarySacrificeToSuper.ts:sumSuperBalance` for
+ * the resolution.
+ */
+async function fetchSuperAccounts(userId: string): Promise<SuperAccountView[]> {
+  const accounts = await prisma.superannuationAccount.findMany({
+    where: { userId },
+    select: {
+      id: true,
+      fundName: true,
+      currentBalance: true,
+      fundType: true,
+    },
+  });
+  return accounts.map((a) => ({
+    id: a.id,
+    name: a.fundName ?? undefined,
+    currentBalance: Number(a.currentBalance ?? 0),
+    fundType: (a.fundType as 'INDUSTRY' | 'RETAIL' | 'SMSF' | null) ?? null,
+  }));
+}
 
 async function fetchLoanViews(userId: string): Promise<LoanView[]> {
   const loans = await prisma.loan.findMany({
@@ -91,16 +118,21 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
     body?.params && typeof body.params === 'object' ? (body.params as Record<string, unknown>) : {};
 
   try {
-    const [snapshot, loans] = await Promise.all([
+    const [snapshot, loans, superAccounts] = await Promise.all([
       getMasterFinancialSnapshot(auth.userId),
       fetchLoanViews(auth.userId),
+      fetchSuperAccounts(auth.userId),
     ]);
 
     // Q-DEC PR 3.C — Decimal scenario engine; serialize at the JSON
     // boundary. The response shape (impacts[*].{before,after,delta})
     // stays `number` — `serializeDecimalsForJson` rounds Decimal →
     // number at currency policy (2dp HALF_EVEN, ATO standard).
-    const result = runScenarioDecimal({ snapshot, loans }, {
+    //
+    // Phase 45 PR 2.A.1 — superAccounts feeds the Div 296 TSB
+    // aggregation in `salarySacrificeToSuper.ts`. Un-deduplicated
+    // (includes SMSF member balances) per the ATO TSB definition.
+    const result = runScenarioDecimal({ snapshot, loans, superAccounts }, {
       type,
       params,
     } as unknown as AnyScenarioParams);
