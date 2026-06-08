@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wealth OS - Sell Property Analysis</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#252c24",
+                        "surface-container-highest": "#30372f",
+                        "error-container": "#93000a",
+                        "primary-fixed": "#7ffc97",
+                        "on-tertiary-container": "#5a0022",
+                        "surface-container-low": "#171d16",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-background": "#dde5d9",
+                        "secondary-container": "#00b55d",
+                        "on-primary-container": "#003111",
+                        "tertiary": "#ffb2bf",
+                        "on-secondary-fixed-variant": "#005227",
+                        "on-surface-variant": "#bdcaba",
+                        "secondary-fixed": "#6dfe9c",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "surface-dim": "#0e150f",
+                        "background": "#0e150f",
+                        "on-primary-fixed": "#002109",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "on-tertiary": "#660027",
+                        "primary": "#62df7d",
+                        "inverse-primary": "#006e2d",
+                        "surface-container": "#1b211a",
+                        "primary-container": "#1ca64d",
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-error-container": "#ffdad6",
+                        "secondary": "#4de082",
+                        "surface-variant": "#30372f",
+                        "on-primary": "#003914",
+                        "on-primary-fixed-variant": "#005320",
+                        "inverse-on-surface": "#2b322b",
+                        "surface-container-lowest": "#09100a",
+                        "surface": "#0e150f",
+                        "on-surface": "#dde5d9",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary": "#003919",
+                        "surface-tint": "#62df7d",
+                        "outline": "#879485",
+                        "on-secondary-container": "#003e1c",
+                        "tertiary-fixed": "#ffd9de",
+                        "surface-bright": "#343b33",
+                        "on-error": "#690005",
+                        "inverse-surface": "#dde5d9",
+                        // Brand Specific Overrides for Sell Property Context
+                        "deep-navy": "#050913",
+                        "glass-base": "rgba(14, 20, 36, 0.7)",
+                        "violet-accent": "#a78bfa",
+                        "fuchsia-accent": "#e879f9",
+                        "sky-accent": "#0ea5e9",
+                        "indigo-accent": "#6366f1"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "64px",
+                        "unit": "4px",
+                        "container-max": "1440px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "display-hero-mobile": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #050913; /* Overriding default background to Deep Navy */
+            color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(167, 139, 250, 0.3); /* Violet/fuchsia-tinted hairline */
+        }
+        .gradient-text-violet-fuchsia {
+            background: linear-gradient(to right, #a78bfa, #e879f9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-text-sky-indigo {
+            background: linear-gradient(to right, #0ea5e9, #6366f1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .halo-glow {
+            background: radial-gradient(circle, rgba(167, 139, 250, 0.08) 0%, rgba(232, 121, 249, 0.08) 100%);
+            filter: blur(40px);
+        }
+        .photo-bleed-mask {
+            mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+            -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 100%);
+        }
+        input[type=range]::-webkit-slider-thumb {
+            appearance: none;
+            height: 24px;
+            width: 24px;
+            border-radius: 50%;
+            background: #ffffff;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(167, 139, 250, 0.4);
+            border: 2px solid #a78bfa;
+        }
+        .trajectory-chart-grid {
+            background-image: linear-gradient(to right, #334155 1px, transparent 1px);
+            background-size: 40px 100%;
+        }
+    </style>
+</head>
+<body class="pb-24 antialiased">
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 left-0 w-full z-50 bg-surface/80 backdrop-blur-md px-margin-mobile h-16 flex justify-between items-center shadow-sm">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary">menu</span>
+<span class="font-headline-md text-headline-md font-bold text-primary">Wealth OS</span>
+</div>
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-container">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBjFNHEWTtu5ecA4kKfP59zuyUZKbsDdOnlYqUr1ytPnE6FHVDM6c5dU_bIqeSnzyhvaaQXXZ9Poz1UyISo_gabrYUUMI7O94-N8ZLfrY39NLjH9WIqFtU4uiWXCbFPCswBEFxz13JecwcNtcunVvn9r7jnAHWPM_4fzuyNueNDvU738cDfXXIru8MvGyvHBtnriZjfXBsFhhEEjy9zBfV5r_5TBWetYr4lGpAYEaEiS3EOX2KiOjC4d9pRhoOAJLcQ5MB0Sl3uFQ"/>
+</div>
+</header>
+<main class="mt-20 px-margin-mobile flex flex-col gap-6">
+<!-- Header Section -->
+<section class="space-y-1">
+<p class="font-label-caps text-label-caps tracking-widest gradient-text-violet-fuchsia uppercase">
+                WHAT IF · Sell property
+            </p>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-[#FAFAF7] font-semibold">
+                Sell this property
+            </h1>
+</section>
+<!-- Inputs Card (Cremorne Pattern) -->
+<section class="glass-card relative overflow-hidden rounded-lg p-6 min-h-[220px]">
+<!-- L2 Halo Glow -->
+<div class="halo-glow absolute -right-10 -bottom-10 w-64 h-64 rounded-full pointer-events-none"></div>
+<!-- L1 Photo Bleed -->
+<div class="absolute bottom-0 right-0 w-1/2 h-full opacity-30 photo-bleed-mask pointer-events-none">
+<img alt="Property Bleed" class="w-full h-full object-cover object-center" src="https://lh3.googleusercontent.com/aida/AP1WRLvNTknJJ8G0uCWiE6i0oxBeJxEo56Kfq4ipOr7pCqYBQ33dghkGkEcBmiee8vCmjfAiqS6D1nhb9FulpXuoj1BJrICguTPfga2d5pSnTan6_m0O143ryCfg3qSBXc9IPYmpw2ZRZjL1VzngnkP0SzhiVQkuJHMoO-XVpZAze52WZJc90oDTkw1ti9xGZLQlVcFaNWAsqH5JtuULq9RoNNkzIdiXJuq1vacW8V6k9M4YyF1Aq2Ye9XpuZhQ"/>
+</div>
+<div class="relative z-10 flex flex-col gap-4">
+<div class="space-y-2">
+<label class="font-label-caps text-on-surface-variant opacity-60">SELECT PROPERTY</label>
+<div class="flex items-center justify-between bg-surface-container-lowest/50 border border-outline-variant/30 px-4 py-3 rounded-lg">
+<span class="font-body-md text-on-surface">Brunswick East House</span>
+<span class="material-symbols-outlined text-primary">expand_more</span>
+</div>
+</div>
+<div class="space-y-4 pt-2">
+<div class="flex justify-between items-end">
+<label class="font-label-caps text-on-surface-variant opacity-60 uppercase">Selling Costs</label>
+<span class="font-headline-md tabular-nums text-primary">2.5<span class="text-body-sm opacity-60 ml-1">%</span></span>
+</div>
+<div class="relative h-8 flex items-center">
+<div class="absolute w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-right from-violet-accent to-fuchsia-accent w-[25%]"></div>
+</div>
+<input class="absolute w-full h-2 opacity-0 cursor-pointer z-20" max="10" min="0" step="0.1" type="range" value="2.5"/>
+<div class="absolute left-[25%] transform -translate-x-1/2 w-6 h-6 bg-white rounded-full border-2 border-violet-400 shadow-[0_0_15px_rgba(167,139,250,0.5)] pointer-events-none"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Net Liquidity Card -->
+<section class="glass-card rounded-lg p-6 space-y-6">
+<div class="space-y-1">
+<label class="font-label-caps text-on-surface-variant opacity-60 uppercase">Estimated Net Liquidity</label>
+<h2 class="text-5xl font-bold tabular-nums gradient-text-sky-indigo tracking-tight">
+                    $823,400
+                </h2>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="bg-[#22C55E]/10 border border-[#22C55E]/20 px-4 py-2 rounded-full">
+<span class="text-[#22C55E] font-label-caps whitespace-nowrap">after CGT $142,000</span>
+</div>
+<div class="bg-[#22C55E]/10 border border-[#22C55E]/20 px-4 py-2 rounded-full">
+<span class="text-[#22C55E] font-label-caps whitespace-nowrap">after debt clearance $580,000</span>
+</div>
+</div>
+</section>
+<!-- Trajectory Card -->
+<section class="glass-card rounded-lg p-6 space-y-4">
+<div class="flex justify-between items-center">
+<label class="font-label-caps text-on-surface-variant opacity-60 uppercase">Net Worth Trajectory</label>
+<span class="material-symbols-outlined text-outline">info</span>
+</div>
+<div class="h-[200px] w-full relative trajectory-chart-grid overflow-hidden rounded-md border border-outline-variant/10">
+<!-- Baseline -->
+<div class="absolute bottom-12 w-full border-t border-dashed border-slate-500/50"></div>
+<!-- SVG Chart Path -->
+<svg class="absolute inset-0 w-full h-full" viewbox="0 0 400 200">
+<path d="M0 160 Q 100 155, 180 120 T 350 40 L 400 30" fill="none" stroke="#a78bfa" stroke-linecap="round" stroke-width="3"></path>
+<!-- Point -->
+<circle class="animate-pulse" cx="180" cy="120" fill="#a78bfa" r="4"></circle>
+</svg>
+<!-- Labels -->
+<div class="absolute bottom-2 left-0 w-full flex justify-between px-2 text-[10px] text-slate-500 font-medium font-label-caps">
+<span>2024</span>
+<span>2027</span>
+<span>2030</span>
+<span>2033</span>
+<span>2036</span>
+</div>
+</div>
+</section>
+<!-- Assumptions Collapsible -->
+<section class="glass-card rounded-lg px-6 py-4 flex items-center justify-between border-transparent">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-outline">settings</span>
+<span class="font-body-md text-on-surface">Financial Assumptions</span>
+</div>
+<span class="material-symbols-outlined text-outline">chevron_right</span>
+</section>
+<!-- Footer -->
+<footer class="mt-8 pb-12 flex flex-col items-center gap-4 text-center">
+<p class="text-slate-400 font-label-caps text-[10px] uppercase tracking-widest max-w-[280px] leading-relaxed">
+                Powered by Monitrax Intelligence Engine v4.2 · Proprietary GAW Algorithm Applied
+            </p>
+<div class="w-12 h-[1px] bg-slate-800"></div>
+</footer>
+</main>
+<!-- Bottom Navigation Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface rounded-t-xl shadow-[0_-4px_12px_rgba(11,18,32,0.04)]">
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary font-medium scale-up transition duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="domain" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-label-md mt-1">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70" href="#">
+<span class="material-symbols-outlined" data-icon="query_stats">query_stats</span>
+<span class="font-label-md text-label-md mt-1">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for range slider percentage display
+        const slider = document.querySelector('input[type="range"]');
+        const displayValue = document.querySelector('.tabular-nums.text-primary');
+        const fillBar = document.querySelector('.bg-gradient-to-right');
+        const thumbSim = document.querySelector('.pointer-events-none.w-6');
+
+        if (slider) {
+            slider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value).toFixed(1);
+                displayValue.innerHTML = `${val}<span class="text-body-sm opacity-60 ml-1">%</span>`;
+                
+                const percent = (e.target.value / e.target.max) * 100;
+                fillBar.style.width = `${percent}%`;
+                thumbSim.style.left = `${percent}%`;
+            });
+        }
+    </script>
+</body></html>
