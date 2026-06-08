@@ -11,7 +11,7 @@
     },
     {
       "file": "app/dashboard/income/page.tsx",
-      "line": 1904,
+      "line": 1948,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
     },

@@ -414,3 +414,101 @@ Docs updated in this PR:
   - Hover-preview tooltip on lever cards (§6.8.3)
   - Per-year cashflowOrchestrator × masterTaxPosition re-run (§7 call-graph) — only if user feedback surfaces bracket-crossing issues
   - Property tile inline "scenarios" link (more discoverable than buried in strategy sub-page)
+
+---
+
+## Session: Phase 45.1.1 — polish backlog (Stitch-first)
+
+**Branch:** `claude/phase45-polish-backlog-LIlK9` (continuation of prior turn's Stitch design pass on the same branch).
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Predecessor:** Phase 45.1 contextual entry points (PR #1019, merged 2026-06-08).
+**Status:** open, draft.
+
+### Why this PR
+
+Phase 45.1 shipped 3 of the 4 discussed entry points and explicitly deferred the income-page CTA and the property-tile inline affordance. Reza directive 2026-06-08: *"all design and polish steps to be done via stitch"*. Earlier in this session I started porting both items directly in React without a Stitch pass — that was reverted (commit `051519c`). This PR is the proper Stitch-first do-over.
+
+### What shipped
+
+1. **PropertyTile sparkles affordance** (`components/properties/PropertyTile.tsx`):
+   - Added `Sparkles` (lucide-react) + `Link` (next/link) imports.
+   - New violet-tinted icon button in the hover-reveal action cluster — rendered ONLY when `isInvestment === true` (HOME and RENTAL types don't get the affordance, by design — the lever is `sellProperty`).
+   - Deep-links to `/dashboard/cfo/what-if/sellProperty?propertyId={encodeURIComponent(property.id)}`.
+   - `title="What if you sold this?"` for the hover tooltip + `aria-label` for screen readers.
+   - Hover style: `hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300` — matches Stitch design's violet tint without dragging the violet into the resting state.
+
+2. **Income page salary-sacrifice CTA** (`app/dashboard/income/page.tsx`):
+   - Added `Link` (next/link) import.
+   - Derived `hasSalaryIncome = income.some(i => i.type === 'SALARY')` near the totals block.
+   - New emerald-tinted glass `<section>` rendered between `<PageHeader>` and the `<ListFilter>` (only when `hasSalaryIncome`):
+     - `<Link href="/dashboard/cfo/what-if/salarySacrificeToSuper">` wraps the whole banner — Next.js client-side nav.
+     - Gradient `PiggyBank` badge (`bg-gradient-to-br from-emerald-500 to-indigo-500`).
+     - Title: "What if you salary-sacrificed?" — `text-emerald-700 dark:text-emerald-300`.
+     - Subtitle: "Model how a monthly sacrifice would affect your year-1 tax + 10-year superannuation projection."
+     - Right-side "EXPLORE SCENARIOS" label + `ArrowUpRight` with hover translate (md:+ only — hidden on mobile to keep the banner short).
+     - AFSL footnote underneath the card: "AFSL 523411 compliant: hypothetical illustrations based on current tax legislation; individual circumstances may vary."
+   - Dark mode handled via `dark:` Tailwind variants per CLAUDE.md §18.7.2 (border `dark:border-emerald-400/30`, bg `dark:bg-emerald-500/10`, hover `dark:hover:bg-emerald-500/15`, title `dark:text-emerald-300`).
+
+### Stitch artefacts (CLAUDE.md §18.4 + §18.7.2)
+
+Locked in `.stitch/designs/polish/` (project `5991501424852019479`):
+
+| File | Stitch screen ID | Mode |
+|---|---|---|
+| `property-tile-whatif-affordance.{html,png}` | `929d25f22321425a9a0317d331fca3f8` | light |
+| `property-tile-whatif-affordance-dark.{html,png}` | `f88ce0a309464ccfa4234ac0ba0d366b` | dark |
+| `income-page-salary-sacrifice-cta.{html,png}` | `62e3d46cc4964462b0d40195e3b606d0` | light |
+| `income-page-salary-sacrifice-cta-dark.{html,png}` | `d4da3f3f4d41467998d2dd7217e1e73f` | dark |
+
+Both light + dark variants per surface satisfies the §18.7.2 dark-mode reviewer enforcement (DESKTOP-light + DESKTOP-dark per surface). Mobile variants not required for this scope — the affordances inherit the existing tile/page responsive behaviour (action cluster opacity gate already mobile-aware via `sm:flex`; CTA banner uses `md:flex` to drop the secondary right-side label on small screens).
+
+Stitch screen IDs documented inline at both insertion points (PropertyTile.tsx action cluster comment, income/page.tsx CTA section comment).
+
+### Reversal context (§15)
+
+This reverses the 2026-06-08 Phase 45.1 "Income-page entry-point deferred (overlaps with super page; would add complexity without unique value — revisit if user feedback demands it)" decision. Reza approved both polish items via Stitch design review this session; user feedback delivered through design approval = the trigger condition that decision deferred for has now fired.
+
+### Build / test status
+
+- **Typecheck:** ✅ `npx tsc --noEmit` clean
+- **Lint:** ✅ `npx eslint components/properties/PropertyTile.tsx app/dashboard/income/page.tsx` → 0 new errors, 0 new warnings (2 pre-existing `react-hooks/exhaustive-deps` warnings on `useEffect` deps left untouched — not in change path)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — sparkles affordance pattern in PropertyTile action cluster; emerald glass CTA banner pattern in income page (both seeded from §18.7.2 in the Stitch prompt, both ported to React with `dark:` variants)
+- [ ] application config / GCP / identity / deploy / security
+- [ ] operational procedure (no new failure mode encountered)
+- [x] **strategic decision** — reverses Phase 45.1's "income-page entry-point deferred" deferral after Stitch approval
+
+Docs updated in this PR:
+- `components/properties/PropertyTile.tsx` — Sparkles affordance + inline screen-ID JSDoc
+- `app/dashboard/income/page.tsx` — emerald CTA banner + AFSL footnote + inline screen-ID JSDoc
+- `.stitch/designs/polish/property-tile-whatif-affordance-dark.{html,png}` — NEW dark variant
+- `.stitch/designs/polish/income-page-salary-sacrifice-cta-dark.{html,png}` — NEW dark variant
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — new `[x]` Phase 45.1.1 entry + reversal note
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- No `lib/tax-engine/*` files touched.
+- No tax calculation added — entry points deep-link into the existing lever-detail page (already FW-2 compliant for salary-sacrifice via `RegimeLockedBadge` when Div 296 fires).
+- No schema columns added to `Property` / `Investment` / `LegalEntity`.
+- No new AI tools.
+- No per-asset tax position displayed at the entry-point layer (FW-5 N/A here).
+- All five FW rules N/A for this PR.
+
+### AFSL discipline checks
+
+- No prescriptive copy ("you should salary-sacrifice", "we recommend selling", etc.) in either entry point.
+- Income CTA framed as "What if you salary-sacrificed?" — question, not directive.
+- Property sparkles tooltip framed as "What if you sold this?" — question, not directive.
+- AFSL footnote on the income banner explicitly disclaims: "Hypothetical illustrations based on current tax legislation; individual circumstances may vary."
+
+### Test plan
+
+- Manual: open `/dashboard/properties` on a user with at least one INVESTMENT property → hover a tile → sparkles icon appears → click → lands on `/dashboard/cfo/what-if/sellProperty?propertyId=<id>` with that property pre-selected.
+- Manual: open `/dashboard/income` on a user with at least one SALARY income → CTA banner visible between header and filter → click → lands on `/dashboard/cfo/what-if/salarySacrificeToSuper`.
+- Manual: open `/dashboard/income` on a user with NO salary income → CTA banner absent (guard rendering correct).
+- Manual: open `/dashboard/properties` on a user with only HOME and RENTAL properties → sparkles icon absent (guard rendering correct).
+- Manual: toggle dark mode → both surfaces render with §18.7.2 dark-mode tokens (deeper navy background, brightened emerald `#22C55E`, near-white text).

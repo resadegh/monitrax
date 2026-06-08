@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import Link from 'next/link';
 import { motion, useReducedMotion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { appleEase, springSnap as springy } from '@/components/shell/motion';
 import {
@@ -12,6 +13,7 @@ import {
   KeyRound,
   Landmark,
   Receipt,
+  Sparkles,
   Trash2,
   TrendingDown,
   TrendingUp,
@@ -271,8 +273,24 @@ export function PropertyTile({ property, metrics, index = 0, onView, onEdit, onD
             </div>
           </div>
 
-          {/* Hover-reveal action cluster */}
+          {/* Hover-reveal action cluster.
+              Phase 45.1.1 polish — Sparkles affordance (INVESTMENT only)
+              deep-links into the sellProperty What-If lever with this tile's
+              id pre-selected, so the user lands on the scenario without
+              re-finding the asset. Stitch screen IDs (project
+              5991501424852019479): light 929d25f22321425a9a0317d331fca3f8,
+              dark f88ce0a309464ccfa4234ac0ba0d366b. */}
           <div className="flex shrink-0 items-center gap-1 opacity-0 translate-x-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-x-0 sm:flex">
+            {isInvestment && (
+              <Link
+                href={`/dashboard/cfo/what-if/sellProperty?propertyId=${encodeURIComponent(property.id)}`}
+                title="What if you sold this?"
+                aria-label="Run a sell-this-property what-if scenario"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-violet-500/10 hover:text-violet-600 dark:hover:text-violet-300 transition-colors"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+              </Link>
+            )}
             <button
               type="button"
               onClick={onEdit}

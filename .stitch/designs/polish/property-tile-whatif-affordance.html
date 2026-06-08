@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Properties | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF7; /* Warm Ivory as requested */
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(14, 165, 233, 0.15); /* Sky-toned hairline */
+        }
+        .mesh-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.08) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%);
+        }
+        .text-tabular {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#006591",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "outline": "#6e7881",
+                        "inverse-surface": "#2f312f",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f9f9f6",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#001e2f",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "surface-container": "#eeeeeb",
+                        "on-tertiary-fixed": "#002109",
+                        "on-background": "#1a1c1b",
+                        "surface-container-highest": "#e2e3e0",
+                        "on-surface": "#1a1c1b",
+                        "primary": "#006591",
+                        "outline-variant": "#bec8d2",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "surface-container-high": "#e8e8e5",
+                        "secondary-container": "#6063ee",
+                        "primary-fixed": "#c9e6ff",
+                        "on-secondary-fixed": "#07006c",
+                        "surface": "#f9f9f6",
+                        "inverse-on-surface": "#f1f1ee",
+                        "background": "#f9f9f6",
+                        "tertiary-fixed": "#7ffc97",
+                        "on-tertiary-container": "#003c15",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "inverse-primary": "#89ceff",
+                        "primary-fixed-dim": "#89ceff",
+                        "on-secondary-container": "#fffbff",
+                        "on-primary-container": "#003751",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed-variant": "#004c6e",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#0ea5e9",
+                        "tertiary-container": "#2db156",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "surface-variant": "#e2e3e0",
+                        "on-surface-variant": "#3e4850",
+                        "secondary": "#4648d4",
+                        "secondary-fixed": "#e1e0ff",
+                        "tertiary": "#006e2d",
+                        "surface-dim": "#dadad7",
+                        "surface-container-low": "#f4f4f1"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "stack-lg": "32px",
+                        "stack-md": "16px",
+                        "stack-xl": "64px",
+                        "margin-desktop": "40px",
+                        "container-max": "1200px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "stack-sm": "8px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "display-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-xl-mobile": ["Inter"],
+                        "headline-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                        "display-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+                        "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-xl-mobile": ["36px", {"lineHeight": "42px", "letterSpacing": "-0.04em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface antialiased overflow-hidden">
+<!-- Global Layout Wrapper -->
+<div class="flex h-screen w-full">
+<!-- SideNavBar Shared Component -->
+<aside class="hidden lg:flex flex-col h-screen p-stack-md shrink-0 bg-white/70 dark:bg-inverse-surface/70 backdrop-blur-xl border-r border-white/40 dark:border-white/10 shadow-[0px_20px_40px_rgba(0,0,0,0.05)] w-72 fixed left-0 top-0 z-50">
+<div class="flex flex-col gap-stack-lg h-full">
+<!-- Brand Header -->
+<div class="flex flex-col px-stack-sm">
+<span class="font-headline-sm text-headline-sm font-bold text-primary dark:text-inverse-primary">Invest Australia</span>
+<span class="text-label-md font-label-md text-on-surface-variant opacity-70">Premium Wealth Management</span>
+</div>
+<!-- Navigation Links -->
+<nav class="flex flex-col gap-stack-sm flex-1">
+<!-- Dashboard -->
+<a class="flex items-center gap-stack-md p-stack-md rounded-lg text-on-surface-variant hover:bg-primary-container/20 transition-all duration-300 group" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<!-- Investments (ACTIVE) -->
+<a class="flex items-center gap-stack-md p-stack-md rounded-lg text-primary dark:text-inverse-primary font-bold border-r-4 border-primary bg-primary-container/10 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md text-label-md">Investments</span>
+</a>
+<!-- Superannuation -->
+<a class="flex items-center gap-stack-md p-stack-md rounded-lg text-on-surface-variant hover:bg-primary-container/20 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="savings">savings</span>
+<span class="font-label-md text-label-md">Superannuation</span>
+</a>
+<!-- Wealth Plan -->
+<a class="flex items-center gap-stack-md p-stack-md rounded-lg text-on-surface-variant hover:bg-primary-container/20 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="auto_graph">auto_graph</span>
+<span class="font-label-md text-label-md">Wealth Plan</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center gap-stack-md p-stack-md rounded-lg text-on-surface-variant hover:bg-primary-container/20 transition-all duration-300" href="#">
+<span class="material-symbols-outlined" data-icon="assessment">assessment</span>
+<span class="font-label-md text-label-md">Reports</span>
+</a>
+</nav>
+<!-- Bottom CTA -->
+<div class="mt-auto p-stack-md bg-primary-container/10 rounded-lg border border-primary/20">
+<p class="font-label-sm text-label-sm text-primary mb-2">Upgrade to Premium</p>
+<button class="w-full py-2 bg-primary text-white rounded-md text-label-md font-bold hover:opacity-90 transition-opacity">Unlock Insights</button>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 lg:ml-72 flex flex-col h-screen overflow-y-auto">
+<!-- Breadcrumb Header -->
+<header class="w-full px-margin-desktop py-stack-lg">
+<nav class="flex items-center gap-2 text-on-surface-variant/60 font-medium">
+<span class="hover:text-primary cursor-pointer transition-colors">My Wealth</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="hover:text-primary cursor-pointer transition-colors">Properties</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-on-surface font-semibold">3 properties</span>
+</nav>
+</header>
+<!-- Grid/Canvas Area -->
+<div class="flex-1 flex items-center justify-start px-margin-desktop relative">
+<!-- Background Decorative Mesh (Subtle Atmosphere) -->
+<div class="absolute inset-0 mesh-glow -z-10 pointer-events-none"></div>
+<!-- Hover State Property Tile -->
+<div class="relative group" style="width: 520px;">
+<!-- Atmospheric Glow Behind Tile -->
+<div class="absolute -inset-10 bg-gradient-to-br from-sky-400/10 to-indigo-500/10 blur-[60px] opacity-100 rounded-full transition-opacity duration-700"></div>
+<!-- Main Card Body -->
+<div class="relative glass-card rounded-[22px] overflow-hidden shadow-[0px_32px_64px_rgba(0,0,0,0.08)] transform scale-[1.02] transition-all duration-500">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full bg-gradient-to-r from-[#0EA5E9] to-[#6366F1]"></div>
+<!-- Oversized Watermark Glyph -->
+<div class="absolute bottom-6 right-6 opacity-[0.06] text-primary pointer-events-none">
+<span class="material-symbols-outlined text-[140px] leading-none" data-icon="home">home</span>
+</div>
+<div class="p-stack-lg flex flex-col gap-stack-lg relative z-10">
+<!-- Top Header Row -->
+<div class="flex justify-between items-start">
+<!-- Badge -->
+<div class="w-11 h-11 rounded-[14px] flex items-center justify-center bg-gradient-to-br from-sky-400/15 to-indigo-400/15 border border-sky-400/20 shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="north_east">north_east</span>
+</div>
+<!-- Action Cluster (Top-Right) -->
+<div class="flex items-center gap-2">
+<div class="relative group/tooltip">
+<button class="h-8 w-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-violet-500/10 hover:text-violet-600 transition-all">
+<span class="material-symbols-outlined !text-[18px]" data-icon="auto_awesome">auto_awesome</span>
+</button>
+<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-inverse-surface text-white text-[10px] rounded opacity-0 group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap">What if you sold this?</span>
+</div>
+<button class="h-8 w-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-all">
+<span class="material-symbols-outlined !text-[18px]" data-icon="edit">edit</span>
+</button>
+<button class="h-8 w-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-error/10 hover:text-error transition-all">
+<span class="material-symbols-outlined !text-[18px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<!-- Property Title Info -->
+<div>
+<p class="text-[10px] tracking-[0.1em] font-bold text-on-surface-variant/50 mb-1">INVESTMENT PROPERTY</p>
+<h3 class="font-headline-md text-headline-md text-primary font-semibold">Cremorne Apartment</h3>
+</div>
+<!-- Financial Breakdown -->
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant/60 font-label-md">Current Valuation</span>
+<div class="text-display-lg font-display-lg text-tabular text-on-surface">$1,247,200</div>
+</div>
+<!-- KPI Badges -->
+<div class="flex gap-stack-sm">
+<div class="px-4 py-2 rounded-full bg-gradient-to-r from-sky-50 to-indigo-50 border border-sky-100 flex items-center gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
+<span class="text-label-md font-bold text-primary">$623,400 equity</span>
+</div>
+<div class="px-4 py-2 rounded-full bg-tertiary-fixed/30 border border-tertiary/20 flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-[16px]" data-icon="verified" data-weight="fill">verified</span>
+<span class="text-label-md font-bold text-tertiary">LVR Healthy</span>
+</div>
+</div>
+<!-- Bottom Action -->
+<button class="w-full mt-4 py-4 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 text-white font-bold text-body-md shadow-lg shadow-sky-500/20 hover:shadow-sky-500/30 active:scale-95 transition-all">
+                                View details
+                            </button>
+</div>
+</div>
+</div>
+<!-- Next Tile Preview (10% visible) -->
+<div class="absolute left-[calc(520px+120px)] opacity-40 pointer-events-none scale-95 blur-[2px]">
+<div class="glass-card rounded-[22px] w-[520px] h-[440px] border-on-surface-variant/10 shadow-none">
+<div class="p-stack-lg">
+<div class="w-11 h-11 rounded-[14px] bg-surface-container mb-12"></div>
+<div class="h-4 w-32 bg-surface-container rounded mb-4"></div>
+<div class="h-8 w-64 bg-surface-container rounded mb-12"></div>
+<div class="h-12 w-full bg-surface-container rounded"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Dashboard Background Imagery (Contextual Decor) -->
+<div class="absolute bottom-0 right-0 w-1/3 h-1/2 -z-20 opacity-40">
+<img class="w-full h-full object-cover object-bottom [mask-image:linear-gradient(to_top,black,transparent)]" data-alt="A luxurious, sun-drenched modern apartment interior in Cremorne, Australia. The shot features high-end architectural details like floor-to-ceiling windows, polished concrete floors, and designer minimalist furniture. The lighting is warm and natural, suggesting a late afternoon golden hour. The overall aesthetic is professional, calm, and wealthy, aligning with a premium property investment portfolio interface." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBqLOJzam53ff_NM_fdm9Ycw68Gy7zjsNB_PHXAYYhE2BhvXEi5FFX7QdX3Wum96iFZB_cj54bGv5ge7Bc7tp7n6TZwPc6yJYEX87FcB29wFOwjrObt4TXqGQc6TYwJsld5GLGuso6Uwla4K37NeKRoxfPFFxoxyFfOhuCXWkniQ9nMRdC9lX2cZVM2Bam636Q0FI2tW6iXPLYlLX7Oxw-PGF70My6PkiAQONGk_lyJtWCFb4x3mWr9MvEBcnmzbe4POZNdR7XAtKw"/>
+</div>
+</main>
+</div>
+<script>
+        // Micro-interaction for the Action Cluster Tooltip or extra hover effects
+        const propertyTile = document.querySelector('.group');
+        
+        propertyTile.addEventListener('mousemove', (e) => {
+            const rect = propertyTile.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Subtle tilt effect for high-fidelity feel
+            const xRotation = (y - rect.height / 2) / 40;
+            const yRotation = (rect.width / 2 - x) / 40;
+            
+            propertyTile.style.transform = `perspective(1000px) rotateX(${xRotation}deg) rotateY(${yRotation}deg)`;
+        });
+        
+        propertyTile.addEventListener('mouseleave', () => {
+            propertyTile.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg)`;
+        });
+    </script>
+</body></html>
