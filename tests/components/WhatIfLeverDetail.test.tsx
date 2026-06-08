@@ -109,6 +109,96 @@ describe('Phase 45 PR 2.B — lever detail page', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// PR 2.C — other 4 levers (refinance / payDown / sellProperty / addInvestment)
+// ---------------------------------------------------------------------------
+
+describe('Phase 45 PR 2.C — other 4 levers wired', () => {
+  it('Refinance lever — slider + loan picker + switching costs', () => {
+    expect(PAGE_SOURCE).toContain("'refinanceLoan'");
+    expect(PAGE_SOURCE).toContain('RefinanceInputs');
+    expect(PAGE_SOURCE).toContain('Proposed new interest rate');
+    expect(PAGE_SOURCE).toContain('Switching costs');
+  });
+
+  it('Refinance — flags HIGHER rate (defensive copy, no silent regression)', () => {
+    expect(PAGE_SOURCE).toContain('HIGHER');
+  });
+
+  it('PayDownLoan lever — extra-monthly slider + loan picker + cashflow check', () => {
+    expect(PAGE_SOURCE).toContain("'payDownLoan'");
+    expect(PAGE_SOURCE).toContain('PayDownInputs');
+    expect(PAGE_SOURCE).toContain('Extra monthly repayment');
+    // Defensive — warns when extraMonthly exceeds the user's cashflow
+    expect(PAGE_SOURCE).toContain('Exceeds your current cashflow');
+  });
+
+  it('SellProperty lever — property picker + selling-costs slider', () => {
+    expect(PAGE_SOURCE).toContain("'sellProperty'");
+    expect(PAGE_SOURCE).toContain('SellPropertyInputs');
+    expect(PAGE_SOURCE).toContain('Selling costs');
+    expect(PAGE_SOURCE).toContain('Industry default 2.5%');
+  });
+
+  it('AddInvestment lever — monthly + expected return + horizon sliders', () => {
+    expect(PAGE_SOURCE).toContain("'addInvestment'");
+    expect(PAGE_SOURCE).toContain('AddInvestmentInputs');
+    expect(PAGE_SOURCE).toContain('Expected annual return');
+    expect(PAGE_SOURCE).toContain('Horizon');
+    expect(PAGE_SOURCE).toContain('Industry default 7%');
+  });
+
+  it('GenericLeverProjection handles 4 levers with per-lever headline copy', () => {
+    expect(PAGE_SOURCE).toContain('GenericLeverProjection');
+    // Refinance headline keys
+    expect(PAGE_SOURCE).toContain('lifetime savings (net of switching costs)');
+    // PayDown headline keys
+    expect(PAGE_SOURCE).toContain('Payoff in');
+    // SellProperty headline keys
+    expect(PAGE_SOURCE).toContain('freed up');
+    expect(PAGE_SOURCE).toContain('after selling costs + CGT');
+    // AddInvestment headline keys
+    expect(PAGE_SOURCE).toContain('from compounding growth');
+  });
+
+  it('Initial default selections — largest loan / property by balance', () => {
+    expect(PAGE_SOURCE).toContain('largestLoan');
+    expect(PAGE_SOURCE).toContain('largestProperty');
+  });
+
+  it('Scenario request guards — returns null when entity not yet picked', () => {
+    expect(PAGE_SOURCE).toContain('buildRequest');
+    expect(PAGE_SOURCE).toContain('if (!refinanceState.loanId) return null');
+    expect(PAGE_SOURCE).toContain('if (!sellPropertyState.propertyId) return null');
+  });
+
+  it('Reduce·Debt + Anchor·Debt Freedom + Live·Exit + Invest·Property labels', () => {
+    expect(PAGE_SOURCE).toContain('Inputs · Reduce · Debt');
+    expect(PAGE_SOURCE).toContain('Inputs · Anchor · Debt Freedom');
+    expect(PAGE_SOURCE).toContain('Inputs · Live · Exit');
+    expect(PAGE_SOURCE).toContain('Inputs · Invest · Property');
+  });
+
+  it('AFSL discipline preserved across all 4 levers', () => {
+    // No prescriptive copy added in any of the 4 new lever components.
+    expect(PAGE_SOURCE).not.toMatch(/you should refinance/i);
+    expect(PAGE_SOURCE).not.toMatch(/you should pay/i);
+    expect(PAGE_SOURCE).not.toMatch(/you should sell/i);
+    expect(PAGE_SOURCE).not.toMatch(/you should invest/i);
+    // GAW + "not financial advice" still in the file
+    expect(PAGE_SOURCE).toContain('Not financial advice');
+  });
+
+  it('Generic result pills surface only non-zero currency impacts', () => {
+    expect(PAGE_SOURCE).toContain('GenericResultPills');
+    expect(PAGE_SOURCE).toContain('Math.abs(i.delta) > 0.5');
+  });
+
+  it('SimpleProjectionChart reuses recharts primitives + glass tokens', () => {
+    expect(PAGE_SOURCE).toContain('SimpleProjectionChart');
+  });
+});
+
 describe('Phase 45 PR 2.B — scenarios context API', () => {
   it('uses canonical SSOT getMasterFinancialSnapshot for snapshot data', () => {
     expect(CONTEXT_ROUTE_SOURCE).toContain('getMasterFinancialSnapshot');

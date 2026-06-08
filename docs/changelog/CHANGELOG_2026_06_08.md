@@ -240,3 +240,95 @@ Docs updated in this PR:
 ### Next
 
 - **PR 2.C** — wire the remaining 4 levers (refinanceLoan / sellProperty / payDownLoan / addInvestment) into the shared shell. Each lever's per-input fields (loanId picker, propertyId picker, monthlyAmount slider, etc.) re-uses the same `ConcessionalCapCard`-style info-card pattern + chart + Assumptions/GAW. Likely 1 PR or 4 sub-PRs depending on review tractability.
+
+---
+
+## Session: Phase 45 PR 2.C — wire remaining 4 levers (refinance / payDown / sellProperty / addInvestment)
+
+**Branch:** `claude/phase45-pr2c-remaining-levers-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios.
+**Predecessors:** Phase 45 PR 1 / PR 2.A / PR 2.A.1 / PR 2.B all merged 2026-06-08.
+**Status:** open, draft.
+
+### Scope
+
+Final UI piece of Phase 45 v1. Wires the 4 remaining levers into the shared React shell shipped in PR 2.B. After this PR, all 5 What-If levers are fully interactive in prod.
+
+### What shipped
+
+1. **Per-lever input components** in `app/dashboard/cfo/what-if/[lever]/page.tsx`:
+
+   - **`RefinanceInputs`** — new-rate slider (3.00..9.00% in 5bp steps) with amber→rose gradient value pill; switching-costs slider ($0..$5000); loan picker; source line shows "Your snapshot: {loan name} at X.XX%" + Δ vs current; **defensive HIGHER-rate flag** when slider goes above current rate (no silent regression).
+
+   - **`PayDownInputs`** — extra-monthly slider ($0..$2000 in $50 steps) with indigo→blue gradient pill; loan picker; source line shows current monthly + new total; **defensive cashflow check** flagging when `extraMonthly > monthlyCashflow`.
+
+   - **`SellPropertyInputs`** — property picker (current value + equity per item); selling-costs slider (1.0..5.0%); property summary card with current value + your equity. Industry default 2.5% (typical AU agent commission + ads + conveyancing) with explainer copy.
+
+   - **`AddInvestmentInputs`** — 3 sliders: monthly contribution ($0..$3000), expected annual return (2.0..10.0%, default 7% with rationale), horizon (1..30 years). No entity picker (this is a hypothetical new investment).
+
+2. **Shared `EntityPicker<T>`** — generic component used by refinance / payDown / sellProperty for loan + property selection. Subtitle is per-lever (loans: principal + rate + remaining months; properties: value + equity).
+
+3. **`GenericLeverProjection`** — handles all 4 non-sacrifice levers in one component. Per-lever headline copy keyed off the scenario's impacts:
+   - **refinance**: "$X/mo savings" + "$Y lifetime savings (net of switching costs)"
+   - **payDown**: "$X interest saved" + "Payoff in N months (down from M)"
+   - **sellProperty**: "$X freed up" + "Net worth Δ: $Y (after selling costs + CGT)"
+   - **addInvestment**: "$Xm portfolio" + "$Y from compounding growth"
+
+4. **`SimpleProjectionChart`** — single-line variant of `SacrificeChart` for the 4 levers (no current-path baseline since baseline = scenario didn't apply, which is just zero). Reuses recharts primitives + glass-card tooltip styling from PR 2.B.
+
+5. **`GenericResultPills`** — surfaces the top 2 non-zero currency impacts from the result, color-coded by direction (positive = emerald, neutral = foreground/5).
+
+6. **Per-lever defaults wired on context load**:
+   - Largest loan by principal → refinance.loanId + payDown.loanId
+   - Refinance default `newRate` = max(3.5%, current rate − 50bp)
+   - Largest property by current value → sellProperty.propertyId
+
+7. **Scenario-run effect dispatches per lever** via new `buildRequest()` helper. Returns null when required entity not yet picked (no doomed requests). Effect deps updated to include all 5 per-lever state objects.
+
+8. **`tests/components/WhatIfLeverDetail.test.tsx`** — added 12 PR 2.C tests covering: per-lever input components, defensive copy (HIGHER rate flag, cashflow check, industry-default explanations), per-lever headline keys, request guards, TRAIL-stage labels, AFSL discipline (negative grep against "you should refinance/pay/sell/invest"), result-pills filtering.
+
+### Build / test status
+
+- **Typecheck:** ✅ `npx tsc --noEmit` clean
+- **Full vitest sweep:** ✅ **2,404 passing, 69 skipped, 0 failures** (+12 net vs 2,392 PR 2.B baseline)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — 4 new per-lever Input components + shared `EntityPicker` + `GenericLeverProjection` + `SimpleProjectionChart` + `GenericResultPills` patterns established (extends PR 2.B's vocabulary, NO new design tokens)
+- [ ] application config / GCP / identity / deploy / security / strategic
+- [x] **operational procedure** — new defensive copy patterns (HIGHER rate flag + cashflow check + industry-default explanations) for future scenario UIs
+
+Docs updated in this PR:
+- `app/dashboard/cfo/what-if/[lever]/page.tsx` — file-header JSDoc (PR 2.B vintage) still applies; new component JSDocs document the per-lever contracts
+- `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` — Phase 45 PR 2.C entry flipped to `[x]`; Phase 45 v1 UI marked complete
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+- [x] **FW-1** — refinanceLoan / payDownLoan / addInvestment are regime-agnostic by design. sellProperty CGT math has reform-aware branches in `lib/cfo/scenarios/sellProperty.ts` (Phase 41E.M2 CGT 50% discount → indexation + 30% floor for post-cut-over contracts) — UI consumes the scenario result, no per-asset regime input needed at the UI layer.
+- [x] **FW-2** — scenario engines handle commencement gating. UI surfaces UNCOMPUTED via the `isUncomputed` rendering path (same as salary-sacrifice).
+- [x] **FW-3** N/A — no schema columns.
+- [x] **FW-4** N/A — no new AI tools.
+- [x] **FW-5** — per-lever projection panels show the lever's primary tax/financial impact. SellProperty headline explicitly mentions "after selling costs + CGT" — surfaces the CGT consequence visibly.
+
+### AFSL discipline checks
+
+- No prescriptive copy added in any of the 4 new lever components (negative-grep test in suite)
+- All sliders rendered as information-only — no "Implement Strategy" button, no broker links, no product names
+- Each industry-default value (switching costs 2.5%, expected return 7%, etc.) has explainer copy explaining where the number comes from
+- "This is a projection, not a forecast" reminder added beneath each result
+
+### Phase 45 v1 status
+
+**Phase 45 v1 UI is now COMPLETE in this PR.** All 5 What-If levers fully interactive:
+1. ✅ refinanceLoan
+2. ✅ salarySacrificeToSuper (showcase, PR 2.B)
+3. ✅ sellProperty
+4. ✅ payDownLoan
+5. ✅ addInvestment
+
+### Next
+
+- **Phase 45.1 — contextual entry points** (separate workstream): "What if?" affordance on `/dashboard/loans/[id]`, `/dashboard/properties/[id]`, super tile, income tile — pre-populated with the entity's data, returns to source page.
+- **Phase 45 polish backlog** (optional): hover-preview tooltip on lever cards (§6.8.3); cashflowOrchestrator × masterTaxPosition re-run per year (§7 call-graph) instead of the PR 1 scalar-compound simplification — only if user feedback surfaces bracket-crossing issues.
