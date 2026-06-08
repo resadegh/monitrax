@@ -1087,10 +1087,13 @@ function StubInputs({ meta }: { meta: LeverMeta }) {
       </p>
       <h2 className="text-lg font-semibold text-foreground">{meta.title}</h2>
       <p className="mt-4 text-sm text-muted-foreground">
-        The interactive inputs for this lever ship in Phase 45 PR 2.C. The
-        shared UI shell — projection chart, assumptions panel, GAW footer
-        — is what you&apos;re seeing on this page. The engine for this
-        lever (see <code className="rounded bg-foreground/5 px-1.5 py-0.5 text-xs">lib/cfo/scenarios/</code>) is already live from PR 1.
+        This lever isn&apos;t part of Phase 45 v1 — the engine exists
+        (see <code className="rounded bg-foreground/5 px-1.5 py-0.5 text-xs">lib/cfo/scenarios/</code>) but the
+        UI surface for it ships in a future phase. The 5 levers in v1
+        are accessible from the{' '}
+        <Link href="/dashboard/cfo/what-if" className="text-emerald-700 dark:text-emerald-400 hover:underline">
+          lever picker
+        </Link>.
       </p>
     </div>
   );
@@ -1103,11 +1106,11 @@ function StubProjection({ meta }: { meta: LeverMeta }) {
         className={`mb-4 h-10 w-10 ${meta.iconColor}`}
         strokeWidth={1.5}
       />
-      <p className="text-sm font-medium text-foreground">Coming in PR 2.C</p>
+      <p className="text-sm font-medium text-foreground">Not in Phase 45 v1</p>
       <p className="mt-1 max-w-xs text-xs text-muted-foreground">
-        Salary-sacrifice is the showcase wiring in PR 2.B. The other 4
-        levers — including {meta.title.toLowerCase()} — get the same
-        treatment in PR 2.C.
+        The 5 v1 levers are refinance, salary-sacrifice, sell property,
+        pay extra off a debt, and buy investment. {meta.title} is
+        engine-ready but not yet wired into the UI.
       </p>
     </div>
   );
