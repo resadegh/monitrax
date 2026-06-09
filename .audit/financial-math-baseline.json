@@ -17,25 +17,25 @@
     },
     {
       "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 242,
+      "line": 244,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 52"
     },
     {
       "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 243,
+      "line": 245,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 26"
     },
     {
       "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 244,
+      "line": 246,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 12"
     },
     {
       "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 246,
+      "line": 248,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "amount * 12"
     },
