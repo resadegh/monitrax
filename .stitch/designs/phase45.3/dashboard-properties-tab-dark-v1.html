@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Properties | Phase 45.3</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#00873a",
+                        "inverse-primary": "#62df7d",
+                        "background": "#050913",
+                        "on-primary-fixed": "#002109",
+                        "primary-fixed": "#7ffc97",
+                        "trail-emerald": "#16A34A",
+                        "tertiary-container": "#66768d",
+                        "surface-container-lowest": "#0A101E",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-tint": "#006e2d",
+                        "on-surface-variant": "#94A3B8",
+                        "surface-container-highest": "#1E293B",
+                        "on-background": "#F1F5F9",
+                        "primary": "#006b2c",
+                        "surface-container-low": "#0F172A",
+                        "surface-container-high": "#1E293B",
+                        "tertiary-fixed": "#d3e4fe",
+                        "trail-violet": "#8B5CF6",
+                        "surface-ivory": "#FAFAF7",
+                        "inverse-on-surface": "#050913",
+                        "inverse-surface": "#F1F5F9",
+                        "surface": "#050913",
+                        "outline-variant": "rgba(255,255,255,0.1)",
+                        "card-bg": "rgba(10, 16, 30, 0.7)",
+                        "trail-sky": "#0EA5E9",
+                        "trail-indigo": "#6366F1",
+                        "trail-amber": "#F59E0B"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "22px",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "body-md": ["Inter", "sans-serif"],
+                        "headline-sm": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "data-lg": ["Inter", "sans-serif"],
+                        "eyebrow": ["Inter", "sans-serif"]
+                    },
+                    fontSize: {
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "eyebrow": ["10px", {"lineHeight": "1.2", "letterSpacing": "0.15em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .glass-card {
+            background: rgba(10, 16, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .sky-indigo-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sky-wash {
+            background: linear-gradient(180deg, rgba(14, 165, 233, 0.08) 0%, rgba(10, 16, 30, 0) 100%);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen">
+<!-- Sidebar (Shared Component JSON Mapping) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 w-64 border-r border-outline-variant bg-[#050913]">
+<div class="p-8">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-white font-bold">M</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-white leading-none">Monitrax</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant mt-1">Wealth OS</p>
+</div>
+</div>
+</div>
+<nav class="flex-1 mt-4 px-4 space-y-1">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="text-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="text-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="text-label-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="text-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">health_and_safety</span>
+<span class="text-label-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary-fixed font-medium border-l-4 border-primary-fixed px-4" href="#">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="text-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="text-label-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-white px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="text-label-md">Reports</span>
+</a>
+</nav>
+<div class="p-6 mt-auto">
+<button class="w-full py-3 rounded-xl bg-primary-container text-white font-medium text-sm hover:opacity-90 transition-opacity">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="pl-64 pt-16 min-h-screen">
+<!-- Top Nav -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 bg-background/80 backdrop-blur-md">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant mr-4">search</span>
+<span class="text-on-surface-variant text-label-md">Search assets, properties...</span>
+</div>
+<div class="flex items-center gap-6">
+<!-- Tab Control -->
+<div class="flex p-1 bg-surface-container-highest/20 rounded-full border border-white/5">
+<button class="flex items-center gap-2 px-4 py-2 rounded-full glass-card bg-[#0A101E] shadow-[0_0_0_1px_rgba(255,255,255,0.15)] text-white">
+<span class="material-symbols-outlined text-[18px]">apartment</span>
+<span class="text-label-md font-semibold">Properties (5)</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 rounded-full text-slate-400 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[18px]">bar_chart</span>
+<span class="text-label-md">Investments (3)</span>
+</button>
+</div>
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-white transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-white transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-white/10">
+<img alt="User" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZTRm04mWfw9WETfE1XltJUpKh4WvVSAFjQD5kigfOhp6aLQ-oWJV-oij6gSgg_bEHx6ueNN35x2MD8QDxdkLyMiRvOvZb8k0SV2hGNCQMZcjrnVYaAyzGjmUSThSaE3qrusEkD2zY6BO_NM-CjcBNj8pEy8ZlVwGC1x1ug9cW6zk3Xzgd54j5yeNPdyRWxeKZarGvFDHe_JLCkjAn0IwmWbsT4ZkejFrcMz2B8x2iCEUu2wD13mtlgqg9i3os92KRP-f4ME_Dr1o"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="max-w-[1280px] mx-auto p-8 pt-12">
+<div class="mb-10">
+<h2 class="font-headline-lg text-[32px] text-white tracking-tight">Property Portfolio</h2>
+<p class="text-on-surface-variant mt-1">Real-time valuation and performance metrics.</p>
+</div>
+<!-- Property Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+<!-- Tile 1: Guildford -->
+<div class="relative rounded-2xl overflow-hidden glass-card group hover:translate-y-[-4px] transition-all duration-300">
+<div class="absolute top-0 left-0 right-0 h-[3px] sky-indigo-gradient"></div>
+<div class="p-6 sky-wash">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl sky-indigo-gradient flex items-center justify-center shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-[20px]">home</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow sky-indigo-text uppercase">HOME</span>
+<h3 class="font-headline-sm text-headline-sm text-white mt-0.5">Guildford</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/30 group-hover:text-white/60 transition-colors cursor-pointer">chevron_right</span>
+</div>
+<div class="grid grid-cols-2 gap-6 mb-8">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Market Value</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$1.3M</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Equity</p>
+<p class="font-data-lg text-data-lg text-emerald-300 tabular-nums">$904K</p>
+</div>
+</div>
+<div class="flex gap-12 mb-8 border-t border-white/5 pt-6">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">LVR</p>
+<p class="text-white font-medium">30.5%</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Rental Yield</p>
+<p class="text-white font-medium">0.0%</p>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-white/5">
+<span class="text-sm text-on-surface-variant">Monthly Cash Flow</span>
+<span class="text-sm font-semibold text-amber-300">-$3,522</span>
+</div>
+</div>
+</div>
+<!-- Tile 2: Broadbeach -->
+<div class="relative rounded-2xl overflow-hidden glass-card group hover:translate-y-[-4px] transition-all duration-300">
+<div class="absolute top-0 left-0 right-0 h-[3px] sky-indigo-gradient"></div>
+<div class="p-6 sky-wash">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl sky-indigo-gradient flex items-center justify-center shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-[20px]">apartment</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow sky-indigo-text uppercase">INVESTMENT</span>
+<h3 class="font-headline-sm text-headline-sm text-white mt-0.5">Broadbeach</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/30 group-hover:text-white/60 transition-colors cursor-pointer">chevron_right</span>
+</div>
+<div class="grid grid-cols-2 gap-6 mb-8">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Market Value</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$650K</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Equity</p>
+<p class="font-data-lg text-data-lg text-emerald-300 tabular-nums">$422K</p>
+</div>
+</div>
+<div class="flex gap-12 mb-8 border-t border-white/5 pt-6">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">LVR</p>
+<p class="text-white font-medium">35.1%</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Rental Yield</p>
+<p class="text-white font-medium">5.2%</p>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-white/5">
+<span class="text-sm text-on-surface-variant">Monthly Cash Flow</span>
+<span class="text-sm font-semibold text-amber-300">-$201</span>
+</div>
+</div>
+</div>
+<!-- Tile 3: Thornlands -->
+<div class="relative rounded-2xl overflow-hidden glass-card group hover:translate-y-[-4px] transition-all duration-300">
+<div class="absolute top-0 left-0 right-0 h-[3px] sky-indigo-gradient"></div>
+<div class="p-6 sky-wash">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl sky-indigo-gradient flex items-center justify-center shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-[20px]">business</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow sky-indigo-text uppercase">INVESTMENT</span>
+<h3 class="font-headline-sm text-headline-sm text-white mt-0.5">Thornlands</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/30 group-hover:text-white/60 transition-colors cursor-pointer">chevron_right</span>
+</div>
+<div class="grid grid-cols-2 gap-6 mb-8">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Market Value</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$1.6M</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Equity</p>
+<p class="font-data-lg text-data-lg text-emerald-300 tabular-nums">$214K</p>
+</div>
+</div>
+<div class="flex gap-12 mb-8 border-t border-white/5 pt-6">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">LVR</p>
+<p class="text-amber-300 font-medium">87.0%</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Rental Yield</p>
+<p class="text-white font-medium">3.8%</p>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-white/5">
+<span class="text-sm text-on-surface-variant">Monthly Cash Flow</span>
+<span class="text-sm font-semibold text-amber-300">-$1,247</span>
+</div>
+</div>
+</div>
+<!-- Tile 4: Las Vegas -->
+<div class="relative rounded-2xl overflow-hidden glass-card group hover:translate-y-[-4px] transition-all duration-300">
+<div class="absolute top-0 left-0 right-0 h-[3px] sky-indigo-gradient"></div>
+<div class="p-6 sky-wash">
+<div class="flex justify-between items-center mb-6">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl sky-indigo-gradient flex items-center justify-center shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-[20px]">location_city</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow sky-indigo-text uppercase">INVESTMENT</span>
+<h3 class="font-headline-sm text-headline-sm text-white mt-0.5">Las Vegas</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-white/30 group-hover:text-white/60 transition-colors cursor-pointer">chevron_right</span>
+</div>
+<div class="grid grid-cols-2 gap-6 mb-8">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Market Value</p>
+<p class="font-data-lg text-data-lg text-white tabular-nums">$380K</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Equity</p>
+<p class="font-data-lg text-data-lg text-emerald-300 tabular-nums">$380K</p>
+</div>
+</div>
+<div class="flex gap-12 mb-8 border-t border-white/5 pt-6">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">LVR</p>
+<p class="text-white font-medium">0.0%</p>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">Rental Yield</p>
+<p class="text-white font-medium">4.0%</p>
+</div>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-white/5">
+<span class="text-sm text-on-surface-variant">Monthly Cash Flow</span>
+<span class="text-sm font-semibold text-emerald-300">+$412</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Visual Enhancements -->
+<div class="fixed top-[-10%] right-[-10%] w-[50%] h-[50%] bg-trail-sky/5 blur-[120px] rounded-full -z-10"></div>
+<div class="fixed bottom-[-10%] left-[10%] w-[40%] h-[40%] bg-trail-indigo/5 blur-[120px] rounded-full -z-10"></div>
+<script>
+        // Micro-interaction for tiles
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body></html>

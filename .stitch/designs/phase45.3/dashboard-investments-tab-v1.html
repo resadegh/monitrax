@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Investments</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF7;
+        }
+        .glass-card {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .text-gradient-indigo-violet {
+            background: linear-gradient(to right, #6366F1, #8B5CF6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-indigo-violet {
+            background: linear-gradient(to right, #6366F1, #8B5CF6);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#006b2c",
+                        "surface-ivory": "#FAFAF7",
+                        "on-surface": "#171d16",
+                        "on-surface-variant": "#3e4a3d",
+                        "outline-variant": "#bdcaba",
+                        "trail-indigo": "#6366F1",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container": "#e9f0e5",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "22px",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-xl": ["Inter"],
+                    },
+                    fontSize: {
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory text-on-surface antialiased">
+<!-- Sidebar Navigation -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64">
+<div class="p-8 flex flex-col gap-1">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="text-xs font-medium tracking-widest uppercase opacity-40">Wealth OS</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<!-- Navigation Items Mapping from JSON -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="home">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="group">group</span>
+<span class="font-body-md text-body-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="account_balance">account_balance</span>
+<span class="font-body-md text-body-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-body-md text-body-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-body-md text-body-md">My Safety Net</span>
+</a>
+<!-- Active State: My Wealth (Investments) -->
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="trending_up">trending_up</span>
+<span class="font-body-md text-body-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="map">map</span>
+<span class="font-body-md text-body-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="analytics">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</nav>
+<div class="p-6">
+<button class="w-full bg-primary text-white font-medium py-3 rounded-xl hover:opacity-90 transition-all">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Top Navigation Bar -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-label-md font-label-md w-64" placeholder="Search wealth data..." type="text"/>
+</div>
+<div class="flex items-center space-x-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBS68bX8kTc4eyYCrWeVCjtVLeoSyg25-75VUwU4Miiobe7ws8qHfC92cQuKKVVxe9VtL6431MYRy8piHOrECNwiq08qk1pKJlp-GTip_w8lfpByYAI3RggG7cuI3k1SMyLVF6jhaNQRxYuFtHbg4sTEPSDP15VoJbkBI3lMTSPXhgLuoUweREhEqRym9UACaojUVfM-_nrbcmq4MR3K9AUj7APCFqgeojOuxZ-6rV9gmGuNub3KLY_bvE4U1q9NGtD96ezEnC5bI8"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 mt-16 p-margin-desktop min-h-screen">
+<div class="max-w-container-max mx-auto">
+<!-- Page Header & Tab Control -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
+<div>
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-widest mb-2 block">Wealth Portfolio</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Investments</h2>
+</div>
+<!-- Tab Control: Restricted Full-Pill -->
+<div class="bg-surface-container/50 p-1 rounded-full flex items-center border border-outline-variant/30">
+<button class="px-6 py-2.5 rounded-full font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-all flex items-center">
+                        Properties (5)
+                    </button>
+<button class="px-6 py-2.5 rounded-full font-label-md text-label-md bg-white border border-outline-variant/10 shadow-[0_1px_2px_rgba(15,23,42,0.08),0_4px_12px_rgba(15,23,42,0.03)] text-on-surface flex items-center space-x-2">
+<span class="material-symbols-outlined text-sm" data-icon="bar_chart_4_bars">bar_chart_4_bars</span>
+<span>Investments (3)</span>
+</button>
+</div>
+</div>
+<!-- Investment Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+<!-- Tile 1: eToro -->
+<div class="relative group rounded-2xl border border-outline-variant/40 bg-white/70 glass-card p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)] overflow-hidden transition-all hover:translate-y-[-2px]">
+<!-- Top Accent Gradient -->
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-indigo-violet"></div>
+<!-- Inner Highlight -->
+<div class="absolute top-0 left-0 right-0 h-[1px] bg-white/40"></div>
+<!-- Subtle Background Gradient -->
+<div class="absolute inset-0 bg-gradient-to-br from-trail-indigo/5 to-white/70 -z-10"></div>
+<div class="flex justify-between items-start mb-8">
+<div class="flex items-center space-x-4">
+<div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-indigo-violet shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<span class="font-eyebrow text-[10px] text-gradient-indigo-violet uppercase tracking-widest block font-bold">ETF_CRYPTO</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">eToro</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40" data-icon="more_vert">more_vert</span>
+</div>
+<div class="mb-8">
+<div class="font-data-xl text-data-xl tabular-nums text-gradient-indigo-violet mb-1">$11,000</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant mr-2"></span>
+                            0 holdings
+                        </div>
+</div>
+<div class="pt-6 border-t border-outline-variant/20">
+<button class="inline-flex items-center px-4 py-2 rounded-full font-label-md text-label-md text-trail-indigo bg-trail-indigo/5 border border-trail-indigo/10 hover:bg-trail-indigo/10 transition-colors">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="add">add</span>
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Tile 2: Nabtrade -->
+<div class="relative group rounded-2xl border border-outline-variant/40 bg-white/70 glass-card p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)] overflow-hidden transition-all hover:translate-y-[-2px]">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-indigo-violet"></div>
+<div class="absolute top-0 left-0 right-0 h-[1px] bg-white/40"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-trail-indigo/5 to-white/70 -z-10"></div>
+<div class="flex justify-between items-start mb-8">
+<div class="flex items-center space-x-4">
+<div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-indigo-violet shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<span class="font-eyebrow text-[10px] text-gradient-indigo-violet uppercase tracking-widest block font-bold">BROKERAGE</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Nabtrade</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40" data-icon="more_vert">more_vert</span>
+</div>
+<div class="mb-8">
+<div class="font-data-xl text-data-xl tabular-nums text-gradient-indigo-violet mb-1">$11,000</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant mr-2"></span>
+                            0 holdings
+                        </div>
+</div>
+<div class="pt-6 border-t border-outline-variant/20">
+<button class="inline-flex items-center px-4 py-2 rounded-full font-label-md text-label-md text-trail-indigo bg-trail-indigo/5 border border-trail-indigo/10 hover:bg-trail-indigo/10 transition-colors">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="add">add</span>
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Tile 3: Swyftx -->
+<div class="relative group rounded-2xl border border-outline-variant/40 bg-white/70 glass-card p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)] overflow-hidden transition-all hover:translate-y-[-2px]">
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-indigo-violet"></div>
+<div class="absolute top-0 left-0 right-0 h-[1px] bg-white/40"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-trail-indigo/5 to-white/70 -z-10"></div>
+<div class="flex justify-between items-start mb-8">
+<div class="flex items-center space-x-4">
+<div class="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-indigo-violet shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white" data-icon="trending_up">trending_up</span>
+</div>
+<div>
+<span class="font-eyebrow text-[10px] text-gradient-indigo-violet uppercase tracking-widest block font-bold">ETF_CRYPTO</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Swyftx</h3>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/40" data-icon="more_vert">more_vert</span>
+</div>
+<div class="mb-8">
+<div class="font-data-xl text-data-xl tabular-nums text-gradient-indigo-violet mb-1">$19,000</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant flex items-center">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant mr-2"></span>
+                            0 holdings
+                        </div>
+</div>
+<div class="pt-6 border-t border-outline-variant/20">
+<button class="inline-flex items-center px-4 py-2 rounded-full font-label-md text-label-md text-trail-indigo bg-trail-indigo/5 border border-trail-indigo/10 hover:bg-trail-indigo/10 transition-colors">
+<span class="material-symbols-outlined text-sm mr-2" data-icon="add">add</span>
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Add New Account Empty State Tile -->
+<div class="relative group rounded-2xl border-2 border-dashed border-outline-variant/60 flex flex-col items-center justify-center p-6 min-h-[340px] hover:border-trail-indigo/40 hover:bg-surface-container/20 transition-all cursor-pointer">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="add">add</span>
+</div>
+<p class="font-label-md text-label-md text-on-surface-variant">Connect investment account</p>
+<p class="text-[11px] text-on-surface-variant/50 mt-1 uppercase tracking-wider">Brokerage, Crypto or Super</p>
+</div>
+</div>
+<!-- Bottom Strategy Section -->
+<section class="mt-16 pt-16 border-t border-outline-variant/30">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+<div class="md:col-span-2">
+<h4 class="font-headline-sm text-headline-sm mb-4">Investment Strategy</h4>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xl">
+                            Your portfolio is currently concentrated in three primary hubs. We recommend reviewing your asset allocation across ETF holdings to ensure alignment with your current financial stage.
+                        </p>
+</div>
+<div class="bg-primary/5 rounded-2xl p-6 border border-primary/10">
+<div class="flex items-center space-x-2 text-primary mb-3">
+<span class="material-symbols-outlined text-lg" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label-md text-label-md uppercase tracking-wider">AI Insights</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface">You have <span class="font-bold text-primary">$41,000</span> across 3 platforms. Explore tax-loss harvesting opportunities before end of financial year.</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+<script>
+        // Micro-interaction for tiles
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+                card.style.boxShadow = '0 20px 48px -12px rgba(15, 23, 42, 0.12)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+                card.style.boxShadow = '0 1px 2px rgba(15,23,42,0.04), 0 12px 36px rgba(15,23,42,0.08)';
+            });
+        });
+    </script>
+</body></html>

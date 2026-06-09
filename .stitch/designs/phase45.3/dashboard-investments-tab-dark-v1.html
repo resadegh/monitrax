@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Investments | Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-secondary-container": "#003e1c",
+                        "surface-container-lowest": "#09100a",
+                        "surface": "#0e150f",
+                        "outline-variant": "#3e4a3d",
+                        "on-secondary-fixed": "#00210c",
+                        "inverse-on-surface": "#2b322b",
+                        "secondary": "#4de082",
+                        "inverse-surface": "#dde5d9",
+                        "secondary-fixed-dim": "#4de082",
+                        "primary-fixed": "#7ffc97",
+                        "tertiary": "#ffb2bf",
+                        "on-tertiary-container": "#5a0022",
+                        "on-primary-container": "#003111",
+                        "surface-container-highest": "#30372f",
+                        "on-surface": "#dde5d9",
+                        "inverse-primary": "#006e2d",
+                        "tertiary-fixed": "#ffd9de",
+                        "surface-container": "#1b211a",
+                        "surface-container-high": "#252c24",
+                        "surface-bright": "#343b33",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "on-surface-variant": "#bdcaba",
+                        "on-secondary": "#003919",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-secondary-fixed-variant": "#005227",
+                        "background": "#050913", // Overridden per user request for deeper dark
+                        "tertiary-container": "#ec6284",
+                        "secondary-fixed": "#6dfe9c",
+                        "primary-container": "#1ca64d",
+                        "error": "#ffb4ab",
+                        "on-primary": "#003914",
+                        "on-background": "#dde5d9",
+                        "primary": "#62df7d",
+                        "on-tertiary": "#660027",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-fixed": "#002109",
+                        "surface-tint": "#62df7d",
+                        "surface-dim": "#0e150f",
+                        "secondary-container": "#00b55d",
+                        "outline": "#879485",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-low": "#171d16",
+                        "on-tertiary-fixed": "#3f0016",
+                        "surface-variant": "#30372f",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "card": "#0E1424"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-md": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #050913; }
+        .gradient-text {
+            background: linear-gradient(to right, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .emerald-glass {
+            background: rgba(16, 185, 129, 0.05);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(16, 185, 129, 0.1);
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary/30">
+<!-- Side Navigation Shell -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 h-full w-64 bg-surface-ivory border-r border-outline-variant dark:border-outline dark:bg-inverse-surface">
+<div class="p-6 flex items-center gap-3">
+<div class="w-10 h-10 bg-primary-container rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings: 'FILL' 1;">monetization_on</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface dark:text-inverse-on-surface leading-none">Monitrax</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold">Wealth OS</p>
+</div>
+</div>
+<nav class="flex-1 mt-4 space-y-1">
+<!-- Navigation Items Mapping -->
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-body-md">Home</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-body-md">My Household</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-body-md">My Accounts</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="font-body-md">My Budget</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">health_and_safety</span>
+<span class="font-body-md">My Safety Net</span>
+</div>
+<!-- Active State 'My Wealth' -->
+<div class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 cursor-default">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="font-body-md">My Wealth</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="font-body-md">My Guide</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant dark:text-surface-variant hover:text-on-surface px-4 transition-colors hover:bg-surface-container-high cursor-pointer">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md">Reports</span>
+</div>
+</nav>
+<div class="p-6">
+<button class="w-full py-3 bg-primary text-on-primary font-bold rounded-xl shadow-lg hover:opacity-90 transition-all scale-100 active:scale-95">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Top Navigation Shell -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 dark:bg-inverse-surface/80">
+<div class="flex items-center gap-4 flex-1 max-w-xl">
+<div class="relative w-full">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60">search</span>
+<input class="w-full bg-surface-container-lowest/50 border-none rounded-full pl-10 pr-4 py-2 text-on-surface focus:ring-1 focus:ring-primary/40 text-sm" placeholder="Search markets, assets, or insights..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex gap-4">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors cursor-pointer">settings</span>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-3 cursor-pointer group">
+<img alt="User Profile" class="w-8 h-8 rounded-full border border-primary/20 group-hover:border-primary transition-all" data-alt="A professional headshot of a mature male executive with a kind smile, clean-shaven, wearing a navy blue tailored suit and a crisp white shirt. The background is a blurred high-end office environment with soft warm lighting. The image has a premium, high-contrast digital photography style with deep blacks and sharp details." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBYdkypv8lED1wuHgc0WaZe_PGgCMAALw_c47MiligNjHC44FOTm_3F-QtdGW2jqb_Fncx_LG7xintLeY5KRbv2hdalcx11zNckSktgpsndKnBmC4KhxuVjkkOdZnNN8SvZUSRzY75XBKkSnJ9SzhYwhknKBS0NGDuDJfOd1v3UCbxF3q-VrNFcPs64HPnDD66dH7bGnfHqYABhNN_dPVGqR46hOTNiAjo3fpo7vGpbIni3TaZtSyeoIRyprslO95bdUW7heKWcjRY"/>
+<span class="font-label-md text-label-md text-on-surface font-medium">Alexander Wright</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pl-64 pt-16 min-h-screen">
+<div class="max-w-container-max mx-auto px-margin-desktop py-12">
+<!-- Page Header -->
+<header class="mb-10">
+<p class="text-primary font-label-caps tracking-[0.2em] mb-2 uppercase opacity-80">Wealth Portfolio</p>
+<h2 class="font-headline-lg text-headline-lg text-[#FAFAF7] font-semibold">Investments</h2>
+</header>
+<!-- Tab Control -->
+<div class="mb-10 inline-flex p-1.5 bg-[#0E1424]/60 backdrop-blur-md rounded-full border border-white/10">
+<button class="flex items-center gap-2 px-6 py-2.5 bg-card/80 rounded-full text-[#FAFAF7] shadow-[0_4px_12px_rgba(255,255,255,0.05),inset_0_1px_1px_rgba(255,255,255,0.1)] transition-all">
+<span class="material-symbols-outlined text-sm">bar_chart</span>
+<span class="font-medium">Investments (3)</span>
+</button>
+<button class="flex items-center gap-2 px-6 py-2.5 text-on-surface-variant/70 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm">domain</span>
+<span class="font-medium">Properties (5)</span>
+</button>
+</div>
+<!-- Dashboard Grid -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<!-- eToro Card -->
+<div class="relative group rounded-[22px] border border-white/10 bg-card/70 backdrop-blur-xl bg-gradient-to-br from-indigo-500/[0.08] to-card/70 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+<div class="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-right from-indigo-500 to-violet-500"></div>
+<div class="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-b from-white/10 to-transparent"></div>
+<div class="p-8">
+<div class="flex justify-between items-start mb-8">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 200;">trending_up</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase gradient-text">Brokerage Account</span>
+</div>
+<h3 class="text-xl font-semibold text-[#FAFAF7] mb-6">eToro</h3>
+<div class="space-y-1 mb-8">
+<p class="text-xs text-on-surface-variant uppercase tracking-wider">Total Value</p>
+<p class="text-[28px] font-bold tabular-nums gradient-text">$11,000.00</p>
+</div>
+<button class="w-full py-3 px-4 rounded-xl bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 font-medium hover:bg-indigo-500/20 transition-all active:scale-[0.98]">
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Nabtrade Card -->
+<div class="relative group rounded-[22px] border border-white/10 bg-card/70 backdrop-blur-xl bg-gradient-to-br from-indigo-500/[0.08] to-card/70 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+<div class="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-right from-indigo-500 to-violet-500"></div>
+<div class="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-b from-white/10 to-transparent"></div>
+<div class="p-8">
+<div class="flex justify-between items-start mb-8">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 200;">trending_up</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase gradient-text">Stock Trading</span>
+</div>
+<h3 class="text-xl font-semibold text-[#FAFAF7] mb-6">Nabtrade</h3>
+<div class="space-y-1 mb-8">
+<p class="text-xs text-on-surface-variant uppercase tracking-wider">Total Value</p>
+<p class="text-[28px] font-bold tabular-nums gradient-text">$11,000.00</p>
+</div>
+<button class="w-full py-3 px-4 rounded-xl bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 font-medium hover:bg-indigo-500/20 transition-all active:scale-[0.98]">
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Swyftx Card -->
+<div class="relative group rounded-[22px] border border-white/10 bg-card/70 backdrop-blur-xl bg-gradient-to-br from-indigo-500/[0.08] to-card/70 overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+<div class="absolute top-0 inset-x-0 h-[3px] bg-gradient-to-right from-indigo-500 to-violet-500"></div>
+<div class="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-b from-white/10 to-transparent"></div>
+<div class="p-8">
+<div class="flex justify-between items-start mb-8">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 200;">trending_up</span>
+</div>
+<span class="text-[10px] font-bold tracking-widest uppercase gradient-text">Crypto Exchange</span>
+</div>
+<h3 class="text-xl font-semibold text-[#FAFAF7] mb-6">Swyftx</h3>
+<div class="space-y-1 mb-8">
+<p class="text-xs text-on-surface-variant uppercase tracking-wider">Total Value</p>
+<p class="text-[28px] font-bold tabular-nums gradient-text">$19,000.00</p>
+</div>
+<button class="w-full py-3 px-4 rounded-xl bg-indigo-500/10 border border-indigo-400/30 text-indigo-300 font-medium hover:bg-indigo-500/20 transition-all active:scale-[0.98]">
+                            Add holdings
+                        </button>
+</div>
+</div>
+<!-- Connect Account Dotted Card -->
+<div class="group rounded-[22px] border-2 border-dashed border-white/5 hover:border-indigo-500/30 bg-white/[0.02] hover:bg-white/[0.04] transition-all flex flex-col items-center justify-center p-12 cursor-pointer">
+<div class="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant">add_link</span>
+</div>
+<p class="text-[#FAFAF7] font-medium">Connect investment account</p>
+<p class="text-body-sm text-on-surface-variant/60 mt-1">Integrate with 100+ global brokers</p>
+</div>
+</div>
+<!-- Footer Strategy Section -->
+<footer class="mt-20">
+<div class="flex items-center gap-4 mb-6">
+<h4 class="font-headline-md text-headline-md text-[#FAFAF7]">Investment Strategy</h4>
+<div class="flex-1 h-[1px] bg-outline-variant/20"></div>
+</div>
+<!-- AI Insights Card -->
+<div class="emerald-glass rounded-xl p-6 flex items-start gap-6 border-l-[4px] border-l-secondary">
+<div class="w-12 h-12 rounded-lg bg-secondary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<span class="text-[10px] font-bold tracking-[0.2em] uppercase text-secondary">AI Insights</span>
+<span class="h-1 w-1 rounded-full bg-secondary/40"></span>
+<span class="text-[10px] font-medium text-on-surface-variant">Updated 12m ago</span>
+</div>
+<p class="text-body-lg font-medium text-on-surface">Asset Correlation Warning</p>
+<p class="text-on-surface-variant/80 max-w-3xl leading-relaxed">
+                            Your crypto holdings on Swyftx currently have a 0.88 correlation with your tech-heavy equity positions on eToro. Consider rebalancing into commodities or defensive real estate to improve your portfolio's resilience during potential market volatility in the upcoming fiscal quarter.
+                        </p>
+</div>
+</div>
+</footer>
+</div>
+</main>
+<script>
+        // Micro-interactions for card hover effects
+        document.querySelectorAll('.group').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body></html>
