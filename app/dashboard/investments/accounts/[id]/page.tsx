@@ -325,7 +325,7 @@ export default function InvestmentAccountDetailPage() {
         */}
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-30">
           <Image
-            src="/decor/investments-skyline.jpg"
+            src="/decor/investments-horizon.jpg"
             alt=""
             fill
             sizes="100vw"
