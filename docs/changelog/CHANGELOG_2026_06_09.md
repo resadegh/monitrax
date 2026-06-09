@@ -77,3 +77,66 @@ Functions/tools touched: none in `lib/tax-engine/*`. Inline `frankingTotal()` he
 ### PR
 
 - PR URL: pending creation
+
+---
+
+## Session: Asset Spotlight hero photo quality + investments subject pivot
+
+### Context
+
+Reza feedback after Phase 45.2.1 shipped:
+> "Also just note the existing default background photos look low resolution and not a good quality, can we fix it? Also the investment photo isnt really related to investments. It gives feeling of apartment blocks. change the photo on that as well"
+
+Two callouts:
+1. **Resolution** — the previous decor assets (`cremorne-apartment.jpg` 80KB, `investments-skyline.jpg` 278KB) were downloaded from Stitch's CDN at the default 512-wide preview, then served undersized behind a 1200px hero canvas. Visible softness at native scale.
+2. **Subject misfit** — the Sydney CBD glass-tower skyline used for investments read as "high-density apartment blocks" rather than "investment account." The visual decision needed to swap to a subject that's unmistakably NOT residential and that aligns with the financial-adviser-lens vocabulary of long-term growth.
+
+### Changes Made
+
+- **Type**: Asset / decor refresh
+- **Scope**: `public/decor/cremorne-apartment.jpg` (re-rendered in place), `public/decor/investments-horizon.jpg` (NEW, replaces `investments-skyline.jpg`), `app/dashboard/investments/accounts/[id]/page.tsx` (path swap)
+- **Properties photo**: re-rendered via Stitch with an explicit "Architectural Digest / Dwell magazine tier" prompt — Sydney waterfront Cremorne/Mosman aesthetic, golden-hour light on wide-plank oak, low-profile cream linen sofa, brass fixtures, cognac leather accents. Same subject as before (apartment interior is appropriate for the Properties module), but at full 1376×768 native resolution (170KB JPEG) instead of the previous 80KB CDN-shrunk version. Both `app/dashboard/properties/[id]/page.tsx` and the `sellProperty` what-if lever inherit the upgrade because they reference the same path.
+- **Investments photo**: completely swapped to an aerial mountain horizon at golden hour. New file `investments-horizon.jpg` (228KB, 1376×768). The CBD skyline is retired. Rationale: per the financial-adviser lens, long-term growth / compound horizon is a more honest visual metaphor for an investment account than urban density, and the new asset is unmistakably NOT residential — solves both of Reza's callouts in one pivot.
+- **Path swap**: `app/dashboard/investments/accounts/[id]/page.tsx:328` changed `/decor/investments-skyline.jpg` → `/decor/investments-horizon.jpg`.
+
+### Files Modified
+
+- `public/decor/cremorne-apartment.jpg` — re-rendered, 80KB → 170KB.
+- `public/decor/investments-horizon.jpg` — NEW, 228KB.
+- `public/decor/investments-skyline.jpg` — DELETED.
+- `app/dashboard/investments/accounts/[id]/page.tsx` — single path change.
+
+### Documentation Updated
+
+- `CLAUDE.md` §18.7.4 queue note for `/dashboard/investments/accounts/[id]` — added a post-ship update documenting both pivots (resolution upgrade + subject swap from skyline to horizon) and the rationale per the financial-adviser lens.
+
+### Build Status
+
+- [x] TypeScript compilation passes (`npx tsc --noEmit -p .`)
+- [x] Manual review of both photos by Reza before commit (approved)
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — decor asset subject + quality
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision — investments hero subject pivots from "urban skyline" to "mountain horizon" as the canonical investment-class decor; documented in §18.7.4 queue note for future siblings (SMSF, loans) to know the established vocabulary
+
+Docs updated in this PR:
+- `CLAUDE.md:§18.7.4 (queue tick-off for investments)` — appended a post-ship update describing both pivots and the rationale.
+- `docs/changelog/CHANGELOG_2026_06_09.md` — this entry.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+No destructive Prisma writes in this PR. Only static asset replacements + a single path change.
+
+User confirmation: NOT REQUIRED — no destructive writes.
+
+### Schema change (CLAUDE.md §12.12)
+
+No `prisma/schema.prisma` changes in this PR.
