@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Cremorne Apartment Detail</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface-dim": "#F1EFE8",
+                        "secondary-container": "#d9dff4",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "on-surface": "#171d16",
+                        "error-container": "#ffdad6",
+                        "surface-variant": "#dde5d9",
+                        "trail-indigo": "#6366F1",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#5c6274",
+                        "trail-emerald": "#16A34A",
+                        "on-secondary": "#ffffff",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container": "#e9f0e5",
+                        "secondary": "#585e6f",
+                        "primary-container": "#00873a",
+                        "on-background": "#171d16",
+                        "surface-container-low": "#eff6ea",
+                        "surface": "#f4fcf0",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "primary-fixed": "#7ffc97",
+                        "error": "#ba1a1a",
+                        "tertiary": "#4d5d73",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e3eadf",
+                        "trail-amber": "#F59E0B",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#3e4a3d",
+                        "background": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "secondary-fixed": "#dce2f6",
+                        "outline-variant": "#bdcaba",
+                        "surface-container-highest": "#dde5d9",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#62df7d",
+                        "on-primary-container": "#f7fff2",
+                        "tertiary-container": "#66768d",
+                        "surface-bright": "#f4fcf0",
+                        "on-tertiary-container": "#fdfcff",
+                        "surface-tint": "#006e2d",
+                        "surface-ivory": "#FAFAF7",
+                        "primary": "#006b2c",
+                        "inverse-surface": "#2b322b",
+                        "trail-sky": "#0EA5E9",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "error-red": "#DC2626",
+                        "trail-violet": "#8B5CF6",
+                        "outline": "#6e7b6c",
+                        "on-secondary-fixed": "#151b2a",
+                        "on-primary-fixed": "#002109"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF7;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1.5px solid rgba(226, 232, 240, 0.8);
+        }
+        .text-gradient-sky-indigo {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-sky-indigo {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+<body class="antialiased text-on-surface">
+<!-- Sidebar (Shared Components) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64">
+<div class="p-8 pb-4">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="font-label-md text-label-md text-on-surface-variant/60 uppercase tracking-widest mt-1">Wealth OS</p>
+</div>
+<nav class="flex-1 mt-4 px-4 space-y-1">
+<!-- Home -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-body-md">Home</span>
+</a>
+<!-- Household -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-body-md">My Household</span>
+</a>
+<!-- Accounts -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-body-md">My Accounts</span>
+</a>
+<!-- Wealth (Active) -->
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 rounded-r-xl" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="font-body-md">My Wealth</span>
+</a>
+<!-- Budget -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="font-body-md">My Budget</span>
+</a>
+<!-- Safety Net -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">health_and_safety</span>
+<span class="font-body-md">My Safety Net</span>
+</a>
+<!-- Guide -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="font-body-md">My Guide</span>
+</a>
+<!-- Reports -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md">Reports</span>
+</a>
+</nav>
+<div class="p-6">
+<button class="w-full bg-primary text-on-primary py-3 px-4 rounded-xl font-label-md font-semibold hover:opacity-90 transition-all">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Top Navigation -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-outline-slate">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-label-md w-64 font-body-md" placeholder="Search wealth assets..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCW7lbeacWNCyi6-N8syQeNZ4hMzpKhCi9DxbUuqm7u-zPsBgkGFj3LVKQPCHtStNfL503mAQVcLq1HhB9Voqr5bg5NTzyJbGnVO-qoViM3_cPAYYghxfX5Ez2SM8W70jnX8Kr9t91pZBoZroyDlbKFzytkuQD3ceu-eebuLec2ejq3cHH1QL6s1CMiXL1Dwt1FHz-sKd7puCVc_MBy5pS2_OkUTuunuWJyqZVJbgjxs1Ku-3AOgYb3ayos-CPPocx3bW_pFu_J40"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="ml-64 mt-16 relative min-h-screen overflow-x-hidden">
+<!-- L1 Background Photo & Scrim -->
+<img alt="Property Background" class="absolute inset-0 w-full h-full object-cover -z-30" src="https://lh3.googleusercontent.com/aida/AP1WRLvNTknJJ8G0uCWiE6i0oxBeJxEo56Kfq4ipOr7pCqYBQ33dghkGkEcBmiee8vCmjfAiqS6D1nhb9FulpXuoj1BJrICguTPfga2d5pSnTan6_m0O143ryCfg3qSBXc9IPYmpw2ZRZjL1VzngnkP0SzhiVQkuJHMoO-XVpZAze52WZJc90oDTkw1ti9xGZLQlVcFaNWAsqH5JtuULq9RoNNkzIdiXJuq1vacW8V6k9M4YyF1Aq2Ye9XpuZhQ"/>
+<div class="absolute inset-0 bg-gradient-to-b from-[#FAFAF7]/92 via-[#FAFAF7]/75 to-[#FAFAF7]/55 -z-20"></div>
+<div class="max-w-[1280px] mx-auto px-12 py-12 space-y-12 relative">
+<!-- L2 Hero Section -->
+<section class="relative">
+<!-- Atmospheric Halo -->
+<div class="absolute -inset-10 bg-gradient-to-br from-sky-400/12 to-indigo-500/12 blur-[60px] rounded-full -z-10"></div>
+<!-- Hero Card -->
+<div class="glass-card rounded-[28px] overflow-hidden relative shadow-sm">
+<!-- Accent Strip -->
+<div class="h-[3px] w-full bg-gradient-to-r from-trail-sky to-trail-indigo absolute top-0 left-0"></div>
+<div class="p-10">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center gap-3">
+<span class="bg-gradient-sky-indigo text-on-primary p-1.5 rounded-lg">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">apartment</span>
+</span>
+<span class="font-eyebrow text-eyebrow text-gradient-sky-indigo uppercase tracking-widest">Investment Property</span>
+</div>
+<div class="flex gap-4">
+<button class="p-2 hover:bg-white/50 rounded-full transition-colors"><span class="material-symbols-outlined text-outline-slate">auto_awesome</span></button>
+<button class="p-2 hover:bg-white/50 rounded-full transition-colors"><span class="material-symbols-outlined text-outline-slate">edit</span></button>
+<button class="p-2 hover:bg-white/50 rounded-full transition-colors"><span class="material-symbols-outlined text-outline-slate">delete</span></button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-end">
+<div>
+<h1 class="font-display-lg text-display-lg text-on-surface mb-2">Cremorne Apartment</h1>
+<p class="font-body-lg text-body-lg text-slate-500">21 Bourke Street, Cremorne VIC 3071</p>
+<div class="mt-8 flex items-baseline gap-12">
+<div>
+<p class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase mb-1">Current Value</p>
+<p class="font-data-xl text-data-xl tabular-nums text-gradient-sky-indigo">$1,247,200</p>
+</div>
+<div class="border-l border-outline-variant pl-12">
+<p class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase mb-1">Purchase Price</p>
+<div class="flex items-center gap-3">
+<p class="font-headline-md text-headline-md tabular-nums">$985,000</p>
+<span class="bg-trail-emerald/10 text-trail-emerald px-2 py-0.5 rounded-full text-label-md font-bold">+12.4%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI Mini-Grid -->
+<div class="bg-white/50 rounded-[12px] p-6 grid grid-cols-3 gap-6 divide-x divide-outline-variant/30 border border-outline-variant/20">
+<div class="text-center">
+<p class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase mb-2">Equity</p>
+<p class="font-headline-sm text-headline-sm text-trail-emerald tabular-nums">$623,400</p>
+</div>
+<div class="text-center px-4">
+<p class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase mb-2">LVR</p>
+<div class="flex items-center justify-center gap-1">
+<p class="font-headline-sm text-headline-sm tabular-nums">50%</p>
+<span class="w-2 h-2 rounded-full bg-trail-emerald mt-1"></span>
+</div>
+</div>
+<div class="text-center">
+<p class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase mb-2">Yield</p>
+<p class="font-headline-sm text-headline-sm tabular-nums">4.2%</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- L3 Data Grid -->
+<section class="space-y-6">
+<!-- KPI Row -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<!-- Cashflow -->
+<div class="glass-card p-6 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase">Cashflow</span>
+<span class="material-symbols-outlined text-trail-emerald">payments</span>
+</div>
+<p class="font-data-lg text-data-lg text-trail-emerald tabular-nums">+$8,420</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant/40 mt-1">Net per annum</p>
+</div>
+<!-- Rent -->
+<div class="glass-card p-6 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase">Annual Rent</span>
+<span class="material-symbols-outlined text-trail-sky">calendar_today</span>
+</div>
+<p class="font-data-lg text-data-lg text-trail-sky tabular-nums">$52,000</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant/40 mt-1">$1,000 / week</p>
+</div>
+<!-- Loan Balance -->
+<div class="glass-card p-6 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase">Loan Balance</span>
+<span class="material-symbols-outlined text-trail-indigo">account_balance</span>
+</div>
+<p class="font-data-lg text-data-lg text-trail-indigo tabular-nums">$623,800</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant/40 mt-1">ANZ Investment Loan</p>
+</div>
+<!-- Depreciation -->
+<div class="glass-card p-6 rounded-2xl">
+<div class="flex justify-between items-start mb-2">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant/60 uppercase">Depreciation</span>
+<span class="material-symbols-outlined text-trail-violet">receipt_long</span>
+</div>
+<p class="font-data-lg text-data-lg text-trail-violet tabular-nums">$14,200</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant/40 mt-1">FY24 Estimate</p>
+</div>
+</div>
+<!-- Two-Column Split -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+<!-- Left: Linked Entities -->
+<div class="lg:col-span-7 glass-card rounded-3xl p-8">
+<div class="flex items-center justify-between mb-8">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">LINKED ENTITIES</h2>
+<button class="text-primary font-label-md flex items-center gap-1 hover:underline">
+<span class="material-symbols-outlined text-sm">add</span> Link New
+                            </button>
+</div>
+<div class="space-y-4">
+<!-- Loan -->
+<div class="flex items-center justify-between p-4 bg-white/40 rounded-xl border border-outline-variant/30 hover:border-primary/30 transition-colors group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-outline-slate group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+<span class="material-symbols-outlined">account_balance</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">ANZ Investment Loan</p>
+<p class="font-body-sm text-on-surface-variant/60">LVR 50.0% @ 5.79% p.a.</p>
+</div>
+</div>
+<p class="font-headline-sm tabular-nums text-on-surface">$623,800</p>
+</div>
+<!-- Income -->
+<div class="flex items-center justify-between p-4 bg-white/40 rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-outline-slate">
+<span class="material-symbols-outlined">input</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Rent Income</p>
+<p class="font-body-sm text-on-surface-variant/60">Managed by Nelson Alexander</p>
+</div>
+</div>
+<p class="font-headline-sm tabular-nums text-trail-emerald">$1,000/wk</p>
+</div>
+<!-- Expenses -->
+<div class="flex items-center justify-between p-4 bg-white/40 rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-outline-slate">
+<span class="material-symbols-outlined">output</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Expenses (Recurring)</p>
+<p class="font-body-sm text-on-surface-variant/60">Council, Water, Insurance</p>
+</div>
+</div>
+<p class="font-headline-sm tabular-nums text-on-surface-variant">$4,200/yr</p>
+</div>
+<!-- Schedule -->
+<div class="flex items-center justify-between p-4 bg-white/40 rounded-xl border border-outline-variant/30">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-outline-slate">
+<span class="material-symbols-outlined">schedule</span>
+</div>
+<div>
+<p class="font-label-md text-on-surface">Depreciation Schedule</p>
+<p class="font-body-sm text-on-surface-variant/60">BMT Tax Depreciation</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Right: Strategy & Insights -->
+<div class="lg:col-span-5 glass-card rounded-3xl p-8">
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-8">STRATEGY &amp; INSIGHTS</h2>
+<div class="space-y-4">
+<!-- Strategy -->
+<div class="p-6 bg-gradient-to-br from-trail-sky/5 to-trail-indigo/5 rounded-2xl border border-trail-sky/20">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-trail-sky">auto_awesome</span>
+<h3 class="font-label-md text-trail-indigo uppercase tracking-wider">Growth Strategy</h3>
+</div>
+<p class="font-body-sm text-on-surface-variant/80">Current position suggests high potential for equity release. Re-valuations recommended every 12 months in this postcode.</p>
+</div>
+<!-- Tax Position -->
+<div class="p-6 bg-white/40 rounded-2xl border border-outline-variant/30">
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-trail-emerald">verified_user</span>
+<h3 class="font-label-md text-on-surface uppercase tracking-wider">Tax Position</h3>
+</div>
+<p class="font-body-sm text-on-surface-variant/80">Neutral gearing with current interest rates. Estimated tax refund: $4,200 based on depreciation schedules.</p>
+</div>
+<!-- Schedule Link -->
+<div class="p-6 bg-white/40 rounded-2xl border border-outline-variant/30 flex justify-between items-center group cursor-pointer hover:bg-white/60 transition-colors">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-trail-violet">history_edu</span>
+<h3 class="font-label-md text-on-surface uppercase tracking-wider">Depreciation Schedule</h3>
+</div>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">launch</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Warning -->
+<footer class="pt-8 border-t border-outline-variant/30">
+<p class="font-body-sm text-body-sm text-slate-500 leading-relaxed max-w-3xl">
+<strong>AFSL General Advice Warning:</strong> The information provided on this platform is general in nature only and does not constitute personal financial, legal, or tax advice. It has been prepared without taking into account your objectives, financial situation, or needs. Monitrax recommends you seek professional advice before making any financial decisions based on this data.
+                </p>
+</footer>
+</div>
+</main>
+<script>
+        // Micro-interactions and atmospheric effects
+        document.addEventListener('mousemove', (e) => {
+            const halo = document.querySelector('.absolute.-inset-10.blur-\\[60px\\]');
+            if(halo) {
+                const rect = halo.parentElement.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                halo.style.transform = `translate(${x * 0.05}px, ${y * 0.05}px)`;
+            }
+        });
+
+        // Tabular nums formatting logic if needed
+        // (Handled by Tailwind tabular-nums class)
+    </script>
+</body></html>

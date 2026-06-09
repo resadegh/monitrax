@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cremorne Apartment | Wealth Explorer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary-fixed-dim": "#c0c6da",
+                        "secondary-container": "#d9dff4",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-sky": "#0EA5E9",
+                        "surface-dim": "#d5dcd1",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-secondary-fixed": "#151b2a",
+                        "outline-slate": "#94A3B8",
+                        "on-tertiary": "#ffffff",
+                        "on-surface": "#171d16",
+                        "trail-amber": "#F59E0B",
+                        "on-error-container": "#93000a",
+                        "on-primary-container": "#f7fff2",
+                        "error-container": "#ffdad6",
+                        "secondary": "#585e6f",
+                        "outline": "#6e7b6c",
+                        "trail-indigo": "#6366F1",
+                        "surface-variant": "#dde5d9",
+                        "surface-bright": "#f4fcf0",
+                        "outline-variant": "#bdcaba",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#404757",
+                        "inverse-surface": "#2b322b",
+                        "surface": "#f4fcf0",
+                        "tertiary": "#4d5d73",
+                        "secondary-fixed": "#dce2f6",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-primary": "#ffffff",
+                        "surface-tint": "#006e2d",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-container-highest": "#dde5d9",
+                        "trail-emerald": "#16A34A",
+                        "tertiary-container": "#66768d",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "primary-fixed": "#7ffc97",
+                        "primary-container": "#00873a",
+                        "inverse-primary": "#62df7d",
+                        "background": "#050913",
+                        "on-primary-fixed": "#002109",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "on-secondary-container": "#5c6274",
+                        "error-red": "#DC2626",
+                        "surface-container": "#e9f0e5",
+                        "on-secondary": "#ffffff",
+                        "trail-violet": "#8B5CF6",
+                        "surface-ivory": "#FAFAF7",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-container-high": "#e3eadf",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-background": "#171d16",
+                        "primary": "#006b2c",
+                        "surface-container-low": "#eff6ea",
+                        "deep-navy": "#050913",
+                        "glass-card": "#0E1424"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "22px": "22px",
+                        "28px": "28px"
+                    },
+                    spacing: {
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "section-gap": "48px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "headline-sm": ["Inter", "sans-serif"],
+                        "data-xl": ["Inter", "sans-serif"],
+                        "data-lg": ["Inter", "sans-serif"],
+                        "body-lg": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "body-sm": ["Inter", "sans-serif"],
+                        "label-md": ["Inter", "sans-serif"],
+                        "eyebrow": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .glass-panel {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.30), inset 0 1px 0 0 rgba(255,255,255,0.04);
+        }
+        .text-fill-gradient-sky-indigo {
+            background: linear-gradient(to right, #0EA5E9, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="bg-deep-navy text-[#FAFAF7] overflow-x-hidden min-h-screen">
+<!-- Background Layering -->
+<div class="fixed inset-0 z-0">
+<img alt="Background Apartment" class="w-full h-full object-cover opacity-50" src="https://lh3.googleusercontent.com/aida/AP1WRLvNTknJJ8G0uCWiE6i0oxBeJxEo56Kfq4ipOr7pCqYBQ33dghkGkEcBmiee8vCmjfAiqS6D1nhb9FulpXuoj1BJrICguTPfga2d5pSnTan6_m0O143ryCfg3qSBXc9IPYmpw2ZRZjL1VzngnkP0SzhiVQkuJHMoO-XVpZAze52WZJc90oDTkw1ti9xGZLQlVcFaNWAsqH5JtuULq9RoNNkzIdiXJuq1vacW8V6k9M4YyF1Aq2Ye9XpuZhQ"/>
+<div class="absolute inset-0 bg-gradient-to-b from-[#050913]/95 via-[#050913]/88 to-[#050913]/72"></div>
+</div>
+<!-- Sidebar Navigation -->
+<aside class="fixed left-0 top-0 h-full w-[240px] z-50 glass-panel border-r border-white/10 hidden md:flex flex-col py-8 px-4">
+<div class="mb-10 px-4">
+<h1 class="text-headline-md font-headline-md font-bold tracking-tight text-primary">Wealth Explorer</h1>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all bg-emerald-500/15 group relative" href="#">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-emerald-400 rounded-r-full"></div>
+<span class="material-symbols-outlined text-emerald-400">dashboard</span>
+<span class="font-label-caps text-label-caps text-[#FAFAF7]">My Wealth</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-white/5 text-[#94A3B8] hover:text-[#FAFAF7]" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-caps text-label-caps">Universe</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-white/5 text-[#94A3B8] hover:text-[#FAFAF7]" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-caps text-label-caps">Analysis</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl transition-all hover:bg-white/5 text-[#94A3B8] hover:text-[#FAFAF7]" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-caps text-label-caps">Settings</span>
+</a>
+</nav>
+<div class="mt-auto px-4">
+<div class="flex items-center gap-3 p-3 bg-white/5 rounded-2xl border border-white/5">
+<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center font-bold text-white">JD</div>
+<div>
+<p class="text-sm font-semibold text-[#FAFAF7]">John Doe</p>
+<p class="text-xs text-[#94A3B8]">Premium Member</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="relative z-10 md:ml-[240px] px-margin-desktop py-12 max-w-container-max mx-auto">
+<!-- Hero Card Section -->
+<section class="relative mb-section-gap">
+<div class="absolute -inset-10 bg-gradient-to-br from-sky-400/8 to-indigo-500/8 blur-[60px] rounded-full pointer-events-none"></div>
+<div class="glass-panel rounded-28px overflow-hidden relative">
+<!-- Accent Strip -->
+<div class="h-1 w-full bg-gradient-to-r from-trail-sky to-trail-indigo"></div>
+<div class="p-8">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-10">
+<div class="flex items-start gap-6">
+<div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-trail-sky to-trail-indigo flex items-center justify-center shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow text-trail-sky mb-1 block">INVESTMENT PROPERTY</span>
+<h2 class="font-headline-lg text-headline-lg text-[#FAFAF7] mb-1">Cremorne Apartment</h2>
+<p class="font-body-md text-body-md text-slate-400">21 Bourke Street, Cremorne VIC 3071</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-slate-400">spark</span>
+</button>
+<button class="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-slate-400">edit</span>
+</button>
+<button class="p-2 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-slate-400">delete</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-12 border-b border-white/5 pb-10">
+<div>
+<span class="font-label-md text-label-md text-slate-400 block mb-2">Current Value</span>
+<div class="flex items-baseline gap-3">
+<h3 class="font-data-xl text-data-xl text-fill-gradient-sky-indigo">$1,247,200</h3>
+<div class="px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-semibold">+12.4%</div>
+</div>
+</div>
+<div>
+<span class="font-label-md text-label-md text-slate-400 block mb-2">Purchase Price</span>
+<h3 class="font-data-xl text-data-xl text-[#FAFAF7]">$985,000</h3>
+</div>
+</div>
+<div class="grid grid-cols-2 md:grid-cols-3 gap-8 pt-8">
+<div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">Equity</span>
+<p class="font-headline-sm text-headline-sm text-[#FAFAF7]">$623,400</p>
+</div>
+<div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">LVR</span>
+<div class="flex items-center gap-2">
+<p class="font-headline-sm text-headline-sm text-[#FAFAF7]">50%</p>
+<span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></span>
+<span class="text-[10px] text-emerald-400 font-bold tracking-wider uppercase">Healthy</span>
+</div>
+</div>
+<div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">Net Yield</span>
+<p class="font-headline-sm text-headline-sm text-trail-sky">4.2%</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- KPI Grid Section -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-section-gap">
+<!-- Card 1: Cashflow -->
+<div class="glass-panel rounded-22px p-6 group transition-all">
+<div class="h-[3px] w-12 bg-trail-emerald mb-6 rounded-full"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-xl bg-trail-emerald/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-400" style="font-variation-settings: 'FILL' 1;">payments</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">Net Cashflow</span>
+<p class="font-data-lg text-data-lg text-emerald-300">+$8,420</p>
+<p class="text-[10px] text-emerald-400/60 mt-1">ANNUALIZED POSITION</p>
+</div>
+<!-- Card 2: Annual Rent (Hover State) -->
+<div class="glass-panel rounded-22px p-6 group transition-all scale-[1.03] shadow-2xl shadow-sky-500/10 border-white/20 bg-white/10 ring-1 ring-sky-500/30">
+<div class="h-[3px] w-12 bg-trail-sky mb-6 rounded-full"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-xl bg-trail-sky/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-sky-400" style="font-variation-settings: 'FILL' 1;">real_estate_agent</span>
+</div>
+<span class="material-symbols-outlined text-sky-400/40 text-sm">north_east</span>
+</div>
+<span class="font-label-md text-label-md text-slate-300 block mb-1">Annual Rent</span>
+<p class="font-data-lg text-data-lg text-sky-300">$52,000</p>
+<p class="text-[10px] text-sky-400/60 mt-1">MANAGED BY PROPERTYONE</p>
+</div>
+<!-- Card 3: Loan Balance -->
+<div class="glass-panel rounded-22px p-6 group transition-all">
+<div class="h-[3px] w-12 bg-trail-indigo mb-6 rounded-full"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-xl bg-trail-indigo/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-indigo-400" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">Loan Balance</span>
+<p class="font-data-lg text-data-lg text-indigo-300">$623,800</p>
+<p class="text-[10px] text-indigo-400/60 mt-1">ANZ FIXED UNTIL 2026</p>
+</div>
+<!-- Card 4: Depreciation -->
+<div class="glass-panel rounded-22px p-6 group transition-all">
+<div class="h-[3px] w-12 bg-trail-violet mb-6 rounded-full"></div>
+<div class="flex justify-between items-start mb-4">
+<div class="w-10 h-10 rounded-xl bg-trail-violet/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-violet-400" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+</div>
+</div>
+<span class="font-label-md text-label-md text-slate-400 block mb-1">Depreciation</span>
+<p class="font-data-lg text-data-lg text-violet-300">$14,200</p>
+<p class="text-[10px] text-violet-400/60 mt-1">FY24 REMAINING CLAIM</p>
+</div>
+</section>
+<!-- Two Column Body -->
+<section class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- LEFT COLUMN -->
+<div class="space-y-8">
+<!-- Linked Entities -->
+<div class="glass-panel rounded-28px p-8">
+<h4 class="font-headline-sm text-headline-sm text-[#FAFAF7] mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">link</span>
+                        Linked Entities
+                    </h4>
+<div class="space-y-4">
+<div class="flex justify-between items-center p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-indigo-500/10 flex items-center justify-center group-hover:bg-indigo-500/20 transition-colors">
+<span class="material-symbols-outlined text-indigo-400">account_balance</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-[#FAFAF7]">ANZ Variable Loan</p>
+<p class="text-xs text-slate-500">**** 4892 • P&amp;I</p>
+</div>
+</div>
+<p class="font-label-md text-label-md text-indigo-300">-$623,800</p>
+</div>
+<div class="flex justify-between items-center p-4 rounded-2xl border border-white/5 bg-white/2 hover:bg-white/5 transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center group-hover:bg-emerald-500/20 transition-colors">
+<span class="material-symbols-outlined text-emerald-400">savings</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-[#FAFAF7]">Rental Income Hub</p>
+<p class="text-xs text-slate-500">PropertyOne Managed</p>
+</div>
+</div>
+<p class="font-label-md text-label-md text-emerald-300">+$4,333 /mo</p>
+</div>
+</div>
+</div>
+<!-- Recent Activity -->
+<div class="glass-panel rounded-28px p-8">
+<h4 class="font-headline-sm text-headline-sm text-[#FAFAF7] mb-6">Recent Activity</h4>
+<div class="space-y-6">
+<div class="flex items-start gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.3)]"></div>
+<div class="flex-1">
+<div class="flex justify-between mb-1">
+<p class="font-label-md text-label-md text-[#FAFAF7]">Monthly Rent Received</p>
+<p class="text-emerald-300 font-medium">+$4,333.33</p>
+</div>
+<p class="text-xs text-slate-500">12 Oct 2023 • Inv #0992</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-slate-400"></div>
+<div class="flex-1">
+<div class="flex justify-between mb-1">
+<p class="font-label-md text-label-md text-[#FAFAF7]">Body Corporate Levy</p>
+<p class="text-slate-300 font-medium">-$1,120.00</p>
+</div>
+<p class="text-xs text-slate-500">08 Oct 2023 • Strata Plan 8832</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="mt-1 w-2 h-2 rounded-full bg-slate-400"></div>
+<div class="flex-1">
+<div class="flex justify-between mb-1">
+<p class="font-label-md text-label-md text-[#FAFAF7]">Mortgage Interest Payment</p>
+<p class="text-slate-300 font-medium">-$2,840.45</p>
+</div>
+<p class="text-xs text-slate-500">01 Oct 2023 • ANZ Loan Cluster</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN -->
+<div class="space-y-8">
+<!-- Growth Scenarios -->
+<div class="glass-panel rounded-28px p-8 relative overflow-hidden group border-emerald-500/20 bg-emerald-500/5">
+<div class="absolute top-0 right-0 p-8 opacity-10 scale-150 group-hover:scale-110 transition-transform duration-700 pointer-events-none">
+<span class="material-symbols-outlined text-emerald-400 text-9xl">auto_awesome</span>
+</div>
+<div class="relative z-10">
+<h4 class="font-headline-sm text-headline-sm text-[#FAFAF7] mb-2 flex items-center gap-3">
+<span class="material-symbols-outlined text-emerald-400" style="font-variation-settings: 'FILL' 1;">spark</span>
+                            Growth Scenarios
+                        </h4>
+<p class="text-body-sm text-slate-400 mb-6">Explore how market shifts impact your equity position.</p>
+<div class="space-y-4">
+<div class="flex justify-between items-end border-b border-white/10 pb-4">
+<div>
+<p class="text-xs text-slate-500 font-bold tracking-widest uppercase mb-1">Projected 2025</p>
+<p class="text-lg font-semibold text-[#FAFAF7]">$1,322,000</p>
+</div>
+<p class="text-emerald-400 text-sm font-medium">+6% Base Case</p>
+</div>
+<button class="w-full py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-white font-semibold transition-all transform hover:scale-[1.02] active:scale-95">
+                                Run Sensitivity Analysis
+                            </button>
+</div>
+</div>
+</div>
+<!-- Tax Position -->
+<div class="glass-panel rounded-28px p-8">
+<h4 class="font-headline-sm text-headline-sm text-[#FAFAF7] mb-6 flex items-center gap-3">
+<span class="material-symbols-outlined text-slate-400">account_balance_wallet</span>
+                        Tax Position
+                    </h4>
+<div class="grid grid-cols-2 gap-6">
+<div class="p-4 rounded-2xl border border-white/5 bg-white/2">
+<span class="text-xs text-slate-500 block mb-1">Deductions Claimed</span>
+<p class="text-lg font-semibold text-[#FAFAF7]">$24,100</p>
+</div>
+<div class="p-4 rounded-2xl border border-white/5 bg-white/2">
+<span class="text-xs text-slate-500 block mb-1">CGT Allowance</span>
+<p class="text-lg font-semibold text-sky-400">Eligible</p>
+</div>
+</div>
+</div>
+<!-- Market Insight -->
+<div class="glass-panel rounded-28px p-8">
+<h4 class="font-headline-sm text-headline-sm text-[#FAFAF7] mb-4">Market Insight</h4>
+<p class="text-body-md text-slate-400 leading-relaxed mb-6">
+                        Cremorne has seen a <span class="text-emerald-400 font-medium">4.8% price increase</span> in the apartment sector over the last quarter. High demand for fringe CBD living continues to suppress vacancy rates.
+                    </p>
+<a class="inline-flex items-center gap-2 text-sky-300 font-medium hover:text-sky-200 transition-colors group" href="#">
+                        View Suburb Report
+                        <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="mt-section-gap pt-12 border-t border-white/5 flex flex-col items-center gap-4 text-center">
+<p class="font-body-sm text-slate-500 max-w-2xl">
+                Wealth Explorer provides general information only. Performance data is historical and should not be considered a guarantee of future returns. Please consult your financial advisor for tailored strategy advice.
+            </p>
+<p class="text-[10px] text-slate-600 uppercase tracking-widest font-bold">
+                GAW COMPLIANCE ID: 2993-CREMORNE-DET
+            </p>
+</footer>
+</main>
+<!-- Micro-interactions Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hover effect on glass cards
+            const cards = document.querySelectorAll('.glass-panel');
+            cards.forEach(card => {
+                card.addEventListener('mouseenter', () => {
+                    if(!card.classList.contains('scale-[1.03]')) {
+                        card.style.transform = 'translateY(-4px)';
+                        card.style.transition = 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+                    }
+                });
+                card.addEventListener('mouseleave', () => {
+                    if(!card.classList.contains('scale-[1.03]')) {
+                        card.style.transform = 'translateY(0)';
+                    }
+                });
+            });
+        });
+    </script>
+</body></html>

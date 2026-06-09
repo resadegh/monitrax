@@ -1748,3 +1748,120 @@ what-if lever detail when an entity is selected.
 
 Future PRs that apply the pattern MUST tick off the surface they ship in
 the §18.7.4 queue and document any tuning the new surface needed.
+
+---
+
+## Cremorne-Wide variant + tile-pop sub-pattern + multi-column balance rule (Phase 45.2, 2026-06-08)
+
+> **Reza directive 2026-06-08:** *"can the background photo cover the
+> full page rather just the corner?"* + *"the tiles need to look bit
+> more modern and pop out, they look flat and bland"* + *"I want the
+> page to be aligned on top and bottom."*
+
+Three new sub-patterns shipped in Phase 45.2 alongside the Cremorne
+pattern, each codified as a row in CLAUDE.md §18.7.2 (and described
+here at quick-reference depth). **Canonical rules live in CLAUDE.md
+§18.7.2 + §18.7.4 — this section is the implementation pointer.**
+
+### Cremorne-Wide variant
+
+The corner-bleed Cremorne becomes a **full-page photo canvas**
+(`inset-0 object-cover opacity-50 -z-30`) paired with a non-negotiable
+3-stop legibility scrim (`from-[#FAFAF7]/95 via-[#FAFAF7]/88 to-[#FAFAF7]/72`
+in light, navy equivalents in dark). The scrim guarantees data
+legibility — without it the photo competes; with it the photo
+elevates the surface from "card with data" to "place with data."
+Reserved for single-focal-asset detail pages (property, investment
+account, SMSF). NOT for tile grids or list pages.
+
+### Tile-pop sub-pattern (Mercury/Linear-tier polish)
+
+Every KPI/data tile gets six layered cues:
+1. Three-tier float shadow (`0_1px_2px + 0_12px_36px` light; black float
+   + 1px white rim inset on dark)
+2. 1px inner-top white highlight (the "curved-glass" iOS17 cue)
+3. 3px gradient top-accent strip in the tile's sub-palette
+4. Faintly-tinted card bg (`from-{sub}-50/40 to-card/70`) so each tile
+   has its own identity
+5. Luminous solid-gradient icon-badge gem with sub-palette-tinted shadow
+6. Confident `data-xl` numerals (40px tabular-nums)
+
+Net effect: tiles feel "lifted off the page" without breaking the
+§18.7.2 glass vocabulary. Applies broadly — any tile-density surface
+benefits.
+
+### Multi-column balance rule
+
+Multi-column glass layouts MUST bottom out at the same y-position. The
+ordering of techniques:
+
+1. **Content design first.** Match section depths so both columns
+   naturally terminate at the same y-position. Phase 45.2 v5 used this
+   approach (LEFT column 2 cards = RIGHT column 3 cards visually).
+2. **Structural fallback.** If content design can't achieve balance:
+   parent `grid lg:grid-cols-2 gap-N items-stretch`, each column
+   `flex flex-col gap-N`, LAST card `flex-1 flex flex-col` to grow.
+   Vertical delta absorbs INSIDE the stretching card.
+
+Never leave empty space below the last card of a column — voids read
+as sloppy.
+
+### Reference artefacts
+
+`.stitch/designs/phase45.2/properties-detail-hero-v5-balanced{,-dark,-mobile,-mobile-dark}.{html,png}`
+— full 4-variant matrix locked in the Phase 45.2 ship PR.
+
+---
+
+## The "Asset Spotlight" template — canonical layout for single-asset detail pages (Phase 45.2, 2026-06-08)
+
+> **Reza directive 2026-06-08:** *"update the design documents with this design as a template for future similar pages. Give this Design template a name that can be used later."*
+
+A reusable end-to-end composition for any surface whose subject is a
+single focal asset: a property, an investment account, an SMSF, a loan,
+a vehicle. Named **"Asset Spotlight"** because the page lights up ONE
+asset — the photo, the halo, the hero card, the supporting KPIs all
+orient around it.
+
+**Canonical rules live in CLAUDE.md §18.7.5 — this section is the
+implementation pointer.** The reference implementation is
+`app/dashboard/properties/[id]/page.tsx` (Phase 45.2 ship PR). Clone
+its structure and swap content + sub-palette only.
+
+### Quick reference (full detail: CLAUDE.md §18.7.5)
+
+Composition top-to-bottom:
+1. Page container (`max-w-[1200px]`, `relative overflow-hidden`)
+2. **L1 Cremorne-Wide photo canvas** (full-page, `opacity-50`)
+3. **L1-SCRIM** (3-stop ivory/navy gradient, legibility contract)
+4. Breadcrumb + back link
+5. **Hero card** with L2 halo behind (gradient icon badge + eyebrow +
+   action cluster + title + address + value row + 3-cell mini KPIs)
+6. **4-cell polished KPI row** (tile-pop sub-pattern per tile)
+7. **Two-column section** (LEFT 2/3 with linked-entities + recent-activity;
+   RIGHT 1/3 with strategy / tax / insights — multi-column balance rule
+   applies)
+8. AFSL GAW footer
+
+### Per-asset-class mapping
+
+| Element | Property | Investment | SMSF | Loan |
+|---|---|---|---|---|
+| Hero sub-palette | sky→indigo | indigo→violet | sky→indigo | amber→rose |
+| Hero eyebrow | INVESTMENT PROPERTY / etc. | INVESTMENT ACCOUNT | SMSF ACCOUNT | INVESTMENT LOAN |
+| Hero value | Current value | Account balance | Member balance | Loan balance |
+
+Full mapping in CLAUDE.md §18.7.5.
+
+### When NOT to use
+
+- List pages (multiple assets per surface)
+- Generic dashboards (no clear focal asset)
+- Editing flows / forms (template prioritises showing)
+
+### Reviewer enforcement
+
+A reviewer MUST reject any new single-asset detail page that doesn't
+follow Asset Spotlight, OR re-invents the Cremorne-Wide / scrim / halo
+/ polished-tile cues when the template already covers them. Full
+rules in CLAUDE.md §18.7.5.

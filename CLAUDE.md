@@ -1757,6 +1757,9 @@ Canonical source files: `components/properties/PropertyTile.tsx`, `components/pr
 | **Motion** | `appleEase = [0.25,0.46,0.45,0.94]`; `springSnap = { stiffness:320, damping:28, mass:0.8 }`; tile entrance 0.55s + 40ms stagger; hero 0.6s. Full `prefers-reduced-motion` support — every animation has a reduced fallback. | Same — motion timings are mode-independent. Hover-lift opacity ramps may need a 5-10% tweak on dark (the lift reads less because shadows are weaker on dark bg). |
 | **Glyphs** | Filled silhouettes, `viewBox 0 0 120 120`, `fill='currentColor'`, no strokes. Reuse `wealthGlyphs.tsx` (e.g. `SuperFilledGlyph` = classical column). Never invent a one-off glyph when one exists. | Same. `fill='currentColor'` naturally inverts with `--editorial-ink` flipping to near-white. Watermark glyphs use the lever's gradient color directly (not `currentColor`) so they keep their identity on both modes. |
 | **Contextual decor (the "Cremorne pattern" — see §18.7.4)** | Optional lived-reality photo bleeding into the bottom-right of a HERO tile/surface, masked with `linear-gradient(to_top, black, transparent)` and `opacity-40`. Paired with a sky→indigo atmospheric halo behind the focal element (`absolute -inset-10 bg-gradient-to-br from-sky-400/10 to-indigo-500/10 blur-[60px]`) and an optional next-item ghost (40% opacity + blur). Reserved for hero/spotlight surfaces — never every tile in a grid. | Same composition. Photo opacity dims to `opacity-30` to compensate for navy ground absorbing more brightness. Halo opacity dims ~40-50% (same rule as Stage-I atmosphere). Next-item ghost opacity drops to ~30% (the dark bg already provides separation). |
+| **Cremorne-Wide variant (full-page canvas — see §18.7.4)** | Photo becomes the FULL main-content canvas (`inset-0 object-cover opacity-50 -z-30`) — landscape, not corner decor. PAIRED WITH a non-negotiable 3-stop ivory legibility scrim (`from-[#FAFAF7]/95 via-[#FAFAF7]/88 to-[#FAFAF7]/72`) — opacity progression top→bottom keeps breadcrumb + hero crisp, lets photo bloom at the GAW footer. L2 halo + L3 ghost optional. Reserved for single-focal-asset detail pages (a property, an investment account, an SMSF). | Same composition with navy scrim (`from-[#050913]/95 via-[#050913]/88 to-[#050913]/72`) and L2 halo opacity halved per §18.7.2 dark glow rule. Photo opacity stays at 50% — the deeper navy + the scrim absorb the warmth as ambient interior light rather than competing landscape. |
+| **Polished tile sub-pattern (Phase 45.2, 2026-06-08)** | Mercury/Linear-tier tile polish. Every KPI/data tile gets: (1) three-tier layered float shadow (`shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)]`), (2) 1px inner-top white highlight (`before:` pseudo or absolute `gradient-to-b from-white/40 to-transparent h-[40%] opacity-60`) — the "curved glass" iOS17 cue, (3) 3px gradient top-accent strip in the tile's sub-palette, (4) faintly-tinted card bg (`from-{sub}-50/40 to-card/70`) so each tile has its own identity without bright pop colors, (5) luminous solid-gradient icon badge (not washed-out tints — actual sub-palette "gems" with sub-palette-tinted shadow), (6) confident data-xl numerals (40px tabular-nums for headline values). Hover: `-translate-y-0.5` + deeper shadow. | Same recipe. Shadow flips to black float + 1px white rim at 4% (`shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]`). Inner-top highlight reduces to `from-white/10` (preserves the curved-glass cue without over-brightening). Tinted bg shifts to `from-{sub}-500/[0.08]` (faint sub-palette wash on dark glass). |
+| **Multi-column balance (Phase 45.2, 2026-06-08)** | Favour content design for visual balance — match section depths so columns naturally bottom out evenly. When that's not enough, fall back to structural alignment: parent `grid lg:grid-cols-2 gap-N items-stretch`, each column `flex flex-col gap-N`, LAST card in each column `flex-1 flex flex-col` so it grows. Vertical delta absorbs INSIDE the stretching card, never as a void below it. Never leave empty space below the last card of a column — voids read as sloppy. | Same rule — alignment principle is mode-independent. |
 | **Behaviour-psychology** | Celebrate the next achievable action; normalise rather than shame; no false precision, no manufactured urgency, no invented numbers (a projection without an engine is a lie — cut it). | Same — psychology rules are mode-independent. |
 
 **Dark-mode reviewer enforcement.** Every Stitch generation for an in-app surface MUST produce BOTH a light AND a dark variant (per device — so DESKTOP-light + DESKTOP-dark + MOBILE-light + MOBILE-dark = 4 screens per surface for a full audit). Same vocabulary, mode-flipped tokens. The dark variants commit alongside light variants under `<file>-dark.{html,png}`. A reviewer who sees only light variants must reject the PR until dark variants ship.
@@ -1802,13 +1805,77 @@ Stitch artefact: `.stitch/designs/polish/property-tile-whatif-affordance.{html,p
 
 ##### Where to replicate next (queue)
 
-- `/dashboard/properties/[id]` detail page — single focal property; the bedroom/interior photo could replace the current placeholder hero. **(NB: detail route doesn't exist yet — scoping is "build detail route + apply pattern", not "apply pattern to existing route".)**
-- `/dashboard/investments/[id]` detail page — single focal investment account; institutional photo or sector imagery. **(NB: detail route doesn't exist yet.)**
-- `/dashboard/investments/super/[id]` SMSF detail — institutional lobby photo for the trustee structure. **(NB: detail route doesn't exist yet — `/super` is currently list-only.)**
+- ~~`/dashboard/properties/[id]` detail page — single focal property~~ ✅ **shipped Phase 45.2, this PR (2026-06-08).** First application of the **Cremorne-Wide variant** + the **Asset Spotlight template** (see §18.7.5 — canonical layout for single-asset detail pages, reusable verbatim for investments / SMSF / loans / any single-focal-asset surface). Per-surface tuning learnings: (a) **Photo as canvas, not corner** — Reza directive *"can the background photo cover the full page rather just the corner?"* drove the Wide variant. L1 photo at `inset-0 object-cover opacity-50 -z-30`, paired with the non-negotiable 3-stop ivory scrim (`from-[#FAFAF7]/95 via-[#FAFAF7]/88 to-[#FAFAF7]/72`) — opacity progression top→bottom keeps the breadcrumb + hero crisp while letting the photo bloom at the GAW footer. The scrim is the inviolable contract: data legibility is the rule that cannot bend. (b) **Photo opacity 50% (Reza-driven)** — even with the heavy scrim, halving the photo's own opacity drives it into "premium whisper" range rather than "I can see the apartment, where are my numbers?". (c) **Tile-pop sub-pattern shipped here too** (see §18.7.2 row "Polished tile sub-pattern") — three-tier shadow + 1px inner-top highlight + 3px gradient top-accent + luminous solid-gradient icon-badge gems + faintly-tinted sub-palette bg. Mercury/Linear-tier polish without breaking the glass vocabulary. (d) **Page balance via content design, not flex-1 stretching** — multiple v6-style "stretch the last card with flex-1" generations were rejected; Reza locked v5 where the LEFT column has 2 cards (Linked Entities + Recent Activity) which together visually balance the RIGHT column's 3 cards (Growth / Tax / Insight) without artificial stretching. Content design first, flex-1 fallback second (see §18.7.2 row "Multi-column balance"). (e) **L3 next-item ghost skipped** on this surface — the page has multiple content sections (KPI row + 2-column body); the ghost would compete with the linked-entities + strategy stack. (f) **Mobile reflow** preserves L1 photo at page-container level (not card-level), 4-tile KPI row becomes 2×2 grid, 2-column section collapses to single-column vertical stack. (g) **List page "View details" CTA** routes to this new page now (was a modal dialog). Stitch artefacts: `.stitch/designs/phase45.2/properties-detail-hero-v5-balanced{,-dark,-mobile,-mobile-dark}.{html,png}`, screen IDs `f021663055bf45619bd5eb74034b5d53` / `4e55e5233a194b4fae37cde83d43efa1` / `c21217e5a6e649d0b6fe52b25e519e6a` / `6dd88defd52e4d2ba6cb54251a3c6830` (project `1859462351962811110`).
+- `/dashboard/investments/[id]` detail page — single focal investment account; institutional photo or sector imagery. **(NB: detail route doesn't exist yet.)** **Apply the §18.7.5 Asset Spotlight template** verbatim — only swaps are the photo (institutional/sector imagery instead of apartment interior), the per-asset sub-palette (indigo→violet for investments instead of sky→indigo for properties), and the linked-entities content (holdings + transactions + dividends instead of loans + rent + expenses).
+- `/dashboard/investments/super/[id]` SMSF detail — institutional lobby photo for the trustee structure. **(NB: detail route doesn't exist yet — `/super` is currently list-only.)** **Apply the §18.7.5 Asset Spotlight template** verbatim — sub-palette stays sky→indigo (Stage I Invest); KPI tiles map to Balance / Concessional cap used / Tax position / Insurance.
 - ~~CFO what-if lever detail (`/dashboard/cfo/what-if/sellProperty`) when an entity is selected~~ ✅ **shipped Phase 45.1.3, PR #1022 (2026-06-08).** Per-surface tuning that future replications can learn from: (a) **photo placement is page-container level on desktop, NOT card-level** — the lever's two-column grid has its own visual gravity, and a card-level photo would compete with the projection chart on the right. Page-level lets the photo be ambient (33% × 50% bottom-right) without pulling focus. (b) **Halo lives at left-column wrapper** (around the protagonist GlassPanel only) because the right column is the projection card, not a protagonist — putting a halo behind both would split focus. (c) **Mobile keeps the photo at page-container level too** (not card-level as the Stitch design suggested) — sticking the photo behind the LAST stacked card on a long mobile scroll actually grounds the page better than burying it inside the inputs card, where it'd vanish above the fold for most users. (d) **L3 next-item ghost skipped** as predicted — the page has three protagonists (inputs / chart / results); a fourth ghost would add noise. (e) **Photo source** is a single decor asset at `/public/decor/cremorne-apartment.jpg`, ~80KB, `next/image` with `fill`+responsive `sizes`. CDR-sourced "actual asset" photos aren't available yet — this fallback is obviously decorative (no "your property" framing) per §18.7.4 "decor not evidence" rule.
 - **Income-page CTA banner** — could carry a faint coin/jar background bleed at L1, emerald halo at L2. Lower priority; the CTA is a banner not a protagonist, so the pattern may not pay off there.
 
 Future PRs that apply the pattern MUST update this queue: tick off the surface that shipped, and (designer lens) document any tuning the surface needed so the pattern stays a living standard, not a frozen artefact.
+
+#### 18.7.5 The "Asset Spotlight" template — canonical layout for single-asset detail pages (Phase 45.2, 2026-06-08)
+
+> **Reza directive 2026-06-08:** *"update the design documents with this design as a template for future similar pages. Give this Design template a name that can be used later."*
+
+A composition that ships the Cremorne-Wide variant (§18.7.4) + tile-pop sub-pattern (§18.7.2) + multi-column balance rule (§18.7.2) in a **reusable end-to-end layout** for any surface whose subject is a single focal asset (a property, an investment account, an SMSF, a loan, a vehicle, etc.). Named **"Asset Spotlight"** because the page lights up ONE asset — the photo, the halo, the hero card, the supporting KPIs all orient around it.
+
+**Canonical reference implementation:** `app/dashboard/properties/[id]/page.tsx` (Phase 45.2 ship PR). Treat it as the source of truth for proportions, spacing, sub-palette mapping, and component composition. New pages following the template should clone its structure and swap content + sub-palette only.
+
+##### Composition (top to bottom)
+
+1. **Page container** — `relative mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8`. The `relative` + `overflow-hidden` are non-negotiable: they're what makes L1 + L1-scrim work without leaking outside the page bounds.
+
+2. **L1 Cremorne-Wide photo canvas** — `<Image>` with `fill` + `sizes="100vw"`, `absolute inset-0 -z-30 object-cover opacity-50`. Photo asset path is per-surface (`/public/decor/<surface>-photo.jpg`), but the wrapper + opacity-50 are template-level locked.
+
+3. **L1-SCRIM** — `absolute inset-0 -z-20 bg-gradient-to-b from-[#FAFAF7]/95 via-[#FAFAF7]/88 to-[#FAFAF7]/72 dark:from-[#050913]/95 dark:via-[#050913]/88 dark:to-[#050913]/72`. The 0.95 → 0.88 → 0.72 progression is THE legibility contract — don't tweak without explicit direction.
+
+4. **Breadcrumb row** — `nav` with `My Wealth › <Section> › <Asset Name>` on the left, `← Back to <list>` quiet link on the right.
+
+5. **Hero card section** with L2 halo behind:
+   - Wrap card in `<section className="relative">`
+   - L2 halo: `absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-{sub}-400/12 to-{sub2}-500/12 blur-[40px] dark:from-{sub}-400/8 dark:to-{sub2}-500/8 md:-inset-10 md:blur-[60px]` — sub-palette matches the asset class
+   - Card: `rounded-[28px] border border-foreground/10 bg-card/70 backdrop-blur-xl` + three-tier shadow + 1px inner-top white highlight + 3px gradient top-accent strip
+   - Header row: 44px gradient icon badge + sub-palette gradient eyebrow ("INVESTMENT PROPERTY" / "SMSF ACCOUNT" / etc.) on left; action cluster (Sparkles "what-if" + Edit + Delete) on right
+   - Title (display-lg) + address/subtitle
+   - Two-cell value row separated by hairline border: CURRENT VALUE (sub-palette gradient text-fill, data-xl tabular-nums) | SECONDARY VALUE (eg. PURCHASE PRICE / OPENING BALANCE) + gain/loss pill
+   - 3-cell mini-grid: 3 key per-asset KPIs (e.g. Equity / LVR / Yield for property; Concessional cap / Insurance / Risk profile for SMSF)
+
+6. **4-cell polished KPI row** — `grid grid-cols-2 gap-3 lg:grid-cols-4`. Each tile follows the §18.7.2 polished-tile sub-pattern recipe verbatim (three-tier shadow + 1px inner-top highlight + 3px gradient top-accent + sub-palette tinted bg + luminous icon badge + data-xl numerals). Each tile gets a different sub-palette so the row has visual rhythm.
+
+7. **Two-column section** with multi-column balance:
+   - `grid grid-cols-1 gap-5 lg:grid-cols-3` (LEFT = 2/3, RIGHT = 1/3)
+   - LEFT column: 2 stacked glass cards (e.g. Linked Entities + Recent Activity)
+   - RIGHT column: 3 stacked glass cards (Strategy / Tax position / per-asset Insight)
+   - Aim for content design to balance the columns naturally (the 2-card LEFT visually balances the 3-card RIGHT). Fall back to `flex-1` on the last card of each column only if content design can't achieve balance.
+
+8. **AFSL GAW footer** — `max-w-3xl text-[11px] text-muted-foreground/70` with the standard general-advice-warning copy.
+
+##### Per-surface mapping (what changes when you apply the template to a new asset class)
+
+| Element | Property | Investment | SMSF | Loan |
+|---|---|---|---|---|
+| Photo | apartment interior | sector / institutional | trustee/lobby | bank/architecture |
+| Hero sub-palette | sky→indigo | indigo→violet | sky→indigo | amber→rose |
+| Eyebrow | INVESTMENT PROPERTY / etc. | INVESTMENT ACCOUNT | SMSF ACCOUNT | INVESTMENT LOAN |
+| Hero value | Current value | Account balance | Member balance | Loan balance |
+| Hero secondary | Purchase price + gain% | Cost base + gain% | Contributions YTD | Opening balance |
+| Mini-KPI 1-2-3 | Equity / LVR / Yield | YTD return / Asset mix / Risk | Concessional cap / Insurance / TBC | Principal / Rate / Term remaining |
+| 4-tile KPIs | Cashflow / Annual rent / Loan balance / Depreciation | Dividends / Distributions / Franking / Capital gains | SG inflows / Tax saved / Member benefits / Investment income | Monthly repayment / Annual interest / Equity / Offset balance |
+| Linked entities | Loans / Income / Expenses / Depreciation | Holdings / Buys / Sells / Distributions | Members / Contributions / Pensions / Tax positions | Property / Income / Expenses |
+
+##### When NOT to use Asset Spotlight
+
+- **List pages** — multiple assets per surface; the template assumes ONE focal asset
+- **Generic dashboards** — the hero composition is for "this asset is the story", not "these are all my assets"
+- **Editing flows / forms** — the template prioritises showing, not editing
+- **Surfaces without a clear focal asset** — e.g. a portfolio overview, a multi-entity comparison
+
+##### Reviewer enforcement (extends §18.7.3 rule 5)
+
+A reviewer (human or future-Claude) MUST reject any PR that:
+1. Claims to ship a new single-asset detail page but doesn't follow the §18.7.5 Asset Spotlight composition (deviation must be explicitly justified in the PR body, e.g. "this asset class doesn't have a meaningful X — replaced with Y").
+2. Re-invents the Cremorne-Wide / scrim / halo / polished-tile cues on a single-asset detail page when the Asset Spotlight template already covers it.
+3. Doesn't tick off the surface in §18.7.4 replicate queue AND update §18.7.5's per-surface mapping table with the new asset class's column.
 
 ---
 

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Property Details | Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#dde5d9",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "surface-container-low": "#eff6ea",
+                        "on-secondary": "#ffffff",
+                        "tertiary-container": "#66768d",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-variant": "#dde5d9",
+                        "on-tertiary": "#ffffff",
+                        "trail-emerald": "#16A34A",
+                        "secondary": "#585e6f",
+                        "surface-container": "#e9f0e5",
+                        "error-red": "#DC2626",
+                        "outline": "#6e7b6c",
+                        "error": "#ba1a1a",
+                        "trail-violet": "#8B5CF6",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-ivory": "#FAFAF7",
+                        "surface": "#f4fcf0",
+                        "outline-slate": "#94A3B8",
+                        "inverse-primary": "#62df7d",
+                        "on-background": "#171d16",
+                        "surface-dim": "#F1EFE8",
+                        "surface-container-high": "#e3eadf",
+                        "primary-fixed": "#7ffc97",
+                        "tertiary": "#4d5d73",
+                        "primary": "#006b2c",
+                        "trail-sky": "#0EA5E9",
+                        "inverse-surface": "#2b322b",
+                        "error-container": "#ffdad6",
+                        "trail-amber": "#F59E0B",
+                        "on-primary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bdcaba",
+                        "on-primary-fixed": "#002109",
+                        "on-surface": "#171d16",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-fixed-variant": "#005320",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-indigo": "#6366F1",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-primary-container": "#f7fff2",
+                        "background": "#f4fcf0",
+                        "secondary-fixed": "#dce2f6",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-error": "#ffffff",
+                        "on-surface-variant": "#3e4a3d",
+                        "secondary-container": "#d9dff4",
+                        "primary-container": "#00873a",
+                        "surface-tint": "#006e2d",
+                        "surface-bright": "#f4fcf0",
+                        "inverse-on-surface": "#ecf3e7",
+                        "navy-900": "#0B1220"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            color: #0B1220;
+            -webkit-font-smoothing: antialiased;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1.5px solid #E2E8F0;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .scrim-overlay {
+            background: linear-gradient(to bottom, rgba(250, 250, 247, 0.95) 0%, rgba(250, 250, 247, 0.88) 40%, rgba(250, 250, 247, 0.72) 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-24">
+<!-- Background Image with Scrim -->
+<div class="fixed inset-0 -z-10 overflow-hidden">
+<img alt="Background" class="w-full h-full object-cover opacity-50" src="https://lh3.googleusercontent.com/aida/AP1WRLvNTknJJ8G0uCWiE6i0oxBeJxEo56Kfq4ipOr7pCqYBQ33dghkGkEcBmiee8vCmjfAiqS6D1nhb9FulpXuoj1BJrICguTPfga2d5pSnTan6_m0O143ryCfg3qSBXc9IPYmpw2ZRZjL1VzngnkP0SzhiVQkuJHMoO-XVpZAze52WZJc90oDTkw1ti9xGZLQlVcFaNWAsqH5JtuULq9RoNNkzIdiXJuq1vacW8V6k9M4YyF1Aq2Ye9XpuZhQ"/>
+<div class="absolute inset-0 scrim-overlay"></div>
+</div>
+<!-- Navigation -->
+<nav class="flex justify-between items-center w-full px-5 h-16 sticky top-0 z-50 bg-surface-ivory/80 backdrop-blur-md">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-bold text-primary">Wealth OS</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-surface-container-high transition-colors">
+<span class="material-symbols-outlined text-navy-900">menu</span>
+</button>
+</nav>
+<main class="px-5 pt-4 space-y-8 max-w-lg mx-auto">
+<!-- Header & Breadcrumbs -->
+<header class="space-y-2">
+<nav class="flex items-center gap-2 text-outline-slate font-label-md text-label-md">
+<span>My Wealth</span>
+<span class="material-symbols-outlined !text-[14px]">chevron_right</span>
+<span>Properties</span>
+<span class="material-symbols-outlined !text-[14px]">chevron_right</span>
+<span class="text-navy-900">Cremorne Apartment</span>
+</nav>
+<div class="space-y-1">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-navy-900">Cremorne Apartment</h1>
+<p class="font-body-md text-body-md text-secondary">21 Bourke Street, Cremorne VIC 3071</p>
+</div>
+</header>
+<!-- Hero Card -->
+<section class="glass-card rounded-2xl overflow-hidden shadow-sm relative">
+<div class="h-1.5 w-full bg-gradient-to-r from-trail-sky to-trail-indigo"></div>
+<div class="p-6 space-y-6">
+<div class="flex justify-between items-start">
+<div class="space-y-1">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest">Current Value</span>
+<div class="font-data-xl text-data-xl tabular-nums text-navy-900">$1,247,200</div>
+</div>
+<div class="bg-trail-emerald/10 text-trail-emerald px-3 py-1 rounded-full font-label-md text-label-md flex items-center gap-1 border border-trail-emerald/20">
+<span class="material-symbols-outlined !text-[16px]" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+                        +12.4%
+                    </div>
+</div>
+<div class="flex items-center gap-2 text-body-sm font-body-sm text-secondary">
+<span>Purchase Price</span>
+<span class="tabular-nums font-medium text-navy-900">$985,000</span>
+</div>
+<div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+<div class="space-y-1">
+<span class="font-label-md text-label-md text-outline-slate">Equity</span>
+<div class="font-headline-sm text-headline-sm tabular-nums text-navy-900">$623,400</div>
+</div>
+<div class="space-y-1">
+<span class="font-label-md text-label-md text-outline-slate">LVR</span>
+<div class="flex items-center gap-1.5">
+<div class="font-headline-sm text-headline-sm tabular-nums text-navy-900">50%</div>
+<div class="w-2 h-2 rounded-full bg-trail-emerald"></div>
+</div>
+</div>
+<div class="space-y-1 text-right">
+<span class="font-label-md text-label-md text-outline-slate">Yield</span>
+<div class="font-headline-sm text-headline-sm tabular-nums text-navy-900">4.2%</div>
+</div>
+</div>
+</div>
+</section>
+<!-- KPI Grid -->
+<section class="grid grid-cols-2 gap-4">
+<div class="glass-card rounded-2xl p-4 space-y-2 bg-gradient-to-br from-white to-trail-sky/5">
+<div class="w-8 h-8 rounded-lg bg-trail-sky/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-sky">payments</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-outline-slate block">Cashflow</span>
+<span class="font-data-lg text-data-lg tabular-nums text-navy-900">+$8,420</span>
+</div>
+</div>
+<div class="glass-card rounded-2xl p-4 space-y-2 bg-gradient-to-br from-white to-trail-violet/5">
+<div class="w-8 h-8 rounded-lg bg-trail-violet/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-violet">calendar_month</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-outline-slate block">Annual Rent</span>
+<span class="font-data-lg text-data-lg tabular-nums text-navy-900">$52,000</span>
+</div>
+</div>
+<div class="glass-card rounded-2xl p-4 space-y-2 bg-gradient-to-br from-white to-trail-amber/5">
+<div class="w-8 h-8 rounded-lg bg-trail-amber/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-amber">account_balance</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-outline-slate block">Loan Balance</span>
+<span class="font-data-lg text-data-lg tabular-nums text-navy-900">$623,800</span>
+</div>
+</div>
+<div class="glass-card rounded-2xl p-4 space-y-2 bg-gradient-to-br from-white to-trail-emerald/5">
+<div class="w-8 h-8 rounded-lg bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald">calculate</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-outline-slate block">Depreciation</span>
+<span class="font-data-lg text-data-lg tabular-nums text-navy-900">$14,200</span>
+</div>
+</div>
+</section>
+<!-- Linked Entities -->
+<section class="space-y-4">
+<h2 class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest px-1">Linked Entities</h2>
+<div class="glass-card rounded-2xl divide-y divide-slate-100">
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+<span class="material-symbols-outlined text-navy-900">home_work</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">ANZ Investment Loan</span>
+<span class="font-body-sm text-body-sm text-outline-slate">Term: 25yrs remaining</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-slate">chevron_right</span>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+<span class="material-symbols-outlined text-navy-900">real_estate_agent</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Rent Income</span>
+<span class="font-body-sm text-body-sm text-outline-slate">$1,000/wk · Managed</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-slate">chevron_right</span>
+</div>
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+<span class="material-symbols-outlined text-navy-900">receipt_long</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Property Expenses</span>
+<span class="font-body-sm text-body-sm text-outline-slate">$9,400/yr total</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-slate">chevron_right</span>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section class="space-y-4">
+<h2 class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest px-1">Recent Activity</h2>
+<div class="glass-card rounded-2xl p-2">
+<div class="space-y-1">
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Rent Received</span>
+<span class="font-body-sm text-body-sm text-outline-slate">Aug 26, 2024</span>
+</div>
+<span class="font-body-md text-body-md tabular-nums text-trail-emerald">+$1,000.00</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Management Fee</span>
+<span class="font-body-sm text-body-sm text-outline-slate">Aug 26, 2024</span>
+</div>
+<span class="font-body-md text-body-md tabular-nums text-secondary">-$55.00</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Council Rates</span>
+<span class="font-body-sm text-body-sm text-outline-slate">Aug 14, 2024</span>
+</div>
+<span class="font-body-md text-body-md tabular-nums text-secondary">-$420.00</span>
+</div>
+<div class="flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 transition-colors">
+<div>
+<span class="font-label-md text-label-md text-navy-900 block">Rent Received</span>
+<span class="font-body-sm text-body-sm text-outline-slate">Aug 12, 2024</span>
+</div>
+<span class="font-body-md text-body-md tabular-nums text-trail-emerald">+$1,000.00</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Strategic Cards -->
+<section class="space-y-4">
+<h2 class="font-eyebrow text-eyebrow text-outline-slate uppercase tracking-widest px-1">Strategies</h2>
+<div class="space-y-4">
+<div class="glass-card rounded-2xl p-5 border-l-4 border-l-trail-sky">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-trail-sky font-semibold">Growth Scenarios</span>
+<span class="material-symbols-outlined text-trail-sky">trending_up</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">A 5% annual growth over 10 years project an estimated future value of $2.03M for this asset.</p>
+</div>
+<div class="glass-card rounded-2xl p-5 border-l-4 border-l-trail-violet">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-trail-violet font-semibold">Tax Position</span>
+<span class="material-symbols-outlined text-trail-violet">account_balance_wallet</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Current depreciation schedules provide a non-cash deduction benefit of $14.2k for the FY24 period.</p>
+</div>
+<div class="glass-card rounded-2xl p-5 border-l-4 border-l-trail-amber">
+<div class="flex items-center justify-between mb-2">
+<span class="font-label-md text-label-md text-trail-amber font-semibold">Market Insight</span>
+<span class="material-symbols-outlined text-trail-amber">insights</span>
+</div>
+<p class="font-body-sm text-body-sm text-secondary">Cremorne median apartment values rose 2.1% this quarter, outperforming the local LGA average by 45bps.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 bg-surface-ivory shadow-[0_-4px_12px_rgba(11,18,32,0.04)] rounded-t-xl">
+<div class="flex flex-col items-center justify-center text-on-secondary-container opacity-70">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</div>
+<div class="flex flex-col items-center justify-center text-primary font-medium">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-label-md">Property</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-container opacity-70">
+<span class="material-symbols-outlined">query_stats</span>
+<span class="font-label-md text-label-md">Insights</span>
+</div>
+<div class="flex flex-col items-center justify-center text-on-secondary-container opacity-70">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</div>
+</nav>
+<script>
+        // Micro-interactions
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('touchstart', () => {
+                card.style.transform = 'scale(0.98)';
+                card.style.transition = 'transform 0.1s ease-out';
+            });
+            card.addEventListener('touchend', () => {
+                card.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>
