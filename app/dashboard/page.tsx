@@ -87,6 +87,8 @@ import {
 } from '@/components/editorial/charts';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
+import { DashboardPropertyTile } from '@/components/dashboard/tiles/DashboardPropertyTile';
+import { DashboardInvestmentTile } from '@/components/dashboard/tiles/DashboardInvestmentTile';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
@@ -979,57 +981,12 @@ export default function DashboardPage() {
 
             <TabsContent value="properties" className="mt-4">
               {snapshot.properties.length > 0 ? (
+                // Phase 45.3 — §18.7.2 polished glass tiles (UI-only swap, no
+                // backend changes per Reza 2026-06-09). DashboardPropertyTile
+                // consumes the same property fields the inline <Card> did.
                 <div className="grid gap-4 md:grid-cols-2">
                   {snapshot.properties.map(property => (
-                    <Card key={property.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-base">{property.name}</CardTitle>
-                            <Badge variant="outline" className="mt-1">{property.type}</Badge>
-                          </div>
-                          <Link href="/dashboard/properties">
-                            <Button variant="ghost" size="icon">
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="text-muted-foreground">Market Value</p>
-                            <p className="font-semibold">{formatCompactCurrency(property.marketValue)}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Equity</p>
-                            <p className="font-semibold text-green-600 dark:text-green-400">
-                              {formatCompactCurrency(property.equity)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">LVR</p>
-                            <p className={`font-semibold ${property.lvr > 80 ? 'text-orange-600' : ''}`}>
-                              {property.lvr.toFixed(1)}%
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">Rental Yield</p>
-                            <p className="font-semibold">{property.rentalYield.toFixed(1)}%</p>
-                          </div>
-                        </div>
-                        {property.cashflow.monthlyNet !== 0 && (
-                          <div className="mt-4 pt-3 border-t">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm text-muted-foreground">Monthly Cash Flow</span>
-                              <span className={`font-semibold ${property.cashflow.monthlyNet >= 0 ? 'text-green-600' : 'text-orange-600'}`}>
-                                {formatCurrency(property.cashflow.monthlyNet)}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <DashboardPropertyTile key={property.id} property={property} />
                   ))}
                 </div>
               ) : (
@@ -1048,54 +1005,25 @@ export default function DashboardPage() {
 
             <TabsContent value="investments" className="mt-4">
               {snapshot.investments.accounts.length > 0 ? (
+                // Phase 45.3 — §18.7.2 polished glass tiles (UI-only swap,
+                // indigo→violet sub-palette per §18.7.5 mapping). The existing
+                // <InvestmentIncomeDisplay compact /> chip is injected via the
+                // `incomeNode` slot so the income-by-account context is
+                // preserved in the new vocabulary.
                 <div className="grid gap-4 md:grid-cols-2">
                   {snapshot.investments.accounts.map(account => (
-                    <Card key={account.id} className="hover:shadow-md transition-shadow">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <CardTitle className="text-base">{account.name}</CardTitle>
-                            <Badge variant="outline" className="mt-1">{account.type}</Badge>
-                          </div>
-                          <Link href="/dashboard/investments/accounts">
-                            <Button variant="ghost" size="icon">
-                              <ChevronRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="mb-3">
-                          <p className="text-2xl font-bold">{formatCompactCurrency(account.totalValue)}</p>
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm text-muted-foreground">{account.holdings.length} holding{account.holdings.length !== 1 ? 's' : ''}</p>
-                            {/* Phase 2: Investment Income Display */}
-                            {snapshot.income && (
-                              <InvestmentIncomeDisplay
-                                data={calculateInvestmentIncome(account.id, snapshot.income)}
-                                compact
-                              />
-                            )}
-                          </div>
-                        </div>
-                        {account.holdings.length > 0 && (
-                          <div className="space-y-2">
-                            {account.holdings.slice(0, 3).map((holding, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-sm">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-xs">{holding.ticker}</Badge>
-                                  <span className="text-muted-foreground text-xs">{holding.type}</span>
-                                </div>
-                                <span className="font-medium">{formatCompactCurrency(holding.currentValue)}</span>
-                              </div>
-                            ))}
-                            {account.holdings.length > 3 && (
-                              <p className="text-xs text-muted-foreground">+{account.holdings.length - 3} more</p>
-                            )}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <DashboardInvestmentTile
+                      key={account.id}
+                      account={account}
+                      incomeNode={
+                        snapshot.income ? (
+                          <InvestmentIncomeDisplay
+                            data={calculateInvestmentIncome(account.id, snapshot.income)}
+                            compact
+                          />
+                        ) : null
+                      }
+                    />
                   ))}
                 </div>
               ) : (

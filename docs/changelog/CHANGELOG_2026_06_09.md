@@ -1,5 +1,64 @@
 # Changelog — 2026-06-09
 
+## Session: Phase 45.3 — dashboard Properties + Investments tabs glass migration (UI only)
+
+### Context
+
+After Phase 45.2.5 shipped, Reza ran an audit on `/dashboard` and identified the Properties + Investments tile pair (the tabbed section at the bottom of the page) as still on the OLD shadcn `<Card className="hover:shadow-md transition-shadow">` vanilla vocabulary while the rest of the app's My Wealth surfaces ran the §18.7.2 glass language. Audit confirmed three coexisting design eras on the dashboard (§18.7.2 glass / Phase 38 editorial / shadcn vanilla); Phase 45.3 fires the first round of the new `0·DG` (Dashboard Glass) workstream that brings the tiles Reza screenshotted onto the §18.7.2 polished sub-pattern.
+
+Reza directive — **NO BACKEND CHANGES across the entire 0·DG workstream**. UI vocabulary swap only. Reviewer rejection trigger codified in IMPLEMENTATION_PLAN.md.
+
+### Changes Made
+
+- **Type**: Feature — UI vocabulary swap, two new co-located components, two inline `<Card>` blocks replaced.
+- **Scope**: `app/dashboard/page.tsx` Properties tab (line 984) + Investments tab (line 1053). Two new components at `components/dashboard/tiles/`.
+- **Sub-palette mapping** (per §18.7.5): Properties = sky→indigo (matches Properties Asset Spotlight); Investments = indigo→violet (matches investments Asset Spotlight).
+- **Stitch-first**: full 8-variant matrix generated and locked before the React port (4 variants per tab — desktop light + dark + mobile light + dark per §18.7.2 dark-mode enforcement).
+
+### Files Modified
+
+- `components/dashboard/tiles/DashboardPropertyTile.tsx` — NEW. ~140 LOC. Glass tile + sky→indigo sub-palette. Consumes `PortfolioSnapshot.properties[number]`. Navigates to `/dashboard/properties/[id]` on click.
+- `components/dashboard/tiles/DashboardInvestmentTile.tsx` — NEW. ~150 LOC. Glass tile + indigo→violet sub-palette. Consumes `PortfolioSnapshot.investments.accounts[number]`. Hero balance uses gradient text-fill per §18.7.2 money-signal row. Empty state shows "Add holdings" CTA (psychology lens: celebrate next achievable action). `incomeNode` slot preserves the existing `<InvestmentIncomeDisplay compact />` chip.
+- `app/dashboard/page.tsx` — added imports for the two new tiles; replaced ~52 lines of inline Properties `<Card>` with `<DashboardPropertyTile>` (now ~10 lines); replaced ~50 lines of inline Investments `<Card>` with `<DashboardInvestmentTile>` (now ~14 lines including `incomeNode` slot).
+- `.stitch/designs/phase45.3/` — NEW. 8 PNG + 8 HTML files (4 Properties tab variants from earlier commits + 4 Investments tab variants added this session). Full design audit trail locked.
+
+### Documentation Updated
+
+- `docs/IMPLEMENTATION_PLAN.md` — Workstream `0·DG` (Dashboard Glass migration) opened earlier this session as a new top-of-list active workstream; row 78 now flipped from queued/in-flight to ✅ SHIPPED with full execution detail. Rows 79-81 (Phase 45.4 KPI row + Net Worth hero; Phase 45.5 insight widgets; Phase 45.6 MoneyStoryHeroV2 + WealthUniverse + DailyPulse) remain queued.
+- `docs/changelog/CHANGELOG_2026_06_09.md` — this entry.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — 0 errors.
+- [x] `npm run build` — production build green; no new dynamic routes; bundle size unchanged.
+- [x] ESLint clean on touched files. 1 pre-existing warning (`useEffect` missing-dep on `loadDashboardData` in `app/dashboard/page.tsx` line 333) — unrelated to this PR.
+
+### §16.5 Doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (two new co-located primitives `<DashboardPropertyTile>` + `<DashboardInvestmentTile>` extending the §18.7.2 polished sub-pattern to the dashboard home)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (no CDR-classified data touched — UI vocabulary swap only)
+- [ ] operational procedure
+- [ ] strategic decision (workstream `0·DG` opened earlier this PR; Phase 45.3 is the first ship)
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md`:workstream `0·DG` — full scope documented + row 78 flipped from queued/in-flight to ✅ shipped.
+- `docs/changelog/CHANGELOG_2026_06_09.md`:Phase 45.3 session — this entry.
+
+### Destructive write checklist (§12.11)
+
+None — Phase 45.3 is purely presentational. No Prisma writes anywhere in this PR. Reviewer rejection trigger for the 0·DG workstream codified in IMPLEMENTATION_PLAN.md: any PR touching `app/api/`, `lib/calculations/`, `lib/services/`, `prisma/`, or any non-presentational layer.
+
+### Phase 41E reform compliance (§12.14)
+
+No tax-engine code modified. No financial calc touched. No column added to `Property` / `Investment` / `LegalEntity`. No new AI tool. No new per-asset tax UI. N/A.
+
+---
+
 ## Session: Phase 45.2.5 — user-uploadable property hero photo (v1, properties only)
 
 ### Context
