@@ -252,7 +252,7 @@ export default function PropertyDetailPage() {
 
   return (
     <DashboardLayout>
-      <div className="relative mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+      <div className="relative isolate mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
         {/*
           §18.7.4 Cremorne-Wide L1 — full-page contextual photo canvas.
           opacity-50 keeps the photo as a premium whisper rather than

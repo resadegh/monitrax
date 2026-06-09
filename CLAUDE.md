@@ -1823,7 +1823,7 @@ A composition that ships the Cremorne-Wide variant (§18.7.4) + tile-pop sub-pat
 
 ##### Composition (top to bottom)
 
-1. **Page container** — `relative mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8`. The `relative` + `overflow-hidden` are non-negotiable: they're what makes L1 + L1-scrim work without leaking outside the page bounds.
+1. **Page container** — `relative isolate mx-auto max-w-[1200px] overflow-hidden px-4 py-8 sm:px-6 lg:px-8`. The `relative` + `isolate` + `overflow-hidden` are non-negotiable: `relative` anchors absolute children, **`isolate` creates a fresh stacking context so negative z-indexes on L1/L1-scrim resolve INSIDE the container** rather than bubbling up behind the layout's page background (lesson from Phase 45.2 prod incident 2026-06-09: without `isolate` the photo invisibly sits behind DashboardLayout's `bg-background`), `overflow-hidden` clips the photo + halo at the 1200px edges.
 
 2. **L1 Cremorne-Wide photo canvas** — `<Image>` with `fill` + `sizes="100vw"`, `absolute inset-0 -z-30 object-cover opacity-50`. Photo asset path is per-surface (`/public/decor/<surface>-photo.jpg`), but the wrapper + opacity-50 are template-level locked.
 
