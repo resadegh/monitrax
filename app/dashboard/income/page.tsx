@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -841,10 +842,45 @@ function IncomePageContent() {
           5991501424852019479): light 62e3d46cc4964462b0d40195e3b606d0,
           dark d4da3f3f4d41467998d2dd7217e1e73f. */}
       {hasSalaryIncome && (
-        <section className="mb-4">
+        // Phase 45.2.3 — §18.7.4 Cremorne pattern applied to the salary-sacrifice
+        // CTA banner. Three-layer atmospheric system:
+        //   L1: contextual coin-jar photo bleed (bottom-right, masked gradient,
+        //       opacity-40 light / opacity-30 dark) — grounds the abstract
+        //       "salary sacrifice" idea in lived reality (saving toward a meaningful
+        //       future).
+        //   L2: emerald atmospheric halo (sub-palette match the existing CTA
+        //       palette) — tells the eye "this banner is the protagonist of
+        //       the top-of-fold area."
+        //   L3: SKIPPED — banner has no "next item" to telegraph.
+        // Photo: `public/decor/income-coin-jar.jpg` — Stitch-sourced (project
+        // 1859462351962811110, screen 5b6bc14028b74eccaf2286eaa195b7fd, 2026-06-09).
+        // The banner itself (Phase 45.1.1 ship) is preserved verbatim — Cremorne
+        // is decor, never restructure.
+        <section className="relative isolate mb-4 overflow-hidden">
+          {/* L2 atmospheric halo — emerald gradient blur behind the banner. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -inset-6 -z-10 rounded-[40px] bg-gradient-to-br from-emerald-400/12 to-emerald-500/12 blur-[40px] dark:from-emerald-400/8 dark:to-emerald-500/8 md:-inset-10 md:blur-[60px]"
+          />
+          {/* L1 contextual photo bleed — coin jar at the bottom-right, masked
+              gradient fades upward into the page background. Decor only — never
+              implies provenance of the underlying data (§18.7.4 rule). */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-2 right-0 -z-20 h-[60%] w-[40%] max-w-[280px] [mask-image:linear-gradient(to_top,black,transparent)]"
+          >
+            <Image
+              src="/decor/income-coin-jar.jpg"
+              alt=""
+              fill
+              sizes="(max-width: 768px) 66vw, 280px"
+              className="object-cover object-bottom opacity-40 dark:opacity-30"
+              priority={false}
+            />
+          </div>
           <Link
             href="/dashboard/cfo/what-if/salarySacrificeToSuper"
-            className="group flex w-full items-center justify-between rounded-[14px] border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-3 backdrop-blur-xl transition-colors hover:bg-emerald-500/[0.12] dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15"
+            className="group relative flex w-full items-center justify-between rounded-[14px] border border-emerald-500/25 bg-emerald-500/[0.08] px-4 py-3 backdrop-blur-xl transition-colors hover:bg-emerald-500/[0.12] dark:border-emerald-400/30 dark:bg-emerald-500/10 dark:hover:bg-emerald-500/15"
           >
             <div className="flex min-w-0 items-center gap-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-indigo-500 text-white shadow-sm">
@@ -864,7 +900,7 @@ function IncomePageContent() {
               <ArrowUpRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
             </div>
           </Link>
-          <p className="mt-2 px-1 text-[10px] text-muted-foreground/70">
+          <p className="relative mt-2 px-1 text-[10px] text-muted-foreground/70">
             AFSL 523411 compliant: hypothetical illustrations based on current tax legislation; individual circumstances may vary.
           </p>
         </section>
