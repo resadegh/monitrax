@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vanguard ETF Portfolio — §18.7.5 Spotlight</title>
+<!-- Tailwind CSS v3 with plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Inter Font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            'moni-surface': '#FAFAF7',
+            'moni-indigo': '#6366f1',
+            'moni-green': '#16a34a',
+            'moni-accent': '#16a34a',
+          },
+          boxShadow: {
+            'polished': '0 1px 3px rgba(0,0,0,0.1), 0 4px 6px -1px rgba(0,0,0,0.05)',
+            'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.07)',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="background-scrim-logic">
+    /* Layer 1: Background Image and Scrim */
+    .bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background-color: #FAFAF7;
+    }
+    .bg-photo {
+      position: absolute;
+      inset: 0;
+      background-image: url('https://lh3.googleusercontent.com/aida/AP1WRLsaVPdM-8jSo68NS3mmfo-1cEzZ34zx_cy0ie6sopy1yIVYp6VyBLI2GvPrtLquP7fq9J5WHMvIBovXdgwjaaK8OwjuVlbYbMirpdm0QoIc9xeQl6IcLH6wWTfOjSU0Uo_ERv7-PrzPfDFHEkw1-tDrznjLwa1vSZVcodKzjCfqTGFKjDzP5AZHOR76tFQOz93Oj0TtI_meStG2EA9CNPSl5h8sWoplXWGkV8yBd1LzqiEalUSVOLq0vw');
+      background-size: cover;
+      background-position: center;
+      opacity: 0.5;
+    }
+    .bg-scrim {
+      position: absolute;
+      inset: 0;
+      /* Ivory gradient scrim as requested */
+      background: linear-gradient(to bottom, 
+        rgba(250, 250, 247, 0.95) 0%, 
+        rgba(250, 250, 247, 0.88) 50%, 
+        rgba(250, 250, 247, 0.72) 100%
+      );
+    }
+  </style>
+<style data-purpose="card-accents">
+    .kpi-card {
+      border-top-width: 3px;
+      border-top-style: solid;
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(4px);
+    }
+    .inner-highlight {
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+  </style>
+</head>
+<body class="font-sans text-slate-900 bg-moni-surface min-h-screen">
+<!-- BEGIN: Background Layer -->
+<div class="bg-canvas">
+<div class="bg-photo"></div>
+<div class="bg-scrim"></div>
+</div>
+<!-- END: Background Layer -->
+<main class="relative px-5 py-6 max-w-[390px] mx-auto overflow-x-hidden">
+<!-- BEGIN: Breadcrumbs -->
+<nav class="flex flex-col gap-3 mb-8" data-purpose="breadcrumb-navigation">
+<div class="text-xs text-slate-500 font-medium">
+        My Wealth <span class="mx-1">›</span> Investments <span class="mx-1">›</span> Vanguard ETF Portfolio
+      </div>
+<a class="flex items-center text-sm font-semibold text-moni-accent" href="#">
+<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><line x1="19" x2="5" y1="12" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Back to investments
+      </a>
+</nav>
+<!-- END: Breadcrumbs -->
+<!-- BEGIN: Hero Card -->
+<section class="bg-white rounded-xl shadow-polished border border-slate-100 p-6 mb-4 relative overflow-hidden" data-purpose="hero-summary">
+<div class="flex justify-between items-start mb-4">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+</div>
+<span class="text-[10px] uppercase tracking-widest font-bold text-indigo-600">Investment Account</span>
+</div>
+<div class="flex gap-2">
+<button class="p-2 bg-slate-50 rounded-full border border-slate-100 text-slate-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+</button>
+<button class="p-2 bg-slate-50 rounded-full border border-slate-100 text-slate-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+</button>
+</div>
+</div>
+<div class="mb-6">
+<h1 class="text-2xl font-bold text-slate-800 leading-tight">Vanguard ETF Portfolio</h1>
+<p class="text-slate-400 text-sm mt-1 font-medium">CommSec · ETF / Shares</p>
+</div>
+<div class="flex flex-col gap-1 py-4 border-t border-slate-50">
+<div class="flex justify-between items-baseline">
+<span class="text-3xl font-bold text-indigo-600">$487,250</span>
+<span class="bg-green-50 text-green-600 text-[10px] font-bold px-1.5 py-0.5 rounded border border-green-100">+26.5%</span>
+</div>
+<div class="text-xs text-slate-400">Cost Basis $385,200</div>
+</div>
+<div class="grid grid-cols-1 gap-4 pt-4 border-t border-slate-50">
+<div class="flex justify-between items-center">
+<div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">YTD Return</div>
+<div class="text-lg font-bold text-indigo-600">+12.4%</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Asset Mix</div>
+<div class="text-lg font-bold text-indigo-600">4 ETFs · 2 Shares</div>
+</div>
+<div class="flex justify-between items-center">
+<div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Cash Balance</div>
+<div class="text-lg font-bold text-green-600">$8,420</div>
+</div>
+</div>
+</section>
+<!-- END: Hero Card -->
+<!-- BEGIN: 4-cell KPI Grid -->
+<section class="grid grid-cols-2 gap-3 mb-8" data-purpose="kpi-metrics-grid">
+<!-- Dividends -->
+<div class="kpi-card border-green-500 rounded-lg p-4 shadow-polished inner-highlight">
+<div class="flex items-center justify-center w-9 h-9 rounded-lg bg-green-100 text-green-600 mb-3">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="14" rx="2" ry="2" width="20" x="2" y="7"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+</div>
+<div class="text-[9px] uppercase tracking-widest font-bold text-green-600/70 mb-1">Dividends</div>
+<div class="text-xl font-bold text-green-700">$12,847</div>
+<div class="text-[10px] text-slate-400">Net Received</div>
+</div>
+<!-- Distributions -->
+<div class="kpi-card border-blue-400 rounded-lg p-4 shadow-polished inner-highlight">
+<div class="flex items-center justify-center w-9 h-9 rounded-lg bg-blue-100 text-blue-500 mb-3">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+</div>
+<div class="text-[9px] uppercase tracking-widest font-bold text-blue-500/70 mb-1">Distributions</div>
+<div class="text-xl font-bold text-blue-600">$4,320</div>
+<div class="text-[10px] text-slate-400">ETF Payouts</div>
+</div>
+<!-- Franking -->
+<div class="kpi-card border-indigo-400 rounded-lg p-4 shadow-polished inner-highlight">
+<div class="flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-100 text-indigo-500 mb-3">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 21h18"></path><path d="M3 7v1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7m0 1a3 3 0 0 0 6 0V7H3z"></path><path d="M19 21v-4a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v4"></path><rect height="4" rx="1" width="6" x="9" y="2"></rect></svg>
+</div>
+<div class="text-[9px] uppercase tracking-widest font-bold text-indigo-500/70 mb-1">Franking Credits</div>
+<div class="text-xl font-bold text-indigo-600">$5,506</div>
+<div class="text-[10px] text-slate-400">FY26 Accrued</div>
+</div>
+<!-- Capital Gains -->
+<div class="kpi-card border-purple-400 rounded-lg p-4 shadow-polished inner-highlight">
+<div class="flex items-center justify-center w-9 h-9 rounded-lg bg-purple-100 text-purple-500 mb-3">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" x2="8" y1="13" y2="13"></line><line x1="16" x2="8" y1="17" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+</div>
+<div class="text-[9px] uppercase tracking-widest font-bold text-purple-500/70 mb-1">Capital Gains</div>
+<div class="text-xl font-bold text-purple-600">$18,400</div>
+<div class="text-[10px] text-slate-400">Realized YTD</div>
+</div>
+</section>
+<!-- END: 4-cell KPI Grid -->
+<!-- BEGIN: Portfolio Holdings -->
+<section class="mb-10" data-purpose="portfolio-holdings">
+<div class="flex items-center gap-2 mb-4">
+<div class="text-indigo-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="21.17" x2="12" y1="8" y2="8"></line><line x1="3.95" x2="8.54" y1="6.06" y2="14"></line><line x1="10.88" x2="15.46" y1="21.94" y2="14"></line></svg>
+</div>
+<h2 class="text-base font-bold text-slate-800">Portfolio Holdings</h2>
+</div>
+<div class="space-y-2">
+<!-- Item 1 -->
+<div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">VAS · Vanguard Australian Shares ETF</div>
+<div class="text-[10px] text-slate-400">Domestic Equity · ASX</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-bold text-slate-800">$75,820</div>
+<div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Market Value</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path><path d="M2 12h20"></path></svg>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">VGS · Vanguard MSCI International</div>
+<div class="text-[10px] text-slate-400">International Equity · ASX</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-bold text-slate-800">$47,208</div>
+<div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Market Value</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="2" ry="2" width="18" x="3" y="3"></rect><line x1="3" x2="21" y1="9" y2="9"></line><line x1="9" x2="9" y1="21" y2="9"></line></svg>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">A200 · Betashares ASX 200 ETF</div>
+<div class="text-[10px] text-slate-400">Domestic Equity · ASX</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-bold text-slate-800">$162,960</div>
+<div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Market Value</div>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl border border-slate-100 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><line x1="18" x2="18" y1="20" y2="10"></line><line x1="12" x2="12" y1="20" y2="4"></line><line x1="6" x2="6" y1="20" y2="14"></line></svg>
+</div>
+<div>
+<div class="text-xs font-bold text-slate-800">BHP · BHP Group</div>
+<div class="text-[10px] text-slate-400">Individual Share · ASX</div>
+</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-bold text-slate-800">$11,712</div>
+<div class="text-[9px] uppercase tracking-wider text-slate-400 font-bold">Market Value</div>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Portfolio Holdings -->
+<!-- BEGIN: Recent Activity -->
+<section class="mb-10" data-purpose="recent-activity">
+<div class="flex items-center gap-2 mb-4">
+<div class="text-indigo-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+</div>
+<h2 class="text-base font-bold text-slate-800">Recent Activity</h2>
+</div>
+<div class="bg-white/80 backdrop-blur-sm rounded-xl border border-slate-100 overflow-hidden shadow-sm divide-y divide-slate-50">
+<!-- Activity 1 -->
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="16" rx="2" ry="2" width="22" x="1" y="4"></rect><line x1="1" x2="23" y1="10" y2="10"></line></svg>
+</div>
+<div>
+<div class="text-[11px] font-bold text-slate-700">Dividend — VAS</div>
+<div class="text-[10px] text-slate-400">27 May 2026</div>
+</div>
+</div>
+<div class="text-sm font-bold text-green-500">+$2,140</div>
+</div>
+<!-- Activity 2 -->
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+</div>
+<div>
+<div class="text-[11px] font-bold text-slate-700">Buy — VGS 50 units</div>
+<div class="text-[10px] text-slate-400">21 May 2026</div>
+</div>
+</div>
+<div class="text-sm font-bold text-slate-700">- $5,620</div>
+</div>
+<!-- Activity 3 -->
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center text-green-500">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect height="18" rx="2" ry="2" width="18" x="3" y="3"></rect><path d="M9 12l2 2 4-4"></path></svg>
+</div>
+<div>
+<div class="text-[11px] font-bold text-slate-700">Distribution — A200</div>
+<div class="text-[10px] text-slate-400">15 May 2026</div>
+</div>
+</div>
+<div class="text-sm font-bold text-green-500">+$1,820</div>
+</div>
+<!-- Activity 4 -->
+<div class="p-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path><path d="M3 6h18"></path><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+</div>
+<div>
+<div class="text-[11px] font-bold text-slate-700">Buy — BHP 50 units</div>
+<div class="text-[10px] text-slate-400">08 May 2026</div>
+</div>
+</div>
+<div class="text-sm font-bold text-slate-700">- $2,343</div>
+</div>
+</div>
+</section>
+<!-- END: Recent Activity -->
+<!-- BEGIN: Insights Column -->
+<section class="space-y-4 mb-12" data-purpose="strategy-insights">
+<div class="flex items-center gap-2 mb-2">
+<div class="text-sky-500">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" x2="12" y1="22.08" y2="12"></line></svg>
+</div>
+<h2 class="text-base font-bold text-slate-800">Strategy &amp; Insights</h2>
+</div>
+<!-- Performance Scenario Card -->
+<article class="bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-slate-100 shadow-glass">
+<div class="flex justify-between items-start mb-4">
+<div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Performance Scenarios</div>
+<div class="text-indigo-400">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+</div>
+</div>
+<p class="text-sm text-slate-600 leading-relaxed mb-6">
+          Model how this account's value, asset mix and tax position shift under different return, dividend and rebalancing assumptions.
+        </p>
+<button class="w-full py-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 shadow-sm">
+          View scenarios
+        </button>
+</article>
+<!-- Tax Position Card -->
+<article class="bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-slate-100 shadow-glass">
+<div class="flex justify-between items-start mb-4">
+<div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Tax Position</div>
+<div class="text-slate-400">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3 21h18"></path><rect height="13" width="16" x="4" y="8"></rect><path d="M10 21v-4a2 2 0 0 1 4 0v4"></path><path d="M4 8l8-5 8 5"></path></svg>
+</div>
+</div>
+<p class="text-sm text-slate-600 leading-relaxed mb-6">
+          This portfolio contributed <span class="text-green-600 font-bold">$5,506</span> to franking credits this FY. See its impact in your FY26 tax position.
+        </p>
+<button class="w-full py-3 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-700 shadow-sm">
+          View tax position
+        </button>
+</article>
+<!-- Holdings Insight Card -->
+<article class="bg-white/70 backdrop-blur-md p-5 rounded-2xl border border-slate-100 shadow-glass">
+<div class="flex justify-between items-start mb-4">
+<div class="text-[10px] uppercase tracking-widest font-bold text-slate-400">Holdings Insight</div>
+<div class="text-purple-400">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10"></circle><polygon points="12 8 10 12 14 12 12 16"></polygon></svg>
+</div>
+</div>
+<p class="text-sm text-slate-600 leading-relaxed mb-4">
+          4 ETFs and 2 individual shares across XX% domestic, XX% international. View concentration risk.
+        </p>
+<a class="text-sm font-semibold text-moni-accent flex items-center gap-1" href="#">
+          View breakdown
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" x2="21" y1="14" y2="3"></line></svg>
+</a>
+</article>
+</section>
+<!-- END: Insights Column -->
+<!-- BEGIN: AFSL Footer -->
+<footer class="mt-20 pt-10 border-t border-slate-200">
+<div class="text-[10px] text-slate-400 leading-relaxed mb-8">
+<span class="font-bold">AFSL General Advice Warning:</span> The information provided on this platform is general in nature only and does not constitute personal financial, tax, or legal advice. It has been prepared without taking into account your personal objectives, financial situation, or needs. Before acting on any information, you should consider the appropriateness of the information having regard to your objectives, financial situation, and needs. Performance figures are historical and past performance is not a reliable indicator of future results. Monitrax Wealth OS relies on third-party data providers; while we strive for accuracy, we cannot guarantee the real-time precision of property valuations.
+      </div>
+<div class="flex flex-col gap-4">
+<div class="flex gap-4 text-[10px] font-semibold text-slate-500 uppercase tracking-wider">
+<a href="#">Privacy Policy</a>
+<a href="#">Terms of Service</a>
+<a href="#">Contact Support</a>
+</div>
+<div class="text-[10px] text-slate-400">
+          © 2024 Monitrax Pty Ltd. All rights reserved.
+        </div>
+</div>
+</footer>
+<!-- END: AFSL Footer -->
+</main>
+<!-- BEGIN: Mobile Nav Stick-up (Reference from screen UI) -->
+<div class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 p-4 flex justify-center lg:hidden z-50">
+<button class="w-full py-3 bg-moni-accent text-white font-bold rounded-lg shadow-lg active:scale-[0.98] transition-transform">
+      Update Plan
+    </button>
+</div>
+<!-- END: Mobile Nav Stick-up -->
+</body></html>

@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -90,6 +91,7 @@ type ViewMode = 'tiles' | 'list';
 
 function InvestmentAccountsPageContent() {
   const { token } = useAuth();
+  const router = useRouter();
   const { openLinkedEntity } = useCrossModuleNavigation();
 
   // CMNF navigation handler for LinkedDataPanel
@@ -535,7 +537,7 @@ function InvestmentAccountsPageContent() {
                   incomeCount: account.incomes?.length || 0,
                   expenseCount: account.expenses?.length || 0,
                 }}
-                onView={() => handleViewDetails(account)}
+                onView={() => router.push(`/dashboard/investments/accounts/${account.id}`)}
                 onEdit={() => handleEdit(account)}
                 onDelete={() => handleDelete(account.id)}
               />
