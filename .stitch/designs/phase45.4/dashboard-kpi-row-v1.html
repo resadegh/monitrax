@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .accent-gradient {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .soft-shadow-tier-1 {
+            box-shadow: 0 4px 6px -1px rgba(11, 18, 32, 0.04), 0 2px 4px -2px rgba(11, 18, 32, 0.04);
+        }
+        .soft-shadow-tier-2 {
+            box-shadow: 0 20px 25px -5px rgba(11, 18, 32, 0.05), 0 8px 10px -6px rgba(11, 18, 32, 0.05);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-tertiary-fixed": "#0b1c30",
+                      "tertiary-container": "#66768d",
+                      "on-secondary-fixed-variant": "#404757",
+                      "on-surface": "#171d16",
+                      "surface-tint": "#006e2d",
+                      "primary-container": "#00873a",
+                      "surface-dim": "#F1EFE8",
+                      "tertiary-fixed": "#d3e4fe",
+                      "error-red": "#DC2626",
+                      "on-error": "#ffffff",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-secondary-container": "#5c6274",
+                      "on-primary-fixed": "#002109",
+                      "trail-indigo": "#6366F1",
+                      "on-primary": "#ffffff",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "on-secondary-fixed": "#151b2a",
+                      "on-secondary": "#ffffff",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-container": "#fdfcff",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-primary-fixed-variant": "#005320",
+                      "inverse-surface": "#2b322b",
+                      "trail-sky": "#0EA5E9",
+                      "inverse-primary": "#62df7d",
+                      "tertiary": "#4d5d73",
+                      "surface": "#f4fcf0",
+                      "secondary": "#585e6f",
+                      "surface-ivory": "#FAFAF7",
+                      "on-surface-variant": "#3e4a3d",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#ecf3e7",
+                      "outline": "#6e7b6c",
+                      "trail-violet": "#8B5CF6",
+                      "on-background": "#171d16",
+                      "secondary-container": "#d9dff4",
+                      "surface-container-highest": "#dde5d9",
+                      "trail-amber": "#F59E0B",
+                      "surface-bright": "#f4fcf0",
+                      "on-primary-container": "#f7fff2",
+                      "surface-container-low": "#eff6ea",
+                      "primary-fixed-dim": "#62df7d",
+                      "error-container": "#ffdad6",
+                      "surface-container": "#e9f0e5",
+                      "primary": "#006b2c",
+                      "background": "#f4fcf0",
+                      "error": "#ba1a1a",
+                      "outline-variant": "#bdcaba",
+                      "surface-variant": "#dde5d9",
+                      "surface-container-high": "#e3eadf",
+                      "outline-slate": "#94A3B8",
+                      "secondary-fixed": "#dce2f6",
+                      "primary-fixed": "#7ffc97",
+                      "trail-emerald": "#16A34A"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px",
+                      "hero": "28px",
+                      "kpi": "22px"
+              },
+              "spacing": {
+                      "margin-desktop": "48px",
+                      "container-max": "1280px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "section-gap": "48px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-lg": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "data-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "eyebrow": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory min-h-screen text-on-surface">
+<!-- Global Navigation Shell -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant h-full w-64">
+<div class="px-6 py-8">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="text-body-sm text-on-surface-variant">Wealth OS</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 transition-all duration-200 opacity-90" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-body-md text-body-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-body-md text-body-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="font-body-md text-body-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">health_and_safety</span>
+<span class="font-body-md text-body-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="font-body-md text-body-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="font-body-md text-body-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high px-4 transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</nav>
+<div class="p-6">
+<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-label-md text-label-md hover:bg-primary-container transition-colors">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Top Navigation -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center bg-surface-container-low px-4 py-1.5 rounded-full border border-outline-variant w-96">
+<span class="material-symbols-outlined text-on-surface-variant mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-full" placeholder="Search wealth story..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">settings</span>
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAg6eC_Gv7EDlCrSAJApZgdHABVSNw8VLimz4rzZhnf91e21RNX7uXWtTmpQWxUQc8J4a5UBT_e179a7WEEOTcOlHyb0GHyjNqvE1XeMMS6Xf_5xSlKTW5qrWyu6y0qQTBkZjDZ4P-JiI4CboPxb0fLf_h52nBaR-XnmdH7dN2VRN3pREUKUZejN5Ib6cOR_XG11uE0T5mZ6nEFDibqbkVlAcdxXA37Xbx08Z-0jQjt11HJS7doXuI4n8PIMqhIfrv2Lj7nIgGk6UU"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-24 pb-12 px-12 max-w-[1280px]">
+<!-- 1. NET WORTH PAIRED HERO -->
+<section class="relative mb-6">
+<div class="relative glass-card border border-on-surface/[0.1] rounded-hero soft-shadow-tier-2 overflow-hidden bg-gradient-to-br from-trail-sky/5 to-transparent">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full accent-gradient"></div>
+<div class="grid grid-cols-2 divide-x divide-outline-variant/30 py-10 px-12">
+<!-- Left Cell: Assets -->
+<div class="pr-12">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-emerald to-primary flex items-center justify-center shadow-lg shadow-trail-emerald/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+<div>
+<span class="block font-eyebrow text-[10px] tracking-widest text-trail-emerald uppercase font-semibold">Assets</span>
+<p class="text-body-sm text-on-surface-variant">Wealth potential</p>
+</div>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<h2 class="font-data-xl text-data-xl tabular-nums text-on-surface">$3,924,500</h2>
+<span class="text-trail-emerald font-label-md text-label-md flex items-center">
+<span class="material-symbols-outlined text-sm">arrow_upward</span>
+                                2.4%
+                            </span>
+</div>
+<p class="text-body-md text-on-secondary-fixed-variant opacity-70">5 properties · 2 accounts · 3 investments</p>
+</div>
+<!-- Right Cell: Debts -->
+<div class="pl-12">
+<div class="flex items-center gap-3 mb-6">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-indigo to-on-tertiary-fixed flex items-center justify-center shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'FILL' 1;">mintmark</span>
+</div>
+<div>
+<span class="block font-eyebrow text-[10px] tracking-widest text-trail-indigo uppercase font-semibold">Debts</span>
+<p class="text-body-sm text-on-surface-variant">Current leverage</p>
+</div>
+</div>
+<div class="flex items-baseline gap-2 mb-2">
+<h2 class="font-data-xl text-data-xl tabular-nums text-on-surface">$1,920,000</h2>
+<span class="text-error-red font-label-md text-label-md flex items-center">
+<span class="material-symbols-outlined text-sm">arrow_downward</span>
+                                0.8%
+                            </span>
+</div>
+<p class="text-body-md text-on-secondary-fixed-variant opacity-70">3 loans · 49% portfolio LVR</p>
+</div>
+</div>
+<!-- Subtle Decorative Element -->
+<div class="absolute -right-20 -bottom-20 w-64 h-64 bg-trail-sky/5 rounded-full blur-3xl pointer-events-none"></div>
+</div>
+</section>
+<!-- 2. 5-TILE KPI METRICS ROW -->
+<section class="grid grid-cols-5 gap-4">
+<!-- Cash Flow Tile -->
+<div class="glass-card border border-outline-variant/30 rounded-kpi soft-shadow-tier-1 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:soft-shadow-tier-2 group">
+<div class="h-[3px] w-full bg-trail-emerald"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="w-8 h-8 rounded-lg bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald text-[18px]">payments</span>
+</div>
+<div class="h-8 w-16">
+<!-- Sparkline Mockup -->
+<svg class="w-full h-full" viewbox="0 0 100 40">
+<path d="M0 35 Q 20 30, 40 32 T 80 15 T 100 5" fill="none" stroke="#16A34A" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<span class="block font-eyebrow text-[10px] text-on-surface-variant mb-1 uppercase tracking-wider">Monthly Cash Flow</span>
+<h3 class="font-data-lg text-data-lg tabular-nums text-on-surface">$4,213</h3>
+<p class="text-[11px] text-trail-emerald mt-2 font-medium">+12% vs last month</p>
+</div>
+</div>
+<!-- Annual Income Tile -->
+<div class="glass-card border border-outline-variant/30 rounded-kpi soft-shadow-tier-1 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:soft-shadow-tier-2 group">
+<div class="h-[3px] w-full bg-trail-emerald"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="w-8 h-8 rounded-lg bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald text-[18px]">trending_up</span>
+</div>
+<div class="h-8 w-16">
+<svg class="w-full h-full" viewbox="0 0 100 40">
+<path d="M0 38 L 20 30 L 40 35 L 60 20 L 80 25 L 100 5" fill="none" stroke="#16A34A" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<span class="block font-eyebrow text-[10px] text-on-surface-variant mb-1 uppercase tracking-wider">Annual Income</span>
+<h3 class="font-data-lg text-data-lg tabular-nums text-on-surface">$245,000</h3>
+<p class="text-[11px] text-on-surface-variant mt-2 font-medium">Personal &amp; Dividend</p>
+</div>
+</div>
+<!-- Annual Outgoings Tile -->
+<div class="glass-card border border-outline-variant/30 rounded-kpi soft-shadow-tier-1 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:soft-shadow-tier-2 group">
+<div class="h-[3px] w-full bg-outline-slate"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="w-8 h-8 rounded-lg bg-outline-slate/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-outline-slate text-[18px]">receipt_long</span>
+</div>
+<div class="h-8 w-16">
+<svg class="w-full h-full opacity-40" viewbox="0 0 100 40">
+<path d="M0 20 L 33 22 L 66 18 L 100 21" fill="none" stroke="#94A3B8" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+<span class="block font-eyebrow text-[10px] text-on-surface-variant mb-1 uppercase tracking-wider">Annual Outgoings</span>
+<h3 class="font-data-lg text-data-lg tabular-nums text-on-surface">$195,000</h3>
+<p class="text-[11px] text-on-surface-variant mt-2 font-medium">Flat vs previous year</p>
+</div>
+</div>
+<!-- Savings Rate Tile -->
+<div class="glass-card border border-outline-variant/30 rounded-kpi soft-shadow-tier-1 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:soft-shadow-tier-2 group">
+<div class="h-[3px] w-full bg-trail-sky"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="w-8 h-8 rounded-lg bg-trail-sky/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-sky text-[18px]">savings</span>
+</div>
+</div>
+<span class="block font-eyebrow text-[10px] text-on-surface-variant mb-1 uppercase tracking-wider">Savings Rate</span>
+<h3 class="font-data-lg text-data-lg tabular-nums text-on-surface">20.4%</h3>
+<!-- Segmented Zone Band -->
+<div class="mt-4 h-1.5 w-full bg-outline-variant/20 rounded-full relative overflow-hidden flex">
+<div class="h-full w-1/4 bg-trail-amber"></div>
+<div class="h-full w-1/4 bg-trail-sky"></div>
+<div class="h-full w-1/4 bg-trail-emerald"></div>
+<div class="h-full w-1/4 bg-trail-violet"></div>
+<!-- Indicator Thumb -->
+<div class="absolute top-0 left-[20.4%] -ml-1 h-full w-2 bg-white shadow-sm border border-black/10"></div>
+</div>
+<div class="flex justify-between mt-2 text-[9px] font-semibold text-on-surface-variant uppercase tracking-tighter">
+<span>Low</span>
+<span>Target</span>
+<span>High</span>
+</div>
+</div>
+</div>
+<!-- Portfolio LVR Tile -->
+<div class="glass-card border border-outline-variant/30 rounded-kpi soft-shadow-tier-1 overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:soft-shadow-tier-2 group">
+<div class="h-[3px] w-full bg-trail-indigo"></div>
+<div class="p-6">
+<div class="flex justify-between items-start mb-4">
+<div class="w-8 h-8 rounded-lg bg-trail-indigo/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-indigo text-[18px]">account_balance</span>
+</div>
+</div>
+<span class="block font-eyebrow text-[10px] text-on-surface-variant mb-1 uppercase tracking-wider">Portfolio LVR</span>
+<h3 class="font-data-lg text-data-lg tabular-nums text-on-surface">49.0%</h3>
+<!-- Segmented Zone Band -->
+<div class="mt-4 h-1.5 w-full bg-outline-variant/20 rounded-full relative overflow-hidden flex">
+<div class="h-full w-1/4 bg-trail-emerald"></div>
+<div class="h-full w-1/4 bg-trail-sky"></div>
+<div class="h-full w-1/4 bg-trail-indigo"></div>
+<div class="h-full w-1/4 bg-trail-amber"></div>
+<!-- Indicator Thumb -->
+<div class="absolute top-0 left-[49%] -ml-1 h-full w-2 bg-white shadow-sm border border-black/10"></div>
+</div>
+<div class="flex justify-between mt-2 text-[9px] font-semibold text-on-surface-variant uppercase tracking-tighter">
+<span>Safe</span>
+<span>Ideal</span>
+<span>Risk</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer / Editorial Context -->
+<footer class="mt-12 pt-8 border-t border-outline-variant/30 flex justify-between items-center text-body-sm text-on-surface-variant opacity-60">
+<p>Monitrax Wealth Intelligence Engine · Last sync 4 mins ago</p>
+<div class="flex gap-4">
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">Security Architecture</a>
+<a class="hover:text-primary transition-colors" href="#">Terms</a>
+</div>
+</footer>
+</main>
+<!-- Micro-interaction Script -->
+<script>
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-2px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>
