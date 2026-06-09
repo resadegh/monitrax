@@ -48,6 +48,7 @@ import {
   ArrowUpRight,
   Banknote,
   Building2,
+  Camera,
   ChevronRight,
   DollarSign,
   Edit2,
@@ -62,6 +63,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
+import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
 
 // =============================================================================
 // TYPES
@@ -108,6 +110,8 @@ interface Property {
   suburb?: string | null;
   state?: string | null;
   postcode?: string | null;
+  /** Phase 45.2.5 — true when the user has uploaded a custom hero photo. */
+  hasHeroImage?: boolean;
   loans?: Loan[];
   income?: IncomeItem[];
   expenses?: ExpenseItem[];
@@ -184,6 +188,9 @@ export default function PropertyDetailPage() {
 
   const [property, setProperty] = useState<Property | null>(null);
   const [loading, setLoading] = useState(true);
+  const [photoVersion, setPhotoVersion] = useState(0); // bump to force re-fetch of the user photo
+  const [heroBlobUrl, setHeroBlobUrl] = useState<string | null>(null);
+  const [photoDialogOpen, setPhotoDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!propertyId || !token) return;
@@ -203,7 +210,35 @@ export default function PropertyDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [propertyId, token]);
+  }, [propertyId, token, photoVersion]);
+
+  // §18.7.4 Cremorne pattern — fetch the user-uploaded hero photo
+  // separately via the auth-gated endpoint (the GET /api/properties/[id]
+  // response intentionally omits the bytes). Blob URL → <Image> avoids
+  // shipping the bytes through JSON on every property load.
+  useEffect(() => {
+    if (!propertyId || !token || !property?.hasHeroImage) {
+      setHeroBlobUrl(null);
+      return;
+    }
+    let cancelled = false;
+    let revoke: string | null = null;
+    (async () => {
+      const r = await fetch(`/api/properties/${propertyId}/hero-image`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!r.ok || cancelled) return;
+      const blob = await r.blob();
+      if (cancelled) return;
+      const url = URL.createObjectURL(blob);
+      revoke = url;
+      setHeroBlobUrl(url);
+    })();
+    return () => {
+      cancelled = true;
+      if (revoke) URL.revokeObjectURL(revoke);
+    };
+  }, [propertyId, token, property?.hasHeroImage, photoVersion]);
 
   if (loading) {
     return (
@@ -261,14 +296,30 @@ export default function PropertyDetailPage() {
           looking.
         */}
         <div aria-hidden className="pointer-events-none absolute inset-0 -z-30">
-          <Image
-            src="/decor/cremorne-apartment.jpg"
-            alt=""
-            fill
-            sizes="100vw"
-            className="object-cover opacity-50"
-            priority={false}
-          />
+          {/*
+            Phase 45.2.5 — when the user has uploaded a custom photo, we use
+            the auth-gated Blob URL (rendered via plain <img> since blob:
+            URLs aren't optimisable by next/image). Otherwise we fall back
+            to the default Cremorne apartment decor through next/image so it
+            gets the usual optimisation pipeline.
+          */}
+          {heroBlobUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroBlobUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-50"
+            />
+          ) : (
+            <Image
+              src="/decor/cremorne-apartment.jpg"
+              alt=""
+              fill
+              sizes="100vw"
+              className="object-cover opacity-50"
+              priority={false}
+            />
+          )}
         </div>
 
         {/*
@@ -344,6 +395,16 @@ export default function PropertyDetailPage() {
                       <Sparkles className="h-4 w-4" />
                     </Link>
                   )}
+                  {/* Phase 45.2.5 — change the hero background photo (§18.7.4). */}
+                  <button
+                    type="button"
+                    onClick={() => setPhotoDialogOpen(true)}
+                    title="Change background photo"
+                    aria-label="Change the property's background photo"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sky-500/10 hover:text-sky-600 dark:hover:text-sky-300"
+                  >
+                    <Camera className="h-4 w-4" />
+                  </button>
                   <Link
                     href="/dashboard/properties"
                     title="Edit"
@@ -472,6 +533,18 @@ export default function PropertyDetailPage() {
             />
           </div>
         </section>
+
+        {/* Phase 45.2.5 change-photo dialog (mounted at page root so its
+            backdrop covers the full viewport — see ChangePhotoDialog
+            JSDoc + .stitch/designs/phase45.2.5/). */}
+        <ChangePhotoDialog
+          open={photoDialogOpen}
+          onClose={() => setPhotoDialogOpen(false)}
+          propertyId={property.id}
+          token={token}
+          hasCurrentImage={Boolean(property.hasHeroImage)}
+          onSaved={() => setPhotoVersion((v) => v + 1)}
+        />
 
         {/* AFSL GAW footer */}
         <footer className="mt-10 max-w-3xl text-[11px] text-muted-foreground/70">

@@ -1,5 +1,82 @@
 # Changelog — 2026-06-09
 
+## Session: Phase 45.2.5 — user-uploadable property hero photo (v1, properties only)
+
+### Context
+
+Continuation of the Phase 45.2.x polish backlog. The Asset Spotlight detail pages shipped in #1024/#1027/#1028 use a curated decor photo (the Cremorne apartment interior) as the L1 photo canvas. Reza's directive during the Phase 45.2 design pass: *"is there an option for the user to change the background photo if they want?"* This session ships that affordance — scoped tightly to properties only per Reza 2026-06-09 *"v1 properties only"*. Investments + SMSF remain on their decor photos until evidence the personalisation lifts engagement.
+
+### Changes Made
+
+- **Type**: Feature — first personalisation extension of the §18.7.4 Cremorne pattern
+- **Scope**: schema (`Property.heroImage Bytes? + heroImageMime String?` additive nullable), migration, new auth-gated `/api/properties/[id]/hero-image` route (GET stream / POST upload / DELETE clear), new `<ChangePhotoDialog>` component, properties detail page wiring (Camera button + dynamic L1 photo source), Stitch design pass (full 4-variant matrix).
+- **Why inline-DB v1 (not GCS)**: no new infrastructure dependency to ship the affordance; Postgres BYTEA TOAST-compresses fine at the 5MB cap; photos are decor not evidence per §18.7.4 (NOT CDR-classified); storage backend can swap to GCS later via `lib/documents/storage` without touching the API surface or dialog component.
+- **Stitch-first**: design pass produced 4 variants (desktop light + dark, mobile light + dark — mobile is a bottom sheet with stacked full-width CTAs, touch-target priority). Sky→indigo sub-palette matches the Properties Asset Spotlight (continuation of context, not a system dialog). Drop zone with drag/drop + click-to-browse + file requirements + "Reset to default" CTA (only when a custom photo already exists). Behaviour-psychology lens: reset CTA copy avoids "Remove" — every path is reversible.
+- **Bearer-auth + image elements**: the GET endpoint can't be loaded directly via `<img src>` because Image elements don't send Authorization headers. Solution: detail page fetches the bytes via authenticated `fetch()` → `URL.createObjectURL(blob)` → plain `<img>` (next/image can't optimise blob: URLs). Default decor still goes through next/image. Blob URL revoked on unmount + on photo replacement.
+- **Prisma `omit`**: list and detail GET responses for properties now `omit` the heavy bytea + expose `hasHeroImage: boolean`. Required enabling Prisma `omitApi` preview feature on the `generator client` (Prisma 5.22 still gates query-level `omit` behind it).
+
+### Files Modified
+
+- `prisma/schema.prisma` — added `heroImage Bytes?` + `heroImageMime String?` to `Property`; enabled `omitApi` preview feature.
+- `prisma/migrations/20260609060000_phase_45_2_5_property_hero_image/migration.sql` — NEW. `ALTER TABLE properties ADD COLUMN heroImage BYTEA + heroImageMime TEXT`.
+- `app/api/properties/[id]/hero-image/route.ts` — NEW. ~180 LOC. GET/POST/DELETE with `withPermission('property.read'/'property.write')` + `verifyOwnership` + `createAuditLog` (`PROPERTY_HERO_IMAGE_UPDATED` / `_REMOVED`). MIME allowlist (jpeg/png/webp) + 5MB cap server-side.
+- `app/api/properties/[id]/route.ts` — added `omit: { heroImage: true }` to the existing findUnique; response now includes `hasHeroImage: boolean` derived from `heroImageMime !== null`.
+- `app/api/properties/route.ts` — added `omit: { heroImage: true }` to the list findMany so list payloads stay lean.
+- `components/properties/ChangePhotoDialog.tsx` — NEW. ~290 LOC. Centred-on-desktop / bottom-sheet-on-mobile dialog. File picker + drag/drop + client-side MIME/size validation + preview + "Reset to default" CTA + error surfacing.
+- `app/dashboard/properties/[id]/page.tsx` — added Camera icon button to the hero action cluster; added second `useEffect` to fetch the hero-image bytes via authenticated `fetch()` → Blob URL when `property.hasHeroImage`; swapped the L1 `<Image>` to a plain `<img>` when the Blob URL is set; mounted `<ChangePhotoDialog>` at the page root with `photoVersion` state to force re-fetch after save/reset.
+- `.stitch/designs/phase45.2.5/change-photo-dialog{,-dark,-mobile,-mobile-dark}-v1.{html,png}` — full 4-variant Stitch matrix (project 1859462351962811110, screen IDs 5e16be2e04c246f4a269d8c65b32349e + 6dd660e5c116479788b2384a0e1866d4 + da480d605e2c4a2195e1a498e91fd6af + e8a992cc054d49ebabd5c8a5964715c3).
+
+### Documentation Updated
+
+- `CLAUDE.md` §18.7.4 replicate queue — added the ticked-off entry for the user-uploadable hero photo (Phase 45.2.5), including the 4 implementation learnings (inline-DB v1 / `omitApi` preview / blob URL + plain `<img>` / Bearer-auth fetch pattern).
+- `docs/IMPLEMENTATION_PLAN.md` — row 77 flipped from queued to ✅ shipped with the full execution detail (schema + migration + API + dialog + page wiring + Stitch matrix + scope cap rationale).
+
+### Build Status
+
+- [x] `npx prisma generate` clean.
+- [x] `npx tsc --noEmit` — 0 errors.
+- [x] `npm run build` — production build green; new route `/api/properties/[id]/hero-image` registers as dynamic ƒ.
+- [ ] Manual UI test — pending session-end prod verification per §17.2.
+
+### §16.5 Doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (new `<ChangePhotoDialog>` primitive + §18.7.4 queue extension)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture (photos are decor not evidence per §18.7.4 — non-CDR; audit-log entries added for upload + remove)
+- [ ] operational procedure
+- [x] strategic decision (Reza scope cap: v1 properties only — investments + SMSF deferred)
+
+Docs updated in this PR:
+- `CLAUDE.md` §18.7.4 — Cremorne replicate queue extended with ticked-off entry for the user-uploadable hero photo (implementation learnings codified for future replication).
+- `docs/IMPLEMENTATION_PLAN.md` row 77 — flipped from queued to ✅ shipped with full execution detail + scope-cap decision recorded.
+- `docs/changelog/CHANGELOG_2026_06_09.md` — this entry.
+- `prisma/schema.prisma` JSDoc — added on the new `heroImage` + `heroImageMime` columns explaining the v1 inline-DB choice + future GCS migration path.
+- `app/api/properties/[id]/hero-image/route.ts` JSDoc — file-header explanation of v1 architecture + §12.11 destructive-write commentary inline.
+- `components/properties/ChangePhotoDialog.tsx` JSDoc — Stitch screen IDs + design vocabulary references + behaviour-psychology rationale.
+
+### Destructive write checklist (§12.11)
+
+Operations in this PR that touch existing rows:
+- `app/api/properties/[id]/hero-image/route.ts:POST` — `prisma.property.update({ where: { id }, data: { heroImage, heroImageMime } })`
+- `app/api/properties/[id]/hero-image/route.ts:DELETE` — `prisma.property.update({ where: { id }, data: { heroImage: null, heroImageMime: null } })`
+
+For each operation:
+1. **`where` clause matches**: a single property row keyed by id, gated by `verifyOwnership(existing, auth.userId, 'Property')` immediately before the write — only this user's row can be touched.
+2. **Columns overwritten**: only the new `heroImage` BYTEA + `heroImageMime` TEXT columns. Both are decorative (the L1 photo on the Asset Spotlight hero canvas), carry no canonical financial data, and are NOT CDR-classified.
+3. **Guard ensuring this only mutates rows I created**: ownership check + the operation is the user's explicit intent (uploading a new photo REPLACES the previous one — confirmed by the dialog UX; clicking "Reset to default" clears the columns — confirmed by the named CTA).
+
+User confirmation: NOT REQUIRED — additive nullable columns, replacement of decorative bytes the user just chose to replace, fully reversible (re-upload or reset at any time).
+
+### Schema migration (§12.12)
+
+Matching migration file in the same PR: `prisma/migrations/20260609060000_phase_45_2_5_property_hero_image/migration.sql`. Migration is purely additive (`ADD COLUMN heroImage BYTEA + ADD COLUMN heroImageMime TEXT`), no `DROP`, no `ALTER ... DROP`, no backfill required — existing properties default to NULL → fallback to the default Cremorne apartment decor on the detail page.
+
+---
+
 ## Session: Phase 45.2.1 — investments detail (Asset Spotlight, first non-property application)
 
 ### Context

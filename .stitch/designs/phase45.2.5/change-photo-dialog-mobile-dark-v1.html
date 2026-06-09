@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>Wealth OS - Change Background</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#00873a",
+                        "on-secondary-container": "#5c6274",
+                        "on-secondary-fixed-variant": "#404757",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface": "#f4fcf0",
+                        "surface-dim": "#d5dcd1",
+                        "on-surface": "#171d16",
+                        "surface-container-lowest": "#ffffff",
+                        "trail-emerald": "#16A34A",
+                        "trail-amber": "#F59E0B",
+                        "trail-sky": "#0EA5E9",
+                        "trail-indigo": "#6366F1",
+                        "surface-ivory": "#FAFAF7",
+                        "on-surface-variant": "#3e4a3d",
+                        "outline-slate": "#94A3B8"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "section-gap": "48px",
+                        "gutter": "24px",
+                        "margin-desktop": "48px"
+                    },
+                    fontFamily: {
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+        .scrim-bg {
+            background: linear-gradient(to bottom, rgba(5, 9, 19, 0.95) 0%, rgba(5, 9, 19, 0.88) 50%, rgba(5, 9, 19, 0.72) 100%);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #38bdf8 0%, #6366f1 100%);
+        }
+        .bottom-sheet {
+            transform: translateY(0);
+            transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+        .rim-glow {
+            box-shadow: 0 -1px 0 0 rgba(255, 255, 255, 0.04), 0 20px 40px rgba(0,0,0,0.8);
+        }
+    </style>
+</head>
+<body class="bg-[#050913] text-on-surface min-h-screen overflow-hidden font-body-md selection:bg-trail-sky/30">
+<!-- Backgroun Context (Properties Detail Page) -->
+<div class="fixed inset-0 z-0">
+<img alt="Background context" class="w-full h-full object-cover opacity-30" src="https://lh3.googleusercontent.com/aida/AP1WRLvNTknJJ8G0uCWiE6i0oxBeJxEo56Kfq4ipOr7pCqYBQ33dghkGkEcBmiee8vCmjfAiqS6D1nhb9FulpXuoj1BJrICguTPfga2d5pSnTan6_m0O143ryCfg3qSBXc9IPYmpw2ZRZjL1VzngnkP0SzhiVQkuJHMoO-XVpZAze52WZJc90oDTkw1ti9xGZLQlVcFaNWAsqH5JtuULq9RoNNkzIdiXJuq1vacW8V6k9M4YyF1Aq2Ye9XpuZhQ"/>
+<div class="absolute inset-0 scrim-bg"></div>
+<!-- Obscured Dashboard Content -->
+<div class="absolute inset-0 flex flex-col p-margin-mobile gap-6 blur-[8px] brightness-[0.4] pointer-events-none">
+<!-- Hero Card Mockup -->
+<div class="w-full h-48 bg-white/5 rounded-2xl border border-white/10"></div>
+<!-- KPI Grid Mockup -->
+<div class="grid grid-cols-2 gap-4">
+<div class="h-32 bg-white/5 rounded-2xl border border-white/10"></div>
+<div class="h-32 bg-white/5 rounded-2xl border border-white/10"></div>
+<div class="h-32 bg-white/5 rounded-2xl border border-white/10"></div>
+<div class="h-32 bg-white/5 rounded-2xl border border-white/10"></div>
+</div>
+</div>
+<!-- Modal Overlay -->
+<div class="absolute inset-0 bg-black/60 z-10"></div>
+</div>
+<!-- Bottom Sheet Container -->
+<div class="fixed inset-0 z-50 flex items-end justify-center pointer-events-none">
+<div class="bottom-sheet pointer-events-auto w-full max-w-md mx-4 mb-safe-bottom">
+<div class="bg-[#0E1424]/95 backdrop-blur-2xl rounded-t-3xl border-t border-white/10 rim-glow relative overflow-hidden pb-8">
+<!-- Grab Handle & Accent -->
+<div class="flex flex-col items-center pt-3 pb-6">
+<div class="w-9 h-1 bg-white/15 rounded-full mb-2"></div>
+<div class="w-full h-[3px] gradient-bg opacity-80"></div>
+</div>
+<!-- Sheet Content -->
+<div class="px-6 flex flex-col">
+<!-- Header -->
+<div class="flex items-center justify-between mb-6">
+<div class="w-9 h-9 rounded-full gradient-bg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-xl" data-icon="photo_camera">photo_camera</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-outline-slate text-xl" data-icon="close">close</span>
+</button>
+</div>
+<!-- Titles -->
+<div class="space-y-1 mb-8">
+<p class="font-eyebrow text-eyebrow gradient-text">PROPERTY HERO</p>
+<h2 class="font-headline-md text-headline-md text-surface-ivory">Change background photo</h2>
+<p class="font-body-sm text-body-sm text-outline-slate">Refresh your property listing with a new cover image.</p>
+</div>
+<!-- Drop Zone -->
+<div class="relative group cursor-pointer">
+<div class="h-[220px] w-full rounded-xl border-[1.5px] border-dashed border-trail-sky/40 bg-trail-sky/[0.06] flex flex-col items-center justify-center transition-all hover:bg-trail-sky/[0.08] hover:border-trail-sky/60">
+<span class="material-symbols-outlined text-trail-sky text-4xl mb-4" data-icon="cloud_upload">cloud_upload</span>
+<p class="font-body-sm text-body-sm text-white mb-1">Tap to choose a photo, or drag from Files</p>
+<p class="font-body-sm text-[12px] text-outline-slate">JPEG, PNG, WEBP · Max 5MB</p>
+</div>
+<input accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" type="file"/>
+</div>
+<!-- Reset Link -->
+<div class="mt-4 text-center">
+<button class="font-label-md text-label-md text-trail-sky hover:text-white transition-colors">Reset to default</button>
+</div>
+<!-- Footer / Buttons -->
+<div class="mt-8 pt-6 border-t border-white/10 flex flex-col gap-3">
+<button class="h-12 w-full rounded-xl gradient-bg opacity-50 cursor-not-allowed flex items-center justify-center font-label-md text-[15px] font-semibold text-white" disabled="">
+                            Save photo
+                        </button>
+<button class="h-12 w-full rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center font-label-md text-[15px] font-medium text-white/70 transition-colors">
+                            Cancel
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.querySelector('.bottom-sheet');
+            const closeBtn = document.querySelector('[data-icon="close"]').parentElement;
+            const cancelBtn = document.querySelectorAll('button')[2];
+
+            const dismiss = () => {
+                sheet.style.transform = 'translateY(100%)';
+                setTimeout(() => {
+                    // Logic to actually close/remove modal would go here
+                }, 400);
+            };
+
+            closeBtn.addEventListener('click', dismiss);
+            cancelBtn.addEventListener('click', dismiss);
+
+            // Subtle parallax effect for handle drag (simulated)
+            let startY = 0;
+            sheet.addEventListener('touchstart', (e) => {
+                startY = e.touches[0].clientY;
+            }, { passive: true });
+
+            sheet.addEventListener('touchmove', (e) => {
+                const delta = e.touches[0].clientY - startY;
+                if (delta > 0) {
+                    sheet.style.transform = `translateY(${delta}px)`;
+                }
+            }, { passive: true });
+
+            sheet.addEventListener('touchend', (e) => {
+                const delta = e.changedTouches[0].clientY - startY;
+                if (delta > 100) {
+                    dismiss();
+                } else {
+                    sheet.style.transform = 'translateY(0)';
+                }
+            }, { passive: true });
+        });
+    </script>
+</body></html>

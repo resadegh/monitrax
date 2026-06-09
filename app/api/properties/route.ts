@@ -22,6 +22,10 @@ export const GET = withPermission('property.read', async (request, auth) => {
     try {
       const properties = await prisma.property.findMany({
         where: { userId: auth.userId },
+        // Phase 45.2.5 — omit the heavy `heroImage` bytea from the list
+        // response. The list page does not render per-property photos
+        // (only the detail page does, via the dedicated hero-image endpoint).
+        omit: { heroImage: true },
         include: {
           loans: {
             include: {
