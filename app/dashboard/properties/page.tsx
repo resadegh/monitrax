@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -184,6 +185,7 @@ type ViewMode = 'tiles' | 'list';
 
 function PropertiesPageContent() {
   const { token } = useAuth();
+  const router = useRouter();
   const { openLinkedEntity } = useCrossModuleNavigation();
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -753,7 +755,7 @@ function PropertiesPageContent() {
                     rentalYield,
                     cashflow,
                   }}
-                  onView={() => loadPropertyDetail(property.id)}
+                  onView={() => router.push(`/dashboard/properties/${property.id}`)}
                   onEdit={() => handleEdit(property)}
                   onDelete={() => handleDelete(property.id)}
                 />

@@ -671,3 +671,100 @@ N/A — no `prisma/schema.prisma` changes.
 - [ ] Mobile: open on a small viewport → photo width grows to ~66% (vs 33% on desktop), single-column stack, photo still grounds the bottom of the page.
 - [x] tsc --noEmit clean ✅
 - [x] eslint clean ✅ (0 errors, 0 warnings after `<img>` → `next/image` conversion)
+
+---
+
+## Session: Phase 45.2 — properties detail hero (Asset Spotlight template, Cremorne-Wide variant)
+
+**Branch:** `claude/phase45.2-properties-detail-LIlK9`
+**Workstream:** 0·WI Phase 45 — "What If?" scenarios (Cremorne replicate-queue continuation).
+**Predecessor:** Phase 45.1.3 sellProperty Cremorne (PR #1022, merged).
+
+### Why this PR
+
+Reza green-lit Phase 45.2 to apply the §18.7.4 Cremorne pattern to the highest-priority remaining surface in the replicate queue — the properties detail page. Detail route didn't exist yet (only `/strategy` and `/depreciation` sub-routes), so the scope was: scaffold the new route + apply the pattern.
+
+During the Stitch design pass Reza drove three substantial design evolutions: (i) "can the background photo cover the full page rather just the corner?" → birthed the **Cremorne-Wide variant**; (ii) "tiles look flat and bland" → birthed the **Polished tile sub-pattern**; (iii) "page should be aligned on top AND bottom" → birthed the **Multi-column balance rule**. Then he locked the v5 result and asked to ship + codify all three plus name the composition as a reusable template — the **Asset Spotlight template** (§18.7.5).
+
+### What shipped
+
+**Code:**
+- NEW `app/dashboard/properties/[id]/page.tsx` (~550 LOC) — the new detail route with the Asset Spotlight composition. Reuses canonical APIs (`/api/properties/[id]` per the audit) + inline KPI math mirroring the list page pattern (no canonical engine call today; refactor is a separate workstream).
+- `app/dashboard/properties/page.tsx` — `onView` callback rewired from `loadPropertyDetail()` modal dialog to `router.push('/dashboard/properties/${id}')`. The modal code is now unreachable; flagged for §12.1 dead-code cleanup in a follow-up PR.
+- Reused existing `/public/decor/cremorne-apartment.jpg` asset (committed in PR #1022).
+
+**Stitch artefacts** (6 desktop iterations + the canonical 4-variant matrix locked off v5):
+
+| File | Screen ID | Notes |
+|---|---|---|
+| `properties-detail-hero.{html,png}` (v1) | `ca378f7024c241308c71c3f1d77051b0` | corner-bleed direction pass — superseded |
+| `properties-detail-hero-v2-wide.{html,png}` | `94fc6b7d7fde448f976267bc4cd339c4` | Cremorne-Wide birth — superseded |
+| `properties-detail-hero-v3-polished.{html,png}` | `cb8b1d3400ae4b6ea0d9d84ac5e7ea5f` | Polished-tile sub-pattern birth — superseded |
+| `properties-detail-hero-v4-photo-quieter.{html,png}` | `60367240d4134f93938b05e9c66c582e` | photo opacity-50 — superseded |
+| **`properties-detail-hero-v5-balanced.{html,png}`** | **`f021663055bf45619bd5eb74034b5d53`** | **CANONICAL desktop light** |
+| `properties-detail-hero-v6-aligned.{html,png}` | `b6b945497df643acbaad82db694b4600` | flex-1 structural alignment — rejected, v5 preferred |
+| `properties-detail-hero-v5-balanced-dark.{html,png}` | `4e55e5233a194b4fae37cde83d43efa1` | desktop dark |
+| `properties-detail-hero-v5-balanced-mobile.{html,png}` | `c21217e5a6e649d0b6fe52b25e519e6a` | mobile light |
+| `properties-detail-hero-v5-balanced-mobile-dark.{html,png}` | `6dd88defd52e4d2ba6cb54251a3c6830` | mobile dark |
+
+All in canonical Monitrax Stitch project `1859462351962811110`.
+
+**Design-system codification (3 new patterns + 1 template):**
+
+1. **Cremorne-Wide variant** (§18.7.4 + §18.7.2 new row) — full-page photo canvas (`inset-0 object-cover opacity-50 -z-30`) + non-negotiable 3-stop legibility scrim (`from-[#FAFAF7]/95 via-[#FAFAF7]/88 to-[#FAFAF7]/72`, navy equivalents on dark). Reserved for single-focal-asset detail pages.
+
+2. **Polished tile sub-pattern** (§18.7.2 new row) — Mercury/Linear-tier tile polish: three-tier shadow + 1px inner-top highlight + 3px gradient top-accent + sub-palette tinted bg + luminous icon-badge gem + confident data-xl numerals. Applies broadly to any tile-density surface, not just Cremorne-Wide ones.
+
+3. **Multi-column balance rule** (§18.7.2 new row) — content design first (match section depths), `flex-1` structural fallback second. Never leave empty space below the last card of a column.
+
+4. **"Asset Spotlight" template** (§18.7.5 NEW section) — canonical layout for any single-asset detail page. Top-to-bottom composition: page container → L1 Cremorne-Wide photo → L1-scrim → breadcrumb → hero with L2 halo → 4-cell polished KPI row → two-column linked-entities + insights → AFSL footer. Per-asset-class mapping table covers Property / Investment / SMSF / Loan with sub-palette + eyebrow + value + KPI swaps. Reviewer enforcement: future single-asset detail pages MUST apply Asset Spotlight or explicitly justify deviation.
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] **visual design system / component pattern** — three new §18.7.2 rows (Cremorne-Wide + Polished tile + Multi-column balance) + new §18.7.5 Asset Spotlight template + §18.7.4 queue tick-off for properties detail
+- [ ] application config / GCP / identity / deploy / security
+- [ ] operational procedure
+- [x] **strategic decision** — Asset Spotlight named + locked as the canonical template for future detail surfaces (investments / SMSF / loans / etc.)
+
+Docs updated in this PR:
+- `app/dashboard/properties/[id]/page.tsx` — NEW route + Asset Spotlight composition + file-header JSDoc citing the 4 Stitch screen IDs and §18.7.5 template
+- `app/dashboard/properties/page.tsx` — `onView` rewired to router.push the new detail route
+- `.stitch/designs/phase45.2/properties-detail-hero-*.{html,png}` — 6 desktop iterations + 3 mobile/dark variants (committed across this branch's history)
+- `CLAUDE.md` §18.7.2 (3 new rows) + §18.7.4 (queue tick-off + Cremorne-Wide pointer) + §18.7.5 (NEW Asset Spotlight template)
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — new "Cremorne-Wide + tile-pop + multi-column balance" section + new "Asset Spotlight template" section (both defer to CLAUDE.md SSOT)
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5.1 — Phase 45.2 entry added; queue updated to reflect Asset Spotlight reuse
+- `docs/IMPLEMENTATION_PLAN.md` Up Next row 73 — ticked off ✅
+- `docs/changelog/CHANGELOG_2026_06_08.md` — this entry
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+N/A — visual layer + new route only. No `lib/tax-engine/*` touched, no tax calculations added, no schema columns on `Property` / `Investment` / `LegalEntity`, no AI tools, no new per-asset tax position UI (the existing FY26 tax position card links to the tax page).
+
+### Destructive-write checklist (CLAUDE.md §12.11)
+
+N/A — no Prisma writes in this PR.
+
+### Schema migration (CLAUDE.md §12.12)
+
+N/A — no `prisma/schema.prisma` changes.
+
+### AFSL discipline
+
+- No prescriptive copy added.
+- GAW footer per template.
+- Photo is obviously decorative per §18.7.4 "decor not evidence" rule — no "your property" framing until CDR-sourced asset photos exist.
+
+### Test plan
+
+- [ ] Open `/dashboard/properties` → click View details on any property tile → lands on new `/dashboard/properties/[id]` page with Asset Spotlight composition
+- [ ] Hero shows property name, address, current value, purchase price + gain pill, 3-cell mini KPI grid (Equity / LVR / Yield for non-RENTAL)
+- [ ] 4-cell polished KPI row shows Cashflow / Annual rent / Loan balance / Depreciation
+- [ ] LEFT column shows Linked Entities (loans/income/expenses/depreciation) + Recent Activity
+- [ ] RIGHT column shows Growth Scenarios + Tax Position + Depreciation Schedule cards with deep-links
+- [ ] Sparkles "what-if" action visible on hero ONLY for INVESTMENT properties; deep-links to sellProperty lever
+- [ ] Background apartment photo visible behind the scrim; halo glow behind hero card
+- [ ] Toggle dark mode → photo opacity preserved, scrim flips to navy, halo opacity halved, emerald brightens to #22C55E
+- [ ] Mobile viewport → single-column reflow, 4-tile KPI row becomes 2×2 grid
+- [x] tsc --noEmit clean ✅
+- [x] eslint 0 new errors / 0 new warnings ✅
