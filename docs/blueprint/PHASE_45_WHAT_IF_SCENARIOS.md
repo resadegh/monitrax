@@ -506,18 +506,46 @@ PR 1 (engine composition) — ✅ shipped 2026-06-07:
 - [x] Tests: scenario contract tests (21) + 10-year composer determinism tests (13) + concessional-cap-guard tests (covered in scenario suite)
 - [x] All numbers traceable to canonical engine output via Q-DEC adapter layer (engines read Float → `toDecimal()` at boundary; PR 1's Decimal-first composition consumes the Decimal siblings directly)
 
-PR 2 (UI port) — pending:
-- [ ] All 5 levers render at `/dashboard/cfo/what-if/[lever]` with snapshot-defaulted inputs
-- [ ] Each lever returns: year-1 cashflow impact + 10-year trajectory + tax-position delta
-- [ ] Assumptions panel present on every lever (collapsed by default)
-- [ ] General Advice Warning footer on every lever output
-- [ ] Editorial palette throughout (no cosmos-* tokens on internal surface)
-- [ ] Stitch designs committed to `.stitch/designs/what-if-*.{html,png}` BEFORE React port begins (canonical light+dark+mobile artefacts already locked PR #977)
-- [ ] No `Float`-derived projection numbers cross the API boundary (post Q-DEC)
+PR 2 (UI port) — ✅ shipped 2026-06-07/08 (3 sub-PRs):
+- [x] All 5 levers render at `/dashboard/cfo/what-if/[lever]` with snapshot-defaulted inputs (PR 2.A picker + PR 2.B salary-sacrifice + PR 2.C remaining 4)
+- [x] Each lever returns: year-1 cashflow impact + 10-year trajectory + tax-position delta (`GenericLeverProjection` for the 4 non-sacrifice levers; bespoke wired UI for salary-sacrifice)
+- [x] Assumptions panel present on every lever (collapsed by default)
+- [x] General Advice Warning footer on every lever output
+- [x] §18.7.2 My Wealth glass vocabulary throughout (vocabulary anchor confirmed 2026-06-04 mid-pass — no cosmos-* tokens on internal surface, verified by negative-grep tests)
+- [x] Stitch designs committed to `.stitch/designs/what-if-*.{html,png}` BEFORE React port began — full 4-variant matrix (canonical light + dark + mobile + mobile-dark per §18.7.2 dark-mode reviewer enforcement) locked in PR #977
+- [x] No `Float`-derived projection numbers cross the API boundary — `runScenarioDecimal` dispatcher + `serializeDecimalsForJson` boundary walker, post Q-DEC
+
+Phase 45.1 (contextual entry points) — ✅ shipped 2026-06-08:
+- [x] LoanDetailDialog Overview tab — `WhatIfLoanAffordances` card with Refinance + Pay extra CTAs (deep-linked via `?loanId=X`)
+- [x] `/dashboard/properties/[id]/strategy` — Sell-this-property CTA (deep-linked via `?propertyId=X`)
+- [x] `/dashboard/investments/super` — Salary-sacrifice CTA beneath `SuperCapMeter` (cap-aware context)
+- [x] `useSearchParams()` reads deep-linked IDs and overrides the largest-balance default
+- [x] AFSL discipline preserved across all 3 entry points (negative grep against "you should refinance/sell/sacrifice")
+
+Phase 45.1.1 (polish) — ✅ shipped 2026-06-08 (PR #1020):
+- [x] PropertyTile inline sparkles affordance (INVESTMENT-type only, violet-tinted, deep-link `?propertyId=X`)
+- [x] Income-page salary-sacrifice CTA banner (emerald glass card, `hasSalaryIncome` guard, AFSL footnote)
+
+Phase 45.1.2 — ✅ shipped 2026-06-08 (PR #1021): Cremorne pattern codified into CLAUDE.md §18.7.4.
+
+Phase 45.1.3 (first Cremorne application — sellProperty lever) — ✅ shipped 2026-06-08 (PR #1022).
+
+Phase 45.2 family (Cremorne replicate queue) — ✅ shipped:
+- [x] Phase 45.2 — properties detail Asset Spotlight (PR #1024)
+- [x] Phase 45.2.1 — investments accounts detail (PR #1027)
+- [x] Phase 45.2.2 — SMSF detail (PR #1028)
+- [x] Phase 45.2.3 — income-page banner Cremorne treatment (PR #1035, 2026-06-09 — Reza directive override of the original "evidence-driven" tag)
+- [x] Phase 45.2.5 — user-uploadable property hero photo (PR #1030, 2026-06-09 — first personalisation extension of the Cremorne pattern)
+
+Phase 45.3 + Phase 45.4-6 — ✅ shipped 2026-06-09 — dashboard glass migration + §18.7.6 Compact Dashboard mobile reflow (PR #1031 + #1032 + #1033 + #1034). Out of strict Phase 45 What-If scope but part of the same polish run; documented under workstream `0·DG` in IMPLEMENTATION_PLAN.md.
 
 ## 10. Open questions for v1
 
-(none yet — Reza locked in palette + scope + Q-DEC sequencing via AskUserQuestion 2026-06-01)
+(none — Reza locked in palette + scope + Q-DEC sequencing via AskUserQuestion 2026-06-01; v1 closed 2026-06-09 with the income-banner Cremorne ship.)
+
+## 11. v1 close-out (2026-06-09)
+
+Phase 45 What-If v1 is structurally complete. Every acceptance criterion in §9 is ticked, every queued Cremorne replicate surface has been ticked off CLAUDE.md §18.7.4, and the dashboard glass migration (workstream `0·DG`) has fully shipped. Phase 45 v2 — when triggered by user evidence — would add Monte Carlo confidence bands, saved scenarios, multi-lever scenarios, auto-recommendations, and probabilistic projections (all intentionally deferred from v1 per §3).
 
 ## 11. Doc-sync (CLAUDE.md §16 — for every PR in this workstream)
 
