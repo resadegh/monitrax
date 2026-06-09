@@ -67,15 +67,10 @@ import {
 // NetWorthTrend (legacy, Math.random-backfilled) deleted in R-Charts-2 —
 // replaced by EditorialLineChart reading real `NetWorthSnapshot` data.
 import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
-import { DailyPulseCard } from '@/components/bookkeeping/DailyPulseCard';
-import { PendingActionsPrompt } from '@/components/bookkeeping/PendingActionsPrompt';
-import { MoneyStoryHeroV2 } from '@/components/editorial/money-story';
 import {
-  EditorialKpiCard,
   SAVING_RATE_ZONES,
   LVR_ZONES,
 } from '@/components/editorial/kpi';
-import { PairedMetricCard } from '@/components/editorial';
 import {
   EditorialChartCard,
   EditorialDonutChart,
@@ -86,9 +81,24 @@ import {
   type NetWorthLinePoint,
 } from '@/components/editorial/charts';
 import { BalanceUpgradeNudgeModal } from '@/components/onboarding/BalanceUpgradeNudgeModal';
-import { RenewalsCard } from '@/components/reminders/RenewalsCard';
 import { DashboardPropertyTile } from '@/components/dashboard/tiles/DashboardPropertyTile';
 import { DashboardInvestmentTile } from '@/components/dashboard/tiles/DashboardInvestmentTile';
+import { GlassKpiCard } from '@/components/dashboard/tiles/GlassKpiCard';
+import { GlassPairedMetricCard } from '@/components/dashboard/tiles/GlassPairedMetricCard';
+import { KpiSwipeStrip } from '@/components/dashboard/tiles/KpiSwipeStrip';
+import { BentoPair } from '@/components/dashboard/tiles/BentoPair';
+import {
+  GlassHealthScore,
+  GlassEmergencyFund,
+  GlassDebtQuality,
+  GlassEntityCashflow,
+  GlassWealthUniverse,
+  GlassDailyPulse,
+  GlassRenewals,
+  GlassPendingActions,
+  GlassMoneyStoryHero,
+} from '@/components/dashboard/tiles/GlassInsightTiles';
+import { Banknote as BanknoteIcon, TrendingUp as TrendingUpIcon, Landmark as LandmarkIcon, Wallet as WalletIcon } from 'lucide-react';
 import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { useBasiqEnabled } from '@/lib/featureFlags/BasiqGateContext';
 
@@ -520,24 +530,20 @@ export default function DashboardPage() {
           the user has globally opted out. Per Reza directive
           2026-05-08: reconciliation is the most-recurring user
           task — surface it persistently, not on a 24h gate. */}
-      <PendingActionsPrompt />
+      {/* Phase 45.6 — top-of-page widgets wrapped in §18.7.2 glass. */}
+      <GlassPendingActions />
 
       {/* TRAIL Stage Indicator */}
       <div className="mb-6">
         <TrailStageIndicator />
       </div>
 
-      {/* Phase 42 PR6 — Daily Pulse engagement front door. Self-hides
-          when the user has zero transactions in the current month. */}
       <div className="mb-6">
-        <DailyPulseCard />
+        <GlassDailyPulse />
       </div>
 
-      {/* Phase 21.5 — Renewals & reminders island. Self-contained (fetches
-          /api/reminders itself) + self-hides when nothing is coming up, so
-          it adds nothing to the dashboard's existing data flow. */}
       <div className="mb-6">
-        <RenewalsCard />
+        <GlassRenewals />
       </div>
 
       {isLoading ? (
@@ -588,12 +594,16 @@ export default function DashboardPage() {
               `EditorialMoneyStoryHero` remain in the codebase for any
               future surface that wants them; the dashboard now ships V2. */}
           {insights?.moneyStory && (
-            <MoneyStoryHeroV2
+            // Phase 45.6 — Money Story hero now wears the §18.7.2 glass surround
+            // via GlassMoneyStoryHero. The ribbon chart + count-up animation
+            // internals are preserved verbatim (MoneyStoryHeroV2 still does the
+            // chart); only the outer chrome swaps.
+            <GlassMoneyStoryHero
               freedomYears={insights.moneyStory.freedomYears}
               earned={insights.moneyStory.earned}
               kept={insights.moneyStory.kept}
               marginDeltaPoints={insights.moneyStory.marginDeltaPoints}
-              trendData={insights.moneyStory.trend}
+              ribbon={insights.moneyStory.trend}
             />
           )}
 
@@ -629,42 +639,153 @@ export default function DashboardPage() {
               difference (full calc still in the click-through detail modal).
               Surfaces both gross numbers in line with the financial-adviser
               lens (you can't manage leverage you can't see). */}
-          <div onClick={() => setSelectedDetail('netWorth')} className="cursor-pointer">
-            <PairedMetricCard
-              ariaLabel="Net worth — assets and debts"
-              left={{
-                label: 'Assets',
-                value: formatCompactCurrency(snapshot.totalAssets),
-                helper: `${snapshot.assets.properties.count} properties · ${snapshot.assets.accounts.count} accounts · ${snapshot.assets.investments.count} investments`,
-                emphasis: true,
-              }}
-              right={{
-                label: 'Debts',
-                value: formatCompactCurrency(snapshot.totalLiabilities),
-                helper: `${snapshot.liabilities.loans.count} ${
-                  snapshot.liabilities.loans.count === 1 ? 'loan' : 'loans'
-                } · ${snapshot.gearing.portfolioLVR.toFixed(0)}% portfolio LVR`,
-              }}
-            />
-          </div>
+          {/* Phase 45.4 — §18.7.2 polished glass Net Worth paired hero. Dual
+              gradient gems: Assets emerald (positive), Debts indigo (system
+              diagnostic). Internal hairline divider between halves on
+              ≥360px; stacks on smallest iPhones. */}
+          <GlassPairedMetricCard
+            ariaLabel="Net worth — assets and debts"
+            onClick={() => setSelectedDetail('netWorth')}
+            cardSubPalette="sky-indigo"
+            left={{
+              label: 'Assets',
+              icon: WalletIcon,
+              subPalette: 'emerald',
+              value: formatCompactCurrency(snapshot.totalAssets),
+              helper: `${snapshot.assets.properties.count} properties · ${snapshot.assets.accounts.count} accounts · ${snapshot.assets.investments.count} investments`,
+            }}
+            right={{
+              label: 'Debts',
+              icon: LandmarkIcon,
+              subPalette: 'indigo',
+              value: formatCompactCurrency(snapshot.totalLiabilities),
+              helper: `${snapshot.liabilities.loans.count} ${
+                snapshot.liabilities.loans.count === 1 ? 'loan' : 'loans'
+              } · ${snapshot.gearing.portfolioLVR.toFixed(0)}% portfolio LVR`,
+            }}
+          />
+          {/* KPI row hidden anchor preserved for any in-page links */}
+          <div className="hidden" id="kpi-row-anchor" />
 
-          {/* Primary Metrics Row — 5 editorial KPI tiles (Cash Flow, Income,
-              Outgoings, Saving Rate, LVR). Net Worth moved out to the paired
-              hero above (R4). */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-            {/* Monthly Cash Flow — Variant A sparkline (R-KPI 2026-05-28).
-                Drill-down to the detail modal preserved via the onClick
-                wrapper; CalculationTooltip + period toggle dropped (the
-                sparkline IS the richer context now; the detail modal still
-                holds the full breakdown). Series + delta from the
-                transaction-based kpiTiles block (honest data); headline
-                value + tone from the canonical snapshot. */}
-            <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer">
-              <EditorialKpiCard
+          {/* Phase 45.4 — §18.7.2 polished glass KPI tiles + §18.7.6
+              Compact Dashboard reflow. KpiSwipeStrip on mobile (horizontal
+              swipe, 1.2-tile peek, page-dot indicator); falls back to a
+              5-up grid at lg+. Per-tile sub-palette per §18.7.2 money-signal
+              row: Cashflow emerald (positive) / amber (negative — NEVER red);
+              Income emerald (growth); Outgoings slate (calm not alarm);
+              Saving Rate sky (informational); LVR indigo (system diagnostic).
+              Sparkline + band internals delegate to EditorialKpiSparkline +
+              EditorialBandTrack (no behaviour loss). */}
+          <div className="lg:hidden">
+            <KpiSwipeStrip ariaLabel="Swipe to see all 5 KPI tiles">
+              <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer h-full">
+                <GlassKpiCard
+                  variant="sparkline"
+                  icon={BanknoteIcon}
+                  subPalette="emerald"
+                  eyebrow="Monthly cash flow"
+                  value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
+                  helper={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`}
+                  valueClassName={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
+                  tone={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'emerald' : 'amber'}
+                  series={insights?.kpiTiles?.cashflowSeries ?? []}
+                  delta={
+                    insights?.kpiTiles
+                      ? {
+                          label: `${formatCurrency(insights.kpiTiles.cashflowDeltaMonthly)} vs last mo`,
+                          tone: insights.kpiTiles.cashflowDeltaMonthly >= 0 ? 'positive' : 'negative',
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+              <div onClick={() => setSelectedDetail('income')} className="cursor-pointer h-full">
+                <GlassKpiCard
+                  variant="sparkline"
+                  icon={TrendingUpIcon}
+                  subPalette="emerald"
+                  eyebrow="Annual income"
+                  value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                  helper={
+                    insights?.kpiTiles
+                      ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
+                      : 'Gross annual income'
+                  }
+                  tone="emerald"
+                  series={insights?.kpiTiles?.incomeSeries ?? []}
+                  delta={
+                    insights?.kpiTiles
+                      ? {
+                          label: `${insights.kpiTiles.incomeDeltaPct >= 0 ? '+' : ''}${insights.kpiTiles.incomeDeltaPct}% YoY`,
+                          tone: insights.kpiTiles.incomeDeltaPct >= 0 ? 'positive' : 'neutral',
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+              <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer h-full">
+                <GlassKpiCard
+                  variant="sparkline"
+                  icon={Receipt}
+                  subPalette="slate"
+                  eyebrow="Annual outgoings"
+                  value={formatCompactCurrency(insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses)}
+                  helper={
+                    insights?.kpiTiles
+                      ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
+                      : 'Expenses + loan repayments'
+                  }
+                  tone="slate"
+                  series={insights?.kpiTiles?.outgoingsSeries ?? []}
+                  delta={
+                    insights?.kpiTiles
+                      ? {
+                          label: `${formatCurrency(insights.kpiTiles.outgoingsDeltaVsAvg)} vs avg`,
+                          tone: 'neutral',
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+              <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer h-full">
+                <GlassKpiCard
+                  variant="band"
+                  icon={PiggyBank}
+                  subPalette="sky"
+                  eyebrow="Saving rate"
+                  value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                  helper="AU median is around 24%"
+                  zones={SAVING_RATE_ZONES}
+                  zoneValue={snapshot.cashflow.savingsRate}
+                  ticks={['0%', '15%', '25%', '50%']}
+                />
+              </div>
+              <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer h-full">
+                <GlassKpiCard
+                  variant="band"
+                  icon={LandmarkIcon}
+                  subPalette="indigo"
+                  eyebrow="Portfolio LVR"
+                  value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
+                  helper={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
+                  zones={LVR_ZONES}
+                  zoneValue={snapshot.gearing.portfolioLVR}
+                  ticks={['0%', '30%', '60%', '80%', '100%']}
+                />
+              </div>
+            </KpiSwipeStrip>
+          </div>
+          {/* Desktop: 5-up grid using the same GlassKpiCard tiles. */}
+          <div className="hidden gap-4 lg:grid lg:grid-cols-3 xl:grid-cols-5">
+            <div onClick={() => setSelectedDetail('cashflow')} className="cursor-pointer h-full">
+              <GlassKpiCard
                 variant="sparkline"
+                icon={BanknoteIcon}
+                subPalette="emerald"
                 eyebrow="Monthly cash flow"
                 value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
                 helper={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`}
+                valueClassName={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
                 tone={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'emerald' : 'amber'}
                 series={insights?.kpiTiles?.cashflowSeries ?? []}
                 delta={
@@ -677,10 +798,11 @@ export default function DashboardPage() {
                 }
               />
             </div>
-            {/* Annual Income — Variant A sparkline (emerald — growth positive) */}
-            <div onClick={() => setSelectedDetail('income')} className="cursor-pointer">
-              <EditorialKpiCard
+            <div onClick={() => setSelectedDetail('income')} className="cursor-pointer h-full">
+              <GlassKpiCard
                 variant="sparkline"
+                icon={TrendingUpIcon}
+                subPalette="emerald"
                 eyebrow="Annual income"
                 value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
                 helper={
@@ -700,15 +822,13 @@ export default function DashboardPage() {
                 }
               />
             </div>
-            {/* Annual Outgoings — Variant A sparkline (slate — rising spend
-                surfaced calmly, never red/alarm) */}
-            <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer">
-              <EditorialKpiCard
+            <div onClick={() => setSelectedDetail('outgoings')} className="cursor-pointer h-full">
+              <GlassKpiCard
                 variant="sparkline"
+                icon={Receipt}
+                subPalette="slate"
                 eyebrow="Annual outgoings"
-                value={formatCompactCurrency(
-                  insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses
-                )}
+                value={formatCompactCurrency(insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses)}
                 helper={
                   insights?.kpiTiles
                     ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
@@ -726,10 +846,11 @@ export default function DashboardPage() {
                 }
               />
             </div>
-            {/* Savings Rate — Variant C band (AU median context) */}
-            <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer">
-              <EditorialKpiCard
+            <div onClick={() => setSelectedDetail('savingsRate')} className="cursor-pointer h-full">
+              <GlassKpiCard
                 variant="band"
+                icon={PiggyBank}
+                subPalette="sky"
                 eyebrow="Saving rate"
                 value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
                 helper="AU median is around 24%"
@@ -738,10 +859,11 @@ export default function DashboardPage() {
                 ticks={['0%', '15%', '25%', '50%']}
               />
             </div>
-            {/* Portfolio LVR — Variant C band (AU mortgage health zones) */}
-            <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer">
-              <EditorialKpiCard
+            <div onClick={() => setSelectedDetail('lvr')} className="cursor-pointer h-full">
+              <GlassKpiCard
                 variant="band"
+                icon={LandmarkIcon}
+                subPalette="indigo"
                 eyebrow="Portfolio LVR"
                 value={`${snapshot.gearing.portfolioLVR.toFixed(1)}%`}
                 helper={`Debt: ${formatCompactCurrency(snapshot.totalLiabilities)}`}
@@ -752,18 +874,16 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Financial Health & Insights Section */}
+          {/* Phase 45.5 — §18.7.6 BentoPair (mobile 2-up grid, desktop 2-col).
+              Each tile in the §18.7.2 polished glass vocabulary. */}
           {insights && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Financial Health Score */}
-              <FinancialHealthScore
+            <BentoPair>
+              <GlassHealthScore
                 score={insights.healthScore.score}
                 grade={insights.healthScore.grade}
                 breakdown={insights.healthScore.breakdown}
               />
-
-              {/* Emergency Fund Tracker */}
-              <EmergencyFundTracker
+              <GlassEmergencyFund
                 liquidCash={insights.emergencyFund.liquidCash}
                 monthlyExpenses={insights.emergencyFund.monthlyExpenses}
                 monthsCovered={insights.emergencyFund.monthsCovered}
@@ -771,7 +891,7 @@ export default function DashboardPage() {
                 status={insights.emergencyFund.status}
                 gap={insights.emergencyFund.gap}
               />
-            </div>
+            </BentoPair>
           )}
 
           {/* Phase 5 Wealth Universe widget — dashboard preview of the
@@ -780,20 +900,15 @@ export default function DashboardPage() {
               diagnostic 2-up grid; right column intentionally empty
               for now per Reza's "diagnostic pair width" choice — a
               future Phase can pair it with a related widget. */}
-          <div className="grid gap-6 lg:grid-cols-2">
-            <WealthUniverseWidget />
-          </div>
+          {/* Phase 45.6 — WealthUniverse wrapped in glass surround (canvas
+              internals preserved). */}
+          <GlassWealthUniverse />
 
-          {/* Phase 1: Debt Quality & Entity Cashflow Section */}
+          {/* Phase 45.5 — Debt Quality + Entity Cashflow as BentoPair. */}
           {snapshot.loans && snapshot.loans.length > 0 && (
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Debt Quality Widget - Good vs Bad Debt */}
-              <DebtQualityWidget
-                data={calculateDebtQuality(snapshot.loans)}
-              />
-
-              {/* Entity Cashflow Summary */}
-              <EntityCashflowSummary
+            <BentoPair>
+              <GlassDebtQuality data={calculateDebtQuality(snapshot.loans)} />
+              <GlassEntityCashflow
                 data={calculateEntityCashflow(
                   snapshot.properties,
                   snapshot.investments.accounts,
@@ -803,12 +918,12 @@ export default function DashboardPage() {
                   snapshot.expenses || []
                 )}
               />
-            </div>
+            </BentoPair>
           )}
 
           {/* Show Entity Cashflow even without loans (for properties/investments) */}
           {(!snapshot.loans || snapshot.loans.length === 0) && (snapshot.properties.length > 0 || snapshot.investments.accounts.length > 0) && (
-            <EntityCashflowSummary
+            <GlassEntityCashflow
               data={calculateEntityCashflow(
                 snapshot.properties,
                 snapshot.investments.accounts,
