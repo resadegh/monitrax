@@ -68,7 +68,11 @@ export function GlassHealthScore({ score, grade, breakdown }: HealthScoreProps) 
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Vertical stack below md:; horizontal arc-beside-text at md+ when
+            the Bento cell has room. Fix for the phone Bento Pair regression
+            where the text column was getting ~40-60px and wrapping
+            word-per-line (Reza screenshot 2026-06-09). */}
+        <div className="flex flex-col items-start gap-3 md:flex-row md:items-center md:gap-4">
           {/* Score arc */}
           <div className="relative h-20 w-20 shrink-0">
             <svg className="h-full w-full -rotate-90" viewBox="0 0 96 96">
@@ -88,7 +92,7 @@ export function GlassHealthScore({ score, grade, breakdown }: HealthScoreProps) 
             </div>
           </div>
 
-          <div className="min-w-0 flex-1">
+          <div className="w-full min-w-0 md:flex-1">
             <p className="text-xs leading-relaxed text-muted-foreground">{GRADE_MESSAGE[grade]}</p>
             <dl className="mt-2 space-y-1 text-[11px]">
               <Row label="Savings" value={`${breakdown.savingsRate.value.toFixed(0)}%`} good={breakdown.savingsRate.value >= 20} />
