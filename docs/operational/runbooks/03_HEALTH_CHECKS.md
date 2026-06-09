@@ -106,11 +106,22 @@ If Basiq is down, bank account syncing will fail but the rest of the app works n
 
 ### Cloud Monitoring Uptime Check
 
+> **CRITICAL — target the `www` host, NOT the apex.** `monitrax.com.au`
+> (apex) **308-redirects** to `www.monitrax.com.au` since `www` became the
+> canonical domain (Firebase auth-domain work). An uptime check pointed at the
+> apex with a `"healthy"` content match **fails** because it evaluates the
+> `308 "Redirecting..."` body, which does not contain `"healthy"`. This caused
+> the 2026-06-05 P0 false-page storm (the check was created 2026-05-19 against
+> the apex, before `www` became canonical; the Cloud Scheduler jobs were
+> migrated to `www` at the time but the uptime check was missed). The hostname
+> of an existing GCP uptime check is **not editable** — delete and recreate
+> against `www`.
+
 1. GCP Console → Monitoring → Uptime Checks → Create
-2. Target: `https://monitrax.com.au/api/health`
-3. Check frequency: 5 minutes
+2. Hostname: `www.monitrax.com.au` · Path: `/api/health` (**not** the apex)
+3. Protocol: HTTPS (port 443) · Check frequency: 1 minute · Regions: all
 4. Response must contain: `"healthy"`
-5. Alert channel: Email or Slack
+5. Alert channel: `Reza-Email` + `Reza-SMS`
 
 ### Cloud SQL Alert Policies
 
