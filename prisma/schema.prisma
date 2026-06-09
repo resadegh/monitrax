@@ -626,8 +626,8 @@ model LegalEntity {
   structuralState                       StructuralState @default(VALID) // §6.1 three-state classification
   accountantVerified                    Boolean         @default(false) // §9 provenance flag
 
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relationships
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -640,16 +640,16 @@ model LegalEntity {
   accounts               Account[]
   investmentAccounts     InvestmentAccount[]
   superannuationAccounts SuperannuationAccount[] // Phase 39.5: SMSF member accounts
-  smsfAnnualReturns      SmsfAnnualReturn[]      // Phase 44.2: SMSF fund-tax figures (when type=SMSF)
+  smsfAnnualReturns      SmsfAnnualReturn[] // Phase 44.2: SMSF fund-tax figures (when type=SMSF)
   assets                 Asset[]
   incomes                Income[]
   expenses               Expense[]
 
   // Phase 41f: bookkeeping integration (USER_ENTITY scope only — see
   // PHASE_41F_BOOKKEEPING_INTEGRATION.md). Cascades on entity delete.
-  accountingIntegrations    AccountingIntegration[]
-  accountingSnapshots       EntityAccountingSnapshot[]
-  trustDeedExtractedRules   TrustDeedExtractedRules[]
+  accountingIntegrations  AccountingIntegration[]
+  accountingSnapshots     EntityAccountingSnapshot[]
+  trustDeedExtractedRules TrustDeedExtractedRules[]
 
   // Phase 41E reform 2026-27 — Measure 5 (loss refundability — carry-back).
   // Companies with turnover < $1B can elect to carry back losses against
@@ -1178,7 +1178,7 @@ model User {
   assets             Asset[] // Phase 21: Personal assets
 
   // Phase 47: Signup consent + legal-document acceptance (CLAUDE.md §13, Privacy Act APP 5)
-  consents           UserConsent[]
+  consents UserConsent[]
 
   // Phase 10: Auth & Security
   organizationMemberships OrganizationMember[]
@@ -1312,7 +1312,7 @@ model User {
   // one per ACCEPTED engagement). Includes both the consumer side (linked
   // via this relation) and any messages they've sent.
   conversationParticipations ConversationParticipant[]
-  conversationMessages       ConversationMessage[]    @relation("ConversationMessageSender")
+  conversationMessages       ConversationMessage[]     @relation("ConversationMessageSender")
 
   @@map("users")
 }
@@ -1452,10 +1452,10 @@ model Property {
   // reform cut-over (7:30pm AEST 12 May 2026 = `2026-05-12T09:30:00Z` UTC,
   // stored as `REFORM_CUT_OVER_UTC` in `lib/tax-engine/config/reformConstants.ts`)
   // is contract-based. See `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §4.2 + §10.
-  acquisitionContractDate   DateTime? // Contract date (CGT event A1) — the grandfathering test reads this
-  acquisitionSettlementDate DateTime? // Settlement date — for clarity + edge cases (off-the-plan)
-  isNewBuild                Boolean? // User-confirmed; UNCOMPUTED on post-cut-over acquisitions if unset (Measure 1)
-  newBuildEvidence          NewBuildEvidence? // Audits the isNewBuild claim
+  acquisitionContractDate    DateTime? // Contract date (CGT event A1) — the grandfathering test reads this
+  acquisitionSettlementDate  DateTime? // Settlement date — for clarity + edge cases (off-the-plan)
+  isNewBuild                 Boolean? // User-confirmed; UNCOMPUTED on post-cut-over acquisitions if unset (Measure 1)
+  newBuildEvidence           NewBuildEvidence? // Audits the isNewBuild claim
   isRenewablesInfrastructure Boolean? // For Measure 4 — 50% concession on qualifying renewables until 30 Jun 2030
 
   // Location data (Google Maps integration)
@@ -1513,17 +1513,14 @@ model Loan {
   name                String
   type                LoanType
   principal           Float // Current balance
-  principalDecimal    Decimal?           @db.Decimal(19, 4)
   interestRateAnnual  Float // e.g., 0.0625 for 6.25%
   rateType            RateType
   fixedExpiry         DateTime? // When fixed rate expires
   isInterestOnly      Boolean            @default(false)
   termMonthsRemaining Int
   minRepayment        Float // Current required payment
-  minRepaymentDecimal Decimal?           @db.Decimal(19, 4)
   repaymentFrequency  RepaymentFrequency
   extraRepaymentCap   Float? // Annual cap for extra repayments on fixed loans
-  extraRepaymentCapDecimal Decimal?      @db.Decimal(19, 4)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
@@ -2050,15 +2047,15 @@ model InvestmentAccount {
   currency      String                @default("AUD")
 
   // Phase 23: Balance tracking fields
-  openingDate      DateTime?
-  openingBalance   Float           @default(0)
-  openingBalanceDecimal Decimal?  @db.Decimal(19, 4)
-  cashBalance      Float           @default(0)
-  cashBalanceDecimal    Decimal?  @db.Decimal(19, 4)
-  totalDeposits    Float           @default(0)
-  totalDepositsDecimal  Decimal?  @db.Decimal(19, 4)
-  totalWithdrawals Float           @default(0)
-  costBasisMethod  CostBasisMethod @default(FIFO)
+  openingDate           DateTime?
+  openingBalance        Float           @default(0)
+  openingBalanceDecimal Decimal?        @db.Decimal(19, 4)
+  cashBalance           Float           @default(0)
+  cashBalanceDecimal    Decimal?        @db.Decimal(19, 4)
+  totalDeposits         Float           @default(0)
+  totalDepositsDecimal  Decimal?        @db.Decimal(19, 4)
+  totalWithdrawals      Float           @default(0)
+  costBasisMethod       CostBasisMethod @default(FIFO)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -2313,13 +2310,13 @@ model Organization {
 
   // Phase 32C PR4d: conversations owned by this org (one per accepted
   // request, plus org-attached client conversations from ClientLink).
-  conversations           ProfessionalConversation[]
+  conversations ProfessionalConversation[]
 
   // Phase 32C PR6: Stripe billing — one customer record per Org once the
   // owner first enters the billing flow; subscription state mirrored from
   // Stripe webhooks. Test-mode at v1; live mode wires post-Basiq.
-  stripeCustomer          StripeCustomer?
-  stripeSubscription      StripeSubscription?
+  stripeCustomer     StripeCustomer?
+  stripeSubscription StripeSubscription?
 
   @@map("organizations")
 }
@@ -2684,8 +2681,8 @@ model UnifiedTransaction {
   processedAt DateTime? // When TIE last processed this
 
   // Relationships
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account Account            @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
   // Phase 42 PR2 — Splits. The parent transaction's `categoryLevel*`
   // fields remain populated for backwards-compat (= the dominant split's
   // category, computed deterministically); per-line categories live on
@@ -2787,17 +2784,17 @@ model MerchantMapping {
 // =============================================================================
 
 enum BookkeepingPeriodStatus {
-  OPEN     // Current / past month; no review yet
+  OPEN // Current / past month; no review yet
   REVIEWED // User confirmed all transactions categorised; edits still allowed
-  LOCKED   // User explicitly locked (rare); edits blocked at API
+  LOCKED // User explicitly locked (rare); edits blocked at API
 }
 
 model CanonicalCategoryRegistry {
   id               String       @id @default(uuid())
   userId           String
-  level1           String       // Top-level: "Food & Dining"
-  level2           String?      // Sub-category: "Groceries"
-  subcategory      String?      // Detailed: "Supermarket"
+  level1           String // Top-level: "Food & Dining"
+  level2           String? // Sub-category: "Groceries"
+  subcategory      String? // Detailed: "Supermarket"
   // EXPENSE | INCOME — Transfers map to EXPENSE here; the level1 string
   // ("Transfer") preserves the identity. PR2+ may extend the enum if
   // downstream calc engines need to distinguish three-way.
@@ -2814,13 +2811,13 @@ model CanonicalCategoryRegistry {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Phase 42 PR2 — back-relation to splits that reference this category.
-  splits           TransactionSplit[]
+  splits         TransactionSplit[]
   // Phase 42 PR5 — back-relations to Vendor.defaultCategoryId +
   // TaxCategoryMapping.canonicalCategoryId.
-  vendorDefaults   Vendor[]
-  taxMappings      TaxCategoryMapping[]
+  vendorDefaults Vendor[]
+  taxMappings    TaxCategoryMapping[]
 
   @@unique([userId, level1, level2, subcategory])
   @@index([userId])
@@ -2843,7 +2840,7 @@ model BookkeepingPeriod {
   createdAt                DateTime                @default(now())
   updatedAt                DateTime                @updatedAt
 
-  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, periodMonth])
   @@index([userId, status])
@@ -2871,30 +2868,30 @@ model BookkeepingPeriod {
 // =============================================================================
 
 model EngagementState {
-  id                  String    @id @default(uuid())
-  userId              String    @unique
+  id                   String    @id @default(uuid())
+  userId               String    @unique
   // Current streak (consecutive days with ≥1 categorisation activity).
   // Activity counts in a rolling 24h window, not strict calendar day —
   // matches the engagement spec §6.4 "earn a day" rule.
-  currentStreak       Int       @default(0)
+  currentStreak        Int       @default(0)
   // All-time best streak. Never decreases (used for celebration copy
   // like "new personal best!").
-  longestStreak       Int       @default(0)
+  longestStreak        Int       @default(0)
   // UTC midnight of the day the user last touched the streak. Used to
   // compute whether today's activity extends, breaks, or burns a shield.
-  lastActiveDate      DateTime?
+  lastActiveDate       DateTime?
   // Most recent date the shield was used (within the rolling 7-day
   // window). One shield per 7-day window; resets when the cycle rolls
   // forward. Null = no shield used yet OR the last shield is older
   // than 7 days.
-  lastShieldUsedAt    DateTime?
+  lastShieldUsedAt     DateTime?
   // Most recent completion-celebration timestamp. Used to enforce the
   // "confetti once per day max" rule per spec §6.5 — scarcity
   // preserves the delight.
-  lastCelebrationAt   DateTime?
+  lastCelebrationAt    DateTime?
   // Rolling counters useful for personal-best copy. Updated when the
   // current streak ends and a new one begins.
-  totalCategorisations Int      @default(0)
+  totalCategorisations Int       @default(0)
 
   // Phase 42 PR6.5b — Pending-actions popup gate. Shown once per calendar
   // day on the first dashboard render. Dismiss = "not today" (still shows
@@ -2904,10 +2901,10 @@ model EngagementState {
   lastPromptDismissedAt DateTime?
   promptOptedOut        Boolean   @default(false)
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("engagement_state")
 }
@@ -2916,15 +2913,15 @@ model TransactionEdit {
   id            String   @id @default(uuid())
   transactionId String
   userId        String
-  editType      String   // CATEGORY / TAGS / LINK_ENTITY / FLAG / RECURRING / DELETE
+  editType      String // CATEGORY / TAGS / LINK_ENTITY / FLAG / RECURRING / DELETE
   // Snapshot of the changed fields BEFORE and AFTER. JSON keeps the schema
   // flexible as we add new editable fields in PR2-6 (splits, vendor, etc.).
   before        Json
   after         Json
-  source        String   // USER / AI / RULE / IMPORT / SYSTEM
+  source        String // USER / AI / RULE / IMPORT / SYSTEM
   editedAt      DateTime @default(now())
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([transactionId])
   @@index([userId, editedAt])
@@ -2962,7 +2959,7 @@ model TransactionSplit {
   // Hard FK to the SSOT registry. Resolves through
   // `lib/bookkeeping/categoryRegistry.ts:resolveOrCreateCategory()`.
   categoryId      String
-  amount          Float    // Same currency + sign convention as parent
+  amount          Float // Same currency + sign convention as parent
   // Per-line entity attribution. Lets a single Bunnings purchase split
   // its receipts across "investment property" + "personal" without
   // duplicating the bank charge.
@@ -2974,8 +2971,8 @@ model TransactionSplit {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  transaction     UnifiedTransaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  category        CanonicalCategoryRegistry @relation(fields: [categoryId], references: [id])
+  transaction UnifiedTransaction        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category    CanonicalCategoryRegistry @relation(fields: [categoryId], references: [id])
 
   @@index([transactionId])
   @@index([categoryId])
@@ -3039,8 +3036,8 @@ model Vendor {
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
-  user                   User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  defaultCategory        CanonicalCategoryRegistry? @relation(fields: [defaultCategoryId], references: [id], onDelete: SetNull)
+  user            User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultCategory CanonicalCategoryRegistry? @relation(fields: [defaultCategoryId], references: [id], onDelete: SetNull)
 
   @@unique([userId, normalisedName])
   @@index([userId])
@@ -3056,14 +3053,14 @@ model TaxCategoryMapping {
   // FK to the SSOT category registry. The mapping is an enrichment
   // ON TOP OF the registry — it doesn't replace it.
   canonicalCategoryId String
-  atoLabel            String   // e.g. "D-1", "Rental Repairs", "Div 40 Depreciation"
-  schedule            String?  // e.g. "Individual Tax Return", "Rental Schedule"
-  lineItem            String?  // ATO line number where applicable
+  atoLabel            String // e.g. "D-1", "Rental Repairs", "Div 40 Depreciation"
+  schedule            String? // e.g. "Individual Tax Return", "Rental Schedule"
+  lineItem            String? // ATO line number where applicable
   notes               String?
   createdAt           DateTime @default(now())
 
-  category            CanonicalCategoryRegistry @relation(fields: [canonicalCategoryId], references: [id], onDelete: Cascade)
-  user                User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category CanonicalCategoryRegistry @relation(fields: [canonicalCategoryId], references: [id], onDelete: Cascade)
+  user     User?                     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, canonicalCategoryId, atoLabel])
   @@index([userId])
@@ -4837,10 +4834,10 @@ model OrganizationClient {
   updatedAt DateTime @updatedAt
 
   // Relationships
-  notes      ClientNote[]
-  tasks      ClientTask[]
-  accessLogs ClientAccessLog[]
-  alerts     ClientAlert[]
+  notes       ClientNote[]
+  tasks       ClientTask[]
+  accessLogs  ClientAccessLog[]
+  alerts      ClientAlert[]
   alertMarker ClientSnapshotMarker?
 
   @@unique([organizationId, userId])
@@ -5046,17 +5043,17 @@ model ClientAccessLog {
 // cashflow, LVR, etc.) — no CDR-raw transaction data, no balances
 // beyond aggregates (CLAUDE.md §13.3).
 model ClientAlert {
-  id                   String   @id @default(uuid())
-  organizationId       String   // denormalised for the org-scoped GET (avoids a join)
+  id                   String @id @default(uuid())
+  organizationId       String // denormalised for the org-scoped GET (avoids a join)
   organizationClientId String
 
-  triggerKind String            // 'CASHFLOW_NEGATIVE' | 'EMERGENCY_FUND_LOW' | 'LVR_REFINANCE_WINDOW' | 'HEALTH_DROP' | 'TRAIL_ADVANCED' | …  (canonical union owned by lib/portal/alerts/alertEngine.ts)
-  severity    String            // 'critical' | 'opportunity' | 'milestone'
+  triggerKind String // 'CASHFLOW_NEGATIVE' | 'EMERGENCY_FUND_LOW' | 'LVR_REFINANCE_WINDOW' | 'HEALTH_DROP' | 'TRAIL_ADVANCED' | …  (canonical union owned by lib/portal/alerts/alertEngine.ts)
+  severity    String // 'critical' | 'opportunity' | 'milestone'
   status      ClientAlertStatus @default(ACTIVE)
 
-  headline          String
-  body              String  @db.Text
-  context           String  @db.Text  // one-line "Health 42 ↓18 · cashflow -$340/mo" style
+  headline           String
+  body               String @db.Text
+  context            String @db.Text // one-line "Health 42 ↓18 · cashflow -$340/mo" style
   primaryActionLabel String
 
   // Aggregate-only context numbers the UI renders. JSON so the shape
@@ -5064,10 +5061,10 @@ model ClientAlert {
   // CDR transactions or per-account balances — aggregates only.
   payload Json?
 
-  detectedAt   DateTime  @default(now())
-  resolvedAt   DateTime?
-  dismissedAt  DateTime?
-  dismissedByMemberId String?  // OrganizationMember.id
+  detectedAt          DateTime  @default(now())
+  resolvedAt          DateTime?
+  dismissedAt         DateTime?
+  dismissedByMemberId String? // OrganizationMember.id
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -5092,8 +5089,8 @@ model ClientSnapshotMarker {
   id                   String @id @default(uuid())
   organizationClientId String @unique
 
-  lastHealthScore Int?     // healthScore.score at the last sweep
-  lastTrailStage  String?  // 'T' | 'R' | 'A' | 'I' | 'L' at the last sweep
+  lastHealthScore Int? // healthScore.score at the last sweep
+  lastTrailStage  String? // 'T' | 'R' | 'A' | 'I' | 'L' at the last sweep
   lastSweptAt     DateTime @default(now())
 
   // Snapshot of the *previous* sweep — lets readers (the Practice hero
@@ -6257,19 +6254,19 @@ enum ListingRegion {
 // is a separate concern with its own deploy gate.
 
 model ProfessionalRequest {
-  id                  String              @id @default(uuid())
+  id String @id @default(uuid())
 
   // Who's asking
-  requesterUserId     String
-  requester           User                @relation(fields: [requesterUserId], references: [id], onDelete: Cascade)
+  requesterUserId String
+  requester       User   @relation(fields: [requesterUserId], references: [id], onDelete: Cascade)
 
   // What they're asking about
-  listingId           String
-  listing             ProfessionalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  listing   ProfessionalListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   // The ask
-  contextLabel        String? // tax / refinance / etc — how the user got here (open-ended; matches askAProfessionalService context vocabulary)
-  question            String              @db.Text
+  contextLabel String? // tax / refinance / etc — how the user got here (open-ended; matches askAProfessionalService context vocabulary)
+  question     String  @db.Text
 
   // Snapshot context shared at submission time (json snapshot of headline
   // metrics the user explicitly chose to share). NEVER includes raw account
@@ -6292,25 +6289,25 @@ model ProfessionalRequest {
   //   - `stripeInvoiceId`     — Stripe's `in_xxx` once the invoice is created
   //   - `leadFeeStatus`       — Stripe-mirrored payment status (PENDING / PAID / FAILED / VOID)
   //   - `leadFeeInvoiceUrl`   — Stripe-hosted invoice URL the adviser can share with their accountant
-  leadFeeTier         LeadFeeTier?
-  leadFeeAmount       Decimal?            @db.Decimal(10, 2)
-  leadFeeChargedAt    DateTime?
-  stripeInvoiceId     String?             @unique
-  leadFeeStatus       LeadFeeStatus?
-  leadFeeInvoiceUrl   String?
-  leadFeePaidAt       DateTime?
-  leadFeeFailedAt     DateTime?
+  leadFeeTier       LeadFeeTier?
+  leadFeeAmount     Decimal?       @db.Decimal(10, 2)
+  leadFeeChargedAt  DateTime?
+  stripeInvoiceId   String?        @unique
+  leadFeeStatus     LeadFeeStatus?
+  leadFeeInvoiceUrl String?
+  leadFeePaidAt     DateTime?
+  leadFeeFailedAt   DateTime?
 
   // Engagement created if accepted — links to the OrganizationClient row
   // that materialises the relationship after consent. NULL until accept.
-  clientLinkId        String?             @unique
+  clientLinkId String? @unique
 
   // Phase 32C PR4d: conversation auto-created on ACCEPT. NULL until
   // accepted; one-to-one once it materialises.
-  conversation        ProfessionalConversation?
+  conversation ProfessionalConversation?
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([requesterUserId, status])
   @@index([listingId, status])
@@ -6319,16 +6316,16 @@ model ProfessionalRequest {
 }
 
 enum RequestStatus {
-  SUBMITTED   // User submitted; awaiting adviser action
-  ACCEPTED    // Adviser accepted; lead fee billing intent recorded; ClientLink created
-  DECLINED    // Adviser declined; no fee charged, no link created
-  WITHDRAWN   // User withdrew before adviser action
-  EXPIRED     // 14+ days no adviser response; auto-marked by scheduled job
+  SUBMITTED // User submitted; awaiting adviser action
+  ACCEPTED // Adviser accepted; lead fee billing intent recorded; ClientLink created
+  DECLINED // Adviser declined; no fee charged, no link created
+  WITHDRAWN // User withdrew before adviser action
+  EXPIRED // 14+ days no adviser response; auto-marked by scheduled job
 }
 
 enum LeadFeeTier {
-  EMERGING    // <$200k net worth — listing.leadFeeTierEmerging applies
-  GROWING     // $200k-$1M net worth — listing.leadFeeTierGrowing applies
+  EMERGING // <$200k net worth — listing.leadFeeTierEmerging applies
+  GROWING // $200k-$1M net worth — listing.leadFeeTierGrowing applies
   ESTABLISHED // $1M+ net worth — listing.leadFeeTierEstablished applies
 }
 
@@ -6425,8 +6422,8 @@ model FeedbackThread {
   // 48h SLA cron (queued post-MVP) to flag OPEN threads with no admin attention.
   lastReviewedAt DateTime?
 
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?     @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   messages     FeedbackMessage[]
 
   @@index([userId])
@@ -6472,37 +6469,37 @@ model FeedbackMessage {
 // IMPLEMENTATION_PLAN.md DEFERRED bucket.
 
 model ProfessionalConversation {
-  id              String  @id @default(uuid())
+  id String @id @default(uuid())
 
   // Origin — every conversation traces back to either an accepted public
   // marketplace request OR an org-attached client link (org-side roster
   // path from AskAPro picker, ships in this PR). Exactly one is set.
-  requestId       String? @unique
-  request         ProfessionalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
+  requestId String?              @unique
+  request   ProfessionalRequest? @relation(fields: [requestId], references: [id], onDelete: SetNull)
 
   // Org context (always set — required for inbox scoping + audit)
-  organizationId  String
-  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Public reply-to slug — used by SendGrid Inbound Parse to route email
   // replies back to this thread. UUID-prefixed to keep it unguessable.
-  replyToSlug     String   @unique
+  replyToSlug String @unique
 
   // Subject — pre-populated from the ProfessionalRequest question (first
   // 80 chars), editable by the professional after accept.
-  subject         String   @db.VarChar(160)
+  subject String @db.VarChar(160)
 
   // Lifecycle metadata
-  isClosed        Boolean  @default(false)  // Either party can close; closed = read-only
-  closedAt        DateTime?
-  closedByUserId  String?
+  isClosed       Boolean   @default(false) // Either party can close; closed = read-only
+  closedAt       DateTime?
+  closedByUserId String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  lastMessageAt   DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastMessageAt DateTime @default(now())
 
-  participants    ConversationParticipant[]
-  messages        ConversationMessage[]
+  participants ConversationParticipant[]
+  messages     ConversationMessage[]
 
   @@index([organizationId, lastMessageAt(sort: Desc)])
   @@index([replyToSlug])
@@ -6510,32 +6507,32 @@ model ProfessionalConversation {
 }
 
 model ConversationParticipant {
-  id              String  @id @default(uuid())
+  id String @id @default(uuid())
 
-  conversationId  String
-  conversation    ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   // The participant — exactly one of userId or memberId is set:
   //   - userId    → consumer-side (User)
   //   - memberId  → professional-side (OrganizationMember)
-  userId          String?
-  user            User? @relation(fields: [userId], references: [id], onDelete: Cascade)
-  memberId        String?
-  member          OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  userId   String?
+  user     User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memberId String?
+  member   OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Cascade)
 
-  role            ConversationRole
+  role ConversationRole
 
   // Soft-delete from user view — does NOT remove the row (compliance
   // archive must persist 7yr). Hides from this participant's surface only.
-  hiddenFromUser  Boolean  @default(false)
-  hiddenAt        DateTime?
+  hiddenFromUser Boolean   @default(false)
+  hiddenAt       DateTime?
 
   // Read-receipt tracking — used for unread badge count. Updated when the
   // participant fetches messages with `markAsRead: true`.
-  lastReadAt      DateTime?
+  lastReadAt DateTime?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([conversationId, userId, memberId])
   @@index([conversationId])
@@ -6545,45 +6542,45 @@ model ConversationParticipant {
 }
 
 enum ConversationRole {
-  CONSUMER       // The user who submitted the request (or org-attached client)
-  PROFESSIONAL   // OrganizationMember on the org side
-  AI_HELPER      // Reserved for Phase 33g (AI-suggested replies); not used at PR4d
+  CONSUMER // The user who submitted the request (or org-attached client)
+  PROFESSIONAL // OrganizationMember on the org side
+  AI_HELPER // Reserved for Phase 33g (AI-suggested replies); not used at PR4d
 }
 
 model ConversationMessage {
-  id              String  @id @default(uuid())
+  id String @id @default(uuid())
 
-  conversationId  String
-  conversation    ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversationId String
+  conversation   ProfessionalConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   // Sender — always a User (the OrganizationMember.user for professional
   // side; the participant.user for consumer side; null for system messages
   // which are reserved for future use).
-  senderUserId    String?
-  sender          User? @relation("ConversationMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
+  senderUserId String?
+  sender       User?   @relation("ConversationMessageSender", fields: [senderUserId], references: [id], onDelete: SetNull)
 
   // Sender role at the time the message was sent (frozen — even if the
   // person leaves the org later, the audit trail says "sent as PROFESSIONAL").
-  senderRole      ConversationRole
+  senderRole ConversationRole
 
   // Message content (plain-text only at v1; rich-text and attachments
   // defer to PROD per DEFERRED bucket).
-  body            String  @db.Text
+  body String @db.Text
 
   // Channel — was this composed in-app or bridged in/out via email?
-  channel         MessageChannel @default(IN_APP)
+  channel           MessageChannel @default(IN_APP)
   // Outbound email: SendGrid message ID (for delivery tracking)
   externalMessageId String?
   // Inbound email: original From header + raw subject for audit
-  inboundFromEmail String?
-  inboundSubject   String?
+  inboundFromEmail  String?
+  inboundSubject    String?
 
   // 7-yr retention for the professional's compliance archive. Soft-delete
   // from user view does NOT change this column — the row persists until
   // retentionUntil passes, at which point a scheduled job (PROD) sweeps it.
-  retentionUntil  DateTime
+  retentionUntil DateTime
 
-  createdAt       DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([conversationId, createdAt])
   @@index([retentionUntil])
@@ -6591,10 +6588,10 @@ model ConversationMessage {
 }
 
 enum MessageChannel {
-  IN_APP        // Composed in the in-app thread
-  EMAIL_OUT     // Outbound — sent via SendGrid mirroring an in-app message
-  EMAIL_IN      // Inbound — received via SendGrid Inbound Parse webhook
-  SYSTEM        // Reserved (welcome message on conversation creation, etc.)
+  IN_APP // Composed in the in-app thread
+  EMAIL_OUT // Outbound — sent via SendGrid mirroring an in-app message
+  EMAIL_IN // Inbound — received via SendGrid Inbound Parse webhook
+  SYSTEM // Reserved (welcome message on conversation creation, etc.)
 }
 
 // =============================================================================
@@ -6617,59 +6614,59 @@ enum MessageChannel {
 // service maps from. Enum rename is queued for a follow-up migration.
 
 model StripeCustomer {
-  id                String  @id @default(uuid())
-  organizationId    String  @unique
-  organization      Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  stripeCustomerId  String  @unique  // cus_xxx from Stripe
+  stripeCustomerId String @unique // cus_xxx from Stripe
   // The portal-owner email at customer-creation time. Stripe can also
   // hold an email; this column is just for fast lookup without round-tripping.
-  email             String
+  email            String
 
   // True when this customer was created in Stripe TEST mode. Once we go
   // live (post-Basiq), new customers will be `false`. The webhook handler
   // routes to the right keyspace based on this flag.
-  isTestMode        Boolean @default(true)
+  isTestMode Boolean @default(true)
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  subscription      StripeSubscription?
+  subscription StripeSubscription?
 
   @@index([stripeCustomerId])
   @@map("stripe_customers")
 }
 
 model StripeSubscription {
-  id                     String   @id @default(uuid())
-  organizationId         String   @unique
-  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  customerId             String   @unique  // FK to StripeCustomer.id
-  customer               StripeCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customerId String         @unique // FK to StripeCustomer.id
+  customer   StripeCustomer @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  stripeSubscriptionId   String   @unique  // sub_xxx from Stripe
-  status                 SubscriptionStatus  // mirrors Stripe's status enum
+  stripeSubscriptionId String             @unique // sub_xxx from Stripe
+  status               SubscriptionStatus // mirrors Stripe's status enum
 
   // Plan tier the user is subscribed to — canonical PlanTier vocabulary.
-  planTier               BillingPlanTier
+  planTier BillingPlanTier
 
   // Stripe-side identifiers used to look up the price + product when we
   // need to upgrade/downgrade. Stored verbatim from the webhook event so
   // we don't re-fetch from Stripe to find them.
-  stripePriceId          String
-  stripeProductId        String
+  stripePriceId   String
+  stripeProductId String
 
   // Billing period info — surfaced in the org's billing surface.
-  currentPeriodStart     DateTime
-  currentPeriodEnd       DateTime
-  cancelAtPeriodEnd      Boolean  @default(false)
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  cancelAtPeriodEnd  Boolean  @default(false)
 
   // Test-mode flag mirrors the customer.
-  isTestMode             Boolean  @default(true)
+  isTestMode Boolean @default(true)
 
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([stripeSubscriptionId])
   @@index([status])
@@ -6677,23 +6674,23 @@ model StripeSubscription {
 }
 
 model StripeWebhookEvent {
-  id                String   @id @default(uuid())
+  id            String  @id @default(uuid())
   // Stripe's event id (evt_xxx) — unique constraint lets the handler
   // dedupe if Stripe re-delivers the same event.
-  stripeEventId     String   @unique
-  eventType         String   // customer.subscription.created / invoice.paid / etc
-  livemode          Boolean  // false in test mode
+  stripeEventId String  @unique
+  eventType     String // customer.subscription.created / invoice.paid / etc
+  livemode      Boolean // false in test mode
 
   // The full event payload — kept for audit + debugging. Trimmed to
   // metadata only on PROD if storage becomes a concern (Stripe events
   // can be retrieved by id from their API for 30 days).
-  payload           Json
+  payload Json
 
   // Processing outcome — written when the handler completes.
-  processedAt       DateTime?
-  processingError   String?  @db.Text
+  processedAt     DateTime?
+  processingError String?   @db.Text
 
-  receivedAt        DateTime @default(now())
+  receivedAt DateTime @default(now())
 
   @@index([eventType])
   @@index([receivedAt])
@@ -6712,9 +6709,9 @@ enum SubscriptionStatus {
 }
 
 enum BillingPlanTier {
-  STUDIO        // AU$199/mo — 3 seats, 50 clients
-  PRACTICE      // AU$599/mo — 10 seats, 250 clients
-  ENTERPRISE    // From AU$1,499/mo — custom seats + clients
+  STUDIO // AU$199/mo — 3 seats, 50 clients
+  PRACTICE // AU$599/mo — 10 seats, 250 clients
+  ENTERPRISE // From AU$1,499/mo — custom seats + clients
 }
 
 // =============================================================================
@@ -6729,9 +6726,9 @@ enum BillingPlanTier {
 // CLAUDE.md §12.11 N/A — additive table, no existing rows touched.
 
 enum CalcAuditFindingSource {
-  L1_DIFFERENTIAL  // Caught by runDifferential() against fixtures (CI / on-demand)
-  L3_ON_DEMAND     // Caught by per-user audit run ("Audit this user" admin action)
-  L2_ANOMALY       // Caught by Cloud Scheduler anomaly detection (Phase 41i.5)
+  L1_DIFFERENTIAL // Caught by runDifferential() against fixtures (CI / on-demand)
+  L3_ON_DEMAND // Caught by per-user audit run ("Audit this user" admin action)
+  L2_ANOMALY // Caught by Cloud Scheduler anomaly detection (Phase 41i.5)
   L4_SURFACE_AUDIT // Caught by surface-rendering audit — rendered tile diverges from canonical engine output (Phase 41i.6)
 }
 
@@ -6744,38 +6741,38 @@ enum CalcAuditFindingSeverity {
 }
 
 enum CalcAuditFindingResolution {
-  OPEN              // Freshly detected, not yet triaged
-  INVESTIGATING     // Admin is looking at it
-  FALSE_POSITIVE    // Admin reviewed and dismissed
-  FIX_REQUIRED      // Confirmed bug, code fix needed
-  FIXED             // Bug resolved, finding closed
+  OPEN // Freshly detected, not yet triaged
+  INVESTIGATING // Admin is looking at it
+  FALSE_POSITIVE // Admin reviewed and dismissed
+  FIX_REQUIRED // Confirmed bug, code fix needed
+  FIXED // Bug resolved, finding closed
 }
 
 model CalcAuditFinding {
-  id              String                       @id @default(cuid())
-  detectedAt      DateTime                     @default(now())
-  source          CalcAuditFindingSource
+  id               String                     @id @default(cuid())
+  detectedAt       DateTime                   @default(now())
+  source           CalcAuditFindingSource
   /// Engine that produced the finding (e.g. "tax.capTracker").
-  engineName      String
+  engineName       String
   /// Fixture that caught the drift (only present for L1_DIFFERENTIAL).
-  fixtureName     String?
+  fixtureName      String?
   /// User scope — present only when the finding came from an L3 audit.
-  userId          String?
-  severity        CalcAuditFindingSeverity     @default(MEDIUM)
-  resolution      CalcAuditFindingResolution   @default(OPEN)
+  userId           String?
+  severity         CalcAuditFindingSeverity   @default(MEDIUM)
+  resolution       CalcAuditFindingResolution @default(OPEN)
   /// Plain-English summary surfaced in the admin queue.
-  summary         String                       @db.Text
+  summary          String                     @db.Text
   /// Failed assertion descriptions, when applicable (Json[] of strings).
   failedAssertions Json?
   /// Captured engine error message when status was ERROR.
-  errorMessage    String?                      @db.Text
+  errorMessage     String?                    @db.Text
   /// Free-form admin notes during triage.
-  adminNotes      String?                      @db.Text
-  resolvedAt      DateTime?
+  adminNotes       String?                    @db.Text
+  resolvedAt       DateTime?
   /// Admin user id (or email) who resolved the finding.
-  resolvedBy      String?
-  createdAt       DateTime                     @default(now())
-  updatedAt       DateTime                     @updatedAt
+  resolvedBy       String?
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
 
   @@index([source, resolution])
   @@index([engineName])
@@ -6851,4 +6848,3 @@ enum ConsentSource {
   SETTINGS_UPDATE // user toggled an opt-in setting from /dashboard/settings/legal
   VERSION_REACCEPT // captured via the version-bump re-prompt
 }
-
