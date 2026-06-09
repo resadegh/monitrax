@@ -530,8 +530,13 @@ export default function DashboardPage() {
           the user has globally opted out. Per Reza directive
           2026-05-08: reconciliation is the most-recurring user
           task — surface it persistently, not on a 24h gate. */}
-      {/* Phase 45.6 — top-of-page widgets wrapped in §18.7.2 glass. */}
-      <GlassPendingActions />
+      {/* Phase 45.6 — top-of-page widgets wrapped in §18.7.2 glass.
+          mb-6 spacing matches the other top-of-page widgets so Pending
+          Actions doesn't sit flush against TrailStageIndicator below
+          (Reza regression 2026-06-09). */}
+      <div className="mb-6">
+        <GlassPendingActions />
+      </div>
 
       {/* TRAIL Stage Indicator */}
       <div className="mb-6">
