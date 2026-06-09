@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Vanguard ETF Portfolio | Monitrax Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#22C55E",
+                        "outline": "#869585",
+                        "inverse-surface": "#dce5d9",
+                        "on-primary": "#003915",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "surface-container": "#1a221a",
+                        "on-tertiary-fixed-variant": "#7f2a21",
+                        "on-surface-variant": "#bccbb9",
+                        "on-background": "#dce5d9",
+                        "error-red": "#ffb4ab",
+                        "surface-container-highest": "#2f372e",
+                        "inverse-on-surface": "#2a322a",
+                        "on-tertiary-container": "#76231b",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-error": "#690005",
+                        "surface-bright": "#333b33",
+                        "on-secondary-fixed": "#000767",
+                        "tertiary": "#ffb5ab",
+                        "secondary-fixed-dim": "#bdc2ff",
+                        "surface-container-lowest": "#091009",
+                        "surface-dim": "#0e150e",
+                        "secondary-fixed": "#e0e0ff",
+                        "outline-variant": "#3d4a3d",
+                        "trail-emerald": "#22C55E",
+                        "tertiary-container": "#ff8b7c",
+                        "on-secondary-fixed-variant": "#2f3aa3",
+                        "trail-violet": "#8B5CF6",
+                        "primary-fixed-dim": "#4ae176",
+                        "outline-slate": "#94A3B8",
+                        "on-surface": "#dce5d9",
+                        "background": "#050913",
+                        "primary-fixed": "#6bff8f",
+                        "inverse-primary": "#006e2f",
+                        "on-primary-container": "#004b1e",
+                        "tertiary-fixed-dim": "#ffb4a9",
+                        "on-secondary": "#131e8c",
+                        "trail-indigo": "#6366F1",
+                        "secondary": "#bdc2ff",
+                        "on-tertiary-fixed": "#410001",
+                        "surface-ivory": "#0E1424",
+                        "surface-container-low": "#161d16",
+                        "trail-amber": "#F59E0B",
+                        "trail-sky": "#0EA5E9",
+                        "surface-variant": "#2f372e",
+                        "surface-container-high": "#242c24",
+                        "on-primary-fixed-variant": "#005321",
+                        "secondary-container": "#2f3aa3",
+                        "on-secondary-container": "#a8afff",
+                        "primary": "#4be277",
+                        "on-tertiary": "#60130d",
+                        "on-primary-fixed": "#002109",
+                        "surface-tint": "#4ae176",
+                        "error": "#ffb4ab",
+                        "surface": "#050913"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "48px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "section-gap": "48px"
+                    },
+                    fontFamily: {
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    fontSize: {
+                        "display-lg": ["48px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "body-lg": ["18px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "data-xl": ["40px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }],
+                        "data-lg": ["28px", { "lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .hero-glow {
+            filter: blur(80px);
+            opacity: 0.15; /* Lowered opacity by 50% for navy ground */
+        }
+        .top-highlight {
+            background: linear-gradient(to bottom, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen text-on-surface antialiased overflow-x-hidden">
+<!-- Ambient Scrim & Background -->
+<div class="fixed inset-0 z-[-1] pointer-events-none">
+<img alt="Modern Institutional Office" class="absolute inset-0 w-full h-full object-cover opacity-50" src="https://lh3.googleusercontent.com/aida/AP1WRLsaVPdM-8jSo68NS3mmfo-1cEzZ34zx_cy0ie6sopy1yIVYp6VyBLI2GvPrtLquP7fq9J5WHMvIBovXdgwjaaK8OwjuVlbYbMirpdm0QoIc9xeQl6IcLH6wWTfOjSU0Uo_ERv7-PrzPfDFHEkw1-tDrznjLwa1vSZVcodKzjCfqTGFKjDzP5AZHOR76tFQOz93Oj0TtI_meStG2EA9CNPSl5h8sWoplXWGkV8yBd1LzqiEalUSVOLq0vw"/>
+<div class="absolute inset-0 bg-gradient-to-b from-[#050913]/95 via-[#050913]/88 to-[#050913]/72"></div>
+</div>
+<!-- Sidebar Navigation Shell -->
+<nav class="fixed inset-y-0 left-0 flex flex-col z-40 bg-[#0E1424] border-r border-white/10 w-64">
+<div class="p-6 flex flex-col h-full">
+<div class="mb-10">
+<span class="font-headline-md text-headline-md font-bold text-[#FAFAF7]">Monitrax</span>
+<p class="text-body-sm text-outline-slate font-medium tracking-wide uppercase mt-1">Wealth OS</p>
+</div>
+<div class="space-y-1 flex-1">
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="home">home</span>
+<span class="font-body-md text-body-md">Home</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="group">group</span>
+<span class="font-body-md text-body-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="account_balance">account_balance</span>
+<span class="font-body-md text-body-md">My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-body-md text-body-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="health_and_safety">health_and_safety</span>
+<span class="font-body-md text-body-md">My Safety Net</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 transition-all duration-200" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" data-icon="trending_up">trending_up</span>
+<span class="font-body-md text-body-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="map">map</span>
+<span class="font-body-md text-body-md">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px] group-hover:text-primary transition-colors" data-icon="analytics">analytics</span>
+<span class="font-body-md text-body-md">Reports</span>
+</a>
+</div>
+<div class="mt-auto pt-6 border-t border-white/10">
+<button class="w-full bg-primary text-on-primary font-medium h-11 rounded-xl hover:opacity-90 transition-opacity">Update Plan</button>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="pl-64 min-h-screen">
+<div class="max-w-[1280px] mx-auto px-12 pt-8 pb-16">
+<!-- Breadcrumbs -->
+<div class="flex items-center justify-between mb-8">
+<nav class="flex items-center space-x-2 font-body-sm text-body-sm text-outline-slate">
+<span>My Wealth</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span>
+<span>Investments</span>
+<span class="material-symbols-outlined text-[14px]" data-icon="chevron_right">chevron_right</span>
+<span class="text-indigo-300 font-medium">Vanguard ETF Portfolio</span>
+</nav>
+<a class="flex items-center text-primary hover:underline font-label-md text-label-md" href="#">
+<span class="material-symbols-outlined mr-2 text-[18px]" data-icon="arrow_back">arrow_back</span>
+                Back to Investments
+            </a>
+</div>
+<!-- 1. HERO CARD -->
+<div class="relative mb-12">
+<!-- Halo Glow -->
+<div class="absolute -inset-10 bg-gradient-to-r from-trail-indigo to-trail-violet hero-glow -z-10 rounded-full"></div>
+<div class="bg-[#0E1424] backdrop-blur-xl border border-white/30 rounded-[28px] overflow-hidden shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] relative">
+<!-- Top Highlight & Accent Strip -->
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-indigo to-trail-violet"></div>
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="p-8 relative">
+<div class="flex justify-between items-start mb-6">
+<div class="flex items-center space-x-4">
+<div class="bg-gradient-to-br from-trail-indigo to-trail-violet p-2 rounded-lg text-white shadow-sm">
+<span class="material-symbols-outlined text-[20px]" data-icon="trending_up">trending_up</span>
+</div>
+<span class="font-eyebrow text-eyebrow tracking-widest text-indigo-300 uppercase font-semibold">INVESTMENT ACCOUNT</span>
+</div>
+<div class="flex space-x-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-xl border border-white/30 text-on-surface-variant hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="auto_awesome">auto_awesome</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl border border-white/30 text-on-surface-variant hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="edit">edit</span>
+</button>
+<button class="w-10 h-10 flex items-center justify-center rounded-xl border border-white/30 text-error-red hover:bg-error-container/20 transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="delete">delete</span>
+</button>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-gutter">
+<div class="col-span-7">
+<h1 class="font-display-lg text-display-lg text-[#FAFAF7] mb-2">Vanguard ETF Portfolio</h1>
+<p class="font-body-lg text-body-lg text-outline-slate">CommSec · ETF / Shares</p>
+</div>
+<div class="col-span-5 text-right">
+<div class="font-data-xl text-data-xl bg-gradient-to-r from-trail-indigo to-trail-violet bg-clip-text text-transparent tabular-nums mb-1">$487,250</div>
+<div class="flex items-center justify-end space-x-2">
+<span class="text-body-sm text-outline-slate">Cost Basis $385,200</span>
+<div class="bg-emerald-500/14 text-emerald-300 ring-1 ring-emerald-400/25 px-2 py-0.5 rounded-full text-body-sm font-medium tabular-nums">+26.5%</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-3 gap-12 mt-12 pt-8 border-t border-white/10">
+<div class="flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase mb-1">YTD Return</span>
+<span class="font-data-lg text-data-lg text-trail-indigo tabular-nums">+12.4%</span>
+</div>
+<div class="flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase mb-1">Asset Mix</span>
+<div class="flex items-center">
+<span class="font-data-lg text-data-lg text-indigo-300 tabular-nums mr-3">4 ETFs · 2 Shares</span>
+</div>
+</div>
+<div class="flex flex-col">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase mb-1">Cash Balance</span>
+<span class="font-data-lg text-data-lg text-trail-emerald tabular-nums">$8,420</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. 4-CELL KPI ROW -->
+<div class="grid grid-cols-4 gap-6 mb-12">
+<!-- KPI 1: Dividends -->
+<div class="bg-[#0E1424] border border-white/30 rounded-[22px] p-6 relative shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-trail-emerald"></div>
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.08] to-transparent pointer-events-none"></div>
+<div class="flex items-center space-x-3 mb-4 relative">
+<div class="bg-gradient-to-br from-trail-emerald to-emerald-600 p-1.5 rounded-lg text-white shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="payments">payments</span>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-emerald uppercase font-bold tracking-widest">Dividends</span>
+</div>
+<div class="font-data-xl text-data-xl text-trail-emerald tabular-nums relative">$12,847</div>
+<p class="text-body-sm text-outline-slate mt-1 relative">Net Received</p>
+</div>
+<!-- KPI 2: Distributions -->
+<div class="bg-[#0E1424] border border-white/30 rounded-[22px] p-6 relative shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-trail-sky"></div>
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-sky-500/[0.08] to-transparent pointer-events-none"></div>
+<div class="flex items-center space-x-3 mb-4 relative">
+<div class="bg-gradient-to-br from-trail-sky to-sky-600 p-1.5 rounded-lg text-white shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="trending_up">trending_up</span>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-sky uppercase font-bold tracking-widest">Distributions</span>
+</div>
+<div class="font-data-xl text-data-xl text-trail-sky tabular-nums group-hover:scale-105 transition-transform origin-left relative">$4,320</div>
+<p class="text-body-sm text-outline-slate mt-1 relative">ETF Payouts</p>
+</div>
+<!-- KPI 3: Franking credits -->
+<div class="bg-[#0E1424] border border-white/30 rounded-[22px] p-6 relative shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-trail-indigo"></div>
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.08] to-transparent pointer-events-none"></div>
+<div class="flex items-center space-x-3 mb-4 relative">
+<div class="bg-gradient-to-br from-trail-indigo to-indigo-600 p-1.5 rounded-lg text-white shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="account_balance">account_balance</span>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-indigo uppercase font-bold tracking-widest">Franking credits</span>
+</div>
+<div class="font-data-xl text-data-xl text-trail-indigo tabular-nums relative">$5,506</div>
+<p class="text-body-sm text-outline-slate mt-1 relative">FY26 Accrued</p>
+</div>
+<!-- KPI 4: Capital gains -->
+<div class="bg-[#0E1424] border border-white/30 rounded-[22px] p-6 relative shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-trail-violet"></div>
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="absolute inset-0 bg-gradient-to-br from-violet-500/[0.08] to-transparent pointer-events-none"></div>
+<div class="flex items-center space-x-3 mb-4 relative">
+<div class="bg-gradient-to-br from-trail-violet to-violet-600 p-1.5 rounded-lg text-white shadow-sm">
+<span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-violet uppercase font-bold tracking-widest">Capital gains</span>
+</div>
+<div class="font-data-xl text-data-xl text-trail-violet tabular-nums relative">$18,400</div>
+<p class="text-body-sm text-outline-slate mt-1 relative">Realized YTD</p>
+</div>
+</div>
+<!-- LOWER SECTIONS -->
+<div class="grid grid-cols-12 gap-8 items-start">
+<!-- LEFT COLUMN -->
+<div class="col-span-8 space-y-6">
+<h2 class="font-headline-sm text-headline-sm text-[#FAFAF7] flex items-center">
+<span class="material-symbols-outlined mr-3 text-trail-indigo" data-icon="pie_chart">pie_chart</span>
+                    Portfolio Holdings
+                </h2>
+<div class="space-y-4">
+<!-- VAS Row -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-5 flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] group hover:border-trail-indigo transition-colors cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="flex items-center space-x-4">
+<div class="bg-white/5 text-secondary w-12 h-12 flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined" data-icon="show_chart">show_chart</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">VAS · Vanguard Australian Shares ETF</p>
+<p class="text-body-sm text-outline-slate">Domestic Equity · ASX</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-data-lg text-[#FAFAF7] tabular-nums">$75,820</p>
+<span class="text-[10px] text-outline-slate uppercase font-bold tracking-widest">Market Value</span>
+</div>
+</div>
+<!-- VGS Row -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-5 flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] group hover:border-trail-sky transition-colors cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="flex items-center space-x-4">
+<div class="bg-sky-500/10 text-trail-sky w-12 h-12 flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined" data-icon="public">public</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">VGS · Vanguard MSCI International</p>
+<p class="text-body-sm text-outline-slate">International Equity · ASX</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-data-lg text-[#FAFAF7] tabular-nums">$47,208</p>
+<span class="text-[10px] text-outline-slate uppercase font-bold tracking-widest">Market Value</span>
+</div>
+</div>
+<!-- A200 Row -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-5 flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] group hover:border-trail-violet transition-colors cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="flex items-center space-x-4">
+<div class="bg-violet-500/10 text-trail-violet w-12 h-12 flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">A200 · Betashares ASX 200 ETF</p>
+<p class="text-body-sm text-outline-slate">Domestic Equity · ASX</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-data-lg text-[#FAFAF7] tabular-nums">$162,960</p>
+<span class="text-[10px] text-outline-slate uppercase font-bold tracking-widest">Market Value</span>
+</div>
+</div>
+<!-- BHP Row -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-5 flex items-center justify-between shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] group hover:border-trail-emerald transition-colors cursor-pointer relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="flex items-center space-x-4">
+<div class="bg-emerald-500/10 text-trail-emerald w-12 h-12 flex items-center justify-center rounded-xl">
+<span class="material-symbols-outlined" data-icon="factory">factory</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">BHP · BHP Group</p>
+<p class="text-body-sm text-outline-slate">Individual Share · ASX</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-data-lg text-[#FAFAF7] tabular-nums">$11,712</p>
+<span class="text-[10px] text-outline-slate uppercase font-bold tracking-widest">Market Value</span>
+</div>
+</div>
+</div>
+<div class="space-y-6">
+<h2 class="font-headline-sm text-headline-sm text-[#FAFAF7] flex items-center">
+<span class="material-symbols-outlined mr-3 text-trail-indigo" data-icon="history">history</span>
+                        Recent Activity
+                    </h2>
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1/2 top-highlight pointer-events-none"></div>
+<div class="divide-y divide-white/10">
+<!-- Transaction 1 -->
+<div class="p-5 flex items-center justify-between hover:bg-white/5 transition-colors">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-lg bg-emerald-500/14 flex items-center justify-center text-trail-emerald">
+<span class="material-symbols-outlined text-[20px]" data-icon="payments">payments</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Dividend — VAS</p>
+<p class="text-body-sm text-outline-slate">27 May 2026</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-[20px] text-trail-emerald tabular-nums">+$2,140</p>
+</div>
+</div>
+<!-- Transaction 2 -->
+<div class="p-5 flex items-center justify-between hover:bg-white/5 transition-colors">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-outline-slate">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Buy — VGS 50 units</p>
+<p class="text-body-sm text-outline-slate">21 May 2026</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-[20px] text-[#FAFAF7] tabular-nums">-$5,620</p>
+</div>
+</div>
+<!-- Transaction 3 -->
+<div class="p-5 flex items-center justify-between hover:bg-white/5 transition-colors">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-lg bg-emerald-500/14 flex items-center justify-center text-trail-emerald">
+<span class="material-symbols-outlined text-[20px]" data-icon="account_balance_wallet">account_balance_wallet</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Distribution — A200</p>
+<p class="text-body-sm text-outline-slate">15 May 2026</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-[20px] text-trail-emerald tabular-nums">+$1,820</p>
+</div>
+</div>
+<!-- Transaction 4 -->
+<div class="p-5 flex items-center justify-between hover:bg-white/5 transition-colors">
+<div class="flex items-center space-x-4">
+<div class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-outline-slate">
+<span class="material-symbols-outlined text-[20px]" data-icon="shopping_cart">shopping_cart</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Buy — BHP 50 units</p>
+<p class="text-body-sm text-outline-slate">08 May 2026</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-lg text-[20px] text-[#FAFAF7] tabular-nums">-$2,343</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN -->
+<div class="col-span-4 space-y-6">
+<h2 class="font-headline-sm text-headline-sm text-[#FAFAF7] flex items-center">
+<span class="material-symbols-outlined mr-3 text-trail-sky" data-icon="lightbulb">lightbulb</span>
+                    Strategy &amp; Insights
+                </h2>
+<div class="space-y-4">
+<!-- Performance Scenario Card -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-trail-indigo/5 to-transparent pointer-events-none"></div>
+<div class="absolute top-0 left-0 w-full h-[2px] bg-trail-indigo opacity-30 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center justify-between mb-4 relative">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase font-bold">Performance Scenarios</span>
+<span class="material-symbols-outlined text-outline-slate" data-icon="query_stats">query_stats</span>
+</div>
+<p class="font-body-md text-body-md text-[#FAFAF7] mb-4 relative">Model how this account's value, asset mix and tax position shift under different return, dividend and rebalancing assumptions.</p>
+<button class="w-full py-2.5 px-4 rounded-xl border border-white/30 text-label-md font-semibold text-[#FAFAF7] hover:bg-white/5 transition-colors relative">View scenarios</button>
+</div>
+<!-- Tax Position Card -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[2px] bg-trail-emerald opacity-30 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center justify-between mb-4 relative">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase font-bold">Tax Position</span>
+<span class="material-symbols-outlined text-outline-slate" data-icon="account_balance">account_balance</span>
+</div>
+<p class="font-body-md text-body-md text-[#FAFAF7] mb-4 relative">This portfolio contributed <span class="text-trail-emerald font-bold">$5,506</span> to franking credits this FY. See its impact in your FY26 tax position.</p>
+<button class="w-full py-2.5 px-4 rounded-xl border border-white/30 text-label-md font-semibold text-[#FAFAF7] hover:bg-white/5 transition-colors relative">View tax position</button>
+</div>
+<!-- Holdings Insight Card -->
+<div class="bg-[#0E1424] border border-white/30 rounded-2xl p-6 shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] relative overflow-hidden group">
+<div class="absolute inset-0 bg-gradient-to-br from-trail-violet/5 to-transparent pointer-events-none"></div>
+<div class="absolute top-0 left-0 w-full h-[2px] bg-trail-violet opacity-30 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center justify-between mb-4 relative">
+<span class="font-eyebrow text-eyebrow text-outline-slate uppercase font-bold">Holdings Insight</span>
+<span class="material-symbols-outlined text-trail-violet" data-icon="stars">stars</span>
+</div>
+<p class="font-body-md text-body-md text-[#FAFAF7] mb-4 relative">4 ETFs and 2 individual shares across XX% domestic, XX% international. View concentration risk.</p>
+<a class="text-trail-violet font-semibold text-label-md hover:underline flex items-center relative" href="#">
+                            View breakdown
+                            <span class="material-symbols-outlined text-[16px] ml-1" data-icon="open_in_new">open_in_new</span>
+</a>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="mt-24 pt-12 border-t border-white/10">
+<p class="text-[11px] leading-relaxed text-outline-slate max-w-4xl font-body-sm">
+<strong>AFSL General Advice Warning:</strong> The information provided on this platform is general in nature only and does not constitute personal financial, tax, or legal advice. It has been prepared without taking into account your personal objectives, financial situation, or needs. Before acting on any information, you should consider the appropriateness of the information having regard to your objectives, financial situation, and needs. Performance figures are historical and past performance is not a reliable indicator of future results. Monitrax Wealth OS relies on third-party data providers; while we strive for accuracy, we cannot guarantee the real-time precision of property valuations.
+            </p>
+<div class="mt-8 flex justify-between items-center text-outline-slate text-[11px]">
+<div class="flex space-x-6">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Contact Support</a>
+</div>
+<span>© 2024 Monitrax Pty Ltd. All rights reserved.</span>
+</div>
+</footer>
+</div>
+</main>
+<script>
+    // Micro-interaction for depth
+    document.querySelectorAll('.group').forEach(card => {
+        card.addEventListener('mouseenter', () => {
+            card.style.transform = 'translateY(-4px)';
+        });
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = 'translateY(0px)';
+        });
+    });
+</script>
+</body></html>
