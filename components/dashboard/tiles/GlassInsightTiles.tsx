@@ -52,19 +52,27 @@ export function GlassHealthScore({ score, grade, breakdown }: HealthScoreProps) 
   return (
     <GlassPanel subPalette={sub} radius="tile" padding="p-5" hoverLift>
       <div className="flex h-full flex-col gap-4">
+        {/* Tight chip + nowrap so the grade letter can't truncate inside
+            a narrow Bento Pair cell (Reza regression 2026-06-09 — chip
+            previously read "GRAI" + "B" with letter-wrap). The badge +
+            eyebrow on the left get min-w-0 + truncate so the eyebrow
+            shrinks gracefully instead of pushing the chip out. */}
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <GlassIconBadge icon={Heart} subPalette={sub} size="sm" />
-            <GlassEyebrow subPalette={sub}>Financial Health</GlassEyebrow>
+            <div className="min-w-0 truncate">
+              <GlassEyebrow subPalette={sub}>Health</GlassEyebrow>
+            </div>
           </div>
           <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+            className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
               isHealthy
                 ? 'bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300'
                 : 'bg-amber-500/12 text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-300'
             }`}
+            title={`Grade ${grade}`}
           >
-            Grade {grade}
+            {grade}
           </span>
         </div>
 
@@ -128,7 +136,16 @@ interface EmergencyFundProps {
   gap: number;
 }
 
+// Short labels — must fit in a narrow Bento Pair cell chip without
+// truncation (Reza regression 2026-06-09 — "Excellent" was getting cut
+// to "EXC"). Full status meaning preserved in the title attribute.
 const EF_STATUS_LABEL: Record<EmergencyFundProps['status'], string> = {
+  excellent: 'Strong',
+  good: 'Good',
+  warning: 'Build',
+  danger: 'Low',
+};
+const EF_STATUS_FULL: Record<EmergencyFundProps['status'], string> = {
   excellent: 'Excellent',
   good: 'On track',
   warning: 'Building',
@@ -144,16 +161,19 @@ export function GlassEmergencyFund({ monthsCovered, target, status, gap, monthly
     <GlassPanel subPalette={sub} radius="tile" padding="p-5" hoverLift>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <GlassIconBadge icon={Umbrella} subPalette={sub} size="sm" />
-            <GlassEyebrow subPalette={sub}>Emergency Fund</GlassEyebrow>
+            <div className="min-w-0 truncate">
+              <GlassEyebrow subPalette={sub}>Emergency</GlassEyebrow>
+            </div>
           </div>
           <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+            className={`inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
               isHealthy
                 ? 'bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300'
                 : 'bg-amber-500/12 text-amber-700 ring-1 ring-amber-500/20 dark:text-amber-300'
             }`}
+            title={EF_STATUS_FULL[status]}
           >
             {EF_STATUS_LABEL[status]}
           </span>
@@ -202,12 +222,17 @@ export function GlassDebtQuality({ data }: { data: DebtQualityData }) {
     <GlassPanel subPalette={sub} radius="tile" padding="p-5" hoverLift>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <GlassIconBadge icon={Landmark} subPalette={sub} size="sm" />
-            <GlassEyebrow subPalette={sub}>Debt Quality</GlassEyebrow>
+            <div className="min-w-0 truncate">
+              <GlassEyebrow subPalette={sub}>Debt</GlassEyebrow>
+            </div>
           </div>
-          <span className="inline-flex items-center rounded-full bg-indigo-500/12 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-indigo-700 ring-1 ring-indigo-500/20 dark:text-indigo-300">
-            {tone}
+          <span
+            className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-indigo-500/12 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-indigo-700 ring-1 ring-indigo-500/20 dark:text-indigo-300"
+            title={tone}
+          >
+            {data.debtQualityScore >= 70 ? 'Strong' : data.debtQualityScore >= 40 ? 'Mixed' : 'Watch'}
           </span>
         </div>
 
