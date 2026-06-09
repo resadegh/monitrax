@@ -1878,6 +1878,66 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 2. Re-invents the Cremorne-Wide / scrim / halo / polished-tile cues on a single-asset detail page when the Asset Spotlight template already covers it.
 3. Doesn't tick off the surface in §18.7.4 replicate queue AND update §18.7.5's per-surface mapping table with the new asset class's column.
 
+#### 18.7.6 The "Compact Dashboard" mobile reflow — canonical mobile pattern for long multi-section dashboards (Phase 45.4, 2026-06-09)
+
+> **Reza directive 2026-06-09:** *"as dashboard is a very long list, is there a better way from stitch on the mobile view to have the tiles transitioned into each other rather than a long scroll down?"* The honest mobile-first audit: stacking 15+ tiles vertically reads as "endless dashboard" — the user has to scroll forever, can't scan, and loses the at-a-glance protagonist of every section. The §18.7.5 Asset Spotlight template fixed long-scroll on **detail** pages (single focal asset, content fits the viewport). Compact Dashboard fixes it on **list-of-sections** pages — the dashboard home, My Wealth landing, My Safety Net, anywhere multiple section pairs stack.
+
+**Origin lineage.** Apple Wallet (horizontal card carousel), iOS Stocks (snap-scroll watchlist), Mercury dashboard (bento pair widgets), Linear settings (compact 2-up rows). The Monitrax distillation: keep the vertical structural order users have learned, compress each section so the *whole* dashboard fits in ~2-3 viewport heights rather than ~6-8.
+
+Canonical reference implementation lands in Phase 45.4 (`app/dashboard/page.tsx` mobile breakpoint). Treat that PR as the source of truth for proportions, snap behaviour, and dot-indicator styling. Future surfaces adopting the pattern should clone its structure and swap content only.
+
+##### The two mechanics (combined under one pattern)
+
+| Mechanic | When to use | Anatomy |
+|---|---|---|
+| **KPI Swipe Strip** | Any horizontal row of ≥3 metric tiles that displays AT-A-GLANCE state (KPI row, mini-stat strips, segmented chip rails). NOT for entity lists where the user clicks through — those stay vertical because the tile IS the destination. | Container `overflow-x-auto snap-x snap-mandatory scroll-px-4 -mx-4 px-4 pb-2` + `flex gap-3` on the inner. Each tile `snap-start shrink-0 w-[78vw] max-w-[280px]` so 1.2 tiles peek (the next tile partially visible — telegraphs there's more). 8px-tall page-dot indicator UNDER the strip (one filled dot + N outlined dots, transitions via `IntersectionObserver` on each tile). `scrollbar-hide` utility. Momentum-scroll natural on iOS; no manual JS pager needed — `scroll-snap` does the work. |
+| **Bento Pair** | Any pair of widgets that normally sit side-by-side on desktop (Health + Emergency, Debt Quality + Entity Cashflow, Net Worth Trend + Asset Allocation). | `grid grid-cols-2 gap-3` at the mobile breakpoint (≥360px), collapses to `grid-cols-1` below 360px (smallest iPhones). Each cell `min-w-0` so flex children can shrink. Internal tile padding tightens to 14px from desktop's 24px. Numerals drop from data-xl (40px) → data-lg (28px). Eyebrows + helpers preserved verbatim. |
+
+##### What stays vertical (NOT compressed)
+
+- **Money Story Hero** — full-width, the headline. Compressing it kills its weight.
+- **Properties / Investments tab tiles** — vertical 1-col stack. Each tile IS a destination (user clicks through to the Asset Spotlight detail page). Horizontal carousel here would force users to swipe past tiles they're trying to read.
+- **Entity lists, transaction tables, settings rows** — same logic. Anywhere the user reads down a list to pick.
+
+##### Composition rule (top-to-bottom on mobile)
+
+1. **Money Story Hero** — full-width.
+2. **Net Worth paired hero** — full-width (the Assets/Debts split stays side-by-side because both are equally important; never stacked vertically — the "vs" reading is lost).
+3. **KPI Swipe Strip** — horizontal carousel of the 5 KPI tiles.
+4. **Bento Pair** rows (one per pair of related widgets — Health+Emergency, Debt+EntityCashflow, etc.).
+5. **Vertical tab sections** (Properties, Investments) — 1-col vertical stacks of the Phase 45.3 tiles.
+
+##### Sub-palette + glass vocabulary is inherited verbatim
+
+Compact Dashboard is a LAYOUT pattern, not a visual vocabulary. Every tile inside the Swipe Strip and Bento Pair MUST use the §18.7.2 polished tile sub-pattern (glass + 1px hairline + 3-tier shadow + 1px inner-top highlight + 3px sub-palette gradient top-accent + faint sub-palette tinted bg + luminous icon badge gem + tabular-nums). Per-tile sub-palette mapping follows §18.7.2's money-signal row + §18.7.5's per-surface mapping table. The §18.7.2 dark-mode reviewer enforcement applies — every Compact Dashboard PR ships a 4-variant matrix (mobile light + mobile dark + desktop light + desktop dark — desktop stays as the canonical multi-column grid, mobile reflows per this pattern).
+
+##### Why this is "Compact Dashboard" not "Mobile Wallet"
+
+The pattern is canonical on **any tight viewport** — not just phones. Tablet portrait, split-view multitasking, side-by-side preview windows, future foldable inner screens — all of them hit the same long-scroll problem. Naming by the OUTCOME (compact) rather than the DEVICE (mobile) keeps it portable.
+
+##### When NOT to use Compact Dashboard
+
+- **Detail pages** — use the §18.7.5 Asset Spotlight template instead; that handles single-asset content elegantly without needing carousels.
+- **Forms / settings / data-entry surfaces** — vertical stacks let the user complete tasks linearly; carousels add friction.
+- **Onboarding / wizards** — those have their own step-pattern; don't mix.
+- **Lists where order matters** (transactions, audit logs) — never carousel a chronologically-ordered list.
+
+##### Reviewer enforcement
+
+A reviewer (human or future-Claude) MUST reject any PR that:
+1. Claims to fix a "long mobile scroll" but doesn't follow this §18.7.6 Compact Dashboard pattern (deviation must be explicitly justified — e.g. "this is a detail page, §18.7.5 applies").
+2. Implements a Swipe Strip without the snap-mandatory + 1.2-tile peek + page-dot indicator (those three together make the pattern feel intentional, not janky).
+3. Implements a Bento Pair without the ≤360px collapse-to-single-col fallback (the smallest iPhones break otherwise).
+4. Puts vertical-stack content (entity lists, tab content) into a Swipe Strip (anti-pattern — the user can't scan).
+5. Doesn't inherit the §18.7.2 polished tile sub-pattern for every tile inside the Strip / Bento (Compact Dashboard is layout, not vocabulary — vocabulary stays §18.7.2).
+
+##### Where to apply next (queue)
+
+- Phase 45.4 — KPI row + Net Worth hero — **first canonical application of Compact Dashboard (this PR).**
+- Phase 45.5 — insight + diagnostic widgets → Bento Pair rows.
+- Phase 45.6 — MoneyStoryHero + WealthUniverse + DailyPulse → full-width hero + Bento Pair where appropriate.
+- Future: `/dashboard/balances` mobile reflow, `/dashboard/cfo` mobile reflow, My Wealth landing mobile reflow.
+
 ---
 
 ## ENFORCEMENT

@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Monitrax Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "tertiary-container": "#66768d",
+                        "on-tertiary-container": "#fdfcff",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-variant": "#dde5d9",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-secondary-fixed-variant": "#404757",
+                        "error-red": "#DC2626",
+                        "trail-emerald": "#16A34A",
+                        "surface-ivory": "#FAFAF7",
+                        "surface-dim": "#d5dcd1",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "error": "#ba1a1a",
+                        "on-surface": "#171d16",
+                        "surface-container-low": "#eff6ea",
+                        "surface-container": "#e9f0e5",
+                        "surface-tint": "#006e2d",
+                        "error-container": "#ffdad6",
+                        "background": "#f4fcf0",
+                        "outline": "#6e7b6c",
+                        "outline-slate": "#94A3B8",
+                        "inverse-primary": "#62df7d",
+                        "trail-amber": "#F59E0B",
+                        "primary-fixed-dim": "#62df7d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container-high": "#e3eadf",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#f4fcf0",
+                        "tertiary": "#4d5d73",
+                        "outline-variant": "#bdcaba",
+                        "primary-container": "#00873a",
+                        "on-primary-container": "#f7fff2",
+                        "on-secondary": "#ffffff",
+                        "primary": "#006b2c",
+                        "secondary-fixed": "#dce2f6",
+                        "secondary": "#585e6f",
+                        "on-error": "#ffffff",
+                        "trail-indigo": "#6366F1",
+                        "trail-sky": "#0EA5E9",
+                        "on-error-container": "#93000a",
+                        "inverse-surface": "#2b322b",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-secondary-container": "#5c6274",
+                        "inverse-on-surface": "#ecf3e7",
+                        "primary-fixed": "#7ffc97",
+                        "secondary-container": "#d9dff4",
+                        "on-secondary-fixed": "#151b2a",
+                        "on-background": "#171d16",
+                        "trail-violet": "#8B5CF6",
+                        "surface-bright": "#f4fcf0",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-primary": "#ffffff",
+                        "on-tertiary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "24px": "24px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 4px 0 rgba(11, 18, 32, 0.04);
+        }
+        .inner-highlight {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        @keyframes breathe {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        .animate-breathe { animation: breathe 3s ease-in-out infinite; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory min-h-screen text-on-surface pb-24">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface-ivory h-16 flex justify-between items-center px-margin-mobile">
+<div class="flex items-center gap-2">
+<span class="font-headline-md text-headline-md font-semibold text-on-surface tracking-tight">Monitrax</span>
+</div>
+<div class="flex items-center gap-4">
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="A professional close-up portrait of a sophisticated executive woman in a minimalist architectural setting. The lighting is soft and natural, reflecting a premium light-mode aesthetic with warm ivory and soft grey tones. She exudes calm authority and financial control, fitting the restrained editorial style of a high-end wealth management platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVQtPDXQhc9zcKz_2FQLdrGZ96-CY3F9XixiyDVUzrL-EC5n7QgicQ56HEz8r8O1J1-dJw-wajbxmPpoFYQJb5r_rNdHGCDcaMCfDPXb6rROvF2MZf-uCpOUecKm04Y4yCnjePQGBOCd5nP9k5IAU8jhcl9jeiCEHCBvRMy8UpLb2Sr5faoLbHdQGIO6FY3fIDaq8erjQHoBNckAtsFkBUuOEW1l7EVzACSmspse6BRofZnkxTgLPRfmwnrcYlH81_pY6CX38ZS1s"/>
+</div>
+</div>
+</header>
+<main class="mt-16 px-margin-mobile flex flex-col gap-5">
+<!-- Money Story Hero -->
+<section class="w-full glass-card rounded-24px p-6 border-t-[3px] border-t-trail-emerald inner-highlight bg-trail-emerald/5">
+<div class="flex justify-between items-start mb-6">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-widest">Freedom Horizon</span>
+<div class="flex bg-white/50 p-1 rounded-full border border-outline-variant scale-90 origin-right">
+<button class="px-2 py-1 rounded-full text-[10px] font-semibold text-on-surface-variant">1M</button>
+<button class="px-2 py-1 rounded-full text-[10px] font-semibold text-on-surface-variant">3M</button>
+<button class="px-2 py-1 rounded-full text-[10px] font-semibold text-on-surface-variant">6M</button>
+<button class="px-2 py-1 rounded-full text-[10px] font-semibold bg-white shadow-sm text-primary">1Y</button>
+<button class="px-2 py-1 rounded-full text-[10px] font-semibold text-on-surface-variant">ALL</button>
+</div>
+</div>
+<div class="mb-4">
+<div class="flex items-center gap-2">
+<span class="font-data-xl text-[36px] tabular-nums">11.4 years</span>
+<div class="w-2 h-2 rounded-full bg-trail-emerald animate-breathe"></div>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">of freedom — your kept margin widened 12 points</p>
+</div>
+<!-- Chart Placeholder -->
+<div class="h-[200px] w-full relative overflow-hidden my-4">
+<svg class="w-full h-full preserve-3d" viewbox="0 0 400 200">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#16A34A" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#16A34A" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,150 Q50,140 100,145 T200,120 T300,80 T400,40 L400,200 L0,200 Z" fill="url(#chartGradient)"></path>
+<path d="M0,150 Q50,140 100,145 T200,120 T300,80 T400,40" fill="none" stroke="#16A34A" stroke-width="3"></path>
+<!-- Top Ribbon Line for "widening" effect -->
+<path d="M0,160 Q50,155 100,165 T200,150 T300,130 T400,110" fill="none" opacity="0.4" stroke="#16A34A" stroke-dasharray="4 4" stroke-width="1.5"></path>
+</svg>
+</div>
+<div class="flex justify-between items-center pt-4 border-t border-outline-variant/30">
+<div class="flex flex-col">
+<span class="text-[10px] font-semibold text-on-surface-variant uppercase tracking-tighter">Earned</span>
+<span class="font-label-md text-label-md text-primary">$245K</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[10px] font-semibold text-on-surface-variant uppercase tracking-tighter">Kept</span>
+<span class="font-label-md text-label-md text-primary">$50K</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[10px] font-semibold text-on-surface-variant uppercase tracking-tighter">Margin</span>
+<span class="px-2 py-0.5 rounded-full bg-trail-emerald/10 text-trail-emerald text-[11px] font-bold">+20%</span>
+</div>
+</div>
+</section>
+<!-- Net Worth Paired Hero -->
+<section class="w-full glass-card rounded-24px border-t-[3px] border-t-trail-sky inner-highlight bg-trail-sky/5">
+<div class="grid grid-cols-2 divide-x divide-outline-variant/30">
+<div class="p-5 flex flex-col gap-3">
+<div class="w-10 h-10 rounded-xl bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+</div>
+<div>
+<span class="font-eyebrow text-[10px] text-on-surface-variant uppercase">Assets</span>
+<div class="font-data-lg text-data-lg tabular-nums">$3.9M</div>
+<p class="text-[10px] text-on-surface-variant mt-1 leading-tight">5 properties · 2 accounts · 3 investments</p>
+</div>
+</div>
+<div class="p-5 flex flex-col gap-3">
+<div class="w-10 h-10 rounded-xl bg-trail-indigo/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-indigo" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<span class="font-eyebrow text-[10px] text-on-surface-variant uppercase">Debts</span>
+<div class="font-data-lg text-data-lg tabular-nums text-on-surface">$1.9M</div>
+<p class="text-[10px] text-on-surface-variant mt-1 leading-tight">3 loans · 49% LVR</p>
+</div>
+</div>
+</div>
+</section>
+<!-- KPI Swipe Strip -->
+<section class="w-full overflow-hidden -mx-margin-mobile px-margin-mobile">
+<div class="flex gap-4 overflow-x-auto hide-scrollbar snap-x snap-mandatory">
+<!-- Tile 1 -->
+<div class="min-w-[85%] snap-center glass-card rounded-xl p-5 border-l-[4px] border-l-trail-emerald">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-full bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald">payments</span>
+</div>
+<div class="px-2 py-1 rounded-full bg-trail-emerald/10 text-trail-emerald text-[11px] font-bold">
+                            +$184 vs last mo
+                        </div>
+</div>
+<span class="font-eyebrow text-[10px] text-on-surface-variant uppercase">Monthly Cash Flow</span>
+<div class="flex items-end justify-between gap-4">
+<div>
+<div class="font-data-lg text-data-lg tabular-nums">+$4,213</div>
+<span class="text-[11px] text-on-surface-variant">$50,556/year</span>
+</div>
+<div class="w-20 h-10">
+<svg class="w-full h-full" viewbox="0 0 80 40">
+<path d="M0,35 Q10,38 20,30 T40,25 T60,10 T80,5" fill="none" stroke="#16A34A" stroke-width="2"></path>
+</svg>
+</div>
+</div>
+</div>
+<!-- Tile 2 (Peeking) -->
+<div class="min-w-[85%] snap-center glass-card rounded-xl p-5 border-l-[4px] border-l-trail-emerald opacity-60">
+<div class="flex justify-between items-start mb-4">
+<div class="w-12 h-12 rounded-full bg-trail-emerald/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-trail-emerald">savings</span>
+</div>
+</div>
+<span class="font-eyebrow text-[10px] text-on-surface-variant uppercase">Annual Income</span>
+</div>
+</div>
+<!-- Dots -->
+<div class="flex justify-center gap-1.5 mt-4">
+<div class="w-1.5 h-1.5 rounded-full bg-trail-emerald"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-slate/30"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-slate/30"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-slate/30"></div>
+<div class="w-1.5 h-1.5 rounded-full bg-outline-slate/30"></div>
+</div>
+</section>
+<!-- Bento Pair 1 -->
+<section class="grid grid-cols-2 gap-4">
+<div class="glass-card rounded-xl p-4 flex flex-col justify-between h-[140px]">
+<div>
+<div class="flex justify-between items-start mb-1">
+<span class="material-symbols-outlined text-trail-emerald text-xl">favorite</span>
+<div class="px-1.5 py-0.5 rounded-full bg-trail-emerald/10 text-trail-emerald text-[9px] font-bold">A-</div>
+</div>
+<span class="font-eyebrow text-[9px] text-on-surface-variant uppercase block">Health</span>
+<div class="font-data-lg text-headline-sm tabular-nums">82</div>
+</div>
+<div class="flex gap-1 h-1 w-full rounded-full overflow-hidden">
+<div class="flex-1 bg-trail-emerald"></div>
+<div class="flex-1 bg-trail-emerald"></div>
+<div class="flex-1 bg-trail-emerald/30"></div>
+<div class="flex-1 bg-trail-emerald/10"></div>
+</div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col justify-between h-[140px]">
+<div>
+<div class="flex justify-between items-start mb-1">
+<span class="material-symbols-outlined text-trail-sky text-xl">umbrella</span>
+<div class="px-1.5 py-0.5 rounded-full bg-trail-sky/10 text-trail-sky text-[9px] font-bold">Good</div>
+</div>
+<span class="font-eyebrow text-[9px] text-on-surface-variant uppercase block">Emergency</span>
+<div class="font-data-lg text-headline-sm tabular-nums">4.2 mo</div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1">
+<div class="bg-trail-sky h-1 rounded-full" style="width: 70%"></div>
+</div>
+</div>
+</section>
+<!-- Bento Pair 2 -->
+<section class="grid grid-cols-2 gap-4">
+<div class="glass-card rounded-xl p-4 flex flex-col h-[140px]">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-trail-indigo text-xl">account_balance</span>
+</div>
+<span class="font-eyebrow text-[9px] text-on-surface-variant uppercase block">Debt Quality</span>
+<div class="font-data-lg text-headline-sm tabular-nums mb-1">78%</div>
+<div class="text-[10px] text-on-secondary-fixed-variant leading-tight">Mostly productive</div>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col h-[140px] bg-gradient-to-br from-trail-sky/5 to-trail-indigo/5">
+<div class="flex justify-between items-start mb-2">
+<span class="material-symbols-outlined text-trail-indigo text-xl">business</span>
+</div>
+<span class="font-eyebrow text-[9px] text-on-surface-variant uppercase block">Entity Cashflow</span>
+<div class="font-data-lg text-headline-sm tabular-nums text-trail-emerald mb-1">+$2,840</div>
+<div class="text-[10px] text-on-surface-variant">across 4 entities</div>
+</div>
+</section>
+<!-- Properties List -->
+<section class="mt-4">
+<div class="flex items-center gap-6 border-b border-outline-variant mb-6 pb-2 overflow-x-auto hide-scrollbar">
+<button class="font-label-md text-label-md text-primary border-b-2 border-primary pb-2 whitespace-nowrap">Properties</button>
+<button class="font-label-md text-label-md text-on-surface-variant pb-2 whitespace-nowrap">Shares</button>
+<button class="font-label-md text-label-md text-on-surface-variant pb-2 whitespace-nowrap">Cash</button>
+<button class="font-label-md text-label-md text-on-surface-variant pb-2 whitespace-nowrap">Super</button>
+</div>
+<div class="flex flex-col gap-4">
+<!-- Property Tile 1 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-trail-sky bg-gradient-to-r from-trail-sky/5 to-transparent">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-headline-sm text-[16px] text-on-surface">Guildford House</h4>
+<span class="text-[11px] text-on-surface-variant">Residential · NSW, Australia</span>
+</div>
+<div class="text-right">
+<div class="font-data-lg text-[18px] tabular-nums">$1.24M</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Market Value</span>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-2 pt-3 border-t border-outline-variant/30">
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Equity</span>
+<span class="text-[11px] font-bold text-on-surface">$540K</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">LVR</span>
+<span class="text-[11px] font-bold text-on-surface">56%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Yield</span>
+<span class="text-[11px] font-bold text-trail-emerald">4.2%</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Cash</span>
+<span class="text-[11px] font-bold text-trail-emerald">+$840</span>
+</div>
+</div>
+</div>
+<!-- Property Tile 2 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-trail-indigo bg-gradient-to-r from-trail-indigo/5 to-transparent">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-headline-sm text-[16px] text-on-surface">Broadbeach Unit</h4>
+<span class="text-[11px] text-on-surface-variant">Residential · QLD, Australia</span>
+</div>
+<div class="text-right">
+<div class="font-data-lg text-[18px] tabular-nums">$820K</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Market Value</span>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-2 pt-3 border-t border-outline-variant/30">
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Equity</span>
+<span class="text-[11px] font-bold text-on-surface">$210K</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">LVR</span>
+<span class="text-[11px] font-bold text-on-surface">74%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Yield</span>
+<span class="text-[11px] font-bold text-trail-emerald">5.1%</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Cash</span>
+<span class="text-[11px] font-bold text-error-red">-$120</span>
+</div>
+</div>
+</div>
+<!-- Property Tile 3 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-trail-sky bg-gradient-to-r from-trail-sky/5 to-transparent">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-headline-sm text-[16px] text-on-surface">Thornlands Est.</h4>
+<span class="text-[11px] text-on-surface-variant">Residential · QLD, Australia</span>
+</div>
+<div class="text-right">
+<div class="font-data-lg text-[18px] tabular-nums">$985K</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Market Value</span>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-2 pt-3 border-t border-outline-variant/30">
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Equity</span>
+<span class="text-[11px] font-bold text-on-surface">$420K</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">LVR</span>
+<span class="text-[11px] font-bold text-on-surface">57%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Yield</span>
+<span class="text-[11px] font-bold text-trail-emerald">4.8%</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Cash</span>
+<span class="text-[11px] font-bold text-trail-emerald">+$450</span>
+</div>
+</div>
+</div>
+<!-- Property Tile 4 -->
+<div class="glass-card rounded-xl p-4 border-l-4 border-l-trail-indigo bg-gradient-to-r from-trail-indigo/5 to-transparent opacity-90">
+<div class="flex justify-between items-start mb-3">
+<div>
+<h4 class="font-headline-sm text-[16px] text-on-surface">Vegas Suite</h4>
+<span class="text-[11px] text-on-surface-variant">Residential · NV, USA</span>
+</div>
+<div class="text-right">
+<div class="font-data-lg text-[18px] tabular-nums">$560K</div>
+<span class="text-[10px] text-on-surface-variant uppercase">Market Value</span>
+</div>
+</div>
+<div class="grid grid-cols-4 gap-2 pt-3 border-t border-outline-variant/30">
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Equity</span>
+<span class="text-[11px] font-bold text-on-surface">$180K</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">LVR</span>
+<span class="text-[11px] font-bold text-on-surface">68%</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Yield</span>
+<span class="text-[11px] font-bold text-trail-emerald">6.2%</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-[9px] font-semibold text-on-surface-variant uppercase">Cash</span>
+<span class="text-[11px] font-bold text-trail-emerald">+$2,100</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container-lowest shadow-[0_-1px_4px_0_rgba(11,18,32,0.04)] rounded-t-xl border-t border-outline-variant/20">
+<button class="flex flex-col items-center justify-center bg-primary-container/10 text-primary rounded-xl px-3 py-1 transition-all active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">home</span>
+<span class="font-label-md text-[10px] mt-1">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined">domain</span>
+<span class="font-label-md text-[10px] mt-1">Property</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-[10px] mt-1">Insights</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-label-md text-[10px] mt-1">Lending</span>
+</button>
+<button class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95 duration-150 ease-in-out">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-[10px] mt-1">Profile</span>
+</button>
+</nav>
+<script>
+        // Micro-interaction for tabs and navigation
+        document.querySelectorAll('nav button, .border-b button').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const parent = this.parentElement;
+                parent.querySelectorAll('button').forEach(b => {
+                    b.classList.remove('text-primary', 'border-primary', 'bg-primary-container/10');
+                    b.classList.add('text-on-secondary-container', 'text-on-surface-variant');
+                });
+                this.classList.add('text-primary');
+                if (this.classList.contains('border-b-2')) this.classList.add('border-primary');
+                if (parent.tagName === 'NAV') this.classList.add('bg-primary-container/10');
+            });
+        });
+    </script>
+</body></html>
