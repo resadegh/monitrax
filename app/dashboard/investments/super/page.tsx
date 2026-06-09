@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -119,6 +120,7 @@ const SEGMENT_STYLES = [
 
 export default function SuperannuationPage() {
   const { token } = useAuth();
+  const router = useRouter();
 
   const [position, setPosition] = useState<SuperPosition | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -197,7 +199,7 @@ export default function SuperannuationPage() {
   };
 
   const handleViewDetails = (account: SuperAccount) => {
-    setDetailAccount(account);
+    router.push(`/dashboard/investments/super/${account.id}`);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

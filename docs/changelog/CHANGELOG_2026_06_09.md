@@ -140,3 +140,65 @@ User confirmation: NOT REQUIRED — no destructive writes.
 ### Schema change (CLAUDE.md §12.12)
 
 No `prisma/schema.prisma` changes in this PR.
+
+---
+
+## Session: Phase 45.2.2 — SMSF detail (Asset Spotlight, third asset class)
+
+### Context
+
+Continuation of the Phase 45.x polish backlog per Reza's "Finish SMSF first, then upload-photo" sequencing decision earlier this session. Phase 45.2.2 ships the third asset-class application of the §18.7.5 Asset Spotlight template, completing the three single-asset detail pages (properties + investments + SMSF) covered by the §18.7.4 replicate queue.
+
+### Changes Made
+
+- **Type**: Feature — third asset-class application of Asset Spotlight
+- **Scope**: `app/dashboard/investments/super/[id]/page.tsx` (new), `app/dashboard/investments/super/page.tsx` (CTA rewire), `public/decor/smsf-lobby.jpg` (new asset, ~144KB)
+- **Description**: New detail route at `/dashboard/investments/super/[id]` rendering a single super/SMSF account using the §18.7.5 Asset Spotlight composition with sky→indigo sub-palette (same Stage I Invest as properties — SMSF shares the "long-term anchored asset" mood; codified explicitly in the §18.7.5 mapping table so future sessions don't accidentally apply investments' indigo→violet here). Hero: member balance + concessional YTD with cap-utilization pill. Mini-grid: Concessional used % / Non-Concessional used % / 1Y return. 4-tile polished KPI row: SG inflows / Salary sacrifice / Personal deductible / Carry-forward avail. Left column: Contributions breakdown + Recent activity. Right column: Cap optimisation / Tax position / Pension phase insights.
+- **Data flow (v1)**: fetches `/api/tax/super` (the same endpoint the list page uses) and filters client-side to the requested account. Matches the existing list-page pattern. No new GET endpoint scaffolded (PUT/DELETE exist at `/api/tax/super/[id]` but not GET; adding GET is a follow-up cleanup).
+- **List page CTA rewire**: `handleViewDetails` changed from `setDetailAccount(account)` modal state to `router.push` to the new detail route.
+
+### Documentation Updated
+
+- `CLAUDE.md` §18.7.4 queue tick-off for SMSF + §18.7.5 per-asset mapping table SMSF column updated to reflect what shipped.
+- `docs/IMPLEMENTATION_PLAN.md` row 75 — flipped to ✅ shipped.
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md` §5.1 — Phase 45.2.2 entry + queue updated.
+
+### Build Status
+
+- [x] TypeScript compilation passes (`npx tsc --noEmit -p .`)
+- [x] Reza approved the 4-variant Stitch matrix before React port
+
+### Doc-sync block (CLAUDE.md §16.5)
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern — third asset-class application of Asset Spotlight
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision — sub-palette decision (sky→indigo NOT indigo→violet for SMSF) codified explicitly in §18.7.5 mapping table
+
+Docs updated in this PR:
+- `CLAUDE.md:§18.7.4 (queue tick-off for SMSF)` — shipped with per-surface tuning learnings
+- `CLAUDE.md:§18.7.5 (per-asset mapping)` — SMSF column updated to match what shipped
+- `docs/IMPLEMENTATION_PLAN.md:row 75` — flipped to ✅ shipped
+- `docs/blueprint/PHASE_45_WHAT_IF_SCENARIOS.md:§5.1` — Phase 45.2.2 entry + queue
+- `docs/changelog/CHANGELOG_2026_06_09.md` — this entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+
+No destructive Prisma writes in this PR. New route is GET-only. The list page CTA rewire is a navigation change only.
+
+User confirmation: NOT REQUIRED — no destructive writes.
+
+### Schema change (CLAUDE.md §12.12)
+
+No `prisma/schema.prisma` changes in this PR.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+
+No `lib/tax-engine/*` modifications. Cap values pulled from `/api/tax/super`'s `position.caps.*.cap`, which the canonical `taxYearConfig` engine sources. If Phase 41E later changes super cap thresholds, the canonical engine is the only update site.
+
+Functions/tools touched: none in `lib/tax-engine/*`.
