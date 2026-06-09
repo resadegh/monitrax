@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Smith Family Super Fund - Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-dim": "#d5dcd1",
+                "tertiary-fixed": "#d3e4fe",
+                "tertiary": "#4d5d73",
+                "inverse-surface": "#2b322b",
+                "on-primary-fixed-variant": "#005320",
+                "inverse-primary": "#62df7d",
+                "on-error": "#ffffff",
+                "on-secondary-fixed": "#151b2a",
+                "secondary": "#585e6f",
+                "error-red": "#DC2626",
+                "on-tertiary-container": "#fdfcff",
+                "trail-violet": "#8B5CF6",
+                "on-tertiary-fixed": "#0b1c30",
+                "primary-container": "#00873a",
+                "on-secondary-container": "#5c6274",
+                "surface-container-low": "#eff6ea",
+                "secondary-fixed-dim": "#c0c6da",
+                "surface-container": "#e9f0e5",
+                "on-error-container": "#93000a",
+                "trail-indigo": "#6366F1",
+                "inverse-on-surface": "#ecf3e7",
+                "surface": "#f4fcf0",
+                "outline-slate": "#94A3B8",
+                "trail-amber": "#F59E0B",
+                "surface-bright": "#f4fcf0",
+                "on-primary-fixed": "#002109",
+                "surface-ivory": "#FAFAF7",
+                "trail-emerald": "#16A34A",
+                "secondary-container": "#d9dff4",
+                "on-tertiary-fixed-variant": "#38485d",
+                "error": "#ba1a1a",
+                "on-tertiary": "#ffffff",
+                "tertiary-container": "#66768d",
+                "on-surface-variant": "#3e4a3d",
+                "on-secondary": "#ffffff",
+                "on-primary-container": "#f7fff2",
+                "tertiary-fixed-dim": "#b7c8e1",
+                "on-primary": "#ffffff",
+                "on-background": "#171d16",
+                "primary-fixed": "#7ffc97",
+                "surface-container-highest": "#dde5d9",
+                "primary-fixed-dim": "#62df7d",
+                "primary": "#006b2c",
+                "on-secondary-fixed-variant": "#404757",
+                "outline": "#6e7b6c",
+                "error-container": "#ffdad6",
+                "background": "#050913",
+                "surface-variant": "#dde5d9",
+                "secondary-fixed": "#dce2f6",
+                "outline-variant": "#bdcaba",
+                "surface-container-lowest": "#ffffff",
+                "on-surface": "#171d16",
+                "surface-tint": "#006e2d",
+                "trail-sky": "#0EA5E9",
+                "surface-container-high": "#e3eadf"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "section-gap": "48px",
+                "margin-desktop": "48px",
+                "unit": "4px",
+                "gutter": "24px",
+                "margin-mobile": "20px",
+                "container-max": "1280px"
+            },
+            "fontFamily": {
+                "display-lg": ["Inter"], "data-xl": ["Inter"], "headline-md": ["Inter"], "headline-lg": ["Inter"],
+                "eyebrow": ["Inter"], "body-md": ["Inter"], "headline-sm": ["Inter"], "label-md": ["Inter"],
+                "headline-lg-mobile": ["Inter"], "body-lg": ["Inter"], "data-lg": ["Inter"], "body-sm": ["Inter"]
+            },
+            "fontSize": {
+                "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            color: #FAFAF7;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.30), 0 0 0 1px rgba(255,255,255,0.04);
+            position: relative;
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+        }
+        .bg-scrim {
+            background: linear-gradient(to bottom, rgba(5, 9, 19, 0.95), rgba(5, 9, 19, 0.88), rgba(5, 9, 19, 0.72));
+        }
+        .halo-effect {
+            background: radial-gradient(circle at top right, rgba(14, 165, 233, 0.05), rgba(99, 102, 241, 0.02), transparent 70%);
+            pointer-events: none;
+        }
+        .gradient-text {
+            background: linear-gradient(90deg, #0EA5E9, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md overflow-x-hidden min-h-screen pb-32">
+<!-- Global Background Image -->
+<div class="fixed inset-0 z-0">
+<img alt="Institutional Lobby" class="w-full h-full object-cover opacity-50" src="https://lh3.googleusercontent.com/aida/AP1WRLsbZ8TSkqlQ21IzAIYOVeh9XLjCiqSif7sphStFDCGwe6ZdPHU-ktkyUF2NH1al-MtZR4ZN3Ra0UI8A0sxF2plUbCSHB8i9YDWgNCW5DjnzHpaKnM2TVVYiolujkQkulsf4I_LYEH1Izn-H8BPcFW76HvMGXuRNeRCue4oC5km21U4TtePwoULo4IxKfwT2ou9Lcuvmo6UrI9uhyXeaIGcefxbiRGbIvan0zNLOCzdYLsW_tGRHWxYGaw"/>
+<div class="absolute inset-0 bg-scrim"></div>
+<div class="absolute inset-0 halo-effect"></div>
+</div>
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 px-margin-mobile h-16 flex justify-between items-center bg-transparent">
+<div class="flex items-center gap-3">
+<button class="p-2 -ml-2 text-primary dark:text-primary-fixed-dim">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-semibold text-white">Wealth OS</h1>
+</div>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border-2 border-white/10">
+<img alt="User profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE5NaeF-o20_DbMFcfE17b2zjS-LSlcenmUfrebjGO8ItJBtBdWseLfRxwepUH2UTaNVwSLheUFobvu74lFfOrBDNK7oLaZpni0fu9HRVe5Z8w0bzmN9-2tXLchAzdXRZCKOpPC7W1iCSnsv833M01Pp4KOUVfhN6aCdNVTdFrOTB9pRqxZYHJJPZBA_LhOkLopJhSKJzkKTtn6YQqQqlxfIsJ78SxcNZlR8E5cQTnYail7NXF7rSajF7HWAXErx1KAfIWbC7kpDc"/>
+</div>
+</header>
+<!-- Main Content -->
+<main class="relative z-10 pt-20 px-margin-mobile flex flex-col gap-6">
+<!-- Breadcrumbs -->
+<nav class="flex items-center gap-2 text-slate-400 font-label-md text-label-md">
+<span>My Wealth</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span>Superannuation</span>
+<span class="material-symbols-outlined text-[14px]">chevron_right</span>
+<span class="text-white">Smith Family Super Fund</span>
+</nav>
+<!-- Hero Section -->
+<section class="flex flex-col gap-1">
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-[#FAFAF7] font-semibold">Smith Family Super Fund</h2>
+<div class="flex items-end gap-3 mt-4">
+<span class="font-data-xl text-data-xl text-white">$847,250</span>
+<span class="mb-1 flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/14 text-emerald-300 ring-1 ring-emerald-400/25 font-label-md text-label-md">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span>
+                    +8.4%
+                </span>
+</div>
+<p class="text-slate-400 font-label-md text-label-md mt-2">Stage I: Invest <span class="text-sky-300 ml-2">Progressing Well</span></p>
+</section>
+<!-- Cap Utilization Progress -->
+<div class="glass-card rounded-xl p-5 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="text-slate-400 font-label-md text-label-md">Concessional YTD</span>
+<span class="text-white font-headline-sm text-headline-sm">$18,400 <span class="text-slate-500 text-sm font-normal">/ $27,500</span></span>
+</div>
+<div class="w-full h-2 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-gradient-to-r from-sky-500 to-indigo-500 rounded-full" style="width: 67%"></div>
+</div>
+<div class="flex justify-between font-label-md text-label-md text-slate-400">
+<span>67% Used</span>
+<span class="text-emerald-400">$9,100 Cap remaining</span>
+</div>
+</div>
+<!-- Mini-grid Metrics -->
+<div class="grid grid-cols-2 gap-4">
+<div class="glass-card rounded-xl p-4 flex flex-col gap-1">
+<span class="text-slate-400 font-eyebrow text-eyebrow uppercase">Non-Concessional</span>
+<span class="text-white font-headline-sm text-headline-sm">12% <span class="text-slate-500 text-sm font-normal">Used</span></span>
+</div>
+<div class="glass-card rounded-xl p-4 flex flex-col gap-1">
+<span class="text-slate-400 font-eyebrow text-eyebrow uppercase">1-Year Return</span>
+<span class="text-emerald-400 font-headline-sm text-headline-sm">+8.4%</span>
+</div>
+</div>
+<!-- Polished KPI Tiles -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-white">Contribution Breakdown</h3>
+<span class="material-symbols-outlined text-slate-400">info</span>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<!-- SG Inflows -->
+<div class="glass-card rounded-xl p-5 bg-sky-500/[0.08]">
+<span class="text-slate-400 font-label-md text-label-md">SG Inflows</span>
+<div class="text-white font-data-lg text-data-lg mt-1">$13,500</div>
+<div class="text-emerald-300 font-label-md text-label-md flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">check_circle</span>
+                        On Track
+                    </div>
+</div>
+<!-- Salary Sacrifice -->
+<div class="glass-card rounded-xl p-5 bg-sky-500/[0.08]">
+<span class="text-slate-400 font-label-md text-label-md">Salary Sacrifice</span>
+<div class="text-white font-data-lg text-data-lg mt-1">$4,200</div>
+<div class="text-slate-500 font-label-md text-label-md flex items-center gap-1 mt-1">
+                        Fixed Monthly
+                    </div>
+</div>
+<!-- Personal Ded. -->
+<div class="glass-card rounded-xl p-5 bg-sky-500/[0.08]">
+<span class="text-slate-400 font-label-md text-label-md">Personal Ded.</span>
+<div class="text-white font-data-lg text-data-lg mt-1">$700</div>
+<div class="text-amber-300 font-label-md text-label-md flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-[14px]">warning</span>
+                        Manual
+                    </div>
+</div>
+<!-- Carry-forward -->
+<div class="glass-card rounded-xl p-5 bg-sky-500/[0.08]">
+<span class="text-slate-400 font-label-md text-label-md">Carry-forward</span>
+<div class="text-white font-data-lg text-data-lg mt-1">$12,200</div>
+<div class="text-sky-300 font-label-md text-label-md flex items-center gap-1 mt-1">
+                        Available
+                    </div>
+</div>
+</div>
+</section>
+<!-- Recent Activity -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="font-headline-sm text-headline-sm text-white">Recent Activity</h3>
+<button class="text-sky-400 font-label-md text-label-md">View All</button>
+</div>
+<div class="glass-card rounded-xl overflow-hidden divide-y divide-white/5">
+<!-- Activity Row 1 -->
+<div class="p-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-emerald-400">payments</span>
+</div>
+<div>
+<div class="text-white font-label-md text-label-md">Employer SG — Q3</div>
+<div class="text-slate-500 text-sm">22 Oct 2023</div>
+</div>
+</div>
+<div class="text-white font-label-md text-label-md">$3,375</div>
+</div>
+<!-- Activity Row 2 -->
+<div class="p-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-sky-500/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-sky-400">add_task</span>
+</div>
+<div>
+<div class="text-white font-label-md text-label-md">Salary Sacrifice</div>
+<div class="text-slate-500 text-sm">15 Oct 2023</div>
+</div>
+</div>
+<div class="text-white font-label-md text-label-md">$210</div>
+</div>
+<!-- Activity Row 3 -->
+<div class="p-4 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-sky-500/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-sky-400">add_task</span>
+</div>
+<div>
+<div class="text-white font-label-md text-label-md">Salary Sacrifice</div>
+<div class="text-slate-500 text-sm">01 Oct 2023</div>
+</div>
+</div>
+<div class="text-white font-label-md text-label-md">$210</div>
+</div>
+</div>
+</section>
+<!-- Wealth Insights (Bento Horizontal) -->
+<section class="flex flex-col gap-4">
+<h3 class="font-headline-sm text-headline-sm text-white">Fund Insights</h3>
+<div class="flex gap-4 overflow-x-auto pb-2 -mx-margin-mobile px-margin-mobile scrollbar-hide">
+<!-- Insight 1 -->
+<div class="glass-card rounded-xl p-5 min-w-[280px] flex flex-col gap-4">
+<div class="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-indigo-400">trending_up</span>
+</div>
+<div>
+<h4 class="text-white font-label-md text-label-md font-semibold">Cap Optimisation</h4>
+<p class="text-slate-400 text-sm mt-1">You are $2,400 below your projected concessional threshold for the quarter.</p>
+</div>
+</div>
+<!-- Insight 2 -->
+<div class="glass-card rounded-xl p-5 min-w-[280px] flex flex-col gap-4">
+<div class="w-10 h-10 rounded-xl bg-sky-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-sky-400">account_balance_wallet</span>
+</div>
+<div>
+<h4 class="text-white font-label-md text-label-md font-semibold">Tax Position</h4>
+<p class="text-slate-400 text-sm mt-1">Estimated $2,140 tax saving achieved via personal deductible contributions.</p>
+</div>
+</div>
+<!-- Insight 3 -->
+<div class="glass-card rounded-xl p-5 min-w-[280px] flex flex-col gap-4">
+<div class="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-400">update</span>
+</div>
+<div>
+<h4 class="text-white font-label-md text-label-md font-semibold">Pension Phase</h4>
+<p class="text-slate-400 text-sm mt-1">Projected eligibility for pension phase conversion in 14.5 years.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer / AFSL -->
+<footer class="mt-8 flex flex-col gap-4 opacity-60">
+<div class="h-[1px] w-full bg-white/10"></div>
+<p class="text-slate-500 font-label-md text-[11px] leading-relaxed">
+                Wealth OS is operated by Monitrax Financial Group (AFSL 928374). The information provided is general advice only and does not take into account your individual objectives, financial situation or needs. Past performance is not a reliable indicator of future performance. Superannuation performance and caps are subject to ATO regulation and fund-specific rules.
+            </p>
+</footer>
+</main>
+<!-- Navigation Shell (Bottom Nav) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container-lowest/10 backdrop-blur-xl border-t border-white/5">
+<button class="flex flex-col items-center justify-center text-slate-400 px-3 py-1">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md mt-1">Dashboard</span>
+</button>
+<button class="flex flex-col items-center justify-center bg-primary-container/10 text-sky-400 rounded-xl px-3 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-label-md mt-1">Property</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 px-3 py-1">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-md text-label-md mt-1">Insights</span>
+</button>
+<button class="flex flex-col items-center justify-center text-slate-400 px-3 py-1">
+<span class="material-symbols-outlined">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</button>
+</nav>
+</body></html>

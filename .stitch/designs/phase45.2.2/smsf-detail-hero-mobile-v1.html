@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+<title>Smith Family Super Fund - Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#bdcaba",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-tertiary": "#ffffff",
+                        "tertiary": "#4d5d73",
+                        "surface-tint": "#006e2d",
+                        "error": "#ba1a1a",
+                        "trail-amber": "#F59E0B",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "primary": "#006b2c",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "trail-sky": "#0EA5E9",
+                        "surface-dim": "#F1EFE8",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container-low": "#eff6ea",
+                        "on-primary": "#ffffff",
+                        "inverse-on-surface": "#ecf3e7",
+                        "inverse-primary": "#62df7d",
+                        "primary-container": "#00873a",
+                        "outline": "#6e7b6c",
+                        "on-primary-container": "#f7fff2",
+                        "surface-ivory": "#FAFAF7",
+                        "background": "#f4fcf0",
+                        "on-tertiary-container": "#fdfcff",
+                        "secondary": "#585e6f",
+                        "on-surface": "#171d16",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-highest": "#dde5d9",
+                        "on-surface-variant": "#3e4a3d",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-primary-fixed-variant": "#005320",
+                        "error-red": "#DC2626",
+                        "secondary-container": "#d9dff4",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-background": "#171d16",
+                        "trail-indigo": "#6366F1",
+                        "surface-bright": "#f4fcf0",
+                        "secondary-fixed": "#dce2f6",
+                        "inverse-surface": "#2b322b",
+                        "surface": "#f4fcf0",
+                        "on-secondary-container": "#5c6274",
+                        "outline-slate": "#94A3B8",
+                        "tertiary-container": "#66768d",
+                        "surface-container-high": "#e3eadf",
+                        "on-error-container": "#93000a",
+                        "on-secondary": "#ffffff",
+                        "trail-emerald": "#16A34A",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#7ffc97",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container": "#e9f0e5",
+                        "surface-variant": "#dde5d9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "unit": "4px",
+                        "container-max": "1280px",
+                        "margin-desktop": "48px",
+                        "section-gap": "48px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .scrim-bg {
+            background: linear-gradient(to bottom, 
+                rgba(250, 250, 247, 0.95) 0%, 
+                rgba(250, 250, 247, 0.88) 50%, 
+                rgba(250, 250, 247, 0.72) 100%
+            );
+        }
+        .halo-glow {
+            position: fixed;
+            top: -20%;
+            right: -20%;
+            width: 80%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.05) 50%, transparent 100%);
+            z-index: -1;
+            filter: blur(80px);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 1px 4px 0 rgba(11, 18, 32, 0.04);
+        }
+        .accent-strip {
+            position: relative;
+        }
+        .accent-strip::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--tw-primary);
+            border-radius: 12px 12px 0 0;
+        }
+    </style>
+</head>
+<body class="bg-surface-ivory font-body-md text-on-surface antialiased min-h-screen">
+<!-- Background Layer -->
+<div class="fixed inset-0 z-[-2] bg-cover bg-center bg-no-repeat opacity-50" style="background-image: url('https://lh3.googleusercontent.com/aida/AP1WRLsbZ8TSkqlQ21IzAIYOVeh9XLjCiqSif7sphStFDCGwe6ZdPHU-ktkyUF2NH1al-MtZR4ZN3Ra0UI8A0sxF2plUbCSHB8i9YDWgNCW5DjnzHpaKnM2TVVYiolujkQkulsf4I_LYEH1Izn-H8BPcFW76HvMGXuRNeRCue4oC5km21U4TtePwoULo4IxKfwT2ou9Lcuvmo6UrI9uhyXeaIGcefxbiRGbIvan0zNLOCzdYLsW_tGRHWxYGaw')"></div>
+<div class="fixed inset-0 z-[-1] scrim-bg"></div>
+<div class="halo-glow"></div>
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface-ivory h-16 flex justify-between items-center px-margin-mobile">
+<div class="flex items-center gap-3">
+<button class="p-2 active:scale-95 duration-100 rounded-full hover:bg-surface-container-low transition-colors">
+<span class="material-symbols-outlined text-primary" data-icon="menu">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-semibold text-on-surface">Wealth OS</h1>
+</div>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest flex items-center justify-center overflow-hidden border border-outline-variant">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">person</span>
+</div>
+</header>
+<main class="pt-20 pb-32 px-margin-mobile max-w-container-max mx-auto space-y-6">
+<!-- Breadcrumb -->
+<nav class="flex flex-col gap-1">
+<div class="flex items-start gap-1 text-on-surface-variant">
+<span class="font-label-md text-label-md">My Wealth › Superannuation › Smith Family Super Fund</span>
+</div>
+<a class="flex items-center gap-1 text-primary active:opacity-70 transition-opacity" href="#">
+<span class="material-symbols-outlined text-sm">arrow_back</span>
+<span class="font-label-md text-label-md font-semibold uppercase tracking-wider">Back to Superannuation</span>
+</a>
+</nav>
+<!-- Hero Section -->
+<section class="glass-card rounded-xl p-6 flex flex-col gap-4">
+<div class="flex items-center gap-4">
+<div class="w-16 h-16 rounded-xl overflow-hidden shadow-sm">
+<img alt="Bank Icon" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AP1WRLsO0WnSpvoAKzvig7RTklokqQ4vGtNRBd1LirPqgqosWoI5UW6__q4ZjXzJ6V8XxLfVHwBX0biHGfbkvQzzuULT7KFic9yW6AWcoY55yC0KnSEQzclGN82BugZPozdfUYp8Bd5d596Cy13JaayEcoGuglBJul1j-FW-9Gc_wK12RhJfqycIb24JbAyltOoZ2Rw9DwG8V-BNMmynYyjpbyKKX_OXqGyWO7EKgEPjcTFn7zu_hDt2Kus9IMY"/>
+</div>
+<div>
+<h2 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface leading-tight">Smith Family Super Fund</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant">AustralianSuper · SMSF</p>
+</div>
+</div>
+<div class="mt-2">
+<p class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">TOTAL BALANCE</p>
+<div class="font-data-xl text-data-xl text-on-surface">$847,250</div>
+</div>
+<div class="pt-4 border-t border-outline-variant/30 space-y-1">
+<div class="flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">CONCESSIONAL YTD</span>
+<span class="font-label-md text-label-md font-semibold">$18,400</span>
+</div>
+<div class="bg-surface-container-low rounded-full h-1.5 w-full overflow-hidden">
+<div class="bg-primary h-full rounded-full" style="width: 67%;"></div>
+</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-trail-emerald/10 text-trail-emerald font-label-md text-[10px] font-bold">67% of $27,500 cap</span>
+</div>
+</div>
+</section>
+<!-- Key Financials Grid (Stacked for Mobile) -->
+<section class="space-y-3">
+<div class="glass-card rounded-xl p-4 flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">CONCESSIONAL USED</span>
+<span class="font-data-lg text-data-lg text-primary">67%</span>
+</div>
+<div class="glass-card rounded-xl p-4 flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">NON-CONCESSIONAL USED</span>
+<span class="font-data-lg text-data-lg text-on-surface">12%</span>
+</div>
+<div class="glass-card rounded-xl p-4 flex justify-between items-center">
+<span class="font-label-md text-label-md text-on-surface-variant">1-YEAR RETURN</span>
+<div class="flex items-center gap-1">
+<span class="font-data-lg text-data-lg text-trail-emerald">+8.4%</span>
+<span class="material-symbols-outlined text-trail-emerald text-sm">trending_up</span>
+</div>
+</div>
+</section>
+<!-- KPI Grid (2x2) -->
+<section class="grid grid-cols-2 gap-3">
+<!-- Row 1 -->
+<div class="glass-card rounded-xl p-4 relative accent-strip overflow-hidden">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">payments</span>
+</div>
+<p class="font-eyebrow text-[10px] text-on-surface-variant uppercase mb-1">SG INFLOWS</p>
+<p class="font-headline-sm text-headline-sm">$13,500</p>
+</div>
+<div class="glass-card rounded-xl p-4 relative accent-strip overflow-hidden">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">savings</span>
+</div>
+<p class="font-eyebrow text-[10px] text-on-surface-variant uppercase mb-1">SALARY SACRIFICE</p>
+<p class="font-headline-sm text-headline-sm">$4,200</p>
+</div>
+<!-- Row 2 -->
+<div class="glass-card rounded-xl p-4 relative accent-strip overflow-hidden">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">receipt_long</span>
+</div>
+<p class="font-eyebrow text-[10px] text-on-surface-variant uppercase mb-1">PERSONAL DED.</p>
+<p class="font-headline-sm text-headline-sm">$700</p>
+</div>
+<div class="glass-card rounded-xl p-4 relative accent-strip overflow-hidden">
+<div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-primary text-lg" style="font-variation-settings: 'FILL' 1;">forward_media</span>
+</div>
+<p class="font-eyebrow text-[10px] text-on-surface-variant uppercase mb-1">CARRY-FORWARD</p>
+<p class="font-headline-sm text-headline-sm">$12,200</p>
+</div>
+</section>
+<!-- Main Feed -->
+<div class="space-y-10">
+<!-- Section 1: Breakdown -->
+<section>
+<h3 class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-[0.2em] mb-4 pl-1">CONTRIBUTIONS BREAKDOWN</h3>
+<div class="glass-card rounded-xl divide-y divide-outline-variant/30 overflow-hidden">
+<div class="p-4 flex justify-between items-center">
+<span class="font-body-md text-body-md">Employer SG</span>
+<span class="font-headline-sm text-headline-sm">$13,500</span>
+</div>
+<div class="p-4 flex justify-between items-center">
+<span class="font-body-md text-body-md">Salary sacrifice</span>
+<span class="font-headline-sm text-headline-sm">$4,200</span>
+</div>
+<div class="p-4 flex justify-between items-center">
+<span class="font-body-md text-body-md">Personal deductible</span>
+<span class="font-headline-sm text-headline-sm">$700</span>
+</div>
+<div class="p-4 flex justify-between items-center">
+<span class="font-body-md text-body-md">Carry-forward</span>
+<span class="font-headline-sm text-headline-sm">$12,200</span>
+</div>
+</div>
+</section>
+<!-- Section 2: Recent Activity -->
+<section>
+<h3 class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-[0.2em] mb-4 pl-1">RECENT ACTIVITY</h3>
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="p-4 border-b border-outline-variant/30 flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold">Employer SG — Q3</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">28 Oct 2023</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-primary">+$3,375.00</span>
+</div>
+<div class="p-4 flex justify-between items-start">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md font-semibold">Salary sacrifice</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">14 Oct 2023</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-primary">+$210.00</span>
+</div>
+<div class="p-4 bg-surface-container-low text-center">
+<button class="font-label-md text-label-md text-primary font-semibold">VIEW ALL TRANSACTIONS</button>
+</div>
+</div>
+</section>
+<!-- Section 3: Strategy & Insights -->
+<section class="space-y-4">
+<h3 class="font-eyebrow text-eyebrow text-on-surface-variant uppercase tracking-[0.2em] mb-4 pl-1">STRATEGY &amp; INSIGHTS</h3>
+<div class="glass-card rounded-xl p-5 border-l-4 border-trail-amber">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-trail-amber">tips_and_updates</span>
+<h4 class="font-headline-sm text-headline-sm">Cap Optimisation</h4>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-4">You have $9,100 remaining in your concessional cap. Consider a lump sum contribution to maximize tax benefits.</p>
+<button class="w-full py-2 px-4 bg-primary text-on-primary rounded-lg font-label-md text-label-md font-semibold">Optimise Contribution</button>
+</div>
+<div class="glass-card rounded-xl p-5">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary">account_balance_wallet</span>
+<h4 class="font-headline-sm text-headline-sm">Tax Position</h4>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Current fund earnings are taxed at 15%. Directing more to super may reduce your overall personal taxable income.</p>
+</div>
+<div class="glass-card rounded-xl p-5">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-secondary">hourglass_top</span>
+<h4 class="font-headline-sm text-headline-sm">Pension Phase</h4>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Transition to Retirement strategy is available in 2 years. Review your asset allocation now for capital preservation.</p>
+</div>
+</section>
+</div>
+<!-- AFSL Warning -->
+<footer class="mt-12 pb-8">
+<div class="p-6 bg-surface-container/50 rounded-xl border border-outline-variant/20">
+<h4 class="font-label-md text-label-md font-bold text-on-surface-variant mb-2">AFSL General Advice Warning</h4>
+<p class="font-body-sm text-[12px] leading-relaxed text-on-surface-variant">The information provided on this screen is general advice only and does not take into account your personal objectives, financial situation, or needs. Before making any financial decisions, you should consider the appropriateness of the advice and consult with a licensed financial professional. Wealth OS Pty Ltd (AFSL 999999).</p>
+</div>
+</footer>
+</main>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50 bg-surface-container-lowest flex justify-around items-center px-4 py-3 pb-safe rounded-t-xl shadow-[0_-1px_4px_0_rgba(11,18,32,0.04)]">
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 active:scale-95 duration-150 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container/10 text-primary rounded-xl px-3 py-1 active:scale-95 duration-150 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="domain" style="font-variation-settings: 'FILL' 1;">domain</span>
+<span class="font-label-md text-label-md">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 active:scale-95 duration-150 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 active:scale-95 duration-150 transition-all" href="#">
+<span class="material-symbols-outlined mb-1" data-icon="person">person</span>
+<span class="font-label-md text-label-md">Profile</span>
+</a>
+</nav>
+<script>
+        // Simple micro-interaction for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1)';
+            });
+            card.style.transition = 'transform 0.15s ease-out';
+        });
+    </script>
+</body></html>
