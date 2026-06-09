@@ -14,7 +14,13 @@
 
 generator client {
   provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  // omitApi: query-level `omit` argument (e.g. `{ omit: { heroImage: true } }`).
+  // Added 2026-06-09 (Phase 45.2.5) so /api/properties[*] can skip loading the
+  // multi-MB hero photo bytea on every fetch — the bytes live on a dedicated
+  // hero-image endpoint instead. Promoted to GA in Prisma 5.16; we pin the
+  // preview feature here for explicit signalling until we upgrade to a Prisma
+  // version that surfaces `omit` without it.
+  previewFeatures = ["driverAdapters", "omitApi"]
 }
 
 datasource db {
@@ -1483,6 +1489,17 @@ model Property {
   strataDueDate                 DateTime? // Strata / body-corporate levy next due
   leaseExpiry                   DateTime? // Lease / rent-review date (rentals + tenanted investments)
   complianceCertExpiry          DateTime? // Smoke-alarm / pool-safety / gas compliance certificate expiry
+
+  // Phase 45.2.5 — user-uploadable hero photo for the property detail page.
+  // v1 stores the image inline as a Postgres BYTEA (≤5MB, JPEG/PNG/WEBP). The
+  // §18.7.4 Cremorne pattern intentionally treats the photo as decor — never
+  // evidence — so the bytes are NOT CDR-classified. Detail page falls back to
+  // the default Cremorne apartment photo when these columns are null.
+  // Future migration to GCS via lib/documents/storage is queued (no schema
+  // churn required — the API surface stays stable; only the storage backend
+  // moves).
+  heroImage     Bytes?
+  heroImageMime String?
 
   // Relationships
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)

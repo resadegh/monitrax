@@ -23,9 +23,15 @@ export const GET = withPermission<RouteContext>('property.read', async (request,
       const { id } = await context!.params;
       const userId = auth.userId;
 
-      // First fetch the property with related data to get IDs
+      // First fetch the property with related data to get IDs. We omit the
+      // heavy `heroImage` bytea here — the detail page fetches the image
+      // separately from /api/properties/[id]/hero-image (§18.7.4 Cremorne
+      // pattern, Phase 45.2.5). The `hasHeroImage` boolean is derived on the
+      // way out so the client knows whether to render the user-uploaded photo
+      // or the default decor.
       const property = await prisma.property.findUnique({
         where: { id },
+        omit: { heroImage: true },
         include: {
           loans: true,
           income: true,
@@ -231,6 +237,11 @@ export const GET = withPermission<RouteContext>('property.read', async (request,
 
       return NextResponse.json({
         ...property,
+        // Phase 45.2.5 — replace the raw bytes column (which we omitted at
+        // query time) with a derived boolean. Detail page uses this to
+        // decide whether to fetch the user-uploaded photo or render the
+        // default Cremorne apartment decor.
+        hasHeroImage: property!.heroImageMime !== null,
         income: incomeWithActuals,
         expenses: expensesWithActuals,
         loans: loansWithActuals,

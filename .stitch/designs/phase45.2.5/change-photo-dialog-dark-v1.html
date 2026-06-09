@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wealth OS - Change Background Photo</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-fixed": "#7ffc97",
+                        "on-primary": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "error-red": "#DC2626",
+                        "surface": "#050913",
+                        "tertiary-container": "#66768d",
+                        "error": "#ba1a1a",
+                        "on-primary-fixed-variant": "#005320",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "secondary-container": "#d9dff4",
+                        "surface-tint": "#006e2d",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "secondary-fixed": "#dce2f6",
+                        "trail-sky": "#0EA5E9",
+                        "surface-container-lowest": "#ffffff",
+                        "outline-slate": "#94A3B8",
+                        "outline-variant": "#bdcaba",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-container-high": "#e3eadf",
+                        "surface-container-low": "#eff6ea",
+                        "outline": "#6e7b6c",
+                        "on-primary-container": "#f7fff2",
+                        "surface-ivory": "#FAFAF7",
+                        "primary": "#006b2c",
+                        "secondary": "#585e6f",
+                        "on-surface-variant": "#3e4a3d",
+                        "background": "#050913",
+                        "on-tertiary-container": "#fdfcff",
+                        "on-error": "#ffffff",
+                        "trail-amber": "#F59E0B",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-fixed": "#002109",
+                        "error-container": "#ffdad6",
+                        "on-tertiary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "inverse-primary": "#62df7d",
+                        "primary-container": "#00873a",
+                        "trail-emerald": "#16A34A",
+                        "trail-violet": "#8B5CF6",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-bright": "#f4fcf0",
+                        "surface-dim": "#F1EFE8",
+                        "trail-indigo": "#6366F1",
+                        "surface-container": "#e9f0e5",
+                        "surface-variant": "#dde5d9",
+                        "surface-container-highest": "#dde5d9",
+                        "on-background": "#f4fcf0",
+                        "inverse-surface": "#2b322b",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "on-surface": "#f4fcf0",
+                        "tertiary": "#4d5d73",
+                        "modal-navy": "#0E1424"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "20px": "20px",
+                        "24px": "24px",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "unit": "4px",
+                        "section-gap": "48px",
+                        "margin-desktop": "48px"
+                    },
+                    fontFamily: {
+                        "headline-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .sky-indigo-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-scrim {
+            background: linear-gradient(to bottom, rgba(5, 9, 19, 0.95), rgba(5, 9, 19, 0.88), rgba(5, 9, 19, 0.72));
+        }
+    </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface h-screen overflow-hidden">
+<!-- Background Content Layer (Dimmed/Blurred) -->
+<div class="fixed inset-0 z-0 overflow-hidden">
+<img alt="" class="w-full h-full object-cover opacity-30" src="https://lh3.googleusercontent.com/aida/AP1WRLuIo-gMtGZVZqfMEautS_cfPO2_D3bF3ZZ79swtC1uQiPo1IeCVNKHDqFt3alAIIVBw9loXHS6xtCiAQuUbktw65k9KbTyccNFxk-GipDEOn74w-NA98vcdYSWWbYY0HBV7dRXOA8_OIuApSgiClRmI1oqzXfObiTH8x7P8f5vvecVe2Qm6Z3QaZGyo6ngTI4Fw5bThneBtuDaV7BLAQI2PWwrcp3gVv-Wod49JYVSWXYWHcQUG84t7kvo"/>
+<div class="absolute inset-0 bg-scrim"></div>
+<!-- Mocked Dashboard Content Behind Scrim -->
+<div class="absolute inset-0 p-margin-desktop space-y-gutter blur-sm opacity-40">
+<div class="max-w-container-max mx-auto space-y-12">
+<div class="h-16 flex justify-between items-center">
+<div class="w-48 h-8 bg-on-surface/10 rounded-lg"></div>
+<div class="flex space-x-6">
+<div class="w-24 h-4 bg-on-surface/10 rounded"></div>
+<div class="w-24 h-4 bg-on-surface/10 rounded"></div>
+<div class="w-24 h-4 bg-on-surface/10 rounded"></div>
+</div>
+</div>
+<div class="grid grid-cols-12 gap-gutter">
+<div class="col-span-8 space-y-8">
+<div class="h-32 w-2/3 bg-on-surface/10 rounded-xl"></div>
+<div class="h-[400px] bg-on-surface/5 rounded-24px border border-white/5"></div>
+</div>
+<div class="col-span-4 space-y-8">
+<div class="h-64 bg-on-surface/5 rounded-24px border border-white/5"></div>
+<div class="h-64 bg-on-surface/5 rounded-24px border border-white/5"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Black Overlay for Focus -->
+<div class="absolute inset-0 bg-black/60 backdrop-blur-[8px]"></div>
+</div>
+<!-- Modal Dialog (The Focal Point) -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+<div class="w-[640px] max-w-full h-[580px] bg-modal-navy rounded-24px shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-2xl border border-white/10 relative overflow-hidden flex flex-col animate-in fade-in zoom-in duration-300">
+<!-- Top Gradient Accent -->
+<div class="absolute top-0 left-0 right-0 h-[3px] sky-indigo-gradient"></div>
+<!-- Modal Header -->
+<div class="pt-10 px-10 text-center flex flex-col items-center">
+<!-- Icon Badge -->
+<div class="w-10 h-10 rounded-xl sky-indigo-gradient flex items-center justify-center mb-4 shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 400;">photo_camera</span>
+</div>
+<span class="font-eyebrow text-eyebrow sky-indigo-text mb-2 uppercase">Property Hero</span>
+<h2 class="font-headline-md text-headline-md text-surface-ivory mb-1">Change background photo</h2>
+<p class="font-body-sm text-outline-slate">Your apartment's lived reality on its detail page.</p>
+</div>
+<!-- Modal Body (Drop Zone) -->
+<div class="flex-grow px-10 pt-8 flex flex-col items-center">
+<div class="w-[480px] h-[280px] rounded-20px border-[1.5px] border-dashed border-trail-sky/40 bg-trail-sky/5 flex flex-col items-center justify-center text-center group cursor-pointer hover:bg-trail-sky/10 transition-colors duration-200">
+<div class="w-12 h-12 mb-4 flex items-center justify-center text-trail-sky">
+<span class="material-symbols-outlined text-[48px]">upload</span>
+</div>
+<p class="font-body-md text-surface-ivory mb-2">Drag a photo here, or <span class="text-trail-sky hover:underline">click to browse</span></p>
+<p class="font-eyebrow text-[11px] text-outline-slate/80 tracking-normal">JPEG, PNG, WEBP · Max 5MB · 16:9 landscape works best</p>
+</div>
+<button class="mt-4 font-label-md text-trail-sky/80 hover:text-trail-sky transition-colors flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+                    Reset to default
+                </button>
+</div>
+<!-- Modal Footer -->
+<div class="px-10 py-6 border-t border-white/10 flex justify-between items-center">
+<button class="font-label-md text-surface-ivory/70 hover:text-surface-ivory transition-colors px-6 py-2">
+                    Cancel
+                </button>
+<button class="font-label-md sky-indigo-gradient opacity-50 cursor-not-allowed text-white px-8 py-3 rounded-xl shadow-lg shadow-sky-500/10 flex items-center gap-2" disabled="">
+                    Save photo
+                </button>
+</div>
+</div>
+</div>
+<!-- UI Interaction Script -->
+<script>
+        // Simple micro-interaction for the drop zone
+        const dropZone = document.querySelector('.group');
+        if (dropZone) {
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('bg-trail-sky/20');
+            });
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('bg-trail-sky/20');
+            });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('bg-trail-sky/20');
+                // Logic for handling file upload would go here
+            });
+        }
+    </script>
+</body></html>
