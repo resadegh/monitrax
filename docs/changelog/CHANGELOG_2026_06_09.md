@@ -1,5 +1,73 @@
 # Changelog — 2026-06-09
 
+## Session: Phase 45.4 + 45.5 + 45.6 — full dashboard glass migration + §18.7.6 Compact Dashboard mobile reflow (UI only)
+
+### Context
+
+Reza directive 2026-06-09 after Phase 45.3 shipped:
+1. *"is there a better way from stitch on the mobile view to have the tiles transitioned into each other rather than a long scroll down?"* → I documented §18.7.6 "Compact Dashboard" as the named canonical mobile reflow pattern.
+2. *"are you doing the full mobile view in one pr?"* → I proposed rolling 45.4 + 45.5 + 45.6 into one PR. Reza approved with *"ok, ship it"*.
+3. *"are you removing any tiles? make sure do not remove any of the tiles without my confirmation"* → I clarified Path A (Bento Pair summary tiles, full detail one click away) vs Path B (full-detail widgets full-width); Reza chose *"yes go with path A, I understand now"*.
+
+This PR ships all three phases together as one coherent dashboard transformation.
+
+### Changes Made
+
+- **Type**: Feature — full §18.7.2 glass migration of every dashboard tile + §18.7.6 Compact Dashboard mobile reflow pattern.
+- **Scope**: `app/dashboard/page.tsx` (consumer swap), 6 new co-located components at `components/dashboard/tiles/`, CLAUDE.md §18.7.6 already added in a prior commit.
+
+### Files Modified / Added
+
+- `components/dashboard/tiles/GlassPanel.tsx` — NEW. ~170 LOC. §18.7.2 polished tile chrome foundation: glass + 1px hairline + 3-tier shadow + 1px inner-top highlight + 3px sub-palette gradient top-accent + faint sub-palette tinted bg + `GlassIconBadge` luminous gradient gem + `GlassEyebrow` gradient text-fill helpers. Every other glass component composes this.
+- `components/dashboard/tiles/KpiSwipeStrip.tsx` — NEW. ~100 LOC. §18.7.6 horizontal swipe carousel: `snap-mandatory` + 1.2-tile peek (`w-[78vw] max-w-[280px]`) + `IntersectionObserver`-driven page-dot indicator. Native momentum scroll, no JS pager.
+- `components/dashboard/tiles/BentoPair.tsx` — NEW. §18.7.6 2-up grid with ≤360px collapse-to-single-col fallback for smallest iPhones.
+- `components/dashboard/tiles/GlassKpiCard.tsx` — NEW. ~170 LOC. §18.7.2 KPI tile, same discriminated-union prop API as `EditorialKpiCard` (sparkline + band variants). Sparkline + band internals DELEGATE to `EditorialKpiSparkline` + `EditorialBandTrack` — no chart rebuild, no behaviour loss, only the surround swaps.
+- `components/dashboard/tiles/GlassPairedMetricCard.tsx` — NEW. ~120 LOC. Net Worth hero with dual gradient gems (Assets emerald, Debts indigo) + internal hairline divider.
+- `components/dashboard/tiles/GlassInsightTiles.tsx` — NEW. ~410 LOC. Path A compacted Bento tiles + glass-wrapped widgets: GlassMoneyStoryHero (wraps MoneyStoryHeroV2 — chart preserved), GlassHealthScore, GlassEmergencyFund, GlassDebtQuality (compacted from 3-section expandable), GlassEntityCashflow (compacted from 6-tab widget), GlassWealthUniverse + GlassDailyPulse + GlassRenewals + GlassPendingActions (full-content wraps).
+- `app/dashboard/page.tsx` — consumer swap. KPI row gets dual rendering (KpiSwipeStrip mobile, 5-up grid desktop). Net Worth hero, Money Story hero, all widget pairs and standalone widgets swapped to glass equivalents. Net delta: ~+100 LOC (the dual-rendering of the KPI row is the biggest add — 5 tiles × 2 surfaces).
+- `.audit/financial-math-baseline.json` — re-pinned 7 pre-existing baseline entries to new line numbers (same patterns + matches; line numbers shifted because the Compact Dashboard reflow added ~115 lines above the baselined positions).
+
+### Documentation Updated
+
+- `CLAUDE.md` §18.7.6 — added in a prior commit this session; this PR is the first canonical application of the pattern.
+- `docs/IMPLEMENTATION_PLAN.md` — rows 79, 80, 81 all flipped from queued/in-flight to ✅ SHIPPED (rolled together into this single PR per Reza's "one PR" decision).
+- `docs/changelog/CHANGELOG_2026_06_09.md` — this entry.
+- File-header JSDoc on each new component lists the Stitch screen IDs, the §18.7.2 / §18.7.6 references, and the behaviour-psychology rationale.
+
+### Build Status
+
+- [x] `npx tsc --noEmit` — 0 errors.
+- [x] `npm run build` — production build green.
+- [x] `npm run lint:financial-surfaces` — 22 grandfathered, 0 new (baseline re-pinned for the line-number drift).
+- [x] ESLint clean on touched files.
+
+### §16.5 Doc-sync block
+
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (6 new co-located primitives + §18.7.6 first canonical application)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Reza Path A confirmation: Bento Pair summary tiles, full detail via click-through)
+
+Docs updated in this PR:
+- `CLAUDE.md`:§18.7.6 — first canonical application referenced.
+- `docs/IMPLEMENTATION_PLAN.md`:rows 79/80/81 — all 3 shipped, combined PR documented.
+- `docs/changelog/CHANGELOG_2026_06_09.md`:Phase 45.4+5+6 session — this entry.
+
+### Destructive write checklist (§12.11)
+
+None — pure UI vocabulary swap + layout reflow. Zero Prisma writes. Workstream 0·DG cap honoured (no backend, no calc engines, no data-contract changes).
+
+### Phase 41E reform compliance (§12.14)
+
+N/A — no tax-engine code, no financial calc, no column added, no AI tool, no per-asset tax UI.
+
+---
+
 ## Session: Phase 45.3 — dashboard Properties + Investments tabs glass migration (UI only)
 
 ### Context
