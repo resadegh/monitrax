@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax — Correct Ownership Record</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#006b2c",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-tint": "#006e2d",
+                        "trail-indigo": "#6366F1",
+                        "inverse-primary": "#62df7d",
+                        "on-primary-container": "#f7fff2",
+                        "error-container": "#ffdad6",
+                        "tertiary": "#4d5d73",
+                        "surface-container-highest": "#dde5d9",
+                        "primary-fixed": "#7ffc97",
+                        "on-error": "#ffffff",
+                        "outline-variant": "#bdcaba",
+                        "surface-variant": "#dde5d9",
+                        "surface-container-low": "#eff6ea",
+                        "inverse-surface": "#2b322b",
+                        "on-tertiary-container": "#fdfcff",
+                        "primary-container": "#00873a",
+                        "on-surface": "#171d16",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-dim": "#F1EFE8",
+                        "secondary": "#585e6f",
+                        "secondary-fixed": "#dce2f6",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "surface": "#f4fcf0",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-container": "#5c6274",
+                        "on-background": "#171d16",
+                        "trail-sky": "#0EA5E9",
+                        "surface-container-high": "#e3eadf",
+                        "error-red": "#DC2626",
+                        "on-surface-variant": "#3e4a3d",
+                        "outline-slate": "#94A3B8",
+                        "background": "#f4fcf0",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "trail-emerald": "#16A34A",
+                        "surface-bright": "#f4fcf0",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary": "#ffffff",
+                        "trail-amber": "#F59E0B",
+                        "on-secondary-fixed": "#151b2a",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-violet": "#8B5CF6",
+                        "secondary-container": "#d9dff4",
+                        "tertiary-container": "#66768d",
+                        "error": "#ba1a1a",
+                        "surface-container": "#e9f0e5",
+                        "outline": "#6e7b6c",
+                        "on-primary-fixed": "#002109"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "48px",
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-surface {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 32px -4px rgba(11, 18, 32, 0.04);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.4);
+            border: 1.5px solid #E2E8F0;
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #0EA5E9;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+        }
+        .gradient-accent {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .text-gradient {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .btn-gradient {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .btn-gradient:active { transform: scale(0.96); }
+        .choice-card {
+            transition: all 0.2s ease;
+            border: 1.5px solid #E2E8F0;
+        }
+        .choice-card.selected {
+            border-color: #0EA5E9;
+            background: rgba(14, 165, 233, 0.03);
+            box-shadow: 0 0 0 1px #0EA5E9;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-6 antialiased">
+<!-- Modal Backdrop (Simulated) -->
+<div class="fixed inset-0 bg-on-surface/5 backdrop-blur-sm z-0"></div>
+<!-- Main Glass Modal -->
+<div class="glass-surface w-full max-w-[580px] rounded-2xl relative overflow-hidden z-10 flex flex-col">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full gradient-accent"></div>
+<!-- Content Area -->
+<div class="px-10 pt-12 pb-10">
+<!-- Header Section -->
+<div class="flex flex-col items-center text-center mb-10">
+<div class="w-11 h-11 rounded-full gradient-accent flex items-center justify-center text-white mb-6 shadow-lg shadow-sky-500/20">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+</div>
+<p class="font-eyebrow text-eyebrow text-gradient uppercase tracking-[0.18em] mb-3">OWNERSHIP RECORD</p>
+<h1 class="font-headline-md text-headline-md text-on-surface mb-2">Correct ownership record</h1>
+<p class="font-body-md text-body-md text-on-surface-variant/70">903 Boree Rd — currently recorded as: <span class="font-medium text-on-surface">Just you</span></p>
+</div>
+<form class="space-y-8">
+<!-- 1. Ownership Choice Grid -->
+<div class="grid grid-cols-2 gap-4">
+<!-- Just me (Current) -->
+<div class="choice-card p-5 rounded-xl bg-surface-container-low/50 opacity-60 border-dashed cursor-default relative overflow-hidden">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-label-md text-on-surface-variant">Just me</span>
+<span class="px-2 py-0.5 rounded-full bg-on-surface-variant/10 text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Current</span>
+</div>
+<p class="text-[12px] text-on-surface-variant/60 leading-tight">Sole personal ownership</p>
+</div>
+<!-- Joint -->
+<button class="choice-card p-5 rounded-xl bg-white/40 text-left hover:border-slate-300" type="button">
+<span class="font-label-md text-label-md text-on-surface block mb-1">Joint</span>
+<p class="text-[12px] text-on-surface-variant/60 leading-tight">Shared with partner or spouse</p>
+</button>
+<!-- Shared -->
+<button class="choice-card p-5 rounded-xl bg-white/40 text-left hover:border-slate-300" type="button">
+<span class="font-label-md text-label-md text-on-surface block mb-1">Shared</span>
+<p class="text-[12px] text-on-surface-variant/60 leading-tight">Investment with friends/others</p>
+</button>
+<!-- An Entity (Selected) -->
+<button class="choice-card selected p-5 rounded-xl bg-white flex flex-col justify-between relative ring-1 ring-trail-sky" type="button">
+<div class="flex justify-between items-start mb-1">
+<span class="font-label-md text-label-md text-on-surface">An entity</span>
+<div class="w-5 h-5 rounded-full bg-trail-sky flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[14px]" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+</div>
+<p class="text-[12px] text-on-surface-variant/60 leading-tight">Owned by a trust or company</p>
+</button>
+</div>
+<!-- 2. Entity Selection Panel -->
+<div class="animate-in fade-in slide-in-from-top-2 duration-300">
+<label class="font-label-md text-label-md text-on-surface block mb-3">Which entity owns it?</label>
+<div class="relative group">
+<div class="glass-input w-full px-4 py-3.5 rounded-xl flex items-center justify-between cursor-pointer group-hover:border-slate-300">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface">Sadegh Family Trust</span>
+<span class="text-[12px] text-on-surface-variant/60">— Family trust</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/60 group-hover:text-trail-sky transition-colors">unfold_more</span>
+</div>
+</div>
+</div>
+<!-- 3. Reason Field -->
+<div>
+<label class="font-label-md text-label-md text-on-surface block mb-3">Why are you correcting this?</label>
+<input class="glass-input w-full px-4 py-4 rounded-xl font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant/40 focus:ring-0" placeholder="e.g. The trust has always been on the title — I entered it wrong" type="text"/>
+</div>
+<!-- 4. Caution Notice Card -->
+<div class="p-5 rounded-xl bg-trail-amber/5 border-1.5 border-trail-amber/30 flex gap-4">
+<div class="shrink-0 pt-0.5">
+<span class="material-symbols-outlined text-trail-amber text-[20px]" style="font-variation-settings: 'FILL' 1;">info</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant/90 leading-relaxed">
+                        This corrects the record — it does not transfer the asset. Actually moving an asset between owners is a sale and purchase with tax and duty consequences. If ownership really changed, talk to your accountant before updating Monitrax.
+                    </p>
+</div>
+</form></div>
+<!-- Footer Buttons -->
+<div class="mt-10 flex flex-col items-center gap-4">
+<button class="btn-gradient w-full py-4 rounded-xl font-body-md text-body-md font-semibold text-white shadow-lg shadow-sky-500/20">
+                    Correct the record
+                </button>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors py-2 px-6">
+                    Cancel
+                </button>
+</div>
+</div>
+<!-- Background Decoration (Subtle light spots) -->
+<div class="fixed top-[-10%] right-[-5%] w-[400px] h-[400px] rounded-full bg-trail-sky/5 blur-[120px] pointer-events-none z-0"></div>
+<div class="fixed bottom-[-10%] left-[-5%] w-[400px] h-[400px] rounded-full bg-trail-indigo/5 blur-[120px] pointer-events-none z-0"></div>
+<script>
+        // Micro-interaction for choice cards
+        const cards = document.querySelectorAll('.choice-card:not(.opacity-60)');
+        cards.forEach(card => {
+            card.addEventListener('click', () => {
+                cards.forEach(c => c.classList.remove('selected', 'ring-1', 'ring-trail-sky'));
+                card.classList.add('selected', 'ring-1', 'ring-trail-sky');
+                
+                // Add the checkmark if it doesn't exist
+                if (!card.querySelector('.material-symbols-outlined')) {
+                   const checkDiv = document.createElement('div');
+                   checkDiv.className = "w-5 h-5 rounded-full bg-trail-sky flex items-center justify-center";
+                   checkDiv.innerHTML = '<span class="material-symbols-outlined text-white text-[14px]" style="font-variation-settings: \'wght\' 700;">check</span>';
+                   card.querySelector('.flex.justify-between').appendChild(checkDiv);
+                }
+            });
+        });
+    </script>
+</body></html>

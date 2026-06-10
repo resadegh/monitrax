@@ -269,6 +269,22 @@ export function ReviewStep({ data }: ReviewStepProps) {
           </div>
         )}
 
+        {/* Phase 47 D2 (decided 2026-06-10): ownership capture is
+            deliberately NOT part of onboarding — the wizard stays light.
+            This note tells the user the door is open afterwards
+            (behaviour-psychology: a forward-looking invitation, not a
+            missing-step warning). */}
+        {entityItems.length > 0 && (
+          <div className="flex items-start gap-2 rounded-xl border border-slate-200/60 dark:border-slate-700/40 bg-white/50 dark:bg-slate-800/30 px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+            <UsersIcon className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-sky-500" strokeWidth={1.8} />
+            <span>
+              Everything you&apos;ve added is recorded in your name for now. Own something
+              jointly, or through a trust or company? You can set who owns each item
+              anytime — just open it from your dashboard.
+            </span>
+          </div>
+        )}
+
         {/* What you'll unlock */}
         <div className="rounded-2xl border border-blue-200/60 dark:border-blue-800/40 bg-gradient-to-br from-blue-50/60 to-indigo-50/40 dark:from-blue-900/15 dark:to-indigo-900/10 p-5">
           <div className="mb-3 flex items-center gap-2">
