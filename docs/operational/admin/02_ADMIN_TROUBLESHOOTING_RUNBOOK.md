@@ -396,23 +396,39 @@ fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` inst
 **Resolution (429 quota) — first identify WHICH project the runtime key belongs to, then
 whether its paid tier is actually enforced:**
 
-> **2026-06-10 CONFIRMED root cause (after two disproven theories — all three recorded so
-> the next operator doesn't relive the elimination):**
-> (1) "Wrong project key" — disproven: Vercel's `GEMINI_API_KEY` IS the Tier-1 `…SWHI`
-> MonitraxGemini key in project `monitrax-479700`.
-> (2) "Billing/tier not enforced" — disproven: billing account active (~A$2.2/day, mostly
-> Cloud SQL), project linked, GCP quota page showed ZERO quota breaches in 7 days, key has
-> Application restrictions = None + API restriction = Gemini API (correct server posture).
-> (3) **CONFIRMED: model retirement.** Google shut down `gemini-2.0-flash` on
-> **2026-06-01** (https://ai.google.dev/gemini-api/docs/deprecations) — the EXACT day of the
-> first import incident (PR #959). Our fallback chain was also dead (`…2.5-flash-preview-05-20`
-> preview removed; `gemini-1.5-flash` retired Sep 2025 — the cashflow-summary surface had been
-> silently broken since then). Retired endpoints reject with 404/429 regardless of billing
-> tier, which is why a Tier-1 project with healthy quota saw 429s. Fixed 2026-06-10 by
-> migrating every hardcoded model ID to verified-live models (`gemini-3.5-flash` primary).
-> **⚠ Scheduled re-check: `gemini-2.5-flash` + `gemini-2.5-pro` (current fallbacks/pro) shut
-> down 2026-10-16 — re-verify `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts` against the
-> deprecations page before then (tracked in IMPLEMENTATION_PLAN Up Next).**
+> **2026-06-10 FINAL root cause — TWO stacked failures (four theories total; all recorded
+> so the next operator doesn't relive the elimination):**
+> (1) "Wrong project key" — disproven (Vercel key IS the Tier-1 `…SWHI` key).
+> (2) "Billing/tier not enforced" — disproven (billing account active, quota dashboards green).
+> (3) **Real failure A — model retirement:** Google shut down `gemini-2.0-flash` on
+> 2026-06-01; fallbacks (`…2.5-flash-preview…`, `gemini-1.5-flash`) were retired even
+> earlier. Fixed in code (PR #1048: migration to `gemini-3.5-flash` + live fallbacks;
+> ⚠ re-verify lineup before the 2026-10-16 retirement of 2.5-flash/2.5-pro).
+> (4) **Real failure B — PREPAID BILLING CREDITS DEPLETED.** The Gemini API billing for the
+> project is prepay-based; credits hit $0 (~late May 2026) and every billable request was
+> rejected with `429 RESOURCE_EXHAUSTED: "Your prepayment credits are depleted."` —
+> regardless of tier, rate limits (1,000 RPM, used ~70), model, or key. NO dashboard
+> surfaces this: Spend shows $0 (nothing can bill), Rate Limit shows green, quota pages show
+> zero breaches. The error text contains neither "quota" nor a metric name, so log
+> keyword-searches for quota terms MISS it. Resolution: AI Studio → https://ai.studio/projects
+> → project billing → top up prepaid credits or switch to standard postpaid billing.
+> See https://ai.google.dev/gemini-api/docs/billing#prepay.
+
+**The definitive diagnostic (use this FIRST for any unexplained Gemini 429):** run one manual
+request with the production key — the response body names the real constraint, which the
+Vercel log lines truncate away:
+
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -H "Content-Type: application/json" \
+  -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' \
+  "https://generativelanguage.googleapis.com/v1beta/models/<current-flash-model>:generateContent?key=<KEY>"
+```
+
+| 429 body says | Meaning | Fix |
+|---|---|---|
+| `prepayment credits are depleted` | Prepaid balance $0 | Top up / switch to postpaid (AI Studio billing) |
+| `Quota exceeded for quota metric …` | Real rate/quota breach | Check Rate Limit page; pace or batch larger |
+| (bare / HTML body) | Edge throttling or retired model | Check deprecations page + model IDs in code |
 
 1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
    `GEMINI_API_KEY` → reveal → compare its ending against the key list in

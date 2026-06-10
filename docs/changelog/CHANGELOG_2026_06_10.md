@@ -454,3 +454,16 @@ instantly, so the broken import was always "fast".) Fix (PR #1050):
 - `components/bank/TransactionImportDialog.tsx` — defensive non-JSON response handling:
   504 → "took too long, split the file" message; other non-JSON → honest HTTP-status message
 Verification: tsc clean, 253/253 bookkeeping tests, build complete.
+
+### Addendum 5 (same session) — FINAL root cause: prepaid Gemini billing credits depleted
+The post-#1050 re-import still 429'd on BOTH live models (~70 RPM vs 1,000 RPM limit, all
+dashboards green). A manual curl with the production key returned the answer the truncated
+Vercel logs never showed: `429 RESOURCE_EXHAUSTED — "Your prepayment credits are depleted."`
+The project's Gemini billing is prepay-based; credits hit $0 (~late May — the lone $0.003
+spend blip on May 21 was the last of them) and every billable call since was rejected
+regardless of tier/limits/model/key. This was failure B stacked under failure A (the 2026-06-01
+gemini-2.0-flash retirement, fixed in PR #1048). Operator action (Reza): top up credits /
+switch to postpaid at https://ai.studio/projects; verify with the curl; re-import. Runbook
+updated with the final four-theory elimination record + the curl-first diagnostic protocol +
+a 429-body decision table. Security follow-up queued: rotate GEMINI_API_KEY (exposed in chat
+during diagnosis) after imports verified working.
