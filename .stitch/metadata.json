@@ -128,6 +128,17 @@
       "generatedAt": "2026-05-26T02:08:00.000000Z",
       "scope": "Auth — sign-in. Centred 440px form on dark background with subtle emerald radial glow. Email/password + remember me + Google/Apple OAuth. Apple-ID/Mercury-shape (no split-screen template)."
     },
+    "verify-email-sent": {
+      "id": "33717abc960b4fb6881a5de0d077abff",
+      "sourceScreen": "projects/1859462351962811110/screens/33717abc960b4fb6881a5de0d077abff",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "modelId": "GEMINI_3_FLASH",
+      "title": "Monitrax - Verify Email Interstitial",
+      "generatedAt": "2026-06-10T02:16:00.000000Z",
+      "scope": "Auth — post-signup 'Check your inbox' email-verification interstitial (GCP Identity Platform email verification, 2026-06-10). Matches signin/register Deep Cosmos chrome: centred 440px frosted glass card, emerald envelope badge, 'I've verified — continue' emerald CTA + 'Resend email' ghost + soft-gate 'Skip for now — explore my dashboard' footer with 'bank connections stay locked' caption. Artefacts: .stitch/designs/email-verification/verify-email-sent.{html,png}. Implemented at app/verify-email-sent/page.tsx via AuthShell primitives."
+    },
     "register": {
       "id": "613fdfae5ab040ecb335c3f400d46ad4",
       "sourceScreen": "projects/1859462351962811110/screens/613fdfae5ab040ecb335c3f400d46ad4",

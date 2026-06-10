@@ -1,54 +1,86 @@
 'use client';
 
 /**
- * Email-verification landing page (consumes `?token=<verification-token>`).
+ * Email-verification landing page — GCP Identity Platform (2026-06-10).
  *
- * Phase 48 PR 6 (2026-05-26): visual chrome rebuilt to dark Deep Cosmos
- * via `AuthShell`. ALL verification logic preserved verbatim:
- *   - Token extraction from URL search params
- *   - POST to `/api/auth/verify-email`
- *   - Three states: verifying / success / error
- *   - Suspense boundary for `useSearchParams` (Next.js requirement)
+ * Two entry shapes, both from the Firebase verification email:
+ *   1. Custom action URL: `?mode=verifyEmail&oobCode=<code>` — we apply the
+ *      action code client-side via `applyActionCode` (Firebase SDK).
+ *   2. Continue URL: the user verified on Firebase's hosted action handler
+ *      and clicked "Continue" — no oobCode present; if a session exists we
+ *      confirm via `confirmEmailVerified()` (reload + forced token refresh).
+ *
+ * After a successful apply, `confirmEmailVerified()` force-refreshes the ID
+ * token (server gates read the live `email_verified` claim) and trues-up
+ * the DB row via POST /api/auth/verify-email.
+ *
+ * Replaces the Phase 05 `?token=` flow whose in-memory store never worked
+ * on serverless. Visual chrome unchanged (Phase 48 Deep Cosmos AuthShell).
  */
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { applyActionCode } from 'firebase/auth';
+import { getFirebaseAuth } from '@/lib/firebase/config';
+import { useAuth } from '@/lib/context/AuthContext';
 import { AuthShell } from '@/components/auth/AuthShell';
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
+  const { confirmEmailVerified } = useAuth();
   const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
   const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
-    const token = searchParams.get('token');
+    const oobCode = searchParams.get('oobCode');
+    const mode = searchParams.get('mode');
 
-    if (!token) {
-      setStatus('error');
-      setErrorMessage('No verification token provided');
-      return;
-    }
+    const run = async () => {
+      const auth = getFirebaseAuth();
+      if (!auth) {
+        setStatus('error');
+        setErrorMessage('Authentication is not configured');
+        return;
+      }
 
-    fetch('/api/auth/verify-email', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.success) {
+      try {
+        if (oobCode && (!mode || mode === 'verifyEmail')) {
+          // Entry shape 1 — apply the action code ourselves. Works whether
+          // or not the user is signed in in this browser.
+          await applyActionCode(auth, oobCode);
+          // If a session exists, refresh the token + true-up the DB so the
+          // CDR gates unlock immediately. No session is fine too — the gates
+          // read the claim, which is fresh on next sign-in.
+          await confirmEmailVerified().catch(() => {});
+          setStatus('success');
+          return;
+        }
+
+        // Entry shape 2 — continue-URL landing (Firebase already applied the
+        // code on its hosted handler) or a stale/legacy link.
+        const verified = await confirmEmailVerified();
+        if (verified) {
           setStatus('success');
         } else {
           setStatus('error');
-          setErrorMessage(data.error || 'Verification failed');
+          setErrorMessage(
+            'This verification link is missing or no longer valid. Request a fresh one below.'
+          );
         }
-      })
-      .catch((err) => {
-        console.error('Verification error:', err);
+      } catch (err) {
+        const code = err instanceof Error ? err.message : '';
         setStatus('error');
-        setErrorMessage('An error occurred during verification');
-      });
+        if (code.includes('auth/invalid-action-code') || code.includes('auth/expired-action-code')) {
+          setErrorMessage('This verification link has expired or was already used. Request a fresh one below.');
+        } else {
+          setErrorMessage('An error occurred during verification. Request a fresh link below.');
+        }
+      }
+    };
+
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   if (status === 'verifying') {
@@ -72,7 +104,8 @@ function VerifyEmailContent() {
             </svg>
           </div>
           <p className="mb-8 text-sm leading-relaxed text-cosmos-soft">
-            Your email has been verified. You can now access all features.
+            Your email has been verified. Your account is fully unlocked — including bank
+            connections when you&apos;re ready.
           </p>
           <Link
             href="/dashboard"

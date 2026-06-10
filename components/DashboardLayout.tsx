@@ -26,6 +26,7 @@ import {
 import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
 import { MoreSheet } from '@/components/shell/MoreSheet';
 import { ConsentMigrationModal } from '@/components/auth/ConsentMigrationModal';
+import { VerifyEmailBanner } from '@/components/auth/VerifyEmailBanner';
 // Phase R2b (2026-05-27) — Restrained Editorial shell. The sidebar +
 // topbar + bottom nav swap in here; every other DashboardLayout
 // concern (providers, modals, onboarding, floating buttons,
@@ -384,6 +385,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   the active TRAIL section's sub-tabs so users reach a
                   sub-tab in ONE tap from the bottom bar, not two. */}
               <SectionTabsRow />
+
+              {/* Email verification soft-gate banner (2026-06-10) — shows
+                  for unverified email/password accounts; renders null for
+                  verified / OAuth users. Hidden behind onboarding modals so
+                  it never competes with the wizard. */}
+              {!showWizard && !showWelcomeModal && <VerifyEmailBanner />}
 
               {/* Phase 12 PR 2 — Resume banner for users with an
                   unfinished wizard draft. */}

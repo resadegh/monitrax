@@ -29,17 +29,17 @@ Each persists to `UserPreference.email*` columns via `/api/settings/notification
 
 | # | Path | Trigger | Provider | Recipient | User-pref gate? |
 |---|---|---|---|---|---|
-| 1 | `lib/security/emailVerification.ts` `sendVerificationEmail()` | Account signup; user clicks "Resend verification" | **Resend** (`RESEND_API_KEY`; from: `process.env.FROM_EMAIL` defaulting to `Monitrax <onboarding@resend.dev>`) | New user | ❌ Transactional — bypasses preferences (correct: required for signup) |
+| 1 | Firebase `sendEmailVerification()` (client SDK, `lib/context/AuthContext.tsx` `register()` / `resendVerificationEmail()`) — **migrated 2026-06-10**; the Resend-backed `lib/security/emailVerification.ts` was deleted (in-memory token store never worked on serverless) | Account signup; user clicks "Resend" (interstitial / banner / `/resend-verification`) | **Firebase Auth** (built-in; template in GCP Identity Platform console) | New user | ❌ Transactional — bypasses preferences (correct: required for signup) |
 | 2 | `lib/security/mfa.ts` `sendEmailMFACode()` | MFA challenge during sign-in | **STUB** (`console.log` in dev; placeholder `// await emailService.send(...)` in prod) | User attempting sign-in | ❌ N/A (not actually sending) |
 | 3 | `lib/email/conversationEmail.ts` `sendConversationEmail()` | New message in a `ProfessionalConversation` (Phase 32C PR4d) | **SendGrid** (`SENDGRID_API_KEY`; falls back to `console-stub` channel when unset) | Other conversation participant | ❌ Per-conversation participant relationship — bypasses general preferences (correct) |
 | 4 | `lib/calc-audit/alertingService.ts` `sendEmailAlert()` | Calc-audit threshold breach (Phase 41i.6) | **SendGrid** (`SENDGRID_API_KEY`; from: `audit-alerts@monitrax.com.au`) | Admin only (`MONITRAX_CALC_AUDIT_ALERT_EMAIL`) | ❌ Operational alert to admin — bypasses user preferences (correct) |
 | 5 | Firebase `sendPasswordResetEmail()` | Admin login "Forgot password" | **Firebase Auth** (built-in) | Admin user | ❌ Transactional (correct) |
 
-**Provider split as of 2026-05-18:**
-- Resend: 1 path (verification)
+**Provider split as of 2026-06-10:**
+- Firebase: 2 paths (password reset, email verification — verification migrated off Resend 2026-06-10, GCP-first §12.7)
 - SendGrid: 2 paths (conversation, calc-audit) — Tech Debt #16 migration target
-- Firebase: 1 path (password reset)
 - Stub: 1 path (MFA email code)
+- Resend: 0 paths (`RESEND_API_KEY` now unused by any live code path)
 
 ---
 

@@ -52,6 +52,21 @@ PENDING → ACTIVE → EXPIRED or REVOKED
 | **EXPIRED** | `consentExpiresAt` timestamp has passed | No access; data must be deleted |
 | **REVOKED** | Consumer has explicitly withdrawn consent | No access; data must be deleted within 24 hours |
 
+### Pre-Consent Requirement: Verified Email (2026-06-10)
+
+A user cannot initiate a bank connection (or reach any CDR data surface)
+until their email address is verified. Consent notices, expiry reminders,
+and breach notifications must reach an inbox the account holder actually
+owns — an unverified address is a compliance gap, not just a UX gap.
+
+- Enforced in `lib/auth/guards.ts` → `requireVerifiedEmail`, applied inside
+  `withMFARequired` and `withActiveConsent` (the elevated CDR guards).
+- Source of truth is the **live Firebase `email_verified` token claim** —
+  verification itself is handled by GCP Identity Platform (see
+  `01_AUTHENTICATION.md` § Email Verification).
+- Unverified callers receive **403 `EMAIL_VERIFICATION_REQUIRED`**.
+- OAuth (Google) sign-ins arrive pre-verified and are unaffected.
+
 ### Consent Grant Flow
 
 1. User initiates a bank connection in Monitrax

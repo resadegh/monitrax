@@ -12,18 +12,10 @@ export {
 
 export type { RateLimitResult } from './rateLimit';
 
-export {
-  emailVerification,
-  createVerificationToken,
-  verifyToken,
-  canResendVerification,
-  sendVerificationEmail,
-  sendPasswordResetEmail,
-  verifyEmail,
-  verifyPasswordResetToken,
-} from './emailVerification';
-
-export type { VerificationToken, SendVerificationResult } from './emailVerification';
+// Email verification moved to GCP Identity Platform (Firebase) — 2026-06-10.
+// The Phase 05 in-memory token module (`./emailVerification`) was deleted:
+// its Map-based token store never worked on serverless. See
+// app/api/auth/verify-email/route.ts for the claim-based DB true-up.
 
 // Phase 10: Audit Logging
 export {
