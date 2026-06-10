@@ -53,9 +53,15 @@ instance asked to verify it).
 2. User lands on `/verify-email-sent` (interstitial; soft gate — "Skip for
    now" goes to the dashboard).
 3. User clicks the emailed link. Two shapes are handled by `/verify-email`:
-   `?mode=verifyEmail&oobCode=…` (custom action URL — page applies the code
-   via `applyActionCode`) or a bare continue-URL landing (Firebase's hosted
-   handler already applied it).
+   `?mode=verifyEmail&oobCode=…` (custom action URL) or a bare continue-URL
+   landing (Firebase's hosted handler already applied it).
+   - **Prefetch-safe (2026-06-10):** for the `oobCode` shape the page does
+     **not** consume the code on load — it runs `checkActionCode`
+     (read-only) to validate + show the email, then waits for an explicit
+     "Verify my email" button tap before calling `applyActionCode`. This
+     defends against mail-client / security-scanner link prefetch, which
+     otherwise silently burns the single-use code and produces a spurious
+     "link expired or already used" error. See § Troubleshooting below.
 4. Client calls `useAuth().confirmEmailVerified()` — reloads the Firebase
    user, **force-refreshes the ID token** (`getIdToken(true)`, required:
    `email_verified` only flips on refresh), then POSTs
@@ -86,6 +92,36 @@ customisation: set the template's action URL to
 `https://www.monitrax.com.au/verify-email` to keep users in Monitrax-branded
 chrome end-to-end; the default Firebase-hosted handler also works (the
 continue URL routes back to `/verify-email`).
+
+### Troubleshooting — "link expired or already used" on the FIRST click
+
+Firebase reset/verify links carry a **single-use code** (~1h TTL). If a user
+gets "expired or already used" on a link they just received and tapped once,
+the code was consumed **before** their tap reached the handler. Causes, in
+order of likelihood:
+
+1. **Link prefetch** — Apple Mail privacy protection, link-preview bots, and
+   corporate email security scanners (Proofpoint, Mimecast, Outlook Safe
+   Links, etc.) fetch the URL to inspect it, burning the one-time code.
+2. **Multiple requests** — each new reset/verify email **invalidates all
+   earlier ones**; only the newest link works.
+3. **Half-applied custom action domain** — if the Firebase "Customise action
+   URL / domain" flow is mid-verification (DNS not yet validated), live links
+   can break. Cancel it until DNS verifies, or finish the DNS records.
+
+**Our mitigation:**
+- **Email verification** is hardened (2026-06-10): `/verify-email` validates
+  on load via read-only `checkActionCode` and only consumes the code on an
+  explicit button tap → a silent prefetch can't burn it. Plus the
+  `/verify-email-sent` interstitial's "I've verified — continue" re-checks
+  status without needing the original link at all.
+- **Password reset** still uses Firebase's **hosted** handler
+  (`firebaseapp.com/__/auth/action`) — we do not host a custom reset page, so
+  it remains exposed to prefetch. Operator guidance: request one fresh reset,
+  open the newest email, tap once; if it still fails instantly, copy-paste
+  the link into a browser manually (defeats most prefetchers) or use a
+  non-scanning inbox. A custom prefetch-safe reset handler is the durable fix
+  if this recurs (deferred — see IMPLEMENTATION_PLAN Open Questions).
 
 ---
 
