@@ -124,6 +124,7 @@ function classifyAsset(kind: WealthGraphAssetKind): WealthNodeType {
     case 'account': return 'asset-cash';
     case 'investment-account': return 'asset-investment';
     case 'asset': return 'asset-vehicle'; // Asset table is currently vehicles + misc
+    case 'super': return 'asset-investment'; // Phase 47 B1 — super on the universe
   }
 }
 
@@ -856,6 +857,7 @@ const CLUSTER_LABELS: Record<WealthGraphAssetKind, [singular: string, plural: st
   account: ['Account', 'Accounts'],
   'investment-account': ['Investment', 'Investments'],
   asset: ['Asset', 'Other assets'],
+  super: ['Super fund', 'Super'],
 };
 
 function clusterLabel(kind: WealthGraphAssetKind, count: number): string {

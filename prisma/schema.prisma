@@ -4100,8 +4100,11 @@ model SuperannuationAccount {
   userId String
 
   // Phase 39.5: fund classification + SMSF entity link.
-  // ownerEntityId is set ONLY for SMSF member accounts (→ the SMSF
-  // LegalEntity); null for retail/industry accounts (external funds).
+  // Phase 47 Stage B1 (Q-EOF-2, 2026-06-10): ownerEntityId is now set for
+  // EVERY account — the SMSF LegalEntity for SMSF member accounts, the
+  // member's PERSONAL_NAME entity for retail/industry (member-benefit
+  // semantics). Backfilled by 20260610090000_backfill_super_owner_entity;
+  // nullable retained for defensive null-handling only.
   fundType      SuperFundType @default(INDUSTRY)
   ownerEntityId String?
 

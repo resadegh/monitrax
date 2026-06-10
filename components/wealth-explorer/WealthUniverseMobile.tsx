@@ -46,6 +46,7 @@ import {
   Sparkles,
   AlertTriangle,
   type LucideIcon,
+  PiggyBank,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -1380,6 +1381,7 @@ function assetGlyphFor(kind: WealthGraphAsset['kind']): { icon: LucideIcon; acce
     case 'account': return { icon: CircleDollarSign, accent: '#34D399' };
     case 'investment-account': return { icon: LineChart, accent: '#818CF8' };
     case 'asset': return { icon: Box, accent: '#FBBF24' };
+    case 'super': return { icon: PiggyBank, accent: '#818CF8' }; // Phase 47 B1
   }
 }
 
@@ -1390,6 +1392,7 @@ function assetHrefFor(asset: WealthGraphAsset): string {
     case 'account': return '/dashboard/accounts';
     case 'investment-account': return '/dashboard/investments/accounts';
     case 'asset': return '/dashboard/assets';
+    case 'super': return '/dashboard/investments/super'; // Phase 47 B1
   }
 }
 
@@ -1400,6 +1403,7 @@ function assetKindLabel(kind: WealthGraphAsset['kind']): string {
     case 'account': return 'Account';
     case 'investment-account': return 'Investment';
     case 'asset': return 'Asset';
+    case 'super': return 'Super'; // Phase 47 B1
   }
 }
 

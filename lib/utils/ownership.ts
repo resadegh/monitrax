@@ -235,3 +235,57 @@ export function checkOwnership<T extends OwnedResource>(
 ): resource is T {
   return resource !== null && resource !== undefined && resource.userId === userId;
 }
+
+// =============================================================================
+// PHASE 47 STAGE B2 — DERIVED ENTITY OWNERSHIP (D3/§4B decision: no new
+// columns — InvestmentHolding / Transaction / RecurringPayment ownership
+// DERIVES from the parent object's `ownerEntityId`. One canonical helper
+// so no surface re-implements the chain and drifts.)
+// =============================================================================
+
+import { prisma } from '@/lib/db';
+
+/**
+ * Resolve which LegalEntity owns a derived object.
+ *
+ * Chains (PHASE_47_ENTITY_OWNERSHIP_FABRIC.md §4B D3, principle 4):
+ *   - investmentHolding → its InvestmentAccount's ownerEntityId
+ *   - transaction       → its Account's ownerEntityId (the money moved
+ *                         through the account; income/expense FKs carry
+ *                         the same owner by construction)
+ *   - recurringPayment  → its linked Expense's ownerEntityId, or null
+ *                         when unlinked (flagged, never guessed)
+ *
+ * Returns null when the chain is broken (e.g. unlinked recurring
+ * payment) — callers must treat null as "unattributed", never default
+ * silently.
+ */
+export async function resolveOwnerEntityId(
+  userId: string,
+  objectType: 'investmentHolding' | 'transaction' | 'recurringPayment',
+  objectId: string,
+): Promise<string | null> {
+  switch (objectType) {
+    case 'investmentHolding': {
+      const holding = await prisma.investmentHolding.findFirst({
+        where: { id: objectId, investmentAccount: { userId } },
+        select: { investmentAccount: { select: { ownerEntityId: true } } },
+      });
+      return holding?.investmentAccount?.ownerEntityId ?? null;
+    }
+    case 'transaction': {
+      const tx = await prisma.transaction.findFirst({
+        where: { id: objectId, userId },
+        select: { account: { select: { ownerEntityId: true } } },
+      });
+      return tx?.account?.ownerEntityId ?? null;
+    }
+    case 'recurringPayment': {
+      const rp = await prisma.recurringPayment.findFirst({
+        where: { id: objectId, userId },
+        select: { linkedExpense: { select: { ownerEntityId: true } } },
+      });
+      return rp?.linkedExpense?.ownerEntityId ?? null;
+    }
+  }
+}
