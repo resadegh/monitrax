@@ -390,34 +390,44 @@ fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` inst
    - `[import] AI categorisation DEGRADED for account …` → confirms transactions were held
 2. The error class decides the fix — do not guess.
 
-**Resolution (429 quota) — first identify WHICH project the runtime key belongs to:**
+**Resolution (429 quota) — first identify WHICH project the runtime key belongs to, then
+whether its paid tier is actually enforced:**
 
-> **2026-06-10 finding (the actual root cause that day):** the org owns THREE Gemini keys —
-> `…SWHI` ("MonitraxGemini") and `…Dtk4` ("Monitrax-AI") both in GCP project **Monitrax**
-> (`monitrax-479700`, **Tier 1** paid quota), and `…p7I4` ("Default Gemini API Key") in
-> **Default Gemini Project** (`gen-lang-client-0285193787`, **free tier**, ~15 req/min).
-> The AI Studio Spend page for the Monitrax project showed ~$0.00 over 28 days despite the
-> app calling Gemini daily — i.e. production was running on the free-tier `…p7I4` key from
-> the wrong project, while the paid Tier-1 keys sat unused. Upgrading/restricting the
-> Monitrax project (done correctly on 2026-05-19) had no effect on prod for this reason.
+> **2026-06-10 finding (revised twice — record both so the next operator doesn't relive it):**
+> (1) First theory: prod was running the free-tier `…p7I4` key from **Default Gemini Project**
+> (`gen-lang-client-0285193787`) instead of the Tier-1 keys (`…SWHI` MonitraxGemini /
+> `…Dtk4` Monitrax-AI) in project **Monitrax** (`monitrax-479700`). **Disproven** — Reza
+> verified Vercel's `GEMINI_API_KEY` IS `…SWHI` (Tier 1).
+> (2) Confirmed evidence: the import-window logs show **429 on `gemini-2.0-flash`** at a
+> sequential burst of ~15–30 req/min, no `PERMISSION_DENIED`, fallback models never attempted
+> (pre-fix code threw on first 429). Genuine Tier-1 quota for that model is ~2,000 RPM — you
+> cannot 429 at 30 RPM on real Tier 1. Combined with the project's ~$0 lifetime spend, the
+> working conclusion is **the AI Studio "Tier 1" label is not matched by enforced quota** —
+> i.e. the billing link is not actually effective for the Generative Language API.
+> Decisive checks below (steps 2a/2b).
 
 1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
    `GEMINI_API_KEY` → reveal → compare its ending against the key list in
    [Google AI Studio](https://aistudio.google.com) → API Keys (shows project + billing tier
-   per key).
-2. If the runtime key belongs to a free-tier project → swap to a Tier-1 Monitrax-project key.
-   **The server key MUST have Application restrictions = None** (HTTP-referrer-restricted keys
-   reject server-side calls, which send no Referer) **and API restrictions = Generative
-   Language API only**. Check under GCP Console → project Monitrax → APIs & Services →
-   Credentials. The 2026-05-19 referrer-restricted key is browser-grade, NOT server-grade.
-3. Update `GEMINI_API_KEY` in Vercel for **Production AND Preview** scopes → redeploy (env
-   changes don't apply to running deployments).
+   per key). If it belongs to a free-tier project, swap to a Monitrax-project key (see step 3).
+2. If the key is already in the right project but 429s persist at low request rates:
+   - **2a. Read the ENFORCED quota** (ground truth, not the AI Studio label): GCP Console →
+     project Monitrax → APIs & Services → Generative Language API → **Quotas & System
+     Limits** → "generate content requests per minute" per model. ~10–15 = free-tier
+     enforcement despite the Tier-1 label; ~2,000 = real Tier 1 (then suspect per-model
+     deprecation throttling instead — check the Usage page's 404 bars and the model names in
+     `lib/ai/google/modelConfig.ts` for stale/deprecated entries).
+   - **2b. Check billing health**: console.cloud.google.com/billing → billing account status
+     **Active** + project `monitrax-479700` listed under its Projects tab. Relink if not.
+   - **Server keys must have Application restrictions = None** (HTTP-referrer-restricted keys
+     reject server-side calls, which send no Referer — shows up as 403s) **and API
+     restrictions = Generative Language API only** (GCP Console → Credentials → the key).
+3. If swapping keys: update `GEMINI_API_KEY` in Vercel for **Production AND Preview** scopes →
+   redeploy (env changes don't apply to running deployments).
 4. Verify: trigger any AI surface (or a QIF import), then (a) Vercel runtime logs show
-   `[Gemini] Trying model:` with no failures, and (b) AI Studio → Usage/Spend for project
-   Monitrax starts showing requests.
-5. **Disable the old free-tier key** in its project once cutover is verified — otherwise a
-   future env-var restore can silently regress to free quota.
-6. Optional but recommended: AI Studio → Spend → set a monthly spend cap (e.g. A$25 — never
+   `[Gemini] Trying model:` with no failures, and (b) AI Studio → Usage for project Monitrax
+   shows successful requests.
+5. Optional but recommended: AI Studio → Spend → set a monthly spend cap (e.g. A$25 — never
    $0, which blocks all requests). Categorisation traffic costs cents at current scale
    (gemini-2.0-flash: US$0.075/M input tokens).
 

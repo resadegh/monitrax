@@ -401,3 +401,21 @@ affected prod behaviour, and (c) the recurring "Gemini keeps breaking" pattern. 
 page, disable the free key) recorded in the runbook section above (revised in this PR).
 Pending Reza: confirm Vercel key ends `p7I4`, perform the swap; Claude verifies from runtime
 logs post-swap.
+
+### Addendum 2 (same session) — "wrong project key" theory DISPROVEN; quota-enforcement mismatch is the live theory
+Reza verified the Vercel `GEMINI_API_KEY` is the `…SWHI` MonitraxGemini key (Tier 1, project
+`monitrax-479700`) — NOT the free-tier `…p7I4` key. Targeted log queries on the import window
+then narrowed the failure: 429 occurred on `gemini-2.0-flash`; fallback models were never
+attempted (pre-fix code threw on first 429); no `PERMISSION_DENIED` (rules out a referrer-403
+for this request). A ~15–30 req/min sequential burst cannot 429 on genuine Tier-1 quota
+(~2,000 RPM) → working conclusion: **quota is enforced at free-tier levels despite the
+AI Studio Tier-1 label**, i.e. the billing link is not effective for the Generative Language
+API. The project's ~$0 lifetime spend and Reza's own doubt ("spend is 0 — not sure it is
+correctly connected") support this. Decisive checks handed to Reza: (a) read the ENFORCED
+per-model RPM on the GCP Quotas page; (b) verify the billing account is Active and linked to
+`monitrax-479700`. Runbook section revised accordingly (both theories recorded with their
+evidence so future sessions don't relive the elimination). Secondary observation for follow-up:
+the project's Usage page shows 404 errors — several model names in
+`lib/ai/google/modelConfig.ts` (e.g. `gemini-2.5-pro-preview-05-06`, `gemini-pro-latest`,
+`gemini-1.5-flash`) are likely stale/retired in June 2026; queue a model-list refresh as a
+separate small PR once quota is confirmed.
