@@ -25,7 +25,7 @@
 
 'use client';
 
-import { motion, useDragControls } from 'framer-motion';
+import { AnimatePresence, motion, useDragControls, useReducedMotion } from 'framer-motion';
 import {
   Briefcase,
   Scroll,
@@ -117,6 +117,10 @@ export default function WealthUniverseMobile() {
   // Phase WX.4 — which entity (or `group-<id>`) has its constellation
   // unfolded on the canvas.
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  // Phase WX.5 — microscopic camera zoom between layers (mirrors desktop).
+  const [cameraOrigin, setCameraOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [cameraDirection, setCameraDirection] = useState<'in' | 'out'>('in');
+  const prefersReducedMotion = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   const [snap, setSnap] = useState<SnapState>('peek');
@@ -275,6 +279,8 @@ export default function WealthUniverseMobile() {
     if (node?.tier === 'asset') {
       if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
     } else if (node?.assetSummary) {
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setCameraDirection('in');
       setExpandedIds([id]);
     } else {
       setExpandedIds([]);
@@ -283,6 +289,7 @@ export default function WealthUniverseMobile() {
   }
 
   function clearSelection() {
+    setCameraDirection('out');
     setSelectedId(null);
     setExpandedIds([]);
     setSnap('peek');
@@ -365,34 +372,62 @@ export default function WealthUniverseMobile() {
           transition: 'height 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {/* SVG ribbons */}
-        <svg
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          className="pointer-events-none absolute inset-0 h-full w-full"
-        >
-          {relationships.map(r => (
-            <Ribbon
-              key={r.id}
-              rel={r}
-              nodes={nodesById}
-              isActive={isRibbonActive(r)}
-              isDimmed={isRibbonDimmed(r)}
-            />
-          ))}
-        </svg>
-        {/* Tiles */}
-        {nodes.map(node => (
-          <MobileTile
-            key={node.id}
-            node={node}
-            glyph={NODE_GLYPH[node.type]}
-            accent={NODE_ACCENT[node.type]}
-            isSelected={selectedId === node.id}
-            visibilityOpacity={nodeOpacity(node)}
-            onTap={() => onTapTile(node.id)}
-          />
-        ))}
+        {/* Phase WX.5 — layered scenes with the microscopic camera zoom
+            (mirrors desktop): zoom IN magnifies the old layer toward
+            the tapped bubble and racks it out of focus; the inner
+            layer sharpens in. Back = reversed. */}
+        <AnimatePresence mode="sync" initial={false}>
+          <motion.div
+            key={expandedIds[0] ?? 'universe'}
+            className="absolute inset-0"
+            style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
+            initial={
+              prefersReducedMotion
+                ? { opacity: 1 }
+                : cameraDirection === 'in'
+                  ? { opacity: 0, scale: 0.65, filter: 'blur(6px)' }
+                  : { opacity: 0, scale: 1.9, filter: 'blur(8px)' }
+            }
+            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            exit={
+              prefersReducedMotion
+                ? { opacity: 0 }
+                : cameraDirection === 'in'
+                  ? { opacity: 0, scale: 2.1, filter: 'blur(10px)' }
+                  : { opacity: 0, scale: 0.6, filter: 'blur(6px)' }
+            }
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            {/* SVG ribbons */}
+            <svg
+              viewBox="0 0 100 100"
+              preserveAspectRatio="none"
+              className="pointer-events-none absolute inset-0 h-full w-full"
+            >
+              {relationships.map(r => (
+                <Ribbon
+                  key={r.id}
+                  rel={r}
+                  nodes={nodesById}
+                  isActive={isRibbonActive(r)}
+                  isDimmed={isRibbonDimmed(r)}
+                />
+              ))}
+            </svg>
+            {/* Tiles */}
+            {nodes.map(node => (
+              <MobileTile
+                key={node.id}
+                node={node}
+                glyph={NODE_GLYPH[node.type]}
+                accent={NODE_ACCENT[node.type]}
+                isSelected={selectedId === node.id}
+                visibilityOpacity={nodeOpacity(node)}
+                onTap={() => onTapTile(node.id)}
+              />
+            ))}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       {/* Bottom sheet */}

@@ -47,6 +47,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
 import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
@@ -499,6 +500,14 @@ export default function WealthUniverseCanvas() {
   // asset constellation unfolded. Selecting an entity expands it;
   // clearing the selection folds everything back to Level 1.
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  // Phase WX.5 — microscopic camera zoom between layers. `cameraOrigin`
+  // is the tapped bubble's canvas-% position: the outgoing layer
+  // magnifies toward it and blurs out of focus (racking to a deeper
+  // focal plane); the incoming layer sharpens in. Direction flips on
+  // the way back out.
+  const [cameraOrigin, setCameraOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [cameraDirection, setCameraDirection] = useState<'in' | 'out'>('in');
+  const prefersReducedMotion = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   // Phase 1.1 — beneficial-ownership lens toggle. Only renders when the
@@ -547,6 +556,7 @@ export default function WealthUniverseCanvas() {
 
   // Phase WX.4 — selection drives the semantic zoom.
   function clearSelection() {
+    setCameraDirection('out');
     setSelectedId(null);
     setExpandedIds([]);
   }
@@ -558,12 +568,18 @@ export default function WealthUniverseCanvas() {
       return;
     }
     if (selectedId === node.id) {
-      // Tapping the selected entity again folds it back to Level 1.
+      // Tapping the selected entity again zooms back out to Level 1.
       clearSelection();
       return;
     }
     setSelectedId(node.id);
-    setExpandedIds(node.assetSummary ? [node.id] : []);
+    if (node.assetSummary) {
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setCameraDirection('in');
+      setExpandedIds([node.id]);
+    } else {
+      setExpandedIds([]);
+    }
   }
 
   // Deep-link focus (Reza 2026-06-10): /dashboard/entities?focus=<node>
@@ -1073,40 +1089,69 @@ export default function WealthUniverseCanvas() {
       </div>
       )}
 
-      {/* Ribbons */}
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      >
-        {relationships.map(r => (
-          <RelationshipRibbon
-            key={r.id}
-            rel={r}
-            nodes={nodesById}
-            isActive={isRibbonActive(r)}
-            isDimmed={isRibbonDimmed(r)}
-          />
-        ))}
-      </svg>
+      {/* Phase WX.5 — the layer field. Each scene (universe / inside a
+          bubble) is one keyed container; AnimatePresence cross-fades
+          them with the microscopic camera zoom. Zooming IN: the old
+          layer magnifies toward the tapped bubble and blurs out of
+          focus; the new layer sharpens in. Zooming OUT: reversed. */}
+      <AnimatePresence mode="sync" initial={false}>
+        <motion.div
+          key={expandedIds[0] ?? 'universe'}
+          className="absolute inset-0"
+          style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
+          initial={
+            prefersReducedMotion
+              ? { opacity: 1 }
+              : cameraDirection === 'in'
+                ? { opacity: 0, scale: 0.65, filter: 'blur(6px)' }
+                : { opacity: 0, scale: 1.9, filter: 'blur(8px)' }
+          }
+          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0 }
+              : cameraDirection === 'in'
+                ? { opacity: 0, scale: 2.1, filter: 'blur(10px)' }
+                : { opacity: 0, scale: 0.6, filter: 'blur(6px)' }
+          }
+          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          {/* Ribbons */}
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          >
+            {relationships.map(r => (
+              <RelationshipRibbon
+                key={r.id}
+                rel={r}
+                nodes={nodesById}
+                isActive={isRibbonActive(r)}
+                isDimmed={isRibbonDimmed(r)}
+              />
+            ))}
+          </svg>
 
-      {/* Tiles */}
-      {nodes.map(node => (
-        <WealthNodeTile
-          key={node.id}
-          node={node}
-          glyph={NODE_GLYPH[node.type]}
-          accent={NODE_ACCENT[node.type]}
-          scaleMultiplier={scaleFor(node)}
-          visibilityOpacity={nodeOpacity(node)}
-          isHovered={hoveredId === node.id}
-          isSelected={selectedId === node.id}
-          entranceDelayMs={satelliteDelayById.get(node.id)}
-          onHover={() => setHoveredId(node.id)}
-          onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
-          onClick={() => handleNodeClick(node)}
-        />
-      ))}
+          {/* Tiles */}
+          {nodes.map(node => (
+            <WealthNodeTile
+              key={node.id}
+              node={node}
+              glyph={NODE_GLYPH[node.type]}
+              accent={NODE_ACCENT[node.type]}
+              scaleMultiplier={scaleFor(node)}
+              visibilityOpacity={nodeOpacity(node)}
+              isHovered={hoveredId === node.id}
+              isSelected={selectedId === node.id}
+              entranceDelayMs={satelliteDelayById.get(node.id)}
+              onHover={() => setHoveredId(node.id)}
+              onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
+              onClick={() => handleNodeClick(node)}
+            />
+          ))}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Live preview popover follows the hovered tile */}
       {hoveredNode && !selectedNode && <EntityPreviewPopover node={hoveredNode} />}

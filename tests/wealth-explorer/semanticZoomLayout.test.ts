@@ -226,21 +226,23 @@ describe('Phase WX.4 — semantic zoom layout', () => {
       expect(you.value).toBe('$1.8M held'); // 900K+700K+60K+150K, loans excluded
     });
 
-    it('unfolds a cluster on expansion with cluster-scoped ribbons', () => {
+    it('expanding a cluster produces the FOCUSED SCENE (Phase WX.5 camera layer)', () => {
       const result = layoutWealthExplorer(singleEntity(), {
         expandedEntityIds: ['cluster-you-account'],
       });
+      // The cluster re-centres as the scene's parent; its items ring it;
+      // everything else leaves the stage (you are inside the bubble).
+      const parent = result.nodes.find(n => n.id === 'cluster-you-account')!;
+      expect(parent.position).toEqual({ x: 50, y: 42 });
+      expect(parent.isExpanded).toBe(true);
       const accountAssets = result.nodes.filter(
         n => n.tier === 'asset' && n.parentNodeId === 'cluster-you-account',
       );
       expect(accountAssets).toHaveLength(3);
-      const clusterAssetRibbons = result.relationships.filter(r =>
-        r.id.startsWith('cluster-asset-'),
-      );
-      expect(clusterAssetRibbons).toHaveLength(3);
-      expect(clusterAssetRibbons.every(r => r.from === 'cluster-you-account')).toBe(true);
-      // No duplicate entity → asset ribbon for clustered assets.
-      expect(result.relationships.filter(r => r.id === 'holds-acc-1')).toHaveLength(0);
+      expect(result.nodes).toHaveLength(4); // parent + 3 satellites, nothing else
+      const sceneRibbons = result.relationships.filter(r => r.id.startsWith('scene-holds-'));
+      expect(sceneRibbons).toHaveLength(3);
+      expect(sceneRibbons.every(r => r.from === 'cluster-you-account')).toBe(true);
     });
 
     it("never clusters in 'all' mode (the mobile list keeps real assets)", () => {
