@@ -451,3 +451,18 @@ geminiExtractor.ts` (+ EXTRACTOR_VERSION bump). **⚠ Scheduled breakage queued:
 model lineup before then. Verification: tsc 0 errors; 458/458 tests (tests/ai + bookkeeping);
 build complete. Combined with the retry/backoff + batch isolation already in this PR, a future
 model retirement degrades through live fallbacks loudly instead of silently zeroing imports.
+
+### Addendum 4 (same session) — second incident: import 504 timeout now that Gemini calls actually run
+Reza's verification re-import failed with "Unexpected token 'A', \"An error o\"… is not valid
+JSON" — the dialog choking on Vercel's plain-text error page. Logs (§17.3 first action):
+`POST /api/accounts/17e36eed…/import → 504` at 09:29:50Z on the post-merge deploy. Cause:
+the model fix made categorisation calls REAL again — ~15 sequential Gemini calls at ~2-4s each
++ retry headroom blew past the route's default 15s Vercel limit. (Pre-fix the calls failed
+instantly, so the broken import was always "fast".) Fix (PR #1050):
+- `app/api/accounts/[id]/import/route.ts` — `export const maxDuration = 300` (Vercel Pro cap)
+- `lib/bank/aiCategorisation.ts` — batch loop converted from sequential to bounded 4-way
+  concurrency (order-preserving slots, per-batch isolation retained; Tier-1 quota ~2,000
+  req/min makes 4 concurrent calls trivial; wall-time ~÷4)
+- `components/bank/TransactionImportDialog.tsx` — defensive non-JSON response handling:
+  504 → "took too long, split the file" message; other non-JSON → honest HTTP-status message
+Verification: tsc clean, 253/253 bookkeeping tests, build complete.

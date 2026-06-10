@@ -289,10 +289,25 @@ export function TransactionImportDialog({
 
       setProgress(70);
 
-      const data = await response.json();
+      // Infrastructure errors (e.g. a 504 function timeout) return Vercel's
+      // plain-text error page, not JSON — parse defensively so the user sees
+      // a real message instead of "Unexpected token 'A' … is not valid JSON".
+      let data: any = null;
+      try {
+        data = await response.json();
+      } catch {
+        if (response.status === 504) {
+          throw new Error(
+            'The import took too long and timed out. Try splitting the file into smaller date ranges and importing each part.'
+          );
+        }
+        throw new Error(
+          `The server returned an unexpected response (HTTP ${response.status}). Please try again — if it persists, contact support.`
+        );
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Import failed');
+        throw new Error(data?.error || 'Import failed');
       }
 
       setProgress(100);
