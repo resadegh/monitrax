@@ -248,8 +248,9 @@ export default function WealthUniverseMobile() {
   function onTapTile(id: string) {
     // Phase WX.4 — selection drives the canvas expansion. Tapping an
     // asset keeps its parent constellation open; tapping an entity
-    // unfolds its own.
-    const node = listNodesById[id];
+    // unfolds its own. Cluster tiles (WX.4.1) exist only on the canvas
+    // layout, so resolve there first.
+    const node = nodesById[id] ?? listNodesById[id];
     setSelectedId(id);
     if (node?.tier === 'asset') {
       if (node.parentNodeId) setExpandedIds([node.parentNodeId]);

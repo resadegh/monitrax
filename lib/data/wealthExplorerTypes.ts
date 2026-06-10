@@ -50,8 +50,12 @@ export interface WealthNode {
   /**
    * Tier marker for layout debug + filter chips. Entities sit in tier 1
    * (controllers / vehicles), assets in tier 2, individuals in tier 3.
+   * 'cluster' (Phase WX.4.1) — synthetic per-type aggregate of one
+   * entity's holdings, used at Level 1 when the universe has too few
+   * entities to aggregate into ("3 Properties · $2.1M"). Clusters
+   * expand like entities but never open the entity detail panel.
    */
-  tier?: 'entity' | 'asset' | 'individual' | 'group';
+  tier?: 'entity' | 'asset' | 'individual' | 'group' | 'cluster';
   /**
    * Semantic zoom (Phase WX.4) — for entity / group nodes, the
    * aggregate of the assets this node holds. At Level 1 the canvas

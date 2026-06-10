@@ -1121,10 +1121,12 @@ export default function WealthUniverseCanvas() {
           linked-assets list (already in memory via the wealth-graph
           snapshot; no extra fetch). */}
       <EntityDetailPanel
-        node={selectedNode}
+        // Cluster tiles (Phase WX.4.1) are pure canvas aggregates — they
+        // expand in place but have no entity file to open.
+        node={selectedNode?.tier === 'cluster' ? null : selectedNode}
         onClose={clearSelection}
         assets={
-          selectedNode && snapshot
+          selectedNode && selectedNode.tier !== 'cluster' && snapshot
             ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
             : []
         }

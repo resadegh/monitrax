@@ -153,7 +153,13 @@ describe('Phase WX.4 — semantic zoom layout', () => {
   describe('two-ring satellites', () => {
     it('places >6 satellites in two rings (outer ring further from the parent)', () => {
       const many = snapshot({
-        entities: [entity('you', 'PERSONAL_NAME'), entity('trust', 'DISCRETIONARY_TRUST')],
+        // 3 entities so the layout stays on entity-level collapse
+        // (≤2 entities would switch to the WX.4.1 cluster level).
+        entities: [
+          entity('you', 'PERSONAL_NAME'),
+          entity('trust', 'DISCRETIONARY_TRUST'),
+          entity('smsf', 'SMSF'),
+        ],
         assets: Array.from({ length: 9 }, (_, i) =>
           asset(`a-${i}`, 'account', 'trust', 10_000),
         ),
@@ -169,6 +175,83 @@ describe('Phase WX.4 — semantic zoom layout', () => {
       // ring must remain meaningfully further out than the inner ring.
       const sorted = [...dists].sort((a, b) => a - b);
       expect(sorted[sorted.length - 1]).toBeGreaterThan(sorted[0] * 1.3);
+    });
+  });
+
+  describe('cluster level (Phase WX.4.1 — ≤2 entities)', () => {
+    // Reza's real shape (2026-06-10 mobile screenshot): ONE personal
+    // entity holding everything directly. Entity-level collapse turned
+    // the whole universe into a single tile with a "19" badge.
+    const singleEntity = () =>
+      snapshot({
+        entities: [entity('you', 'PERSONAL_NAME')],
+        assets: [
+          asset('prop-1', 'property', 'you', 900_000),
+          asset('prop-2', 'property', 'you', 700_000),
+          asset('acc-1', 'account', 'you', 20_000),
+          asset('acc-2', 'account', 'you', 30_000),
+          asset('acc-3', 'account', 'you', 10_000),
+          asset('inv-1', 'investment-account', 'you', 150_000),
+          asset('loan-1', 'loan', 'you', 500_000),
+          asset('loan-2', 'loan', 'you', 100_000),
+        ],
+      });
+
+    it('clusters holdings by type instead of collapsing into the lone entity', () => {
+      const result = layoutWealthExplorer(singleEntity());
+      const clusters = result.nodes.filter(n => n.tier === 'cluster');
+      expect(clusters.map(n => n.id).sort()).toEqual([
+        'cluster-you-account',
+        'cluster-you-loan',
+        'cluster-you-property',
+      ]);
+      const accounts = clusters.find(n => n.id === 'cluster-you-account')!;
+      expect(accounts.assetSummary).toEqual({ count: 3, totalValue: 60_000 });
+      expect(accounts.shortName).toBe('Accounts');
+      // Loan cluster reads "owing", never "held".
+      const loans = clusters.find(n => n.id === 'cluster-you-loan')!;
+      expect(loans.value).toBe('$600K owing');
+    });
+
+    it('renders singleton kinds directly — a cluster of one is noise', () => {
+      const result = layoutWealthExplorer(singleEntity());
+      expect(result.nodes.find(n => n.id === 'inv-1')).toBeDefined();
+      expect(result.nodes.find(n => n.id === 'cluster-you-investment-account')).toBeUndefined();
+    });
+
+    it('hides the entity count badge but keeps its total line', () => {
+      const result = layoutWealthExplorer(singleEntity());
+      const you = result.nodes.find(n => n.id === 'you')!;
+      expect(you.isExpanded).toBe(true); // suppresses the badge
+      expect(you.value).toBe('$1.8M held'); // 900K+700K+60K+150K, loans excluded
+    });
+
+    it('unfolds a cluster on expansion with cluster-scoped ribbons', () => {
+      const result = layoutWealthExplorer(singleEntity(), {
+        expandedEntityIds: ['cluster-you-account'],
+      });
+      const accountAssets = result.nodes.filter(
+        n => n.tier === 'asset' && n.parentNodeId === 'cluster-you-account',
+      );
+      expect(accountAssets).toHaveLength(3);
+      const clusterAssetRibbons = result.relationships.filter(r =>
+        r.id.startsWith('cluster-asset-'),
+      );
+      expect(clusterAssetRibbons).toHaveLength(3);
+      expect(clusterAssetRibbons.every(r => r.from === 'cluster-you-account')).toBe(true);
+      // No duplicate entity → asset ribbon for clustered assets.
+      expect(result.relationships.filter(r => r.id === 'holds-acc-1')).toHaveLength(0);
+    });
+
+    it("never clusters in 'all' mode (the mobile list keeps real assets)", () => {
+      const result = layoutWealthExplorer(singleEntity(), { assetDetail: 'all' });
+      expect(result.nodes.filter(n => n.tier === 'cluster')).toHaveLength(0);
+      expect(result.nodes.filter(n => n.tier === 'asset')).toHaveLength(8);
+    });
+
+    it('stays on entity-level collapse with 3+ entities', () => {
+      const result = layoutWealthExplorer(baseSnapshot());
+      expect(result.nodes.filter(n => n.tier === 'cluster')).toHaveLength(0);
     });
   });
 

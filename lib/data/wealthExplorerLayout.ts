@@ -185,6 +185,31 @@ function arcBelow(
   });
 }
 
+/**
+ * Fan N points across the UPPER arc above a parent — used by the
+ * cluster level (Phase WX.4.1) where the lone anchor entity sits in the
+ * bottom band and its type-clusters spread above it, mirroring the
+ * Stitch L1 composition (entities above YOU).
+ */
+function fanAbove(
+  parent: { x: number; y: number },
+  count: number,
+  radiusPct: number,
+): Array<{ x: number; y: number }> {
+  if (count === 0) return [];
+  if (count === 1) return [{ x: parent.x, y: parent.y - radiusPct }];
+  const startAngle = -Math.PI * 0.9; // ~18° above horizontal-left
+  const endAngle = -Math.PI * 0.1;   // ~18° above horizontal-right
+  const step = (endAngle - startAngle) / (count - 1);
+  return Array.from({ length: count }, (_, i) => {
+    const angle = startAngle + step * i;
+    return {
+      x: parent.x + radiusPct * 1.4 * Math.cos(angle),
+      y: parent.y + radiusPct * Math.sin(angle),
+    };
+  });
+}
+
 /** Satellites per ring before the constellation spills outward. */
 const SATELLITE_RING_CAP = 6;
 
@@ -352,6 +377,17 @@ export function layoutWealthExplorer(
   const isUnfolded = (parentNodeId: string): boolean =>
     detail === 'all' || expandedIds.has(parentNodeId);
 
+  // Cluster level (Phase WX.4.1) — entity-level collapse only works
+  // when there ARE entities to collapse into. A single-entity universe
+  // (most users pre-trust) would collapse into one tile with a badge —
+  // technically correct, completely useless. With ≤2 entities, Level 1
+  // instead clusters each entity's holdings BY TYPE into aggregate
+  // tiles ("3 Properties · $2.1M"); clicking a cluster unfolds that
+  // type's assets. Keeps the canvas in the 3–9 tile sweet spot at any
+  // structure size.
+  const CLUSTER_MODE_MAX_ENTITIES = 2;
+  const clusterMode = detail === 'collapsed' && entities.length <= CLUSTER_MODE_MAX_ENTITIES;
+
   // ---- Asset grouping — computed up-front so each entity/group tile
   // can carry its aggregate summary at Level 1. Build a map of
   // (objectType,objectId) → group so we know which assets route via a
@@ -425,7 +461,11 @@ export function layoutWealthExplorer(
     const ownedTotal = sumOwned(e.ownedObjectsCount);
     const size = sizeForEntity(nodeType, ownedTotal, isAnchor);
     const summary = summarize(ownedAssetsByEntity.get(e.id));
-    const expanded = !!summary && isUnfolded(e.id);
+    const expanded = !!summary && !clusterMode && isUnfolded(e.id);
+    // In cluster mode the holdings render as per-type clusters around
+    // the entity — keep the "$X held" total for context but hide the
+    // count badge (the clusters carry their own).
+    const clustered = !!summary && clusterMode;
     nodes.push({
       id: e.id,
       type: nodeType,
@@ -443,7 +483,7 @@ export function layoutWealthExplorer(
       isAnchor,
       tier: nodeType === 'individual' ? 'individual' : 'entity',
       assetSummary: summary,
-      isExpanded: expanded,
+      isExpanded: expanded || clustered,
     });
     nodePositionById.set(e.id, pos);
   }
@@ -514,15 +554,19 @@ export function layoutWealthExplorer(
   // held). Semantic zoom: satellites only unfold for expanded parents
   // (or everywhere in 'all' mode).
   const assetPositionById = new Map<string, { x: number; y: number }>();
+  // Assets routed via a type-cluster — their holds ribbon comes from the
+  // cluster, not the entity (skip them in the entity→asset ribbon loop).
+  const clusteredAssetIds = new Set<string>();
+  // Ribbons created during cluster placement (the main ribbons array is
+  // declared later); appended after its declaration.
+  const clusterRibbons: WealthRelationship[] = [];
 
   // Place entity-owned assets
   ownedAssetsByEntity.forEach((assetsForEntity, entityId) => {
-    if (!isUnfolded(entityId)) return;
     const parentPos = nodePositionById.get(entityId);
     if (!parentPos) return;
-    const positions = placeSatellites(parentPos, assetsForEntity.length, 9);
-    assetsForEntity.forEach((a, i) => {
-      const pos = positions[i];
+
+    const pushAssetNode = (a: WealthGraphAsset, pos: { x: number; y: number }, parentNodeId: string) => {
       assetPositionById.set(a.id, pos);
       nodes.push({
         id: a.id,
@@ -535,8 +579,84 @@ export function layoutWealthExplorer(
         size: sizeForAsset(),
         ownerEntityId: a.ownerEntityId,
         tier: 'asset',
-        parentNodeId: entityId,
+        parentNodeId,
       });
+    };
+
+    if (clusterMode) {
+      // ---- Cluster level (Phase WX.4.1): group this entity's holdings
+      // by type. Kinds with a single asset render that asset directly
+      // (a cluster of one is noise); kinds with ≥2 render an aggregate
+      // cluster tile that unfolds on selection.
+      const byKind = new Map<WealthGraphAssetKind, WealthGraphAsset[]>();
+      for (const a of assetsForEntity) {
+        const arr = byKind.get(a.kind) ?? [];
+        arr.push(a);
+        byKind.set(a.kind, arr);
+      }
+      const kinds = [...byKind.keys()];
+      const ringPositions = fanAbove(parentPos, kinds.length, 26);
+      kinds.forEach((kind, i) => {
+        const kindAssets = byKind.get(kind)!;
+        const pos = ringPositions[i];
+        if (kindAssets.length === 1) {
+          pushAssetNode(kindAssets[0], pos, entityId);
+          return;
+        }
+        const clusterId = `cluster-${entityId}-${kind}`;
+        const clusterExpanded = isUnfolded(clusterId);
+        const totalValue = kindAssets.reduce(
+          (s, a) => s + (isFinite(a.value) ? a.value : 0),
+          0,
+        );
+        nodes.push({
+          id: clusterId,
+          type: classifyAsset(kind),
+          name: clusterLabel(kind, kindAssets.length),
+          shortName: clusterShortLabel(kind),
+          subtitle: 'Tap to open',
+          value:
+            totalValue > 0
+              ? `${formatValue(totalValue)}${kind === 'loan' ? ' owing' : ''}`
+              : undefined,
+          position: pos,
+          size: 52,
+          ownerEntityId: entityId,
+          tier: 'cluster',
+          parentNodeId: entityId,
+          assetSummary: { count: kindAssets.length, totalValue },
+          isExpanded: clusterExpanded,
+        });
+        clusterRibbons.push({
+          id: `cluster-holds-${clusterId}`,
+          from: entityId,
+          to: clusterId,
+          type: 'holds',
+          label: 'Holds',
+        });
+        if (clusterExpanded) {
+          const satPositions = placeSatellites(pos, kindAssets.length, 9);
+          kindAssets.forEach((a, j) => {
+            pushAssetNode(a, satPositions[j], clusterId);
+            clusteredAssetIds.add(a.id);
+            clusterRibbons.push({
+              id: `cluster-asset-${a.id}`,
+              from: clusterId,
+              to: a.id,
+              type: 'holds',
+              label: '',
+            });
+          });
+        }
+      });
+      return;
+    }
+
+    // ---- Entity-collapse level: satellites only for expanded entities.
+    if (!isUnfolded(entityId)) return;
+    const positions = placeSatellites(parentPos, assetsForEntity.length, 9);
+    assetsForEntity.forEach((a, i) => {
+      pushAssetNode(a, positions[i], entityId);
     });
   });
 
@@ -569,6 +689,10 @@ export function layoutWealthExplorer(
 
   const ribbons: WealthRelationship[] = [];
 
+  // 0) Cluster-level ribbons (Phase WX.4.1) — entity → cluster and,
+  //    when a cluster is unfolded, cluster → asset.
+  ribbons.push(...clusterRibbons);
+
   // 1) EntityRelationship + PARENT_OF fallback edges
   for (const r of relationships) {
     if (!nodePositionById.has(r.fromEntityId) || !nodePositionById.has(r.toEntityId)) continue;
@@ -581,9 +705,11 @@ export function layoutWealthExplorer(
     });
   }
 
-  // 2) Asset HOLDS edges — entity → asset
+  // 2) Asset HOLDS edges — entity → asset. Assets routed via a type
+  //    cluster already have their cluster → asset ribbon (above).
   ownedAssetsByEntity.forEach((assetsForEntity, entityId) => {
     for (const a of assetsForEntity) {
+      if (clusteredAssetIds.has(a.id)) continue;
       if (!nodePositionById.has(entityId) || !assetPositionById.has(a.id)) continue;
       ribbons.push({
         id: `holds-${a.id}`,
@@ -702,6 +828,24 @@ function subtitleFor(nodeType: WealthNodeType, e: WealthGraphEntity): string {
     return 'Company';
   }
   return '';
+}
+
+/** Warm plural labels for type clusters (CLAUDE.md §14.3 warm words). */
+const CLUSTER_LABELS: Record<WealthGraphAssetKind, [singular: string, plural: string]> = {
+  property: ['Property', 'Properties'],
+  loan: ['Loan', 'Loans'],
+  account: ['Account', 'Accounts'],
+  'investment-account': ['Investment', 'Investments'],
+  asset: ['Asset', 'Other assets'],
+};
+
+function clusterLabel(kind: WealthGraphAssetKind, count: number): string {
+  const [singular, plural] = CLUSTER_LABELS[kind];
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function clusterShortLabel(kind: WealthGraphAssetKind): string {
+  return CLUSTER_LABELS[kind][1];
 }
 
 function formatValue(value: number): string {

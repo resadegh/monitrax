@@ -226,3 +226,47 @@ verified identity-provider claim; cannot clobber user-entered data.
 ### Notes / Known follow-ups
 - True viewport pan/zoom (pinch / scroll / fit-to-view) intentionally deferred — only if semantic zoom proves insufficient at real user node counts.
 - Mobile filter chips for asset types (Properties / Cash / …) still drive the bottom-sheet list; on the Level 1 canvas they dim all entity tiles (no asset tiles to match). Acceptable v1 — list shows the matches. Revisit if confusing in practice.
+
+---
+
+## Session: gallant-gates-kb264m (continuation — Phase WX.4.1 cluster level)
+
+### Changes Made
+- **Type**: Fix (UX over-aggregation regression, caught by Reza minutes after the Phase 7 prod deploy)
+- **Scope**: Wealth Universe layout — cluster level for ≤2-entity universes
+- **Root Cause**: Phase 7 entity-level collapse assumed entities to collapse INTO. Reza's structure (and most users pre-trust) has ONE personal entity holding everything directly — so the whole universe rendered as a single YOU tile with a "19" count badge (mobile screenshot evidence). Technically correct aggregation, useless surface.
+- **Solution**: With ≤2 entities, Level 1 clusters each entity's holdings BY TYPE into aggregate tiles ("3 Properties · $2.1M", loans read "$600K owing" never "held"), fanned in the upper arc above the anchor. Singleton kinds render the real asset directly (a cluster of one is noise). Tapping a cluster unfolds that type's assets via the same expansion mechanic; clusters never open the entity detail panel. The entity keeps its "$X held" total line, drops the redundant badge. Canvas rule codified: **always target the 3–9 tile sweet spot — the layout picks the aggregation level that achieves it** (entity collapse ≥3 entities, type clusters ≤2). No Stitch pass — the cluster tile reuses the established L1 aggregate-tile vocabulary verbatim (count badge + value line); zero new visual primitives.
+
+### Files Modified
+- `lib/data/wealthExplorerTypes.ts` — `tier` union gains `'cluster'`
+- `lib/data/wealthExplorerLayout.ts` — `CLUSTER_MODE_MAX_ENTITIES = 2` dispatch, `fanAbove()` upper-arc placement, cluster node emission + cluster-scoped holds ribbons, `clusterLabel`/`clusterShortLabel` warm-words helpers, entity badge suppression in cluster mode
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — detail panel guarded against cluster selection
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — tap lookup resolves canvas nodes first (clusters don't exist in the list layout)
+- `components/wealth-explorer/WealthUniverseWidget.tsx` — chip reads "19 holdings" / "N entities · M holdings" (was "N nodes"); footer total sums entity-tier aggregates only (clusters are sub-totals — double-count guard); dead `parseValueToNumber` deleted (§12.1)
+- `tests/wealth-explorer/semanticZoomLayout.test.ts` — 6 new cluster-level tests (17 total); two-ring fixture moved to 3 entities to stay on the entity-collapse path
+
+### Build Status
+- [x] Build passes (`npm run build`)
+- [x] Lint passes (changed files, 0 problems)
+- [x] Tests pass — 17/17 in `tests/wealth-explorer/`
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| ee92786 | fix(wealth-universe): cluster level — type aggregation for single-entity universes |
+
+---
+
+## Session: gallant-gates-kb264m (continuation 2 — Phase 47 design)
+
+### Changes Made
+- **Type**: Research + phase design (docs only — no code)
+- **Scope**: Entity Ownership Fabric — Reza directive for the "golden feature": full portfolio capture under the entity universe, with tax/dashboard/reports consuming the relationships
+- **Work done**: Full-codebase ownership audit (schema, write paths, wealth graph, masterFinancialService, reports, tax engine — file:line evidence) + new phase doc `PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` (v1, 🟡 DESIGN). Audit headline: model layer ~complete (Phase 44 Part 1) but ownership is **un-capturable from the UI** (auto-assigns PERSONAL_NAME, immutable, no picker anywhere), **incomplete** for retail/industry super (nullable, unselected in wealth graph) and **ignored** by every aggregation surface except the Wealth Universe canvas (master snapshot + reports flat-sum per user; tax engine per-entity-ready but starved of assembled facts — the gap Phase 44 Part 2 designed for and never built).
+- **Plan shape**: five gated, non-breaking stages — A Capture → B Complete → C Consume → D Compute (= execute review-gated Phase 44 Part 2) → E Report. Golden tests pin flat household totals each stage; progressive disclosure below 2 entities; "correct the record ≠ transfer the asset" framing on all re-attribution (a real transfer is a CGT event — a casual move-to-trust button would be a tax trap).
+- **Decisions raised**: Open Questions Q-EOF-1…5 with recommendations (correction-only v1; retail super → personal member entity; derived ownership for holdings/txns; household-flat default with opt-in entity lens; Stage D after Stage C).
+
+### Files Modified
+- `docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` — NEW phase doc
+- `docs/IMPLEMENTATION_PLAN.md` — new workstream 0·EOF + Open Questions Q-EOF-1…5
+- `docs/changelog/CHANGELOG_2026_06_10.md` — this entry
