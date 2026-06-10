@@ -446,7 +446,7 @@ JSON" — the dialog choking on Vercel's plain-text error page. Logs (§17.3 fir
 `POST /api/accounts/17e36eed…/import → 504` at 09:29:50Z on the post-merge deploy. Cause:
 the model fix made categorisation calls REAL again — ~15 sequential Gemini calls at ~2-4s each
 + retry headroom blew past the route's default 15s Vercel limit. (Pre-fix the calls failed
-instantly, so the broken import was always "fast".) Fix (PR #1049):
+instantly, so the broken import was always "fast".) Fix (PR #1050):
 - `app/api/accounts/[id]/import/route.ts` — `export const maxDuration = 300` (Vercel Pro cap)
 - `lib/bank/aiCategorisation.ts` — batch loop converted from sequential to bounded 4-way
   concurrency (order-preserving slots, per-batch isolation retained; Tier-1 quota ~2,000
