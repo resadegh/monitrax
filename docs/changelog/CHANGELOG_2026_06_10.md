@@ -253,4 +253,20 @@ verified identity-provider claim; cannot clobber user-entered data.
 ### Commit History
 | Hash | Message |
 |------|---------|
-| (this) | fix(wealth-universe): cluster level — type aggregation for single-entity universes |
+| ee92786 | fix(wealth-universe): cluster level — type aggregation for single-entity universes |
+
+---
+
+## Session: gallant-gates-kb264m (continuation 2 — Phase 47 design)
+
+### Changes Made
+- **Type**: Research + phase design (docs only — no code)
+- **Scope**: Entity Ownership Fabric — Reza directive for the "golden feature": full portfolio capture under the entity universe, with tax/dashboard/reports consuming the relationships
+- **Work done**: Full-codebase ownership audit (schema, write paths, wealth graph, masterFinancialService, reports, tax engine — file:line evidence) + new phase doc `PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` (v1, 🟡 DESIGN). Audit headline: model layer ~complete (Phase 44 Part 1) but ownership is **un-capturable from the UI** (auto-assigns PERSONAL_NAME, immutable, no picker anywhere), **incomplete** for retail/industry super (nullable, unselected in wealth graph) and **ignored** by every aggregation surface except the Wealth Universe canvas (master snapshot + reports flat-sum per user; tax engine per-entity-ready but starved of assembled facts — the gap Phase 44 Part 2 designed for and never built).
+- **Plan shape**: five gated, non-breaking stages — A Capture → B Complete → C Consume → D Compute (= execute review-gated Phase 44 Part 2) → E Report. Golden tests pin flat household totals each stage; progressive disclosure below 2 entities; "correct the record ≠ transfer the asset" framing on all re-attribution (a real transfer is a CGT event — a casual move-to-trust button would be a tax trap).
+- **Decisions raised**: Open Questions Q-EOF-1…5 with recommendations (correction-only v1; retail super → personal member entity; derived ownership for holdings/txns; household-flat default with opt-in entity lens; Stage D after Stage C).
+
+### Files Modified
+- `docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` — NEW phase doc
+- `docs/IMPLEMENTATION_PLAN.md` — new workstream 0·EOF + Open Questions Q-EOF-1…5
+- `docs/changelog/CHANGELOG_2026_06_10.md` — this entry

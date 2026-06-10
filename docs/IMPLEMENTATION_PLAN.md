@@ -120,6 +120,26 @@
 
 ## 🟡 Active Workstreams
 
+### 0·EOF. Phase 47 — Entity Ownership Fabric (the "golden feature")
+
+- **Status:** 🟡 DESIGN — phase doc shipped (`docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md`); Stage A code blocked on Open Questions Q-EOF-1…5 sign-off.
+- **Started:** 2026-06-10 (Reza directive: *"I want to have everything (financial portfolio) of the user captured and can be shown on the entity universe… tax implications, dashboard, reports and everything on the app also needs to understand these relationships… This will be the golden feature of Monitrax."*)
+- **Owner:** Reza (direction + §8 design gates) + Claude (audit, design, build).
+- **Last touched:** 2026-06-10 — full-codebase ownership audit completed (schema/write-path/read-path/tax-engine/reports) + Phase 47 staged plan written.
+- **Approach:** Five gated stages — **A Capture** (entity picker on create, "correct ownership record" on edit, bulk re-attribution, entity-create hook), **B Complete** (retail-super attachment + wealth-graph super coverage, derived-ownership helper), **C Consume** (additive `byEntity` master-snapshot breakdown + dashboard entity lens + universe value parity), **D Compute** (execute the review-gated `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — EntityTaxFacts assembler from persisted facts), **E Report** (per-entity report sections + universe tax-flow overlay). Non-breaking guarantees: golden tests pin flat household totals per stage; progressive disclosure (no new chrome below 2 entities); correction-≠-transfer framing throughout (§12.11 gated).
+- **Audit headline (2026-06-10):** schema layer ~complete (Phase 44 Part 1) but **write path has no entity picker anywhere** (everything auto-assigns PERSONAL_NAME, immutable after); `SuperannuationAccount.ownerEntityId` nullable + unselected in wealth graph; `masterFinancialService`/reports entity-blind flat sums (`netWorthCalculator` accepts the entity filter — never passed); tax engine fully per-entity-ready but starved — companies/trusts/SMSFs return `UNCOMPUTED` because nothing assembles `EntityTaxFacts` from persisted rows.
+- **Phases:**
+  - [x] **Stage 0 — Audit + phase plan (this PR, 2026-06-10)** — full ownership-coverage audit with file:line evidence; `PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` v1; Q-EOF-1…5 raised with recommendations.
+  - [ ] **Stage A — Capture** (~3-4 PRs; Stitch pass for the EntityOwnerPicker pattern)
+  - [ ] **Stage B — Complete** (~2 PRs; B1 carries a §12.12 migration)
+  - [ ] **Stage C — Consume** (~3 PRs; golden tests gate)
+  - [ ] **Stage D — Compute** (governed by `PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md`, review-gated)
+  - [ ] **Stage E — Report** (~2 PRs)
+- **Risk:** Stages A-C low (additive, flagged, golden-tested). Stage D high (legal-exposure surface — its own doc's external-review gates apply unchanged).
+- **Blocking:** Q-EOF-1…5 (Reza sign-off on the five design gates).
+- **Why this matters:** who owns an asset changes its AU tax treatment by construction (CGT discount 50%/33⅓%/0% by entity type, negative gearing, land tax aggregation, trust distribution). Today ownership is recorded but unreachable from the UI and ignored by every number except the Wealth Universe canvas. Closing capture→completion→consumption makes the universe the product moat: structure + value + money flow + tax flow, one navigable surface.
+
+
 > Sorted by priority. Top of list = work in flight right now.
 
 ### 0·DG. Dashboard Glass migration (`/dashboard` Home — §18.7.2 polished sub-pattern)
@@ -1263,6 +1283,7 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 
 | # | Question | Why it matters | Decision |
 |---|---|---|---|
+| Q-EOF-1…5 | **Phase 47 Entity Ownership Fabric — five design gates** (see `docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` §8): (1) ownership change = "correct the record" only, real transfers deferred; (2) retail/industry super attaches to the member's personal entity; (3) holdings/transactions/recurring stay derived-ownership, no new columns; (4) dashboard default stays Household-flat with opt-in entity lens; (5) Stage D (tax-facts assembly per Phase 44 Part 2) strictly after Stage C. | The golden-feature phase (Reza directive 2026-06-10) can't start Stage A code until these are confirmed — each shapes schema/UX contracts that are expensive to reverse. Recommendations for all five are in the phase doc. | **OPEN — awaiting Reza sign-off (recommendations: yes to all five).** |
 | Q-AUTH-1 | Should **password reset** move from Firebase's hosted handler to a custom prefetch-safe Monitrax-hosted action handler? | Firebase reset links are single-use; mail-client / scanner link-prefetch burns the code → users hit "link expired or already used" on first click (reproduced 2026-06-10 via iOS Mail). Email **verification** was hardened (button-gated `applyActionCode` on `/verify-email`), but reset still uses the hosted handler and stays exposed. Durable fix = custom handler under `/auth/action` (handles resetPassword + verifyEmail + email-change; consumes code only on explicit tap) + point Firebase "Customise action URL" at `https://www.monitrax.com.au/auth/action`. | **OPEN — deferred 2026-06-10.** Reza chose "harden verify only, mitigate reset" for now. Operator mitigation documented in `01_AUTHENTICATION.md` § Troubleshooting. Revisit if reset-link failures recur for real users. |
 | ~~8~~ | ~~How is an SMSF's super modelled — `LegalEntity` or `InvestmentAccount(type=SUPERS)`?~~ | | ✅ **DECIDED 2026-06-02 (Phase 39.5)** — **SMSF = `LegalEntity(type=SMSF, role=SUPERANNUATION)`** that OWNS its assets (investment accounts / property / cash via `ownerEntityId`), NOT a `SuperannuationAccount` and NOT an `InvestmentAccount(type=SUPERS)`. Retail/industry super = `SuperannuationAccount` (external fund, userId-scoped). Research confirmed `InvestmentAccount(type=SUPERS)` is dead (UI-label-only, never read for tax/net-worth) and SMSF already exists as a first-class `LegalEntityType`. Implemented: `SuperannuationAccount.fundType` (INDUSTRY/RETAIL/SMSF) + nullable `ownerEntityId`→SMSF entity; net-worth excludes SMSF member balances (counted via entity assets); onboarding `SUPERS` removed. SMSF fund-level tax (`calculateSmsfIncomeTax`, already built) remains staged — not yet surfaced. |
 | ~~1~~ | ~~Cloud SQL dedicated tier upgrade~~ | | ✅ **DECIDED 2026-05-02** — Cloud SQL upgraded to **Enterprise Plus**. Question closed. (Note: actual tier flag and gcloud command should be reflected in `docs/operational/database/01_CLOUD_SQL_OPERATIONS.md` if not already.) |
