@@ -37,6 +37,56 @@ password-reset email template must be enabled + the sender domain verified), and
 the user's spam folder. The send itself succeeding but no email = a template /
 sender-domain config issue in the console, not an app bug.
 
+## Email Verification (2026-06-10 — GCP Identity Platform)
+
+**Verification SSOT is the Firebase `email_verified` token claim.** No custom
+token system exists (the Phase 05 in-memory Resend token store in
+`lib/security/emailVerification.ts` was deleted — its `Map`-based store never
+worked on serverless: the instance that issued a token was almost never the
+instance asked to verify it).
+
+**Flow:**
+
+1. Email/password signup (`/register`) → client calls Firebase
+   `sendEmailVerification(user, { url: <origin>/verify-email })` inside
+   `useAuth().register()` — best-effort, a failed send never fails the signup.
+2. User lands on `/verify-email-sent` (interstitial; soft gate — "Skip for
+   now" goes to the dashboard).
+3. User clicks the emailed link. Two shapes are handled by `/verify-email`:
+   `?mode=verifyEmail&oobCode=…` (custom action URL — page applies the code
+   via `applyActionCode`) or a bare continue-URL landing (Firebase's hosted
+   handler already applied it).
+4. Client calls `useAuth().confirmEmailVerified()` — reloads the Firebase
+   user, **force-refreshes the ID token** (`getIdToken(true)`, required:
+   `email_verified` only flips on refresh), then POSTs
+   `/api/auth/verify-email` to true-up the DB row (`User.emailVerified` /
+   `emailVerifiedAt`). The DB row is bookkeeping; guards never read it.
+5. `lib/auth/context.ts` also lazily trues-up the row on any API call whose
+   token claim says verified (one-way false→true).
+
+**Enforcement (soft gate + hard-block CDR):**
+
+- Dashboard stays open to unverified users; `VerifyEmailBanner`
+  (`components/auth/VerifyEmailBanner.tsx`, rendered by `DashboardLayout`)
+  nags gently with resend / re-check actions.
+- `withMFARequired` and `withActiveConsent` (lib/auth/guards.ts →
+  `requireVerifiedEmail`) return **403 `EMAIL_VERIFICATION_REQUIRED`** when
+  the live claim is false — this hard-blocks Basiq bank connection and CDR
+  data surfaces. OAuth (Google) users arrive with `email_verified: true` and
+  are never blocked.
+
+**Resend:** signed-in only (`/resend-verification`, the interstitial, or the
+banner) — Firebase's client SDK can only send to `currentUser`. Firebase
+applies its own rate limiting (`auth/too-many-requests`).
+
+**Verification email not arriving?** Same diagnosis as password reset: GCP
+Identity Platform → Templates → "Email address verification" (template
+enabled + sender domain verified), then spam folder. Optional console
+customisation: set the template's action URL to
+`https://www.monitrax.com.au/verify-email` to keep users in Monitrax-branded
+chrome end-to-end; the default Firebase-hosted handler also works (the
+continue URL routes back to `/verify-email`).
+
 ---
 
 ## Token Flow

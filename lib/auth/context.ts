@@ -34,6 +34,13 @@ export interface AuthContext {
   tenantId: string; // In single-user mode, tenant = user
   /** MFA second factor method from Firebase token — present when MFA was completed in this session */
   signInSecondFactor?: string;
+  /**
+   * Email-verification status from the LIVE Firebase token claim (`email_verified`).
+   * Read from the token, not the DB row, so a just-verified user passes guards
+   * immediately after a forced token refresh (`getIdToken(true)`) — the DB row
+   * is bookkeeping that converges lazily (see findOrSyncUser).
+   */
+  emailVerified: boolean;
 }
 
 // ============================================
@@ -75,6 +82,7 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
       tenantId: user.id,
       // Fix: G17 — Propagate MFA second factor claim for session-level MFA verification
       signInSecondFactor: claims.signInSecondFactor,
+      emailVerified: claims.emailVerified,
     };
   } catch (error) {
     log.error('Auth context extraction failed', error as Error);
@@ -138,12 +146,25 @@ async function findOrSyncUser(
           email: true,
           role: true,
           name: true,
+          emailVerified: true,
         },
       },
     },
   });
 
   if (oauthAccount) {
+    // Lazy true-up: the Firebase token claim is the verification SSOT; the DB
+    // column is bookkeeping. When the Google-signed claim says verified but the
+    // row still says false (user clicked the link in another browser/session),
+    // converge the row. One-way false→true only — never the reverse.
+    if (claims.emailVerified && !oauthAccount.user.emailVerified) {
+      prisma.user
+        .update({
+          where: { id: oauthAccount.user.id },
+          data: { emailVerified: true, emailVerifiedAt: new Date() },
+        })
+        .catch(() => {}); // fire-and-forget — never block the request
+    }
     return oauthAccount.user as LocalUser;
   }
 

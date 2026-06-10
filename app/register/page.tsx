@@ -63,15 +63,20 @@ export default function RegisterPage() {
     apple: false,
     microsoft: false,
   });
-  const { register, loginWithGoogle, user, isGCPEnabled } = useAuth();
+  const { register, loginWithGoogle, user, firebaseUser, isGCPEnabled } = useAuth();
   const router = useRouter();
 
-  // Redirect if already authenticated
+  // Redirect if already authenticated. Unverified email/password accounts go
+  // to the verification interstitial (this also wins the race against the
+  // submit handler's own push — both land on the same destination);
+  // verified / OAuth accounts go straight to the dashboard.
   useEffect(() => {
     if (user) {
-      router.push('/dashboard');
+      router.push(
+        firebaseUser && !firebaseUser.emailVerified ? '/verify-email-sent' : '/dashboard'
+      );
     }
-  }, [user, router]);
+  }, [user, firebaseUser, router]);
 
   // Check which OAuth providers are configured (legacy mode only)
   useEffect(() => {
@@ -147,7 +152,10 @@ export default function RegisterPage() {
     try {
       await register(email, password, name);
       await captureConsent('SIGNUP');
-      router.push('/dashboard');
+      // Email/password signups land on the verification interstitial (soft
+      // gate, 2026-06-10) — the dashboard stays reachable via "Skip for now",
+      // but bank connections stay locked until the email is verified.
+      router.push('/verify-email-sent');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
