@@ -1708,6 +1708,34 @@ Any PR that materially touches the Wealth Universe surface MUST:
    silk-thread ribbon glow, dust-mote layer) — removing any one of
    them changes the identity
 
+## OwnershipPicker pattern (Phase 47 Stage A, 2026-06-10)
+
+**Canonical component:** `components/ownership/OwnershipPicker.tsx`. The single
+capture surface for asset ownership at creation time — "Just me / Joint /
+Shared / An entity" as a 2×2 grid of selectable glass choice cards with an
+expanding panel per mode (§4A personal-tier matrix,
+`PHASE_47_ENTITY_OWNERSHIP_FABRIC.md`). Server translation lives in ONE
+place: `lib/services/ownershipSelectionService.ts` (joint = equal stakes +
+survivorship per ATO TR 93/32; shared = TIC fractions summing 100; named
+co-owners quick-create INDIVIDUAL entities). Rules:
+
+1. **Warm words only** — users never see "OwnershipGroup" / "tenancy" /
+   "TENANTS_IN_COMMON"; they see "Just me", "Joint with Sarah", "Shared 70/30".
+2. **Progressive disclosure** — the "An entity" card renders only when a
+   non-personal entity exists; the zero-friction sole default is untouched.
+3. **Create-time only** — post-creation ownership changes go through the
+   "correct ownership record" flow (Stage A2), never this picker. Correction
+   ≠ transfer (a real transfer is a CGT event).
+4. **Where this replicates next**: Account / InvestmentAccount / Asset /
+   Income / Expense create forms (Stage A1 continuation) — import the
+   component + pass the `ownership` payload to the create route via
+   `parseOwnershipSelection`/`applyOwnershipSelection`; never fork the logic.
+
+Design SoT (§18.4): Stitch screen `8e6fc018886e4d54b18abff0f7c80c13`,
+`.stitch/designs/phase47/ownership-picker-property-joint-v2.{html,png}`
+(re-driven from the canonical Phase 45.2.5 glass dialog after a v1
+design-principles drift — generate from source artefacts, never redescribe).
+
 ## SuperCapMeter pattern (Phase 39.4, 2026-06-01)
 
 **Canonical component:** `components/wealth/SuperCapMeter.tsx`. The single

@@ -271,6 +271,16 @@ verified identity-provider claim; cannot clobber user-entered data.
 - `docs/IMPLEMENTATION_PLAN.md` — new workstream 0·EOF + Open Questions Q-EOF-1…5
 - `docs/changelog/CHANGELOG_2026_06_10.md` — this entry
 
+### Stage A first build (same day — "v2 is good, ship it")
+- **Design loop**: picker v1 rejected by Reza (design-principles drift — Stitch editorial defaults). v2 re-driven from the canonical Phase 45.2.5 glass dialog via `generate_variants` REFINE (the documented Phase 45.2.1 anti-drift lesson); Reza approved. Artefacts `.stitch/designs/phase47/ownership-picker-property-joint-v{1,2}.{html,png}`, v2 screen `8e6fc018886e4d54b18abff0f7c80c13`.
+- **Build (PR after #1041)**:
+  - `lib/services/ownershipSelectionService.ts` — NEW canonical translation layer (picker selection → `ownerEntityId` / `OwnershipGroup`+stakes): `parseOwnershipSelection` (loud validation; absent = sole), `buildStakes` (joint = equal + survivorship on every stake per TR 93/32; shared = explicit TIC fractions), `resolveOwnerEntityIdForSelection` (entity mode validated against userId), `applyOwnershipSelection` (INDIVIDUAL quick-create for named co-owners → group via `ownershipService`; failure leaves the object soly-owned + warning, never a partial group).
+  - `components/ownership/OwnershipPicker.tsx` — NEW shared component (§4A picker, v2 design port): 2×2 glass choice cards, joint household-member chips + add-someone, shared % rows with emerald-on-100% total check, entity dropdown with warm type labels, progressive disclosure (entity card hidden when no trust/company/SMSF exists).
+  - `app/api/properties/route.ts` — POST accepts optional `ownership` payload; `_meta.ownershipWarnings` surfaced; audit metadata gains `ownershipMode`; unused default-entity import removed.
+  - `app/dashboard/properties/page.tsx` — picker rendered in Add-property dialog (create only, non-RENTAL); gradient CTA per v2; ownership state reset with form.
+  - `tests/ownership/ownershipSelection.test.ts` — NEW, 13 tests pinning the §4A parsing/stake contract.
+- Build PASS, lint clean (1 pre-existing warning), 13/13 new tests + neighbouring suites green.
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
