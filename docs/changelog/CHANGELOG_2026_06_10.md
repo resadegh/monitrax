@@ -419,3 +419,23 @@ the project's Usage page shows 404 errors — several model names in
 `lib/ai/google/modelConfig.ts` (e.g. `gemini-2.5-pro-preview-05-06`, `gemini-pro-latest`,
 `gemini-1.5-flash`) are likely stale/retired in June 2026; queue a model-list refresh as a
 separate small PR once quota is confirmed.
+
+### Addendum 3 (same session) — ROOT CAUSE CONFIRMED: Google retired our models; model migration shipped
+All GCP-side theories eliminated with Reza live (screenshots): key = Tier-1 `…SWHI` ✓, billing
+active ✓, zero quota breaches in 7 days ✓, key restrictions = None/Gemini-API ✓ → **GCP needs
+no changes.** Web verification against Google's official deprecations page: **`gemini-2.0-flash`
+shut down 2026-06-01** — the exact day of the first import incident (PR #959). The configured
+fallbacks were also dead (`gemini-2.5-flash-preview-05-20` removed; `gemini-1.5-flash` retired
+Sep 2025 — `lib/cashflow-intelligence/geminiSummary.ts` had been silently broken since).
+Retired endpoints reject with 404/429 regardless of tier → the 429s with healthy quota.
+**Shipped (same PR #1048):** model migration to verified-live IDs across all five surfaces —
+`lib/ai/google/modelConfig.ts` (FLASH→`gemini-3.5-flash`, PRO→`gemini-2.5-pro`,
+PRO_LATEST→`gemini-3.1-pro-preview`, fallback chains pruned to live IDs, pricing/capabilities
+refreshed per 2026-06-10 pricing page), `lib/ai/gemini.ts` (Document Intelligence client, kept
+in sync — 🗑️ row 32 duplicate), `lib/ai/tax-advisor/providers/geminiProvider.ts`
+(DEFAULT_MODEL), `lib/cashflow-intelligence/geminiSummary.ts`, `lib/integrations/trust-deed/
+geminiExtractor.ts` (+ EXTRACTOR_VERSION bump). **⚠ Scheduled breakage queued:**
+`gemini-2.5-flash`/`gemini-2.5-pro` retire 2026-10-16 — Up Next item added to re-verify the
+model lineup before then. Verification: tsc 0 errors; 458/458 tests (tests/ai + bookkeeping);
+build complete. Combined with the retry/backoff + batch isolation already in this PR, a future
+model retirement degrades through live fallbacks loudly instead of silently zeroing imports.

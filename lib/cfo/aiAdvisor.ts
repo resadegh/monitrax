@@ -143,7 +143,7 @@ export interface GenerateAdviceOptions {
 // =============================================================================
 
 const CACHE_TTL_HOURS = 24;
-const PRO_MODEL = GEMINI_MODELS.PRO; // 'gemini-2.5-pro-preview-05-06'
+const PRO_MODEL = GEMINI_MODELS.PRO; // 'gemini-2.5-pro' (retires 2026-10-16 — fallback chain covers it)
 
 /**
  * Bumped whenever we materially change the SYSTEM_PROMPT or the shape of

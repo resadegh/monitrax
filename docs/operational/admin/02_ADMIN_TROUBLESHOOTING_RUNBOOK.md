@@ -388,23 +388,31 @@ fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` inst
    - `403` + `referrer`/`API_KEY` → key restriction problem (see Production Readiness item 13
      rollback note in `IMPLEMENTATION_PLAN.md`)
    - `[import] AI categorisation DEGRADED for account …` → confirms transactions were held
+   - 429/404 on a project whose GCP quota page shows NO breaches → **suspect model
+     retirement FIRST**: check https://ai.google.dev/gemini-api/docs/deprecations against
+     the model IDs in `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts`
 2. The error class decides the fix — do not guess.
 
 **Resolution (429 quota) — first identify WHICH project the runtime key belongs to, then
 whether its paid tier is actually enforced:**
 
-> **2026-06-10 finding (revised twice — record both so the next operator doesn't relive it):**
-> (1) First theory: prod was running the free-tier `…p7I4` key from **Default Gemini Project**
-> (`gen-lang-client-0285193787`) instead of the Tier-1 keys (`…SWHI` MonitraxGemini /
-> `…Dtk4` Monitrax-AI) in project **Monitrax** (`monitrax-479700`). **Disproven** — Reza
-> verified Vercel's `GEMINI_API_KEY` IS `…SWHI` (Tier 1).
-> (2) Confirmed evidence: the import-window logs show **429 on `gemini-2.0-flash`** at a
-> sequential burst of ~15–30 req/min, no `PERMISSION_DENIED`, fallback models never attempted
-> (pre-fix code threw on first 429). Genuine Tier-1 quota for that model is ~2,000 RPM — you
-> cannot 429 at 30 RPM on real Tier 1. Combined with the project's ~$0 lifetime spend, the
-> working conclusion is **the AI Studio "Tier 1" label is not matched by enforced quota** —
-> i.e. the billing link is not actually effective for the Generative Language API.
-> Decisive checks below (steps 2a/2b).
+> **2026-06-10 CONFIRMED root cause (after two disproven theories — all three recorded so
+> the next operator doesn't relive the elimination):**
+> (1) "Wrong project key" — disproven: Vercel's `GEMINI_API_KEY` IS the Tier-1 `…SWHI`
+> MonitraxGemini key in project `monitrax-479700`.
+> (2) "Billing/tier not enforced" — disproven: billing account active (~A$2.2/day, mostly
+> Cloud SQL), project linked, GCP quota page showed ZERO quota breaches in 7 days, key has
+> Application restrictions = None + API restriction = Gemini API (correct server posture).
+> (3) **CONFIRMED: model retirement.** Google shut down `gemini-2.0-flash` on
+> **2026-06-01** (https://ai.google.dev/gemini-api/docs/deprecations) — the EXACT day of the
+> first import incident (PR #959). Our fallback chain was also dead (`…2.5-flash-preview-05-20`
+> preview removed; `gemini-1.5-flash` retired Sep 2025 — the cashflow-summary surface had been
+> silently broken since then). Retired endpoints reject with 404/429 regardless of billing
+> tier, which is why a Tier-1 project with healthy quota saw 429s. Fixed 2026-06-10 by
+> migrating every hardcoded model ID to verified-live models (`gemini-3.5-flash` primary).
+> **⚠ Scheduled re-check: `gemini-2.5-flash` + `gemini-2.5-pro` (current fallbacks/pro) shut
+> down 2026-10-16 — re-verify `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts` against the
+> deprecations page before then (tracked in IMPLEMENTATION_PLAN Up Next).**
 
 1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
    `GEMINI_API_KEY` → reveal → compare its ending against the key list in
