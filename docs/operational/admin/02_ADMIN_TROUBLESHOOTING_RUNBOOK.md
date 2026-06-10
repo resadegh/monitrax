@@ -390,18 +390,36 @@ fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` inst
    - `[import] AI categorisation DEGRADED for account …` → confirms transactions were held
 2. The error class decides the fix — do not guess.
 
-**Resolution (429 quota)**:
-1. The key lives in GCP project `Monitrax` (org `monitrax.com.au`). Free-tier Gemini quota is
-   ~15 requests/min for flash models; one QIF import fires one request per 20 transactions.
-2. Upgrade the project to paid-tier Gemini quota: confirm a billing account is linked to the
-   project (GCP Console → Billing), then in [Google AI Studio](https://aistudio.google.com) →
-   API keys → the key's plan should show **Paid** (if "Free", click Set up Billing / Upgrade
-   for that project).
-3. Verify: GCP Console → APIs & Services → **Generative Language API** → Quotas — requests/min
-   for `gemini-2.0-flash` should be in the thousands, not 15.
-4. Optional but recommended: set a billing budget alert (e.g. AU$10/mo) — categorisation
-   traffic costs cents at current scale (gemini-2.0-flash: US$0.075/M input tokens).
-5. Do NOT rotate the key or touch the 2026-05-19 key restrictions — they are unrelated to 429s.
+**Resolution (429 quota) — first identify WHICH project the runtime key belongs to:**
+
+> **2026-06-10 finding (the actual root cause that day):** the org owns THREE Gemini keys —
+> `…SWHI` ("MonitraxGemini") and `…Dtk4` ("Monitrax-AI") both in GCP project **Monitrax**
+> (`monitrax-479700`, **Tier 1** paid quota), and `…p7I4` ("Default Gemini API Key") in
+> **Default Gemini Project** (`gen-lang-client-0285193787`, **free tier**, ~15 req/min).
+> The AI Studio Spend page for the Monitrax project showed ~$0.00 over 28 days despite the
+> app calling Gemini daily — i.e. production was running on the free-tier `…p7I4` key from
+> the wrong project, while the paid Tier-1 keys sat unused. Upgrading/restricting the
+> Monitrax project (done correctly on 2026-05-19) had no effect on prod for this reason.
+
+1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
+   `GEMINI_API_KEY` → reveal → compare its ending against the key list in
+   [Google AI Studio](https://aistudio.google.com) → API Keys (shows project + billing tier
+   per key).
+2. If the runtime key belongs to a free-tier project → swap to a Tier-1 Monitrax-project key.
+   **The server key MUST have Application restrictions = None** (HTTP-referrer-restricted keys
+   reject server-side calls, which send no Referer) **and API restrictions = Generative
+   Language API only**. Check under GCP Console → project Monitrax → APIs & Services →
+   Credentials. The 2026-05-19 referrer-restricted key is browser-grade, NOT server-grade.
+3. Update `GEMINI_API_KEY` in Vercel for **Production AND Preview** scopes → redeploy (env
+   changes don't apply to running deployments).
+4. Verify: trigger any AI surface (or a QIF import), then (a) Vercel runtime logs show
+   `[Gemini] Trying model:` with no failures, and (b) AI Studio → Usage/Spend for project
+   Monitrax starts showing requests.
+5. **Disable the old free-tier key** in its project once cutover is verified — otherwise a
+   future env-var restore can silently regress to free quota.
+6. Optional but recommended: AI Studio → Spend → set a monthly spend cap (e.g. A$25 — never
+   $0, which blocks all requests). Categorisation traffic costs cents at current scale
+   (gemini-2.0-flash: US$0.075/M input tokens).
 
 **User-side recovery**: held transactions sit in `TransactionReviewQueue` (no UI — known tech
 debt, IMPLEMENTATION_PLAN 🗑️ row 31). After quota is fixed, the user re-imports the same file:

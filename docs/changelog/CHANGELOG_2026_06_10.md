@@ -387,3 +387,17 @@ verified identity-provider claim; cannot clobber user-entered data.
   non-existent route. Structural fix proposal logged as Open Question Q-IMPORT-1.
 - Duplicate Gemini clients: `lib/ai/gemini.ts` vs `lib/ai/google/geminiClient.ts` (SSOT
   violation; only the latter got the retry hardening).
+
+### Addendum (same session) — actual GCP root cause confirmed via Reza's screenshots
+The initial working theory ("the project is on free tier — upgrade billing") was refined after
+Reza shared AI Studio screenshots: GCP project `Monitrax` (`monitrax-479700`) is **already
+Tier 1** with two keys (`…SWHI` MonitraxGemini, `…Dtk4` Monitrax-AI), but its Spend page shows
+~$0.00 over 28 days — production traffic never touched it. A third key (`…p7I4`, "Default
+Gemini API Key") lives in **Default Gemini Project** (`gen-lang-client-0285193787`) on **free
+tier** — this is almost certainly the key in Vercel's `GEMINI_API_KEY`, which explains (a) the
+429s at free-tier rates, (b) why the 2026-05-19 restriction work on the Monitrax project never
+affected prod behaviour, and (c) the recurring "Gemini keeps breaking" pattern. Cutover steps
+(swap Vercel env to an unrestricted Tier-1 Monitrax key, redeploy, verify via logs + Usage
+page, disable the free key) recorded in the runbook section above (revised in this PR).
+Pending Reza: confirm Vercel key ends `p7I4`, perform the swap; Claude verifies from runtime
+logs post-swap.
