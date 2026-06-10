@@ -2,7 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
-import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import {
+  applyOwnershipSelection,
+  OwnershipSelectionError,
+  resolveOwnershipForCreate,
+} from '@/lib/services/ownershipSelectionService';
 import { balanceWriteFields } from '@/lib/utils/accountBalance';
 import { createAuditLog } from '@/lib/security/auditLog';
 
@@ -127,7 +131,23 @@ export const POST = withPermission('account.write', async (request, auth) => {
         return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
       }
 
-      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+      // Phase 47 Stage A — ownership selection ("Just me / Joint / Shared /
+      // An entity"). Absent payload = sole, behaviour unchanged.
+      let ownershipSelection;
+      let ownerEntityId: string;
+      try {
+        const resolved = await resolveOwnershipForCreate(auth.userId, body.ownership);
+        ownershipSelection = resolved.selection;
+        ownerEntityId = resolved.ownerEntityId;
+      } catch (err) {
+        if (err instanceof OwnershipSelectionError) {
+          return NextResponse.json(
+            { error: { code: err.code, message: err.message } },
+            { status: err.code === 'ENTITY_NOT_FOUND' ? 404 : 400 },
+          );
+        }
+        throw err;
+      }
 
       // Account create + offset→loan link are atomic: if the OFFSET account
       // can't be wired to its loan the whole thing rolls back, so a retry
@@ -167,6 +187,26 @@ export const POST = withPermission('account.write', async (request, auth) => {
         return created;
       });
 
+      // Phase 47 Stage A — joint/shared create the OwnershipGroup (§4A
+      // P2/P3). Failure leaves the account soly-owned + a warning.
+      let ownershipWarnings: string[] = [];
+      if (ownershipSelection && (ownershipSelection.mode === 'joint' || ownershipSelection.mode === 'shared')) {
+        try {
+          const applied = await applyOwnershipSelection(
+            auth.userId,
+            'account',
+            account.id,
+            ownershipSelection,
+          );
+          ownershipWarnings = applied?.warnings ?? [];
+        } catch (err) {
+          console.error('Ownership selection apply failed:', err);
+          ownershipWarnings = [
+            'The account was saved, but recording the co-ownership failed — you can set it again later.',
+          ];
+        }
+      }
+
       // Audit every state-changing write (CLAUDE.md §12.5 / §13.3). This
       // route is the wizard's SSOT write boundary for MANUAL accounts.
       void createAuditLog({
@@ -175,10 +215,17 @@ export const POST = withPermission('account.write', async (request, auth) => {
         status: 'SUCCESS',
         entityType: 'Account',
         entityId: account.id,
-        metadata: { type, hasOffsetLink: type === 'OFFSET' && !!linkedLoanId },
+        metadata: {
+          type,
+          hasOffsetLink: type === 'OFFSET' && !!linkedLoanId,
+          ownershipMode: ownershipSelection?.mode ?? 'sole',
+        },
       });
 
-      return NextResponse.json(account, { status: 201 });
+      return NextResponse.json(
+        ownershipWarnings.length > 0 ? { ...account, _meta: { ownershipWarnings } } : account,
+        { status: 201 },
+      );
     } catch (error) {
       console.error('Create account error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

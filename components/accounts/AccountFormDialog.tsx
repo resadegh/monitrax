@@ -33,6 +33,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import OwnershipPicker, {
+  type OwnershipSelectionValue,
+} from '@/components/ownership/OwnershipPicker';
 import {
   Select,
   SelectContent,
@@ -104,6 +107,9 @@ export function AccountFormDialog({
 }: AccountFormDialogProps) {
   const { token } = useAuth();
   const [formData, setFormData] = useState<AccountFormValues>(DEFAULT_VALUES);
+  // Phase 47 Stage A — ownership selection (create only; edits go through
+  // the "correct ownership record" flow, Stage A2).
+  const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,6 +118,7 @@ export function AccountFormDialog({
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setOwnership({ mode: 'sole' });
     setFormData(
       editing
         ? {
@@ -156,6 +163,8 @@ export function AccountFormDialog({
             ? Number(formData.interestRate) / 100
             : null,
           institution: formData.institution || null,
+          // Phase 47 Stage A — ownership only applies at creation.
+          ...(editingId ? {} : { ownership }),
         }),
       });
 
@@ -287,6 +296,11 @@ export function AccountFormDialog({
 
           {error && (
             <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+          )}
+
+          {/* Phase 47 Stage A — ownership picker (creation only). */}
+          {!isEditing && (
+            <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
           )}
 
           <div className="flex justify-end gap-3 pt-4">
