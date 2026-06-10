@@ -36,6 +36,12 @@
 - [x] Lint passes on changed files (0 errors, 0 warnings after `useMemo` wrapping)
 - [x] Tests pass — 11 new (`tests/wealth-explorer/`) + 66 neighbouring (`tests/wealth-graph/`, `tests/entity-graph/`) all green
 
+### Commit History
+| Hash | Message |
+|------|---------|
+| 54afa81 | feat(wealth-universe): semantic zoom — Level 1 entity aggregation + Level 2 constellation unfold |
+| (this) | docs(changelog): commit-history table |
+
 ### Notes / Known follow-ups
 - True viewport pan/zoom (pinch / scroll / fit-to-view) intentionally deferred — only if semantic zoom proves insufficient at real user node counts.
 - Mobile filter chips for asset types (Properties / Cash / …) still drive the bottom-sheet list; on the Level 1 canvas they dim all entity tiles (no asset tiles to match). Acceptable v1 — list shows the matches. Revisit if confusing in practice.
