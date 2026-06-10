@@ -413,7 +413,7 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 
 | Date | Phase | Change | Score Impact |
 |------|-------|--------|-------------|
-| 2026-03-08 | Phase F (Policy Docs) | 5 policy documents created: CDR Retention Schedule, Device Security, Incident Response, Security Awareness, Approved Dependencies | §4.1-4.3, §5.8, §6.4, §6.5, §7.1-7.3: N/A/TODO/PARTIAL → DONE (+9%) |
+| 2026-06-10 | Email verification (GCP Identity Platform) | Verified email is now a pre-condition for all CDR surfaces: `requireVerifiedEmail` (lib/auth/guards.ts) runs inside `withMFARequired` + `withActiveConsent`, reading the live Firebase `email_verified` claim → 403 `EMAIL_VERIFICATION_REQUIRED`. Guarantees consent notices / expiry reminders / breach notifications reach an inbox the account holder owns. See `docs/operational/security/03_CDR_COMPLIANCE.md` § Pre-Consent Requirement. | Strengthens §1 (identity assurance) — no scored row flips |
 | 2026-03-08 | Phase G (Dev Pipeline) | Dependabot enabled, npm audit CI pipeline, security audit GitHub Action | §6.4, §6.5: PARTIAL/TODO → DONE (included above) |
 | 2026-03-08 | Phase D/35 (CDR Lifecycle) | CDR Data Lifecycle Service, consent verification, revocation handler, de-identification | §5.2, §5.4, §5.5, §5.6: TODO/PARTIAL → DONE (+8%) |
 | 2026-03-05 | Phase B (MFA) | `withMFARequired()` guard on all Basiq/CDR routes + admin MFA enforcement | §1.3: PARTIAL → DONE (+5%) |

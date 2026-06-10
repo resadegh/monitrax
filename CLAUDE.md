@@ -1249,6 +1249,8 @@ export async function GET(request: NextRequest) {
 | `withPermission(req, 'cdr_data.delete')` | Any route that deletes CDR data |
 | `withMFARequired()` | CDR data routes when org has `mfaEnforced: true` |
 
+**Verified email is a pre-condition for CDR surfaces (2026-06-10):** `withMFARequired()` and `withActiveConsent()` also enforce `requireVerifiedEmail` (`lib/auth/guards.ts`) — the live Firebase `email_verified` token claim must be true or the request is rejected with 403 `EMAIL_VERIFICATION_REQUIRED`. Email verification is GCP Identity Platform native (§12.7 GCP-first; the Phase 05 custom in-memory token module was deleted as serverless-broken). See `docs/operational/security/01_AUTHENTICATION.md` § Email Verification.
+
 ### 13.5 CDR Data Retention
 
 | Rule | Policy |

@@ -101,6 +101,16 @@ verified identity-provider claim; cannot clobber user-entered data.
   IMPLEMENTED-05-06 marked SUPERSEDED with pointers to current files
 - `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry 2026-06-10
 - `.stitch/SITE.md` §4 + `.stitch/metadata.json` — `verify-email-sent` screen
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — Recent Progress row
+  (verified email = CDR pre-condition; strengthens §1, no scored row flips)
+- `CLAUDE.md` §13.4 — verified-email pre-condition note on the elevated
+  CDR guards (per §16.3 "Security / CDR-relevant change" row)
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| 0a82f36 | feat(auth): email verification via GCP Identity Platform — soft gate + hard-block CDR |
+| (next) | docs(cdr): compliance-matrix + CLAUDE.md §13.4 doc-sync for the verified-email gate |
 
 ### Build Status
 | Step | Status | Notes |
