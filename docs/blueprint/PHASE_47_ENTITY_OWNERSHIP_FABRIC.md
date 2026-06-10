@@ -85,6 +85,22 @@ The personal tier is not a degenerate case of the entity tier — it is the MAJO
 3. P4 guard: copy must never suggest co-owners need a "partnership". 
 4. **Acceptance addition:** a two-person household with a JT home, a TIC investment property, a joint account and personal vehicles can capture ALL of it without creating a single company/trust — and the universe renders each form distinctly (the canvas already renders ownership-group nodes).
 
+### §4B — Build-discovered items (Stage A build sweep, 2026-06-10)
+
+> Reza directive: *"make sure all of these are documented and addressed on this phase. I don't want anything to be missed out."* Items surfaced while building Stage A — each is either FIXED, QUEUED into a stage, or explicitly parked with a trigger. Nothing lives only in chat.
+
+| # | Item | Status |
+|---|---|---|
+| D1 | **Co-owner dedup** — quick-creating "Sarah" on a second asset created a SECOND INDIVIDUAL entity, fragmenting her ownership across duplicate universe tiles. | ✅ FIXED (Stage A follow-up PR): `applyOwnershipSelection` reuses an existing INDIVIDUAL entity by case-insensitive name before creating; the picker also surfaces existing INDIVIDUAL entities as joint chips so users pick rather than re-type. |
+| D2 | **Onboarding wizard doesn't capture ownership** — wizard-entered data all defaults to personal (it writes through the same routes but has no picker UI). | 🔜 QUEUED as **Stage A5** — wizard pass after A1-A4 settle (wiring only; routes already accept `ownership`). |
+| D3 | **Income/Expense attribution** — money streams follow their asset's title (§4A P5); whether they need even a slim entity-select at creation is undecided. | ❓ OPEN (Stage A decision) — recommendation: NO picker v1; attribution derives from the owning asset in Stage C/D. Revisit only if standalone entity income (e.g. director fees) demands it. |
+| D4 | **Ownership evidence linkage** — `EntityRelationship` carries `accountantVerified`, but `OwnershipGroup` has no link to evidence (title deed in Documents). | 🔜 QUEUED into **Stage E** — "verified against title" flag + Documents link strengthens the record for tax time. |
+| D5 | **HouseholdMember ↔ INDIVIDUAL entity linkage** — the same person can exist as a household member AND an entity with no FK; renaming one doesn't rename the other. | 🗑️ Tech-debt backlog — link column when it first bites (rename drift or duplicate identity in UI). |
+| D6 | **What-If levers are single-taxpayer** — sellProperty CGT doesn't split across joint owners / apply entity rates. | 🔜 Stage D scope note — the EntityTaxFacts assembler must read stakes; levers consume the per-entity engine outputs after D. |
+| D7 | **CDR joint-account auto-suggest** — bank data flags joint accounts; on future Basiq sync, pre-fill the ownership group suggestion. | 📦 PARKED — trigger: Basiq integration build. Recorded so the sync design reads this phase. |
+| D8 | **Estate lens** — JT survivorship vs TIC-via-will is now captured per stake; an estate-planning surface can read it directly. | 📦 PARKED — free option created by §4A; no action until an estate phase opens. |
+| D9 | **Financial-surfaces lint baseline shifts** — picker insertions relocate grandfathered violations (PR #1043 preview failure). | ✅ Process note — rebase `.audit/financial-math-baseline.json` line numbers in the same PR as any form insertion (PR #953 precedent). |
+
 ### Stage B — Complete (coverage holes) — ~2 PRs
 
 - **B1. Super attachment** — backfill `SuperannuationAccount.ownerEntityId` = the member's personal entity for non-SMSF accounts (semantics: *member benefit*, documented in the column comment; SMSF accounts already attach to the SMSF entity). Migration per §12.12. Add `ownerEntityId` to the wealth-graph select; super appears in the universe (SMSF accounts under the SMSF entity, retail under YOU) and in the canonical clusters.

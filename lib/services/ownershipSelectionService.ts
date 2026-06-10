@@ -284,12 +284,28 @@ export async function applyOwnershipSelection(
     } else {
       // §4A quick-create: a person who co-owns with the user but has no
       // structure of their own — an INDIVIDUAL entity, role PERSONAL.
-      const created = await createEntity(userId, {
-        name: co.name!,
-        type: 'INDIVIDUAL',
-        role: 'PERSONAL',
+      // DEDUP: the same person co-owning a second asset must resolve to
+      // the SAME entity — otherwise the universe grows duplicate "Sarah"
+      // tiles and her ownership fragments. Case-insensitive name match
+      // against the user's existing INDIVIDUAL entities first.
+      const existing = await prisma.legalEntity.findFirst({
+        where: {
+          userId,
+          type: 'INDIVIDUAL',
+          name: { equals: co.name!, mode: 'insensitive' },
+        },
+        select: { id: true },
       });
-      resolvedCoOwnerIds.push(created.id);
+      if (existing) {
+        resolvedCoOwnerIds.push(existing.id);
+      } else {
+        const created = await createEntity(userId, {
+          name: co.name!,
+          type: 'INDIVIDUAL',
+          role: 'PERSONAL',
+        });
+        resolvedCoOwnerIds.push(created.id);
+      }
     }
   }
 
