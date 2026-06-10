@@ -233,6 +233,21 @@ export async function resolveOwnerEntityIdForSelection(
 }
 
 /**
+ * Route-facing convenience: parse the raw `ownership` payload AND resolve
+ * the ownerEntityId in one call. Throws `OwnershipSelectionError` (routes
+ * map it to 400/404). Keeps the create routes uniform across the six
+ * object types (§12.3 thin handlers).
+ */
+export async function resolveOwnershipForCreate(
+  userId: string,
+  rawOwnership: unknown,
+): Promise<{ selection: OwnershipSelection | null; ownerEntityId: string }> {
+  const selection = parseOwnershipSelection(rawOwnership);
+  const ownerEntityId = await resolveOwnerEntityIdForSelection(userId, selection);
+  return { selection, ownerEntityId };
+}
+
+/**
  * Apply a joint/shared selection to a just-created owned object: resolve
  * co-owners (validating existing entity ids; quick-creating INDIVIDUAL
  * entities for named people), then create the OwnershipGroup + stakes.

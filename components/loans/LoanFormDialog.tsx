@@ -33,6 +33,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import OwnershipPicker, {
+  type OwnershipSelectionValue,
+} from '@/components/ownership/OwnershipPicker';
 import {
   Select,
   SelectContent,
@@ -157,6 +160,9 @@ export function LoanFormDialog({
 }: LoanFormDialogProps) {
   const { token } = useAuth();
   const [formData, setFormData] = useState<LoanFormValues>(DEFAULT_VALUES);
+  // Phase 47 Stage A — ownership selection (create only; edits go through
+  // the "correct ownership record" flow, Stage A2).
+  const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
@@ -169,6 +175,7 @@ export function LoanFormDialog({
     setAttachedDocumentId(null);
     setAutoFilledFields([]);
     setFormData(editing ? { ...DEFAULT_VALUES, ...editing } : DEFAULT_VALUES);
+    setOwnership({ mode: 'sole' });
   }, [open, editing]);
 
   // Auto-fill handler for FormDocumentUpload — preserved EXACTLY
@@ -242,6 +249,8 @@ export function LoanFormDialog({
         offsetAccountId: formData.offsetAccountId || null,
         linkedAssetId: formData.linkedAssetId || null,
         linkedAccountId: formData.linkedAccountId || null,
+        // Phase 47 Stage A — ownership only applies at creation.
+        ...(editingId ? {} : { ownership }),
       };
 
       const response = await fetch(url, {
@@ -696,6 +705,11 @@ export function LoanFormDialog({
 
           {error && (
             <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>
+          )}
+
+          {/* Phase 47 Stage A — ownership picker (creation only). */}
+          {!isEditing && (
+            <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
           )}
 
           <div className="flex justify-end gap-3 pt-4">

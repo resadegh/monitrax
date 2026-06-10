@@ -11,6 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import OwnershipPicker, {
+  type OwnershipSelectionValue,
+} from '@/components/ownership/OwnershipPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -106,6 +109,8 @@ function InvestmentAccountsPageContent() {
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<InvestmentAccount | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Phase 47 Stage A — ownership selection (create only).
+  const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [formData, setFormData] = useState<Partial<InvestmentAccount>>({
     name: '',
@@ -158,6 +163,8 @@ function InvestmentAccountsPageContent() {
         totalDeposits: formData.totalDeposits || 0,
         totalWithdrawals: formData.totalWithdrawals || 0,
         costBasisMethod: formData.costBasisMethod,
+        // Phase 47 Stage A — ownership only applies at creation.
+        ...(editingId ? {} : { ownership }),
       };
 
       const response = await fetch(url, {
@@ -181,6 +188,7 @@ function InvestmentAccountsPageContent() {
   };
 
   const resetForm = () => {
+    setOwnership({ mode: 'sole' });
     setFormData({
       name: '',
       type: 'BROKERAGE',
@@ -707,6 +715,11 @@ function InvestmentAccountsPageContent() {
               </Select>
               <p className="text-xs text-muted-foreground">Method used to calculate capital gains when selling assets</p>
             </div>
+
+            {/* Phase 47 Stage A — ownership picker (creation only). */}
+            {!editingId && (
+              <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>

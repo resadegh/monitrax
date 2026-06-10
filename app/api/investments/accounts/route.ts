@@ -3,7 +3,11 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { z } from 'zod';
 import { extractInvestmentAccountLinks, wrapWithGRDCS } from '@/lib/grdcs';
-import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import {
+  applyOwnershipSelection,
+  OwnershipSelectionError,
+  resolveOwnershipForCreate,
+} from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
 
 const createAccountSchema = z.object({
@@ -73,7 +77,22 @@ export const POST = withPermission('investment.write', async (request, auth) => 
       totalDeposits, totalWithdrawals, costBasisMethod
     } = validation.data;
 
-    const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+    // Phase 47 Stage A — ownership selection. Absent payload = sole.
+    let ownershipSelection;
+    let ownerEntityId: string;
+    try {
+      const resolved = await resolveOwnershipForCreate(auth.userId, body.ownership);
+      ownershipSelection = resolved.selection;
+      ownerEntityId = resolved.ownerEntityId;
+    } catch (err) {
+      if (err instanceof OwnershipSelectionError) {
+        return NextResponse.json(
+          { error: { code: err.code, message: err.message } },
+          { status: err.code === 'ENTITY_NOT_FOUND' ? 404 : 400 },
+        );
+      }
+      throw err;
+    }
 
     const account = await prisma.investmentAccount.create({
       data: {
@@ -92,6 +111,25 @@ export const POST = withPermission('investment.write', async (request, auth) => 
       },
     });
 
+    // Phase 47 Stage A — joint/shared create the OwnershipGroup (§4A).
+    let ownershipWarnings: string[] = [];
+    if (ownershipSelection && (ownershipSelection.mode === 'joint' || ownershipSelection.mode === 'shared')) {
+      try {
+        const applied = await applyOwnershipSelection(
+          auth.userId,
+          'investmentAccount',
+          account.id,
+          ownershipSelection,
+        );
+        ownershipWarnings = applied?.warnings ?? [];
+      } catch (err) {
+        console.error('Ownership selection apply failed:', err);
+        ownershipWarnings = [
+          'The account was saved, but recording the co-ownership failed — you can set it again later.',
+        ];
+      }
+    }
+
     // Audit every state-changing write (CLAUDE.md §12.5). This route is the
     // wizard's SSOT write boundary for investment accounts (Track F.5). No
     // CDR/financial values in metadata (§13.3) — type only.
@@ -101,10 +139,13 @@ export const POST = withPermission('investment.write', async (request, auth) => 
       status: 'SUCCESS',
       entityType: 'InvestmentAccount',
       entityId: account.id,
-      metadata: { type },
+      metadata: { type, ownershipMode: ownershipSelection?.mode ?? 'sole' },
     });
 
-    return NextResponse.json(account, { status: 201 });
+    return NextResponse.json(
+      ownershipWarnings.length > 0 ? { ...account, _meta: { ownershipWarnings } } : account,
+      { status: 201 },
+    );
   } catch (error) {
     console.error('Create investment account error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

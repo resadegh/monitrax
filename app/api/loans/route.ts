@@ -3,7 +3,11 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { extractLoanLinks, wrapWithGRDCS } from '@/lib/grdcs';
-import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import {
+  applyOwnershipSelection,
+  OwnershipSelectionError,
+  resolveOwnershipForCreate,
+} from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
 
 export const GET = withPermission('loan.read', async (request, auth) => {
@@ -232,7 +236,22 @@ export const POST = withPermission('loan.write', async (request, auth) => {
         if (!result.success) return result.response;
       }
 
-      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+      // Phase 47 Stage A — ownership selection. Absent payload = sole.
+      let ownershipSelection;
+      let ownerEntityId: string;
+      try {
+        const resolved = await resolveOwnershipForCreate(auth.userId, body.ownership);
+        ownershipSelection = resolved.selection;
+        ownerEntityId = resolved.ownerEntityId;
+      } catch (err) {
+        if (err instanceof OwnershipSelectionError) {
+          return NextResponse.json(
+            { error: { code: err.code, message: err.message } },
+            { status: err.code === 'ENTITY_NOT_FOUND' ? 404 : 400 },
+          );
+        }
+        throw err;
+      }
 
       const loan = await prisma.loan.create({
         data: {
@@ -256,6 +275,25 @@ export const POST = withPermission('loan.write', async (request, auth) => {
         },
       });
 
+      // Phase 47 Stage A — joint/shared create the OwnershipGroup (§4A).
+      let ownershipWarnings: string[] = [];
+      if (ownershipSelection && (ownershipSelection.mode === 'joint' || ownershipSelection.mode === 'shared')) {
+        try {
+          const applied = await applyOwnershipSelection(
+            auth.userId,
+            'loan',
+            loan.id,
+            ownershipSelection,
+          );
+          ownershipWarnings = applied?.warnings ?? [];
+        } catch (err) {
+          console.error('Ownership selection apply failed:', err);
+          ownershipWarnings = [
+            'The loan was saved, but recording the co-ownership failed — you can set it again later.',
+          ];
+        }
+      }
+
       // Audit every state-changing write (CLAUDE.md §12.5). This route is a
       // wizard SSOT write boundary for property mortgages (Phase 12 Track
       // F.2). Generic CREATE action with entityType — F.4 (debts) owns the
@@ -267,10 +305,13 @@ export const POST = withPermission('loan.write', async (request, auth) => {
         status: 'SUCCESS',
         entityType: 'Loan',
         entityId: loan.id,
-        metadata: { type, hasProperty: !!propertyId },
+        metadata: { type, hasProperty: !!propertyId, ownershipMode: ownershipSelection?.mode ?? 'sole' },
       });
 
-      return NextResponse.json(loan, { status: 201 });
+      return NextResponse.json(
+        ownershipWarnings.length > 0 ? { ...loan, _meta: { ownershipWarnings } } : loan,
+        { status: 201 },
+      );
     } catch (error) {
       console.error('Create loan error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
