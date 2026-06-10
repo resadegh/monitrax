@@ -17,12 +17,43 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import {
   correctOwnershipRecord,
+  getOwnershipRecord,
   isOwnedObjectType,
   OwnershipSelectionError,
   parseOwnershipSelection,
 } from '@/lib/services/ownershipSelectionService';
 
 type RouteContext = { params: Promise<{ objectType: string; objectId: string }> };
+
+/** GET — read the current ownership record (powers the edit-surface Ownership row). */
+export const GET = withPermission<RouteContext>(
+  'entity.read',
+  async (_request: NextRequest, auth, context) => {
+    try {
+      const { objectType, objectId } = await context!.params;
+      if (!isOwnedObjectType(objectType)) {
+        return NextResponse.json(
+          { error: { code: 'INVALID_OBJECT_TYPE', message: 'Unsupported object type.' } },
+          { status: 400 },
+        );
+      }
+      const record = await getOwnershipRecord(auth.userId, objectType, objectId);
+      return NextResponse.json({ success: true, data: record });
+    } catch (err) {
+      if (err instanceof OwnershipSelectionError) {
+        return NextResponse.json(
+          { error: { code: err.code, message: err.message } },
+          { status: 404 },
+        );
+      }
+      console.error('Get ownership record error:', err);
+      return NextResponse.json(
+        { error: { code: 'OWNERSHIP_READ_FAILED', message: 'Internal server error' } },
+        { status: 500 },
+      );
+    }
+  },
+);
 
 export const PATCH = withPermission<RouteContext>(
   'entity.write',

@@ -366,6 +366,57 @@ async function findOwnedObject(
   }
 }
 
+export interface OwnershipRecordSummary {
+  ownerEntityId: string | null;
+  ownerEntityName: string | null;
+  /** True when the owner is the user's own PERSONAL_NAME entity. */
+  ownerIsSelf: boolean;
+  group: {
+    tenancyType: string;
+    stakes: Array<{ entityName: string; sharePct: number | null }>;
+  } | null;
+}
+
+/**
+ * Read the current ownership record of an owned object (Stage A2 —
+ * powers the Ownership row on edit surfaces: "Just you" / "Joint — you
+ * & Sarah" / "Sadegh Family Trust").
+ */
+export async function getOwnershipRecord(
+  userId: string,
+  objectType: OwnedObjectType,
+  objectId: string,
+): Promise<OwnershipRecordSummary> {
+  const existing = await findOwnedObject(userId, objectType, objectId);
+  if (!existing) {
+    throw new OwnershipSelectionError('ENTITY_NOT_FOUND', 'Item not found.');
+  }
+  let ownerEntityName: string | null = null;
+  let ownerIsSelf = false;
+  if (existing.ownerEntityId) {
+    const entity = await prisma.legalEntity.findFirst({
+      where: { id: existing.ownerEntityId, userId },
+      select: { name: true, type: true },
+    });
+    ownerEntityName = entity?.name ?? null;
+    ownerIsSelf = entity?.type === 'PERSONAL_NAME';
+  }
+  const groups = await listOwnershipGroups(userId, {
+    ownedObjectType: objectType,
+    ownedObjectId: objectId,
+  });
+  const group = groups[0]
+    ? {
+        tenancyType: groups[0].tenancyType,
+        stakes: groups[0].stakes.map(s => ({
+          entityName: s.entityName,
+          sharePct: s.sharePct,
+        })),
+      }
+    : null;
+  return { ownerEntityId: existing.ownerEntityId, ownerEntityName, ownerIsSelf, group };
+}
+
 /**
  * Correct the ownership record of an existing owned object (Stage A2).
  *

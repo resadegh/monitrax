@@ -6,6 +6,7 @@
 
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
+import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { prisma } from '@/lib/db';
 import { TaxEngine } from '@/lib/tax-engine';
 import { trackContributionCapsDecimal } from '@/lib/tax-engine/super/capTracker';
@@ -296,7 +297,10 @@ export const POST = withPermission('income.write', async (request, auth) => {
         nonConcessionalCap: config.nonConcessionalCap,
         investmentOption,
         fundType: normalizedFundType,
-        ownerEntityId: linkedEntityId,
+        // Phase 47 Stage B1 (Q-EOF-2): non-SMSF accounts attach to the
+        // member's personal entity (member-benefit semantics) so super is
+        // never un-attributed on the universe.
+        ownerEntityId: linkedEntityId ?? (await getDefaultLegalEntityId(userId)),
       },
     });
 

@@ -16,30 +16,6 @@
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
     },
     {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 255,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 52"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 256,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 26"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 257,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 12"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 259,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 12"
-    },
-    {
       "file": "app/dashboard/page.tsx",
       "line": 1323,
       "pattern": "FREQUENCY_CONVERSION",
