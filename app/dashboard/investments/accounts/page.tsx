@@ -15,6 +15,7 @@ import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
 import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
+import OwnershipSummary from '@/components/ownership/OwnershipSummary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -114,6 +115,7 @@ function InvestmentAccountsPageContent() {
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   // Phase 47 Stage A2 — correction flow on the edit path.
   const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
+  const [ownershipRefreshKey, setOwnershipRefreshKey] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [formData, setFormData] = useState<Partial<InvestmentAccount>>({
     name: '',
@@ -725,13 +727,13 @@ function InvestmentAccountsPageContent() {
             )}
             {editingId && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setCorrectOwnershipOpen(true)}
-                  className="text-xs text-sky-600 underline-offset-2 hover:underline"
-                >
-                  Recorded under the wrong owner? Correct the ownership record
-                </button>
+                <OwnershipSummary
+                  token={token}
+                  objectType="investmentAccount"
+                  objectId={editingId}
+                  onCorrect={() => setCorrectOwnershipOpen(true)}
+                  refreshKey={ownershipRefreshKey}
+                />
                 <CorrectOwnershipDialog
                   open={correctOwnershipOpen}
                   onOpenChange={setCorrectOwnershipOpen}
@@ -739,7 +741,10 @@ function InvestmentAccountsPageContent() {
                   objectType="investmentAccount"
                   objectId={editingId}
                   objectName={formData.name || 'This account'}
-                  onCorrected={() => void loadAccounts()}
+                  onCorrected={() => {
+                    setOwnershipRefreshKey(k => k + 1);
+                    void loadAccounts();
+                  }}
                 />
               </>
             )}

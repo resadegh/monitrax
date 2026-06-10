@@ -310,6 +310,9 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **B2** — `lib/utils/ownership.ts:resolveOwnerEntityId` canonical derived-ownership chain (holding → its investment account; transaction → its account; recurring payment → linked expense or null-flagged). D3/§4B principle 4: no new columns.
 - Build PASS, financial gate ✓, 34/34 tests.
 
+### A2 follow-up — Ownership row on edit surfaces (Reza feedback: "no ownership available except the fix link")
+- The edit form showed only the bare correction link, not WHO owns the item. NEW `GET /api/ownership/{type}/{id}` (canonical `getOwnershipRecord`) + NEW `OwnershipSummary` component — an "OWNERSHIP" row rendering the current record in warm words ("Just you" / "Joint — you & Sarah (equal, with survivorship)" / "Shared — you 70%, Sarah 30%" / entity name) with "Correct the record" attached to the row. Replaces the floating link on all five edit surfaces; re-fetches after a correction lands.
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
