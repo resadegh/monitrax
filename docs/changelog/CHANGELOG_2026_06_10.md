@@ -293,6 +293,11 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **D1 fixed**: `applyOwnershipSelection` now reuses an existing INDIVIDUAL entity (case-insensitive name match) before quick-creating — a second joint asset with "Sarah" no longer fragments her into duplicate universe tiles. Picker surfaces existing INDIVIDUAL entities as joint chips (deduped against household members).
 - **D9 process note**: financial-surfaces lint baseline must be rebased in the same PR as any form insertion (hit on PR #1043's preview; fixed by shifting 4 grandfathered entries +8 lines).
 
+### D2/D3 decided + onboarding note (same day)
+- **D2 (Reza)**: ownership capture stays OUT of onboarding — wizard stays light. `ReviewStep` gains a quiet forward-looking note ("Everything you've added is recorded in your name for now… set who owns each item anytime") — invitation framing, never a missing-step warning. Stage A5 closed as decided-out.
+- **D3 (Reza: "go with your recommendation")**: no Income/Expense picker v1; attribution derives from the owning asset's stakes in Stage C/D.
+- All other tactical decisions delegated to Claude.
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
