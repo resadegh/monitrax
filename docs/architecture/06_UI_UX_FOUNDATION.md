@@ -1510,11 +1510,17 @@ Load-bearing rules:
 3. **The dashboard widget renders Level 1 only, always** — it is a
    teaser; tap-through is the path to detail. Tile scale raised
    0.42 → 0.58 because fewer nodes buy bigger tiles.
-4. **The canvas always targets the 3–9 tile sweet spot.** The layout
+4. **The universe ALWAYS renders on My Structure** (Phase 47 fix,
+   2026-06-10) — never gate it behind "has a non-personal entity".
+   A personal-only user with assets has a real universe (cluster
+   level); the add-a-structure invitation is a banner above the
+   canvas, never a canvas replacement. Truly-empty users get the
+   canvas's own empty state.
+5. **The canvas always targets the 3–9 tile sweet spot.** The layout
    picks the aggregation level that achieves it: entity collapse at
    ≥3 entities, type clusters at ≤2 (WX.4.1). Loan clusters read
    "$X owing", never "held".
-5. **Reviewer-reject:** any future change that reintroduces per-asset
+6. **Reviewer-reject:** any future change that reintroduces per-asset
    tiles at Level 1, adds zoom chrome without working handlers, or
    collapses a ≤2-entity universe into bare entity tiles (the
    single-tile-with-badge regression), reverts this fix and must be
