@@ -402,31 +402,59 @@ export async function categoriseInBatches(
   // succeeded — fall back to uncategorised for THAT batch only and continue.
   // Fix for the 2026-06-10 silent-zero-import incident; see
   // docs/changelog/CHANGELOG_2026_06_10.md
-  for (let i = 0; i < transactions.length; i += settings.batchSize) {
-    const batch = transactions.slice(i, i + settings.batchSize);
-    try {
-      const batchResult = await categoriseWithAI(
-        batch,
-        merchantLearnings,
-        existingPatterns,
-        settings
-      );
+  //
+  // Batches run with bounded CONCURRENCY (not sequentially): a 300-tx file is
+  // ~15 Gemini calls at ~2-4s each — sequential execution blew past Vercel's
+  // function limit (504 FUNCTION_INVOCATION_TIMEOUT, 2026-06-10 second
+  // incident). Tier-1 quota (~2,000 req/min) makes 4 concurrent calls trivial.
+  // Output order is preserved via per-batch slots.
+  const CONCURRENT_BATCHES = 4;
 
-      allResults.push(...batchResult.results);
-      totalUsage.promptTokens += batchResult.usage.promptTokens;
-      totalUsage.completionTokens += batchResult.usage.completionTokens;
-      totalUsage.totalTokens += batchResult.usage.totalTokens;
-      totalUsage.estimatedCost += batchResult.usage.estimatedCost;
-    } catch (err) {
-      failedBatches++;
-      console.error(
-        `[aiCategorisation] Batch ${Math.floor(i / settings.batchSize) + 1} failed (${batch.length} txs fall back to uncategorised):`,
-        err instanceof Error ? err.message : err
-      );
-      allResults.push(
-        ...buildUncategorisedResults(batch, 'AI categorisation failed for this batch')
-      );
+  const batches: NormalisedTransaction[][] = [];
+  for (let i = 0; i < transactions.length; i += settings.batchSize) {
+    batches.push(transactions.slice(i, i + settings.batchSize));
+  }
+
+  const batchOutcomes: AICategorizationResult[][] = new Array(batches.length);
+  let nextBatch = 0; // single-threaded event loop — no race on the cursor
+
+  async function runWorker(): Promise<void> {
+    while (nextBatch < batches.length) {
+      const idx = nextBatch++;
+      const batch = batches[idx];
+      try {
+        const batchResult = await categoriseWithAI(
+          batch,
+          merchantLearnings,
+          existingPatterns,
+          settings
+        );
+
+        batchOutcomes[idx] = batchResult.results;
+        totalUsage.promptTokens += batchResult.usage.promptTokens;
+        totalUsage.completionTokens += batchResult.usage.completionTokens;
+        totalUsage.totalTokens += batchResult.usage.totalTokens;
+        totalUsage.estimatedCost += batchResult.usage.estimatedCost;
+      } catch (err) {
+        failedBatches++;
+        console.error(
+          `[aiCategorisation] Batch ${idx + 1} failed (${batch.length} txs fall back to uncategorised):`,
+          err instanceof Error ? err.message : err
+        );
+        batchOutcomes[idx] = buildUncategorisedResults(
+          batch,
+          'AI categorisation failed for this batch'
+        );
+      }
     }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENT_BATCHES, batches.length) }, () => runWorker())
+  );
+
+  for (const outcome of batchOutcomes) {
+    allResults.push(...outcome);
   }
 
   return {
