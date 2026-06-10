@@ -6,8 +6,20 @@
  * `EntityDetailPanel`, working search + filter chips. Layout positions
  * come from `wealthExplorerLayout.ts`.
  *
+ * v4 — semantic zoom (Phase WX.4, 2026-06-10). Level 1 renders ONLY
+ * entity tiles, each aggregating its holdings into a count badge +
+ * "$X held" line; selecting an entity unfolds its asset constellation
+ * (Level 2) while the rest of the universe recedes. This is the
+ * structural fix for "tiles shrink into an unreadable smudge as node
+ * count grows" — what's shown changes with zoom level, not just how
+ * big it is (Apple Maps principle). The decorative zoom buttons were
+ * removed — they never had handlers.
+ *
  * Surface SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
  * Artefact: `.stitch/designs/wealth-explorer-v5-universe-dark.png`
+ * Semantic-zoom SoT: screens `770687a1c73c42f0b4fd5686782bf5f3` (L1) +
+ * `068403f1296440508b601c2fc32d5e20` (L2)
+ * Artefacts: `.stitch/designs/wealth-universe-zoom/universe-level{1,2}-desktop-dark.{html,png}`
  */
 
 'use client';
@@ -27,11 +39,7 @@ import {
   Banknote,
   Users,
   Search,
-  Plus,
-  Minus,
-  Maximize2,
   Settings2,
-  ChevronRight,
   ChevronLeft,
   PanelRight,
   TreePine,
@@ -39,6 +47,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   NODE_ACCENT,
   RIBBON_COLOR,
@@ -131,6 +140,8 @@ interface TileProps {
   visibilityOpacity: number;
   isHovered: boolean;
   isSelected: boolean;
+  /** Satellite entrance stagger (Phase WX.4) — only set for asset tiles. */
+  entranceDelayMs?: number;
   onHover: () => void;
   onLeave: () => void;
   onClick: () => void;
@@ -144,6 +155,7 @@ function WealthNodeTile({
   visibilityOpacity,
   isHovered,
   isSelected,
+  entranceDelayMs,
   onHover,
   onLeave,
   onClick,
@@ -200,6 +212,13 @@ function WealthNodeTile({
           width: renderedSize,
           height: renderedSize,
           transition: 'width 0.32s cubic-bezier(0.16, 1, 0.3, 1), height 0.32s cubic-bezier(0.16, 1, 0.3, 1)',
+          // Phase WX.4 — satellites pop in with a stagger when a
+          // constellation unfolds. `wealth-satellite-pop` is defined in
+          // CanvasShell with a prefers-reduced-motion fallback.
+          animation:
+            node.tier === 'asset'
+              ? `wealth-satellite-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) ${entranceDelayMs ?? 0}ms both`
+              : undefined,
         }}
       >
         {anchorRings}
@@ -226,6 +245,20 @@ function WealthNodeTile({
             </span>
           )}
         </div>
+        {/* Phase WX.4 — Level 1 count badge: how many holdings fold
+            into this tile. Hidden once the constellation unfolds. */}
+        {node.assetSummary && !node.isExpanded && (
+          <span
+            className="absolute -bottom-1 -right-1 z-10 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums text-white/90"
+            style={{
+              background: 'rgba(13, 18, 36, 0.95)',
+              border: `1px solid ${accent}66`,
+              boxShadow: `0 0 8px ${accent}33`,
+            }}
+          >
+            {node.assetSummary.count}
+          </span>
+        )}
         <div
           className="absolute left-1/2 top-full mt-2 -translate-x-1/2 text-center"
           style={{ width: Math.max(120, renderedSize * 1.4) }}
@@ -458,9 +491,13 @@ function EntityPreviewPopover({ node }: { node: WealthNode }) {
 }
 
 export default function WealthUniverseCanvas() {
-  const { layout, snapshot, loading, error, refetch } = useWealthExplorerData();
+  const { layout: baseLayout, snapshot, loading, error, refetch } = useWealthExplorerData();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Phase WX.4 — semantic zoom. Which entity (or `group-<id>`) has its
+  // asset constellation unfolded. Selecting an entity expands it;
+  // clearing the selection folds everything back to Level 1.
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   // Phase 1.1 — beneficial-ownership lens toggle. Only renders when the
@@ -475,8 +512,20 @@ export default function WealthUniverseCanvas() {
   // computed in the canvas.
   const [flowMode, setFlowMode] = useState<'structure' | 'money-flow'>('structure');
 
-  const nodes = layout?.nodes ?? [];
-  const relationships = layout?.relationships ?? [];
+  // Phase WX.4 — recompute the layout with the current expansion. The
+  // layout function is pure and cheap (tens of nodes); recomputing on
+  // selection keeps the hook's default (collapsed) layout untouched for
+  // other consumers like the dashboard widget.
+  const layout = useMemo(
+    () =>
+      snapshot
+        ? layoutWealthExplorer(snapshot, { expandedEntityIds: expandedIds })
+        : baseLayout,
+    [snapshot, expandedIds, baseLayout],
+  );
+
+  const nodes = useMemo(() => layout?.nodes ?? [], [layout]);
+  const relationships = useMemo(() => layout?.relationships ?? [], [layout]);
   // Phase 2 enhancement — FY-slider state. Default to the most recent
   // FY with data (from the service). User can scrub through historical
   // FYs in money-flow mode. `null` until the layout loads.
@@ -494,6 +543,37 @@ export default function WealthUniverseCanvas() {
 
   const hoveredNode = hoveredId ? nodesById[hoveredId] : null;
   const selectedNode = selectedId ? nodesById[selectedId] : null;
+
+  // Phase WX.4 — selection drives the semantic zoom.
+  function clearSelection() {
+    setSelectedId(null);
+    setExpandedIds([]);
+  }
+  function handleNodeClick(node: WealthNode) {
+    if (node.tier === 'asset') {
+      // Selecting a satellite keeps its constellation open.
+      setSelectedId(node.id);
+      if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
+      return;
+    }
+    if (selectedId === node.id) {
+      // Tapping the selected entity again folds it back to Level 1.
+      clearSelection();
+      return;
+    }
+    setSelectedId(node.id);
+    setExpandedIds(node.assetSummary ? [node.id] : []);
+  }
+
+  // Stagger for the satellite pop-in when a constellation unfolds.
+  const satelliteDelayById = useMemo(() => {
+    const m = new Map<string, number>();
+    let i = 0;
+    for (const n of nodes) {
+      if (n.tier === 'asset') m.set(n.id, (i++ % 10) * 40);
+    }
+    return m;
+  }, [nodes]);
 
   // Derive which types are visible based on filter.
   const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
@@ -944,7 +1024,7 @@ export default function WealthUniverseCanvas() {
             <>
               <button
                 type="button"
-                onClick={() => setSelectedId(null)}
+                onClick={clearSelection}
                 className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
                 aria-label="Back to universe"
               >
@@ -1000,24 +1080,15 @@ export default function WealthUniverseCanvas() {
           visibilityOpacity={nodeOpacity(node)}
           isHovered={hoveredId === node.id}
           isSelected={selectedId === node.id}
+          entranceDelayMs={satelliteDelayById.get(node.id)}
           onHover={() => setHoveredId(node.id)}
           onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
-          onClick={() => setSelectedId(node.id)}
+          onClick={() => handleNodeClick(node)}
         />
       ))}
 
       {/* Live preview popover follows the hovered tile */}
       {hoveredNode && !selectedNode && <EntityPreviewPopover node={hoveredNode} />}
-
-      {/* Zoom controls */}
-      <div className="absolute bottom-6 left-6 z-30 flex flex-col gap-2">
-        <ZoomButton icon={Plus} label="Zoom in" />
-        <ZoomButton icon={Minus} label="Zoom out" />
-        <ZoomButton icon={Maximize2} label="Fit to view" />
-        <div className="mt-1 text-center text-[9px] tracking-wide text-white/40">
-          100% · Universe
-        </div>
-      </div>
 
       {/* Detail panel tab — peek */}
       {!selectedNode && (
@@ -1039,7 +1110,9 @@ export default function WealthUniverseCanvas() {
       {/* Hint */}
       <div className="pointer-events-none absolute bottom-6 right-6 z-30 max-w-xs text-right">
         <div className="text-[10px] leading-relaxed text-white/35">
-          Hover a tile to preview · click to open · search to find any node
+          {selectedNode
+            ? 'Click the entity again to fold its constellation · click a satellite to inspect it'
+            : 'Click an entity to open its constellation · search to find anything'}
         </div>
       </div>
 
@@ -1049,7 +1122,7 @@ export default function WealthUniverseCanvas() {
           snapshot; no extra fetch). */}
       <EntityDetailPanel
         node={selectedNode}
-        onClose={() => setSelectedId(null)}
+        onClose={clearSelection}
         assets={
           selectedNode && snapshot
             ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
@@ -1065,7 +1138,7 @@ export default function WealthUniverseCanvas() {
 function CanvasShell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
+      className="wealth-universe-shell relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
       style={{
         background:
           'radial-gradient(ellipse at 50% 55%, #0A0E1F 0%, #060914 60%, #050810 100%)',
@@ -1083,26 +1156,19 @@ function CanvasShell({ children }: { children: React.ReactNode }) {
           70% { transform: scale(1.4); opacity: 0; }
           100% { transform: scale(1.4); opacity: 0; }
         }
+        @keyframes wealth-satellite-pop {
+          0% { transform: scale(0.3); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global(.wealth-universe-shell *) {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+        }
       `}</style>
       {children}
     </div>
-  );
-}
-
-function ZoomButton({ icon: Icon, label }: { icon: LucideIcon; label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      className="flex h-10 w-10 items-center justify-center rounded-full"
-      style={{
-        background: 'rgba(19, 26, 46, 0.85)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      <Icon size={14} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
-    </button>
   );
 }
 
