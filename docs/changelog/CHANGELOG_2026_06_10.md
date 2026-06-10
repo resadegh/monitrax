@@ -280,6 +280,7 @@ verified identity-provider claim; cannot clobber user-entered data.
   - `app/dashboard/properties/page.tsx` — picker rendered in Add-property dialog (create only, non-RENTAL); gradient CTA per v2; ownership state reset with form.
   - `tests/ownership/ownershipSelection.test.ts` — NEW, 13 tests pinning the §4A parsing/stake contract.
 - Build PASS, lint clean (1 pre-existing warning), 13/13 new tests + neighbouring suites green.
+- **Visibility follow-up (Reza: "all of these should be visually presented under Wealth Universe in dashboard and my structure page")** — `wealthExplorerLayout.ts`: INDIVIDUAL co-owner entities now classify+place as PEOPLE in the personal band beside YOU (they fell into the corporate bucket and rendered as companies); PERSONAL_NAME explicitly sorted first so a co-owner can never steal the anchor ring; ownership-group nodes carry the Level 1 "$X held" aggregate + warm naming ("Joint"/"Shared", never "Tenants in common"). 4 new tests pin the §4A visibility contract. Widget inherits automatically (same layout function).
 
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
