@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Add Property</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2b322b",
+                        "tertiary": "#4d5d73",
+                        "trail-amber": "#F59E0B",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#006e2d",
+                        "surface-bright": "#f4fcf0",
+                        "on-secondary-fixed-variant": "#404757",
+                        "trail-emerald": "#16A34A",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "error-red": "#DC2626",
+                        "trail-indigo": "#6366F1",
+                        "tertiary-container": "#66768d",
+                        "secondary-container": "#d9dff4",
+                        "on-error": "#ffffff",
+                        "surface-container-low": "#eff6ea",
+                        "on-tertiary": "#ffffff",
+                        "on-background": "#171d16",
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface": "#f4fcf0",
+                        "outline": "#6e7b6c",
+                        "surface-container-high": "#e3eadf",
+                        "secondary": "#585e6f",
+                        "on-surface-variant": "#3e4a3d",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-primary-fixed-variant": "#005320",
+                        "outline-variant": "#bdcaba",
+                        "surface-dim": "#F1EFE8",
+                        "trail-violet": "#8B5CF6",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-container": "#e9f0e5",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary-fixed": "#7ffc97",
+                        "on-primary-fixed": "#002109",
+                        "primary-container": "#00873a",
+                        "on-surface": "#171d16",
+                        "trail-sky": "#0EA5E9",
+                        "inverse-primary": "#62df7d",
+                        "surface-ivory": "#FAFAF7",
+                        "on-secondary-fixed": "#151b2a",
+                        "primary": "#006b2c",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#dde5d9",
+                        "on-secondary-container": "#5c6274",
+                        "background": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-primary-container": "#f7fff2",
+                        "error-container": "#ffdad6",
+                        "secondary-fixed": "#dce2f6",
+                        "on-tertiary-container": "#fdfcff",
+                        "error": "#ba1a1a",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container-highest": "#dde5d9",
+                        "outline-slate": "#94A3B8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "data-xl": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #FAFAF7; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-modal {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(14, 165, 233, 0.1);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+<!-- Blurred Dashboard Canvas (Background) -->
+<div class="fixed inset-0 pointer-events-none filter blur-md opacity-40 bg-surface-ivory">
+<!-- TopAppBar Placeholder -->
+<header class="bg-surface border-b border-outline-variant h-16 w-full flex items-center px-margin-desktop justify-between">
+<span class="text-headline-md font-headline-md font-bold text-primary">Monitrax</span>
+<div class="flex gap-4">
+<div class="w-8 h-8 rounded-full bg-outline-variant"></div>
+<div class="w-8 h-8 rounded-full bg-outline-variant"></div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-64px)]">
+<!-- SideNavBar Placeholder -->
+<aside class="w-64 bg-surface-container-low border-r border-outline-variant p-8 flex flex-col gap-8">
+<div class="h-10 w-full bg-outline-variant opacity-20 rounded-lg"></div>
+<div class="flex flex-col gap-4">
+<div class="h-6 w-3/4 bg-outline-variant opacity-20 rounded"></div>
+<div class="h-6 w-1/2 bg-outline-variant opacity-20 rounded"></div>
+<div class="h-6 w-2/3 bg-outline-variant opacity-20 rounded"></div>
+</div>
+</aside>
+<!-- Content Placeholder -->
+<main class="flex-1 p-margin-desktop grid grid-cols-2 gap-gutter">
+<div class="h-64 bg-white rounded-xl shadow-sm"></div>
+<div class="h-64 bg-white rounded-xl shadow-sm"></div>
+<div class="h-64 bg-white rounded-xl shadow-sm"></div>
+<div class="h-64 bg-white rounded-xl shadow-sm"></div>
+</main>
+</div>
+</div>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 bg-[#0B1220]/20 flex items-center justify-center z-50 p-6 backdrop-blur-[2px]">
+<!-- Dialog Container -->
+<div class="glass-modal w-full max-w-[640px] rounded-[28px] shadow-2xl relative overflow-hidden flex flex-col max-h-[921px]">
+<!-- Top-accent gradient strip -->
+<div class="h-[3px] w-full gradient-bg absolute top-0 left-0"></div>
+<!-- Header Section -->
+<div class="px-8 pt-8 pb-4 flex justify-between items-start">
+<div class="flex items-center gap-4">
+<div class="w-11 h-11 rounded-full gradient-bg flex items-center justify-center text-white shadow-lg shadow-trail-sky/20">
+<span class="material-symbols-outlined text-2xl" data-icon="house">house</span>
+</div>
+<div>
+<p class="font-eyebrow text-eyebrow gradient-text uppercase tracking-[0.18em]">Investment Property</p>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Add property</h2>
+</div>
+</div>
+<button class="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<!-- Form Content -->
+<div class="flex-1 overflow-y-auto px-8 pb-8 space-y-8 scroll-smooth">
+<!-- Primary Details -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Property name</label>
+<input class="w-full h-12 px-4 rounded-[12px] bg-white/40 border border-outline-variant focus:border-trail-sky focus:ring-0 transition-all font-body-md text-body-md text-on-surface" type="text" value="903 Boree Rd"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Current value</label>
+<div class="relative">
+<input class="w-full h-12 px-4 rounded-[12px] bg-white/40 border border-outline-variant focus:border-trail-sky focus:ring-0 transition-all font-body-md text-body-md tabular-nums text-on-surface" type="text" value="$1,400,000"/>
+</div>
+</div>
+<div class="md:col-span-2 space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Address</label>
+<input class="w-full h-12 px-4 rounded-[12px] bg-white/40 border border-outline-variant focus:border-trail-sky focus:ring-0 transition-all font-body-md text-body-md text-on-surface" type="text" value="903 Boree Valley Rd, Laguna NSW 2325"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Purchase price</label>
+<input class="w-full h-12 px-4 rounded-[12px] bg-white/40 border border-outline-variant focus:border-trail-sky focus:ring-0 transition-all font-body-md text-body-md tabular-nums text-on-surface" type="text" value="$985,000"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Purchase date</label>
+<input class="w-full h-12 px-4 rounded-[12px] bg-white/40 border border-outline-variant focus:border-trail-sky focus:ring-0 transition-all font-body-md text-body-md tabular-nums text-on-surface" type="text" value="12 Oct 2023"/>
+</div>
+</div>
+<!-- Ownership Section -->
+<div class="space-y-6">
+<h3 class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest">Who owns this?</h3>
+<!-- Choice Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Just Me -->
+<div class="p-4 rounded-xl border border-outline-variant hover:border-outline bg-white/20 cursor-pointer transition-all flex items-start gap-4">
+<div class="p-2 rounded-lg bg-surface-container">
+<span class="material-symbols-outlined text-tertiary" data-icon="person">person</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Just me</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-tight">Owned in your name</p>
+</div>
+</div>
+<!-- Joint (Selected) -->
+<div class="p-4 rounded-xl border-2 border-trail-sky bg-trail-sky/5 cursor-pointer transition-all flex items-start gap-4 relative">
+<div class="p-2 rounded-lg bg-trail-sky/10">
+<span class="material-symbols-outlined text-trail-sky" data-icon="group" style="font-variation-settings: 'FILL' 1;">group</span>
+</div>
+<div class="pr-6">
+<p class="font-label-md text-label-md text-on-surface">Joint</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-tight">Equal shares, with survivorship — common for couples</p>
+</div>
+<div class="absolute top-4 right-4 text-trail-sky">
+<span class="material-symbols-outlined text-xl" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+</div>
+<!-- Shared -->
+<div class="p-4 rounded-xl border border-outline-variant hover:border-outline bg-white/20 cursor-pointer transition-all flex items-start gap-4">
+<div class="p-2 rounded-lg bg-surface-container">
+<span class="material-symbols-outlined text-tertiary" data-icon="pie_chart">pie_chart</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">Shared</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-tight">Set each owner's percentage</p>
+</div>
+</div>
+<!-- Entity -->
+<div class="p-4 rounded-xl border border-outline-variant hover:border-outline bg-white/20 cursor-pointer transition-all flex items-start gap-4">
+<div class="p-2 rounded-lg bg-surface-container">
+<span class="material-symbols-outlined text-tertiary" data-icon="account_balance">account_balance</span>
+</div>
+<div>
+<p class="font-label-md text-label-md text-on-surface">An entity</p>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1 leading-tight">A trust, company or SMSF you've added</p>
+</div>
+</div>
+</div>
+<!-- Expanded Joint Panel -->
+<div class="p-6 rounded-2xl bg-surface-container-low/50 border border-outline-variant/30 space-y-4">
+<p class="font-label-md text-label-md text-on-surface">Who owns it with you?</p>
+<div class="flex flex-wrap gap-3">
+<!-- Sarah Avatar Chip -->
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-trail-sky bg-trail-sky/10 cursor-pointer">
+<div class="w-6 h-6 rounded-full overflow-hidden bg-trail-indigo flex items-center justify-center text-[10px] text-white font-bold">
+<img alt="Sarah" class="w-full h-full object-cover" data-alt="Close-up portrait of a smiling woman with warm lighting and a soft bokeh background, representing Sarah the household member in a premium wealth management interface. High-key light-mode aesthetic with clean skin tones and professional photography style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuArEiVZfFirqmFqJIY6Tw0pAqtQ2gi9xeGgUX1F4Ldx7hKNkxWb00u2M1kw38V2d-nVImAkNbX2V9BYq1lvsvrg1rAiR-I3Jf9llBhgpCJ3XZXDCQjji72Q2kzLj4shyOsm2yiRcpHmcVLikicLj-akrgmJV6TKX-65G09LL8Le3_JYJxg2e-nddmEv6Ff_-eJ1LHjVVb8LkYXzsrI6H13VT0-Ld_7qajRlKi3eUnpKz2111TGqJVOpzuKY_Zk00r7lSW32jd0RMSs"/>
+</div>
+<span class="font-label-md text-label-md text-trail-sky">Sarah</span>
+</div>
+<!-- Add Chip -->
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-outline-variant border-dashed text-on-surface-variant hover:border-outline hover:text-on-surface cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span>
+<span class="font-label-md text-label-md">Add someone</span>
+</div>
+</div>
+<div class="flex items-start gap-3 pt-2">
+<span class="material-symbols-outlined text-outline text-lg" data-icon="info">info</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">Income and costs split 50/50 — the ATO follows the names on the title, not who paid.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="p-8 pt-0 space-y-3">
+<button class="w-full h-14 gradient-bg text-white rounded-[12px] font-headline-sm text-headline-sm hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-trail-sky/20">
+                    Add property
+                </button>
+<button class="w-full h-12 text-on-surface-variant font-label-md text-label-md hover:bg-surface-container-high rounded-[12px] transition-colors">
+                    Cancel
+                </button>
+</div>
+</div>
+</div>
+<!-- Decorative Micro-interactions -->
+<script>
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.querySelector('label').style.color = '#0EA5E9';
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.querySelector('label').style.color = '';
+            });
+        });
+    </script>
+</body></html>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Add Property</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container": "#e9f0e5",
+                        "on-background": "#171d16",
+                        "trail-sky": "#0EA5E9",
+                        "trail-indigo": "#6366F1",
+                        "trail-emerald": "#16A34A",
+                        "trail-amber": "#F59E0B",
+                        "surface-ivory": "#FAFAF7",
+                        "primary": "#006b2c",
+                        "outline": "#6e7b6c",
+                        "outline-variant": "#bdcaba",
+                        "on-surface": "#171d16",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-container-low": "#eff6ea",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "eyebrow": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-md": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "data-xl": ["Inter"]
+                    },
+                    fontSize: {
+                        "eyebrow": ["12px", { "lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "600" }],
+                        "headline-md": ["24px", { "lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px 0 rgba(11, 18, 32, 0.04);
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.5);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.2s ease;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 0.9);
+            border-color: #0EA5E9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+            outline: none;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen font-body-md text-on-surface">
+<!-- Dashboard Background Emulation (Dimmed) -->
+<div class="fixed inset-0 z-0 flex pointer-events-none opacity-20 grayscale">
+<!-- SideNav Simulation -->
+<aside class="w-64 border-r border-outline-variant h-full p-6 space-y-8">
+<div class="h-8 w-32 bg-slate-300 rounded"></div>
+<div class="space-y-4">
+<div class="h-10 w-full bg-slate-200 rounded"></div>
+<div class="h-10 w-full bg-slate-200 rounded"></div>
+<div class="h-10 w-full bg-slate-200 rounded"></div>
+</div>
+</aside>
+<!-- Main Content Simulation -->
+<main class="flex-1 p-12">
+<div class="max-w-4xl space-y-8">
+<div class="h-12 w-1/3 bg-slate-300 rounded"></div>
+<div class="grid grid-cols-3 gap-6">
+<div class="h-48 bg-white rounded-xl shadow-sm"></div>
+<div class="h-48 bg-white rounded-xl shadow-sm"></div>
+<div class="h-48 bg-white rounded-xl shadow-sm"></div>
+</div>
+</div>
+</main>
+</div>
+<!-- Overlay Dimmer -->
+<div class="fixed inset-0 bg-on-background/20 backdrop-blur-sm z-40"></div>
+<!-- Centered Dialog -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-6">
+<div class="glass-panel w-full max-w-[560px] rounded-[28px] overflow-hidden relative flex flex-col max-h-[921px]">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full bg-gradient-to-r from-trail-sky to-trail-indigo"></div>
+<!-- Dialog Header -->
+<header class="px-8 pt-8 pb-4 flex items-start justify-between">
+<div class="flex flex-col gap-4">
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-trail-sky to-trail-indigo flex items-center justify-center shadow-lg shadow-trail-sky/20">
+<span class="material-symbols-outlined text-white text-[24px]" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<div>
+<span class="font-eyebrow text-eyebrow text-transparent bg-clip-text bg-gradient-to-r from-trail-sky to-trail-indigo">INVESTMENT PROPERTY</span>
+<h1 class="font-headline-md text-headline-md text-on-surface mt-1">Add property</h1>
+</div>
+</div>
+<button class="p-2 hover:bg-black/5 rounded-full transition-colors group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface">close</span>
+</button>
+</header>
+<!-- Scrollable Body -->
+<div class="flex-1 overflow-y-auto px-8 pb-8 space-y-8">
+<!-- Section 1: Form Fields -->
+<section class="space-y-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Property name</label>
+<input class="w-full h-12 px-4 rounded-xl glass-input font-body-md" type="text" value="903 Boree Rd"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Address</label>
+<input class="w-full h-12 px-4 rounded-xl glass-input font-body-md" type="text" value="903 Boree Valley Rd, Laguna NSW 2325"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Current value</label>
+<input class="w-full h-12 px-4 rounded-xl glass-input font-body-md tabular-nums" type="text" value="$1,400,000"/>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-label-md text-on-surface-variant">Purchase price</label>
+<input class="w-full h-12 px-4 rounded-xl glass-input font-body-md tabular-nums" type="text" value="$985,000"/>
+</div>
+</div>
+</section>
+<!-- Section 2: Ownership Selection -->
+<section class="space-y-4">
+<h3 class="font-eyebrow text-[11px] text-on-surface-variant uppercase tracking-wider">Who owns this?</h3>
+<div class="grid grid-cols-2 gap-3">
+<!-- Card A -->
+<button class="flex flex-col items-start p-4 rounded-[14px] border border-black/5 bg-white/40 hover:bg-white/60 transition-all text-left">
+<span class="material-symbols-outlined text-on-surface-variant mb-2">person</span>
+<span class="font-label-md text-on-surface block">Just me</span>
+<span class="text-[12px] text-on-surface-variant leading-tight">Owned in your name</span>
+</button>
+<!-- Card B (SELECTED) -->
+<button class="relative flex flex-col items-start p-4 rounded-[14px] border border-trail-sky bg-trail-sky/[0.04] ring-1 ring-trail-sky/20 text-left">
+<div class="absolute top-3 right-3 w-5 h-5 bg-trail-sky rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[14px]" style="font-variation-settings: 'wght' 700;">check</span>
+</div>
+<span class="material-symbols-outlined text-trail-sky mb-2">group</span>
+<span class="font-label-md text-on-surface block">Joint</span>
+<span class="text-[12px] text-on-surface-variant leading-tight">Equal shares, with survivorship</span>
+</button>
+<!-- Card C -->
+<button class="flex flex-col items-start p-4 rounded-[14px] border border-black/5 bg-white/40 hover:bg-white/60 transition-all text-left">
+<span class="material-symbols-outlined text-on-surface-variant mb-2">pie_chart</span>
+<span class="font-label-md text-on-surface block">Shared</span>
+<span class="text-[12px] text-on-surface-variant leading-tight">Set each owner's percentage</span>
+</button>
+<!-- Card D -->
+<button class="flex flex-col items-start p-4 rounded-[14px] border border-black/5 bg-white/40 hover:bg-white/60 transition-all text-left">
+<span class="material-symbols-outlined text-on-surface-variant mb-2">account_balance</span>
+<span class="font-label-md text-on-surface block">An entity</span>
+<span class="text-[12px] text-on-surface-variant leading-tight">A trust, company or SMSF</span>
+</button>
+</div>
+</section>
+<!-- Section 3: Joint Owner Panel -->
+<section class="p-5 rounded-2xl bg-white/40 border border-black/5 space-y-4">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-on-surface">Who owns it with you?</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<!-- Selected Chip -->
+<div class="flex items-center gap-2 pl-1 pr-3 py-1 rounded-full bg-trail-sky/[0.08] border border-trail-sky/20">
+<img alt="Sarah" class="w-6 h-6 rounded-full object-cover" data-alt="Close-up studio portrait of a smiling woman with a warm, professional expression, set against a soft minimalist backdrop with high-key lighting that complements a clean Australian editorial aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBKe7ujhIcSSVL8G-EdHeZVJsXRqTlxnLKOcmHuE-9he8xPcR5nkGze2kYUfDvN2FXNZT74jV6Xbtws3_6VoRwML4rfGzxt3J97k1PL_3CZrssSXtl8zkqwKb8K3IV8voJT3n417INTZgANFenrK5eXTvhvVYFEHwayCXau8L_ieJwM87QrCrzekzkt2h3brCqu4ihS-harjWIQ7uuk4yStFpYfSnzlDOH8LqTUmlzNcLH9UH2u9B1eie_RJATL3FgO1ogPk7Bvxo8"/>
+<span class="font-label-md text-on-surface">Sarah</span>
+</div>
+<!-- Ghost Chip -->
+<button class="flex items-center gap-1 px-4 py-1.5 rounded-full border border-dashed border-outline-variant hover:bg-white transition-colors">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">add</span>
+<span class="font-label-md text-on-surface-variant">Add someone</span>
+</button>
+</div>
+<div class="flex gap-3 p-3 rounded-lg bg-on-surface/[0.02]">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant mt-0.5">info</span>
+<p class="text-[13px] text-on-surface-variant leading-relaxed">
+                            Income and costs split 50/50 — the ATO follows the names on the title, not who paid.
+                        </p>
+</div>
+</section>
+</div>
+<!-- Footer -->
+<footer class="px-8 pb-8 pt-4 flex flex-col items-center gap-4">
+<button class="w-full h-14 rounded-xl bg-gradient-to-r from-trail-sky to-trail-indigo text-white font-label-md shadow-lg shadow-trail-sky/10 hover:shadow-trail-sky/20 hover:scale-[1.01] active:scale-[0.99] transition-all">
+                    Add property
+                </button>
+<button class="text-on-surface-variant font-label-md hover:text-on-surface transition-colors py-1">
+                    Cancel
+                </button>
+</footer>
+</div>
+</div>
+</body></html>

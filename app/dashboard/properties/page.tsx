@@ -11,6 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import OwnershipPicker, {
+  type OwnershipSelectionValue,
+} from '@/components/ownership/OwnershipPicker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -229,6 +232,9 @@ function PropertiesPageContent() {
     valuationDate: new Date().toISOString().split('T')[0],
     ...EMPTY_RENEWALS,
   });
+  // Phase 47 Stage A — ownership selection (create only; post-creation
+  // changes go through the "correct ownership record" flow, Stage A2).
+  const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
 
   useEffect(() => {
     if (token) {
@@ -286,6 +292,8 @@ function PropertiesPageContent() {
           ...formData,
           purchasePrice: Number(formData.purchasePrice),
           currentValue: Number(formData.currentValue),
+          // Phase 47 Stage A — ownership only applies at creation.
+          ...(editingId ? {} : { ownership }),
         }),
       });
 
@@ -301,6 +309,7 @@ function PropertiesPageContent() {
   };
 
   const resetForm = () => {
+    setOwnership({ mode: 'sole' });
     setFormData({
       name: '',
       type: 'HOME',
@@ -1067,11 +1076,20 @@ function PropertiesPageContent() {
               </div>
             </div>
 
+            {/* Phase 47 Stage A — ownership picker (creation only; edits
+                use the "correct ownership record" flow in Stage A2). */}
+            {!editingId && formData.type !== 'RENTAL' && (
+              <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
+            )}
+
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
                 Cancel
               </Button>
-              <Button type="submit">
+              <Button
+                type="submit"
+                className="bg-gradient-to-r from-sky-500 to-indigo-500 text-white hover:from-sky-600 hover:to-indigo-600"
+              >
                 {editingId ? 'Update Property' : 'Add Property'}
               </Button>
             </div>

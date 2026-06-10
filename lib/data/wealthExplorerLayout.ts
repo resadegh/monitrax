@@ -105,7 +105,10 @@ export interface LayoutResult {
 
 /** Map LegalEntityType + role → canvas vocabulary. */
 function classifyEntity(e: WealthGraphEntity): WealthNodeType {
-  if (e.type === 'PERSONAL_NAME') return 'individual';
+  // INDIVIDUAL = a natural person modelled as an entity (Phase 47 §4A —
+  // joint/shared co-owners quick-created by the ownership picker). They
+  // are people, not companies — same vocabulary as the user's own tile.
+  if (e.type === 'PERSONAL_NAME' || e.type === 'INDIVIDUAL') return 'individual';
   if (e.type === 'SMSF') return 'smsf';
   if (e.type === 'DISCRETIONARY_TRUST' || e.type === 'UNIT_TRUST') return 'trust';
   if (e.role === 'HOLDING') return 'holding-company';
@@ -434,12 +437,20 @@ export function layoutWealthExplorer(
   const soleTraders: WealthGraphEntity[] = [];
 
   for (const e of entities) {
-    if (e.type === 'PERSONAL_NAME') personal.push(e);
+    // INDIVIDUAL co-owners (Phase 47 §4A) live in the personal band
+    // beside the user — they are people, not corporate structures.
+    if (e.type === 'PERSONAL_NAME' || e.type === 'INDIVIDUAL') personal.push(e);
     else if (e.type === 'SMSF') smsfs.push(e);
     else if (e.type === 'PARTNERSHIP') joint.push(e);
     else if (e.type === 'SOLE_TRADER') soleTraders.push(e);
     else corporate.push(e);
   }
+  // The user's own PERSONAL_NAME tile is always the anchor — keep it
+  // first regardless of fetch order so INDIVIDUAL co-owners never steal
+  // the YOU ring.
+  personal.sort((a, b) =>
+    (a.type === 'PERSONAL_NAME' ? 0 : 1) - (b.type === 'PERSONAL_NAME' ? 0 : 1),
+  );
 
   const smsfParentIds = new Set(smsfs.map(s => s.parentEntityId).filter(Boolean));
 
@@ -535,17 +546,25 @@ export function layoutWealthExplorer(
     const pos = { x: cx, y: cy };
     groupNodePositionById.set(g.id, pos);
     const groupSummary = summarize(ownedAssetsByGroup.get(g.id));
+    const groupExpanded = !!groupSummary && isUnfolded(`group-${g.id}`);
     nodes.push({
       id: `group-${g.id}`,
       type: 'ownership-group',
-      name: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Tenants in common',
-      shortName: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'TIC',
+      // Warm words (§14.3) — users see "Joint" / "Shared", never tenancy
+      // jargon. The stake ribbons carry the percentages.
+      name: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Shared',
+      shortName: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Shared',
       subtitle: `${g.stakes.length} owners`,
+      // Level 1 aggregate line — same contract as entity tiles (WX.4).
+      value:
+        groupSummary && groupSummary.totalValue > 0 && !groupExpanded
+          ? `${formatValue(groupSummary.totalValue)} held`
+          : undefined,
       position: pos,
       size: 36,
       tier: 'group',
       assetSummary: groupSummary,
-      isExpanded: !!groupSummary && isUnfolded(`group-${g.id}`),
+      isExpanded: groupExpanded,
     });
   });
 

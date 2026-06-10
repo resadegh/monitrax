@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { extractPropertyLinks, wrapWithGRDCS } from '@/lib/grdcs';
-import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import {
+  applyOwnershipSelection,
+  OwnershipSelectionError,
+  parseOwnershipSelection,
+  resolveOwnerEntityIdForSelection,
+} from '@/lib/services/ownershipSelectionService';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
@@ -113,7 +118,34 @@ export const POST = withPermission('property.write', async (request, auth) => {
         );
       }
 
-      const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
+      // Phase 47 Stage A — ownership selection from the picker ("Just me /
+      // Joint / Shared / An entity", §4A). Absent payload = sole (the
+      // zero-friction default, unchanged behaviour).
+      let ownershipSelection;
+      try {
+        ownershipSelection = parseOwnershipSelection(body.ownership);
+      } catch (err) {
+        if (err instanceof OwnershipSelectionError) {
+          return NextResponse.json(
+            { error: { code: err.code, message: err.message } },
+            { status: err.code === 'ENTITY_NOT_FOUND' ? 404 : 400 },
+          );
+        }
+        throw err;
+      }
+      const ownerEntityId = await resolveOwnerEntityIdForSelection(
+        auth.userId,
+        ownershipSelection,
+      ).catch((err: unknown) => {
+        if (err instanceof OwnershipSelectionError) return err;
+        throw err;
+      });
+      if (ownerEntityId instanceof OwnershipSelectionError) {
+        return NextResponse.json(
+          { error: { code: ownerEntityId.code, message: ownerEntityId.message } },
+          { status: 404 },
+        );
+      }
 
       // Phase 41E (§12.14): resolve the regime-determining contract date.
       const purchaseDateObj = new Date(purchaseDate);
@@ -161,6 +193,28 @@ export const POST = withPermission('property.write', async (request, auth) => {
         },
       });
 
+      // Phase 47 Stage A — joint/shared selections create the
+      // OwnershipGroup + stakes (P2/P3 in the §4A matrix). If this fails
+      // the property stays soly-owned and the warning is surfaced — the
+      // user can re-record ownership from the edit surface.
+      let ownershipWarnings: string[] = [];
+      if (ownershipSelection && (ownershipSelection.mode === 'joint' || ownershipSelection.mode === 'shared')) {
+        try {
+          const applied = await applyOwnershipSelection(
+            auth.userId,
+            'property',
+            property.id,
+            ownershipSelection,
+          );
+          ownershipWarnings = applied?.warnings ?? [];
+        } catch (err) {
+          console.error('Ownership selection apply failed:', err);
+          ownershipWarnings = [
+            'The property was saved, but recording the co-ownership failed — you can set it again from the property.',
+          ];
+        }
+      }
+
       // Audit every state-changing write (CLAUDE.md §12.5). This route is the
       // wizard's SSOT write boundary for properties (Phase 12 Track F.2). No
       // CDR/financial values in metadata (§13.3) — type + booleans only.
@@ -170,10 +224,19 @@ export const POST = withPermission('property.write', async (request, auth) => {
         status: 'SUCCESS',
         entityType: 'Property',
         entityId: property.id,
-        metadata: { type, isPostCutOver },
+        metadata: {
+          type,
+          isPostCutOver,
+          ownershipMode: ownershipSelection?.mode ?? 'sole',
+        },
       });
 
-      return NextResponse.json(property, { status: 201 });
+      return NextResponse.json(
+        ownershipWarnings.length > 0
+          ? { ...property, _meta: { ownershipWarnings } }
+          : property,
+        { status: 201 },
+      );
     } catch (error) {
       console.error('Create property error:', error);
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
