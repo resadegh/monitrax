@@ -368,6 +368,83 @@ Phase 41i + 41f.4-extension introduce admin-side audit surfaces and a user-facin
    - Deed PDFs > 25 MB are rejected with `413 PAYLOAD_TOO_LARGE`.
 5. To roll back: have user click **Reject** on the trust-deed page → re-upload.
 
+### Issue: QIF import "completes" but no transactions appear (Gemini 429 / quota)
+
+**Symptoms**: User imports a QIF file, dialog reports success, but the account shows zero
+transactions. Import API (`POST /api/accounts/[id]/import`) returns HTTP 200.
+First seen 2026-06-10 (and the same upstream class caused the 2026-06-01 import-500 incident, PR #959).
+
+**Mechanism**: AI categorisation is an enrichment, not a gate — when Gemini fails, transactions
+fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` instead of becoming
+`UnifiedTransaction` rows. Since 2026-06-10 the failure is loud (error-level logs + amber
+"action needed" dialog state); before that it was silent.
+
+**Diagnosis**:
+1. Pull prod runtime logs for the import window (`./scripts/vercel-logs.sh latest-runtime` or
+   the Vercel MCP `get_runtime_logs` with `query`). Look for:
+   - `[Gemini] <model> transient failure … 429 Too Many Requests` → **quota** (this issue)
+   - `[aiCategorisation] Gemini NOT CONFIGURED` → `GEMINI_API_KEY` missing from Vercel
+     Production runtime scope
+   - `403` + `referrer`/`API_KEY` → key restriction problem (see Production Readiness item 13
+     rollback note in `IMPLEMENTATION_PLAN.md`)
+   - `[import] AI categorisation DEGRADED for account …` → confirms transactions were held
+   - 429/404 on a project whose GCP quota page shows NO breaches → **suspect model
+     retirement FIRST**: check https://ai.google.dev/gemini-api/docs/deprecations against
+     the model IDs in `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts`
+2. The error class decides the fix — do not guess.
+
+**Resolution (429 quota) — first identify WHICH project the runtime key belongs to, then
+whether its paid tier is actually enforced:**
+
+> **2026-06-10 CONFIRMED root cause (after two disproven theories — all three recorded so
+> the next operator doesn't relive the elimination):**
+> (1) "Wrong project key" — disproven: Vercel's `GEMINI_API_KEY` IS the Tier-1 `…SWHI`
+> MonitraxGemini key in project `monitrax-479700`.
+> (2) "Billing/tier not enforced" — disproven: billing account active (~A$2.2/day, mostly
+> Cloud SQL), project linked, GCP quota page showed ZERO quota breaches in 7 days, key has
+> Application restrictions = None + API restriction = Gemini API (correct server posture).
+> (3) **CONFIRMED: model retirement.** Google shut down `gemini-2.0-flash` on
+> **2026-06-01** (https://ai.google.dev/gemini-api/docs/deprecations) — the EXACT day of the
+> first import incident (PR #959). Our fallback chain was also dead (`…2.5-flash-preview-05-20`
+> preview removed; `gemini-1.5-flash` retired Sep 2025 — the cashflow-summary surface had been
+> silently broken since then). Retired endpoints reject with 404/429 regardless of billing
+> tier, which is why a Tier-1 project with healthy quota saw 429s. Fixed 2026-06-10 by
+> migrating every hardcoded model ID to verified-live models (`gemini-3.5-flash` primary).
+> **⚠ Scheduled re-check: `gemini-2.5-flash` + `gemini-2.5-pro` (current fallbacks/pro) shut
+> down 2026-10-16 — re-verify `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts` against the
+> deprecations page before then (tracked in IMPLEMENTATION_PLAN Up Next).**
+
+1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
+   `GEMINI_API_KEY` → reveal → compare its ending against the key list in
+   [Google AI Studio](https://aistudio.google.com) → API Keys (shows project + billing tier
+   per key). If it belongs to a free-tier project, swap to a Monitrax-project key (see step 3).
+2. If the key is already in the right project but 429s persist at low request rates:
+   - **2a. Read the ENFORCED quota** (ground truth, not the AI Studio label): GCP Console →
+     project Monitrax → APIs & Services → Generative Language API → **Quotas & System
+     Limits** → "generate content requests per minute" per model. ~10–15 = free-tier
+     enforcement despite the Tier-1 label; ~2,000 = real Tier 1 (then suspect per-model
+     deprecation throttling instead — check the Usage page's 404 bars and the model names in
+     `lib/ai/google/modelConfig.ts` for stale/deprecated entries).
+   - **2b. Check billing health**: console.cloud.google.com/billing → billing account status
+     **Active** + project `monitrax-479700` listed under its Projects tab. Relink if not.
+   - **Server keys must have Application restrictions = None** (HTTP-referrer-restricted keys
+     reject server-side calls, which send no Referer — shows up as 403s) **and API
+     restrictions = Generative Language API only** (GCP Console → Credentials → the key).
+3. If swapping keys: update `GEMINI_API_KEY` in Vercel for **Production AND Preview** scopes →
+   redeploy (env changes don't apply to running deployments).
+4. Verify: trigger any AI surface (or a QIF import), then (a) Vercel runtime logs show
+   `[Gemini] Trying model:` with no failures, and (b) AI Studio → Usage for project Monitrax
+   shows successful requests.
+5. Optional but recommended: AI Studio → Spend → set a monthly spend cap (e.g. A$25 — never
+   $0, which blocks all requests). Categorisation traffic costs cents at current scale
+   (gemini-2.0-flash: US$0.075/M input tokens).
+
+**User-side recovery**: held transactions sit in `TransactionReviewQueue` (no UI — known tech
+debt, IMPLEMENTATION_PLAN 🗑️ row 31). After quota is fixed, the user re-imports the same file:
+the file-hash duplicate guard only blocks `COMPLETED` batches (degraded ones are
+`AWAITING_REVIEW`) and row-level duplicate detection only checks created transactions, so the
+re-import goes through cleanly.
+
 ### Issue: User sees `UC-DEED-…` flag on Tax page
 
 **Resolution**: These are validation alerts — the user's annual trustee resolution doesn't match the CONFIRMED deed. They are NOT engine bugs. Walk the user through the alert via [the Tax page help article](../../help/consumer/your-tax-position.md). The CRITICAL one (`UC-DEED-BENEFICIARY-EXCLUDED`) means the resolution is invalid against the deed and may trigger s100A consequences — recommend they engage their tax agent.

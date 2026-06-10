@@ -135,6 +135,11 @@ interface ImportResult {
     fileClosingBalance: number | null;
     needsVerification: boolean;
   };
+  // True when AI categorisation was unavailable/failed for this import —
+  // affected transactions were held for manual categorisation instead of
+  // being imported, so the completion screen must say so honestly.
+  aiDegraded?: boolean;
+  aiDegradedReason?: string | null;
 }
 
 const ACCOUNT_TYPES = [
@@ -772,8 +777,17 @@ export function TransactionImportDialog({
         {step === 'complete' && result && (
           <div className="space-y-4 pt-4">
             <div className="text-center space-y-2">
-              <CheckCircle2 className="h-12 w-12 mx-auto text-green-500" />
-              <p className="font-medium">Import Complete!</p>
+              {result.aiDegraded && result.statistics.imported === 0 ? (
+                <>
+                  <AlertCircle className="h-12 w-12 mx-auto text-amber-500" />
+                  <p className="font-medium">Import received — action needed</p>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-12 w-12 mx-auto text-green-500" />
+                  <p className="font-medium">Import Complete!</p>
+                </>
+              )}
               {result.accountCreated && (
                 <p className="text-sm text-muted-foreground">
                   Account "{result.accountName}" created
@@ -796,6 +810,14 @@ export function TransactionImportDialog({
                   <p className="text-sm text-muted-foreground">Needs Review</p>
                 </div>
               )}
+              {/* Previously hidden — when AI was down, every transaction landed
+                  here and the screen claimed success with nothing imported. */}
+              {result.statistics.requiresManual > 0 && (
+                <div className="bg-amber-50 dark:bg-amber-950/20 rounded-lg p-3 text-center">
+                  <p className="text-2xl font-bold text-amber-600">{result.statistics.requiresManual}</p>
+                  <p className="text-sm text-muted-foreground">Needs Categorising</p>
+                </div>
+              )}
               {result.statistics.duplicatesSkipped > 0 && (
                 <div className="bg-muted/50 rounded-lg p-3 text-center">
                   <p className="text-2xl font-bold text-muted-foreground">{result.statistics.duplicatesSkipped}</p>
@@ -803,6 +825,18 @@ export function TransactionImportDialog({
                 </div>
               )}
             </div>
+
+            {result.aiDegraded && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  Smart categorisation was unavailable for this import
+                  {result.statistics.requiresManual > 0 &&
+                    ` — ${result.statistics.requiresManual} transaction${result.statistics.requiresManual === 1 ? ' was' : 's were'} held and won't appear in your accounts yet`}
+                  . Try importing the same file again shortly; duplicates are skipped automatically.
+                </AlertDescription>
+              </Alert>
+            )}
 
             {result.duplicateInfo && result.duplicateInfo.count > 0 && (
               <Alert>

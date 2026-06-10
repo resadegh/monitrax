@@ -48,7 +48,9 @@ import type {
 import { ProviderError } from './types';
 import type { TaxAdvisorTool, ToolInputSchema } from '../types';
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+// gemini-2.0-flash retired 2026-06-01 (Google deprecations page) — migrated to
+// the current stable flash 2026-06-10. Re-verify model lineup before 2026-10-16.
+const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TURNS = 8; // Defensive — multi-turn loop guard.
 
