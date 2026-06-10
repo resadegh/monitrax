@@ -255,6 +255,69 @@ describe('Phase WX.4 — semantic zoom layout', () => {
     });
   });
 
+  describe('Phase 47 §4A — personal-tier ownership on the canvas', () => {
+    // A joint property between the user and an INDIVIDUAL co-owner
+    // (quick-created by the ownership picker) must be VISIBLE: the
+    // co-owner renders as a person beside YOU, the group node carries
+    // the aggregate, and the stake ribbons connect both owners.
+    const jointSnapshot = () =>
+      snapshot({
+        entities: [
+          entity('you', 'PERSONAL_NAME'),
+          entity('sarah', 'INDIVIDUAL'),
+        ],
+        assets: [asset('prop-1', 'property', 'you', 1_400_000)],
+        ownershipGroups: [
+          {
+            id: 'og1',
+            ownedObjectType: 'property',
+            ownedObjectId: 'prop-1',
+            tenancyType: 'JOINT_TENANTS',
+            stakes: [
+              { entityId: 'you', sharePct: 50, survivorshipApplies: true },
+              { entityId: 'sarah', sharePct: 50, survivorshipApplies: true },
+            ],
+          },
+        ],
+      } as Partial<WealthGraphSnapshot>);
+
+    it('renders INDIVIDUAL co-owners as people, never companies', () => {
+      const result = layoutWealthExplorer(jointSnapshot());
+      const sarah = result.nodes.find(n => n.id === 'sarah')!;
+      expect(sarah.type).toBe('individual');
+      expect(sarah.tier).toBe('individual');
+    });
+
+    it('keeps YOU as the anchor regardless of entity order', () => {
+      const flipped = jointSnapshot();
+      flipped.entities.reverse(); // sarah first in fetch order
+      const result = layoutWealthExplorer(flipped);
+      expect(result.nodes.find(n => n.id === 'you')!.isAnchor).toBe(true);
+      expect(result.nodes.find(n => n.id === 'sarah')!.isAnchor ?? false).toBe(false);
+    });
+
+    it('group node carries the Level 1 aggregate ("$X held" + badge) with warm naming', () => {
+      const result = layoutWealthExplorer(jointSnapshot());
+      const group = result.nodes.find(n => n.id === 'group-og1')!;
+      expect(group.shortName).toBe('Joint');
+      expect(group.assetSummary).toEqual({ count: 1, totalValue: 1_400_000 });
+      expect(group.value).toBe('$1.4M held');
+      // Both owners connect to the group via stake ribbons.
+      const stakeRibbons = result.relationships.filter(r => r.to === 'group-og1');
+      expect(stakeRibbons.map(r => r.from).sort()).toEqual(['sarah', 'you']);
+    });
+
+    it('unfolding the group reveals the jointly-held asset', () => {
+      const result = layoutWealthExplorer(jointSnapshot(), {
+        expandedEntityIds: ['group-og1'],
+      });
+      const prop = result.nodes.find(n => n.id === 'prop-1')!;
+      expect(prop.parentNodeId).toBe('group-og1');
+      const group = result.nodes.find(n => n.id === 'group-og1')!;
+      expect(group.value).toBeUndefined(); // aggregate folds away when open
+    });
+  });
+
   describe('collision relaxation', () => {
     it('keeps visible tiles from stacking on top of each other', () => {
       const crowded = snapshot({
