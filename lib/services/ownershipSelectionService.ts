@@ -31,8 +31,11 @@ import { prisma } from '@/lib/db';
 import { createEntity, getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import {
   createOwnershipGroup,
+  deleteOwnershipGroup,
+  listOwnershipGroups,
   type OwnershipStakeInput,
 } from '@/lib/services/ownershipService';
+import { createAuditLog } from '@/lib/security/auditLog';
 
 // ---------------------------------------------------------------------------
 // Types + pure parsing/validation (unit-tested)
@@ -321,4 +324,142 @@ export async function applyOwnershipSelection(
     requestMeta,
   );
   return { groupId: result.ownershipGroupId, warnings: result.warnings ?? [] };
+}
+
+// ---------------------------------------------------------------------------
+// Stage A2 — "Correct ownership record" (Q-EOF-1: correction, NEVER transfer)
+// ---------------------------------------------------------------------------
+
+export type OwnedObjectType = 'property' | 'loan' | 'account' | 'investmentAccount' | 'asset';
+
+const OWNED_OBJECT_TYPES: ReadonlySet<string> = new Set([
+  'property',
+  'loan',
+  'account',
+  'investmentAccount',
+  'asset',
+]);
+
+export function isOwnedObjectType(v: unknown): v is OwnedObjectType {
+  return typeof v === 'string' && OWNED_OBJECT_TYPES.has(v);
+}
+
+/** Verify the owned object exists + belongs to the user; return its current owner. */
+async function findOwnedObject(
+  userId: string,
+  objectType: OwnedObjectType,
+  objectId: string,
+): Promise<{ ownerEntityId: string | null } | null> {
+  const where = { id: objectId, userId };
+  const select = { ownerEntityId: true };
+  switch (objectType) {
+    case 'property':
+      return prisma.property.findFirst({ where, select });
+    case 'loan':
+      return prisma.loan.findFirst({ where, select });
+    case 'account':
+      return prisma.account.findFirst({ where, select });
+    case 'investmentAccount':
+      return prisma.investmentAccount.findFirst({ where, select });
+    case 'asset':
+      return prisma.asset.findFirst({ where, select });
+  }
+}
+
+/**
+ * Correct the ownership record of an existing owned object (Stage A2).
+ *
+ * Semantics (Q-EOF-1, decided 2026-06-10): this CORRECTS a wrong record —
+ * "this owner was always on the title; I entered it wrong." It is NEVER a
+ * transfer affordance (a real transfer is a disposal + acquisition with
+ * CGT/duty consequences — out of scope by design; the UI carries the
+ * warning verbatim).
+ *
+ * §12.11 destructive-write discipline:
+ *   - `ownerEntityId` update: `where { id, userId }` composite confines
+ *     the write to the caller's own row; the ONLY column touched is
+ *     `ownerEntityId` (an attribution pointer, not user-entered financial
+ *     data).
+ *   - Existing OwnershipGroups for the object are hard-deleted via
+ *     `deleteOwnershipGroup` (its documented "mistaken entry" semantic) —
+ *     each delete is ownership-verified inside the canonical service.
+ *   - Every correction is audit-logged as OWNERSHIP_RECORD_CORRECTED with
+ *     the user's reason (truncated; no financial values — §13.3).
+ */
+export async function correctOwnershipRecord(
+  userId: string,
+  objectType: OwnedObjectType,
+  objectId: string,
+  selection: OwnershipSelection,
+  reason: string,
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<{ warnings: string[] }> {
+  const existing = await findOwnedObject(userId, objectType, objectId);
+  if (!existing) {
+    throw new OwnershipSelectionError('ENTITY_NOT_FOUND', 'Item not found.');
+  }
+
+  const newOwnerEntityId = await resolveOwnerEntityIdForSelection(userId, selection);
+
+  // 1) Re-point legal title if it changed.
+  if (existing.ownerEntityId !== newOwnerEntityId) {
+    const where = { id: objectId, userId };
+    const data = { ownerEntityId: newOwnerEntityId };
+    switch (objectType) {
+      case 'property':
+        await prisma.property.update({ where, data });
+        break;
+      case 'loan':
+        await prisma.loan.update({ where, data });
+        break;
+      case 'account':
+        await prisma.account.update({ where, data });
+        break;
+      case 'investmentAccount':
+        await prisma.investmentAccount.update({ where, data });
+        break;
+      case 'asset':
+        await prisma.asset.update({ where, data });
+        break;
+    }
+  }
+
+  // 2) Replace any existing co-ownership record (the old record was wrong).
+  const groups = await listOwnershipGroups(userId, {
+    ownedObjectType: objectType,
+    ownedObjectId: objectId,
+  });
+  for (const g of groups) {
+    await deleteOwnershipGroup(userId, g.id, requestMeta);
+  }
+
+  // 3) Record the corrected co-ownership, if any.
+  let warnings: string[] = [];
+  if (selection.mode === 'joint' || selection.mode === 'shared') {
+    const applied = await applyOwnershipSelection(
+      userId,
+      objectType,
+      objectId,
+      selection,
+      requestMeta,
+    );
+    warnings = applied?.warnings ?? [];
+  }
+
+  void createAuditLog({
+    userId,
+    action: 'OWNERSHIP_RECORD_CORRECTED',
+    status: 'SUCCESS',
+    entityType: objectType,
+    entityId: objectId,
+    metadata: {
+      mode: selection.mode,
+      reason: reason.slice(0, 300),
+      previousOwnerEntityId: existing.ownerEntityId,
+      newOwnerEntityId,
+    },
+    ...requestMeta,
+  }).catch(() => {});
+
+  return { warnings };
 }

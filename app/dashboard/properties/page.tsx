@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
+import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -235,6 +236,8 @@ function PropertiesPageContent() {
   // Phase 47 Stage A — ownership selection (create only; post-creation
   // changes go through the "correct ownership record" flow, Stage A2).
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
+  // Phase 47 Stage A2 — correction flow on the edit path.
+  const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -1081,6 +1084,15 @@ function PropertiesPageContent() {
             {!editingId && formData.type !== 'RENTAL' && (
               <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
             )}
+            {editingId && formData.type !== 'RENTAL' && (
+              <button
+                type="button"
+                onClick={() => setCorrectOwnershipOpen(true)}
+                className="text-xs text-sky-600 underline-offset-2 hover:underline"
+              >
+                Recorded under the wrong owner? Correct the ownership record
+              </button>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => setShowDialog(false)}>
@@ -1096,6 +1108,19 @@ function PropertiesPageContent() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Phase 47 Stage A2 — correct ownership record */}
+      {editingId && (
+        <CorrectOwnershipDialog
+          open={correctOwnershipOpen}
+          onOpenChange={setCorrectOwnershipOpen}
+          token={token}
+          objectType="property"
+          objectId={editingId}
+          objectName={formData.name || 'This property'}
+          onCorrected={() => void loadProperties()}
+        />
+      )}
 
       {/* Property Detail Dialog */}
       <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
