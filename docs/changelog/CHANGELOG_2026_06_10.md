@@ -1,5 +1,49 @@
 # Changelog - 2026-06-10
 
+## Session: email-verification-gcp-3ivh5a — follow-up (prefetch-safe verify)
+
+### Changes Made
+- **Type**: Fix (hardening) — follow-up to the merged email-verification PR
+- **Scope**: Authentication / email verification
+- **Root Cause**: Firebase reset/verify links carry a single-use code.
+  Mail-client privacy protection + email security scanners pre-fetch links to
+  inspect them, consuming the one-time code before the human taps → spurious
+  "link expired or already used" on the first click (reproduced via iOS Mail
+  during password-reset testing). Our `/verify-email` page had the same
+  latent exposure: it called `applyActionCode` in `useEffect` (on load), so a
+  JS-executing prefetch would burn the verification code too.
+- **Solution (Reza chose "harden verify only, mitigate reset")**:
+  - `/verify-email` is now **prefetch-safe** — on load it only runs read-only
+    `checkActionCode` (validates + reads the email, does NOT consume), then
+    waits for an explicit "Verify my email" button tap before calling
+    `applyActionCode`. A silent prefetch never taps the button.
+  - **Password reset** left on Firebase's hosted handler; mitigation +
+    operator guidance documented in `01_AUTHENTICATION.md` § Troubleshooting.
+    Durable custom-handler fix logged as Open Question **Q-AUTH-1** (deferred).
+
+### Files Modified
+- `app/verify-email/page.tsx` — button-gated apply; `checkActionCode`
+  validation on load; new `ready`/`verifying` states; warm error mapping
+- `docs/operational/security/01_AUTHENTICATION.md` — prefetch-safe note +
+  new § Troubleshooting ("link expired or already used")
+- `docs/IMPLEMENTATION_PLAN.md` — Open Question Q-AUTH-1 (custom reset handler)
+
+### Build Status
+| Step | Status | Notes |
+|------|--------|-------|
+| tsc --noEmit | PASS | no errors in changed file |
+| Lint | PASS | `next lint` 0 warnings/errors |
+| Build | PASS | `next build` ✓ — `/verify-email` 2.89 kB |
+
+### Operator config done this session (Firebase console, by Reza)
+- Sender name → "Monitrax"; public-facing name → "Monitrax"; support email
+  → admin@monitrax.com.au
+- Custom sending domain (From → noreply@monitrax.com.au) — verification
+  in progress (pending DNS); From stays firebaseapp.com until DNS validates;
+  emails send fine meanwhile.
+
+---
+
 ## Session: email-verification-gcp-3ivh5a
 
 ### Changes Made
