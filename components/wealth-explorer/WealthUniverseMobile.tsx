@@ -13,6 +13,14 @@
  * Renders independently — no shared component with WealthUniverseCanvas
  * to keep refactor risk low for the first ship. Extraction policy
  * (CLAUDE.md §12.8) — extract on the second use, not the first.
+ *
+ * Semantic zoom (Phase WX.4, 2026-06-10): the CANVAS renders the
+ * collapsed Level 1 layout (entities only, count badges + "$X held"),
+ * unfolding one constellation on tap. The bottom-sheet LIST keeps the
+ * fully-expanded layout ('all') — that's where granular asset browsing
+ * lives on mobile.
+ * Semantic-zoom SoT: screen `e5ecb8d170cc4fbdbc336413cd9948d2`,
+ * artefact `.stitch/designs/wealth-universe-zoom/universe-level1-mobile-dark.{html,png}`.
  */
 
 'use client';
@@ -41,6 +49,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
+import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   NODE_ACCENT,
   RIBBON_COLOR,
@@ -101,8 +110,11 @@ const SNAP_FULL_FRAC = 0.92;
 type SnapState = 'peek' | 'half' | 'full';
 
 export default function WealthUniverseMobile() {
-  const { layout, snapshot, loading, error, refetch } = useWealthExplorerData();
+  const { layout: baseLayout, snapshot, loading, error, refetch } = useWealthExplorerData();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Phase WX.4 — which entity (or `group-<id>`) has its constellation
+  // unfolded on the canvas.
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   const [snap, setSnap] = useState<SnapState>('peek');
@@ -131,13 +143,38 @@ export default function WealthUniverseMobile() {
 
   const sheetHeight = snapHeights[snap];
 
-  const nodes = layout?.nodes ?? [];
-  const relationships = layout?.relationships ?? [];
+  // Phase WX.4 — two layouts from the one snapshot. The canvas renders
+  // the collapsed Level 1 (+ tapped constellation); the bottom-sheet
+  // list keeps the fully-expanded graph so granular asset browsing is
+  // untouched. The layout function is pure and cheap.
+  const canvasLayout = useMemo(
+    () =>
+      snapshot
+        ? layoutWealthExplorer(snapshot, { expandedEntityIds: expandedIds })
+        : baseLayout,
+    [snapshot, expandedIds, baseLayout],
+  );
+  const fullLayout = useMemo(
+    () => (snapshot ? layoutWealthExplorer(snapshot, { assetDetail: 'all' }) : baseLayout),
+    [snapshot, baseLayout],
+  );
+  const layout = canvasLayout;
+
+  const nodes = useMemo(() => canvasLayout?.nodes ?? [], [canvasLayout]);
+  const relationships = useMemo(() => canvasLayout?.relationships ?? [], [canvasLayout]);
+  const listNodes = useMemo(() => fullLayout?.nodes ?? [], [fullLayout]);
+  const listRelationships = useMemo(() => fullLayout?.relationships ?? [], [fullLayout]);
   const nodesById = useMemo(
     () => Object.fromEntries(nodes.map(n => [n.id, n])),
     [nodes],
   );
-  const selectedNode = selectedId ? nodesById[selectedId] : null;
+  const listNodesById = useMemo(
+    () => Object.fromEntries(listNodes.map(n => [n.id, n])),
+    [listNodes],
+  );
+  // Selection resolves against the FULL graph — an asset tapped in the
+  // list must resolve even before its constellation unfolds on canvas.
+  const selectedNode = selectedId ? listNodesById[selectedId] : null;
 
   const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
     const chip = FILTER_CHIPS.find(c => c.id === activeFilter);
@@ -148,8 +185,8 @@ export default function WealthUniverseMobile() {
   const matchedNodeIds = useMemo<Set<string> | null>(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return null;
-    return new Set(nodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
-  }, [nodes, searchQuery]);
+    return new Set(listNodes.filter(n => n.name.toLowerCase().includes(q)).map(n => n.id));
+  }, [listNodes, searchQuery]);
 
   function nodeOpacity(node: WealthNode): number {
     let opacity = 1;
@@ -209,8 +246,25 @@ export default function WealthUniverseMobile() {
   }
 
   function onTapTile(id: string) {
+    // Phase WX.4 — selection drives the canvas expansion. Tapping an
+    // asset keeps its parent constellation open; tapping an entity
+    // unfolds its own.
+    const node = listNodesById[id];
     setSelectedId(id);
+    if (node?.tier === 'asset') {
+      if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
+    } else if (node?.assetSummary) {
+      setExpandedIds([id]);
+    } else {
+      setExpandedIds([]);
+    }
     if (snap === 'peek') setSnap('half');
+  }
+
+  function clearSelection() {
+    setSelectedId(null);
+    setExpandedIds([]);
+    setSnap('peek');
   }
 
   // Loading / error / empty states share the same shell.
@@ -492,8 +546,8 @@ export default function WealthUniverseMobile() {
             {FILTER_CHIPS.map(chip => {
               const count =
                 chip.types === 'all'
-                  ? nodes.length
-                  : nodes.filter(n => (chip.types as WealthNodeType[]).includes(n.type)).length;
+                  ? listNodes.length
+                  : listNodes.filter(n => (chip.types as WealthNodeType[]).includes(n.type)).length;
               const active = chip.id === activeFilter;
               return (
                 <button
@@ -524,12 +578,10 @@ export default function WealthUniverseMobile() {
           <div className="px-4 pb-3">
             <SelectedEntityCard
               node={selectedNode}
-              onClose={() => {
-                // Close BOTH the selection and the sheet — addresses
-                // the 'card cannot be minimised' feedback (2026-05-31).
-                setSelectedId(null);
-                setSnap('peek');
-              }}
+              // Close the selection, fold the constellation, and drop
+              // the sheet — addresses the 'card cannot be minimised'
+              // feedback (2026-05-31).
+              onClose={clearSelection}
               assets={
                 snapshot
                   ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
@@ -543,20 +595,21 @@ export default function WealthUniverseMobile() {
         <div className="px-4 pb-6">
           <div className="mb-2 flex items-center justify-between">
             <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">
-              All entities · {nodes.length}
+              All entities · {listNodes.length}
             </div>
           </div>
           <ul className="space-y-1">
-            {nodes
+            {listNodes
               .filter(n => (visibleTypes ? visibleTypes.has(n.type) : true))
               .filter(n => (matchedNodeIds ? matchedNodeIds.has(n.id) : true))
               .map(node => {
                 const Glyph = NODE_GLYPH[node.type];
                 const accent = NODE_ACCENT[node.type];
                 const isSel = selectedId === node.id;
-                // Compute "Holds N" — count of outgoing ribbons of type 'holds'
-                // OR any related asset nodes connected via this entity.
-                const holdsCount = relationships.filter(
+                // Compute "Holds N" — count of outgoing ribbons of type
+                // 'holds' in the FULL graph (the canvas layout folds
+                // these away at Level 1).
+                const holdsCount = listRelationships.filter(
                   r => r.from === node.id && r.type === 'holds',
                 ).length;
                 return (
@@ -618,7 +671,7 @@ export default function WealthUniverseMobile() {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className="relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
+      className="wealth-universe-mobile-shell relative h-[calc(100vh-220px)] min-h-[640px] w-full overflow-hidden rounded-2xl"
       style={{
         background: 'radial-gradient(ellipse at 50% 40%, #0A0E1F 0%, #060914 60%, #050810 100%)',
       }}
@@ -634,6 +687,16 @@ function Shell({ children }: { children: React.ReactNode }) {
           0% { transform: scale(1); opacity: 0.7; }
           70% { transform: scale(1.4); opacity: 0; }
           100% { transform: scale(1.4); opacity: 0; }
+        }
+        @keyframes wealth-satellite-pop {
+          0% { transform: scale(0.3); opacity: 0; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          :global(.wealth-universe-mobile-shell *) {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+          }
         }
       `}</style>
       {children}
@@ -761,7 +824,18 @@ function MobileTile({
         zIndex: isSelected ? 30 : isAnchor ? 20 : 10,
       }}
     >
-      <div className="relative" style={{ width: renderedSize, height: renderedSize }}>
+      <div
+        className="relative"
+        style={{
+          width: renderedSize,
+          height: renderedSize,
+          // Phase WX.4 — satellites pop in when a constellation unfolds.
+          animation:
+            node.tier === 'asset'
+              ? 'wealth-satellite-pop 0.4s cubic-bezier(0.16, 1, 0.3, 1) both'
+              : undefined,
+        }}
+      >
         {anchorRings}
         {focalRing}
         <div
@@ -775,6 +849,19 @@ function MobileTile({
         >
           <Glyph size={Math.max(14, renderedSize * 0.36)} color={accent} strokeWidth={1.6} />
         </div>
+        {/* Phase WX.4 — Level 1 count badge (holdings folded into this
+            tile). Hidden once the constellation unfolds. */}
+        {node.assetSummary && !node.isExpanded && (
+          <span
+            className="absolute -bottom-1 -right-1 z-10 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[8px] font-semibold tabular-nums text-white/90"
+            style={{
+              background: 'rgba(13, 18, 36, 0.95)',
+              border: `1px solid ${accent}66`,
+            }}
+          >
+            {node.assetSummary.count}
+          </span>
+        )}
         {isAnchor && (
           <div
             className="absolute -top-3 left-1/2 inline-block -translate-x-1/2 rounded-full px-1 py-0.5 text-[8px] font-semibold tracking-[0.12em]"

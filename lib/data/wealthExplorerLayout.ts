@@ -25,6 +25,17 @@
  *      decides which to show).
  *   6. Tile size scales with `ownedObjectsCount` — entities holding
  *      more wealth render larger (Apple Dock significance encoding).
+ *   7. SEMANTIC ZOOM (Phase WX.4, 2026-06-10). By default the layout is
+ *      "Level 1 · Universe": asset satellites are NOT emitted — each
+ *      entity/group node instead carries an `assetSummary` (count +
+ *      non-loan total) that the canvas renders as a count badge and a
+ *      "$X held" line. Passing `expandedEntityIds` unfolds the
+ *      satellites of just those entities ("Level 2 · constellation"),
+ *      in one arc for ≤5 assets or two concentric rings beyond that.
+ *      `assetDetail: 'all'` restores the pre-WX.4 fully-expanded graph
+ *      (used by the mobile bottom-sheet list, which enumerates assets).
+ *      A final deterministic collision-relaxation pass keeps visible
+ *      tiles from overlapping as structures grow.
  *
  * Ribbons:
  *   - `EntityRelationship` rows drive typed edges
@@ -36,6 +47,11 @@
  *     when applicable).
  *
  * SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`.
+ * Semantic-zoom SoT: screens `770687a1c73c42f0b4fd5686782bf5f3` (L1
+ * desktop), `068403f1296440508b601c2fc32d5e20` (L2 desktop),
+ * `e5ecb8d170cc4fbdbc336413cd9948d2` (L1 mobile),
+ * `80c21d51c38242d883bec3d6875fabe6` (widget) —
+ * `.stitch/designs/wealth-universe-zoom/*.{html,png}`.
  */
 
 import type {
@@ -54,6 +70,23 @@ import type {
   WealthRelationship,
   RelationshipType,
 } from './wealthExplorerTypes';
+
+export interface LayoutOptions {
+  /**
+   * Semantic-zoom detail level (Phase WX.4).
+   *  - 'collapsed' (default) — Level 1: no asset satellites; entities
+   *    carry `assetSummary` instead. Entities listed in
+   *    `expandedEntityIds` still unfold their constellation.
+   *  - 'all' — every asset rendered as its own node (pre-WX.4
+   *    behaviour; used by list surfaces that enumerate assets).
+   */
+  assetDetail?: 'collapsed' | 'all';
+  /**
+   * Entity ids (or `group-<id>` synthetic ids) whose asset satellites
+   * should unfold at Level 2. Ignored when `assetDetail` is 'all'.
+   */
+  expandedEntityIds?: ReadonlyArray<string>;
+}
 
 export interface LayoutResult {
   nodes: WealthNode[];
@@ -130,20 +163,16 @@ function distributeInZone(
   };
 }
 
-/**
- * Place N satellites around a parent position, biased to the lower
- * hemisphere (so assets sit "downstream" of their owning entity).
- * `radiusPct` = distance in canvas-percentage units.
- */
-function placeSatellites(
+/** Spread N points across the lower arc below a parent. */
+function arcBelow(
   parent: { x: number; y: number },
   count: number,
   radiusPct: number,
 ): Array<{ x: number; y: number }> {
   if (count === 0) return [];
   if (count === 1) return [{ x: parent.x, y: parent.y + radiusPct }];
-  // Spread across 200° arc below the parent (from 350° → 190° going clockwise),
-  // skipping the top to keep the label readable.
+  // Spread across the arc below the parent, skipping the top to keep
+  // the label readable.
   const startAngle = Math.PI * 0.15; // ~27° below horizontal-right
   const endAngle = Math.PI * 0.85;   // ~27° below horizontal-left
   const step = (endAngle - startAngle) / (count - 1);
@@ -154,6 +183,80 @@ function placeSatellites(
       y: parent.y + radiusPct * Math.sin(angle),
     };
   });
+}
+
+/** Satellites per ring before the constellation spills outward. */
+const SATELLITE_RING_CAP = 6;
+
+/**
+ * Place N satellites around a parent position, biased to the lower
+ * hemisphere (so assets sit "downstream" of their owning entity).
+ * `radiusPct` = distance in canvas-percentage units. Beyond
+ * SATELLITE_RING_CAP the satellites split into two concentric rings —
+ * cramming one arc is exactly the overlap failure semantic zoom exists
+ * to fix (Phase WX.4).
+ */
+function placeSatellites(
+  parent: { x: number; y: number },
+  count: number,
+  radiusPct: number,
+): Array<{ x: number; y: number }> {
+  if (count <= SATELLITE_RING_CAP) return arcBelow(parent, count, radiusPct);
+  const inner = arcBelow(parent, SATELLITE_RING_CAP, radiusPct);
+  const outer = arcBelow(parent, count - SATELLITE_RING_CAP, radiusPct * 1.7);
+  return [...inner, ...outer];
+}
+
+/**
+ * Deterministic collision relaxation (Phase WX.4). Node positions are
+ * canvas-% but sizes are px, so we approximate 1% ≈ 10px (the canvas
+ * renders ≥1000px wide on desktop; on smaller surfaces tiles also
+ * shrink, so the approximation degrades gracefully). Pairs closer than
+ * their combined radii + a gap get pushed apart along their axis. The
+ * YOU anchor never moves — it is the layout's gravitational fixpoint.
+ * Mutates positions in place so `nodePositionById` references stay
+ * valid.
+ */
+const PCT_PER_PX = 0.1;
+function relaxCollisions(nodes: WealthNode[], iterations = 8): void {
+  for (let it = 0; it < iterations; it++) {
+    let moved = false;
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i];
+        const b = nodes[j];
+        const minDist = ((a.size + b.size) / 2 + 14) * PCT_PER_PX;
+        let dx = b.position.x - a.position.x;
+        let dy = b.position.y - a.position.y;
+        let dist = Math.hypot(dx, dy);
+        if (dist >= minDist) continue;
+        if (dist < 0.01) {
+          // Perfectly stacked — deterministic diagonal nudge.
+          dx = 0.5;
+          dy = 0.25;
+          dist = Math.hypot(dx, dy);
+        }
+        const push = (minDist - dist) / 2;
+        const ux = dx / dist;
+        const uy = dy / dist;
+        if (a.isAnchor) {
+          nudge(b, ux * push * 2, uy * push * 2);
+        } else if (b.isAnchor) {
+          nudge(a, -ux * push * 2, -uy * push * 2);
+        } else {
+          nudge(a, -ux * push, -uy * push);
+          nudge(b, ux * push, uy * push);
+        }
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+}
+
+function nudge(n: WealthNode, dx: number, dy: number): void {
+  n.position.x = Math.min(94, Math.max(6, n.position.x + dx));
+  n.position.y = Math.min(92, Math.max(8, n.position.y + dy));
 }
 
 function midpoint(
@@ -228,7 +331,10 @@ function shortLabel(edgeType: WealthGraphEdge['type']): string {
 // Main
 // ===========================================================================
 
-export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResult {
+export function layoutWealthExplorer(
+  snapshot: WealthGraphSnapshot,
+  options: LayoutOptions = {},
+): LayoutResult {
   const {
     entities,
     assets,
@@ -239,6 +345,51 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
     moneyFlowFy,
     moneyFlowFyOptions,
   } = snapshot;
+
+  // ---- Semantic zoom (Phase WX.4)
+  const detail = options.assetDetail ?? 'collapsed';
+  const expandedIds = new Set(options.expandedEntityIds ?? []);
+  const isUnfolded = (parentNodeId: string): boolean =>
+    detail === 'all' || expandedIds.has(parentNodeId);
+
+  // ---- Asset grouping — computed up-front so each entity/group tile
+  // can carry its aggregate summary at Level 1. Build a map of
+  // (objectType,objectId) → group so we know which assets route via a
+  // group instead of directly from their ownerEntityId.
+  const groupByOwnedObject = new Map<string, WealthGraphOwnershipGroup>();
+  ownershipGroups.forEach(g => {
+    groupByOwnedObject.set(`${g.ownedObjectType}:${g.ownedObjectId}`, g);
+  });
+
+  const ownedAssetsByEntity = new Map<string, WealthGraphAsset[]>();
+  const ownedAssetsByGroup = new Map<string, WealthGraphAsset[]>();
+  for (const a of assets) {
+    const groupKey = `${a.kind === 'investment-account' ? 'investmentAccount' : a.kind}:${a.id}`;
+    const group = groupByOwnedObject.get(groupKey);
+    if (group) {
+      const arr = ownedAssetsByGroup.get(group.id) ?? [];
+      arr.push(a);
+      ownedAssetsByGroup.set(group.id, arr);
+    } else {
+      const arr = ownedAssetsByEntity.get(a.ownerEntityId) ?? [];
+      arr.push(a);
+      ownedAssetsByEntity.set(a.ownerEntityId, arr);
+    }
+  }
+
+  // Aggregate for the Level 1 count badge + "$X held" line. The value
+  // sums NON-LOAN holdings only — loan principal is debt, and counting
+  // it as "held" wealth would overstate (financial-adviser lens). The
+  // count includes loans (they are real holdings to explore).
+  const summarize = (
+    held: WealthGraphAsset[] | undefined,
+  ): { count: number; totalValue: number } | undefined => {
+    if (!held || held.length === 0) return undefined;
+    const totalValue = held
+      .filter(a => a.kind !== 'loan')
+      .reduce((sum, a) => sum + (isFinite(a.value) ? a.value : 0), 0);
+    return { count: held.length, totalValue };
+  };
 
   const personal: WealthGraphEntity[] = [];
   const corporate: WealthGraphEntity[] = [];
@@ -273,16 +424,26 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
   ) {
     const ownedTotal = sumOwned(e.ownedObjectsCount);
     const size = sizeForEntity(nodeType, ownedTotal, isAnchor);
+    const summary = summarize(ownedAssetsByEntity.get(e.id));
+    const expanded = !!summary && isUnfolded(e.id);
     nodes.push({
       id: e.id,
       type: nodeType,
       name: e.name,
       shortName: isAnchor ? 'YOU' : shortenName(e.name),
       subtitle: subtitleFor(nodeType, e),
+      // Level 1 aggregate line — suppressed once the constellation is
+      // unfolded (the satellites then show their own values).
+      value:
+        summary && summary.totalValue > 0 && !expanded
+          ? `${formatValue(summary.totalValue)} held`
+          : undefined,
       position: pos,
       size,
       isAnchor,
       tier: nodeType === 'individual' ? 'individual' : 'entity',
+      assetSummary: summary,
+      isExpanded: expanded,
     });
     nodePositionById.set(e.id, pos);
   }
@@ -321,13 +482,6 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
   });
 
   // ---- Joint ownership groups (synthetic nodes between members)
-  // Build a map of (objectType,objectId) → group so we know which assets
-  // route via a group instead of directly from their ownerEntityId.
-  const groupByOwnedObject = new Map<string, WealthGraphOwnershipGroup>();
-  ownershipGroups.forEach(g => {
-    groupByOwnedObject.set(`${g.ownedObjectType}:${g.ownedObjectId}`, g);
-  });
-
   const groupNodePositionById = new Map<string, { x: number; y: number }>();
   ownershipGroups.forEach(g => {
     const memberPositions = g.stakes
@@ -340,6 +494,7 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
     const cy = memberPositions.reduce((s, p) => s + p.y, 0) / memberPositions.length + 3;
     const pos = { x: cx, y: cy };
     groupNodePositionById.set(g.id, pos);
+    const groupSummary = summarize(ownedAssetsByGroup.get(g.id));
     nodes.push({
       id: `group-${g.id}`,
       type: 'ownership-group',
@@ -349,31 +504,20 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
       position: pos,
       size: 36,
       tier: 'group',
+      assetSummary: groupSummary,
+      isExpanded: !!groupSummary && isUnfolded(`group-${g.id}`),
     });
   });
 
-  // ---- Asset nodes — placed in satellite arc below their owning entity
-  // (or below the centroid of an OwnershipGroup if jointly held).
-  const ownedAssetsByEntity = new Map<string, WealthGraphAsset[]>();
-  const ownedAssetsByGroup = new Map<string, WealthGraphAsset[]>();
-  for (const a of assets) {
-    const groupKey = `${a.kind === 'investment-account' ? 'investmentAccount' : a.kind}:${a.id}`;
-    const group = groupByOwnedObject.get(groupKey);
-    if (group) {
-      const arr = ownedAssetsByGroup.get(group.id) ?? [];
-      arr.push(a);
-      ownedAssetsByGroup.set(group.id, arr);
-    } else {
-      const arr = ownedAssetsByEntity.get(a.ownerEntityId) ?? [];
-      arr.push(a);
-      ownedAssetsByEntity.set(a.ownerEntityId, arr);
-    }
-  }
-
+  // ---- Asset nodes — placed in satellite arc/rings below their owning
+  // entity (or below the centroid of an OwnershipGroup if jointly
+  // held). Semantic zoom: satellites only unfold for expanded parents
+  // (or everywhere in 'all' mode).
   const assetPositionById = new Map<string, { x: number; y: number }>();
 
   // Place entity-owned assets
   ownedAssetsByEntity.forEach((assetsForEntity, entityId) => {
+    if (!isUnfolded(entityId)) return;
     const parentPos = nodePositionById.get(entityId);
     if (!parentPos) return;
     const positions = placeSatellites(parentPos, assetsForEntity.length, 9);
@@ -391,12 +535,14 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
         size: sizeForAsset(),
         ownerEntityId: a.ownerEntityId,
         tier: 'asset',
+        parentNodeId: entityId,
       });
     });
   });
 
   // Place group-owned assets just below the group node
   ownedAssetsByGroup.forEach((assetsForGroup, groupId) => {
+    if (!isUnfolded(`group-${groupId}`)) return;
     const groupPos = groupNodePositionById.get(groupId);
     if (!groupPos) return;
     const positions = placeSatellites(groupPos, assetsForGroup.length, 7);
@@ -414,6 +560,7 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
         size: sizeForAsset(),
         ownerEntityId: a.ownerEntityId,
         tier: 'asset',
+        parentNodeId: `group-${groupId}`,
       });
     });
   });
@@ -513,6 +660,11 @@ export function layoutWealthExplorer(snapshot: WealthGraphSnapshot): LayoutResul
       financialYear: f.financialYear,
     });
   }
+
+  // ---- Collision relaxation (Phase WX.4) — keep visible tiles from
+  // overlapping as the structure grows. Runs last so it sees the final
+  // node set (entities + groups + any unfolded satellites).
+  relaxCollisions(nodes);
 
   return {
     nodes,

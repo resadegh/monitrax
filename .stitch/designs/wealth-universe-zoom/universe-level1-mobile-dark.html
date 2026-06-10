@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Wealth Explorer · Mobile</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            'surface': '#0e150f',
+            'surface-dim': '#0e150f',
+            'surface-bright': '#343b33',
+            'navy-deep': '#020617',
+            'emerald-glow': '#10b981',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-animations">
+    @keyframes pulse-emerald {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+      50% { box-shadow: 0 0 20px 4px rgba(16, 185, 129, 0.2); }
+    }
+    .pulse-emerald { animation: pulse-emerald 3s infinite; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    .floating { animation: float 6s ease-in-out infinite; }
+
+    /* Glass Effect */
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+  </style>
+<style data-purpose="canvas-elements">
+    .canvas-bg {
+      background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .dust-mote {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.1;
+      pointer-events: none;
+    }
+    .connector-ribbon {
+      position: absolute;
+      fill: none;
+      stroke: rgba(16, 185, 129, 0.15);
+      stroke-width: 2;
+      stroke-dasharray: 4 4;
+    }
+  </style>
+</head>
+<body class="bg-surface text-white font-sans antialiased overflow-hidden select-none">
+<!-- BEGIN: Main Viewport -->
+<main class="relative h-screen w-full flex flex-col">
+<!-- BEGIN: Top Navigation Header -->
+<header class="absolute top-0 left-0 right-0 z-50 p-6 flex justify-between items-start pointer-events-none">
+<div class="pointer-events-auto">
+<p class="text-[10px] uppercase tracking-widest text-emerald-glow font-bold mb-1">My Wealth &gt; My Structure</p>
+<h1 class="text-2xl font-bold">Wealth Explorer</h1>
+</div>
+<div class="flex gap-3 pointer-events-auto">
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<button class="w-10 h-10 rounded-full glass-panel flex items-center justify-center">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+</header>
+<!-- END: Top Navigation Header -->
+<!-- BEGIN: Canvas Section (Interactive Universe) -->
+<section class="flex-grow canvas-bg relative" id="universe-canvas">
+<!-- Dust Motes Decoration -->
+<div class="dust-mote w-1 h-1 top-1/4 left-1/4"></div>
+<div class="dust-mote w-0.5 h-0.5 top-1/3 left-2/3"></div>
+<div class="dust-mote w-1.5 h-1.5 top-2/3 left-1/2"></div>
+<!-- SVG Connectors -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-40">
+<path class="connector-ribbon" d="M 187 450 Q 187 350, 100 250"></path>
+<path class="connector-ribbon" d="M 187 450 Q 187 350, 280 250"></path>
+<path class="connector-ribbon" d="M 100 250 Q 100 150, 50 100"></path>
+<path class="connector-ribbon" d="M 280 250 Q 280 150, 330 100"></path>
+</svg>
+<!-- Entity Tiles Container -->
+<div class="relative w-full h-full flex flex-col items-center justify-center pb-48">
+<!-- Top Row (Trustees) -->
+<div class="flex justify-between w-full px-12 mb-16">
+<!-- Trustee Co A -->
+<div class="flex flex-col items-center gap-2 floating" style="animation-delay: 0.5s">
+<div class="relative w-16 h-16 glass-panel rounded-2xl p-3 flex items-center justify-center">
+<img alt="Trustee" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsVYsGfM2v6Mm5PRr8Vzopfhy8NDXvpmPUoZQ4JpfJ2FzmfP9b7jp9lkVXKS9sGRzqSPQmyQ14bNgbSnIIh0L3v83R7Q_RvnBpQ_CacufljfHFrBfTyFvpP6ecFDALLZSpm_EHQz9NG-1OZ7fW-pdIyfBpgplgYEemr5CYGk-WwDiC02jgpj_aP2hUNx1ic5P82w8HpFov94QK53pUUfRGSeh-okKw5yYr2pehcKfqOgz29wq0AzyEjnIs"/>
+<span class="absolute -bottom-1 -right-1 bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded-full text-[10px] font-bold">1</span>
+</div>
+<div class="text-center">
+<p class="text-[10px] text-gray-400 font-medium">Trustee Co A</p>
+</div>
+</div>
+<!-- Trustee Co B -->
+<div class="flex flex-col items-center gap-2 floating" style="animation-delay: 1.2s">
+<div class="relative w-16 h-16 glass-panel rounded-2xl p-3 flex items-center justify-center">
+<img alt="Trustee" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsVYsGfM2v6Mm5PRr8Vzopfhy8NDXvpmPUoZQ4JpfJ2FzmfP9b7jp9lkVXKS9sGRzqSPQmyQ14bNgbSnIIh0L3v83R7Q_RvnBpQ_CacufljfHFrBfTyFvpP6ecFDALLZSpm_EHQz9NG-1OZ7fW-pdIyfBpgplgYEemr5CYGk-WwDiC02jgpj_aP2hUNx1ic5P82w8HpFov94QK53pUUfRGSeh-okKw5yYr2pehcKfqOgz29wq0AzyEjnIs"/>
+<span class="absolute -bottom-1 -right-1 bg-white/20 backdrop-blur-md px-1.5 py-0.5 rounded-full text-[10px] font-bold">1</span>
+</div>
+<div class="text-center">
+<p class="text-[10px] text-gray-400 font-medium">Trustee Co B</p>
+</div>
+</div>
+</div>
+<!-- Middle Row (Major Entities) -->
+<div class="flex justify-between w-full px-8 mb-12">
+<!-- Family Trust -->
+<div class="flex flex-col items-center gap-2 floating">
+<div class="relative w-20 h-20 glass-panel rounded-3xl p-4 flex items-center justify-center border-emerald-glow/30">
+<img alt="Trust" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsVYsGfM2v6Mm5PRr8Vzopfhy8NDXvpmPUoZQ4JpfJ2FzmfP9b7jp9lkVXKS9sGRzqSPQmyQ14bNgbSnIIh0L3v83R7Q_RvnBpQ_CacufljfHFrBfTyFvpP6ecFDALLZSpm_EHQz9NG-1OZ7fW-pdIyfBpgplgYEemr5CYGk-WwDiC02jgpj_aP2hUNx1ic5P82w8HpFov94QK53pUUfRGSeh-okKw5yYr2pehcKfqOgz29wq0AzyEjnIs"/>
+<span class="absolute -bottom-1 -right-1 bg-emerald-glow text-black px-2 py-0.5 rounded-full text-[10px] font-black">5</span>
+</div>
+<div class="text-center">
+<p class="text-xs font-semibold">Family Trust</p>
+<p class="text-[10px] text-emerald-glow">$4.2M</p>
+</div>
+</div>
+<!-- SMSF -->
+<div class="flex flex-col items-center gap-2 floating" style="animation-delay: 0.8s">
+<div class="relative w-20 h-20 glass-panel rounded-3xl p-4 flex items-center justify-center">
+<img alt="SMSF" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLv9do4X7HlNrifmelEo5in3ONvM1_AbCBYfMWaXRXR84HuR2CmTla1ioOlgAmTm2W1I_P-37agb3XnsIl_Mjut7_uxAIIS4HBJ-CczSYB7vkpZPdCnGvkLSrENbbC-iEp38OaITPO2jh6NWwbyewKNxcVWETK-KKeuzPI9dA3laGvYFkt3AVNq7LKuyxQwsn0ALcCTRjGnchiazE01d8uC29a5ICC2dnoRs7NC85rI-MaxLhhkzU2Zn_Q"/>
+<span class="absolute -bottom-1 -right-1 bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] font-bold">4</span>
+</div>
+<div class="text-center">
+<p class="text-xs font-semibold">Super Fund</p>
+<p class="text-[10px] text-emerald-glow">$847K</p>
+</div>
+</div>
+</div>
+<!-- Anchor Bottom (YOU) -->
+<div class="flex flex-col items-center gap-3">
+<div class="relative w-24 h-24 rounded-full p-1 border-2 border-emerald-glow/50 pulse-emerald">
+<div class="w-full h-full rounded-full bg-emerald-950 flex items-center justify-center overflow-hidden">
+<img alt="Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDUu6tCCEop96Z2Wg-i8scHW3FtJZL6gQAOOJ_McpFAx5ZaPzNFNpYj5GnSmA3HKnYEXTqxcU-rHLHRQlgSFC0zzgFTRt4dWsiBT_fJQHSPUJFd0vPrY_Vs5--KYQ-CA4kwkm7K3AbRs6qnHAnln6yYNBdZze-qEQ8ebuEUcLdQ78Wnr7AJ7D-Z8ZWc4nYuOpeHOHhrxkZaiSAtRKPfg-OcMmIAfCyHS-jKp_COkLMYZN0DiBg1UcuMbCpj4mBp9M6UBCdZ2Y4nACQ"/>
+</div>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 bg-emerald-glow text-black text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg">
+              YOU
+            </div>
+</div>
+<div class="text-center">
+<p class="text-xs font-medium text-emerald-glow uppercase tracking-widest">Core Entity</p>
+</div>
+</div>
+</div>
+</section>
+<!-- END: Canvas Section -->
+<!-- BEGIN: Bottom Sheet -->
+<div class="fixed bottom-0 left-0 right-0 z-[100] h-[55%] glass-panel rounded-t-[40px] shadow-2xl flex flex-col translate-y-12" id="bottom-sheet">
+<!-- Drag Handle -->
+<div class="w-full flex justify-center py-4">
+<div class="w-12 h-1.5 bg-white/20 rounded-full"></div>
+</div>
+<!-- Filters Row -->
+<div class="px-6 pb-4 overflow-x-auto flex gap-2 no-scrollbar">
+<button class="bg-emerald-glow text-black px-5 py-2.5 rounded-full text-xs font-bold whitespace-nowrap">All 14</button>
+<button class="glass-panel text-white/70 px-5 py-2.5 rounded-full text-xs font-medium whitespace-nowrap border-white/5">People 2</button>
+<button class="glass-panel text-white/70 px-5 py-2.5 rounded-full text-xs font-medium whitespace-nowrap border-white/5">Trusts 1</button>
+<button class="glass-panel text-white/70 px-5 py-2.5 rounded-full text-xs font-medium whitespace-nowrap border-white/5">Companies 3</button>
+</div>
+<!-- Scrollable List -->
+<div class="flex-grow overflow-y-auto px-6 pb-24">
+<p class="text-[10px] uppercase tracking-widest text-white/40 font-bold mb-4">All Entities · 14</p>
+<!-- Entity Card Item (Expanded Detail) -->
+<div class="glass-panel rounded-3xl p-5 mb-4 border-white/10">
+<div class="flex items-center justify-between mb-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-2xl bg-indigo-500/20 flex items-center justify-center p-2">
+<img alt="Icon" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsVYsGfM2v6Mm5PRr8Vzopfhy8NDXvpmPUoZQ4JpfJ2FzmfP9b7jp9lkVXKS9sGRzqSPQmyQ14bNgbSnIIh0L3v83R7Q_RvnBpQ_CacufljfHFrBfTyFvpP6ecFDALLZSpm_EHQz9NG-1OZ7fW-pdIyfBpgplgYEemr5CYGk-WwDiC02jgpj_aP2hUNx1ic5P82w8HpFov94QK53pUUfRGSeh-okKw5yYr2pehcKfqOgz29wq0AzyEjnIs"/>
+</div>
+<div>
+<p class="text-[9px] uppercase tracking-wider text-emerald-glow font-bold">Discretionary Trust</p>
+<h3 class="text-sm font-bold">Renew Investment Family Trust</h3>
+</div>
+</div>
+<div class="bg-emerald-500/20 text-emerald-glow px-2 py-1 rounded-md text-[9px] font-bold border border-emerald-500/30 flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-glow"></span> VALID
+            </div>
+</div>
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 gap-3 mb-5">
+<div class="bg-black/40 rounded-2xl p-3 border border-white/5">
+<p class="text-[9px] text-white/40 uppercase font-bold mb-1">Trustee</p>
+<p class="text-xs font-medium truncate">Renew Investment Pty</p>
+</div>
+<div class="bg-black/40 rounded-2xl p-3 border border-white/5">
+<p class="text-[9px] text-white/40 uppercase font-bold mb-1">Beneficiaries</p>
+<p class="text-xs font-medium">3 Active</p>
+</div>
+</div>
+<button class="w-full bg-indigo-400 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-2xl text-xs transition-colors flex items-center justify-center gap-2">
+            Open full entity file 
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M14 5l7 7m0 0l-7 7m7-7H3" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+</div>
+<!-- List Items -->
+<div class="space-y-3">
+<div class="flex items-center justify-between glass-panel p-4 rounded-2xl border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-white/5 p-2 flex items-center justify-center">
+<img alt="Icon" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLvk7dFk1oxDjt7UvRVgmpyuYqUCZpgJTwpQVOBHuRoWBhA7Vylz1qiWhNVG_Cwy9EUXTepZCslRG7I6Q6uv1lLYu3xVzGPvEl5cMiPYyLjEDKts0plIL93VclU_MD1PEdEhLrGNcQYfVXp_xMCV9v4eTNhuqNL0W7g6gYVvkWXiG8oSC4SM3eABGc-NvuLFpMQJdFBKMXbqOJ3xJSLOfEVGT47fNeEvqCzuQrL9YguX5noQc8r4L5mkVr0"/>
+</div>
+<div>
+<p class="text-xs font-bold">Main Residence</p>
+<p class="text-[10px] text-white/40">Direct Asset</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-white/10 text-white/60 px-2 py-0.5 rounded text-[9px] font-bold">HOLDS 1</span>
+<svg class="w-4 h-4 text-white/20" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+<div class="flex items-center justify-between glass-panel p-4 rounded-2xl border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-xl bg-white/5 p-2 flex items-center justify-center">
+<img alt="Icon" class="w-full h-full object-contain" src="https://lh3.googleusercontent.com/aida/AP1WRLsVYsGfM2v6Mm5PRr8Vzopfhy8NDXvpmPUoZQ4JpfJ2FzmfP9b7jp9lkVXKS9sGRzqSPQmyQ14bNgbSnIIh0L3v83R7Q_RvnBpQ_CacufljfHFrBfTyFvpP6ecFDALLZSpm_EHQz9NG-1OZ7fW-pdIyfBpgplgYEemr5CYGk-WwDiC02jgpj_aP2hUNx1ic5P82w8HpFov94QK53pUUfRGSeh-okKw5yYr2pehcKfqOgz29wq0AzyEjnIs"/>
+</div>
+<div>
+<p class="text-xs font-bold">Holding Co Pty Ltd</p>
+<p class="text-[10px] text-white/40">Private Company</p>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-white/10 text-white/60 px-2 py-0.5 rounded text-[9px] font-bold">HOLDS 3</span>
+<svg class="w-4 h-4 text-white/20" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: Bottom Sheet -->
+<!-- BEGIN: Bottom Tab Bar -->
+<nav class="fixed bottom-0 left-0 right-0 z-[110] bg-surface-container-lowest/80 backdrop-blur-xl border-t border-white/5 px-6 py-3 pb-8">
+<div class="flex justify-between items-center max-w-md mx-auto">
+<div class="flex flex-col items-center gap-1 opacity-40">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[9px] font-bold uppercase tracking-tighter">Dashboard</span>
+</div>
+<div class="flex flex-col items-center gap-1 opacity-40">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[9px] font-bold uppercase tracking-tighter">Accounts</span>
+</div>
+<div class="flex flex-col items-center gap-1 text-emerald-glow">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[9px] font-bold uppercase tracking-tighter">Wealth</span>
+</div>
+<div class="flex flex-col items-center gap-1 opacity-40">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[9px] font-bold uppercase tracking-tighter">Guide</span>
+</div>
+<div class="flex flex-col items-center gap-1 opacity-40">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-[9px] font-bold uppercase tracking-tighter">More</span>
+</div>
+</div>
+</nav>
+<!-- END: Bottom Tab Bar -->
+</main>
+<!-- END: Main Viewport -->
+<script data-purpose="bottom-sheet-interaction">
+    const sheet = document.getElementById('bottom-sheet');
+    let startY = 0;
+    let currentY = 0;
+    let isDragging = false;
+
+    sheet.addEventListener('touchstart', (e) => {
+      startY = e.touches[0].clientY;
+      isDragging = true;
+    });
+
+    sheet.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      currentY = e.touches[0].clientY;
+      const diff = currentY - startY;
+      if (diff > 0) {
+        sheet.style.transform = `translateY(${diff + 12}px)`;
+      }
+    });
+
+    sheet.addEventListener('touchend', () => {
+      isDragging = false;
+      sheet.style.transition = 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+      sheet.style.transform = 'translateY(12px)';
+      setTimeout(() => {
+        sheet.style.transition = '';
+      }, 300);
+    });
+  </script>
+</body></html>

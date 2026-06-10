@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Diagnostic Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container": "#e9f0e5",
+                    "secondary-fixed": "#dce2f6",
+                    "on-background": "#171d16",
+                    "background": "#f4fcf0",
+                    "tertiary-fixed-dim": "#b7c8e1",
+                    "surface-container-lowest": "#ffffff",
+                    "on-secondary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "on-surface-variant": "#3e4a3d",
+                    "on-tertiary-fixed": "#0b1c30",
+                    "secondary-container": "#d9dff4",
+                    "inverse-primary": "#62df7d",
+                    "on-error": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "surface-ivory": "#FAFAF7",
+                    "tertiary-fixed": "#d3e4fe",
+                    "error": "#ba1a1a",
+                    "error-red": "#DC2626",
+                    "on-tertiary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "trail-indigo": "#6366F1",
+                    "on-secondary-fixed": "#151b2a",
+                    "surface-bright": "#f4fcf0",
+                    "surface-variant": "#dde5d9",
+                    "surface-container-highest": "#dde5d9",
+                    "trail-violet": "#8B5CF6",
+                    "trail-sky": "#0EA5E9",
+                    "tertiary": "#4d5d73",
+                    "inverse-surface": "#2b322b",
+                    "on-primary-container": "#f7fff2",
+                    "surface-dim": "#d5dcd1",
+                    "on-secondary-fixed-variant": "#404757",
+                    "surface-container-low": "#eff6ea",
+                    "secondary": "#585e6f",
+                    "primary": "#006b2c",
+                    "surface-tint": "#006e2d",
+                    "surface-container-high": "#e3eadf",
+                    "primary-container": "#00873a",
+                    "on-secondary-container": "#5c6274",
+                    "outline-variant": "#bdcaba",
+                    "on-tertiary-container": "#fdfcff",
+                    "outline": "#6e7b6c",
+                    "on-surface": "#171d16",
+                    "surface": "#f4fcf0",
+                    "on-primary-fixed": "#002109",
+                    "tertiary-container": "#66768d",
+                    "outline-slate": "#94A3B8",
+                    "inverse-on-surface": "#ecf3e7",
+                    "primary-fixed-dim": "#62df7d",
+                    "trail-emerald": "#16A34A",
+                    "trail-amber": "#F59E0B",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "on-tertiary-fixed-variant": "#38485d",
+                    "primary-fixed": "#7ffc97",
+                    "on-primary-fixed-variant": "#005320"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "unit": "4px",
+                    "section-gap": "48px",
+                    "gutter": "24px",
+                    "margin-desktop": "48px",
+                    "container-max": "1280px",
+                    "margin-mobile": "20px"
+            },
+            "fontFamily": {
+                    "body-md": ["Inter"],
+                    "eyebrow": ["Inter"],
+                    "data-xl": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "data-lg": ["Inter"],
+                    "headline-lg-mobile": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                    "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .bg-subtle-top-fade {
+            background: linear-gradient(to bottom, #FFFFFF 0%, #FAFAF7 15%, #FAFAF7 100%);
+        }
+        .silk-thread {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.15);
+            stroke-width: 1px;
+            filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.2));
+            stroke-linecap: round;
+        }
+        .particle {
+            fill: #16A34A;
+            filter: drop-shadow(0 0 4px #16A34A);
+            animation: moveParticle 3s linear infinite;
+        }
+        @keyframes moveParticle {
+            0% { offset-distance: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { offset-distance: 100%; opacity: 0; }
+        }
+        .pulse-ring {
+            animation: pulseRing 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulseRing {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-subtle-top-fade min-h-screen flex items-center justify-center text-on-surface">
+<!-- Top Navigation Anchor (Required Shell context, simplified for canvas focus) -->
+<header class="fixed top-0 inset-x-0 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80 hidden md:flex">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Monitrax</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">notifications</span>
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">settings</span>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[20px]">person</span>
+</div>
+</div>
+</header>
+<!-- Main Canvas Area -->
+<main class="w-full max-w-container-max mx-auto px-gutter py-24 flex flex-col md:flex-row gap-6 justify-center items-center">
+<!-- LEFT CARD: Wealth Universe (Dark Glass Premium Moment) -->
+<div class="w-[580px] h-[340px] rounded-[20px] relative overflow-hidden flex flex-col justify-between shadow-[0_16px_40px_rgba(11,18,32,0.12)] border-[1.5px] border-white/10" style="background: radial-gradient(ellipse at center, #0A0E1F 0%, #050810 100%);">
+<!-- Header -->
+<div class="flex justify-between items-start p-6 pb-0 z-20 relative">
+<div class="flex flex-col gap-1">
+<span class="text-[9px] text-slate-400 font-medium tracking-wider uppercase">MY STRUCTURE</span>
+<h3 class="text-[14px] font-semibold text-white">Wealth Universe</h3>
+</div>
+<div class="flex items-center gap-3">
+<div class="px-2.5 py-1 rounded-full bg-white/5 border border-white/5 text-[10px] text-slate-300 font-medium tracking-wide">
+                        8 entities · 5 assets
+                    </div>
+<button class="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white transition-colors">
+<span class="material-symbols-outlined text-[14px]">arrow_outward</span>
+</button>
+</div>
+</div>
+<!-- Mini Canvas / Graph Area -->
+<div class="relative flex-1 w-full mt-2 z-10"><!-- New Constellation SVG Connections -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" viewbox="0 0 580 220">
+<defs>
+<lineargradient id="grad-emerald" x1="0%" x2="100%" y1="0%" y2="100%">
+<stop offset="0%" stop-color="#16A34A" stop-opacity="0.4"></stop>
+<stop offset="100%" stop-color="#6366F1" stop-opacity="0.1"></stop>
+</lineargradient>
+</defs>
+<!-- Connection Ribbons -->
+<path class="opacity-50" d="M 290 190 L 290 80" fill="none" stroke="url(#grad-emerald)" stroke-width="1"></path>
+<path class="opacity-30" d="M 290 190 L 140 110" fill="none" stroke="url(#grad-emerald)" stroke-width="1"></path>
+<path class="opacity-30" d="M 290 190 L 440 110" fill="none" stroke="url(#grad-emerald)" stroke-width="1"></path>
+<path class="opacity-20" d="M 290 190 L 100 50" fill="none" stroke="url(#grad-emerald)" stroke-width="1"></path>
+<path class="opacity-20" d="M 290 190 L 480 50" fill="none" stroke="url(#grad-emerald)" stroke-width="1"></path>
+</svg>
+<!-- YOU Anchor (Bottom Center) -->
+<div class="absolute bottom-[20px] left-1/2 -translate-x-1/2 flex flex-col items-center z-20">
+<div class="relative flex items-center justify-center">
+<div class="absolute inset-0 rounded-xl border border-trail-emerald/50 pulse-ring"></div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-violet to-fuchsia-600 flex items-center justify-center border border-white/20 shadow-lg z-10">
+<span class="material-symbols-outlined text-white text-[20px]">person</span>
+</div>
+</div>
+<div class="mt-2 px-2 py-0.5 rounded-md bg-white/10 backdrop-blur-md border border-white/5 flex items-center gap-1">
+<span class="text-trail-emerald text-[8px]">★</span>
+<span class="text-[9px] font-semibold text-white tracking-wider">YOU</span>
+</div>
+</div>
+<!-- Entity Tiles Constellation -->
+<!-- Family Trust (Center Top) -->
+<div class="absolute top-[40px] left-1/2 -translate-x-1/2">
+<div class="relative w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-white/80 text-[20px]">account_balance</span>
+<div class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-trail-emerald text-[8px] font-bold text-white border border-white/20">5</div>
+</div>
+</div>
+<!-- SMSF (Left Mid) -->
+<div class="absolute top-[90px] left-[120px]">
+<div class="relative w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-white/80 text-[20px]">savings</span>
+<div class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-trail-sky text-[8px] font-bold text-white border border-white/20">4</div>
+</div>
+</div>
+<!-- Holding Co (Right Mid) -->
+<div class="absolute top-[90px] right-[120px]">
+<div class="relative w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-white/80 text-[20px]">corporate_fare</span>
+<div class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-trail-indigo text-[8px] font-bold text-white border border-white/20">3</div>
+</div>
+</div>
+<!-- Trustee Co A (Far Left Top) -->
+<div class="absolute top-[30px] left-[80px]">
+<div class="relative w-10 h-10 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center opacity-80">
+<span class="material-symbols-outlined text-white/60 text-[18px]">account_tree</span>
+<div class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-slate-600 text-[8px] font-bold text-white border border-white/20">1</div>
+</div>
+</div>
+<!-- Trustee Co B (Far Right Top) -->
+<div class="absolute top-[30px] right-[80px]">
+<div class="relative w-10 h-10 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 flex items-center justify-center opacity-80">
+<span class="material-symbols-outlined text-white/60 text-[18px]">account_tree</span>
+<div class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full bg-slate-600 text-[8px] font-bold text-white border border-white/20">1</div>
+</div>
+</div></div>
+<!-- Footer -->
+<div class="flex justify-between items-center p-6 pt-0 z-20 relative">
+<span class="text-[11px] text-white/80 font-medium">$7.2M held across your structure</span>
+<button class="text-[11px] font-medium text-trail-emerald hover:text-primary-fixed transition-colors flex items-center gap-1 group">
+                    Open Wealth Universe <span class="group-hover:translate-x-0.5 transition-transform">→</span>
+</button>
+</div>
+</div>
+<!-- RIGHT CARD: Debt Quality (Restrained Editorial Light Mode) -->
+<div class="w-[580px] h-[340px] bg-white rounded-2xl border-[1.5px] border-slate-200 p-8 flex flex-col shadow-sm">
+<!-- Header -->
+<div class="mb-8">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase block mb-1">DEBT QUALITY</span>
+<h3 class="font-headline-sm text-headline-sm text-on-tertiary-fixed">Mostly good debt</h3>
+</div>
+<!-- Progress Bar Section -->
+<div class="mb-8">
+<div class="flex justify-between items-end mb-2">
+<span class="font-body-sm text-body-sm text-on-surface-variant font-medium">Good vs Bad Debt</span>
+<span class="font-data-lg text-data-lg text-primary tracking-tight">78%</span>
+</div>
+<div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full transition-all duration-1000 ease-out" style="width: 78%;"></div>
+</div>
+</div>
+<!-- Breakdown Rows -->
+<div class="flex flex-col gap-4 flex-1">
+<!-- Row 1 -->
+<div class="flex justify-between items-center pb-3 border-b border-surface-variant">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-body-md text-body-md text-on-surface">Investment Loans</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-medium">$840,000</span>
+</div>
+<!-- Row 2 -->
+<div class="flex justify-between items-center pb-3 border-b border-surface-variant">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-trail-sky"></div>
+<span class="font-body-md text-body-md text-on-surface">Personal Mortgage</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-medium">$210,000</span>
+</div>
+<!-- Row 3 -->
+<div class="flex justify-between items-center">
+<div class="flex items-center gap-3">
+<div class="w-2 h-2 rounded-full bg-error-red"></div>
+<span class="font-body-md text-body-md text-on-surface">Credit Cards</span>
+</div>
+<span class="font-body-md text-body-md text-on-surface font-medium">$12,400</span>
+</div>
+</div>
+</div>
+</main>
+</body></html>

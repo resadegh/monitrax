@@ -12,9 +12,16 @@
  *
  * Shares the canonical data layer with the full canvas
  * (`useWealthExplorerData()` → `/api/wealth-graph`). Renders the same
- * spatial layout positions but at half scale, with no chrome (no
+ * spatial layout positions at reduced scale, with no chrome (no
  * filter chips, no search, no detail panel) — tap-through to the
  * full surface for those.
+ *
+ * Semantic zoom (Phase WX.4, 2026-06-10): the hook's default layout is
+ * now Level 1 (entities only, assets aggregated into count badges), so
+ * the widget renders ~6 legible tiles instead of the former 20-node
+ * smudge. Tile scale raised 0.42 → 0.58 — fewer nodes buy bigger tiles.
+ * Semantic-zoom SoT: screen `80c21d51c38242d883bec3d6875fabe6`,
+ * artefact `.stitch/designs/wealth-universe-zoom/universe-widget-level1-dark.{html,png}`.
  */
 
 'use client';
@@ -63,8 +70,10 @@ const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'ownership-group': Users,
 };
 
-// Half the desktop tile scale — widget canvas is ~520x220.
-const WIDGET_SIZE_SCALE = 0.42;
+// Reduced desktop tile scale — widget canvas is ~520x220. Raised from
+// 0.42 with the Phase WX.4 semantic zoom: the collapsed Level 1 layout
+// shows only entities, so each tile can render larger and legible.
+const WIDGET_SIZE_SCALE = 0.58;
 
 export default function WealthUniverseWidget() {
   const { layout, loading, error } = useWealthExplorerData();
@@ -112,9 +121,14 @@ export default function WealthUniverseWidget() {
     r => r.type !== 'flow-distribution' && r.type !== 'flow-dividend',
   );
   const nodesById = Object.fromEntries(nodes.map(n => [n.id, n]));
-  const totalHeld = nodes
-    .filter(n => n.value)
-    .reduce((sum, n) => sum + parseValueToNumber(n.value!), 0);
+  // Phase WX.4 — sum the per-entity aggregates (raw numbers from the
+  // layout, non-loan holdings only) instead of re-parsing formatted
+  // strings. Loan principal no longer inflates "held" — debt is not
+  // held wealth.
+  const totalHeld = nodes.reduce(
+    (sum, n) => sum + (n.assetSummary?.totalValue ?? (n.tier === 'asset' && n.value ? parseValueToNumber(n.value) : 0)),
+    0,
+  );
 
   return (
     <Link href="/dashboard/entities" className="group block">
@@ -330,6 +344,19 @@ function WidgetTile({
         >
           <Glyph size={Math.max(10, size * 0.42)} color={accent} strokeWidth={1.8} />
         </div>
+        {/* Phase WX.4 — Level 1 count badge: holdings folded into this
+            entity. Tiny — the widget is a teaser, not a data surface. */}
+        {node.assetSummary && (
+          <span
+            className="absolute -bottom-0.5 -right-0.5 z-10 flex h-3.5 min-w-3.5 items-center justify-center rounded-full px-0.5 text-[7px] font-semibold tabular-nums text-white/90"
+            style={{
+              background: 'rgba(13, 18, 36, 0.95)',
+              border: `1px solid ${accent}66`,
+            }}
+          >
+            {node.assetSummary.count}
+          </span>
+        )}
       </div>
     </div>
   );

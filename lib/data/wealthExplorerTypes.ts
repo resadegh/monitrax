@@ -3,6 +3,13 @@
  *
  * Surface SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
  * Artefact: `.stitch/designs/wealth-explorer-v5-universe-dark.png`
+ *
+ * Semantic-zoom pass (Phase WX.4, 2026-06-10) SoT:
+ *   Level 1 desktop  — screen `770687a1c73c42f0b4fd5686782bf5f3`
+ *   Level 2 desktop  — screen `068403f1296440508b601c2fc32d5e20`
+ *   Level 1 mobile   — screen `e5ecb8d170cc4fbdbc336413cd9948d2`
+ *   Widget Level 1   — screen `80c21d51c38242d883bec3d6875fabe6`
+ *   Artefacts: `.stitch/designs/wealth-universe-zoom/*.{html,png}`
  */
 
 export type WealthNodeType =
@@ -45,6 +52,23 @@ export interface WealthNode {
    * (controllers / vehicles), assets in tier 2, individuals in tier 3.
    */
   tier?: 'entity' | 'asset' | 'individual' | 'group';
+  /**
+   * Semantic zoom (Phase WX.4) — for entity / group nodes, the
+   * aggregate of the assets this node holds. At Level 1 the canvas
+   * renders this as a count badge + "$X held" line instead of
+   * individual asset tiles. `totalValue` sums non-loan holdings only —
+   * counting loan principal as "held" wealth would overstate.
+   */
+  assetSummary?: { count: number; totalValue: number };
+  /**
+   * Semantic zoom — for asset nodes, the canvas node they unfolded
+   * from (an entity id, or `group-<id>` for jointly-held assets).
+   * Lets the canvas keep the right constellation open when the user
+   * selects a satellite.
+   */
+  parentNodeId?: string;
+  /** Semantic zoom — true on entity/group nodes whose satellites are unfolded. */
+  isExpanded?: boolean;
 }
 
 export type RelationshipType =

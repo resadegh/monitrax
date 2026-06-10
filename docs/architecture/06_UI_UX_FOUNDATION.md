@@ -1458,7 +1458,7 @@ Phase 5 (dashboard widget) is the natural extraction trigger.
 | 6 | `EntityDetailPanel` | `components/wealth-explorer/EntityDetailPanel.tsx` | Slide-in right panel (`framer-motion` spring, `damping: 28, stiffness: 280`). On-demand fetch of `/api/entities/[id]` |
 | 7 | `WealthFilterBar` | (inlined) | Horizontal chip strip with live counts (All / People / Trusts / SMSF / Companies). Active chip = emerald-soft fill + emerald border |
 | 8 | `WealthSearch` | (inlined) | Search pill — fuzzy name match. Non-matches dim to 35% (preserves spatial memory; never hides) |
-| 9 | `ZoomControls` | (inlined) | Bottom-left stack (+/- / fit). Currently visual chrome — gesture-handler wiring is Phase 3 |
+| ~~9~~ | ~~`ZoomControls`~~ | — | **Removed in semantic-zoom pass (Phase WX.4, 2026-06-10).** The +/− / fit buttons never had handlers — dead affordances erode the premium feel more than absence does. Density is now handled by semantic zoom (see below); true viewport pan/zoom is a queued follow-up and the buttons return only when they work. |
 
 ### Canonical data flow (SSOT chain)
 
@@ -1471,13 +1471,61 @@ WealthGraphSnapshot
     ↓
 useWealthExplorerData() hook     ← lib/hooks/useWealthExplorerData.ts
     ↓
-layoutWealthExplorer(snapshot)   ← lib/data/wealthExplorerLayout.ts
+layoutWealthExplorer(snapshot, options?)  ← lib/data/wealthExplorerLayout.ts
     ↓                              (pure function — zone-based placement,
-LayoutResult                       satellite arcs, ribbon derivation)
-{ nodes, relationships, isEmpty }
+LayoutResult                       semantic-zoom collapse/expand, satellite
+{ nodes, relationships, isEmpty }  arcs/rings, collision pass, ribbons)
     ↓
 WealthUniverseCanvas             ← presentational only
 ```
+
+### Semantic zoom (Phase WX.4, 2026-06-10)
+
+**The structural fix for "tiles shrink into an unreadable smudge as the
+node count grows."** Origin: Reza report 2026-06-10 — with ~20 nodes the
+dashboard widget and canvas packed every asset satellite into fixed
+zones at fixed pixel sizes, and tiles physically overlapped. The fix is
+the Apple Maps principle: **what is shown changes with zoom level, not
+just how big it is.** Maps doesn't render every house at country level;
+the universe doesn't render every bank account at universe level.
+
+| Level | What renders | How |
+|---|---|---|
+| **Level 1 · Universe** (default) | Entity + ownership-group tiles ONLY. Each carries a **count badge** (glass pill docked bottom-right, number of holdings) and a **"$X held" line** (accent-coloured aggregate under the name). ~6 large legible tiles instead of 20+ tiny ones. | `layoutWealthExplorer(snapshot)` — default `assetDetail: 'collapsed'` emits no asset nodes; entities carry `assetSummary { count, totalValue }`. |
+| **Level 2 · Constellation** | The selected entity's assets unfold as satellites (one arc ≤ 6, two concentric rings beyond) with a staggered pop-in; everything else recedes via the existing ecosystem dim. Selecting the entity again (or back-chevron / panel close) folds it back. | `layoutWealthExplorer(snapshot, { expandedEntityIds: [id] })` recomputed in a `useMemo` on selection. |
+| **List surfaces** (mobile bottom sheet) | Unchanged full enumeration — granular browsing lives in the list, not the canvas. | `layoutWealthExplorer(snapshot, { assetDetail: 'all' })`. |
+
+Load-bearing rules:
+
+1. **Loan principal never counts toward "$X held"** — debt is not held
+   wealth (financial-adviser lens). Loans still count in the badge
+   (they are real holdings to explore). The dashboard widget's footer
+   total now sums these raw aggregates instead of re-parsing formatted
+   strings — and therefore also excludes loan principal.
+2. **A deterministic collision-relaxation pass** runs last in the
+   layout (anchor never moves; positions mutate in place; clamped to
+   the canvas safe area). It is the safety net for crowded zones, not
+   the primary mechanism — aggregation is.
+3. **The dashboard widget renders Level 1 only, always** — it is a
+   teaser; tap-through is the path to detail. Tile scale raised
+   0.42 → 0.58 because fewer nodes buy bigger tiles.
+4. **Reviewer-reject:** any future change that reintroduces per-asset
+   tiles at Level 1, or adds zoom chrome without working handlers,
+   reverts this fix and must be rejected.
+
+Stitch SoT (project `1859462351962811110`): L1 desktop
+`770687a1c73c42f0b4fd5686782bf5f3`, L2 desktop
+`068403f1296440508b601c2fc32d5e20`, L1 mobile
+`e5ecb8d170cc4fbdbc336413cd9948d2`, widget
+`80c21d51c38242d883bec3d6875fabe6` — artefacts at
+`.stitch/designs/wealth-universe-zoom/*.{html,png}`. This surface is
+dark-only by design (documented "premium-moment break" from the
+light-mode dashboard), so no light variants exist — a deliberate,
+documented deviation from the §18.7.2 light+dark matrix.
+
+Queued follow-up (not in scope of WX.4): true viewport pan/zoom
+(pinch / scroll / fit-to-view) for very large structures — only after
+semantic zoom proves insufficient at real user node counts.
 
 **Strict separation:** the canvas component knows nothing about Prisma,
 `/api/entities`, or any business logic. The layout function knows
