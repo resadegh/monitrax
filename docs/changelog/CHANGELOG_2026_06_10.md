@@ -298,6 +298,12 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **D3 (Reza: "go with your recommendation")**: no Income/Expense picker v1; attribution derives from the owning asset's stakes in Stage C/D.
 - All other tactical decisions delegated to Claude.
 
+### Stage A FINAL — A2 correction flow + A3 bulk re-attribution + A4 entity hook (single PR per Reza cadence decision)
+- **A2**: NEW `correctOwnershipRecord` in `ownershipSelectionService` (Q-EOF-1 correction-never-transfer; §12.11: `where {id,userId}` composite, only `ownerEntityId` touched; existing groups hard-deleted via the canonical "mistaken entry" path; `OWNERSHIP_RECORD_CORRECTED` audit with reason). NEW generic `PATCH /api/ownership/[objectType]/[objectId]` (one endpoint, one concern). NEW `CorrectOwnershipDialog` (design SoT screen `ce11109f…`: picker + reason + amber correction-≠-transfer notice) wired into ALL five edit surfaces via a quiet "Recorded under the wrong owner?" link.
+- **A3+A4**: NEW `BulkAssignDialog` ("Does {entity} own any of these?" — grouped checkbox list across all five object types, PATCH per item with audit trail); auto-offered on the entities page right after a structure entity is created (A4 hook), single surface instead of five list-page multi-selects.
+- **D9 recurrence**: investments-page baseline rebased +3 lines (same process note).
+- Build PASS, financial gate ✓, lint 0 errors (3 pre-existing warnings), 34/34 tests.
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.

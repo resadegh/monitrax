@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
+import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -235,6 +236,8 @@ function AssetsPageContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   // Phase 47 Stage A — ownership selection (create only).
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
+  // Phase 47 Stage A2 — correction flow on the edit path.
+  const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
@@ -1080,6 +1083,26 @@ function AssetsPageContent() {
               {/* Phase 47 Stage A — ownership picker (creation only). */}
               {!editingId && (
                 <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
+              )}
+              {editingId && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setCorrectOwnershipOpen(true)}
+                    className="text-xs text-sky-600 underline-offset-2 hover:underline"
+                  >
+                    Recorded under the wrong owner? Correct the ownership record
+                  </button>
+                  <CorrectOwnershipDialog
+                    open={correctOwnershipOpen}
+                    onOpenChange={setCorrectOwnershipOpen}
+                    token={token}
+                    objectType="asset"
+                    objectId={editingId}
+                    objectName={formData.name || 'This asset'}
+                    onCorrected={() => void loadAssets()}
+                  />
+                </>
               )}
 
               <div className="flex justify-end gap-2">

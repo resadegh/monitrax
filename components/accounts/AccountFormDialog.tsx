@@ -36,6 +36,7 @@ import { Label } from '@/components/ui/label';
 import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
+import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
 import {
   Select,
   SelectContent,
@@ -110,6 +111,8 @@ export function AccountFormDialog({
   // Phase 47 Stage A — ownership selection (create only; edits go through
   // the "correct ownership record" flow, Stage A2).
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
+  // Phase 47 Stage A2 — correction flow on the edit path.
+  const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -301,6 +304,25 @@ export function AccountFormDialog({
           {/* Phase 47 Stage A — ownership picker (creation only). */}
           {!isEditing && (
             <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
+          )}
+          {isEditing && (
+            <button
+              type="button"
+              onClick={() => setCorrectOwnershipOpen(true)}
+              className="text-xs text-sky-600 underline-offset-2 hover:underline"
+            >
+              Recorded under the wrong owner? Correct the ownership record
+            </button>
+          )}
+          {isEditing && editing?.id && (
+            <CorrectOwnershipDialog
+              open={correctOwnershipOpen}
+              onOpenChange={setCorrectOwnershipOpen}
+              token={token}
+              objectType="account"
+              objectId={editing.id}
+              objectName={formData.name || 'This item'}
+            />
           )}
 
           <div className="flex justify-end gap-3 pt-4">

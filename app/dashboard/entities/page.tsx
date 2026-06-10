@@ -69,6 +69,7 @@ import {
 } from '@/lib/utils/auValidators';
 import { useAuth } from '@/lib/context/AuthContext';
 import { OwnershipGroupsDialog } from '@/components/entities/OwnershipGroupsDialog';
+import BulkAssignDialog from '@/components/ownership/BulkAssignDialog';
 
 // Phase 44 Part 1c — the entity-structure canvas (§11A). Dynamically
 // imported with SSR disabled: React Flow needs the DOM, and the canvas +
@@ -366,6 +367,9 @@ export default function EntitiesPage() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const [removeTarget, setRemoveTarget] = useState<Entity | null>(null);
+  // Phase 47 Stage A4 — after creating a structure entity, offer the
+  // bulk re-attribution pass ("does {entity} own any of these?").
+  const [assignTarget, setAssignTarget] = useState<{ id: string; name: string } | null>(null);
   const [removing, setRemoving] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
 
@@ -509,9 +513,19 @@ export default function EntitiesPage() {
         const err = await res.json().catch(() => ({}));
         throw new Error(extractErrorMessage(err, res.status, 'Failed to save entity'));
       }
+      // Phase 47 Stage A4 — the moment a structure entity is created is
+      // when attribution intent is highest: offer the bulk pass.
+      let createdEntity: { id?: string; name?: string } | null = null;
+      if (!isEdit) {
+        const created = await res.clone().json().catch(() => null);
+        createdEntity = created?.data ?? created ?? null;
+      }
       await fetchEntities();
       setCanvasReload((n) => n + 1);
       setFormOpen(false);
+      if (createdEntity?.id && createdEntity?.name) {
+        setAssignTarget({ id: createdEntity.id, name: createdEntity.name });
+      }
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -1064,6 +1078,25 @@ export default function EntitiesPage() {
         token={token ?? ''}
         entities={entities.map((e) => ({ id: e.id, name: e.name }))}
       />
+
+      {/* Phase 47 Stage A3/A4 — bulk re-attribution, offered right after
+          a structure entity is created. */}
+      {assignTarget && (
+        <BulkAssignDialog
+          open={!!assignTarget}
+          onOpenChange={(open) => {
+            if (!open) setAssignTarget(null);
+          }}
+          token={token}
+          entityId={assignTarget.id}
+          entityName={assignTarget.name}
+          onAssigned={() => {
+            setAssignTarget(null);
+            void fetchEntities();
+            setCanvasReload((n) => n + 1);
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }
