@@ -27,6 +27,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Briefcase,
   Scroll,
@@ -76,6 +77,7 @@ const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
 const WIDGET_SIZE_SCALE = 0.58;
 
 export default function WealthUniverseWidget() {
+  const router = useRouter();
   const { layout, loading, error } = useWealthExplorerData();
 
   // Silent-fail on error / hide when not yet loaded.
@@ -140,7 +142,19 @@ export default function WealthUniverseWidget() {
   );
 
   return (
-    <Link href="/dashboard/entities" className="group block">
+    // Card-level tap still opens the universe; individual bubbles are
+    // real links carrying ?focus=<node> so the canvas opens with that
+    // constellation already unfolded (Reza 2026-06-10: "zoom into that
+    // bubble").
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={() => router.push('/dashboard/entities')}
+      onKeyDown={e => {
+        if (e.key === 'Enter') router.push('/dashboard/entities');
+      }}
+      className="group block cursor-pointer"
+    >
       <WidgetShell>
         <div className="flex h-full flex-col">
           {/* Header */}
@@ -216,7 +230,7 @@ export default function WealthUniverseWidget() {
           </div>
         </div>
       </WidgetShell>
-    </Link>
+    </div>
   );
 }
 
@@ -299,6 +313,8 @@ function WidgetTile({
   glyph: LucideIcon;
   accent: string;
 }) {
+  // Deep-link: this bubble opens the full canvas with itself focused.
+  const focusHref = `/dashboard/entities?focus=${encodeURIComponent(node.id)}`;
   const isAnchor = !!node.isAnchor;
   const isFocal = !!node.isFocal;
   const size = Math.max(20, node.size * WIDGET_SIZE_SCALE);
@@ -332,7 +348,10 @@ function WidgetTile({
   const isDashed = node.type === 'trustee-company' || node.type === 'smsf-trustee-company';
 
   return (
-    <div
+    <Link
+      href={focusHref}
+      onClick={e => e.stopPropagation()}
+      aria-label={`Open ${node.name} on the Wealth Universe`}
       className="absolute"
       style={{
         left: `${node.position.x}%`,
@@ -369,7 +388,7 @@ function WidgetTile({
           </span>
         )}
       </div>
-    </div>
+    </Link>
   );
 }
 
