@@ -33,6 +33,7 @@
  */
 
 import prisma from '@/lib/db';
+import { buildEntityBreakdown, type EntityPosition } from '@/lib/calculations/entityBreakdown';
 import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { createAuditLog } from '@/lib/security/auditLog';
@@ -284,6 +285,15 @@ export interface MasterFinancialSnapshot {
   // Net Worth
   netWorth: NetWorthResult;
 
+  /**
+   * Phase 47 Stage C1 — ADDITIVE per-entity breakdown (Entity Ownership
+   * Fabric). Flat household fields above are untouched; this view
+   * partitions the same rows by ownerEntityId via the canonical
+   * engines. Additivity invariant pinned by
+   * tests/ownership/entityBreakdown.test.ts.
+   */
+  byEntity: EntityPosition[];
+
   // Expenses (monthly & annual)
   expenses: {
     monthly: MasterExpenseBreakdown;
@@ -403,6 +413,7 @@ export interface ViewerContext {
 
 interface RawExpense {
   id: string;
+  ownerEntityId: string;
   name: string;
   amount: number;
   frequency: string;
@@ -420,6 +431,7 @@ interface RawExpense {
 
 interface RawIncome {
   id: string;
+  ownerEntityId: string;
   name: string;
   amount: number;
   frequency: string;
@@ -438,6 +450,7 @@ interface RawIncome {
 
 interface RawAccount {
   id: string;
+  ownerEntityId: string;
   name: string;
   type: string;
   currentBalance: number;
@@ -450,6 +463,7 @@ interface RawAccount {
 
 interface RawLoan {
   id: string;
+  ownerEntityId: string;
   name: string;
   principal: number;
   minRepayment: number | null;
@@ -463,6 +477,7 @@ interface RawLoan {
 
 interface RawProperty {
   id: string;
+  ownerEntityId: string;
   name: string;
   address: string | null;
   currentValue: number;
@@ -472,6 +487,8 @@ interface RawProperty {
 
 interface RawInvestmentHolding {
   id: string;
+  /** Derived ownership (§4B D3) — via the owning account. */
+  investmentAccount: { ownerEntityId: string };
   ticker: string;
   units: number;
   averagePrice: number;
@@ -481,6 +498,7 @@ interface RawInvestmentHolding {
 
 interface RawSuperannuation {
   id: string;
+  ownerEntityId: string | null;
   currentBalance: number;
   // Phase 39.5: SMSF accounts are excluded from the net-worth super sum
   // (their value flows through the SMSF entity's owned assets).
@@ -489,6 +507,7 @@ interface RawSuperannuation {
 
 interface RawAsset {
   id: string;
+  ownerEntityId: string;
   currentValue: number;
 }
 
@@ -505,6 +524,8 @@ interface RawLinkedTransaction {
 }
 
 interface RawUserData {
+  /** Phase 47 C1 — entity refs for the byEntity breakdown. */
+  entities: Array<{ id: string; name: string; type: string }>;
   expenses: RawExpense[];
   income: RawIncome[];
   accounts: RawAccount[];
@@ -526,6 +547,7 @@ interface RawUserData {
  */
 async function fetchAllUserData(userId: string): Promise<RawUserData> {
   const [
+    entities,
     expenses,
     income,
     accounts,
@@ -536,10 +558,16 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     assets,
     linkedTransactions,
   ] = await Promise.all([
+    // Phase 47 C1 — entity refs (id/name/type only) for the byEntity view.
+    prisma.legalEntity.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true },
+    }),
     prisma.expense.findMany({
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         name: true,
         amount: true,
         frequency: true,
@@ -558,6 +586,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         name: true,
         amount: true,
         frequency: true,
@@ -577,6 +606,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         name: true,
         type: true,
         currentBalance: true,
@@ -595,6 +625,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         name: true,
         principal: true,
         minRepayment: true,
@@ -610,6 +641,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         name: true,
         address: true,
         currentValue: true,
@@ -621,6 +653,8 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { investmentAccount: { userId } },
       select: {
         id: true,
+        // Derived ownership (§4B D3): holdings inherit their account's entity.
+        investmentAccount: { select: { ownerEntityId: true } },
         ticker: true,
         units: true,
         averagePrice: true,
@@ -632,6 +666,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         currentBalance: true,
         fundType: true,
       },
@@ -640,6 +675,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
       where: { userId },
       select: {
         id: true,
+        ownerEntityId: true,
         currentValue: true,
       },
     }),
@@ -668,6 +704,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
   ]);
 
   return {
+    entities,
     expenses,
     income,
     accounts,
@@ -1660,6 +1697,20 @@ async function computeMasterFinancialSnapshot(
     data.assets.map(a => ({ currentValue: a.currentValue }))
   );
 
+  // Phase 47 C1 — additive per-entity breakdown (same rows, same
+  // canonical engines, partitioned by ownerEntityId).
+  const byEntity = buildEntityBreakdown({
+    entities: data.entities,
+    properties: data.properties,
+    accounts: data.accounts,
+    investmentHoldings: data.investmentHoldings,
+    loans: data.loans,
+    superannuation: data.superannuation,
+    assets: data.assets,
+    income: data.income,
+    expenses: data.expenses,
+  });
+
   // Calculate cashflow using existing orchestrator
   const cashflowInput = {
     income: data.income.map(i => ({
@@ -1788,6 +1839,7 @@ async function computeMasterFinancialSnapshot(
     },
 
     netWorth,
+    byEntity,
 
     expenses: {
       monthly: monthlyExpenses,
