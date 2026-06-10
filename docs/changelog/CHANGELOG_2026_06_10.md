@@ -462,3 +462,49 @@ geminiExtractor.ts` (+ EXTRACTOR_VERSION bump). **⚠ Scheduled breakage queued:
 model lineup before then. Verification: tsc 0 errors; 458/458 tests (tests/ai + bookkeeping);
 build complete. Combined with the retry/backoff + batch isolation already in this PR, a future
 model retirement degrades through live fallbacks loudly instead of silently zeroing imports.
+
+### Addendum 4 (same session) — second incident: import 504 timeout now that Gemini calls actually run
+Reza's verification re-import failed with "Unexpected token 'A', \"An error o\"… is not valid
+JSON" — the dialog choking on Vercel's plain-text error page. Logs (§17.3 first action):
+`POST /api/accounts/17e36eed…/import → 504` at 09:29:50Z on the post-merge deploy. Cause:
+the model fix made categorisation calls REAL again — ~15 sequential Gemini calls at ~2-4s each
++ retry headroom blew past the route's default 15s Vercel limit. (Pre-fix the calls failed
+instantly, so the broken import was always "fast".) Fix (PR #1050):
+- `app/api/accounts/[id]/import/route.ts` — `export const maxDuration = 300` (Vercel Pro cap)
+- `lib/bank/aiCategorisation.ts` — batch loop converted from sequential to bounded 4-way
+  concurrency (order-preserving slots, per-batch isolation retained; Tier-1 quota ~2,000
+  req/min makes 4 concurrent calls trivial; wall-time ~÷4)
+- `components/bank/TransactionImportDialog.tsx` — defensive non-JSON response handling:
+  504 → "took too long, split the file" message; other non-JSON → honest HTTP-status message
+Verification: tsc clean, 253/253 bookkeeping tests, build complete.
+
+### Addendum 5 (same session) — FINAL root cause: prepaid Gemini billing credits depleted
+The post-#1050 re-import still 429'd on BOTH live models (~70 RPM vs 1,000 RPM limit, all
+dashboards green). A manual curl with the production key returned the answer the truncated
+Vercel logs never showed: `429 RESOURCE_EXHAUSTED — "Your prepayment credits are depleted."`
+The project's Gemini billing is prepay-based; credits hit $0 (~late May — the lone $0.003
+spend blip on May 21 was the last of them) and every billable call since was rejected
+regardless of tier/limits/model/key. This was failure B stacked under failure A (the 2026-06-01
+gemini-2.0-flash retirement, fixed in PR #1048). Operator action (Reza): top up credits /
+switch to postpaid at https://ai.studio/projects; verify with the curl; re-import. Runbook
+updated with the final four-theory elimination record + the curl-first diagnostic protocol +
+a 429-body decision table. Security follow-up queued: rotate GEMINI_API_KEY (exposed in chat
+during diagnosis) after imports verified working.
+
+### Addendum 6 (same session) — RESOLVED: credits on the right account, Gemini verified live
+Resolution sequence: (1) first A$25 top-up landed on the WRONG billing account (…008985,
+Default Gemini Project) — curl still returned prepay-429; (2) AI Studio Projects page tooltip
+revealed `admin@monitrax.com.au` lacks IAM on the Monitrax billing account
+(019237-E9340D-2959FB); (3) Reza logged into AI Studio as the owning personal account and
+bought A$25 on the CORRECT Cloud Prepay account; (4) verification curl returned **HTTP 200**
+("OK", gemini-3.5-flash, serviceTier standard) — first successful production-key Gemini call
+since ~May 21. Outage scope documented: ALL Gemini surfaces down ~3 weeks (categorisation,
+CFO advisor, document intelligence, trust-deed extractor, tax Gemini provider); cashflow AI
+summary down ~9 months (gemini-1.5-flash retired Sep 2025); Anthropic surfaces + non-AI app
+unaffected. Root lesson: graceful degradation without alerting = silent outage. Runbook gains
+a dedicated support section ("AI features silently degraded across the WHOLE app") with the
+affected-surfaces table, 5-minute triage, the two billing traps (wrong account / missing
+billing-account IAM), and prevention. Output-token check: categorisation passes no
+maxOutputTokens cap, so 3.5-flash thinking tokens cannot truncate the JSON. Remaining
+follow-ups: user re-import verification, GEMINI_API_KEY rotation, auto-reload setup, daily
+AI health probe (queued, pending Reza's go).

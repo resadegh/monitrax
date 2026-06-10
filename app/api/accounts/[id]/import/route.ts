@@ -7,6 +7,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
+
+// AI categorisation makes one Gemini call per 20-tx batch (bounded 4-way
+// concurrency). Large files still need more than the 15s default — without
+// this, Vercel kills the function mid-import (504 FUNCTION_INVOCATION_TIMEOUT,
+// 2026-06-10 second incident) and returns a non-JSON error page to the dialog.
+export const maxDuration = 300;
 import { parseQIF, isValidQIF } from '@/lib/bank/parsers/qif';
 import { normaliseTransactions } from '@/lib/bank/normalisation';
 import { detectDuplicates, detectOverlap, getDuplicateSummaryMessage } from '@/lib/bank/smartDuplicateDetection';

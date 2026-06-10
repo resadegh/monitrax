@@ -396,23 +396,39 @@ fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` inst
 **Resolution (429 quota) — first identify WHICH project the runtime key belongs to, then
 whether its paid tier is actually enforced:**
 
-> **2026-06-10 CONFIRMED root cause (after two disproven theories — all three recorded so
-> the next operator doesn't relive the elimination):**
-> (1) "Wrong project key" — disproven: Vercel's `GEMINI_API_KEY` IS the Tier-1 `…SWHI`
-> MonitraxGemini key in project `monitrax-479700`.
-> (2) "Billing/tier not enforced" — disproven: billing account active (~A$2.2/day, mostly
-> Cloud SQL), project linked, GCP quota page showed ZERO quota breaches in 7 days, key has
-> Application restrictions = None + API restriction = Gemini API (correct server posture).
-> (3) **CONFIRMED: model retirement.** Google shut down `gemini-2.0-flash` on
-> **2026-06-01** (https://ai.google.dev/gemini-api/docs/deprecations) — the EXACT day of the
-> first import incident (PR #959). Our fallback chain was also dead (`…2.5-flash-preview-05-20`
-> preview removed; `gemini-1.5-flash` retired Sep 2025 — the cashflow-summary surface had been
-> silently broken since then). Retired endpoints reject with 404/429 regardless of billing
-> tier, which is why a Tier-1 project with healthy quota saw 429s. Fixed 2026-06-10 by
-> migrating every hardcoded model ID to verified-live models (`gemini-3.5-flash` primary).
-> **⚠ Scheduled re-check: `gemini-2.5-flash` + `gemini-2.5-pro` (current fallbacks/pro) shut
-> down 2026-10-16 — re-verify `lib/ai/google/modelConfig.ts` + `lib/ai/gemini.ts` against the
-> deprecations page before then (tracked in IMPLEMENTATION_PLAN Up Next).**
+> **2026-06-10 FINAL root cause — TWO stacked failures (four theories total; all recorded
+> so the next operator doesn't relive the elimination):**
+> (1) "Wrong project key" — disproven (Vercel key IS the Tier-1 `…SWHI` key).
+> (2) "Billing/tier not enforced" — disproven (billing account active, quota dashboards green).
+> (3) **Real failure A — model retirement:** Google shut down `gemini-2.0-flash` on
+> 2026-06-01; fallbacks (`…2.5-flash-preview…`, `gemini-1.5-flash`) were retired even
+> earlier. Fixed in code (PR #1048: migration to `gemini-3.5-flash` + live fallbacks;
+> ⚠ re-verify lineup before the 2026-10-16 retirement of 2.5-flash/2.5-pro).
+> (4) **Real failure B — PREPAID BILLING CREDITS DEPLETED.** The Gemini API billing for the
+> project is prepay-based; credits hit $0 (~late May 2026) and every billable request was
+> rejected with `429 RESOURCE_EXHAUSTED: "Your prepayment credits are depleted."` —
+> regardless of tier, rate limits (1,000 RPM, used ~70), model, or key. NO dashboard
+> surfaces this: Spend shows $0 (nothing can bill), Rate Limit shows green, quota pages show
+> zero breaches. The error text contains neither "quota" nor a metric name, so log
+> keyword-searches for quota terms MISS it. Resolution: AI Studio → https://ai.studio/projects
+> → project billing → top up prepaid credits or switch to standard postpaid billing.
+> See https://ai.google.dev/gemini-api/docs/billing#prepay.
+
+**The definitive diagnostic (use this FIRST for any unexplained Gemini 429):** run one manual
+request with the production key — the response body names the real constraint, which the
+Vercel log lines truncate away:
+
+```bash
+curl -s -w "\nHTTP %{http_code}\n" -H "Content-Type: application/json" \
+  -d '{"contents":[{"parts":[{"text":"Say OK"}]}]}' \
+  "https://generativelanguage.googleapis.com/v1beta/models/<current-flash-model>:generateContent?key=<KEY>"
+```
+
+| 429 body says | Meaning | Fix |
+|---|---|---|
+| `prepayment credits are depleted` | Prepaid balance $0 | Top up / switch to postpaid (AI Studio billing) |
+| `Quota exceeded for quota metric …` | Real rate/quota breach | Check Rate Limit page; pace or batch larger |
+| (bare / HTML body) | Edge throttling or retired model | Check deprecations page + model IDs in code |
 
 1. Identify the runtime key: Vercel → monitrax → Settings → Environment Variables →
    `GEMINI_API_KEY` → reveal → compare its ending against the key list in
@@ -444,6 +460,61 @@ debt, IMPLEMENTATION_PLAN 🗑️ row 31). After quota is fixed, the user re-imp
 the file-hash duplicate guard only blocks `COMPLETED` batches (degraded ones are
 `AWAITING_REVIEW`) and row-level duplicate detection only checks created transactions, so the
 re-import goes through cleanly.
+
+### Issue: AI features silently degraded across the WHOLE app (Gemini outage)
+
+**Canonical incident:** 2026-06-10 (full elimination record in the QIF-import section above
+and `docs/changelog/CHANGELOG_2026_06_10.md`). Gemini was down for ~3 weeks (since ~May 21,
+when prepaid credits depleted) and ONE surface for ~9 months (cashflow AI summary, pinned to
+`gemini-1.5-flash`, retired Sep 2025) — and nobody noticed, because every surface degraded
+gracefully: rule-engine advice, uncategorised-but-imported transactions, skipped summaries.
+**Graceful degradation without alerting = silent outage.** Treat any ONE Gemini failure as
+a possible total outage until proven otherwise.
+
+**Surfaces that go down together when Gemini fails (all share `GEMINI_API_KEY`):**
+
+| Surface | Failure looks like | Fallback that masks it |
+|---|---|---|
+| QIF/CSV import smart categorisation | Transactions imported uncategorised / held | Amber "action needed" dialog (post-PR #1048) |
+| CFO AI advisor (`/dashboard/cfo`) | Generic advice | Rule engine answers instead |
+| Document intelligence | Extraction returns nothing | Manual entry path |
+| Trust-deed extractor | Extraction fails | Manual entry path |
+| Cashflow AI summary | No narrative summary | Section quietly absent |
+| Tax-advisor Gemini provider | Provider error | Depends on provider config |
+
+**NOT affected:** Anthropic-powered surfaces (feedback chat — different provider, different
+billing) and every non-AI feature.
+
+**5-minute triage (in order):**
+1. **The curl test** (see decision table above) — one call with the production key tells you
+   the exact failure class from the response body. This is the single fastest discriminator.
+2. **AI Studio → Projects page** (`aistudio.google.com/projects`): the Monitrax row's Status
+   column shows **"Prepay required"** when credits are depleted. Also check the billing-tier
+   column's account suffix (see trap below).
+3. **Vercel runtime logs**: `[Gemini] … transient failure` / `exhausted … attempts` lines at
+   error level (post-PR #1048 these are loud).
+
+**Resolution — prepaid credit top-up (and the two traps):**
+1. AI Studio → Billing (`aistudio.google.com/billing`) → **Credit balance** card → Buy credits
+   (min $10) → **Set up auto-reload** (e.g. reload A$10 below A$2) so it can't recur silently.
+2. **TRAP 1 — wrong billing account.** The org has MULTIPLE billing accounts. Credits MUST go
+   on the account funding the Monitrax project — ID **019237-E9340D-2959FB** (suffix shown on
+   the AI Studio Projects page per row: Monitrax = "Account (…59FB)"). On 2026-06-10 the first
+   A$25 went to the Default-Gemini-Project account (…008985) and changed nothing. Verify with
+   the curl AFTER topping up — payment-successful ≠ right account.
+3. **TRAP 2 — billing permissions.** `admin@monitrax.com.au` may lack IAM on the billing
+   account ("You don't have sufficient read permissions…" tooltip). Billing-account IAM is
+   SEPARATE from project IAM. Grant: GCP Console (as the account owner — the rayanmehr
+   personal Google account held admin on 2026-06-10) → Billing → 019237-E9340D-2959FB →
+   Account management → Add principal → `admin@monitrax.com.au` → **Billing Account
+   Administrator**. Docs: https://docs.cloud.google.com/billing/docs/how-to/grant-access-to-billing
+   Alternative used on 2026-06-10: log in to AI Studio AS the owning account and buy there.
+4. Postpay ("Switch to postpay") only unlocks at Tier 3 (~$1,000 cumulative + 30 days) — until
+   then, auto-reload IS the prevention.
+
+**Prevention (queued in IMPLEMENTATION_PLAN):** daily AI health probe — Cloud Scheduler
+(§12.7) makes one tiny Gemini call per day and alerts on failure, turning "down for 3 weeks"
+into "down for 1 day, you got an email."
 
 ### Issue: User sees `UC-DEED-…` flag on Tax page
 
