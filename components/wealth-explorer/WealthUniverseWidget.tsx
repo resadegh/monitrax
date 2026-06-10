@@ -124,9 +124,18 @@ export default function WealthUniverseWidget() {
   // Phase WX.4 — sum the per-entity aggregates (raw numbers from the
   // layout, non-loan holdings only) instead of re-parsing formatted
   // strings. Loan principal no longer inflates "held" — debt is not
-  // held wealth.
-  const totalHeld = nodes.reduce(
-    (sum, n) => sum + (n.assetSummary?.totalValue ?? (n.tier === 'asset' && n.value ? parseValueToNumber(n.value) : 0)),
+  // held wealth. Entity-tier summaries only: cluster tiles (WX.4.1)
+  // carry per-type sub-totals of the same holdings — counting both
+  // would double-count.
+  const entityTierNodes = nodes.filter(
+    n => n.tier === 'entity' || n.tier === 'individual' || n.tier === 'group',
+  );
+  const totalHeld = entityTierNodes.reduce(
+    (sum, n) => sum + (n.assetSummary?.totalValue ?? 0),
+    0,
+  );
+  const holdingsCount = entityTierNodes.reduce(
+    (sum, n) => sum + (n.assetSummary?.count ?? 0),
     0,
   );
 
@@ -152,7 +161,9 @@ export default function WealthUniverseWidget() {
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                 }}
               >
-                {nodes.length} nodes
+                {entityTierNodes.length === 1 && holdingsCount > 0
+                  ? `${holdingsCount} holdings`
+                  : `${entityTierNodes.length} entities${holdingsCount > 0 ? ` · ${holdingsCount} holdings` : ''}`}
               </span>
               <span
                 className="flex h-7 w-7 items-center justify-center rounded-full transition group-hover:bg-emerald-400/15"
@@ -197,7 +208,7 @@ export default function WealthUniverseWidget() {
             <div className="text-[10px] text-white/65 tabular-nums">
               {totalHeld > 0
                 ? `${formatTotal(totalHeld)} held across your structure`
-                : `${nodes.length} ${nodes.length === 1 ? 'entity' : 'entities'} mapped`}
+                : `${entityTierNodes.length} ${entityTierNodes.length === 1 ? 'entity' : 'entities'} mapped`}
             </div>
             <span className="text-[10px] font-medium text-emerald-300 group-hover:underline">
               Open Wealth Universe →
@@ -416,20 +427,6 @@ function hexToRgb(hex: string): string | null {
   if (!m || m.length < 3) return null;
   const [r, g, b] = m.map(c => parseInt(c, 16));
   return `${r}, ${g}, ${b}`;
-}
-
-/**
- * Crude parse — node.value is a formatted string like "$850K" or "$1.4M".
- * We turn it back into a number for the total. Good enough for the widget;
- * if we ever need precise totals here we'd pull raw values from the snapshot.
- */
-function parseValueToNumber(formatted: string): number {
-  const cleaned = formatted.replace(/[^0-9.KM]/g, '');
-  const num = parseFloat(cleaned);
-  if (isNaN(num)) return 0;
-  if (cleaned.includes('M')) return num * 1_000_000;
-  if (cleaned.includes('K')) return num * 1_000;
-  return num;
 }
 
 function formatTotal(value: number): string {

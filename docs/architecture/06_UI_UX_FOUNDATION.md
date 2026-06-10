@@ -1491,7 +1491,8 @@ the universe doesn't render every bank account at universe level.
 
 | Level | What renders | How |
 |---|---|---|
-| **Level 1 · Universe** (default) | Entity + ownership-group tiles ONLY. Each carries a **count badge** (glass pill docked bottom-right, number of holdings) and a **"$X held" line** (accent-coloured aggregate under the name). ~6 large legible tiles instead of 20+ tiny ones. | `layoutWealthExplorer(snapshot)` — default `assetDetail: 'collapsed'` emits no asset nodes; entities carry `assetSummary { count, totalValue }`. |
+| **Level 1 · Universe** (default, ≥3 entities) | Entity + ownership-group tiles ONLY. Each carries a **count badge** (glass pill docked bottom-right, number of holdings) and a **"$X held" line** (accent-coloured aggregate under the name). ~6 large legible tiles instead of 20+ tiny ones. | `layoutWealthExplorer(snapshot)` — default `assetDetail: 'collapsed'` emits no asset nodes; entities carry `assetSummary { count, totalValue }`. |
+| **Level 1 · Cluster level** (default, ≤2 entities — Phase WX.4.1) | A single-entity universe (most users pre-trust) cannot collapse into entities — that yields ONE tile with a badge (the 2026-06-10 mobile regression). Instead each entity's holdings cluster **by type** into aggregate tiles ("3 Properties · $2.1M" / "2 Loans · $600K owing"), fanned in the upper arc above the anchor. Singleton kinds render the real asset directly (a cluster of one is noise). Tapping a cluster unfolds that type's assets; clusters never open the entity detail panel. | Same call — the layout auto-dispatches on `entities.length ≤ 2`. Cluster nodes: `tier: 'cluster'`, id `cluster-<entityId>-<kind>`, expandable via `expandedEntityIds`. |
 | **Level 2 · Constellation** | The selected entity's assets unfold as satellites (one arc ≤ 6, two concentric rings beyond) with a staggered pop-in; everything else recedes via the existing ecosystem dim. Selecting the entity again (or back-chevron / panel close) folds it back. | `layoutWealthExplorer(snapshot, { expandedEntityIds: [id] })` recomputed in a `useMemo` on selection. |
 | **List surfaces** (mobile bottom sheet) | Unchanged full enumeration — granular browsing lives in the list, not the canvas. | `layoutWealthExplorer(snapshot, { assetDetail: 'all' })`. |
 
@@ -1509,9 +1510,15 @@ Load-bearing rules:
 3. **The dashboard widget renders Level 1 only, always** — it is a
    teaser; tap-through is the path to detail. Tile scale raised
    0.42 → 0.58 because fewer nodes buy bigger tiles.
-4. **Reviewer-reject:** any future change that reintroduces per-asset
-   tiles at Level 1, or adds zoom chrome without working handlers,
-   reverts this fix and must be rejected.
+4. **The canvas always targets the 3–9 tile sweet spot.** The layout
+   picks the aggregation level that achieves it: entity collapse at
+   ≥3 entities, type clusters at ≤2 (WX.4.1). Loan clusters read
+   "$X owing", never "held".
+5. **Reviewer-reject:** any future change that reintroduces per-asset
+   tiles at Level 1, adds zoom chrome without working handlers, or
+   collapses a ≤2-entity universe into bare entity tiles (the
+   single-tile-with-badge regression), reverts this fix and must be
+   rejected.
 
 Stitch SoT (project `1859462351962811110`): L1 desktop
 `770687a1c73c42f0b4fd5686782bf5f3`, L2 desktop
