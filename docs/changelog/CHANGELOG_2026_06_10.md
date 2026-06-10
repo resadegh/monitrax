@@ -308,3 +308,82 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
 - Workstream 0·EOF flipped 🟡 DESIGN → 🟢 ACTIVE; Stage A unblocked (next: Stitch pass for the ownership picker).
+
+---
+
+## Session: qif-import-gemini-429-resilience (claude/serene-goodall-6smazx)
+
+### Changes Made
+- **Type**: Fix (prod — QIF import "completes" but imports zero transactions)
+- **Scope**: `lib/ai/google/geminiClient.ts`, `lib/bank/aiCategorisation.ts`, `app/api/accounts/[id]/import/route.ts`, `components/bank/TransactionImportDialog.tsx`
+- **Root Cause** (diagnosed from prod Vercel runtime logs per §17.3): User imported a QIF
+  file twice (`POST /api/accounts/0b89bef6…/import` 07:51:19 UTC, `POST /api/accounts/new/import`
+  07:56:00 UTC, both HTTP 200). Full-text log queries for `"Gemini"`, `"failed"`, `"429"` and
+  `"Too Many Requests"` all match exactly those two requests (and nothing else in the window) —
+  the Gemini categorisation calls were **rate-limited (HTTP 429 Too Many Requests)**. Chain:
+  1. The Gemini key (GCP project `Monitrax`) serves on **free-tier quota** (~15 req/min for
+     flash models). A QIF import fires one Gemini call per 20 transactions back-to-back.
+  2. `geminiClient.ts` had **zero 429 handling** — 404/JSON errors fell through to fallback
+     models, but 429 hit the "throw immediately" branch. No retry, no backoff.
+  3. `categoriseInBatches` had no per-batch error isolation — one failed batch discarded ALL
+     results, including from batches that succeeded.
+  4. PR #959's graceful fallback (2026-06-01 incident) then assigned confidence 0 to every
+     transaction → all classified `requiresManual` → diverted to `TransactionReviewQueue`
+     (which has NO live UI — `TransactionReviewPanel` is imported by zero files) →
+     `importedCount: 0` → the dialog showed a green "Import Complete!" with the
+     `requiresManual` count hidden. Silent zero-import.
+  - Related earlier incident: PR #959 (2026-06-01) fixed the same upstream class (Gemini
+    throwing 500s on import) — that fix made the failure *non-fatal* but also *silent*.
+- **Solution** (defence in depth — AI categorisation is enrichment, never a gate):
+  1. **`geminiClient.ts`** — new `withModelFallbackAndRetry()` shared by JSON + text paths:
+     retriable errors (429/503/quota/network) get exponential backoff (1s/2s/4s + jitter,
+     3 attempts per model) before falling through to the next fallback model; failures now
+     log at `console.error` (were `console.log`).
+  2. **`aiCategorisation.ts`** — `categoriseInBatches` isolates per-batch failures (a failed
+     batch falls back to uncategorised for THAT batch only; successful batches keep their
+     results) and reports `degraded`/`failedBatches`. `categoriseWithLearning` propagates
+     `degraded`/`degradedReason`; the previously-SILENT "Gemini unconfigured" branch now
+     logs `console.error`. Shared `buildUncategorisedResults()` helper hoisted to module scope.
+  3. **Import route** — logs a loud `[import] AI categorisation DEGRADED…` error line with
+     classification counts; response gains `aiDegraded` + `aiDegradedReason`.
+  4. **`TransactionImportDialog`** — completion screen now shows the previously-hidden
+     `requiresManual` count ("Needs Categorising" tile), shows an amber "Import received —
+     action needed" header instead of green "Import Complete!" when AI degraded with 0
+     imported, and an alert explaining the held transactions + that re-importing the same
+     file is safe (duplicates are skipped).
+- **Operator action (Reza, GCP)**: upgrade the `Monitrax` GCP project to paid-tier Gemini
+  quota — see runbook `docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`
+  § "QIF import completes but no transactions appear". The 2026-05-19 key restrictions
+  (Production Readiness item 13) are NOT the culprit (error is 429 quota, not 403 referrer)
+  and stay as-is.
+- **User-side recovery**: the affected user's transactions are NOT lost — they sit in
+  `TransactionReviewQueue` (one copy per attempt). After the quota upgrade, re-importing the
+  same QIF file works: the file-hash 409 guard only blocks `COMPLETED` batches (these are
+  `AWAITING_REVIEW`) and duplicate detection only checks created `UnifiedTransaction` rows.
+
+### Files Modified
+- `lib/ai/google/geminiClient.ts` — retry/backoff policy + shared fallback loop (dedupes the two copy-pasted loops)
+- `lib/bank/aiCategorisation.ts` — per-batch failure isolation, degraded propagation, loud unconfigured logging
+- `app/api/accounts/[id]/import/route.ts` — degraded logging + `aiDegraded` in response
+- `components/bank/TransactionImportDialog.tsx` — honest completion screen (requiresManual tile, degraded alert, amber header)
+
+### Build Status
+- [x] TypeScript compilation passes (`tsc --noEmit`, 0 errors)
+- [x] Build passes (`npm run build` — ✓ Compiled successfully)
+- [x] Tests pass (`vitest run tests/bookkeeping` — 253/253 green)
+- [x] Lint: no NEW violations in touched files (`TransactionImportDialog.tsx:793` unescaped-quote errors are pre-existing text that shifted line numbers; 99 pre-existing errors codebase-wide, untouched)
+
+### Diagnosis evidence (§17.3)
+- `mcp__Vercel__get_runtime_logs` window 07:50–07:58 UTC: queries `"Gemini"` / `"failed"` /
+  `"429"` / `"Too Many Requests"` each match exactly the two import POSTs; `"RESOURCE_EXHAUSTED"`,
+  `"referrer"`, `"quota"` match nothing → SDK-formatted `429 Too Many Requests`, not a
+  referrer 403 and not a missing key (`isGeminiConfigured()` true — `[Gemini]` lines present).
+- Dead-end ruled out: `parseQIF` returning 0 transactions returns HTTP 400 — user saw success,
+  so parsing was fine.
+
+### Tech debt logged (IMPLEMENTATION_PLAN §🗑️ rows 31–32)
+- `TransactionReviewQueue` black hole: `TransactionReviewPanel.tsx` orphaned (zero importers,
+  contradicting Phase 36 doc claim), review API route has no page, `reviewUrl` points at a
+  non-existent route. Structural fix proposal logged as Open Question Q-IMPORT-1.
+- Duplicate Gemini clients: `lib/ai/gemini.ts` vs `lib/ai/google/geminiClient.ts` (SSOT
+  violation; only the latter got the retry hardening).

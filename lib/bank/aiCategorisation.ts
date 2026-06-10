@@ -55,6 +55,10 @@ export interface AIBatchCategorizationResult {
   results: AICategorizationResult[];
   usage: GeminiUsageMetrics;
   processingTimeMs: number;
+  /** True when one or more batches fell back to uncategorised (AI failure). */
+  degraded?: boolean;
+  /** Number of batches that failed and fell back to uncategorised. */
+  failedBatches?: number;
 }
 
 export interface MerchantLearning {
@@ -391,29 +395,75 @@ export async function categoriseInBatches(
     estimatedCost: 0,
   };
   const startTime = Date.now();
+  let failedBatches = 0;
 
-  // Process in batches
+  // Process in batches. A single failing batch (e.g. a 429 that survived the
+  // client's retries) must not discard the results of batches that already
+  // succeeded — fall back to uncategorised for THAT batch only and continue.
+  // Fix for the 2026-06-10 silent-zero-import incident; see
+  // docs/changelog/CHANGELOG_2026_06_10.md
   for (let i = 0; i < transactions.length; i += settings.batchSize) {
     const batch = transactions.slice(i, i + settings.batchSize);
-    const batchResult = await categoriseWithAI(
-      batch,
-      merchantLearnings,
-      existingPatterns,
-      settings
-    );
+    try {
+      const batchResult = await categoriseWithAI(
+        batch,
+        merchantLearnings,
+        existingPatterns,
+        settings
+      );
 
-    allResults.push(...batchResult.results);
-    totalUsage.promptTokens += batchResult.usage.promptTokens;
-    totalUsage.completionTokens += batchResult.usage.completionTokens;
-    totalUsage.totalTokens += batchResult.usage.totalTokens;
-    totalUsage.estimatedCost += batchResult.usage.estimatedCost;
+      allResults.push(...batchResult.results);
+      totalUsage.promptTokens += batchResult.usage.promptTokens;
+      totalUsage.completionTokens += batchResult.usage.completionTokens;
+      totalUsage.totalTokens += batchResult.usage.totalTokens;
+      totalUsage.estimatedCost += batchResult.usage.estimatedCost;
+    } catch (err) {
+      failedBatches++;
+      console.error(
+        `[aiCategorisation] Batch ${Math.floor(i / settings.batchSize) + 1} failed (${batch.length} txs fall back to uncategorised):`,
+        err instanceof Error ? err.message : err
+      );
+      allResults.push(
+        ...buildUncategorisedResults(batch, 'AI categorisation failed for this batch')
+      );
+    }
   }
 
   return {
     results: allResults,
     usage: totalUsage,
     processingTimeMs: Date.now() - startTime,
+    degraded: failedBatches > 0,
+    failedBatches,
   };
+}
+
+/**
+ * Confidence-0 fallback used whenever AI categorisation is unavailable or
+ * fails — the transactions still flow through the import, they just need
+ * manual categorisation.
+ */
+function buildUncategorisedResults(
+  txs: NormalisedTransaction[],
+  reason: string
+): AICategorizationResult[] {
+  return txs.map((tx) => ({
+    transaction: tx,
+    prediction: {
+      categoryLevel1: 'Other',
+      categoryLevel2: null,
+      subcategory: null,
+      direction: tx.direction === 'IN' ? ('INCOME' as const) : ('EXPENSE' as const),
+      isEssential: false,
+      isRecurring: false,
+      suggestedFrequency: null,
+      confidence: 0,
+      reasoning: reason,
+    },
+    adjustedConfidence: 0,
+    boostReasons: [],
+    penaltyReasons: ['AI categorisation not available'],
+  }));
 }
 
 /**
@@ -499,6 +549,9 @@ export async function categoriseWithLearning(
   fromLearning: number;
   fromAI: number;
   usage: GeminiUsageMetrics | null;
+  /** True when any transactions fell back to uncategorised because AI was unavailable/failed. */
+  degraded?: boolean;
+  degradedReason?: string;
 }> {
   if (transactions.length === 0) {
     return {
@@ -563,28 +616,8 @@ export async function categoriseWithLearning(
   // in the review queue for manual categorisation.
   let aiResults: AICategorizationResult[] = [];
   let usage: GeminiUsageMetrics | null = null;
-
-  const uncategorisedFallback = (
-    txs: NormalisedTransaction[],
-    reason: string
-  ): AICategorizationResult[] =>
-    txs.map((tx) => ({
-      transaction: tx,
-      prediction: {
-        categoryLevel1: 'Other',
-        categoryLevel2: null,
-        subcategory: null,
-        direction: tx.direction === 'IN' ? 'INCOME' : 'EXPENSE',
-        isEssential: false,
-        isRecurring: false,
-        suggestedFrequency: null,
-        confidence: 0,
-        reasoning: reason,
-      },
-      adjustedConfidence: 0,
-      boostReasons: [],
-      penaltyReasons: ['AI categorisation not available'],
-    }));
+  let degraded = false;
+  let degradedReason: string | undefined;
 
   if (needsAI.length > 0 && settings.enableAI && isGeminiConfigured()) {
     try {
@@ -596,18 +629,33 @@ export async function categoriseWithLearning(
       );
       aiResults = aiResponse.results;
       usage = aiResponse.usage;
+      if (aiResponse.degraded) {
+        degraded = true;
+        degradedReason = `${aiResponse.failedBatches} categorisation batch(es) failed — affected transactions imported uncategorised`;
+      }
     } catch (err) {
       // Degrade gracefully — import proceeds, categorisation is deferred to
       // manual review rather than failing the upload.
       console.error('AI categorisation failed during import — importing uncategorised:', err);
-      aiResults = uncategorisedFallback(
+      aiResults = buildUncategorisedResults(
         needsAI,
         'AI categorisation unavailable, requires manual categorisation'
       );
+      degraded = true;
+      degradedReason = 'AI categorisation failed for all transactions';
     }
   } else if (needsAI.length > 0) {
-    // Gemini unconfigured / AI disabled.
-    aiResults = uncategorisedFallback(needsAI, 'AI not available, requires manual categorisation');
+    // Gemini unconfigured / AI disabled. Loud by design: this branch used to
+    // log nothing, which made a missing GEMINI_API_KEY indistinguishable from
+    // a healthy import in prod logs (2026-06-10 incident).
+    console.error(
+      `[aiCategorisation] Gemini ${settings.enableAI ? 'NOT CONFIGURED (GEMINI_API_KEY missing)' : 'disabled by settings'} — ${needsAI.length} transactions imported uncategorised`
+    );
+    aiResults = buildUncategorisedResults(needsAI, 'AI not available, requires manual categorisation');
+    degraded = true;
+    degradedReason = settings.enableAI
+      ? 'AI categorisation is not configured'
+      : 'AI categorisation is disabled';
   }
 
   // Step 5: Combine results
@@ -618,6 +666,8 @@ export async function categoriseWithLearning(
     fromLearning: fromLearningResults.length,
     fromAI: aiResults.length,
     usage,
+    degraded,
+    degradedReason,
   };
 }
 

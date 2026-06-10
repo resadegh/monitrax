@@ -368,6 +368,47 @@ Phase 41i + 41f.4-extension introduce admin-side audit surfaces and a user-facin
    - Deed PDFs > 25 MB are rejected with `413 PAYLOAD_TOO_LARGE`.
 5. To roll back: have user click **Reject** on the trust-deed page → re-upload.
 
+### Issue: QIF import "completes" but no transactions appear (Gemini 429 / quota)
+
+**Symptoms**: User imports a QIF file, dialog reports success, but the account shows zero
+transactions. Import API (`POST /api/accounts/[id]/import`) returns HTTP 200.
+First seen 2026-06-10 (and the same upstream class caused the 2026-06-01 import-500 incident, PR #959).
+
+**Mechanism**: AI categorisation is an enrichment, not a gate — when Gemini fails, transactions
+fall back to confidence 0 → `requiresManual` → `TransactionReviewQueue` instead of becoming
+`UnifiedTransaction` rows. Since 2026-06-10 the failure is loud (error-level logs + amber
+"action needed" dialog state); before that it was silent.
+
+**Diagnosis**:
+1. Pull prod runtime logs for the import window (`./scripts/vercel-logs.sh latest-runtime` or
+   the Vercel MCP `get_runtime_logs` with `query`). Look for:
+   - `[Gemini] <model> transient failure … 429 Too Many Requests` → **quota** (this issue)
+   - `[aiCategorisation] Gemini NOT CONFIGURED` → `GEMINI_API_KEY` missing from Vercel
+     Production runtime scope
+   - `403` + `referrer`/`API_KEY` → key restriction problem (see Production Readiness item 13
+     rollback note in `IMPLEMENTATION_PLAN.md`)
+   - `[import] AI categorisation DEGRADED for account …` → confirms transactions were held
+2. The error class decides the fix — do not guess.
+
+**Resolution (429 quota)**:
+1. The key lives in GCP project `Monitrax` (org `monitrax.com.au`). Free-tier Gemini quota is
+   ~15 requests/min for flash models; one QIF import fires one request per 20 transactions.
+2. Upgrade the project to paid-tier Gemini quota: confirm a billing account is linked to the
+   project (GCP Console → Billing), then in [Google AI Studio](https://aistudio.google.com) →
+   API keys → the key's plan should show **Paid** (if "Free", click Set up Billing / Upgrade
+   for that project).
+3. Verify: GCP Console → APIs & Services → **Generative Language API** → Quotas — requests/min
+   for `gemini-2.0-flash` should be in the thousands, not 15.
+4. Optional but recommended: set a billing budget alert (e.g. AU$10/mo) — categorisation
+   traffic costs cents at current scale (gemini-2.0-flash: US$0.075/M input tokens).
+5. Do NOT rotate the key or touch the 2026-05-19 key restrictions — they are unrelated to 429s.
+
+**User-side recovery**: held transactions sit in `TransactionReviewQueue` (no UI — known tech
+debt, IMPLEMENTATION_PLAN 🗑️ row 31). After quota is fixed, the user re-imports the same file:
+the file-hash duplicate guard only blocks `COMPLETED` batches (degraded ones are
+`AWAITING_REVIEW`) and row-level duplicate detection only checks created transactions, so the
+re-import goes through cleanly.
+
 ### Issue: User sees `UC-DEED-…` flag on Tax page
 
 **Resolution**: These are validation alerts — the user's annual trustee resolution doesn't match the CONFIRMED deed. They are NOT engine bugs. Walk the user through the alert via [the Tax page help article](../../help/consumer/your-tax-position.md). The CRITICAL one (`UC-DEED-BENEFICIARY-EXCLUDED`) means the resolution is invalid against the deed and may trigger s100A consequences — recommend they engage their tax agent.
