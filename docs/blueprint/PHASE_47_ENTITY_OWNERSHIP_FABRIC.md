@@ -1,7 +1,7 @@
 # Phase 47 — Entity Ownership Fabric (the "golden feature")
 
-> **Status:** 🟡 DESIGN — staged plan awaiting Reza sign-off on §8 open questions. No code ships from this doc until Stage A is approved.
-> **Version:** v1 (2026-06-10).
+> **Status:** ✅ APPROVED FOR STAGE A — Q-EOF-1…5 all decided per recommendation (Reza, 2026-06-10: *"go with your recommended"*), with one scope addition captured in §4A: personal & joint ownership capture must be first-class for users with NO company/trust/SMSF, and the relationship grammar must be complete against Australian tax/property law for the personal tier.
+> **Version:** v2 (2026-06-10) — §4A personal-tier completeness matrix added; Q-EOF-1…5 resolved.
 > **Owner:** Reza (direction + structural review) + Claude (audit, design, build).
 > **Reza directive (2026-06-10):** *"I want to have everything (financial portfolio) of the user captured and can be shown on the entity universe. of course the tax implications, dashboard, reports and everything on the app also needs to understand these relationships and consider them. … This will be the golden feature of Monitrax that user will have a bird-eye view of everything, how they relate and the money and tax flow."*
 > **Depends on:** Phase 44 Part 1 (complete — entity grammar, `ownerEntityId`, OwnershipGroup/Stake, BeneficialOwnershipOverride), Phase WX semantic-zoom canvas (complete).
@@ -61,6 +61,30 @@ Five stages, each independently shippable, revertible, and gated on the previous
 - **A3. Bulk re-attribution** — "Assign to entity" multi-select on list pages (properties, accounts, investments, assets) for users setting up a structure after years of personal-default data. Same correction framing, same audit trail, one transaction.
 - **A4. Onboarding/entity-create hook** — when a user creates a new entity (trust/company/SMSF), offer the bulk tool immediately: *"Do any of your existing items belong to {entity}?"* (growth lens: the structure-setup moment is when attribution intent is highest).
 
+### §4A — Personal-tier ownership completeness (Reza addition, 2026-06-10)
+
+> *"Want to make sure personal ownership of assets is also captured for users with no company, trust, etc and own assets under their personal or joint names. This section should cover every possible relationship based on the tax and other Australian laws. It should be very complete."*
+
+The personal tier is not a degenerate case of the entity tier — it is the MAJORITY case, and Australian tax law attaches specific treatment to each personal co-ownership form. The Phase 44 grammar already models all of them; Stage A must make every row **capturable at asset creation**, and Stages C/D must make the engine **apply the row's tax treatment**. This matrix is the completeness contract:
+
+| # | Ownership form | Real-world example | Model representation (exists today) | Tax treatment the engine must apply | Stage |
+|---|---|---|---|---|---|
+| P1 | **Sole — personal name** | Car, bank account, ETF portfolio in own name | `ownerEntityId` → PERSONAL_NAME entity (the current default) | All income, deductions, CG to the individual; CGT 50% discount ≥12 months; main-residence exemption attaches HERE (individuals only, never entities) | A (already default) |
+| P2 | **Joint tenants (JT)** | Family home or joint bank account with spouse | `OwnershipGroup(tenancyType: JOINT_TENANTS)` + equal `OwnershipStake`s, `survivorshipApplies: true` | Equal undivided shares — income/losses split **per legal interest, 50/50, regardless of who paid** (ATO TR 93/32); survivorship on death (passes outside the will) | A capture / C-D compute |
+| P3 | **Tenants in common (TIC)** | Investment property 70/30 between siblings | `OwnershipGroup(tenancyType: TENANTS_IN_COMMON)` + fractional `OwnershipStake.sharePct` | Income/losses/CG follow the **legal share percentages** (TR 93/32); each owner's share passes via their will | A capture / C-D compute |
+| P4 | **Co-ownership ≠ partnership** | Spouses co-own a rental — not a business | Stays an OwnershipGroup; **only** becomes a `PARTNERSHIP` entity when genuinely carrying on a business | TR 93/32: mere rental co-ownership is a *tax-law* partnership (income split per shares) but NOT a general-law partnership — no partnership return implied. The UI must never push co-owners into creating a PARTNERSHIP entity | A copy/UX + D |
+| P5 | **Spousal attribution** | Joint savings account interest | P2/P3 stakes ARE the attribution source | Interest on joint accounts presumed 50/50 unless beneficial ownership shown otherwise — `BeneficialOwnershipOverride` is the documented exception path | C-D |
+| P6 | **Held for a minor** | Parent holds shares "in trust for" a child | `BARE_TRUST` entity (informal) or `BeneficialOwnershipOverride` (parent legal / child beneficial) | Div 6AA penalty rates on a minor's unearned income — engine flag, not a silent personal attribution | B (picker exposes) / D |
+| P7 | **Deceased estate** | Inherited assets pre-administration | `DECEASED_ESTATE` entity type (exists in grammar) | s99/s99A executor taxation; CGT cost-base reset rules | Grammar exists; D |
+| P8 | **Nominee / bare trust** | Broker custodian holds shares | `BeneficialOwnershipOverride` (exists) | CGT + income follow BENEFICIAL owner | Exists; D reads it |
+| P9 | **Life interest / remainder, other exotic** | Testamentary life tenancy | `OTHER` + `unsupportedStructure` flag (Phase 44 §4 exclusion mechanism) | Flagged honest `UNCOMPUTED` — never silently mismodelled | Out of grammar (deliberate) |
+
+**Stage A consequences (binding):**
+1. The `EntityOwnerPicker` is really an **ownership picker**, not an entity dropdown: *"Just me"* (default, P1) / *"Joint — equal with survivorship"* (P2, quick-create the group + stakes inline, spouse from My Household) / *"Shared — set percentages"* (P3) / *"Another entity"* (trust/company/SMSF when they exist). Joint capture must NOT require a detour to the entities page.
+2. Warm-words rule (§14.3): users never see "OwnershipGroup", "tenancy", "TENANTS_IN_COMMON" — they see "Just me", "Joint with Sarah", "Shared 70/30".
+3. P4 guard: copy must never suggest co-owners need a "partnership". 
+4. **Acceptance addition:** a two-person household with a JT home, a TIC investment property, a joint account and personal vehicles can capture ALL of it without creating a single company/trust — and the universe renders each form distinctly (the canvas already renders ownership-group nodes).
+
 ### Stage B — Complete (coverage holes) — ~2 PRs
 
 - **B1. Super attachment** — backfill `SuperannuationAccount.ownerEntityId` = the member's personal entity for non-SMSF accounts (semantics: *member benefit*, documented in the column comment; SMSF accounts already attach to the SMSF entity). Migration per §12.12. Add `ownerEntityId` to the wealth-graph select; super appears in the universe (SMSF accounts under the SMSF entity, retail under YOU) and in the canonical clusters.
@@ -104,15 +128,16 @@ Capture (A) and Completion (B) live in **Track** ("track your full picture" — 
 4. A trust/company/SMSF with persisted facts returns a real engine-computed tax position (Stage D gates passed).
 5. Flat household totals identical to pre-phase baselines (golden tests green throughout).
 
-## §8 — Open questions (Reza decisions before Stage A code)
+## §8 — Design gates — ✅ ALL DECIDED 2026-06-10 (Reza: "go with your recommended")
 
-| # | Question | Recommendation |
+| # | Question | Decision |
 |---|---|---|
-| Q-EOF-1 | Ownership change framing: correction-only v1 (real transfers deferred to a future conveyance/What-If flow)? | **Yes — correction-only.** A transfer affordance without CGT/duty modelling is a tax trap dressed as a feature. |
-| Q-EOF-2 | Retail/industry super attaches to the member's personal entity (member-benefit semantics), not a modelled fund entity? | **Yes.** Simple, true enough for net-worth + universe; fund-as-entity (CUSTODIAN_PLATFORM) only if a real need appears. |
-| Q-EOF-3 | Holdings/transactions/recurring stay derived (no new columns)? | **Yes** (principle 4). |
-| Q-EOF-4 | Dashboard default stays Household-flat with opt-in entity lens? | **Yes.** Per-entity default would tax the single-entity majority. |
-| Q-EOF-5 | Stage D timing: strictly after Stage C? | **Yes** — C1 is D's substrate; parallelising re-creates the curl-fed-engine split. |
+| Q-EOF-1 | Ownership change framing | ✅ **Correction-only v1.** Real transfers deferred to a future conveyance/What-If flow — a transfer affordance without CGT/duty modelling is a tax trap dressed as a feature. |
+| Q-EOF-2 | Retail/industry super attachment | ✅ **Member's personal entity** (member-benefit semantics); fund-as-entity only if a real need appears. |
+| Q-EOF-3 | Holdings/transactions/recurring ownership | ✅ **Derived from parent** — no new columns. |
+| Q-EOF-4 | Dashboard default | ✅ **Household-flat with opt-in entity lens.** |
+| Q-EOF-5 | Stage D timing | ✅ **Strictly after Stage C.** |
+| (addition) | Personal-tier completeness | ✅ **§4A matrix is binding** — personal & joint capture first-class for users with no company/trust; grammar completeness asserted per Australian tax/property law forms (P1–P9). |
 
 ## §9 — Risks
 

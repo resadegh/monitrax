@@ -270,3 +270,8 @@ verified identity-provider claim; cannot clobber user-entered data.
 - `docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` — NEW phase doc
 - `docs/IMPLEMENTATION_PLAN.md` — new workstream 0·EOF + Open Questions Q-EOF-1…5
 - `docs/changelog/CHANGELOG_2026_06_10.md` — this entry
+
+### Decisions (same day)
+- **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
+- **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
+- Workstream 0·EOF flipped 🟡 DESIGN → 🟢 ACTIVE; Stage A unblocked (next: Stitch pass for the ownership picker).
