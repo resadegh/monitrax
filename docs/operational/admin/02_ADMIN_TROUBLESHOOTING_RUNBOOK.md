@@ -461,6 +461,61 @@ the file-hash duplicate guard only blocks `COMPLETED` batches (degraded ones are
 `AWAITING_REVIEW`) and row-level duplicate detection only checks created transactions, so the
 re-import goes through cleanly.
 
+### Issue: AI features silently degraded across the WHOLE app (Gemini outage)
+
+**Canonical incident:** 2026-06-10 (full elimination record in the QIF-import section above
+and `docs/changelog/CHANGELOG_2026_06_10.md`). Gemini was down for ~3 weeks (since ~May 21,
+when prepaid credits depleted) and ONE surface for ~9 months (cashflow AI summary, pinned to
+`gemini-1.5-flash`, retired Sep 2025) — and nobody noticed, because every surface degraded
+gracefully: rule-engine advice, uncategorised-but-imported transactions, skipped summaries.
+**Graceful degradation without alerting = silent outage.** Treat any ONE Gemini failure as
+a possible total outage until proven otherwise.
+
+**Surfaces that go down together when Gemini fails (all share `GEMINI_API_KEY`):**
+
+| Surface | Failure looks like | Fallback that masks it |
+|---|---|---|
+| QIF/CSV import smart categorisation | Transactions imported uncategorised / held | Amber "action needed" dialog (post-PR #1048) |
+| CFO AI advisor (`/dashboard/cfo`) | Generic advice | Rule engine answers instead |
+| Document intelligence | Extraction returns nothing | Manual entry path |
+| Trust-deed extractor | Extraction fails | Manual entry path |
+| Cashflow AI summary | No narrative summary | Section quietly absent |
+| Tax-advisor Gemini provider | Provider error | Depends on provider config |
+
+**NOT affected:** Anthropic-powered surfaces (feedback chat — different provider, different
+billing) and every non-AI feature.
+
+**5-minute triage (in order):**
+1. **The curl test** (see decision table above) — one call with the production key tells you
+   the exact failure class from the response body. This is the single fastest discriminator.
+2. **AI Studio → Projects page** (`aistudio.google.com/projects`): the Monitrax row's Status
+   column shows **"Prepay required"** when credits are depleted. Also check the billing-tier
+   column's account suffix (see trap below).
+3. **Vercel runtime logs**: `[Gemini] … transient failure` / `exhausted … attempts` lines at
+   error level (post-PR #1048 these are loud).
+
+**Resolution — prepaid credit top-up (and the two traps):**
+1. AI Studio → Billing (`aistudio.google.com/billing`) → **Credit balance** card → Buy credits
+   (min $10) → **Set up auto-reload** (e.g. reload A$10 below A$2) so it can't recur silently.
+2. **TRAP 1 — wrong billing account.** The org has MULTIPLE billing accounts. Credits MUST go
+   on the account funding the Monitrax project — ID **019237-E9340D-2959FB** (suffix shown on
+   the AI Studio Projects page per row: Monitrax = "Account (…59FB)"). On 2026-06-10 the first
+   A$25 went to the Default-Gemini-Project account (…008985) and changed nothing. Verify with
+   the curl AFTER topping up — payment-successful ≠ right account.
+3. **TRAP 2 — billing permissions.** `admin@monitrax.com.au` may lack IAM on the billing
+   account ("You don't have sufficient read permissions…" tooltip). Billing-account IAM is
+   SEPARATE from project IAM. Grant: GCP Console (as the account owner — the rayanmehr
+   personal Google account held admin on 2026-06-10) → Billing → 019237-E9340D-2959FB →
+   Account management → Add principal → `admin@monitrax.com.au` → **Billing Account
+   Administrator**. Docs: https://docs.cloud.google.com/billing/docs/how-to/grant-access-to-billing
+   Alternative used on 2026-06-10: log in to AI Studio AS the owning account and buy there.
+4. Postpay ("Switch to postpay") only unlocks at Tier 3 (~$1,000 cumulative + 30 days) — until
+   then, auto-reload IS the prevention.
+
+**Prevention (queued in IMPLEMENTATION_PLAN):** daily AI health probe — Cloud Scheduler
+(§12.7) makes one tiny Gemini call per day and alerts on failure, turning "down for 3 weeks"
+into "down for 1 day, you got an email."
+
 ### Issue: User sees `UC-DEED-…` flag on Tax page
 
 **Resolution**: These are validation alerts — the user's annual trustee resolution doesn't match the CONFIRMED deed. They are NOT engine bugs. Walk the user through the alert via [the Tax page help article](../../help/consumer/your-tax-position.md). The CRITICAL one (`UC-DEED-BENEFICIARY-EXCLUDED`) means the resolution is invalid against the deed and may trigger s100A consequences — recommend they engage their tax agent.

@@ -467,3 +467,21 @@ switch to postpaid at https://ai.studio/projects; verify with the curl; re-impor
 updated with the final four-theory elimination record + the curl-first diagnostic protocol +
 a 429-body decision table. Security follow-up queued: rotate GEMINI_API_KEY (exposed in chat
 during diagnosis) after imports verified working.
+
+### Addendum 6 (same session) — RESOLVED: credits on the right account, Gemini verified live
+Resolution sequence: (1) first A$25 top-up landed on the WRONG billing account (…008985,
+Default Gemini Project) — curl still returned prepay-429; (2) AI Studio Projects page tooltip
+revealed `admin@monitrax.com.au` lacks IAM on the Monitrax billing account
+(019237-E9340D-2959FB); (3) Reza logged into AI Studio as the owning personal account and
+bought A$25 on the CORRECT Cloud Prepay account; (4) verification curl returned **HTTP 200**
+("OK", gemini-3.5-flash, serviceTier standard) — first successful production-key Gemini call
+since ~May 21. Outage scope documented: ALL Gemini surfaces down ~3 weeks (categorisation,
+CFO advisor, document intelligence, trust-deed extractor, tax Gemini provider); cashflow AI
+summary down ~9 months (gemini-1.5-flash retired Sep 2025); Anthropic surfaces + non-AI app
+unaffected. Root lesson: graceful degradation without alerting = silent outage. Runbook gains
+a dedicated support section ("AI features silently degraded across the WHOLE app") with the
+affected-surfaces table, 5-minute triage, the two billing traps (wrong account / missing
+billing-account IAM), and prevention. Output-token check: categorisation passes no
+maxOutputTokens cap, so 3.5-flash thinking tokens cannot truncate the JSON. Remaining
+follow-ups: user re-import verification, GEMINI_API_KEY rotation, auto-reload setup, daily
+AI health probe (queued, pending Reza's go).
