@@ -67,6 +67,7 @@ const CARD_SELECTED = 'border-sky-400 bg-sky-50/40 ring-1 ring-sky-400/60';
 export default function OwnershipPicker({ token, value, onChange }: OwnershipPickerProps) {
   const [entities, setEntities] = useState<EntityOption[]>([]);
   const [members, setMembers] = useState<HouseholdMemberOption[]>([]);
+  const [people, setPeople] = useState<HouseholdMemberOption[]>([]);
   const [customName, setCustomName] = useState('');
 
   useEffect(() => {
@@ -75,16 +76,25 @@ export default function OwnershipPicker({ token, value, onChange }: OwnershipPic
     fetch('/api/entities', { headers })
       .then(r => (r.ok ? r.json() : { data: [] }))
       .then(result => {
-        const list: EntityOption[] = (result.data ?? [])
-          .filter((e: { type: string }) => e.type !== 'PERSONAL_NAME' && e.type !== 'INDIVIDUAL')
-          .map((e: { id: string; name: string; type: string }) => ({
-            id: e.id,
-            name: e.name,
-            type: e.type,
-          }));
-        setEntities(list);
+        const all = (result.data ?? []) as Array<{ id: string; name: string; type: string }>;
+        setEntities(
+          all
+            .filter(e => e.type !== 'PERSONAL_NAME' && e.type !== 'INDIVIDUAL')
+            .map(e => ({ id: e.id, name: e.name, type: e.type })),
+        );
+        // Existing INDIVIDUAL co-owners (quick-created on earlier assets)
+        // surface as chips — picking them reuses the SAME entity instead
+        // of re-typing a name (dedup belt-and-braces with the server).
+        setPeople(
+          all
+            .filter(e => e.type === 'INDIVIDUAL')
+            .map(e => ({ id: e.id, name: e.name, relationship: 'CO_OWNER' })),
+        );
       })
-      .catch(() => setEntities([]));
+      .catch(() => {
+        setEntities([]);
+        setPeople([]);
+      });
     fetch('/api/household-members', { headers })
       .then(r => (r.ok ? r.json() : { data: [] }))
       .then(result => {
@@ -101,6 +111,21 @@ export default function OwnershipPicker({ token, value, onChange }: OwnershipPic
   }, [token]);
 
   const hasEntities = entities.length > 0;
+
+  // Chip list for joint co-owners: household members + existing
+  // INDIVIDUAL entities, deduped by name (a household member who already
+  // has an entity appears once).
+  const coOwnerChips = useMemo(() => {
+    const seen = new Set<string>();
+    const chips: HouseholdMemberOption[] = [];
+    for (const p of [...members, ...people]) {
+      const key = p.name.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      chips.push(p);
+    }
+    return chips;
+  }, [members, people]);
 
   const jointNames = useMemo(
     () => (value.mode === 'joint' ? value.coOwners.map(c => c.name ?? '') : []),
@@ -189,7 +214,7 @@ export default function OwnershipPicker({ token, value, onChange }: OwnershipPic
         <div className="space-y-3 rounded-[14px] border border-sky-200/60 bg-sky-50/30 p-4">
           <div className="text-sm font-medium">Who owns it with you?</div>
           <div className="flex flex-wrap gap-2">
-            {members.map(m => {
+            {coOwnerChips.map(m => {
               const selected = jointNames.includes(m.name);
               return (
                 <button
