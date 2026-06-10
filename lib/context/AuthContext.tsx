@@ -14,6 +14,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   updateProfile,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
@@ -59,6 +60,15 @@ interface AuthContextType {
   resolveMFAWithPhone: (code: string) => Promise<void>;
   /** Cancel the current MFA challenge */
   cancelMFAChallenge: () => void;
+  /** Re-send the Firebase email-verification link to the signed-in user */
+  resendVerificationEmail: () => Promise<void>;
+  /**
+   * Re-check verification after the user clicks the emailed link: reloads the
+   * Firebase user, force-refreshes the ID token so `email_verified` lands in
+   * the live claim (the server gates read the claim), and trues-up the DB row.
+   * Returns true when the email is now verified.
+   */
+  confirmEmailVerified: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -308,6 +318,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // so the server-side sync picks up the correct name
     await updateProfile(credential.user, { displayName: name });
 
+    // Send the GCP Identity Platform verification email (2026-06-10).
+    // Best-effort: a failed send must never fail the signup itself — the
+    // user can re-send from /verify-email-sent or the dashboard banner.
+    try {
+      await sendEmailVerification(credential.user, {
+        url: `${window.location.origin}/verify-email`,
+      });
+    } catch (err) {
+      console.error('Verification email send failed (user can resend):', err);
+    }
+
     // Force token refresh to include the updated profile
     await credential.user.getIdToken(true);
 
@@ -364,6 +385,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setMFAChallenge(null);
   }, []);
 
+  // ==========================================================================
+  // Email Verification (GCP Identity Platform — 2026-06-10)
+  // ==========================================================================
+
+  const resendVerificationEmail = useCallback(async () => {
+    const auth = getFirebaseAuth();
+    const fbUser = auth?.currentUser;
+    if (!fbUser) throw new Error('You need to be signed in to resend the verification email.');
+    await sendEmailVerification(fbUser, {
+      url: `${window.location.origin}/verify-email`,
+    });
+  }, []);
+
+  const confirmEmailVerified = useCallback(async (): Promise<boolean> => {
+    const auth = getFirebaseAuth();
+    const fbUser = auth?.currentUser;
+    if (!fbUser) return false;
+
+    // Pull the latest account state from Firebase — emailVerified flips
+    // server-side when the user clicks the emailed link.
+    await fbUser.reload();
+    if (!fbUser.emailVerified) return false;
+
+    // Force-refresh the ID token so `email_verified` lands in the live claim.
+    // Server-side gates (withMFARequired / withActiveConsent) read the claim,
+    // so without this refresh a just-verified user would still be blocked.
+    const freshToken = await fbUser.getIdToken(true);
+    setToken(freshToken);
+
+    // True-up the DB bookkeeping row (fire-and-forget — the claim is the SSOT).
+    fetch('/api/auth/verify-email', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${freshToken}` },
+    }).catch(() => {});
+
+    return true;
+  }, []);
+
   /**
    * Logout — clears Firebase session
    */
@@ -400,6 +459,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sendMFAPhoneCode,
         resolveMFAWithPhone,
         cancelMFAChallenge,
+        resendVerificationEmail,
+        confirmEmailVerified,
       }}
     >
       {children}

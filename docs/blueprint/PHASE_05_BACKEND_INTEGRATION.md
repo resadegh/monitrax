@@ -339,17 +339,18 @@ Audit log destinations:
 
 # **10. Email Verification Engine**
 
-Email verification is mandatory.
+> **SUPERSEDED 2026-06-10.** The custom token engine below was replaced by
+> **GCP Identity Platform native verification** (CLAUDE.md §12.7 GCP-first).
+> The in-memory token store never worked on serverless (tokens issued on one
+> function instance, verified on another). Current design: Firebase
+> `sendEmailVerification` on signup → `/verify-email-sent` interstitial →
+> `applyActionCode` on `/verify-email` → forced token refresh → claim-based
+> gates (`requireVerifiedEmail` in `lib/auth/guards.ts`) hard-block CDR/Basiq
+> surfaces; the rest of the app soft-gates via `VerifyEmailBanner`. See
+> `docs/operational/security/01_AUTHENTICATION.md` § Email Verification.
 
-Workflow:
-1. Generate verification token  
-2. Store with TTL  
-3. Send with template  
-4. User clicks → Verified  
-
-Resend rules:
-- Max 5 per hour  
-- Rate limiting global  
+~~Workflow: generate token → store with TTL → send with template → user
+clicks → verified. Resend rules: max 5/hour, global rate limiting.~~
 
 ---
 
@@ -456,7 +457,7 @@ Monitrax must defend against:
 | Tenant Isolation | ✅ COMPLETE | `/lib/db/tenant.ts` |
 | Rate Limiting | ✅ COMPLETE | `/lib/security/rateLimit.ts` |
 | Audit Logging | ✅ COMPLETE | `/lib/audit/logger.ts` |
-| Email Verification | ✅ COMPLETE | `/lib/security/emailVerification.ts` |
+| Email Verification | ♻️ SUPERSEDED 2026-06-10 | GCP Identity Platform native (`lib/context/AuthContext.tsx`, `app/api/auth/verify-email/route.ts`) — custom module deleted |
 | Security Settings UI | ✅ COMPLETE | `/app/dashboard/settings/security/page.tsx` |
 
 ---
@@ -578,30 +579,25 @@ enum UserRole {
 
 ---
 
-### IMPLEMENTED-05-06: Email Verification ✅
+### IMPLEMENTED-05-06: Email Verification ♻️ SUPERSEDED 2026-06-10
 
-**Files:**
-- `/lib/security/emailVerification.ts` - Email verification flow
+**Replaced by GCP Identity Platform native verification** (GCP-first §12.7).
+The original `/lib/security/emailVerification.ts` module (Resend-backed,
+in-memory token store) was deleted — the `Map`-based store never worked on
+serverless. The `resend` npm package and `RESEND_API_KEY` are no longer used.
 
-**Features:**
-- Token-based verification with TTL (24 hours)
-- Token types: EMAIL_VERIFY, PASSWORD_RESET, MAGIC_LINK
-- Resend rate limiting (max 5 per hour)
-- Verification workflow:
-  - `createVerificationToken()` - Generates secure token
-  - `verifyToken()` - Validates token
-  - `sendVerificationEmail()` - Sends verification email
-  - `sendPasswordResetEmail()` - Password reset flow
-  - `verifyEmail()` - Complete verification
-  - `canResendVerification()` - Check resend eligibility
+**Current files:**
+- `lib/context/AuthContext.tsx` — `sendEmailVerification` on signup,
+  `resendVerificationEmail()`, `confirmEmailVerified()`
+- `app/verify-email-sent/page.tsx` — post-signup interstitial (Stitch screen
+  `33717abc960b4fb6881a5de0d077abff`)
+- `app/verify-email/page.tsx` — Firebase `oobCode` / continue-URL landing
+- `app/api/auth/verify-email/route.ts` — claim-based DB true-up
+- `lib/auth/guards.ts` `requireVerifiedEmail` — 403 gate on CDR surfaces
+- `components/auth/VerifyEmailBanner.tsx` — dashboard soft-gate banner
 
-**Production Email Service:** Resend (https://resend.com)
-- Package: `resend` npm package
-- Environment Variables:
-  - `RESEND_API_KEY` - API key from Resend dashboard
-  - `FROM_EMAIL` - Sender address (default: `Monitrax <onboarding@resend.dev>`)
-  - `NEXT_PUBLIC_APP_URL` - Base URL for email links
-- HTML email templates with branded styling
+Password reset was already Firebase-native (`sendPasswordResetEmail` via
+`useAuth().resetPassword`). MAGIC_LINK token type was never used.
 - Free tier: 3,000 emails/month
 
 ---

@@ -62,7 +62,8 @@ See `.stitch/DESIGN.md` for the canonical spec. Every Stitch prompt MUST include
 - [x] **`signin`** (`1d6a2726...`) Sign-in form
 - [x] **`register`** (`613fdfae...`) Sign-up form
 - [ ] **`forgot-password`** — same auth chrome family (queued)
-- [ ] **`verify-email`** — same auth chrome family (queued)
+- [x] **`verify-email-sent`** (`33717abc...`) Post-signup "Check your inbox" interstitial (email verification via GCP Identity Platform, 2026-06-10). Artefacts: `.stitch/designs/email-verification/verify-email-sent.{html,png}`
+- [ ] **`verify-email`** — same auth chrome family (queued; current implementation reuses AuthShell success/error states from Phase 48 PR 6)
 - [ ] **`/trail-check`** — public TRAIL Check funnel (queued, refresh with dark theme)
 - [ ] **`/wealth-check`** — Phase 46 public funnel (queued, refresh with dark theme)
 - [ ] **`/trail-method`** — public method explainer (queued)

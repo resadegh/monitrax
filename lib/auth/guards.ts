@@ -330,6 +330,49 @@ export function withOwnerOnly<T = unknown>(
 }
 
 // ============================================
+// EMAIL VERIFICATION GATE (CDR posture, 2026-06-10)
+// ============================================
+
+/**
+ * Reject the request when the caller's email address is unverified.
+ *
+ * Source of truth is the LIVE Firebase token claim (`AuthContext.emailVerified`),
+ * never the DB row — so the gate passes the moment the client refreshes its
+ * token after clicking the verification link (no stale-row false negatives).
+ *
+ * Applied inside the elevated CDR guards (withMFARequired, withActiveConsent):
+ * soft-gate posture means the dashboard stays open to unverified users, but
+ * bank connections / CDR data surfaces hard-block until the email is real.
+ * Returns null when the caller is verified (request proceeds).
+ */
+function requireVerifiedEmail(
+  auth: AuthContext,
+  request: NextRequest,
+  start: number,
+): Response | null {
+  if (auth.emailVerified) return null;
+
+  log.warn('Email verification required', {
+    userId: auth.userId,
+    path: request.nextUrl.pathname,
+  });
+  logApiRequest(auth.userId, request, 403, Date.now() - start);
+  return new Response(
+    JSON.stringify({
+      success: false,
+      data: null,
+      error: {
+        code: 'EMAIL_VERIFICATION_REQUIRED',
+        message:
+          'Please verify your email address before connecting financial data. Check your inbox for the verification link, or resend it from your dashboard.',
+      },
+      meta: { timestamp: new Date().toISOString(), durationMs: Date.now() - start },
+    }),
+    { status: 403, headers: { 'Content-Type': 'application/json' } }
+  );
+}
+
+// ============================================
 // MFA ENFORCEMENT GUARD (Phase 34.4 — CDR §1.3)
 // ============================================
 
@@ -370,6 +413,14 @@ export function withMFARequired<T = unknown>(
       logApiRequest(auth.userId, request, 403, Date.now() - start);
       return formatErrorResponse(errors.forbidden(`Permission '${permission}' required`));
     }
+
+    // Email-verification gate (CDR posture, 2026-06-10): elevated CDR surfaces
+    // require a verified email address — consent notices and breach
+    // notifications must reach an inbox the account holder actually owns.
+    // Reads the LIVE token claim (auth.emailVerified), so it passes immediately
+    // after the client force-refreshes its token post-verification.
+    const verificationBlocked = requireVerifiedEmail(auth, request, start);
+    if (verificationBlocked) return verificationBlocked;
 
     // MFA enforcement check: query user's MFA status from database
     const user = await prisma.user.findUnique({
@@ -569,6 +620,10 @@ export function withActiveConsent<T = unknown>(
       logApiRequest(auth.userId, request, 403, Date.now() - start);
       return formatErrorResponse(errors.forbidden(`Permission '${permission}' required`));
     }
+
+    // Email-verification gate — same CDR posture as withMFARequired (2026-06-10)
+    const verificationBlocked = requireVerifiedEmail(auth, request, start);
+    if (verificationBlocked) return verificationBlocked;
 
     // MFA enforcement check
     const mfaUser = await prisma.user.findUnique({
