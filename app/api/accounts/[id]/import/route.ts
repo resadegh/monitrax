@@ -247,6 +247,16 @@ export const POST = withPermission<RouteContext>('account.write', async (request
       // Classify by confidence
       const classified = classifyByConfidence(categorisationResult.results, settings);
 
+      // Loud signal when AI categorisation degraded — without this, a quota
+      // blip looks identical to a healthy import in prod logs and the user
+      // sees "Import Complete!" with zero transactions (2026-06-10 incident).
+      if (categorisationResult.degraded) {
+        console.error(
+          `[import] AI categorisation DEGRADED for account ${accountId}: ${categorisationResult.degradedReason} ` +
+          `(autoAccept=${classified.autoAccept.length}, needsReview=${classified.needsReview.length}, requiresManual=${classified.requiresManual.length})`
+        );
+      }
+
       // If preview only, return results without saving
       if (previewOnly) {
         return NextResponse.json({
@@ -446,6 +456,8 @@ export const POST = withPermission<RouteContext>('account.write', async (request
             fromAI: categorisationResult.fromAI,
             autoAccepted: classified.autoAccept.length,
           },
+          aiDegraded: categorisationResult.degraded ?? false,
+          aiDegradedReason: categorisationResult.degradedReason ?? null,
           // Balance verification data
           balanceInfo: {
             previousBalance,

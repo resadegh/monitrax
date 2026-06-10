@@ -41,7 +41,7 @@ export class GeminiExtractionError extends Error {
   }
 }
 
-const EXTRACTOR_VERSION = 'gemini-2.0-flash@2026-05-07';
+const EXTRACTOR_VERSION = 'gemini-3.5-flash@2026-06-10';
 
 const SYSTEM_PROMPT = `You are a careful trust-deed reading assistant for Monitrax.
 
@@ -132,7 +132,7 @@ const MAX_DEED_CHARS = 250_000;
 
 export interface ExtractTrustDeedInput {
   deedText: string;
-  /** Optional model override; defaults to gemini-2.0-flash. */
+  /** Optional model override; defaults to gemini-3.5-flash. */
   model?: GeminiModel;
 }
 
@@ -156,7 +156,7 @@ export async function extractTrustDeedRules(
   let result;
   try {
     result = await generateGeminiJSONCompletion<unknown>({
-      model: input.model ?? 'gemini-2.0-flash',
+      model: input.model ?? 'gemini-3.5-flash',
       systemPrompt: SYSTEM_PROMPT,
       userPrompt: USER_PROMPT_TEMPLATE(deedText),
       // Low temperature — deterministic structural extraction

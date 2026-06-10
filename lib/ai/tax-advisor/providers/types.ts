@@ -32,7 +32,7 @@ export interface ProviderInvokeRequest {
 }
 
 export interface ProviderOptions {
-  /** Model identifier — provider-specific (e.g. "gemini-2.0-flash"). */
+  /** Model identifier — provider-specific (e.g. "gemini-3.5-flash"). */
   model?: string;
   temperature?: number;
   maxOutputTokens?: number;

@@ -76,6 +76,87 @@ export interface GeminiTextResult {
 }
 
 // =============================================================================
+// RETRY / FALLBACK POLICY
+// =============================================================================
+
+// Fix: 429 rate-limit errors previously hit the "throw immediately" branch of
+// the model-fallback loop — one quota blip aborted the whole call with no
+// retry. Burst callers (e.g. QIF import batching, lib/bank/aiCategorisation)
+// then degraded ALL results to confidence 0. Transient upstream errors are now
+// retried per model with exponential backoff before moving to the next
+// fallback model. See: docs/changelog/CHANGELOG_2026_06_10.md
+const MAX_ATTEMPTS_PER_MODEL = 3;
+const BASE_RETRY_DELAY_MS = 1000;
+
+/** Transient errors worth retrying: rate limits, overload, network blips. */
+function isRetriableGeminiError(message: string): boolean {
+  return (
+    message.includes('429') ||
+    message.includes('503') ||
+    /rate.?limit|resource.?exhausted|quota/i.test(message) ||
+    /overloaded|temporarily unavailable/i.test(message) ||
+    /fetch failed|ECONNRESET|ETIMEDOUT|socket hang up/i.test(message)
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Run `attempt(modelName)` across the model fallback chain. Retriable errors
+ * (429/503/network) back off and retry up to MAX_ATTEMPTS_PER_MODEL per model
+ * before falling through to the next model; 404 / JSON-shape errors skip
+ * straight to the next model; anything else throws immediately.
+ */
+async function withModelFallbackAndRetry<T>(
+  modelsToTry: string[],
+  attempt: (modelName: string) => Promise<T>
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (const modelName of modelsToTry) {
+    for (let attemptNo = 1; attemptNo <= MAX_ATTEMPTS_PER_MODEL; attemptNo++) {
+      try {
+        return await attempt(modelName);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        lastError = error instanceof Error ? error : new Error(errorMsg);
+
+        if (isRetriableGeminiError(errorMsg)) {
+          if (attemptNo < MAX_ATTEMPTS_PER_MODEL) {
+            const delay =
+              BASE_RETRY_DELAY_MS * 2 ** (attemptNo - 1) + Math.floor(Math.random() * 250);
+            console.error(
+              `[Gemini] ${modelName} transient failure (attempt ${attemptNo}/${MAX_ATTEMPTS_PER_MODEL}), retrying in ${delay}ms:`,
+              errorMsg
+            );
+            await sleep(delay);
+            continue;
+          }
+          console.error(
+            `[Gemini] ${modelName} exhausted ${MAX_ATTEMPTS_PER_MODEL} attempts, trying next fallback model:`,
+            errorMsg
+          );
+          break; // next model
+        }
+
+        // Model not found or malformed JSON — this model won't recover; try the next one.
+        if (errorMsg.includes('404') || errorMsg.includes('not found') || errorMsg.includes('JSON')) {
+          console.error(`[Gemini] ${modelName} failed, trying next fallback model:`, errorMsg);
+          break; // next model
+        }
+
+        // Non-retriable, non-fallback error (auth, bad request, safety block).
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error('All Gemini models failed');
+}
+
+// =============================================================================
 // COMPLETION FUNCTIONS
 // =============================================================================
 
@@ -198,40 +279,9 @@ export async function generateGeminiJSONCompletion<T>(
   // Build list of models to try (primary + fallbacks)
   const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
 
-  let lastError: Error | null = null;
-
-  for (const modelName of modelsToTry) {
-    try {
-      return await tryGenerateWithModel<T>(
-        client,
-        modelName,
-        fullPrompt,
-        temperature,
-        options.maxTokens
-      );
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.log('[Gemini] Model', modelName, 'failed:', errorMsg);
-
-      // Check if it's a model not found error (404)
-      if (errorMsg.includes('404') || errorMsg.includes('not found')) {
-        lastError = error instanceof Error ? error : new Error(errorMsg);
-        continue;
-      }
-
-      // For JSON parse errors, also try fallback
-      if (errorMsg.includes('JSON')) {
-        lastError = error instanceof Error ? error : new Error(errorMsg);
-        continue;
-      }
-
-      // For other errors, throw immediately
-      throw error;
-    }
-  }
-
-  // All models failed
-  throw lastError || new Error('All Gemini models failed');
+  return withModelFallbackAndRetry(modelsToTry, (modelName) =>
+    tryGenerateWithModel<T>(client, modelName, fullPrompt, temperature, options.maxTokens)
+  );
 }
 
 /**
@@ -250,34 +300,9 @@ export async function generateGeminiTextCompletion(
   // Build list of models to try (primary + fallbacks)
   const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
 
-  let lastError: Error | null = null;
-
-  for (const modelName of modelsToTry) {
-    try {
-      return await tryGenerateTextWithModel(
-        client,
-        modelName,
-        fullPrompt,
-        temperature,
-        options.maxTokens
-      );
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      console.log('[Gemini] Text model', modelName, 'failed:', errorMsg);
-
-      // Check if it's a model not found error (404)
-      if (errorMsg.includes('404') || errorMsg.includes('not found')) {
-        lastError = error instanceof Error ? error : new Error(errorMsg);
-        continue;
-      }
-
-      // For other errors, throw immediately
-      throw error;
-    }
-  }
-
-  // All models failed
-  throw lastError || new Error('All Gemini models failed');
+  return withModelFallbackAndRetry(modelsToTry, (modelName) =>
+    tryGenerateTextWithModel(client, modelName, fullPrompt, temperature, options.maxTokens)
+  );
 }
 
 // =============================================================================

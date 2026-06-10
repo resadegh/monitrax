@@ -317,3 +317,134 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.
 - Workstream 0·EOF flipped 🟡 DESIGN → 🟢 ACTIVE; Stage A unblocked (next: Stitch pass for the ownership picker).
+
+---
+
+## Session: qif-import-gemini-429-resilience (claude/serene-goodall-6smazx)
+
+### Changes Made
+- **Type**: Fix (prod — QIF import "completes" but imports zero transactions)
+- **Scope**: `lib/ai/google/geminiClient.ts`, `lib/bank/aiCategorisation.ts`, `app/api/accounts/[id]/import/route.ts`, `components/bank/TransactionImportDialog.tsx`
+- **Root Cause** (diagnosed from prod Vercel runtime logs per §17.3): User imported a QIF
+  file twice (`POST /api/accounts/0b89bef6…/import` 07:51:19 UTC, `POST /api/accounts/new/import`
+  07:56:00 UTC, both HTTP 200). Full-text log queries for `"Gemini"`, `"failed"`, `"429"` and
+  `"Too Many Requests"` all match exactly those two requests (and nothing else in the window) —
+  the Gemini categorisation calls were **rate-limited (HTTP 429 Too Many Requests)**. Chain:
+  1. The Gemini key (GCP project `Monitrax`) serves on **free-tier quota** (~15 req/min for
+     flash models). A QIF import fires one Gemini call per 20 transactions back-to-back.
+  2. `geminiClient.ts` had **zero 429 handling** — 404/JSON errors fell through to fallback
+     models, but 429 hit the "throw immediately" branch. No retry, no backoff.
+  3. `categoriseInBatches` had no per-batch error isolation — one failed batch discarded ALL
+     results, including from batches that succeeded.
+  4. PR #959's graceful fallback (2026-06-01 incident) then assigned confidence 0 to every
+     transaction → all classified `requiresManual` → diverted to `TransactionReviewQueue`
+     (which has NO live UI — `TransactionReviewPanel` is imported by zero files) →
+     `importedCount: 0` → the dialog showed a green "Import Complete!" with the
+     `requiresManual` count hidden. Silent zero-import.
+  - Related earlier incident: PR #959 (2026-06-01) fixed the same upstream class (Gemini
+    throwing 500s on import) — that fix made the failure *non-fatal* but also *silent*.
+- **Solution** (defence in depth — AI categorisation is enrichment, never a gate):
+  1. **`geminiClient.ts`** — new `withModelFallbackAndRetry()` shared by JSON + text paths:
+     retriable errors (429/503/quota/network) get exponential backoff (1s/2s/4s + jitter,
+     3 attempts per model) before falling through to the next fallback model; failures now
+     log at `console.error` (were `console.log`).
+  2. **`aiCategorisation.ts`** — `categoriseInBatches` isolates per-batch failures (a failed
+     batch falls back to uncategorised for THAT batch only; successful batches keep their
+     results) and reports `degraded`/`failedBatches`. `categoriseWithLearning` propagates
+     `degraded`/`degradedReason`; the previously-SILENT "Gemini unconfigured" branch now
+     logs `console.error`. Shared `buildUncategorisedResults()` helper hoisted to module scope.
+  3. **Import route** — logs a loud `[import] AI categorisation DEGRADED…` error line with
+     classification counts; response gains `aiDegraded` + `aiDegradedReason`.
+  4. **`TransactionImportDialog`** — completion screen now shows the previously-hidden
+     `requiresManual` count ("Needs Categorising" tile), shows an amber "Import received —
+     action needed" header instead of green "Import Complete!" when AI degraded with 0
+     imported, and an alert explaining the held transactions + that re-importing the same
+     file is safe (duplicates are skipped).
+- **Operator action (Reza, GCP)**: upgrade the `Monitrax` GCP project to paid-tier Gemini
+  quota — see runbook `docs/operational/admin/02_ADMIN_TROUBLESHOOTING_RUNBOOK.md`
+  § "QIF import completes but no transactions appear". The 2026-05-19 key restrictions
+  (Production Readiness item 13) are NOT the culprit (error is 429 quota, not 403 referrer)
+  and stay as-is.
+- **User-side recovery**: the affected user's transactions are NOT lost — they sit in
+  `TransactionReviewQueue` (one copy per attempt). After the quota upgrade, re-importing the
+  same QIF file works: the file-hash 409 guard only blocks `COMPLETED` batches (these are
+  `AWAITING_REVIEW`) and duplicate detection only checks created `UnifiedTransaction` rows.
+
+### Files Modified
+- `lib/ai/google/geminiClient.ts` — retry/backoff policy + shared fallback loop (dedupes the two copy-pasted loops)
+- `lib/bank/aiCategorisation.ts` — per-batch failure isolation, degraded propagation, loud unconfigured logging
+- `app/api/accounts/[id]/import/route.ts` — degraded logging + `aiDegraded` in response
+- `components/bank/TransactionImportDialog.tsx` — honest completion screen (requiresManual tile, degraded alert, amber header)
+
+### Build Status
+- [x] TypeScript compilation passes (`tsc --noEmit`, 0 errors)
+- [x] Build passes (`npm run build` — ✓ Compiled successfully)
+- [x] Tests pass (`vitest run tests/bookkeeping` — 253/253 green)
+- [x] Lint: no NEW violations in touched files (`TransactionImportDialog.tsx:793` unescaped-quote errors are pre-existing text that shifted line numbers; 99 pre-existing errors codebase-wide, untouched)
+
+### Diagnosis evidence (§17.3)
+- `mcp__Vercel__get_runtime_logs` window 07:50–07:58 UTC: queries `"Gemini"` / `"failed"` /
+  `"429"` / `"Too Many Requests"` each match exactly the two import POSTs; `"RESOURCE_EXHAUSTED"`,
+  `"referrer"`, `"quota"` match nothing → SDK-formatted `429 Too Many Requests`, not a
+  referrer 403 and not a missing key (`isGeminiConfigured()` true — `[Gemini]` lines present).
+- Dead-end ruled out: `parseQIF` returning 0 transactions returns HTTP 400 — user saw success,
+  so parsing was fine.
+
+### Tech debt logged (IMPLEMENTATION_PLAN §🗑️ rows 31–32)
+- `TransactionReviewQueue` black hole: `TransactionReviewPanel.tsx` orphaned (zero importers,
+  contradicting Phase 36 doc claim), review API route has no page, `reviewUrl` points at a
+  non-existent route. Structural fix proposal logged as Open Question Q-IMPORT-1.
+- Duplicate Gemini clients: `lib/ai/gemini.ts` vs `lib/ai/google/geminiClient.ts` (SSOT
+  violation; only the latter got the retry hardening).
+
+### Addendum (same session) — actual GCP root cause confirmed via Reza's screenshots
+The initial working theory ("the project is on free tier — upgrade billing") was refined after
+Reza shared AI Studio screenshots: GCP project `Monitrax` (`monitrax-479700`) is **already
+Tier 1** with two keys (`…SWHI` MonitraxGemini, `…Dtk4` Monitrax-AI), but its Spend page shows
+~$0.00 over 28 days — production traffic never touched it. A third key (`…p7I4`, "Default
+Gemini API Key") lives in **Default Gemini Project** (`gen-lang-client-0285193787`) on **free
+tier** — this is almost certainly the key in Vercel's `GEMINI_API_KEY`, which explains (a) the
+429s at free-tier rates, (b) why the 2026-05-19 restriction work on the Monitrax project never
+affected prod behaviour, and (c) the recurring "Gemini keeps breaking" pattern. Cutover steps
+(swap Vercel env to an unrestricted Tier-1 Monitrax key, redeploy, verify via logs + Usage
+page, disable the free key) recorded in the runbook section above (revised in this PR).
+Pending Reza: confirm Vercel key ends `p7I4`, perform the swap; Claude verifies from runtime
+logs post-swap.
+
+### Addendum 2 (same session) — "wrong project key" theory DISPROVEN; quota-enforcement mismatch is the live theory
+Reza verified the Vercel `GEMINI_API_KEY` is the `…SWHI` MonitraxGemini key (Tier 1, project
+`monitrax-479700`) — NOT the free-tier `…p7I4` key. Targeted log queries on the import window
+then narrowed the failure: 429 occurred on `gemini-2.0-flash`; fallback models were never
+attempted (pre-fix code threw on first 429); no `PERMISSION_DENIED` (rules out a referrer-403
+for this request). A ~15–30 req/min sequential burst cannot 429 on genuine Tier-1 quota
+(~2,000 RPM) → working conclusion: **quota is enforced at free-tier levels despite the
+AI Studio Tier-1 label**, i.e. the billing link is not effective for the Generative Language
+API. The project's ~$0 lifetime spend and Reza's own doubt ("spend is 0 — not sure it is
+correctly connected") support this. Decisive checks handed to Reza: (a) read the ENFORCED
+per-model RPM on the GCP Quotas page; (b) verify the billing account is Active and linked to
+`monitrax-479700`. Runbook section revised accordingly (both theories recorded with their
+evidence so future sessions don't relive the elimination). Secondary observation for follow-up:
+the project's Usage page shows 404 errors — several model names in
+`lib/ai/google/modelConfig.ts` (e.g. `gemini-2.5-pro-preview-05-06`, `gemini-pro-latest`,
+`gemini-1.5-flash`) are likely stale/retired in June 2026; queue a model-list refresh as a
+separate small PR once quota is confirmed.
+
+### Addendum 3 (same session) — ROOT CAUSE CONFIRMED: Google retired our models; model migration shipped
+All GCP-side theories eliminated with Reza live (screenshots): key = Tier-1 `…SWHI` ✓, billing
+active ✓, zero quota breaches in 7 days ✓, key restrictions = None/Gemini-API ✓ → **GCP needs
+no changes.** Web verification against Google's official deprecations page: **`gemini-2.0-flash`
+shut down 2026-06-01** — the exact day of the first import incident (PR #959). The configured
+fallbacks were also dead (`gemini-2.5-flash-preview-05-20` removed; `gemini-1.5-flash` retired
+Sep 2025 — `lib/cashflow-intelligence/geminiSummary.ts` had been silently broken since).
+Retired endpoints reject with 404/429 regardless of tier → the 429s with healthy quota.
+**Shipped (same PR #1048):** model migration to verified-live IDs across all five surfaces —
+`lib/ai/google/modelConfig.ts` (FLASH→`gemini-3.5-flash`, PRO→`gemini-2.5-pro`,
+PRO_LATEST→`gemini-3.1-pro-preview`, fallback chains pruned to live IDs, pricing/capabilities
+refreshed per 2026-06-10 pricing page), `lib/ai/gemini.ts` (Document Intelligence client, kept
+in sync — 🗑️ row 32 duplicate), `lib/ai/tax-advisor/providers/geminiProvider.ts`
+(DEFAULT_MODEL), `lib/cashflow-intelligence/geminiSummary.ts`, `lib/integrations/trust-deed/
+geminiExtractor.ts` (+ EXTRACTOR_VERSION bump). **⚠ Scheduled breakage queued:**
+`gemini-2.5-flash`/`gemini-2.5-pro` retire 2026-10-16 — Up Next item added to re-verify the
+model lineup before then. Verification: tsc 0 errors; 458/458 tests (tests/ai + bookkeeping);
+build complete. Combined with the retry/backoff + batch isolation already in this PR, a future
+model retirement degrades through live fallbacks loudly instead of silently zeroing imports.

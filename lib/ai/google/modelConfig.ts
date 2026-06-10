@@ -11,21 +11,36 @@
 
 /**
  * Gemini model identifiers
- * Updated to use current available models (Dec 2024)
+ *
+ * Updated 2026-06-10 after the June-1 retirement of gemini-2.0-flash silently
+ * broke every Gemini surface (categorisation, tax advisor, CFO advisor,
+ * document intelligence). Model IDs verified against
+ * https://ai.google.dev/gemini-api/docs/deprecations on 2026-06-10:
+ *   - gemini-3.5-flash   — current stable flash (released 2026-05-19, no
+ *                          announced shutdown). Primary for all flash work.
+ *   - gemini-2.5-flash   — alive until 2026-10-16. Fallback only.
+ *   - gemini-2.5-pro     — alive until 2026-10-16. Pro primary until then.
+ *   - gemini-3.1-pro-preview — official 2.5-pro replacement. Pro fallback.
+ *
+ * ⚠ SCHEDULED BREAKAGE: gemini-2.5-flash and gemini-2.5-pro shut down
+ * 2026-10-16 — re-verify this file against the deprecations page before then
+ * (tracked in IMPLEMENTATION_PLAN “Up Next”). Never keep a retired ID in
+ * GEMINI_MODELS or MODEL_FALLBACKS: retired endpoints reject with 404/429
+ * regardless of billing tier.
  */
 export const GEMINI_MODELS = {
   // Fast models for quick responses
-  FLASH: 'gemini-2.0-flash',
-  FLASH_LATEST: 'gemini-2.5-flash-preview-05-20',
+  FLASH: 'gemini-3.5-flash',
+  FLASH_LATEST: 'gemini-3.5-flash',
 
   // Pro models for detailed analysis
-  PRO: 'gemini-2.5-pro-preview-05-06',
-  PRO_LATEST: 'gemini-pro-latest',
+  PRO: 'gemini-2.5-pro',
+  PRO_LATEST: 'gemini-3.1-pro-preview',
 
   // Aliases for use cases
-  QUICK_RESPONSE: 'gemini-2.0-flash',
-  FINANCIAL_ADVISOR: 'gemini-2.5-flash-preview-05-20',
-  DOCUMENT_ANALYSIS: 'gemini-2.0-flash',
+  QUICK_RESPONSE: 'gemini-3.5-flash',
+  FINANCIAL_ADVISOR: 'gemini-3.5-flash',
+  DOCUMENT_ANALYSIS: 'gemini-3.5-flash',
 } as const;
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
@@ -36,15 +51,14 @@ export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
 
 /**
  * Fallback model chains for reliability
- * If the primary model fails (404 or unavailable), try fallbacks in order
+ * If the primary model fails (404 or unavailable), try fallbacks in order.
+ * Only verified-live IDs belong here (see file-header note).
  */
 export const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-2.0-flash': ['gemini-2.5-flash-preview-05-20', 'gemini-1.5-flash'],
-  'gemini-2.5-flash-preview-05-20': ['gemini-2.0-flash', 'gemini-1.5-flash'],
-  'gemini-2.5-pro-preview-05-06': ['gemini-2.5-flash-preview-05-20', 'gemini-2.0-flash'],
-  'gemini-pro-latest': ['gemini-2.5-pro-preview-05-06', 'gemini-2.0-flash'],
-  'gemini-1.5-flash': ['gemini-2.0-flash'],
-  'gemini-1.5-pro': ['gemini-2.5-pro-preview-05-06', 'gemini-2.0-flash'],
+  'gemini-3.5-flash': ['gemini-2.5-flash'],
+  'gemini-2.5-flash': ['gemini-3.5-flash'],
+  'gemini-2.5-pro': ['gemini-3.1-pro-preview', 'gemini-3.5-flash'],
+  'gemini-3.1-pro-preview': ['gemini-2.5-pro', 'gemini-3.5-flash'],
 };
 
 // =============================================================================
@@ -53,7 +67,7 @@ export const MODEL_FALLBACKS: Record<string, string[]> = {
 
 /**
  * Pricing per 1M tokens (USD)
- * Source: Google AI pricing as of Dec 2024
+ * Source: https://ai.google.dev/gemini-api/docs/pricing as of 2026-06-10
  */
 export interface ModelPricing {
   inputPer1M: number;
@@ -62,18 +76,16 @@ export interface ModelPricing {
 
 const MODEL_PRICING: Record<string, ModelPricing> = {
   // Flash models - cheaper, faster
-  'gemini-2.0-flash': { inputPer1M: 0.075, outputPer1M: 0.30 },
-  'gemini-2.5-flash-preview-05-20': { inputPer1M: 0.15, outputPer1M: 0.60 },
-  'gemini-1.5-flash': { inputPer1M: 0.075, outputPer1M: 0.30 },
+  'gemini-3.5-flash': { inputPer1M: 1.50, outputPer1M: 9.00 },
+  'gemini-2.5-flash': { inputPer1M: 0.30, outputPer1M: 2.50 },
 
-  // Pro models - more capable
-  'gemini-2.5-pro-preview-05-06': { inputPer1M: 1.25, outputPer1M: 10.00 },
-  'gemini-pro-latest': { inputPer1M: 1.25, outputPer1M: 5.00 },
-  'gemini-1.5-pro': { inputPer1M: 1.25, outputPer1M: 5.00 },
+  // Pro models - more capable (≤200k-prompt tier)
+  'gemini-2.5-pro': { inputPer1M: 1.25, outputPer1M: 10.00 },
+  'gemini-3.1-pro-preview': { inputPer1M: 2.00, outputPer1M: 12.00 },
 };
 
 // Default pricing for unknown models
-const DEFAULT_PRICING: ModelPricing = { inputPer1M: 0.15, outputPer1M: 0.60 };
+const DEFAULT_PRICING: ModelPricing = { inputPer1M: 1.50, outputPer1M: 9.00 };
 
 /**
  * Get pricing for a specific model
@@ -113,36 +125,29 @@ export interface ModelCapabilities {
 }
 
 const MODEL_CAPABILITIES: Record<string, ModelCapabilities> = {
-  'gemini-2.0-flash': {
+  'gemini-3.5-flash': {
     maxInputTokens: 1000000,
     maxOutputTokens: 8192,
     supportsJSON: true,
     supportsVision: true,
     supportsFunctionCalling: true,
   },
-  'gemini-2.5-flash-preview-05-20': {
+  'gemini-2.5-flash': {
     maxInputTokens: 1000000,
     maxOutputTokens: 8192,
     supportsJSON: true,
     supportsVision: true,
     supportsFunctionCalling: true,
   },
-  'gemini-2.5-pro-preview-05-06': {
+  'gemini-2.5-pro': {
     maxInputTokens: 1000000,
     maxOutputTokens: 8192,
     supportsJSON: true,
     supportsVision: true,
     supportsFunctionCalling: true,
   },
-  'gemini-1.5-flash': {
+  'gemini-3.1-pro-preview': {
     maxInputTokens: 1000000,
-    maxOutputTokens: 8192,
-    supportsJSON: true,
-    supportsVision: true,
-    supportsFunctionCalling: true,
-  },
-  'gemini-1.5-pro': {
-    maxInputTokens: 2000000,
     maxOutputTokens: 8192,
     supportsJSON: true,
     supportsVision: true,

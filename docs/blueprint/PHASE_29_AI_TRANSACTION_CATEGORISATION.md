@@ -494,6 +494,33 @@ THRESHOLDS:
 
 ---
 
+## Post-ship hardening log
+
+### 2026-06-10 — Gemini 429 resilience + honest degraded-import UI
+
+Prod incident: a QIF import returned 200 with zero transactions imported. Gemini
+categorisation calls hit free-tier 429 rate limits; the client had no 429 retry path; one
+failed batch discarded all batch results; the confidence-0 fallback (added 2026-06-01,
+PR #959) routed every transaction to `TransactionReviewQueue` while the dialog showed a
+green "Import Complete!". Changes (see `docs/changelog/CHANGELOG_2026_06_10.md` for full detail):
+
+- `lib/ai/google/geminiClient.ts` — `withModelFallbackAndRetry()`: exponential backoff on
+  429/503/network errors before model fallback; error-level logging.
+- `lib/bank/aiCategorisation.ts` — per-batch failure isolation in `categoriseInBatches`;
+  `degraded`/`degradedReason` propagated from `categoriseWithLearning`; the unconfigured
+  branch logs at error level (was silent).
+- `POST /api/accounts/[id]/import` response — new optional `aiDegraded: boolean` +
+  `aiDegradedReason: string | null` fields; loud `[import] AI categorisation DEGRADED` log line.
+- `TransactionImportDialog` — completion screen surfaces the `requiresManual` count
+  ("Needs Categorising" tile), an amber "Import received — action needed" header when AI
+  degraded with 0 imported, and a safe-re-import recovery hint.
+
+**Known gap (unchanged by this fix):** `TransactionReviewPanel` is not mounted anywhere and
+the `reviewUrl` route has no page — review-queue items remain invisible
+(IMPLEMENTATION_PLAN 🗑️ row 31; structural proposal Q-IMPORT-1).
+
+---
+
 *Status: Complete*
 *Author: Claude Code*
 *Phase: 29*

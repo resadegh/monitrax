@@ -19,7 +19,9 @@ import { formatCurrencyForPrompt } from '@/lib/ai/google/geminiClient';
 // CONFIGURATION
 // =============================================================================
 
-const GEMINI_MODEL = 'gemini-1.5-flash';
+// gemini-1.5-flash was retired by Google in Sep 2025 — this surface has been
+// silently failing since. Migrated to current stable flash 2026-06-10.
+const GEMINI_MODEL = 'gemini-3.5-flash';
 const MAX_SUMMARY_LENGTH = 500;
 
 // What constitutes a "significant change" requiring regeneration

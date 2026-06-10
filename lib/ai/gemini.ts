@@ -46,21 +46,24 @@ export function isGeminiConfigured(): boolean {
 // MODEL CONFIGURATION
 // =============================================================================
 
+// Model IDs verified live against https://ai.google.dev/gemini-api/docs/deprecations
+// on 2026-06-10, after the 2026-06-01 retirement of gemini-2.0-flash broke this
+// client's primary. ⚠ gemini-2.5-flash / gemini-2.5-pro shut down 2026-10-16 —
+// re-verify before then (tracked in IMPLEMENTATION_PLAN). Keep in sync with
+// lib/ai/google/modelConfig.ts (known SSOT-violation duplicate, 🗑️ row 32).
 export const GEMINI_MODELS = {
-  // Gemini 2.0 Flash - Fast and reliable for document extraction
-  FLASH: 'gemini-2.0-flash',
-  // Gemini 2.5 Flash - Latest flash model
-  FLASH_LATEST: 'gemini-2.5-flash',
-  // Gemini 2.5 Pro - Most capable for complex analysis
+  // Gemini 3.5 Flash - current stable flash, fast and reliable for document extraction
+  FLASH: 'gemini-3.5-flash',
+  FLASH_LATEST: 'gemini-3.5-flash',
+  // Gemini 2.5 Pro - most capable for complex analysis (until 2026-10-16)
   PRO: 'gemini-2.5-pro',
 } as const;
 
-// Fallback model order if primary fails - use current available models
+// Fallback model order if primary fails - only verified-live model IDs
 const MODEL_FALLBACKS: Record<string, string[]> = {
-  'gemini-2.0-flash': ['gemini-2.5-flash', 'gemini-flash-latest', 'gemini-2.0-flash-001'],
-  'gemini-2.5-flash': ['gemini-2.0-flash', 'gemini-flash-latest'],
-  'gemini-2.5-pro': ['gemini-pro-latest', 'gemini-2.5-flash'],
-  'gemini-flash-latest': ['gemini-2.0-flash', 'gemini-2.5-flash'],
+  'gemini-3.5-flash': ['gemini-2.5-flash'],
+  'gemini-2.5-flash': ['gemini-3.5-flash'],
+  'gemini-2.5-pro': ['gemini-3.1-pro-preview', 'gemini-3.5-flash'],
 };
 
 export type GeminiModel = (typeof GEMINI_MODELS)[keyof typeof GEMINI_MODELS];
