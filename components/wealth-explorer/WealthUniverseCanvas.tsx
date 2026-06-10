@@ -46,7 +46,8 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   NODE_ACCENT,
@@ -564,6 +565,26 @@ export default function WealthUniverseCanvas() {
     setSelectedId(node.id);
     setExpandedIds(node.assetSummary ? [node.id] : []);
   }
+
+  // Deep-link focus (Reza 2026-06-10): /dashboard/entities?focus=<node>
+  // opens with that bubble's constellation already unfolded — the
+  // dashboard widget's bubbles carry the param so the tap reads as
+  // "zoom in", not "start over". Applied once per mount.
+  const searchParams = useSearchParams();
+  const focusAppliedRef = useRef(false);
+  useEffect(() => {
+    if (focusAppliedRef.current || nodes.length === 0) return;
+    const focus = searchParams?.get('focus');
+    if (!focus) {
+      focusAppliedRef.current = true;
+      return;
+    }
+    focusAppliedRef.current = true;
+    const node = nodes.find(n => n.id === focus);
+    if (!node) return;
+    setSelectedId(focus);
+    if (node.tier !== 'asset' && node.assetSummary) setExpandedIds([focus]);
+  }, [searchParams, nodes]);
 
   // Stagger for the satellite pop-in when a constellation unfolds.
   const satelliteDelayById = useMemo(() => {

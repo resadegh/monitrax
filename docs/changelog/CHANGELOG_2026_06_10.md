@@ -323,6 +323,10 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **D9 recurrence ×2**: dashboard baseline +7 lines (widget insertion).
 - Gate ✓ (real exit code), 39/39 tests, build PASS.
 
+### Widget deep-link focus + stale My Structure gate fix (Reza feedback ×2)
+- **"My Structure is empty although the widget shows assets"** — root cause: the entities page gated the canvas behind `hasRealStructure` (any non-personal entity), rendering the "Your wealth is held in your personal name" hero INSTEAD of the canvas. Correct before the WX.4.1 cluster level; stale after it (a personal-only user with assets has a real universe — the widget proved it). Fix: the canvas ALWAYS renders; the trust/SMSF/company invitation survives as a compact banner above it (2026-05-05 "not everyone has a structure" directive preserved); truly-empty users get the canvas's own empty state.
+- **"Zoom into that bubble"** — widget bubbles are now individual links carrying `?focus=<nodeId>`; the canvas (desktop + mobile) pre-selects and unfolds that node on load (mobile also raises the sheet). Card-level tap still opens the plain universe (outer Link → role=link div so bubbles can be real links).
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.

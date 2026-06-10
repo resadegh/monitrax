@@ -48,7 +48,8 @@ import {
   type LucideIcon,
   PiggyBank,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
@@ -176,6 +177,24 @@ export default function WealthUniverseMobile() {
   // Selection resolves against the FULL graph — an asset tapped in the
   // list must resolve even before its constellation unfolds on canvas.
   const selectedNode = selectedId ? listNodesById[selectedId] : null;
+
+  // Deep-link focus (mirrors desktop): widget bubbles carry ?focus=<node>.
+  const searchParams = useSearchParams();
+  const focusAppliedRef = useRef(false);
+  useEffect(() => {
+    if (focusAppliedRef.current || nodes.length === 0) return;
+    const focus = searchParams?.get('focus');
+    if (!focus) {
+      focusAppliedRef.current = true;
+      return;
+    }
+    focusAppliedRef.current = true;
+    const node = nodesById[focus] ?? listNodesById[focus];
+    if (!node) return;
+    setSelectedId(focus);
+    if (node.tier !== 'asset' && node.assetSummary) setExpandedIds([focus]);
+    setSnap('half');
+  }, [searchParams, nodes, nodesById, listNodesById]);
 
   const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
     const chip = FILTER_CHIPS.find(c => c.id === activeFilter);
