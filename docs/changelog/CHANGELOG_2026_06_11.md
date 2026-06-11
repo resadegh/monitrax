@@ -1,5 +1,82 @@
 # Changelog - 2026-06-11
 
+## Session: phase14.10-trail-relocate-LIlK9
+
+### Changes Made
+- **Type**: IA / surface relocation
+- **Scope**: Move `<TrailStageIndicator />` from `/dashboard` (home) to
+  `/dashboard/cfo` (My Guide). Add an ambient `<TrailStagePill />` to
+  the sidebar so the stage stays glanceable on every page.
+- **Description**: Reza (2026-06-11): *"although TRAIL tile is very
+  important but having it in the dashboard doesn't add any value. do
+  you think we need to move it somewhere else rather than home
+  dashboard page?"* Through the four §0 lenses: stage is a slow signal
+  (behaviour-psych), the tile ate vertical real estate on the home
+  daily-check-in surface (designer), stage is the compass that informs
+  WHAT to recommend (financial-adviser), and it's a teaching/journey
+  surface — not a data surface (architect). Reza picked "Move to My
+  Guide hero + sidebar pill (Recommended)".
+
+### Fix
+- **Removed** `<TrailStageIndicator />` + import from
+  `app/dashboard/page.tsx`.
+- **Added** `<TrailStageIndicator />` to `app/dashboard/cfo/page.tsx`
+  above the existing `<TaxReformBanner />` so the user reads: here's
+  where you are → here's what's changing → here's what to do.
+- **Created** `hooks/useTrailStage.ts` — pure client hook that fetches
+  `/api/master-snapshot` and applies the canonical
+  `determineTrailStage` rules from `lib/cfo/trailStage.ts` (SSOT).
+- **Created** `components/shell/TrailStagePill.tsx` — small stage
+  chip, links to `/dashboard/cfo`. Skeleton while loading; renders
+  `null` if the stage can't resolve (never shows a wrong badge).
+- **Updated** `components/editorial/shell/EditorialSidebar.tsx` — pill
+  renders as a SIBLING below the profile row so its own `Link` doesn't
+  nest inside the profile `Link`.
+
+### Files Created
+- `hooks/useTrailStage.ts`
+- `components/shell/TrailStagePill.tsx`
+
+### Files Modified
+- `app/dashboard/page.tsx`
+- `app/dashboard/cfo/page.tsx`
+- `components/editorial/shell/EditorialSidebar.tsx`
+
+### Build Status
+- TypeScript compilation: **PASS** (pre-existing AuditAction enum
+  errors from a separate migration are unrelated to this PR).
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (home + My Guide hero
+  + sidebar profile area)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (TRAIL tile location)
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- `docs/IMPLEMENTATION_PLAN.md` — ✅ Recently Completed entry
+- File-header JSDoc on `useTrailStage.ts` + `TrailStagePill.tsx`
+  documents the Phase 14.10 rationale + SSOT relationship (§16.4)
+- Inline comments in `app/dashboard/page.tsx`,
+  `app/dashboard/cfo/page.tsx`, and `EditorialSidebar.tsx`
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change.
+
+### Stitch (CLAUDE.md §18)
+N/A — relocates an existing component + adds a tiny ambient pill that
+reuses the §18.7.2 `TRAIL_STAGE_TONES` palette. No new visual primitive.
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase14.9-subtabs-active-match-LIlK9
 
 ### Changes Made

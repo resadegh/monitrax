@@ -43,6 +43,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { AIAdviceSection } from '@/components/cfo/AIAdviceSection';
+import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
 
 interface CFOScore {
   overall: number;
@@ -673,6 +674,22 @@ export default function CFODashboardPage() {
       />
 
       {/*
+       * Phase 14.10 (2026-06-11) — TRAIL stage indicator hero.
+       *
+       * Moved here from the home dashboard per Reza directive: "TRAIL
+       * tile is very important but having it in the dashboard doesn't
+       * add any value." My Guide is the journey surface — Actions /
+       * Tax / What If? are all stage-matched moves — so the stage
+       * indicator reads as "here's where you are → here's what to do
+       * next" rather than as static teaching. The smaller
+       * <TrailStagePill /> in the sidebar keeps the stage glanceable
+       * on every page.
+       */}
+      <div className="mt-4 mb-6">
+        <TrailStageIndicator />
+      </div>
+
+      {/*
        * Phase 41E.3 — "Tax rules are changing" one-time calm banner.
        * Mounted ABOVE the AI Advice section so it's the first thing the
        * user sees on their first CFO Guide visit after the 12 May 2026
@@ -680,7 +697,7 @@ export default function CFODashboardPage() {
        * UserPreference.dismissedReformBanner). See
        * `docs/blueprint/PHASE_41E_REFORM_2026_27.md` §11.1 + §12.1.
        */}
-      <div className="mt-4 mb-6">
+      <div className="mb-6">
         <TaxReformBanner />
       </div>
 
