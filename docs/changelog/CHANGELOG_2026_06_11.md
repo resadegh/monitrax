@@ -342,3 +342,19 @@ Three pieces of Reza feedback (2026-06-11 screenshots):
 
 Also includes Phase 49.6 (bookkeeper card placement directly above the transaction list).
 tsc clean; build green.
+
+## Session: serene-goodall-6smazx — Phase 49.8 (band-button symmetry + confidence-coloured pills)
+
+Two Reza reports (2026-06-11):
+1. **Bookkeeper card buttons misaligned/inconsistent** — both bands now share ONE structure:
+   `[Confirm all N <band>] [Review]` at equal heights. Medium's confirm = primary gradient;
+   low's = rose outline (deliberate pause, but bulk confirm restored for symmetry per the
+   visible-button parity ask). High stays the emerald auto-filed chip.
+2. **Category pills on review lines now colour-coded by CONFIDENCE** — in the review surface
+   the pill is the confirm target and the question is "how sure is the AI", so the pill takes
+   the band colour (amber = medium, rose = low) instead of the category colour; the redundant
+   subtitle dot is removed and "% sure" takes the band tint. (Normal transaction lists keep
+   category colours — recorded as the standing rule: category colour in ledger contexts,
+   confidence colour in review contexts.)
+
+tsc clean; build green.

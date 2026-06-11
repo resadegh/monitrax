@@ -1449,8 +1449,16 @@ function QueueReviewRow({
 }) {
   const isIn = item.direction === 'IN';
   const label = item.description || item.merchant || 'Transaction';
-  const dot = item.band === 'low' ? 'bg-rose-400' : 'bg-amber-400';
   const confidencePct = Math.round(item.aiConfidence * 100);
+  // Phase 49.8 (Reza) — in the REVIEW surface the category pill is
+  // colour-coded by CONFIDENCE BAND (amber = medium, rose = low), not by
+  // category: here the question is "how sure is the AI", and the pill is
+  // the confirm target. (Normal transaction lists keep category colours.)
+  const bandPillTone =
+    item.band === 'low'
+      ? 'bg-rose-500/15 text-rose-700 border-rose-500/30 dark:text-rose-300'
+      : 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300';
+  const bandTextTone = item.band === 'low' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400';
 
   // Phase 49.7 (Reza 2026-06-11) — the amount sits IMMEDIATELY LEFT of the
   // category cluster: one clean action line "-$33 · [Food & Dining ▾] ✓ ✗"
@@ -1467,7 +1475,7 @@ function QueueReviewRow({
           onClick={onEditCategory}
           title="Change category"
           aria-label={`Change category (currently ${item.aiCategoryLevel1 ?? 'uncategorised'})`}
-          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${getCategoryTone(item.aiCategoryLevel1)}`}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${bandPillTone}`}
         >
           {item.aiCategoryLevel1 ?? 'Pick category'}
           <ChevronDown className="w-3 h-3 opacity-60" />
@@ -1511,9 +1519,8 @@ function QueueReviewRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm truncate">{label}</div>
-          <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
-            <span className="tabular-nums">{confidencePct}% sure</span>
+          <div className="text-xs truncate mt-0.5">
+            <span className={`tabular-nums ${bandTextTone}`}>{confidencePct}% sure</span>
           </div>
         </div>
         {/* Desktop: amount + category cluster on one line */}

@@ -141,21 +141,23 @@ export function ConfidenceReviewCard({
               <div className="bg-rose-400 transition-all duration-500" style={{ width: `${pct(low)}%` }} />
             </div>
 
-            {/* Band actions — stacked on mobile (primary full-width on top), inline on desktop */}
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center gap-2.5">
-              <div className="order-2 sm:order-1 flex items-center gap-2.5">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/12 px-3 py-1.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
-                  <Check className="w-3.5 h-3.5" />
-                  {high.toLocaleString('en-AU')} high — auto-filed
-                </span>
-              </div>
+            {/* Band actions — Phase 49.8 (Reza): both bands get the SAME
+                structure — [Confirm all N] [Review] at equal heights — so the
+                row reads aligned and consistent. Medium's confirm is the
+                primary gradient; low's is an outline (it deserves a pause,
+                but the user may still bulk-confirm deliberately). */}
+            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
+              <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
+                <Check className="w-3.5 h-3.5" />
+                {high.toLocaleString('en-AU')} high — auto-filed
+              </span>
               {medium > 0 && (
-                <div className="order-1 sm:order-2 flex items-stretch gap-2">
+                <div className="flex items-stretch gap-1.5">
                   <button
                     type="button"
                     onClick={() => confirmBand('medium')}
                     disabled={confirming}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 sm:flex-none"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 sm:flex-none"
                   >
                     {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Confirm all {medium.toLocaleString('en-AU')} medium
@@ -163,22 +165,31 @@ export function ConfidenceReviewCard({
                   <button
                     type="button"
                     onClick={() => onReviewBand?.('medium')}
-                    className="inline-flex items-center justify-center rounded-[14px] border border-foreground/10 bg-background/50 px-3 py-2.5 text-sm font-medium text-muted-foreground backdrop-blur transition hover:text-foreground hover:border-foreground/25"
-                    title="Review the medium-confidence transactions before confirming"
+                    className="inline-flex items-center justify-center rounded-[14px] border border-foreground/10 bg-background/50 px-3.5 py-2 text-sm font-medium text-muted-foreground backdrop-blur transition hover:text-foreground hover:border-foreground/25"
                   >
                     Review
                   </button>
                 </div>
               )}
               {low > 0 && (
-                <button
-                  type="button"
-                  onClick={() => onReviewBand?.('low')}
-                  className="order-3 inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-foreground/10 bg-background/50 px-4 py-2.5 text-sm font-medium text-foreground backdrop-blur transition hover:border-foreground/25 w-full sm:w-auto"
-                  title="Low-confidence — review each before confirming"
-                >
-                  Review {low.toLocaleString('en-AU')} low
-                </button>
+                <div className="flex items-stretch gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => confirmBand('low')}
+                    disabled={confirming}
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] border border-rose-500/30 bg-rose-500/[0.08] px-4 py-2 text-sm font-semibold text-rose-700 dark:text-rose-300 transition hover:bg-rose-500/15 disabled:opacity-60 sm:flex-none"
+                  >
+                    <Check className="w-4 h-4" />
+                    Confirm all {low.toLocaleString('en-AU')} low
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onReviewBand?.('low')}
+                    className="inline-flex items-center justify-center rounded-[14px] border border-foreground/10 bg-background/50 px-3.5 py-2 text-sm font-medium text-muted-foreground backdrop-blur transition hover:text-foreground hover:border-foreground/25"
+                  >
+                    Review
+                  </button>
+                </div>
               )}
             </div>
 
