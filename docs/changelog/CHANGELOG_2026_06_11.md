@@ -374,3 +374,47 @@ Two Reza reports on the category picker sheet (2026-06-11 screenshot, "R Sadeght
      destination-picking flow, §12.3 no duplicate).
 
 tsc clean; build green.
+
+## Session: serene-goodall-6smazx — Phase 49.10 (Confirm-all = medium only + §18.2.1 strict Stitch ruling + review-surface artefact backfill)
+
+Three items from Reza's 2026-06-11 message:
+
+1. **Bookkeeper card bug ("confirm all" was wired to the wrong bands)** — Reza: *"it says
+   high auto filled, confirm all, low (which should be the medium ones) and review (which
+   should be the low ones)"*. The 49.8 symmetry pass over-corrected by giving LOW a bulk
+   "Confirm all" too. Fixed in `components/bookkeeping/ConfidenceReviewCard.tsx`:
+   - medium → `[Confirm all N medium]` (primary gradient) + `[Review]` (ghost)
+   - low → single rose-outline `[Review N low]` ONLY — <70% sure must never invite a blind
+     bulk confirm (behaviour-psychologist lens: the deliberate pause IS the design)
+   - high → unchanged emerald "auto-filed" chip.
+
+2. **CLAUDE.md §18.2.1 — STRICT in-app Stitch ruling codified** — Reza: *"I stick with
+   1. stricter, make sure this rule is updated in CLAUDE.md as a critical rule to follow at
+   all time"*. New §18.2.1: ANY new section-level composition (in-app included) goes through
+   Stitch FIRST; only true tweaks (spacing/copy/single control/responsive reflow of an
+   approved section) may ship code-first; backfill duty when a section shipped without an
+   artefact. §18.2 table row for the internal app flipped to "✅ YES for new
+   sections/patterns (§18.2.1)".
+
+3. **Review-surface Stitch artefact backfilled** (first application of the §18.2.1 backfill
+   duty) — the Phase 49.4 item-level review surface (QueueReviewList/QueueReviewRow) had
+   shipped Stitch-less during live iteration. Generated now: project 1859462351962811110,
+   screen `08bce51673d04e7b98fb385538ac865d`; artefact committed at
+   `.stitch/designs/activity-redesign/review-surface-desktop-light.{html,png}`; screen ID
+   referenced in the surface's JSDoc in `app/dashboard/activity/page.tsx`.
+
+Also: Reza approved the dedicated "Confirm subscriptions" review tile (placement delegated —
+decision: /dashboard/activity, where the Home pending-actions tile already deep-links and
+where all review piles live). Moves from Up Next → Active; ships as Phase 49.11.
+
+### Files Modified
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — band actions corrected (medium = bulk
+  confirm + review; low = review-only)
+- `CLAUDE.md` — §18.2 table row + new §18.2.1 strict ruling
+- `app/dashboard/activity/page.tsx` — review-surface JSDoc now carries the Stitch screen ID
+- `.stitch/designs/activity-redesign/review-surface-desktop-light.{html,png}` — backfill artefact
+- `docs/IMPLEMENTATION_PLAN.md` — "Confirm subscriptions" Up Next → Active
+
+### Build Status
+- [x] TypeScript compilation passes
+- [x] Build passes (`npm run build`)
