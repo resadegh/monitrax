@@ -523,3 +523,18 @@ Two pieces of Reza feedback on the 49.4 review surface (2026-06-11):
 - [x] tsc clean
 - [x] 253/253 bookkeeping tests
 - [x] Build passes
+
+## Session: serene-goodall-6smazx — Phase 49.5.1 (review-row mobile reflow)
+
+### Changes
+Reza mobile screenshot 2026-06-11: in the review surface, descriptions truncated to
+"V9110 3…" — the right-hand action cluster consumed the row width on ~390px screens.
+`QueueReviewRow` reflows on mobile: line 1 = checkbox + icon + FULL-WIDTH description
+(+ confidence subtitle) + amount; line 2 = the [category ▾][✓][✗] cluster right-aligned.
+Desktop keeps the single-line amount-over-actions layout. Touch targets bumped to 32px on
+mobile (w-8 h-8). Action cluster extracted to a single `actions` node used by both layouts
+(§12.8 — no duplication).
+
+### Testing
+- [x] tsc clean
+- [x] Build passes
