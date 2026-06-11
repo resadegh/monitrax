@@ -32,3 +32,34 @@
 | Hash | Message |
 |------|---------|
 | (this PR) | feat(wealth-universe): WX.5.2 in-widget navigation — bubbles zoom the widget in place |
+
+---
+
+## Session: gallant-gates-kb264m (continued) — WX.5.3
+
+### Changes Made — Phase WX.5.3: remove the redundant first zoom layer + lower the focused scene
+- **Type**: Fix (UX / navigation), from Reza's live prod testing (screenshots, 2026-06-11)
+- **Scope**: shared `wealthExplorerLayout` + all three universe surfaces (desktop canvas, mobile, dashboard widget)
+- **Feedback 1**: *"first layer is too busy on mobile view, and on desktop view it is faded and not useful, the first layer can be removed"* — in cluster mode (≤2 entities) tapping YOU unfolded an all-holdings scene ringing every asset at once (8 inner + rest outer = 15 mixed satellites for Reza), which duplicates what the type clusters already split cleanly.
+- **Feedback 2**: *"third layer the top node is hidden behind the text, it might be best to move the chart a bit lower"* — the focused-scene centre at y=42% put the top ring satellite at y=18%, colliding with the breadcrumb/trail text floating over the canvas top band.
+- **Solution**:
+  - New `WealthNode.isExpandable` flag computed by the layout (SSOT): clusters always; groups with holdings always (group assets never cluster — the group scene is the only way in); entities with holdings only OUTSIDE cluster mode. All three tap handlers + both deep-link effects now check `isExpandable` instead of `assetSummary` (which also powers totals and stays set).
+  - In cluster mode, tapping YOU opens the entity detail card over the universe (desktop), raises the detail sheet (mobile — a tap must visibly land), or routes to the full page (widget). The journey is now Universe → cluster → assets, one meaning per layer.
+  - Layout focused-scene early return defends the same rule for deep links: `?focus=<entityId>` in cluster mode falls through to the universe instead of building the removed scene.
+  - Focused-scene centre moved y 42% → 52% so the top satellite clears the breadcrumb (inner ring top now ~28%, was 18%).
+- **Tests**: 3 new layout tests pin the contract (entity not expandable in cluster mode / entity-focus fall-through / entities stay expandable with 3+ entities); scene-centre expectation updated. 42/42 green.
+
+### Files Modified
+- `lib/data/wealthExplorerTypes.ts` — `isExpandable` field + contract JSDoc
+- `lib/data/wealthExplorerLayout.ts` — centre y=52, cluster-mode entity-focus fall-through, `isExpandable` on entity/group/cluster nodes
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — click + deep-link use `isExpandable`
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — tap + deep-link use `isExpandable`; non-expandable entity tap raises the sheet
+- `components/wealth-explorer/WealthUniverseWidget.tsx` — tap uses `isExpandable`
+- `tests/wealth-explorer/semanticZoomLayout.test.ts` — contract tests
+
+### Build Status
+- [x] tsc / eslint / financial gate (exit codes checked) / 42 tests / `npm run build` — all pass
+
+### §17.2 post-merge verification — PR #1057 (WX.5.2)
+- Prod deploy `dpl_2LvHQD8sgbYjxj8LG4QMsmCm4BdK` reached `READY` (2026-06-11 02:12:25), runtime logs clean:
+  `(no runtime logs in the retention window — no recent traffic, or the deploy is too old)` — no errors since deploy.

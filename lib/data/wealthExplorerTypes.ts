@@ -73,6 +73,16 @@ export interface WealthNode {
   parentNodeId?: string;
   /** Semantic zoom — true on entity/group nodes whose satellites are unfolded. */
   isExpanded?: boolean;
+  /**
+   * WX.5.3 — true when tapping this node unfolds a focused scene
+   * (clusters always; groups with holdings; entities with holdings
+   * OUTSIDE cluster mode). In cluster mode the per-type clusters carry
+   * the way in, so the entity itself only opens the detail card —
+   * the redundant all-holdings middle layer was removed (Reza
+   * 2026-06-11). Tap handlers MUST check this flag, never
+   * `assetSummary` (which also powers totals and stays set).
+   */
+  isExpandable?: boolean;
 }
 
 export type RelationshipType =
