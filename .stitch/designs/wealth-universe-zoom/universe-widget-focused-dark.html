@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-variant": "#dde5d9",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed": "#002109",
+                        "secondary": "#585e6f",
+                        "on-tertiary-container": "#fdfcff",
+                        "primary-container": "#00873a",
+                        "secondary-container": "#d9dff4",
+                        "outline": "#6e7b6c",
+                        "inverse-on-surface": "#ecf3e7",
+                        "error-red": "#DC2626",
+                        "surface": "#f4fcf0",
+                        "surface-container-low": "#eff6ea",
+                        "secondary-fixed": "#dce2f6",
+                        "on-tertiary": "#ffffff",
+                        "trail-sky": "#0EA5E9",
+                        "background": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-primary-container": "#f7fff2",
+                        "tertiary-fixed": "#d3e4fe",
+                        "primary-fixed": "#7ffc97",
+                        "trail-violet": "#8B5CF6",
+                        "inverse-primary": "#62df7d",
+                        "on-secondary-fixed-variant": "#404757",
+                        "error-container": "#ffdad6",
+                        "surface-container-highest": "#dde5d9",
+                        "on-background": "#171d16",
+                        "outline-variant": "#bdcaba",
+                        "outline-slate": "#94A3B8",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f4fcf0",
+                        "tertiary": "#4d5d73",
+                        "surface-dim": "#d5dcd1",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-fixed-variant": "#005320",
+                        "inverse-surface": "#2b322b",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "primary": "#006b2c",
+                        "surface-container": "#e9f0e5",
+                        "on-error-container": "#93000a",
+                        "trail-emerald": "#16A34A",
+                        "tertiary-container": "#66768d",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-amber": "#F59E0B",
+                        "surface-container-lowest": "#ffffff",
+                        "on-surface": "#171d16",
+                        "error": "#ba1a1a",
+                        "surface-tint": "#006e2d",
+                        "on-error": "#ffffff",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-secondary": "#ffffff",
+                        "trail-indigo": "#6366F1",
+                        "surface-container-high": "#e3eadf"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "48px",
+                        "gutter": "24px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "data-xl": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .wealth-universe-card {
+            width: 520px;
+            height: 340px;
+            border-radius: 20px;
+            background: radial-gradient(ellipse at 50% 40%, #0A0E1F 0%, #060914 60%, #050810 100%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.15), 0 20px 40px rgba(0, 0, 0, 0.2);
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dust-mote {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(4px);
+        }
+
+        .satellite-node {
+            background: rgba(19, 26, 46, 0.94);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .satellite-node:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: scale(1.05);
+        }
+
+        .protagonist-glow {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background: radial-gradient(circle, rgba(16, 163, 74, 0.15) 0%, transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .curved-connector {
+            stroke: #8B5CF6;
+            stroke-width: 0.6;
+            stroke-opacity: 0.32;
+            fill: none;
+        }
+    </style>
+</head>
+<body>
+<div class="wealth-universe-card">
+<!-- Dust Motes Decoration -->
+<div class="dust-mote bg-white opacity-5 w-0.5 h-0.5" style="top: 20%; left: 15%;"></div>
+<div class="dust-mote bg-trail-emerald opacity-8 w-[3px] h-[3px]" style="top: 60%; left: 80%;"></div>
+<div class="dust-mote bg-white opacity-3 w-px h-px" style="top: 40%; left: 45%;"></div>
+<div class="dust-mote bg-white opacity-5 w-0.5 h-0.5" style="top: 75%; left: 30%;"></div>
+<!-- Header Row -->
+<div class="flex items-center justify-between px-5 pt-5 pb-2 relative z-10">
+<div>
+<p class="text-[9px] uppercase tracking-[0.18em] text-white/45 font-medium leading-tight">MY STRUCTURE</p>
+<h3 class="text-[14px] font-semibold text-white leading-tight mt-0.5">Wealth Universe</h3>
+</div>
+<div class="flex items-center gap-2">
+<div class="glass-pill px-2.5 py-1 rounded-full">
+<span class="text-[10px] text-white/75 font-medium">4 entities · 12 holdings</span>
+</div>
+<button class="w-7 h-7 flex items-center justify-center rounded-full glass-pill text-white/80 hover:text-white transition-colors">
+<span class="material-symbols-outlined !text-[16px]">north_east</span>
+</button>
+</div>
+</div>
+<!-- Mini Canvas (Focused Scene) -->
+<div class="flex-grow relative overflow-hidden flex items-center justify-center">
+<!-- Back Pill Overlay -->
+<div class="absolute top-2 left-5 z-20">
+<button class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#0D1224]/85 border border-white/12 text-white/90 hover:bg-white/5 transition-all">
+<span class="material-symbols-outlined !text-[12px]">chevron_left</span>
+<span class="text-[9px] font-semibold uppercase tracking-wider">UNIVERSE</span>
+</button>
+</div>
+<!-- Central Hub and Satellites -->
+<div class="relative w-full h-full flex items-center justify-center">
+<!-- SVG Connectors -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none" viewbox="0 0 520 200">
+<!-- Dynamic curved paths from center (260, 100) to orbit radius ~80px -->
+<path class="curved-connector" d="M 260,100 Q 230,60 210,40"></path>
+<path class="curved-connector" d="M 260,100 Q 290,60 310,40"></path>
+<path class="curved-connector" d="M 260,100 Q 320,100 340,100"></path>
+<path class="curved-connector" d="M 260,100 Q 300,140 310,160"></path>
+<path class="curved-connector" d="M 260,100 Q 220,140 210,160"></path>
+</svg>
+<!-- Center Protagonist -->
+<div class="relative z-10">
+<div class="protagonist-glow"></div>
+<div class="w-[46px] h-[46px] rounded-[30%] satellite-node shadow-[0_0_20px_rgba(167,139,250,0.15)]">
+<span class="material-symbols-outlined !text-[24px] text-trail-violet" style="font-variation-settings: 'FILL' 1;">umbrella</span>
+</div>
+</div>
+<!-- Satellites -->
+<!-- Top Left: Home -->
+<div class="absolute w-8 h-8 rounded-[30%] satellite-node" style="transform: translate(-60px, -70px);">
+<span class="material-symbols-outlined !text-[18px] text-trail-sky" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<!-- Top Right: Charts -->
+<div class="absolute w-8 h-8 rounded-[30%] satellite-node" style="transform: translate(60px, -70px);">
+<span class="material-symbols-outlined !text-[18px] text-trail-indigo">show_chart</span>
+</div>
+<!-- Mid Right: Dollar -->
+<div class="absolute w-8 h-8 rounded-[30%] satellite-node" style="transform: translate(90px, 0px);">
+<span class="material-symbols-outlined !text-[18px] text-trail-emerald">monetization_on</span>
+</div>
+<!-- Bottom Right: Banknote -->
+<div class="absolute w-8 h-8 rounded-[30%] satellite-node" style="transform: translate(60px, 70px);">
+<span class="material-symbols-outlined !text-[18px] text-trail-amber">payments</span>
+</div>
+<!-- Bottom Left: Car -->
+<div class="absolute w-8 h-8 rounded-[30%] satellite-node" style="transform: translate(-60px, 70px);">
+<span class="material-symbols-outlined !text-[18px] text-outline-slate">directions_car</span>
+</div>
+</div>
+</div>
+<!-- Footer Row -->
+<div class="border-t border-white/5 px-5 h-11 flex items-center justify-between relative z-10">
+<span class="text-[10px] text-white/65 tabular-nums tracking-tight">$2.4M held across your structure</span>
+<a class="text-[10px] font-medium text-[#6EE7B7] hover:underline transition-all" href="#">Open Wealth Universe →</a>
+</div>
+</div>
+<script>
+        // Subtle interaction: subtle float for satellites
+        const nodes = document.querySelectorAll('.satellite-node');
+        nodes.forEach((node, i) => {
+            const delay = i * 0.5;
+            node.style.animation = `float 6s ease-in-out infinite alternate`;
+            node.style.animationDelay = `${delay}s`;
+        });
+
+        // Add floating animation dynamically
+        const style = document.createElement('style');
+        style.innerHTML = `
+            @keyframes float {
+                from { transform: translate(var(--tw-translate-x), calc(var(--tw-translate-y) - 2px)); }
+                to { transform: translate(var(--tw-translate-x), calc(var(--tw-translate-y) + 2px)); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body></html>
