@@ -213,3 +213,31 @@ approved by Reza on the donut before React ("this looks better … ship it"). Ar
 
 ### §17.2 post-merge verification — PR #1058 (WX.5.3)
 - Prod deploy `dpl_EDvvDcKNQg7k5NsbDrGNdaQnRC5K` reached `READY` (2026-06-11 02:33:48). Reza's live testing on this deploy surfaced the WX.5.4 asset-bubble 404 (pre-existing since Phase WX.5 — not introduced by #1058).
+
+## Session: serene-goodall-6smazx — Phase 49.3 (per-account direct import on Balances)
+
+### Changes
+Reza directive 2026-06-11: surface QIF/CSV import directly on each account row of
+/dashboard/balances (it was buried in the account detail dialog's Transactions tab), and
+when launched from an account, skip the "Create New vs Existing account" question — that
+choice stays only on the top-level general Import.
+
+- `app/dashboard/balances/page.tsx` — `AccountRowView` restructured from a single `<button>`
+  to a `<div>` wrapping the detail-open button + a sibling per-account Import (Upload) icon
+  button (nested buttons are invalid HTML). The import button is quiet by default and lights
+  up sky on row hover/focus; always visible on touch. New `importTarget` state + `openImport()`
+  helper: row/detail-dialog imports pre-target the account; top-level Import / AddSourcePicker
+  / `?action=import` deep-link pass no target (general flow). Account detail dialog's
+  "Import Transactions" now also pre-targets the account being viewed.
+- `components/bank/TransactionImportDialog.tsx` — already supported `accountId` (skips the
+  select-account step via `getInitialStep()`); hardened the open-reset effect to set
+  `accountMode` deterministically ('existing' when pre-targeted, else 'new') so a prior
+  per-account open can't leave the general flow stuck on 'existing'.
+
+### Testing
+- [x] tsc clean
+- [x] Build passes
+
+### §17.2 — PR #1061 post-merge verification
+Prod deploy `dpl_53MakSGzKEwHXipoYXsCcSX76xQF` reached READY; error logs since merge are only
+the pre-existing DEP0169 deprecation warning — no new errors. Bulk-confirm fix + donut live.
