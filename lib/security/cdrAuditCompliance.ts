@@ -200,7 +200,7 @@ export async function withAuditedAuth(
     if (options.entityType) {
       await createAuditLog({
         userId,
-        action: action as string,
+        action,
         status: isSuccess ? 'SUCCESS' : 'FAILURE',
         entityType: options.entityType,
         ipAddress,
