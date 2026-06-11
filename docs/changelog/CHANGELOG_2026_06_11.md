@@ -1,5 +1,104 @@
 # Changelog - 2026-06-11
 
+## Session: phase14.8-guide-nav-cleanup-LIlK9
+
+### Changes Made
+- **Type**: IA cleanup + dead-code removal
+- **Scope**: My Guide sub-tab row — 5 children reduced to 3.
+- **Description**: Reza reported the My Guide mobile sub-tab row "is
+  different to all other pages — the design of the guide nav is
+  different more than the number of pages". Root cause: Guide had 5
+  sub-tabs (Actions / Health / Tax / What If? / Ask the Advisor) which
+  crammed into the segmented control with truncation ("What I…",
+  "Ask th…"). Phase 14.6 v3 design intent was: *"three sub-tabs ... fit
+  cleanly at 100% width — no horizontal scrolling, no truncation, no
+  thinking."* Audit of the standalone `/health` page (per Reza
+  directive "check the health page. I think all of the data on the
+  health page is already published on other pages and it is duplicated
+  data. in that case health page can be deleted") confirmed the
+  Financial Health Score Hero already lives on `/dashboard/cfo`, the
+  score chip appears on Home + `/cashflow` + Activity, and the page's
+  category breakdown / risk signals / improvement actions all live on
+  the CFO page. `/health` is duplicate.
+
+### Fix
+- **Deleted `/health`** + its orphan support widgets
+  (`components/health/`: FinancialHealthMiniWidget,
+  HealthSummaryWidget, HealthModal, ModuleHealthBlock — zero callers
+  by `grep -rn`).
+- **Relocated "Ask the Advisor"** from a sub-tab to a CTA on
+  `/dashboard/cfo/what-if` (the lever picker) per Reza directive:
+  *"the ask the advisor can be a call to action under what if page".*
+  Sits between the lever grid and the General Advice Warning so the
+  user reads: see how a move would change my picture → still have a
+  specific question? → but this is information, not advice. Existing
+  CTA on `/dashboard/cfo` (Actions) is preserved — multiple entry
+  points are fine for the same destination (`/dashboard/cfo/ask`).
+- **Updated `lib/navigation/trailNav.tsx`**:
+  - `trailNavItems` My Guide children reduced 5 → 3
+    (Actions / Tax / What If?).
+  - `matchRoutes` keeps `/dashboard/cfo/ask` so deeplinks still
+    highlight Guide in the sidebar / mobile tab bar.
+  - `/health` removed from both `matchRoutes` and
+    `mobileTabBarItems.guide.matchRoutes`.
+
+### Result
+- Guide sub-tab row now renders 3 equal-width segments like every
+  other section (Track / Reduce / Anchor / Invest), matching Phase
+  14.6 v3 visual design intent.
+- 6 orphaned files removed; the canonical home for Financial Health
+  is `/dashboard/cfo` (single source of the score + categories +
+  actions).
+
+### Files Modified
+- `lib/navigation/trailNav.tsx` — Guide children + matchRoutes
+- `app/dashboard/cfo/what-if/page.tsx` — Ask the Advisor CTA card
+
+### Files Deleted
+- `app/(dashboard)/health/page.tsx`
+- `components/health/FinancialHealthMiniWidget.tsx`
+- `components/health/HealthSummaryWidget.tsx`
+- `components/health/HealthModal.tsx`
+- `components/health/ModuleHealthBlock.tsx`
+- `components/health/index.ts`
+
+### Build Status
+- TypeScript compilation: **PASS** (only stale `.next/types/.../health/page.ts`
+  cache stub left over from the deleted page — clears on next build).
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (Guide sub-tab row
+  + What If? page gains Ask CTA)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [x] strategic decision (Health page deletion — duplicate-data
+  audit resolved)
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- `docs/IMPLEMENTATION_PLAN.md` — ✅ Recently Completed entry
+- Inline comment block on the Guide section in `lib/navigation/trailNav.tsx`
+  documents the Phase 14.8 decision (§16.4 file-header rule)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change (§12.12 N/A). Page
+deletion is reversible via revert.
+
+### Stitch (CLAUDE.md §18)
+N/A — IA cleanup that restores Phase 14.6 v3 visual design intent.
+No new visual primitive introduced. The "Ask the Advisor" CTA on
+What If? reuses the existing glass-card vocabulary already in use
+on that page.
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase45.8.2-moneyflow-mobile-fix-LIlK9
 
 ### Changes Made

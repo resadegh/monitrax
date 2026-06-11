@@ -39,6 +39,7 @@ import {
   Info,
   ArrowRight,
   Construction,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ScenarioType } from '@/lib/cfo/scenarios';
@@ -227,6 +228,44 @@ export default function WhatIfLeverPickerPage() {
             <LeverTile key={lever.id} lever={lever} />
           ))}
           <EmptyStateTile />
+        </div>
+
+        {/*
+         * Phase 14.8 (2026-06-11) — "Ask the Advisor" CTA.
+         *
+         * Relocated here from the Guide sub-tab nav per Reza directive:
+         * *"the ask the advisor can be a call to action under what if
+         * page"*. Sits between the lever grid and the General Advice
+         * Warning so the user reads: "see how a move would change my
+         * picture" → "still got a specific question?" → "but this is
+         * information, not advice." Same destination as before
+         * (/dashboard/cfo/ask).
+         */}
+        <div className="mt-8">
+          <Link
+            href="/dashboard/cfo/ask"
+            className="group flex flex-col gap-3 rounded-[20px] border border-foreground/10 bg-card/70 p-6 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] transition hover:bg-card/90 dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-violet-100/70 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300">
+                <MessageSquare className="h-5 w-5" strokeWidth={2} />
+              </div>
+              <div className="flex-1">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-foreground/60">
+                  Decision support · Specific question
+                </p>
+                <p className="text-base font-semibold text-foreground">Have a specific question?</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ask the advisor about your tax position, contribution headroom, land tax, or a "what if" scenario.
+                  Answers cite the rule and the number from your own data.
+                </p>
+              </div>
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-[14px] bg-gradient-to-r from-violet-500 to-violet-600 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-violet-500/25 transition group-hover:from-violet-600 group-hover:to-violet-700 sm:self-auto">
+              Ask the Advisor
+              <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </div>
+          </Link>
         </div>
 
         {/* General Advice Warning */}
