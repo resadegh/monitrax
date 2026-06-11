@@ -135,19 +135,29 @@ export const trailNavItems: NavItem[] = [
     icon: Brain,
     tourId: 'nav-guide',
     trailStage: 'L',
+    // Phase 14.8 (2026-06-11): Guide sub-tabs reduced 5 → 3 for visual
+    // parity with every other section's sub-tab row (Phase 14.6 v3 design
+    // intent: "three sub-tabs ... fit cleanly at 100% width — no
+    // horizontal scrolling, no truncation"). Removed:
+    //  - "Health" — the standalone /health page was duplicate data
+    //    (the same Financial Health Score Hero lives on /dashboard/cfo,
+    //    and the score chip appears on Home + /cashflow + /activity).
+    //    The page + the orphan FinancialHealthMiniWidget were deleted.
+    //  - "Ask the Advisor" — relocated as a CTA on /dashboard/cfo/what-if
+    //    (per Reza directive: "the ask the advisor can be a call to
+    //    action under what if page"). /dashboard/cfo/ask still exists
+    //    as a destination; matchRoutes keeps Guide highlighted when
+    //    visiting it directly.
     matchRoutes: [
       '/dashboard/cfo',
       '/dashboard/cfo/ask',
       '/dashboard/cfo/what-if',
-      '/health',
       '/dashboard/tax',
     ],
     children: [
       { name: 'Actions', href: '/dashboard/cfo' },
-      { name: 'Health', href: '/health' },
       { name: 'Tax', href: '/dashboard/tax' },
       { name: 'What If?', href: '/dashboard/cfo/what-if' },
-      { name: 'Ask the Advisor', href: '/dashboard/cfo/ask' },
     ],
   },
   {
@@ -296,10 +306,10 @@ export const mobileTabBarItems: MobileTabBarItem[] = [
     href: '/dashboard/cfo',
     icon: Brain,
     trailStage: 'L',
+    // Phase 14.8 (2026-06-11): /health removed (page deleted as duplicate).
     matchRoutes: [
       '/dashboard/cfo',
       '/dashboard/cfo/ask',
-      '/health',
       '/dashboard/tax',
     ],
   },
