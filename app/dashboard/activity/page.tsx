@@ -239,9 +239,6 @@ export default function ActivityPage() {
   const [advancedView, setAdvancedView] = useState(false);
   // Phase 42 PR6.5c — Review-mode card-stack opt-in.
   const [reviewMode, setReviewMode] = useState(false);
-  // Phase 49 — "Review N low" routes the card-stack at low-confidence rows
-  // (categorised but < 0.7) instead of uncategorised ones.
-  const [reviewLowMode, setReviewLowMode] = useState(false);
   // Phase 49 — bump to re-fetch the AI bookkeeper confidence summary.
   const [confidenceRefresh, setConfidenceRefresh] = useState(0);
 
@@ -277,25 +274,31 @@ export default function ActivityPage() {
   // <TransferDestinationSheet /> which handles the PATCH itself with
   // a chosen destination account. See `setTransferTx(tx)` below.
 
-  // Phase 49 — per-row "✓ Looks right" confirm. Accepts the AI's category
-  // as-is via the bulk-confirm endpoint (single-id mode) so the row's
-  // confidence promotes to 1.0 and the merchant mapping learns.
+  // Phase 49 — per-row "✓ Looks right" confirm for an uncertain
+  // UnifiedTransaction already in the list (e.g. a Basiq-synced row written
+  // at medium confidence). Re-PATCHes the row's OWN category, which the
+  // canonical PATCH path promotes to confidence 1.0 and learns the merchant.
+  // (The import's medium/low pile lives in the review queue and is handled
+  // by the AI bookkeeper card, not here.)
   const confirmRow = useCallback(
     async (tx: Transaction) => {
-      if (!token) return;
+      if (!token || !tx.categoryLevel1) return;
       try {
-        await fetch('/api/unified-transactions/bulk-confirm', {
-          method: 'POST',
+        await fetch(`/api/unified-transactions/${tx.id}`, {
+          method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ transactionIds: [tx.id] }),
+          credentials: 'include',
+          body: JSON.stringify({
+            categoryLevel1: tx.categoryLevel1,
+            categoryLevel2: tx.categoryLevel2,
+          }),
         });
         setTransactions((prev) =>
           prev.map((t) => (t.id === tx.id ? { ...t, confidenceScore: 1.0 } : t))
         );
-        setConfidenceRefresh((n) => n + 1);
       } catch {
         // Quiet failure — chip stays, user can retry.
       }
@@ -513,7 +516,6 @@ export default function ActivityPage() {
             fetchSummary();
             setCelebrationTrigger((t) => t + 1);
           }}
-          onReviewLow={() => setReviewLowMode(true)}
         />
 
         {/* Phase 42 PR6.5 — Consumer money-flow Sankey. The "where your
@@ -862,27 +864,17 @@ export default function ActivityPage() {
       />
 
       {/* Phase 42 PR6.5c — Review Queue card-stack. Full-screen
-          opt-in review mode. Receives the already-loaded
-          uncategorised tx list; each successful PATCH advances + we
-          refresh the parent on close. Phase 49 — reviewLowMode routes the
-          same stack at LOW-CONFIDENCE rows (categorised but < 0.7) so
-          "Review N low" reuses the proven flow instead of a new surface. */}
+          opt-in review mode for uncategorised transactions already in the
+          list; each successful PATCH advances + we refresh on close. */}
       <ReviewQueueCards
-        open={reviewMode || reviewLowMode}
-        transactions={transactions.filter((t) =>
-          reviewLowMode
-            ? !t.isTransfer &&
-              ((t.confidenceScore !== null && t.confidenceScore > 0 && t.confidenceScore < 0.7) ||
-                !t.categoryLevel1)
-            : !t.categoryLevel1 && !t.isTransfer
-        )}
+        open={reviewMode}
+        transactions={transactions.filter((t) => !t.categoryLevel1 && !t.isTransfer)}
         onPatchSuccess={() => {
           // Bump celebration trigger when the queue clears completely.
           setCelebrationTrigger((t) => t + 1);
         }}
         onClose={() => {
           setReviewMode(false);
-          setReviewLowMode(false);
           setConfidenceRefresh((n) => n + 1);
           fetchTransactions();
           fetchSummary();

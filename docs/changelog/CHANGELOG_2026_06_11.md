@@ -126,3 +126,39 @@ Direction approved by Reza before React ("generate the dark version and ship it"
 ### §17.2 post-merge verification — PR #1057 (WX.5.2)
 - Prod deploy `dpl_2LvHQD8sgbYjxj8LG4QMsmCm4BdK` reached `READY` (2026-06-11 02:12:25), runtime logs clean:
   `(no runtime logs in the retention window — no recent traffic, or the deploy is too old)` — no errors since deploy.
+
+## Session: serene-goodall-6smazx — Phase 49.1 (bulk-confirm correctness fix)
+
+### Root cause
+The Phase 49 "AI bookkeeper" card was invisible in prod. Cause: the QIF/CSV
+import routes auto-accepted predictions (≥0.9) to `UnifiedTransaction` but parks
+MEDIUM (0.7–0.9) and LOW (<0.7) predictions in `TransactionReviewQueue` (PENDING).
+The first bulk-confirm service counted medium/low from `UnifiedTransaction` — always
+zero — so the card's `pending` was 0 and it self-hid. The pile the user wants to
+confirm lives in the review queue, which never had a UI (§12.1 🗑️ row 31).
+
+### Fix (Phase 49.1)
+- **NEW `lib/bank/reviewQueue.ts`** — extracted `confirmReviewItem` (create
+  UnifiedTransaction from a queue row + Phase 13 learning) out of the per-batch
+  review route into a shared service (§12.3 no-duplicate). Confirming now writes
+  confidenceScore 1.0 (the confirmed convention) and resolves accountId from the
+  item's batch when not passed.
+- `app/api/accounts/[id]/import/[batchId]/review/route.ts` — imports the shared
+  `confirmReviewItem`; ~120 lines of duplicated helper deleted.
+- `lib/bank/bulkConfirm.ts` — rewritten to read MEDIUM/LOW from
+  `TransactionReviewQueue` (PENDING, by `confidenceLevel`) and HIGH (auto-filed)
+  from `UnifiedTransaction`; `bulkConfirmCategorisations` promotes queue items in a
+  band (or by id) into real transactions via the shared service, then rolls up the
+  import-batch counters. **This gives the review queue its first user-facing surface.**
+- `app/api/unified-transactions/bulk-confirm/route.ts` — body `transactionIds` →
+  `reviewItemIds`.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — "Review N low" → "Confirm N
+  low" (band confirm); dropped the unused `uncategorised`/`onReviewLow` surface.
+- `app/dashboard/activity/page.tsx` — per-row "✓ Looks right" repointed to the
+  canonical PATCH path (for genuinely-uncertain UnifiedTransactions e.g. Basiq
+  medium-confidence); removed the dead reviewLowMode wiring.
+
+### Testing
+- [x] tsc clean
+- [x] 253/253 bookkeeping tests
+- [x] Build passes
