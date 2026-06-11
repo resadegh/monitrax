@@ -33,7 +33,8 @@
  *     shadows (§18.7.2)
  */
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { Suspense, useEffect, useState, useCallback, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -200,7 +201,7 @@ function groupByDay(txns: Transaction[]): Array<{ label: string; key: string; it
 // Page
 // ---------------------------------------------------------------------------
 
-export default function ActivityPage() {
+function ActivityPageContent() {
   const { token } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const transactionsRef = useRef<Transaction[]>([]);
@@ -332,13 +333,17 @@ export default function ActivityPage() {
         if (action === 'confirm') {
           fetchTransactions();
           fetchSummary();
+        }
+        // Phase 49.7 (Reza) — celebrate only when the pile CLEARS, not on
+        // every confirmation. The toast was firing per-confirm.
+        if (queueItems.length - ids.length <= 0) {
           setCelebrationTrigger((t) => t + 1);
         }
       } catch {
         // Leave items in place; user can retry.
       }
     },
-    [token, fetchBandCounts]
+    [token, fetchBandCounts, queueItems.length]
   );
 
   // Apply "always categorise X as Y" on a double-tap when the row
@@ -549,6 +554,26 @@ export default function ActivityPage() {
     const tileWidth = (el.firstElementChild as HTMLElement).offsetWidth + 12; // gap-3
     setKpiDot(Math.min(3, Math.max(0, Math.round(el.scrollLeft / tileWidth))));
   }, []);
+
+  // Phase 49.7 — honour the Home "Next actions" deep links
+  // (?filter=recurring | ?filter=anomalies). The pending-actions tile linked
+  // here since Phase 42 but the param was never read — the click silently
+  // landed on the default view (Reza report 2026-06-11).
+  const searchParams = useSearchParams();
+  const appliedFilterParam = useRef(false);
+  useEffect(() => {
+    if (appliedFilterParam.current) return;
+    const f = searchParams?.get('filter');
+    if (f === 'recurring') {
+      setShowRecurringOnly(true);
+      setTileFilter('all');
+      appliedFilterParam.current = true;
+    } else if (f === 'anomalies') {
+      setShowAnomaliesOnly(true);
+      setTileFilter('all');
+      appliedFilterParam.current = true;
+    }
+  }, [searchParams]);
 
   const groups = groupByDay(transactions);
 
@@ -826,9 +851,10 @@ export default function ActivityPage() {
         <ConfidenceReviewCard
           refreshKey={confidenceRefresh}
           onConfirmed={async () => {
+            // Phase 49.7 — no celebration toast here; the card shows its own
+            // inline receipt and the toast is reserved for clearing the pile.
             await fetchTransactions();
             fetchSummary();
-            setCelebrationTrigger((t) => t + 1);
           }}
           onReviewBand={(band) => setConfidenceBand(band)}
         />
@@ -1032,7 +1058,8 @@ export default function ActivityPage() {
           fetchBandCounts();
           fetchTransactions();
           fetchSummary();
-          setCelebrationTrigger((t) => t + 1);
+          // Phase 49.7 — celebrate only when this edit cleared the pile.
+          if (queueItems.length <= 1) setCelebrationTrigger((t) => t + 1);
         }}
       />
 
@@ -1425,39 +1452,43 @@ function QueueReviewRow({
   const dot = item.band === 'low' ? 'bg-rose-400' : 'bg-amber-400';
   const confidencePct = Math.round(item.aiConfidence * 100);
 
-  // Phase 49.5 (Reza feedback) — the category sits IN the action cluster so
-  // the ✓/✗ visibly belong to it; the pill is tappable to change category.
-  // Phase 49.5.1 (Reza mobile screenshot 2026-06-11) — on narrow screens the
-  // cluster moves to a SECOND line so the description keeps the full width
-  // (it was truncating to "V9110 3…"). Desktop keeps the single-line layout
-  // with amount-over-actions on the right.
-  const actions = (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={onEditCategory}
-        title="Change category"
-        aria-label={`Change category (currently ${item.aiCategoryLevel1 ?? 'uncategorised'})`}
-        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${getCategoryTone(item.aiCategoryLevel1)}`}
-      >
-        {item.aiCategoryLevel1 ?? 'Pick category'}
-        <ChevronDown className="w-3 h-3 opacity-60" />
-      </button>
-      <button
-        onClick={onConfirm}
-        title="Confirm — file with this category"
-        aria-label="Confirm category"
-        className="inline-flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
-      >
-        <Check className="w-4 h-4" />
-      </button>
-      <button
-        onClick={onSkip}
-        title="Skip — don't import this one"
-        aria-label="Skip"
-        className="inline-flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
-      >
-        <X className="w-4 h-4" />
-      </button>
+  // Phase 49.7 (Reza 2026-06-11) — the amount sits IMMEDIATELY LEFT of the
+  // category cluster: one clean action line "-$33 · [Food & Dining ▾] ✓ ✗"
+  // instead of the ragged two-level right edge. Desktop renders it inline
+  // with the description; mobile keeps the 49.5.1 two-line reflow with this
+  // row as line 2 (description keeps the full first line).
+  const actionRow = (
+    <div className="flex items-center gap-2.5">
+      <span className={`font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
+        {isIn ? '+' : '-'}{formatCurrency(item.amount)}
+      </span>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onEditCategory}
+          title="Change category"
+          aria-label={`Change category (currently ${item.aiCategoryLevel1 ?? 'uncategorised'})`}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${getCategoryTone(item.aiCategoryLevel1)}`}
+        >
+          {item.aiCategoryLevel1 ?? 'Pick category'}
+          <ChevronDown className="w-3 h-3 opacity-60" />
+        </button>
+        <button
+          onClick={onConfirm}
+          title="Confirm — file with this category"
+          aria-label="Confirm category"
+          className="inline-flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onSkip}
+          title="Skip — don't import this one"
+          aria-label="Skip"
+          className="inline-flex items-center justify-center w-8 h-8 sm:w-7 sm:h-7 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 
@@ -1485,20 +1516,11 @@ function QueueReviewRow({
             <span className="tabular-nums">{confidencePct}% sure</span>
           </div>
         </div>
-        {/* Desktop: amount over actions, one right-hand cluster */}
-        <div className="hidden sm:flex flex-col items-end gap-1.5 shrink-0">
-          <div className={`font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
-            {isIn ? '+' : '-'}{formatCurrency(item.amount)}
-          </div>
-          {actions}
-        </div>
-        {/* Mobile: amount only on the first line — description keeps the width */}
-        <div className={`sm:hidden font-semibold tabular-nums text-sm shrink-0 ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
-          {isIn ? '+' : '-'}{formatCurrency(item.amount)}
-        </div>
+        {/* Desktop: amount + category cluster on one line */}
+        <div className="hidden sm:block shrink-0">{actionRow}</div>
       </div>
-      {/* Mobile second line: the category action cluster, right-aligned */}
-      <div className="mt-2 flex justify-end sm:hidden">{actions}</div>
+      {/* Mobile second line: amount + category cluster, right-aligned */}
+      <div className="mt-2 flex justify-end sm:hidden">{actionRow}</div>
     </div>
   );
 }
@@ -1848,5 +1870,23 @@ function EmptyState() {
         Try clearing a filter, or import transactions from a CSV / OFX / QIF file.
       </p>
     </div>
+  );
+}
+
+// Wrap in Suspense for useSearchParams (Next.js 15 requirement) — mirrors
+// /dashboard/balances/page.tsx.
+export default function ActivityPage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardLayout>
+          <div className="flex items-center justify-center py-12">
+            <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </DashboardLayout>
+      }
+    >
+      <ActivityPageContent />
+    </Suspense>
   );
 }

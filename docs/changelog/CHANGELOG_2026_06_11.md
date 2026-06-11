@@ -321,3 +321,24 @@ transaction list (after search/filters + advanced panel) — its actions act on
 transactions, so proximity wins over page-top prominence. The "Review" buttons no longer
 need the scroll-into-view (the review list renders right below the card); handler
 simplified. tsc clean, build green.
+
+## Session: serene-goodall-6smazx — Phase 49.7 (review polish: amount placement, celebration gating, deep links)
+
+Three pieces of Reza feedback (2026-06-11 screenshots):
+1. **Amount left of the category cluster** — review rows now render one action line
+   "-$33 · [Food & Dining ▾] ✓ ✗" (desktop inline right; mobile line 2). Kills the ragged
+   two-level right edge from 49.5.
+2. **"All caught up / tax pack" toast after every confirmation** — bug: celebrationTrigger
+   was bumped on each confirm/edit. Now gated to fire only when the review pile actually
+   CLEARS (queue items reach zero); the card's inline receipt covers per-action feedback.
+   Card onConfirmed + queue-edit success no longer bump unconditionally.
+3. **Home "5 possible subscriptions to confirm" tile dead-ended on Activity** — the tile
+   (RecurringPayment rows: isActive + matchStatus UNMATCHED) links to
+   /dashboard/activity?filter=recurring, but the page never read the param. Now honoured
+   (?filter=recurring|anomalies set the corresponding chips + 'all' tile filter); page
+   wrapped in Suspense for useSearchParams (Next 15), mirroring balances. Follow-up queued:
+   a purpose-built "confirm subscriptions" review surface (the count is patterns, the filter
+   shows recurring transactions — close but not 1:1).
+
+Also includes Phase 49.6 (bookkeeper card placement directly above the transaction list).
+tsc clean; build green.
