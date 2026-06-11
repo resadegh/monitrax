@@ -1,5 +1,74 @@
 # Changelog - 2026-06-11
 
+## Session: phase14.9-subtabs-active-match-LIlK9
+
+### Changes Made
+- **Type**: Bug fix + UX placement
+- **Scope**: `components/shell/SectionTabsRow.tsx` (multi-active bug)
+  + `app/dashboard/cfo/what-if/page.tsx` (Ask the Advisor CTA placement)
+- **Description**: Reza (2026-06-11) reported two issues on `/dashboard/cfo/what-if`:
+  1. "I can't find Ask the Advisor" — the Phase 14.8 placement was
+     BELOW the lever grid, requiring scroll past 5 lever tiles +
+     empty-state on mobile before reaching it.
+  2. "The top bar design of the my guide should be the same as invest
+     page. The colour and the design is different." — On /what-if, BOTH
+     Actions (`/dashboard/cfo`) AND What If? (`/dashboard/cfo/what-if`)
+     rendered as active because SectionTabsRow's prefix-match was too
+     greedy: `pathname.startsWith('/dashboard/cfo/')` matched the
+     What If? path. Two active pills = "different design" perception
+     vs the Invest page where no child route nests under another.
+
+### Fix
+- **`SectionTabsRow.tsx`** — longest-prefix-wins matching. Compute
+  `activeChildHref` once per render by scanning all children and
+  keeping the one whose `href` is the longest match against the
+  current pathname. Each child's `isActive` then derives from
+  `child.href === activeChildHref` so only ONE tab can be active.
+  Same class of fix as `findActiveMobileTab` (Phase 14.6 v5 / Phase 14.7).
+- **`what-if/page.tsx`** — Ask the Advisor CTA moved from BELOW the
+  lever grid to immediately BELOW the page header (above the grid).
+  Card chrome shifted to violet-tinted glass (`border-violet-500/15
+  bg-violet-500/[0.05]`) so it stays visually distinct from the
+  multi-coloured lever tiles below — the page's main job (lever
+  picking) still leads visually but Ask is discoverable on first
+  paint.
+
+### Files Modified
+- `components/shell/SectionTabsRow.tsx`
+- `app/dashboard/cfo/what-if/page.tsx`
+
+### Build Status
+- TypeScript compilation: **PASS** (only stale `.next/types/…/health/page.ts`
+  cache stub left over from the deleted page — clears on next build).
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (sub-tab active state
+  + What If? page Ask CTA placement)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- `docs/IMPLEMENTATION_PLAN.md` — ✅ Recently Completed entry
+- Inline comment on the new matching logic in `SectionTabsRow.tsx`
+  documents the failure mode + fix (§16.4 file-header rule)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change.
+
+### Stitch (CLAUDE.md §18)
+N/A — bug fix to existing component + tile-placement reorder.
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase14.8-guide-nav-cleanup-LIlK9
 
 ### Changes Made

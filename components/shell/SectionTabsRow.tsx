@@ -73,6 +73,23 @@ export function SectionTabsRow({ className }: SectionTabsRowProps) {
   // the chrome reads as belonging to the stage without overpowering.
   const bgTintClass = tone?.bgTint ?? 'bg-background/85';
 
+  // Phase 14.9 (2026-06-11): longest-prefix wins. Without this, both
+  // Actions (`/dashboard/cfo`) AND What If? (`/dashboard/cfo/what-if`)
+  // were rendering as active on `/dashboard/cfo/what-if` because the
+  // naive `pathname.startsWith(child.href + '/')` matched both. Same
+  // class of bug as the original `findActiveMobileTab` fix
+  // (`/dashboard` matching every sub-route). Compute once per render.
+  let activeChildHref: string | null = null;
+  let activeChildMatchLength = 0;
+  for (const child of activeSection.children) {
+    const matches =
+      pathname === child.href || pathname.startsWith(child.href + '/');
+    if (matches && child.href.length > activeChildMatchLength) {
+      activeChildHref = child.href;
+      activeChildMatchLength = child.href.length;
+    }
+  }
+
   return (
     <>
       {/* Fixed segmented-control bar — phones only. Anchored at
@@ -108,8 +125,7 @@ export function SectionTabsRow({ className }: SectionTabsRowProps) {
           )}
         >
           {activeSection.children.map((child) => {
-            const isActive =
-              pathname === child.href || pathname.startsWith(child.href + '/');
+            const isActive = child.href === activeChildHref;
             return (
               <Link
                 key={child.href}
