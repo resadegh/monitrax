@@ -12,6 +12,13 @@
  * click-through to each asset's individual detail page where one
  * exists, falling back to the asset list-route otherwise.
  *
+ * WX.5.4 (Reza 2026-06-11: asset bubbles erred "Failed (404)") — the
+ * `/api/entities/[id]` fetch only fires for REAL entities. Asset and
+ * ownership-group bubbles are synthetic canvas nodes with no entity
+ * record: they render from the in-memory graph instead (value, held-by
+ * owner per the ownership-trail rule, and a click-through CTA via the
+ * canonical `assetHrefFor`).
+ *
  * Surface SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`
  */
 
@@ -36,7 +43,7 @@ import {
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import type { WealthNode } from '@/lib/data/wealthExplorerTypes';
-import { NODE_ACCENT } from '@/lib/data/wealthExplorerTypes';
+import { NODE_ACCENT, assetHrefFor, assetCtaLabelFor } from '@/lib/data/wealthExplorerTypes';
 import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
 
 interface EntityDetail {
@@ -72,16 +79,38 @@ interface Props {
    * entity owns nothing directly.
    */
   assets?: WealthGraphAsset[];
+  /**
+   * WX.5.4 — for asset-tier nodes: the full graph record (already in
+   * memory via the snapshot). Drives the value + click-through CTA.
+   */
+  assetRecord?: WealthGraphAsset | null;
+  /**
+   * WX.5.4 — name of the entity holding this asset (ownership-trail
+   * rule: the owner is always visible on every layer).
+   */
+  ownerName?: string | null;
 }
 
-export default function EntityDetailPanel({ node, onClose, assets = [] }: Props) {
+export default function EntityDetailPanel({
+  node,
+  onClose,
+  assets = [],
+  assetRecord = null,
+  ownerName = null,
+}: Props) {
   const { token } = useAuth();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // WX.5.4 — only real entities have /api/entities/[id] records.
+  // Asset + ownership-group bubbles are synthetic canvas nodes;
+  // fetching them 404s (the bug Reza hit on the Qantas Credit Card).
+  const isEntity =
+    !!node && node.type !== 'ownership-group' && !node.type.startsWith('asset-');
+
   useEffect(() => {
-    if (!node) {
+    if (!node || !isEntity) {
       setDetail(null);
       return;
     }
@@ -105,7 +134,7 @@ export default function EntityDetailPanel({ node, onClose, assets = [] }: Props)
     return () => {
       cancelled = true;
     };
-  }, [node, token]);
+  }, [node, isEntity, token]);
 
   const accent = node ? NODE_ACCENT[node.type] : '#94A3B8';
 
@@ -173,6 +202,65 @@ export default function EntityDetailPanel({ node, onClose, assets = [] }: Props)
 
             {/* Body */}
             <div className="flex-1 p-6">
+              {/* WX.5.4 — asset / ownership-group bubbles render from
+                  the in-memory graph; there's no entity file to fetch. */}
+              {!isEntity && (
+                <div className="space-y-6">
+                  {(assetRecord || node.value) && (
+                    <div>
+                      <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/40">
+                        Value
+                      </div>
+                      <div className="text-[28px] font-semibold tabular-nums leading-none text-white">
+                        {assetRecord ? formatValue(assetRecord.value) : node.value}
+                      </div>
+                    </div>
+                  )}
+                  <Section title="Ownership">
+                    <Row
+                      label="Held by"
+                      value={
+                        ownerName ??
+                        (node.type === 'ownership-group'
+                          ? `${node.subtitle ?? 'Joint owners'}`
+                          : 'Your structure')
+                      }
+                    />
+                    {assetRecord?.subtype && (
+                      <Row label="Type" value={assetRecord.subtype} />
+                    )}
+                    {assetRecord?.context && !assetRecord.subtype && (
+                      <Row label="Context" value={assetRecord.context} />
+                    )}
+                  </Section>
+                  {assetRecord && (
+                    <Link
+                      href={assetHrefFor(assetRecord.kind, assetRecord.id)}
+                      onClick={onClose}
+                      className="flex items-center justify-between gap-3 rounded-xl p-4 text-[12px] font-medium transition hover:bg-white/[0.06]"
+                      style={{
+                        background: 'rgba(52, 211, 153, 0.08)',
+                        border: '1px solid rgba(52, 211, 153, 0.25)',
+                        color: '#6EE7B7',
+                      }}
+                    >
+                      <span>{assetCtaLabelFor(assetRecord.kind)}</span>
+                      <ChevronRight size={14} strokeWidth={1.5} />
+                    </Link>
+                  )}
+                  {/* Group bubbles list what the group holds */}
+                  {node.type === 'ownership-group' && assets.length > 0 && (
+                    <Section title="Held jointly">
+                      <div className="space-y-1.5">
+                        {assets.map(a => (
+                          <LinkedAssetRow key={a.id} asset={a} onNavigate={onClose} />
+                        ))}
+                      </div>
+                    </Section>
+                  )}
+                </div>
+              )}
+
               {loading && (
                 <div className="flex h-32 items-center justify-center text-[12px] text-white/50">
                   Loading details…
@@ -321,12 +409,9 @@ function prettifyType(t: string): string {
  * click-through to the asset's individual detail page where one
  * exists, falling back to the asset list-route otherwise.
  *
- * URL map (`assetHrefFor`):
- *   - property → `/dashboard/properties/{id}` (individual route exists)
- *   - loan → `/dashboard/loans/{id}` (individual route exists)
- *   - account → `/dashboard/accounts` (no individual route — list)
- *   - investment-account → `/dashboard/investments/accounts` (list)
- *   - asset → `/dashboard/assets` (list)
+ * URL map: canonical `assetHrefFor` in `lib/data/wealthExplorerTypes.ts`
+ * (WX.5.4 — the local copy drifted once investments + super gained
+ * detail pages).
  *
  * `onNavigate` closes the panel before the route change so the user
  * lands on the destination cleanly without a stale Level-3 panel
@@ -340,7 +425,7 @@ function LinkedAssetRow({
   onNavigate: () => void;
 }) {
   const { icon: Icon, accent } = assetGlyphFor(asset.kind);
-  const href = assetHrefFor(asset);
+  const href = assetHrefFor(asset.kind, asset.id);
   return (
     <Link
       href={href}
@@ -381,17 +466,6 @@ function assetGlyphFor(kind: WealthGraphAsset['kind']): { icon: LucideIcon; acce
     case 'investment-account': return { icon: LineChart, accent: '#818CF8' };
     case 'asset': return { icon: Box, accent: '#FBBF24' };
     case 'super': return { icon: PiggyBank, accent: '#818CF8' }; // Phase 47 B1
-  }
-}
-
-function assetHrefFor(asset: WealthGraphAsset): string {
-  switch (asset.kind) {
-    case 'property': return `/dashboard/properties/${asset.id}`;
-    case 'loan': return `/dashboard/loans/${asset.id}`;
-    case 'account': return '/dashboard/accounts';
-    case 'investment-account': return '/dashboard/investments/accounts';
-    case 'asset': return '/dashboard/assets';
-    case 'super': return '/dashboard/investments/super'; // Phase 47 B1
   }
 }
 
