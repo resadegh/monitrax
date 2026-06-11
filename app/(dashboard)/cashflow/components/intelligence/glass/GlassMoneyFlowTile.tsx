@@ -38,10 +38,25 @@ export default function GlassMoneyFlowTile({ items, netIncome, totalExpenses, su
 
   // Order: income lines first, then top expense categories by abs value.
   const incomeLines = items.filter((i) => i.type === 'income' && !i.isSubtotal);
-  const expenseLines = items
+  const allExpenseLines = items
     .filter((i) => i.type === 'expense' && !i.isSubtotal)
-    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
-    .slice(0, 4);
+    .sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+  const topExpenses = allExpenseLines.slice(0, 4);
+  // If the top-4 don't sum to total OUT, surface the remainder as
+  // "Everything else" so the breakdown reconciles to the headline number.
+  const topExpensesSum = topExpenses.reduce((sum, line) => sum + Math.abs(line.value), 0);
+  const remainderExpenses = Math.max(0, totalExpenses - topExpensesSum);
+  const showRemainder = allExpenseLines.length > 4 && remainderExpenses > 1;
+  const expenseLines = showRemainder
+    ? [
+        ...topExpenses,
+        {
+          name: 'Everything else',
+          value: -remainderExpenses,
+          type: 'expense' as const,
+        },
+      ]
+    : topExpenses;
 
   return (
     <GlassPanel subPalette="sky-indigo" padding="p-6">
@@ -53,29 +68,33 @@ export default function GlassMoneyFlowTile({ items, netIncome, totalExpenses, su
         </div>
       </div>
 
-      {/* Income / Out / Surplus row */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        <div className="rounded-[12px] border border-emerald-500/15 bg-emerald-500/[0.06] p-3">
+      {/* Income / Out / Surplus row — Phase 45.8.2: each value carries
+          whitespace-nowrap so the sign prefix never wraps to its own line
+          on tight mobile cells, and the mobile font drops to text-[15px]
+          so "−$24,142"-class amounts fit a ~85px-wide cell on a 360px
+          viewport. */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-5">
+        <div className="rounded-[12px] border border-emerald-500/15 bg-emerald-500/[0.06] p-2.5 sm:p-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-emerald-700 dark:text-emerald-400 mb-1">In</p>
-          <p className="text-base sm:text-lg font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
+          <p className="text-[15px] sm:text-lg font-semibold tabular-nums whitespace-nowrap text-emerald-700 dark:text-emerald-300">
             +{formatCurrency(netIncome)}
           </p>
         </div>
-        <div className="rounded-[12px] border border-rose-500/15 bg-rose-500/[0.05] p-3">
+        <div className="rounded-[12px] border border-rose-500/15 bg-rose-500/[0.05] p-2.5 sm:p-3">
           <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-rose-600 dark:text-rose-400 mb-1">Out</p>
-          <p className="text-base sm:text-lg font-semibold tabular-nums text-rose-600 dark:text-rose-300">
+          <p className="text-[15px] sm:text-lg font-semibold tabular-nums whitespace-nowrap text-rose-600 dark:text-rose-300">
             −{formatCurrency(totalExpenses)}
           </p>
         </div>
         <div
-          className={`rounded-[12px] border p-3 ${
+          className={`rounded-[12px] border p-2.5 sm:p-3 ${
             isSurplus
               ? 'border-emerald-500/15 bg-emerald-500/[0.06]'
               : 'border-amber-500/20 bg-amber-500/[0.08]'
           }`}
         >
           <p
-            className={`text-[10px] font-medium uppercase tracking-[0.16em] mb-1 ${
+            className={`text-[10px] font-medium uppercase tracking-[0.16em] mb-1 truncate ${
               isSurplus
                 ? 'text-emerald-700 dark:text-emerald-400'
                 : 'text-amber-700 dark:text-amber-300'
@@ -84,7 +103,7 @@ export default function GlassMoneyFlowTile({ items, netIncome, totalExpenses, su
             {isSurplus ? 'Surplus' : 'Shortfall'}
           </p>
           <p
-            className={`text-base sm:text-lg font-semibold tabular-nums ${
+            className={`text-[15px] sm:text-lg font-semibold tabular-nums whitespace-nowrap ${
               isSurplus
                 ? 'text-emerald-700 dark:text-emerald-300'
                 : 'text-amber-700 dark:text-amber-300'

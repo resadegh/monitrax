@@ -1,5 +1,70 @@
 # Changelog - 2026-06-11
 
+## Session: phase45.8.2-moneyflow-mobile-fix-LIlK9
+
+### Changes Made
+- **Type**: Mobile-layout + reconciliation fix
+- **Scope**: `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyFlowTile.tsx`
+- **Description**: Reza reported "money flow tiles numbers are not showing
+  right" on mobile (screenshot 2026-06-11). Two issues confirmed in the
+  render:
+  1. **Sign prefix wrapping.** On a ~360px viewport, each In/Out/Surplus
+     cell is ~85px wide. With `text-base` (16px) + tabular-nums, the
+     8-char string `−$24,142` (U+2212 minus + 6-char amount) didn't fit
+     in one line, so the leading "−" wrapped to a separate line above
+     the value. `+$16,718` fit because U+002B plus is visually narrower
+     than U+2212 minus in Inter. SHORTFALL exhibited the same wrap.
+  2. **Breakdown didn't reconcile.** Top Categories rendered top 4 by
+     value but stopped — for Reza, top 4 ($11,847 + $3,696 + $2,669 +
+     $1,903 = $20,115) was $4,027 short of the OUT total ($24,142),
+     so the breakdown looked broken. Headline number had no
+     corresponding row in the list.
+
+### Fix
+- Each value `<p>` gains `whitespace-nowrap` so the sign + amount stay
+  on one line regardless of cell width.
+- Mobile value font drops to `text-[15px]` (was `text-base`/16px);
+  desktop stays `text-lg` via `sm:` qualifier. Padding tightens to
+  `p-2.5` on mobile (was `p-3`) to give the value more horizontal room.
+- Breakdown surfaces "Everything else" row when the top-4 don't sum
+  to total OUT (only when there ARE more than 4 expense categories
+  AND the remainder ≥ $1). The breakdown now always reconciles to the
+  headline OUT number — no more silent gap.
+
+### Files Modified
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyFlowTile.tsx`
+
+### Build Status
+- TypeScript compilation: **PASS**.
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (mobile money-flow tile
+  legibility + breakdown reconciliation)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- Inline comment on the Income / Out / Surplus row documents the
+  whitespace-nowrap + mobile font drop rationale (§16.4 file-header rule)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change (§12.12 N/A).
+
+### Stitch (CLAUDE.md §18)
+N/A — fix to the existing Phase 45.8 Stitch design's responsive
+behaviour at mobile width; no new visual primitive introduced.
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase14.7-mobile-trail-tabs-LIlK9
 
 ### Changes Made
