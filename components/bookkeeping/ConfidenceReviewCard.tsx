@@ -141,22 +141,25 @@ export function ConfidenceReviewCard({
               <div className="bg-rose-400 transition-all duration-500" style={{ width: `${pct(low)}%` }} />
             </div>
 
-            {/* Band actions — Phase 49.10 (Reza correction): the bulk
-                "Confirm all" belongs to MEDIUM only; LOW is review-only
-                (<70% sure must never invite a blind bulk confirm). Buttons
-                share heights/structure so the row stays aligned. */}
+            {/* Band actions — Phase 49.12 (Reza, live test 2026-06-11): all
+                THREE bands always render, each in its band colour (matching
+                the segmented bar above), so the row can never be misread as
+                mislabeled when one band is empty. High = emerald receipt;
+                medium = amber with the bulk "Confirm all" (49.10 rule: bulk
+                confirm is medium-only); low = rose, review-only. Empty bands
+                show a quiet zero chip instead of disappearing. */}
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
               <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
                 <Check className="w-3.5 h-3.5" />
                 {high.toLocaleString('en-AU')} high — auto-filed
               </span>
-              {medium > 0 && (
+              {medium > 0 ? (
                 <div className="flex items-stretch gap-1.5">
                   <button
                     type="button"
                     onClick={() => confirmBand('medium')}
                     disabled={confirming}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-sky-500 to-indigo-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 sm:flex-none"
+                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 sm:flex-none"
                   >
                     {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                     Confirm all {medium.toLocaleString('en-AU')} medium
@@ -164,13 +167,17 @@ export function ConfidenceReviewCard({
                   <button
                     type="button"
                     onClick={() => onReviewBand?.('medium')}
-                    className="inline-flex items-center justify-center rounded-[14px] border border-foreground/10 bg-background/50 px-3.5 py-2 text-sm font-medium text-muted-foreground backdrop-blur transition hover:text-foreground hover:border-foreground/25"
+                    className="inline-flex items-center justify-center rounded-[14px] border border-amber-500/30 bg-amber-500/[0.08] px-3.5 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 backdrop-blur transition hover:bg-amber-500/15"
                   >
                     Review
                   </button>
                 </div>
+              ) : (
+                <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
+                  0 medium — nothing waiting
+                </span>
               )}
-              {low > 0 && (
+              {low > 0 ? (
                 <button
                   type="button"
                   onClick={() => onReviewBand?.('low')}
@@ -178,6 +185,10 @@ export function ConfidenceReviewCard({
                 >
                   Review {low.toLocaleString('en-AU')} low
                 </button>
+              ) : (
+                <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
+                  0 low — nothing waiting
+                </span>
               )}
             </div>
 

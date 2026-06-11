@@ -1625,14 +1625,18 @@ function TransactionRow({
   const hasAnomaly = tx.anomalyFlags.length > 0;
   const label = tx.description || tx.merchantStandardised || tx.merchantRaw || 'Transaction';
 
-  // Phase 49 — per-design confidence treatment: a quiet 6px dot is ALWAYS
-  // visible on the category pill when the AI was uncertain (amber 0.7-0.9,
-  // rose < 0.7); the verbose text label remains Advanced-view-only (Phase 42
-  // PR6.5 spec §6 — calmer first-run; the dot is the calm default).
+  // Phase 49.12 (Reza, live test 2026-06-11) — the category pill ITSELF
+  // takes the confidence colour when the AI was uncertain: amber 0.7-0.9,
+  // rose < 0.7. Confident rows (≥0.9 / user-confirmed 1.0) keep the calm
+  // category tone — tinting 1,000+ confident rows would be chromatic noise
+  // and would collide with emerald = money-positive (§18.7.2). The pill
+  // colour replaces the Phase 49 confidence dot (redundant once tinted).
   const uncertain =
     tx.confidenceScore !== null && tx.confidenceScore > 0 && tx.confidenceScore < 0.9;
   const lowBand = tx.confidenceScore !== null && tx.confidenceScore < 0.7;
-  const dotTone = lowBand ? 'bg-rose-400' : 'bg-amber-400';
+  const confidencePillTone = lowBand
+    ? 'bg-rose-500/15 text-rose-700 border-rose-500/30 dark:text-rose-300'
+    : 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300';
   const showConfidence = advancedView && uncertain;
   const confidenceLabel = lowBand ? 'Low confidence' : 'Medium confidence';
   const confidenceTone = lowBand ? 'text-rose-600' : 'text-amber-600';
@@ -1802,11 +1806,10 @@ function TransactionRow({
             (per the Stitch mobile reflow); desktop keeps the inline pill. */}
         {tx.categoryLevel1 && (
           <span
-            className={`md:hidden mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getCategoryTone(
-              tx.categoryLevel1,
-            )}`}
+            className={`md:hidden mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+              uncertain ? confidencePillTone : getCategoryTone(tx.categoryLevel1)
+            }`}
           >
-            {uncertain && <span className={`w-1.5 h-1.5 rounded-full ${dotTone}`} aria-hidden />}
             {tx.categoryLevel1}
           </span>
         )}
@@ -1837,13 +1840,13 @@ function TransactionRow({
         </span>
       )}
 
-      {/* Category pill (desktop only) — with Phase 49 confidence dot */}
+      {/* Category pill (desktop only) — Phase 49.12: confidence-tinted when
+          the AI was uncertain (amber medium / rose low). */}
       <span
-        className={`hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${getCategoryTone(
-          tx.categoryLevel1,
-        )}`}
+        className={`hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+          uncertain ? confidencePillTone : getCategoryTone(tx.categoryLevel1)
+        }`}
       >
-        {uncertain && <span className={`w-1.5 h-1.5 rounded-full ${dotTone}`} aria-hidden />}
         {tx.categoryLevel1 || 'Uncategorised'}
       </span>
 
