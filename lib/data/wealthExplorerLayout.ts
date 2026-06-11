@@ -488,8 +488,11 @@ export function layoutWealthExplorer(
      personal.length <= 1 && assets.length === 0);
 
   // ---- Phase WX.5: focused-scene early return (the inner layer).
+  // WX.5.3 (Reza 2026-06-11): centre sits at y=52 (was 42) so the top
+  // satellite of the ring clears the breadcrumb / trail text that
+  // floats over the top band of the canvas.
   if (focusId) {
-    const CENTRE = { x: 50, y: 42 };
+    const CENTRE = { x: 50, y: 52 };
     let parentNode: WealthNode | null = null;
     let sceneAssets: WealthGraphAsset[] = [];
 
@@ -536,9 +539,16 @@ export function layoutWealthExplorer(
         };
       }
     } else {
+      // WX.5.3 (Reza 2026-06-11: "the first layer can be removed") — in
+      // cluster mode the universe already splits this entity's holdings
+      // into per-type clusters, so the entity-level all-holdings scene
+      // is a redundant, overcrowded middle layer (15 mixed satellites
+      // at once). Skip it: fall through to the universe and let the
+      // tap open the entity card instead. The scene still exists for
+      // multi-entity universes where it's the only way in.
       const e = entities.find(x => x.id === focusId);
       sceneAssets = ownedAssetsByEntity.get(focusId) ?? [];
-      if (e && sceneAssets.length > 0) {
+      if (e && sceneAssets.length > 0 && !clusterMode) {
         const nodeType = classifyEntity(e);
         parentNode = {
           id: e.id,
@@ -635,6 +645,10 @@ export function layoutWealthExplorer(
       tier: nodeType === 'individual' ? 'individual' : 'entity',
       assetSummary: summary,
       isExpanded: expanded || clustered,
+      // WX.5.3 — in cluster mode the per-type clusters are the way into
+      // this entity's holdings; tapping the entity itself opens the
+      // detail card, never the (removed) all-holdings scene.
+      isExpandable: !!summary && !clusterMode,
     });
     nodePositionById.set(e.id, pos);
   }
@@ -705,6 +719,9 @@ export function layoutWealthExplorer(
       tier: 'group',
       assetSummary: groupSummary,
       isExpanded: groupExpanded,
+      // Group-held assets never cluster — the group scene is the only
+      // way into them, so groups with holdings stay expandable.
+      isExpandable: !!groupSummary,
     });
   });
 
@@ -785,6 +802,7 @@ export function layoutWealthExplorer(
           parentNodeId: entityId,
           assetSummary: { count: kindAssets.length, totalValue },
           isExpanded: clusterExpanded,
+          isExpandable: true,
         });
         clusterRibbons.push({
           id: `cluster-holds-${clusterId}`,

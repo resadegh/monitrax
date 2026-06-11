@@ -196,7 +196,7 @@ export default function WealthUniverseMobile() {
     const node = nodesById[focus] ?? listNodesById[focus];
     if (!node) return;
     setSelectedId(focus);
-    if (node.tier !== 'asset' && node.assetSummary) {
+    if (node.tier !== 'asset' && node.isExpandable) {
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       setExpandedIds([focus]);
@@ -292,7 +292,11 @@ export default function WealthUniverseMobile() {
       return;
     }
     setSelectedId(id);
-    if (node?.assetSummary) {
+    // WX.5.3 — expandability is the layout's call (`isExpandable`):
+    // in cluster mode tapping the entity opens its card, not the
+    // removed all-holdings layer (too busy on a phone — Reza
+    // 2026-06-11).
+    if (node?.isExpandable) {
       // Zooming IN keeps the canvas dominant — the sheet stays put
       // (Reza 2026-06-10: "the list keeps coming up and takes most of
       // the page").
@@ -300,7 +304,10 @@ export default function WealthUniverseMobile() {
       setCameraDirection('in');
       setExpandedIds([id]);
     } else {
+      // No scene to unfold — the card IS the response. Raise the sheet
+      // so the tap visibly lands (same contract as asset taps).
       setExpandedIds([]);
+      if (snap === 'peek') setSnap('half');
     }
   }
 

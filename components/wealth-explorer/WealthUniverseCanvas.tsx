@@ -573,7 +573,10 @@ export default function WealthUniverseCanvas() {
       return;
     }
     setSelectedId(node.id);
-    if (node.assetSummary) {
+    // WX.5.3 — expandability is the layout's call (`isExpandable`), not
+    // "has assets": in cluster mode tapping the entity opens the card
+    // over the universe instead of the removed all-holdings layer.
+    if (node.isExpandable) {
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       setExpandedIds([node.id]);
@@ -599,7 +602,7 @@ export default function WealthUniverseCanvas() {
     const node = nodes.find(n => n.id === focus);
     if (!node) return;
     setSelectedId(focus);
-    if (node.tier !== 'asset' && node.assetSummary) setExpandedIds([focus]);
+    if (node.tier !== 'asset' && node.isExpandable) setExpandedIds([focus]);
   }, [searchParams, nodes]);
 
   // Stagger for the satellite pop-in when a constellation unfolds.

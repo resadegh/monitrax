@@ -198,7 +198,10 @@ export default function WealthUniverseWidget() {
       zoomOut();
       return;
     }
-    if (node.assetSummary && node.assetSummary.count > 0) {
+    // WX.5.3 — expandability is the layout's call (`isExpandable`): in
+    // cluster mode the entity itself has no scene (clusters carry the
+    // way in), so the tap continues on the full page instead.
+    if (node.isExpandable) {
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       setExpandedIds([node.id]);
