@@ -1,5 +1,78 @@
 # Changelog - 2026-06-11
 
+## Session: phase14.7-mobile-trail-tabs-LIlK9
+
+### Changes Made
+- **Type**: Fix (mobile IA regression)
+- **Scope**: `components/editorial/shell/EditorialBottomNav.tsx` — replace
+  hardcoded 5-cell list with the canonical `mobileTabBarItems` SSOT.
+- **Description**: Reza reported on mobile (2026-06-11) that "I don't have
+  all the sidebar pages available. My budget and safety net are not
+  available." Investigation: `EditorialBottomNav` had hardcoded its own
+  list of 5 cells (Home / Accounts / Wealth / Guide / More) that drifted
+  from the canonical `mobileTabBarItems` SSOT in
+  `lib/navigation/trailNav.tsx` — Phase 14.6 v4 (2026-05-08) had explicitly
+  expanded the bar to 6 tabs to include Reduce (My Budget) and Anchor
+  (My Safety Net), per Reza directive "trail is the IA, all five stages
+  should be visible end-to-end." The editorial-shell refactor regressed
+  the bar back to the pre-v4 5-cell layout and the bug went unnoticed
+  until today. Budget + Safety Net were also missing from `mobileMoreItems`,
+  so users had no path to either surface from mobile.
+
+### Fix
+- `components/editorial/shell/EditorialBottomNav.tsx` rewritten to render
+  from the canonical `mobileTabBarItems` (6 tabs: Home / Track / Reduce /
+  Anchor / Invest / Guide) + a 7th "More" cell that opens the existing
+  `<MoreSheet />` drawer for the non-stage surfaces (Household / Vault /
+  Reports / Settings — unchanged from `mobileMoreItems`).
+- Active state per tab now adopts the TRAIL stage tone (sky T / amber R /
+  indigo A / emerald I / violet L) instead of a single fixed emerald —
+  matches the visual semantics across the rest of the editorial system.
+- Cell width: `flex-1` distributes space evenly; 7 cells on a 320px iPhone
+  give ~45px each which still passes the 44px tappable-minimum.
+- Labels ≤6 chars per the canonical SSOT contract — no truncation risk.
+
+### Files Modified
+- `components/editorial/shell/EditorialBottomNav.tsx` — 5-cell hardcoded
+  list replaced with `mobileTabBarItems`-driven render + TRAIL-tone active
+  states.
+
+### Build Status
+- TypeScript compilation: **PASS**.
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (mobile bottom nav now
+  TRAIL-tone-aware, 6 stage tabs + More)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- `docs/IMPLEMENTATION_PLAN.md` — ✅ Recently Completed entry
+- File-header JSDoc on `EditorialBottomNav.tsx` documents the Phase 14.7
+  rewrite + cross-references TRAIL_FRAMEWORK.md §5 and the Phase 14.6 v4
+  directive (§16.4 file-header rule)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change (§12.12 N/A).
+
+### Stitch (CLAUDE.md §18)
+N/A — this is a structural / IA fix that restores the pre-existing TRAIL
+mobile-bar design intent. No new visual primitive introduced. The original
+Stitch screen `dc038cd19aea4cfc8d0300f4d9122ffd` (5-cell layout) is now
+superseded by the canonical SSOT and noted as visual reference only in
+the file-header JSDoc.
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase45.8.1-cashflow-tonumber-hotfix-LIlK9
 
 ### Changes Made
