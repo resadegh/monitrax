@@ -241,3 +241,32 @@ choice stays only on the top-level general Import.
 ### §17.2 — PR #1061 post-merge verification
 Prod deploy `dpl_53MakSGzKEwHXipoYXsCcSX76xQF` reached READY; error logs since merge are only
 the pre-existing DEP0169 deprecation warning — no new errors. Bulk-confirm fix + donut live.
+
+## Session: serene-goodall-6smazx — Phase 49.4 (confidence-band review surface)
+
+### Changes
+Reza directive 2026-06-11: differentiate confidence categories + let the user SEE the
+medium/low pile before bulk-confirming (currently blind). Built BOTH requested paths over
+one foundation (exposing the review queue to the frontend):
+(A) item-level review — band buttons / chips open a list of that band's queue items with a
+confidence dot + per-item Confirm/Skip + bulk Confirm/Skip;
+(B) confidence-band filter chips on the Activity list (Medium · N / Low · N).
+
+Design note recorded for Reza: did NOT recolour the category tag by confidence — the tag
+already encodes the *category* colour, so a separate confidence DOT (amber medium / rose low)
+carries the band without overloading one chip with two meanings.
+
+- `lib/bank/reviewQueue.ts` — `listReviewQueueByBand()` + `skipReviewItems()`.
+- `app/api/unified-transactions/review-queue/route.ts` — NEW: GET (list band items) +
+  POST (action confirm|skip by ids); thin wrappers, reuse bulkConfirm + reviewQueue services.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — band actions reworked: medium = "Confirm
+  all" + "Review"; low = "Review" (no blind confirm — it's <70%). New `onReviewBand` prop.
+- `app/dashboard/activity/page.tsx` — `confidenceBand` state; band filter chips (counts from
+  the summary); when a band is active, the list renders `QueueReviewList` (PENDING queue items
+  with confidence dots, per-row + bulk Confirm/Skip, select-all, empty/celebration state)
+  instead of the transaction list. Card "Review" buttons set the band + scroll to the list.
+
+### Testing
+- [x] tsc clean
+- [x] 253/253 bookkeeping tests
+- [x] Build passes

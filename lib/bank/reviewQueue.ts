@@ -22,6 +22,81 @@ import {
   type UserConfirmation,
 } from '@/lib/bank/aiCategorisation';
 
+// Confidence band → the queue's `confidenceLevel` tag (set at import time by
+// classifyByConfidence). Kept here next to the queue logic so band semantics
+// have one home (mirrors lib/bank/bulkConfirm.ts).
+export type ReviewBand = 'medium' | 'low';
+const BAND_TO_LEVEL: Record<ReviewBand, string> = {
+  medium: 'NEEDS_REVIEW',
+  low: 'MANUAL',
+};
+
+export interface ReviewQueueListItem {
+  id: string;
+  date: string;
+  amount: number;
+  direction: 'IN' | 'OUT';
+  description: string;
+  merchant: string | null;
+  aiCategoryLevel1: string | null;
+  aiCategoryLevel2: string | null;
+  aiConfidence: number;
+  band: ReviewBand;
+}
+
+/**
+ * List PENDING review-queue items for a confidence band (cross-batch).
+ * Powers the Activity-page "review before confirm" surfaces.
+ */
+export async function listReviewQueueByBand(
+  userId: string,
+  band: ReviewBand,
+  limit = 200
+): Promise<ReviewQueueListItem[]> {
+  const rows = await prisma.transactionReviewQueue.findMany({
+    where: { userId, status: ImportReviewStatus.PENDING, confidenceLevel: BAND_TO_LEVEL[band] },
+    orderBy: { aiConfidence: 'desc' },
+    take: limit,
+  });
+
+  return rows.map((r) => {
+    const t = r.tempData as {
+      date?: string;
+      amount?: number;
+      direction?: 'IN' | 'OUT';
+      description?: string;
+      merchantStandardised?: string;
+      merchantRaw?: string;
+    };
+    return {
+      id: r.id,
+      date: t.date ?? '',
+      amount: t.amount ?? 0,
+      direction: t.direction ?? 'OUT',
+      description: t.description ?? '',
+      merchant: t.merchantStandardised ?? t.merchantRaw ?? null,
+      aiCategoryLevel1: r.aiCategoryLevel1,
+      aiCategoryLevel2: r.aiCategoryLevel2,
+      aiConfidence: r.aiConfidence,
+      band,
+    };
+  });
+}
+
+/**
+ * Skip (dismiss) PENDING review-queue items by id. No transaction is created;
+ * the row is marked SKIPPED so it leaves the band's pending count.
+ * §12.11: scoped to the caller's own PENDING rows.
+ */
+export async function skipReviewItems(userId: string, ids: string[]): Promise<{ skippedCount: number }> {
+  if (ids.length === 0) return { skippedCount: 0 };
+  const res = await prisma.transactionReviewQueue.updateMany({
+    where: { userId, status: ImportReviewStatus.PENDING, id: { in: ids.slice(0, 500) } },
+    data: { status: ImportReviewStatus.SKIPPED, reviewedAt: new Date() },
+  });
+  return { skippedCount: res.count };
+}
+
 export interface ReviewItemValues {
   categoryLevel1: string;
   categoryLevel2?: string | null;
