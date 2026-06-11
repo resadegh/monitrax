@@ -97,6 +97,25 @@ export async function skipReviewItems(userId: string, ids: string[]): Promise<{ 
   return { skippedCount: res.count };
 }
 
+/**
+ * Edit-and-file a single PENDING review-queue item with a user-corrected
+ * category (Phase 49.5 — "the AI got it wrong"). Creates the transaction with
+ * the corrected triple and feeds the stronger USER_CORRECTION learning signal
+ * via the shared confirmReviewItem('EDIT') path.
+ */
+export async function editReviewItem(
+  userId: string,
+  id: string,
+  values: ReviewItemValues
+): Promise<{ transactionId: string | null }> {
+  const item = await prisma.transactionReviewQueue.findFirst({
+    where: { id, userId, status: ImportReviewStatus.PENDING },
+  });
+  if (!item) throw new Error('Review item not found or already actioned');
+  const result = await confirmReviewItem(userId, null, item.importBatchId, item, 'EDIT', values, false);
+  return { transactionId: result.transactionId };
+}
+
 export interface ReviewItemValues {
   categoryLevel1: string;
   categoryLevel2?: string | null;

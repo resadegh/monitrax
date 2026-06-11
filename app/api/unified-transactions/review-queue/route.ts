@@ -18,7 +18,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
-import { listReviewQueueByBand, skipReviewItems, type ReviewBand } from '@/lib/bank/reviewQueue';
+import {
+  editReviewItem,
+  listReviewQueueByBand,
+  skipReviewItems,
+  type ReviewBand,
+} from '@/lib/bank/reviewQueue';
 import { bulkConfirmCategorisations } from '@/lib/bank/bulkConfirm';
 
 export const GET = withPermission('transaction.read', async (request: NextRequest, auth) => {
@@ -36,6 +41,8 @@ export const GET = withPermission('transaction.read', async (request: NextReques
 interface ReviewActionBody {
   action?: unknown;
   reviewItemIds?: unknown;
+  /** For action 'edit' — the corrected category triple (Phase 49.5). */
+  values?: { categoryLevel1?: unknown; categoryLevel2?: unknown; subcategory?: unknown };
 }
 
 export const POST = withPermission('transaction.write', async (request: NextRequest, auth) => {
@@ -67,8 +74,38 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
     const result = await bulkConfirmCategorisations(auth.userId, { reviewItemIds: ids });
     return NextResponse.json({ success: true, data: result });
   }
+  if (body.action === 'edit') {
+    // Single-item correction: file with the user's category (stronger
+    // USER_CORRECTION learning signal than a confirm).
+    const categoryLevel1 =
+      typeof body.values?.categoryLevel1 === 'string' && body.values.categoryLevel1.length > 0
+        ? body.values.categoryLevel1
+        : null;
+    if (ids.length !== 1 || !categoryLevel1) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: 'INVALID_EDIT',
+            message: "action 'edit' requires exactly one reviewItemId and values.categoryLevel1",
+          },
+        },
+        { status: 400 }
+      );
+    }
+    const result = await editReviewItem(auth.userId, ids[0], {
+      categoryLevel1,
+      categoryLevel2:
+        typeof body.values?.categoryLevel2 === 'string' ? body.values.categoryLevel2 : null,
+      subcategory: typeof body.values?.subcategory === 'string' ? body.values.subcategory : null,
+    });
+    return NextResponse.json({ success: true, data: result });
+  }
   return NextResponse.json(
-    { success: false, error: { code: 'INVALID_ACTION', message: "action must be 'confirm' or 'skip'" } },
+    {
+      success: false,
+      error: { code: 'INVALID_ACTION', message: "action must be 'confirm', 'skip', or 'edit'" },
+    },
     { status: 400 }
   );
 });

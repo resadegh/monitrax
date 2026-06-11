@@ -39,9 +39,15 @@ interface CategoryPickerSheetProps {
   } | null;
   /** Suggested categories — caller may pass merchant-mapping-aware list. */
   suggestions?: string[];
-  /** Called after the PATCH succeeds. */
+  /** Called after the PATCH (or onPickOverride) succeeds. */
   onSuccess: (categoryLevel1: string) => void;
   onClose: () => void;
+  /**
+   * Phase 49.5 — when provided, the sheet does NOT PATCH a transaction;
+   * it calls this instead (e.g. review-queue items, which aren't
+   * transactions yet). Throw to surface an error in the sheet.
+   */
+  onPickOverride?: (categoryLevel1: string) => Promise<void>;
 }
 
 const DEFAULT_SUGGESTIONS = [
@@ -58,6 +64,7 @@ export function CategoryPickerSheet({
   suggestions,
   onSuccess,
   onClose,
+  onPickOverride,
 }: CategoryPickerSheetProps) {
   const { token } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -86,7 +93,22 @@ export function CategoryPickerSheet({
   const chips = (suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS).slice(0, 6);
 
   async function categorise(level1: string) {
-    if (!transactionId || busy || !token) return;
+    if (busy || !token) return;
+    // Phase 49.5 — override path (review-queue items: not transactions yet).
+    if (onPickOverride) {
+      setBusy(true);
+      setError(null);
+      try {
+        await onPickOverride(level1);
+        onSuccess(level1);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to categorise');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    if (!transactionId) return;
     setBusy(true);
     setError(null);
     try {

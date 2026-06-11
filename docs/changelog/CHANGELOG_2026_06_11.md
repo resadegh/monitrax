@@ -270,3 +270,31 @@ carries the band without overloading one chip with two meanings.
 - [x] tsc clean
 - [x] 253/253 bookkeeping tests
 - [x] Build passes
+
+## Session: serene-goodall-6smazx — Phase 49.5 (review-row category editing + action-cluster layout)
+
+### Changes
+Two pieces of Reza feedback on the 49.4 review surface (2026-06-11):
+1. *"there is no option to change categories on each line"* — added the third action:
+   the category pill is now TAPPABLE and opens the existing CategoryPickerSheet; picking a
+   category files the queue item with the corrected triple via the shared
+   confirmReviewItem('EDIT') path (USER_CORRECTION — a stronger learning signal than confirm).
+2. *"the category should sit next to the confirmation buttons"* — row layout reworked per the
+   proximity principle: the right-hand cluster is now `[category pill ▾][✓ confirm][✗ skip]`
+   with the amount above it, so the actions visibly belong to the category being confirmed.
+   The confidence dot + "% sure" stay in the left subtitle.
+
+- `lib/bank/reviewQueue.ts` — `editReviewItem()` (fetch PENDING item → shared EDIT path).
+- `app/api/unified-transactions/review-queue/route.ts` — POST `action: 'edit'` (single id +
+  `values.categoryLevel1`).
+- `components/bookkeeping/CategoryPickerSheet.tsx` — optional `onPickOverride` prop: bypasses
+  the internal transaction PATCH so the same sheet serves queue items (§12.3 — one picker,
+  no duplicate).
+- `app/dashboard/activity/page.tsx` — QueueReviewRow layout per above; `queueEditItem` state +
+  a second CategoryPickerSheet instance wired to the edit action; refreshes counts/list/
+  celebration on success.
+
+### Testing
+- [x] tsc clean
+- [x] 253/253 bookkeeping tests
+- [x] Build passes
