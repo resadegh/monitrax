@@ -464,3 +464,8 @@ bills forecast (My Safety Net) through the existing Expense SSOT — no new aggr
 ### §17.2 post-merge verification — PR #1072
 - Production deploy `dpl_pAr4e7vm4ZoBXaF3wmazVHBLqULd` ("Merge pull request #1072") reached
   `READY`. Runtime error-log comparison against pre-merge baseline recorded in-session.
+
+### §17.2 post-merge verification — PR #1074
+- Production deploy `dpl_BWLer2TULkPcgeds7g3uKQoywhBd` ("Merge pull request #1074") reached
+  `READY` after ~3.5 min of building. Runtime logs: no error/warning lines beyond the
+  pre-existing DEP0169 deprecation noise — clean against the pre-merge baseline.
