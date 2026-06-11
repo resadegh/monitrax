@@ -52,6 +52,7 @@ import {
   Link2,
   X,
   Check,
+  ChevronDown,
   Sparkles,
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
@@ -266,6 +267,8 @@ export default function ActivityPage() {
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueSelected, setQueueSelected] = useState<Set<string>>(() => new Set());
   const [bandCounts, setBandCounts] = useState<{ medium: number; low: number }>({ medium: 0, low: 0 });
+  // Phase 49.5 — queue item whose category is being corrected via the picker.
+  const [queueEditItem, setQueueEditItem] = useState<ReviewQueueItem | null>(null);
 
   // Phase 49.4 — fetch the band counts for the filter chips (cheap summary).
   const fetchBandCounts = useCallback(async () => {
@@ -856,6 +859,7 @@ export default function ActivityPage() {
             onSelectAll={(all) => setQueueSelected(all ? new Set(queueItems.map((i) => i.id)) : new Set())}
             onConfirm={(ids) => actionQueueItems('confirm', ids)}
             onSkip={(ids) => actionQueueItems('skip', ids)}
+            onEditCategory={(item) => setQueueEditItem(item)}
             onClose={() => setConfidenceBand(null)}
           />
         ) : loading ? (
@@ -984,6 +988,56 @@ export default function ActivityPage() {
           setPickerTx(null);
           fetchTransactions();
           fetchSummary();
+        }}
+      />
+
+      {/* Phase 49.5 — same picker sheet, but for a review-queue item being
+          corrected: the override files the item with the chosen category
+          via POST review-queue action 'edit' (USER_CORRECTION learning). */}
+      <CategoryPickerSheet
+        open={queueEditItem !== null}
+        transactionId={null}
+        context={
+          queueEditItem
+            ? {
+                merchant: queueEditItem.description || queueEditItem.merchant || null,
+                amount: queueEditItem.amount,
+              }
+            : null
+        }
+        onPickOverride={async (categoryLevel1) => {
+          if (!queueEditItem || !token) return;
+          const res = await fetch('/api/unified-transactions/review-queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({
+              action: 'edit',
+              reviewItemIds: [queueEditItem.id],
+              values: { categoryLevel1 },
+            }),
+          });
+          if (!res.ok) {
+            const json = await res.json().catch(() => null);
+            throw new Error(json?.error?.message ?? 'Failed to file with the new category');
+          }
+        }}
+        onClose={() => setQueueEditItem(null)}
+        onSuccess={() => {
+          const editedId = queueEditItem?.id;
+          setQueueEditItem(null);
+          if (editedId) {
+            setQueueItems((prev) => prev.filter((i) => i.id !== editedId));
+            setQueueSelected((prev) => {
+              const next = new Set(prev);
+              next.delete(editedId);
+              return next;
+            });
+          }
+          setConfidenceRefresh((n) => n + 1);
+          fetchBandCounts();
+          fetchTransactions();
+          fetchSummary();
+          setCelebrationTrigger((t) => t + 1);
         }}
       />
 
@@ -1256,6 +1310,7 @@ function QueueReviewList({
   onSelectAll,
   onConfirm,
   onSkip,
+  onEditCategory,
   onClose,
 }: {
   band: 'medium' | 'low';
@@ -1266,6 +1321,7 @@ function QueueReviewList({
   onSelectAll: (all: boolean) => void;
   onConfirm: (ids: string[]) => void;
   onSkip: (ids: string[]) => void;
+  onEditCategory: (item: ReviewQueueItem) => void;
   onClose: () => void;
 }) {
   const meta = BAND_LABEL[band];
@@ -1343,6 +1399,7 @@ function QueueReviewList({
                 onToggle={() => onToggle(item.id)}
                 onConfirm={() => onConfirm([item.id])}
                 onSkip={() => onSkip([item.id])}
+                onEditCategory={() => onEditCategory(item)}
               />
             ))}
           </div>
@@ -1358,12 +1415,15 @@ function QueueReviewRow({
   onToggle,
   onConfirm,
   onSkip,
+  onEditCategory,
 }: {
   item: ReviewQueueItem;
   selected: boolean;
   onToggle: () => void;
   onConfirm: () => void;
   onSkip: () => void;
+  /** Phase 49.5 — open the category picker to correct the AI's category. */
+  onEditCategory: () => void;
 }) {
   const isIn = item.direction === 'IN';
   const label = item.description || item.merchant || 'Transaction';
@@ -1372,7 +1432,7 @@ function QueueReviewRow({
 
   return (
     <div
-      className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 border-b border-border last:border-0 ${
+      className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3 border-b border-border last:border-0 ${
         selected ? 'bg-emerald-50/40 dark:bg-emerald-500/[0.06]' : 'hover:bg-muted/40'
       }`}
     >
@@ -1389,37 +1449,45 @@ function QueueReviewRow({
       <div className="flex-1 min-w-0">
         <div className="font-medium text-sm truncate">{label}</div>
         <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-          {item.aiCategoryLevel1 && (
-            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getCategoryTone(item.aiCategoryLevel1)}`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
-              {item.aiCategoryLevel1}
-            </span>
-          )}
-          <span>·</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
           <span className="tabular-nums">{confidencePct}% sure</span>
         </div>
       </div>
-      <div className={`text-right shrink-0 font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
-        {isIn ? '+' : '-'}{formatCurrency(item.amount)}
-      </div>
-      {/* Per-row quick actions */}
-      <div className="flex items-center gap-1 shrink-0">
-        <button
-          onClick={onConfirm}
-          title="Confirm — file with the AI's category"
-          aria-label="Confirm"
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
-        >
-          <Check className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onSkip}
-          title="Skip — don't import this one"
-          aria-label="Skip"
-          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
-        >
-          <X className="w-4 h-4" />
-        </button>
+      {/* Phase 49.5 (Reza feedback) — the category sits IN the action
+          cluster on the right, so the ✓/✗ visibly belong to it. The pill
+          itself is tappable: "wrong category? change it" — change / confirm
+          / skip become one unit. Amount above, actions below. */}
+      <div className="flex flex-col items-end gap-1.5 shrink-0">
+        <div className={`font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
+          {isIn ? '+' : '-'}{formatCurrency(item.amount)}
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={onEditCategory}
+            title="Change category"
+            aria-label={`Change category (currently ${item.aiCategoryLevel1 ?? 'uncategorised'})`}
+            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${getCategoryTone(item.aiCategoryLevel1)}`}
+          >
+            {item.aiCategoryLevel1 ?? 'Pick category'}
+            <ChevronDown className="w-3 h-3 opacity-60" />
+          </button>
+          <button
+            onClick={onConfirm}
+            title="Confirm — file with this category"
+            aria-label="Confirm category"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+          >
+            <Check className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onSkip}
+            title="Skip — don't import this one"
+            aria-label="Skip"
+            className="inline-flex items-center justify-center w-7 h-7 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
   );
