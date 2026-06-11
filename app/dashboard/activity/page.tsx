@@ -51,6 +51,7 @@ import {
   Upload,
   Link2,
   X,
+  Check,
   Sparkles,
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
@@ -102,6 +103,21 @@ interface AnalyticsSummary {
   netCashflow: number;
   transactionCount: number;
   topCategories: { category: string; amount: number; count: number }[];
+}
+
+// Phase 49.4 — a PENDING review-queue item (medium/low confidence; not yet a
+// real transaction). Shape mirrors GET /api/unified-transactions/review-queue.
+interface ReviewQueueItem {
+  id: string;
+  date: string;
+  amount: number;
+  direction: 'IN' | 'OUT';
+  description: string;
+  merchant: string | null;
+  aiCategoryLevel1: string | null;
+  aiCategoryLevel2: string | null;
+  aiConfidence: number;
+  band: 'medium' | 'low';
 }
 
 interface ImportAccount {
@@ -241,6 +257,86 @@ export default function ActivityPage() {
   const [reviewMode, setReviewMode] = useState(false);
   // Phase 49 — bump to re-fetch the AI bookkeeper confidence summary.
   const [confidenceRefresh, setConfidenceRefresh] = useState(0);
+  // Phase 49.4 — confidence-band review surface. When set, the list shows
+  // the PENDING review-queue items for that band (which aren't real
+  // transactions yet) instead of the normal transaction list, so the user
+  // can see + confirm/skip the medium/low pile before bulk-confirming.
+  const [confidenceBand, setConfidenceBand] = useState<'medium' | 'low' | null>(null);
+  const [queueItems, setQueueItems] = useState<ReviewQueueItem[]>([]);
+  const [queueLoading, setQueueLoading] = useState(false);
+  const [queueSelected, setQueueSelected] = useState<Set<string>>(() => new Set());
+  const [bandCounts, setBandCounts] = useState<{ medium: number; low: number }>({ medium: 0, low: 0 });
+
+  // Phase 49.4 — fetch the band counts for the filter chips (cheap summary).
+  const fetchBandCounts = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch('/api/unified-transactions/bulk-confirm', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setBandCounts({ medium: json.data.medium ?? 0, low: json.data.low ?? 0 });
+      }
+    } catch {
+      // Quiet — chips just show 0.
+    }
+  }, [token]);
+
+  // Phase 49.4 — load the queue items for the active band.
+  const fetchQueueItems = useCallback(async (band: 'medium' | 'low') => {
+    if (!token) return;
+    setQueueLoading(true);
+    try {
+      const res = await fetch(`/api/unified-transactions/review-queue?band=${band}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        setQueueItems(json.data.items as ReviewQueueItem[]);
+        setQueueSelected(new Set((json.data.items as ReviewQueueItem[]).map((i) => i.id)));
+      }
+    } catch {
+      setQueueItems([]);
+    } finally {
+      setQueueLoading(false);
+    }
+  }, [token]);
+
+  useEffect(() => {
+    if (confidenceBand) fetchQueueItems(confidenceBand);
+  }, [confidenceBand, fetchQueueItems]);
+
+  // Phase 49.4 — confirm or skip the selected queue items.
+  const actionQueueItems = useCallback(
+    async (action: 'confirm' | 'skip', ids: string[]) => {
+      if (!token || ids.length === 0) return;
+      try {
+        await fetch('/api/unified-transactions/review-queue', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action, reviewItemIds: ids }),
+        });
+        // Drop the actioned items locally; refresh counts + (on confirm) the list.
+        setQueueItems((prev) => prev.filter((i) => !ids.includes(i.id)));
+        setQueueSelected((prev) => {
+          const next = new Set(prev);
+          ids.forEach((id) => next.delete(id));
+          return next;
+        });
+        setConfidenceRefresh((n) => n + 1);
+        fetchBandCounts();
+        if (action === 'confirm') {
+          fetchTransactions();
+          fetchSummary();
+          setCelebrationTrigger((t) => t + 1);
+        }
+      } catch {
+        // Leave items in place; user can retry.
+      }
+    },
+    [token, fetchBandCounts]
+  );
 
   // Apply "always categorise X as Y" on a double-tap when the row
   // already has a category set. Writes a USER-source MerchantMapping
@@ -413,6 +509,11 @@ export default function ActivityPage() {
     fetchAccounts();
   }, [fetchTransactions, fetchSummary, fetchAccounts]);
 
+  // Phase 49.4 — keep the band-filter chip counts current.
+  useEffect(() => {
+    fetchBandCounts();
+  }, [fetchBandCounts, confidenceRefresh]);
+
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
@@ -515,6 +616,13 @@ export default function ActivityPage() {
             await fetchTransactions();
             fetchSummary();
             setCelebrationTrigger((t) => t + 1);
+          }}
+          onReviewBand={(band) => {
+            setConfidenceBand(band);
+            // Scroll the list into view so the review surface is obvious.
+            requestAnimationFrame(() =>
+              document.getElementById('activity-list-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+            );
           }}
         />
 
@@ -620,6 +728,26 @@ export default function ActivityPage() {
           </form>
 
           <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0">
+            {/* Phase 49.4 — confidence-band review filters. Surface the
+                medium/low pile (which lives in the review queue, not the
+                transaction list) so the user can see + confirm/skip before
+                a blind bulk-confirm. */}
+            {bandCounts.medium > 0 && (
+              <ConfidenceChip
+                active={confidenceBand === 'medium'}
+                onClick={() => setConfidenceBand(confidenceBand === 'medium' ? null : 'medium')}
+                dot="bg-amber-400"
+                label={`Medium · ${bandCounts.medium.toLocaleString('en-AU')}`}
+              />
+            )}
+            {bandCounts.low > 0 && (
+              <ConfidenceChip
+                active={confidenceBand === 'low'}
+                onClick={() => setConfidenceBand(confidenceBand === 'low' ? null : 'low')}
+                dot="bg-rose-400"
+                label={`Low · ${bandCounts.low.toLocaleString('en-AU')}`}
+              />
+            )}
             <ChipToggle
               active={showRecurringOnly}
               onClick={() => { setShowRecurringOnly(!showRecurringOnly); setPage(1); }}
@@ -643,6 +771,7 @@ export default function ActivityPage() {
             />
           </div>
         </div>
+        <div id="activity-list-top" />
 
         {/* ADVANCED FILTERS PANEL */}
         {showFilters && (
@@ -707,7 +836,29 @@ export default function ActivityPage() {
         )}
 
         {/* CONTENT */}
-        {loading ? (
+        {confidenceBand ? (
+          // Phase 49.4 — review surface for a confidence band. Shows the
+          // PENDING queue items (not real transactions yet), each with a
+          // confidence dot + per-item confirm/skip + a bulk action bar.
+          <QueueReviewList
+            band={confidenceBand}
+            items={queueItems}
+            loading={queueLoading}
+            selected={queueSelected}
+            onToggle={(id) =>
+              setQueueSelected((prev) => {
+                const next = new Set(prev);
+                if (next.has(id)) next.delete(id);
+                else next.add(id);
+                return next;
+              })
+            }
+            onSelectAll={(all) => setQueueSelected(all ? new Set(queueItems.map((i) => i.id)) : new Set())}
+            onConfirm={(ids) => actionQueueItems('confirm', ids)}
+            onSkip={(ids) => actionQueueItems('skip', ids)}
+            onClose={() => setConfidenceBand(null)}
+          />
+        ) : loading ? (
           <LoadingList />
         ) : error ? (
           <ErrorState error={error} onRetry={fetchTransactions} />
@@ -1048,6 +1199,229 @@ function ChipToggle({
       <Icon className="w-3.5 h-3.5" />
       {label}
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 49.4 — confidence-band review surface
+// ---------------------------------------------------------------------------
+
+function ConfidenceChip({
+  active,
+  onClick,
+  dot,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  dot: string;
+  label: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap border transition-all duration-200 ${
+        active
+          ? 'bg-foreground text-background border-foreground shadow-sm'
+          : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-foreground/30'
+      }`}
+    >
+      <span className={`w-2 h-2 rounded-full ${dot}`} aria-hidden />
+      {label}
+    </button>
+  );
+}
+
+const BAND_LABEL: Record<'medium' | 'low', { title: string; blurb: string; dot: string; tone: string }> = {
+  medium: {
+    title: 'Medium confidence',
+    blurb: 'The AI is fairly sure. Skim, then confirm — confirming teaches it.',
+    dot: 'bg-amber-400',
+    tone: 'text-amber-600 dark:text-amber-400',
+  },
+  low: {
+    title: 'Low confidence',
+    blurb: 'The AI is unsure here. Worth a closer look before you confirm.',
+    dot: 'bg-rose-400',
+    tone: 'text-rose-600 dark:text-rose-400',
+  },
+};
+
+function QueueReviewList({
+  band,
+  items,
+  loading,
+  selected,
+  onToggle,
+  onSelectAll,
+  onConfirm,
+  onSkip,
+  onClose,
+}: {
+  band: 'medium' | 'low';
+  items: ReviewQueueItem[];
+  loading: boolean;
+  selected: Set<string>;
+  onToggle: (id: string) => void;
+  onSelectAll: (all: boolean) => void;
+  onConfirm: (ids: string[]) => void;
+  onSkip: (ids: string[]) => void;
+  onClose: () => void;
+}) {
+  const meta = BAND_LABEL[band];
+  const selectedIds = items.filter((i) => selected.has(i.id)).map((i) => i.id);
+  const allSelected = items.length > 0 && selectedIds.length === items.length;
+
+  return (
+    <div className="anim-rise">
+      {/* Header */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 rounded-[18px] border border-foreground/10 bg-card/70 backdrop-blur-xl px-4 py-3 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex items-center gap-2.5">
+          <span className={`w-2.5 h-2.5 rounded-full ${meta.dot}`} aria-hidden />
+          <div>
+            <p className="text-sm font-semibold">{meta.title} · {items.length.toLocaleString('en-AU')}</p>
+            <p className="text-xs text-muted-foreground">{meta.blurb}</p>
+          </div>
+        </div>
+        <button
+          onClick={onClose}
+          className="inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-background/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <X className="w-3.5 h-3.5" /> Back to all
+        </button>
+      </div>
+
+      {loading ? (
+        <LoadingList />
+      ) : items.length === 0 ? (
+        <div className="rounded-[22px] border border-dashed border-border bg-card/40 p-10 text-center anim-rise">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 mb-3">
+            <Check className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-semibold tracking-tight">All caught up</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Nothing left in the {band}-confidence pile. Nice work.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Select-all + bulk bar */}
+          <div className="mb-2 flex items-center justify-between px-1">
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={(e) => onSelectAll(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/40"
+              />
+              {selectedIds.length > 0 ? `${selectedIds.length} selected` : 'Select all'}
+            </label>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onSkip(selectedIds)}
+                disabled={selectedIds.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-[12px] border border-foreground/10 bg-background/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-40 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" /> Skip
+              </button>
+              <button
+                onClick={() => onConfirm(selectedIds)}
+                disabled={selectedIds.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-[12px] bg-gradient-to-r from-sky-500 to-indigo-500 px-3.5 py-1.5 text-xs font-semibold text-white shadow-lg shadow-indigo-500/25 disabled:opacity-40 transition"
+              >
+                <Check className="w-3.5 h-3.5" /> Confirm {selectedIds.length > 0 ? selectedIds.length : ''}
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-[22px] border border-foreground/10 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] overflow-hidden">
+            {items.map((item) => (
+              <QueueReviewRow
+                key={item.id}
+                item={item}
+                selected={selected.has(item.id)}
+                onToggle={() => onToggle(item.id)}
+                onConfirm={() => onConfirm([item.id])}
+                onSkip={() => onSkip([item.id])}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function QueueReviewRow({
+  item,
+  selected,
+  onToggle,
+  onConfirm,
+  onSkip,
+}: {
+  item: ReviewQueueItem;
+  selected: boolean;
+  onToggle: () => void;
+  onConfirm: () => void;
+  onSkip: () => void;
+}) {
+  const isIn = item.direction === 'IN';
+  const label = item.description || item.merchant || 'Transaction';
+  const dot = item.band === 'low' ? 'bg-rose-400' : 'bg-amber-400';
+  const confidencePct = Math.round(item.aiConfidence * 100);
+
+  return (
+    <div
+      className={`flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 border-b border-border last:border-0 ${
+        selected ? 'bg-emerald-50/40 dark:bg-emerald-500/[0.06]' : 'hover:bg-muted/40'
+      }`}
+    >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={onToggle}
+        className="w-4 h-4 shrink-0 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500/40 cursor-pointer"
+        aria-label={`Select ${label}`}
+      />
+      <div className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+        {isIn ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="font-medium text-sm truncate">{label}</div>
+        <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
+          {item.aiCategoryLevel1 && (
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${getCategoryTone(item.aiCategoryLevel1)}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
+              {item.aiCategoryLevel1}
+            </span>
+          )}
+          <span>·</span>
+          <span className="tabular-nums">{confidencePct}% sure</span>
+        </div>
+      </div>
+      <div className={`text-right shrink-0 font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
+        {isIn ? '+' : '-'}{formatCurrency(item.amount)}
+      </div>
+      {/* Per-row quick actions */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={onConfirm}
+          title="Confirm — file with the AI's category"
+          aria-label="Confirm"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10 transition-colors"
+        >
+          <Check className="w-4 h-4" />
+        </button>
+        <button
+          onClick={onSkip}
+          title="Skip — don't import this one"
+          aria-label="Skip"
+          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:text-rose-600 hover:bg-rose-500/10 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 
