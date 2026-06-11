@@ -1010,6 +1010,13 @@ function ActivityPageContent() {
           fetchTransactions();
           fetchSummary();
         }}
+        onMarkTransfer={() => {
+          // Phase 49.9 — hand off to the destination picker (the canonical
+          // transfer flow for existing transactions).
+          const tx = pickerTx;
+          setPickerTx(null);
+          if (tx) setTransferTx(tx);
+        }}
       />
 
       {/* Phase 49.5 — same picker sheet, but for a review-queue item being
@@ -1041,6 +1048,31 @@ function ActivityPageContent() {
             const json = await res.json().catch(() => null);
             throw new Error(json?.error?.message ?? 'Failed to file with the new category');
           }
+        }}
+        onMarkTransfer={async () => {
+          // Phase 49.9 — file the queue item as an own-account transfer.
+          if (!queueEditItem || !token) return;
+          const res = await fetch('/api/unified-transactions/review-queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'transfer', reviewItemIds: [queueEditItem.id] }),
+          });
+          if (!res.ok) {
+            const json = await res.json().catch(() => null);
+            throw new Error(json?.error?.message ?? 'Failed to mark as transfer');
+          }
+          const editedId = queueEditItem.id;
+          setQueueEditItem(null);
+          setQueueItems((prev) => prev.filter((i) => i.id !== editedId));
+          setQueueSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(editedId);
+            return next;
+          });
+          setConfidenceRefresh((n) => n + 1);
+          fetchBandCounts();
+          fetchTransactions();
+          fetchSummary();
         }}
         onClose={() => setQueueEditItem(null)}
         onSuccess={() => {
