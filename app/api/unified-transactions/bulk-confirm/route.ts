@@ -21,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import {
   bulkConfirmCategorisations,
+  bulkConfirmHighBand,
   getConfidenceSummary,
   type ConfidenceBand,
 } from '@/lib/bank/bulkConfirm';
@@ -46,6 +47,13 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
     );
   }
 
+  // Phase 49.13 — 'high' confirms in place (rows are already transactions);
+  // medium/low promote out of the review queue.
+  if (body.band === 'high') {
+    const result = await bulkConfirmHighBand(auth.userId);
+    return NextResponse.json({ success: true, data: result });
+  }
+
   const band =
     body.band === 'medium' || body.band === 'low' ? (body.band as ConfidenceBand) : undefined;
   const reviewItemIds = Array.isArray(body.reviewItemIds)
@@ -58,7 +66,7 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
         success: false,
         error: {
           code: 'INVALID_INPUT',
-          message: "Provide band ('medium' | 'low') or a non-empty reviewItemIds array",
+          message: "Provide band ('high' | 'medium' | 'low') or a non-empty reviewItemIds array",
         },
       },
       { status: 400 }
