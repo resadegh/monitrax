@@ -37,6 +37,7 @@ import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
 import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
+import OwnershipSummary from '@/components/ownership/OwnershipSummary';
 import {
   Select,
   SelectContent,
@@ -166,6 +167,7 @@ export function LoanFormDialog({
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   // Phase 47 Stage A2 — correction flow on the edit path.
   const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
+  const [ownershipRefreshKey, setOwnershipRefreshKey] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attachedDocumentId, setAttachedDocumentId] = useState<string | null>(null);
@@ -714,24 +716,25 @@ export function LoanFormDialog({
           {!isEditing && (
             <OwnershipPicker token={token} value={ownership} onChange={setOwnership} />
           )}
-          {isEditing && (
-            <button
-              type="button"
-              onClick={() => setCorrectOwnershipOpen(true)}
-              className="text-xs text-sky-600 underline-offset-2 hover:underline"
-            >
-              Recorded under the wrong owner? Correct the ownership record
-            </button>
-          )}
           {isEditing && editing?.id && (
-            <CorrectOwnershipDialog
-              open={correctOwnershipOpen}
-              onOpenChange={setCorrectOwnershipOpen}
-              token={token}
-              objectType="loan"
-              objectId={editing.id}
-              objectName={formData.name || 'This item'}
-            />
+            <>
+              <OwnershipSummary
+                token={token}
+                objectType="loan"
+                objectId={editing.id}
+                onCorrect={() => setCorrectOwnershipOpen(true)}
+                refreshKey={ownershipRefreshKey}
+              />
+              <CorrectOwnershipDialog
+                open={correctOwnershipOpen}
+                onOpenChange={setCorrectOwnershipOpen}
+                token={token}
+                objectType="loan"
+                objectId={editing.id}
+                objectName={formData.name || 'This item'}
+                onCorrected={() => setOwnershipRefreshKey(k => k + 1)}
+              />
+            </>
           )}
 
           <div className="flex justify-end gap-3 pt-4">

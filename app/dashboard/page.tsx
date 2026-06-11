@@ -87,6 +87,7 @@ import { GlassKpiCard } from '@/components/dashboard/tiles/GlassKpiCard';
 import { GlassPairedMetricCard } from '@/components/dashboard/tiles/GlassPairedMetricCard';
 import { KpiSwipeStrip } from '@/components/dashboard/tiles/KpiSwipeStrip';
 import { BentoPair } from '@/components/dashboard/tiles/BentoPair';
+import EntityBreakdownWidget from '@/components/ownership/EntityBreakdownWidget';
 import {
   GlassHealthScore,
   GlassEmergencyFund,
@@ -908,6 +909,12 @@ export default function DashboardPage() {
           {/* Phase 45.6 — WealthUniverse wrapped in glass surround (canvas
               internals preserved). */}
           <GlassWealthUniverse />
+
+          {/* Phase 47 Stage C2 — entity lens v1: per-entity positions from
+              the canonical byEntity snapshot view. Self-hides below 2
+              entities (progressive disclosure); fills the documented
+              empty column beside the universe widget. */}
+          <EntityBreakdownWidget />
 
           {/* Phase 45.5 — Debt Quality + Entity Cashflow as BentoPair. */}
           {snapshot.loans && snapshot.loans.length > 0 && (

@@ -207,6 +207,26 @@ export default function OwnershipPicker({ token, value, onChange }: OwnershipPic
             caption="A trust, company or SMSF you've added"
           />
         )}
+        {/* Discoverability hint (Reza feedback 2026-06-10: "it doesn't
+            have a trust or company ownership") — when no structure
+            entity exists yet, the entity option doesn't vanish
+            silently; it signposts the path. Layered structures (you →
+            trustee of trust → trust owns company → company owns the
+            asset) are captured on My Structure first, then picked here. */}
+        {!hasEntities && (
+          <a
+            href="/dashboard/entities"
+            className={`${CARD_BASE} ${CARD_IDLE} border-dashed`}
+          >
+            <Landmark size={16} className="text-muted-foreground" strokeWidth={1.8} />
+            <span className="text-sm font-medium text-muted-foreground">
+              A trust or company?
+            </span>
+            <span className="text-xs leading-snug text-muted-foreground">
+              Add it in My Structure first — then pick it as the owner here.
+            </span>
+          </a>
+        )}
       </div>
 
       {/* Joint panel */}

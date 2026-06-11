@@ -46,7 +46,9 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   NODE_ACCENT,
@@ -498,6 +500,14 @@ export default function WealthUniverseCanvas() {
   // asset constellation unfolded. Selecting an entity expands it;
   // clearing the selection folds everything back to Level 1.
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  // Phase WX.5 — microscopic camera zoom between layers. `cameraOrigin`
+  // is the tapped bubble's canvas-% position: the outgoing layer
+  // magnifies toward it and blurs out of focus (racking to a deeper
+  // focal plane); the incoming layer sharpens in. Direction flips on
+  // the way back out.
+  const [cameraOrigin, setCameraOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [cameraDirection, setCameraDirection] = useState<'in' | 'out'>('in');
+  const prefersReducedMotion = useReducedMotion();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<typeof FILTER_CHIPS[number]['id']>('all');
   // Phase 1.1 — beneficial-ownership lens toggle. Only renders when the
@@ -546,6 +556,7 @@ export default function WealthUniverseCanvas() {
 
   // Phase WX.4 — selection drives the semantic zoom.
   function clearSelection() {
+    setCameraDirection('out');
     setSelectedId(null);
     setExpandedIds([]);
   }
@@ -556,14 +567,43 @@ export default function WealthUniverseCanvas() {
       if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
       return;
     }
-    if (selectedId === node.id) {
-      // Tapping the selected entity again folds it back to Level 1.
+    if (selectedId === node.id || expandedIds[0] === node.id) {
+      // Clicking the bubble you're inside zooms back out to the universe.
       clearSelection();
       return;
     }
     setSelectedId(node.id);
-    setExpandedIds(node.assetSummary ? [node.id] : []);
+    // WX.5.3 — expandability is the layout's call (`isExpandable`), not
+    // "has assets": in cluster mode tapping the entity opens the card
+    // over the universe instead of the removed all-holdings layer.
+    if (node.isExpandable) {
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setCameraDirection('in');
+      setExpandedIds([node.id]);
+    } else {
+      setExpandedIds([]);
+    }
   }
+
+  // Deep-link focus (Reza 2026-06-10): /dashboard/entities?focus=<node>
+  // opens with that bubble's constellation already unfolded — the
+  // dashboard widget's bubbles carry the param so the tap reads as
+  // "zoom in", not "start over". Applied once per mount.
+  const searchParams = useSearchParams();
+  const focusAppliedRef = useRef(false);
+  useEffect(() => {
+    if (focusAppliedRef.current || nodes.length === 0) return;
+    const focus = searchParams?.get('focus');
+    if (!focus) {
+      focusAppliedRef.current = true;
+      return;
+    }
+    focusAppliedRef.current = true;
+    const node = nodes.find(n => n.id === focus);
+    if (!node) return;
+    setSelectedId(focus);
+    if (node.tier !== 'asset' && node.isExpandable) setExpandedIds([focus]);
+  }, [searchParams, nodes]);
 
   // Stagger for the satellite pop-in when a constellation unfolds.
   const satelliteDelayById = useMemo(() => {
@@ -1020,25 +1060,39 @@ export default function WealthUniverseCanvas() {
             backdropFilter: 'blur(8px)',
           }}
         >
-          {selectedNode ? (
-            <>
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
-                aria-label="Back to universe"
-              >
-                <ChevronLeft size={11} strokeWidth={1.5} />
-                Universe
-              </button>
-              <span className="h-1 w-1 rounded-full bg-white/15" />
-              <span
-                className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
-                style={{ color: NODE_ACCENT[selectedNode.type] }}
-              >
-                Level 2 · {selectedNode.shortName ?? selectedNode.name}
-              </span>
-            </>
+          {(selectedNode || expandedIds.length > 0) ? (
+            (() => {
+              // WX.5.1 — the ownership trail: the layer's OWNER is always
+              // visible so asset ownership is trackable at every depth.
+              const sceneParent = nodes.find(n => n.tier !== 'asset' && n.isExpanded);
+              const trailNode = sceneParent ?? selectedNode!;
+              const trail =
+                trailNode.tier === 'cluster' && trailNode.subtitle
+                  ? `${trailNode.subtitle} › ${trailNode.shortName}`
+                  : trailNode.tier === 'group'
+                    ? `${trailNode.shortName} · ${trailNode.subtitle ?? ''}`
+                    : trailNode.shortName ?? trailNode.name;
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
+                    aria-label="Back to universe"
+                  >
+                    <ChevronLeft size={11} strokeWidth={1.5} />
+                    Universe
+                  </button>
+                  <span className="h-1 w-1 rounded-full bg-white/15" />
+                  <span
+                    className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
+                    style={{ color: NODE_ACCENT[trailNode.type] }}
+                  >
+                    {trail}
+                  </span>
+                </>
+              );
+            })()
           ) : (
             <>
               <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
@@ -1052,40 +1106,69 @@ export default function WealthUniverseCanvas() {
       </div>
       )}
 
-      {/* Ribbons */}
-      <svg
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
-        className="pointer-events-none absolute inset-0 h-full w-full"
-      >
-        {relationships.map(r => (
-          <RelationshipRibbon
-            key={r.id}
-            rel={r}
-            nodes={nodesById}
-            isActive={isRibbonActive(r)}
-            isDimmed={isRibbonDimmed(r)}
-          />
-        ))}
-      </svg>
+      {/* Phase WX.5 — the layer field. Each scene (universe / inside a
+          bubble) is one keyed container; AnimatePresence cross-fades
+          them with the microscopic camera zoom. Zooming IN: the old
+          layer magnifies toward the tapped bubble and blurs out of
+          focus; the new layer sharpens in. Zooming OUT: reversed. */}
+      <AnimatePresence mode="sync" initial={false}>
+        <motion.div
+          key={expandedIds[0] ?? 'universe'}
+          className="absolute inset-0"
+          style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
+          initial={
+            prefersReducedMotion
+              ? { opacity: 1 }
+              : cameraDirection === 'in'
+                ? { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
+                : { opacity: 0, scale: 2.4, filter: 'blur(4px)' }
+          }
+          animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+          exit={
+            prefersReducedMotion
+              ? { opacity: 0 }
+              : cameraDirection === 'in'
+                ? { opacity: 0, scale: 2.4, filter: 'blur(4px)' }
+                : { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
+          }
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
+          {/* Ribbons */}
+          <svg
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            className="pointer-events-none absolute inset-0 h-full w-full"
+          >
+            {relationships.map(r => (
+              <RelationshipRibbon
+                key={r.id}
+                rel={r}
+                nodes={nodesById}
+                isActive={isRibbonActive(r)}
+                isDimmed={isRibbonDimmed(r)}
+              />
+            ))}
+          </svg>
 
-      {/* Tiles */}
-      {nodes.map(node => (
-        <WealthNodeTile
-          key={node.id}
-          node={node}
-          glyph={NODE_GLYPH[node.type]}
-          accent={NODE_ACCENT[node.type]}
-          scaleMultiplier={scaleFor(node)}
-          visibilityOpacity={nodeOpacity(node)}
-          isHovered={hoveredId === node.id}
-          isSelected={selectedId === node.id}
-          entranceDelayMs={satelliteDelayById.get(node.id)}
-          onHover={() => setHoveredId(node.id)}
-          onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
-          onClick={() => handleNodeClick(node)}
-        />
-      ))}
+          {/* Tiles */}
+          {nodes.map(node => (
+            <WealthNodeTile
+              key={node.id}
+              node={node}
+              glyph={NODE_GLYPH[node.type]}
+              accent={NODE_ACCENT[node.type]}
+              scaleMultiplier={scaleFor(node)}
+              visibilityOpacity={nodeOpacity(node)}
+              isHovered={hoveredId === node.id}
+              isSelected={selectedId === node.id}
+              entranceDelayMs={satelliteDelayById.get(node.id)}
+              onHover={() => setHoveredId(node.id)}
+              onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
+              onClick={() => handleNodeClick(node)}
+            />
+          ))}
+        </motion.div>
+      </AnimatePresence>
 
       {/* Live preview popover follows the hovered tile */}
       {hoveredNode && !selectedNode && <EntityPreviewPopover node={hoveredNode} />}

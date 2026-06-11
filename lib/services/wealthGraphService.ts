@@ -112,7 +112,8 @@ export type WealthGraphAssetKind =
   | 'loan'
   | 'account'
   | 'investment-account'
-  | 'asset';
+  | 'asset'
+  | 'super';
 
 export interface WealthGraphAsset {
   id: string;
@@ -237,6 +238,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     accounts,
     investmentAccounts,
     miscAssets,
+    superAccounts,
     relationships,
     ownershipGroups,
     beneficialOverrides,
@@ -326,6 +328,21 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         name: true,
         type: true,
         currentValue: true,
+      },
+    }),
+    // Phase 47 Stage B1 — super joins the universe. SMSF member accounts
+    // attach to their SMSF entity (Phase 39.5); retail/industry to the
+    // member's personal entity (Q-EOF-2). Rows still null (defensive —
+    // pre-backfill or missing personal entity) are skipped below.
+    prisma.superannuationAccount.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        ownerEntityId: true,
+        name: true,
+        fundName: true,
+        fundType: true,
+        currentBalance: true,
       },
     }),
     prisma.entityRelationship.findMany({
@@ -492,6 +509,22 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
       subtype: prettyAssetType(a.type),
       context: null,
     })),
+    ...superAccounts
+      .filter(s => s.ownerEntityId !== null)
+      .map(s => ({
+        id: s.id,
+        kind: 'super' as const,
+        ownerEntityId: s.ownerEntityId!,
+        name: s.name,
+        value: s.currentBalance,
+        subtype:
+          s.fundType === 'SMSF'
+            ? 'SMSF member account'
+            : s.fundType === 'RETAIL'
+              ? 'Retail super'
+              : 'Industry super',
+        context: s.fundName ?? null,
+      })),
   ];
 
   // --- relationships mapping. We also synthesise PARENT_OF edges from

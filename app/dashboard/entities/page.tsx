@@ -646,81 +646,63 @@ export default function EntitiesPage() {
             click-through to detail). The money-flow Sankey is folded in
             as a lens — there is no longer a separate Money Flow tab.
 
-            Not everyone has a structure. A user whose only entity is the
-            auto-created PERSONAL_NAME (Phase 41a backfill) sees a simpler
-            "your wealth is held in your personal name" hero instead. The
-            canvas only renders when there is REAL structure: any
-            non-PERSONAL_NAME entity, OR multiple PERSONAL_NAME entities
-            (joint households). Reza directive 2026-05-05: *"not everyone
-            has one of these entities, so there should be an option for
-            user to have none."* */}
+            Phase 47 fix (Reza report 2026-06-10: "my structure is empty
+            although the widget is showing assets correctly"): the canvas
+            now ALWAYS renders. The old gate hid it for personal-only
+            users — correct before the semantic-zoom cluster level, stale
+            after it (a personal-only user with assets has a real
+            universe: YOU + type clusters, exactly what the dashboard
+            widget shows). The 2026-05-05 "not everyone has a structure"
+            directive survives as a compact invitation banner above the
+            canvas instead of a canvas replacement; truly-empty users get
+            the canvas's own empty state. */}
         {!loading && !error && (() => {
           const personalEntities = entities.filter((e) => e.type === 'PERSONAL_NAME');
           const realEntities = entities.filter((e) => e.type !== 'PERSONAL_NAME');
           const hasRealStructure =
             realEntities.length > 0 || personalEntities.length > 1;
-
-          if (hasRealStructure) {
-            return (
-              <>
-                {/* Desktop — new Wealth Universe canvas (v5 Stitch design,
-                    ported PR #940). Surface-only for now; click-to-edit
-                    behaviour lands in the follow-up PR alongside the
-                    real-entity data hookup. The fixture currently renders
-                    Reza's Renew Group structure regardless of the user's
-                    actual entities — that resolves with the data wiring. */}
-                <div className="hidden md:block -mx-4 sm:-mx-6">
-                  <WealthUniverseCanvas />
-                </div>
-                {/* Mobile — Apple Maps hybrid (compact canvas +
-                    draggable bottom sheet). Add/edit happens via the
-                    existing dialog entry points below the canvas. */}
-                <div className="md:hidden -mx-4">
-                  <WealthUniverseMobile />
-                </div>
-              </>
-            );
-          }
-
-          // Simplified hero — user holds everything in their natural name.
-          // The PERSONAL_NAME entity (if any) is never surfaced as an
-          // "entity" here; it's an internal FK target. The user can edit
-          // their personal-name details only if they want to associate a
-          // TFN or trading name; otherwise they tap "Add" to introduce a
-          // real structure.
           const personal = personalEntities[0];
+
           return (
-            <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-br from-white/80 via-white/60 to-amber-50/40 p-8 shadow-sm ring-1 ring-slate-900/[0.04] backdrop-blur-sm dark:border-slate-700/50 dark:from-slate-900/70 dark:via-slate-900/60 dark:to-slate-950/70">
-              <div className="mx-auto max-w-xl space-y-3 text-center">
-                <p className="text-xs font-medium uppercase tracking-wide text-amber-700 dark:text-amber-300">
-                  Your structure
-                </p>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 sm:text-2xl">
-                  Your wealth is held in your personal name.
-                </h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Most Australian wealth-builders start here — a single legal
-                  identity that owns everything. If you also hold assets through
-                  a family trust, an SMSF, or a Pty Ltd, add it below and
-                  we&rsquo;ll map your full picture.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-2 pt-3">
-                  <Button onClick={openAdd}>
-                    <Plus className="mr-1.5 h-4 w-4" />
-                    Add a trust, SMSF, or company
-                  </Button>
-                  {personal && (
-                    <Button variant="outline" onClick={() => openEdit(personal)}>
-                      Edit my personal details
-                    </Button>
-                  )}
-                </div>
-                <p className="pt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Not everyone has a separate structure — and that&rsquo;s fine.
-                  You can come back here anytime if your situation changes.
-                </p>
+            <>
+              {/* Desktop — Wealth Universe canvas. The universe leads
+                  (Reza 2026-06-11: "the chart is the first thing user
+                  sees rather than the text"). */}
+              <div className="hidden md:block -mx-4 sm:-mx-6">
+                <WealthUniverseCanvas />
               </div>
-            </div>
+              {/* Mobile — Apple Maps hybrid (compact canvas + draggable
+                  bottom sheet). */}
+              <div className="md:hidden -mx-4">
+                <WealthUniverseMobile />
+              </div>
+              {/* Personal-only invitation — BELOW the canvas, never above
+                  it. Warm framing preserved. */}
+              {!hasRealStructure && (
+                <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white/80 to-amber-50/40 p-4 dark:border-slate-700/50 dark:from-slate-900/70 dark:to-slate-950/70 sm:flex-row sm:items-center">
+                  <div>
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      Your wealth is held in your personal name — and that&rsquo;s fine.
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Hold assets through a family trust, an SMSF, or a Pty Ltd? Add it and
+                      we&rsquo;ll map your full picture.
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Button size="sm" onClick={openAdd}>
+                      <Plus className="mr-1.5 h-4 w-4" />
+                      Add a trust, SMSF, or company
+                    </Button>
+                    {personal && (
+                      <Button size="sm" variant="outline" onClick={() => openEdit(personal)}>
+                        Edit my details
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           );
         })()}
 

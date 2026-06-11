@@ -124,6 +124,7 @@ function classifyAsset(kind: WealthGraphAssetKind): WealthNodeType {
     case 'account': return 'asset-cash';
     case 'investment-account': return 'asset-investment';
     case 'asset': return 'asset-vehicle'; // Asset table is currently vehicles + misc
+    case 'super': return 'asset-investment'; // Phase 47 B1 — super on the universe
   }
 }
 
@@ -208,6 +209,24 @@ function fanAbove(
     const angle = startAngle + step * i;
     return {
       x: parent.x + radiusPct * 1.4 * Math.cos(angle),
+      y: parent.y + radiusPct * Math.sin(angle),
+    };
+  });
+}
+
+/** Full ring around a centred parent — the focused-scene satellite layout. */
+function ringAround(
+  parent: { x: number; y: number },
+  count: number,
+  radiusPct: number,
+): Array<{ x: number; y: number }> {
+  if (count === 0) return [];
+  if (count === 1) return [{ x: parent.x, y: parent.y + radiusPct }];
+  return Array.from({ length: count }, (_, i) => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * i) / count;
+    return {
+      // Slight horizontal stretch — canvases are wider than tall.
+      x: parent.x + radiusPct * 1.25 * Math.cos(angle),
       y: parent.y + radiusPct * Math.sin(angle),
     };
   });
@@ -379,6 +398,15 @@ export function layoutWealthExplorer(
   const expandedIds = new Set(options.expandedEntityIds ?? []);
   const isUnfolded = (parentNodeId: string): boolean =>
     detail === 'all' || expandedIds.has(parentNodeId);
+  // Phase WX.5 (Reza 2026-06-10: "the camera moves to the next layer and
+  // expands that bubble into the page") — a SINGLE expanded id in
+  // collapsed mode produces a FOCUSED SCENE: the bubble re-centres and
+  // enlarges, its items form a clean ring filling the canvas, and every
+  // other node leaves the stage (you are INSIDE the bubble now — the
+  // breadcrumb is the way back). The canvas animates between scenes with
+  // a camera zoom; this function just returns each layer's composition.
+  const focusId =
+    detail === 'collapsed' && expandedIds.size === 1 ? [...expandedIds][0] : null;
 
   // Cluster level (Phase WX.4.1) — entity-level collapse only works
   // when there ARE entities to collapse into. A single-entity universe
@@ -459,6 +487,128 @@ export function layoutWealthExplorer(
      joint.length === 0 && soleTraders.length === 0 &&
      personal.length <= 1 && assets.length === 0);
 
+  // ---- Phase WX.5: focused-scene early return (the inner layer).
+  // WX.5.3 (Reza 2026-06-11): centre sits at y=52 (was 42) so the top
+  // satellite of the ring clears the breadcrumb / trail text that
+  // floats over the top band of the canvas.
+  if (focusId) {
+    const CENTRE = { x: 50, y: 52 };
+    let parentNode: WealthNode | null = null;
+    let sceneAssets: WealthGraphAsset[] = [];
+
+    if (focusId.startsWith('cluster-')) {
+      // cluster-<entityId>-<kind> (kind itself may contain dashes, e.g.
+      // investment-account — split off the known entity prefix instead).
+      const rest = focusId.slice('cluster-'.length);
+      const entity = entities.find(e => rest.startsWith(`${e.id}-`));
+      const kind = entity ? (rest.slice(entity.id.length + 1) as WealthGraphAssetKind) : null;
+      if (entity && kind) {
+        sceneAssets = (ownedAssetsByEntity.get(entity.id) ?? []).filter(a => a.kind === kind);
+        if (sceneAssets.length > 0) {
+          parentNode = {
+            id: focusId,
+            type: classifyAsset(kind),
+            name: clusterLabel(kind, sceneAssets.length),
+            shortName: clusterShortLabel(kind),
+            subtitle: entity.name,
+            position: CENTRE,
+            size: 72,
+            tier: 'cluster',
+            assetSummary: summarize(sceneAssets),
+            isExpanded: true,
+            parentNodeId: entity.id,
+          };
+        }
+      }
+    } else if (focusId.startsWith('group-')) {
+      const gid = focusId.slice('group-'.length);
+      const g = ownershipGroups.find(x => x.id === gid);
+      sceneAssets = ownedAssetsByGroup.get(gid) ?? [];
+      if (g && sceneAssets.length > 0) {
+        parentNode = {
+          id: focusId,
+          type: 'ownership-group',
+          name: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Shared',
+          shortName: g.tenancyType === 'JOINT_TENANTS' ? 'Joint' : 'Shared',
+          subtitle: `${g.stakes.length} owners`,
+          position: CENTRE,
+          size: 64,
+          tier: 'group',
+          assetSummary: summarize(sceneAssets),
+          isExpanded: true,
+        };
+      }
+    } else {
+      // WX.5.3 (Reza 2026-06-11: "the first layer can be removed") — in
+      // cluster mode the universe already splits this entity's holdings
+      // into per-type clusters, so the entity-level all-holdings scene
+      // is a redundant, overcrowded middle layer (15 mixed satellites
+      // at once). Skip it: fall through to the universe and let the
+      // tap open the entity card instead. The scene still exists for
+      // multi-entity universes where it's the only way in.
+      const e = entities.find(x => x.id === focusId);
+      sceneAssets = ownedAssetsByEntity.get(focusId) ?? [];
+      if (e && sceneAssets.length > 0 && !clusterMode) {
+        const nodeType = classifyEntity(e);
+        parentNode = {
+          id: e.id,
+          type: nodeType,
+          name: e.name,
+          shortName: shortenName(e.name),
+          subtitle: subtitleFor(nodeType, e),
+          position: CENTRE,
+          size: Math.min(110, sizeForEntity(nodeType, sceneAssets.length, false) * 1.3),
+          tier: nodeType === 'individual' ? 'individual' : 'entity',
+          assetSummary: summarize(sceneAssets),
+          isExpanded: true,
+        };
+      }
+    }
+
+    if (parentNode) {
+      const n = sceneAssets.length;
+      const positions =
+        n <= 8
+          ? ringAround(CENTRE, n, 24)
+          : [
+              ...ringAround(CENTRE, 8, 19),
+              ...ringAround(CENTRE, n - 8, 32),
+            ];
+      const sceneNodes: WealthNode[] = [parentNode];
+      const sceneRibbons: WealthRelationship[] = [];
+      sceneAssets.forEach((a, i) => {
+        sceneNodes.push({
+          id: a.id,
+          type: classifyAsset(a.kind),
+          name: a.name,
+          shortName: shortenName(a.name, 16),
+          subtitle: a.subtype ?? a.context ?? undefined,
+          value: formatValue(a.value),
+          position: positions[i],
+          size: 56,
+          ownerEntityId: a.ownerEntityId,
+          tier: 'asset',
+          parentNodeId: focusId,
+        });
+        sceneRibbons.push({
+          id: `scene-holds-${a.id}`,
+          from: focusId,
+          to: a.id,
+          type: 'holds',
+          label: '',
+        });
+      });
+      return {
+        nodes: sceneNodes,
+        relationships: sceneRibbons,
+        isEmpty: false,
+        moneyFlowFy,
+        moneyFlowFyOptions,
+      };
+    }
+    // Unknown / empty focus — fall through to the universe layout.
+  }
+
   const nodes: WealthNode[] = [];
   const nodePositionById = new Map<string, { x: number; y: number }>();
 
@@ -495,6 +645,10 @@ export function layoutWealthExplorer(
       tier: nodeType === 'individual' ? 'individual' : 'entity',
       assetSummary: summary,
       isExpanded: expanded || clustered,
+      // WX.5.3 — in cluster mode the per-type clusters are the way into
+      // this entity's holdings; tapping the entity itself opens the
+      // detail card, never the (removed) all-holdings scene.
+      isExpandable: !!summary && !clusterMode,
     });
     nodePositionById.set(e.id, pos);
   }
@@ -565,6 +719,9 @@ export function layoutWealthExplorer(
       tier: 'group',
       assetSummary: groupSummary,
       isExpanded: groupExpanded,
+      // Group-held assets never cluster — the group scene is the only
+      // way into them, so groups with holdings stay expandable.
+      isExpandable: !!groupSummary,
     });
   });
 
@@ -645,6 +802,7 @@ export function layoutWealthExplorer(
           parentNodeId: entityId,
           assetSummary: { count: kindAssets.length, totalValue },
           isExpanded: clusterExpanded,
+          isExpandable: true,
         });
         clusterRibbons.push({
           id: `cluster-holds-${clusterId}`,
@@ -856,6 +1014,7 @@ const CLUSTER_LABELS: Record<WealthGraphAssetKind, [singular: string, plural: st
   account: ['Account', 'Accounts'],
   'investment-account': ['Investment', 'Investments'],
   asset: ['Asset', 'Other assets'],
+  super: ['Super fund', 'Super'],
 };
 
 function clusterLabel(kind: WealthGraphAssetKind, count: number): string {

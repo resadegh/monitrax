@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wealth Explorer - Focused Scene</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-tertiary-fixed-variant": "#005236",
+                    "on-surface-variant": "#c7c4d7",
+                    "on-secondary-fixed-variant": "#004c6e",
+                    "primary": "#c0c1ff",
+                    "error": "#ffb4ab",
+                    "on-tertiary-container": "#000703",
+                    "inverse-primary": "#494bd6",
+                    "tertiary-container": "#00885d",
+                    "secondary-fixed-dim": "#89ceff",
+                    "on-secondary": "#00344d",
+                    "on-surface": "#e0e1f2",
+                    "on-secondary-fixed": "#001e2f",
+                    "surface-variant": "#313441",
+                    "surface-container": "#1c1f2b",
+                    "surface-bright": "#353945",
+                    "on-primary-fixed-variant": "#2f2ebe",
+                    "tertiary-fixed-dim": "#4edea3",
+                    "surface-container-high": "#262a36",
+                    "on-background": "#e0e1f2",
+                    "on-primary-container": "#0d0096",
+                    "outline": "#908fa0",
+                    "on-error-container": "#ffdad6",
+                    "surface-container-highest": "#313441",
+                    "outline-variant": "#464554",
+                    "on-primary": "#1000a9",
+                    "surface": "#10131e",
+                    "surface-dim": "#10131e",
+                    "surface-tint": "#c0c1ff",
+                    "primary-fixed-dim": "#c0c1ff",
+                    "inverse-on-surface": "#2d303c",
+                    "secondary": "#89ceff",
+                    "surface-container-lowest": "#0a0e19",
+                    "surface-container-low": "#181b27",
+                    "secondary-container": "#00a2e6",
+                    "error-container": "#93000a",
+                    "primary-fixed": "#e1e0ff",
+                    "on-secondary-container": "#00344e",
+                    "background": "#10131e",
+                    "tertiary-fixed": "#6ffbbe",
+                    "tertiary": "#4edea3",
+                    "on-tertiary": "#003824",
+                    "on-error": "#690005",
+                    "on-tertiary-fixed": "#002113",
+                    "primary-container": "#8083ff",
+                    "inverse-surface": "#e0e1f2"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "safe-area": "40px",
+                    "neighbor-scale": "1.2",
+                    "gutter": "24px",
+                    "focus-scale": "1.6"
+            },
+            "fontFamily": {
+                    "number-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "number-xl": ["Inter"],
+                    "headline-md": ["Inter"]
+            },
+            "fontSize": {
+                    "number-sm": ["14px", {"lineHeight": "1", "fontWeight": "500"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                    "display-lg": ["48px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "number-xl": ["32px", {"lineHeight": "1", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.4", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background: radial-gradient(circle at center, #1c1f2b 0%, #10131e 100%);
+            overflow: hidden;
+        }
+
+        .dust-mote {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .glass-squircle {
+            background: rgba(19, 26, 46, 0.9);
+            backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255, 255, 255, 0.15);
+            border-left: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: inset 0 0 12px rgba(255, 191, 0, 0.15); /* Default Amber glow */
+            border-radius: 24%;
+        }
+
+        .amber-glow {
+            box-shadow: 0 0 30px rgba(255, 191, 0, 0.2), inset 0 0 12px rgba(255, 191, 0, 0.15);
+        }
+
+        .focal-ring {
+            border: 1px solid rgba(255, 191, 0, 0.1);
+            animation: pulse-ring 4s ease-in-out infinite;
+        }
+
+        @keyframes pulse-ring {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.2); opacity: 0.1; }
+        }
+
+        .connection-ribbon {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255, 191, 0, 0.5), transparent);
+            filter: drop-shadow(0 0 4px rgba(255, 191, 0, 0.8));
+            transform-origin: left center;
+        }
+
+        .particle-stream {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #ffbf00;
+            border-radius: 50%;
+            filter: blur(1px);
+            animation: stream 2s linear infinite;
+        }
+
+        @keyframes stream {
+            0% { left: 0%; opacity: 0; }
+            20% { opacity: 1; }
+            80% { opacity: 1; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen relative font-body-lg text-on-surface select-none">
+<!-- Dust Motes Layer -->
+<div class="absolute inset-0 pointer-events-none z-0" id="mote-container"></div>
+<!-- Navigation Header (TopAppBar Logic) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter py-4 max-w-[1920px] mx-auto bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant/20 shadow-lg shadow-black/40 h-[60px]">
+<div class="flex items-center gap-6">
+<span class="text-headline-md font-headline-md font-bold tracking-tight text-primary">Wealth Explorer</span>
+<nav class="hidden md:flex items-center gap-8 text-label-caps font-label-caps uppercase">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Portfolio</a>
+<a class="text-primary border-b-2 border-primary pb-1" href="#">Universe</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Analysis</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="bg-surface-container h-10 w-64 rounded-full flex items-center px-4 border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" style="font-size: 20px;">search</span>
+<input class="bg-transparent border-none text-body-lg focus:ring-0 w-full placeholder:text-on-surface-variant/50" placeholder="Explore Universe..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all p-2" data-icon="tune">tune</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-all p-2" data-icon="account_circle">account_circle</button>
+</div>
+</header>
+<!-- Sub-navigation: Breadcrumbs and Filter -->
+<div class="fixed top-[70px] left-0 w-full px-gutter z-40 flex justify-between items-center">
+<div class="flex items-center gap-3">
+<button class="px-4 py-1.5 rounded-full bg-surface-container-high/60 backdrop-blur-md border border-white/10 text-label-caps font-label-caps flex items-center gap-2 hover:bg-surface-bright/20 transition-all">
+<span class="material-symbols-outlined" style="font-size: 16px;">chevron_left</span>
+                Universe
+            </button>
+<div class="px-4 py-1.5 rounded-full bg-surface-container-high/30 border border-white/5 text-label-caps font-label-caps text-on-surface-variant flex items-center gap-2">
+<span>You</span>
+<span class="material-symbols-outlined" style="font-size: 14px;">chevron_right</span>
+<span class="text-on-surface">Other assets</span>
+</div>
+</div>
+<div class="absolute left-1/2 -translate-x-1/2 flex gap-2">
+<div class="px-5 py-2 rounded-full bg-primary/10 border border-primary/20 text-label-caps font-label-caps tracking-widest text-primary flex items-center gap-3">
+<span class="opacity-50">‹ UNIVERSE · YOU ›</span>
+<span class="font-bold">OTHER ASSETS</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-full bg-surface-bright/40 text-label-caps font-label-caps text-on-surface border border-white/10">All</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container/40 text-label-caps font-label-caps text-on-surface-variant border border-white/5 hover:bg-surface-bright/20 transition-all">People</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container/40 text-label-caps font-label-caps text-on-surface-variant border border-white/5 hover:bg-surface-bright/20 transition-all">Trusts</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-container/40 text-label-caps font-label-caps text-on-surface-variant border border-white/5 hover:bg-surface-bright/20 transition-all">Entities</button>
+</div>
+</div>
+<!-- Main Canvas Area -->
+<main class="h-full w-full flex items-center justify-center relative overflow-visible z-10">
+<!-- Focal Ring Background -->
+<div class="focal-ring absolute w-[400px] h-[400px] rounded-full z-0"></div>
+<!-- Focused Scene Components -->
+<div class="relative w-[500px] h-[500px] flex items-center justify-center">
+<!-- Connection Ribbons (Generated via CSS layout) -->
+<!-- Top Right -->
+<div class="connection-ribbon w-32 rotate-[-45deg] translate-x-[48px] translate-y-[-48px]">
+<div class="particle-stream"></div>
+</div>
+<!-- Bottom Right -->
+<div class="connection-ribbon w-32 rotate-[45deg] translate-x-[48px] translate-y-[48px]">
+<div class="particle-stream" style="animation-delay: -0.5s;"></div>
+</div>
+<!-- Bottom Left -->
+<div class="connection-ribbon w-32 rotate-[135deg] translate-x-[-48px] translate-y-[48px]">
+<div class="particle-stream" style="animation-delay: -1s;"></div>
+</div>
+<!-- Top Left -->
+<div class="connection-ribbon w-32 rotate-[225deg] translate-x-[-48px] translate-y-[-48px]">
+<div class="particle-stream" style="animation-delay: -1.5s;"></div>
+</div>
+<!-- Central Hub: Other Assets -->
+<div class="glass-squircle amber-glow w-[96px] h-[96px] flex flex-col items-center justify-center z-20 cursor-pointer group hover:scale-105 transition-transform duration-500">
+<span class="material-symbols-outlined text-[32px] text-[#ffbf00]" data-icon="directions_car">directions_car</span>
+<span class="text-label-caps font-label-caps text-on-surface mt-2 text-center text-[10px]">Other assets</span>
+</div>
+<!-- Satellite Child: VW Golf -->
+<div class="absolute top-0 right-0 glass-squircle amber-glow w-[56px] h-[56px] flex items-center justify-center translate-x-12 translate-y-[-12px] group hover:scale-focus-scale transition-transform duration-500">
+<div class="absolute -top-10 whitespace-nowrap text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<p class="text-label-caps font-label-caps text-on-surface">VW Golf</p>
+<p class="text-number-sm font-number-sm text-secondary">$25,000</p>
+</div>
+<span class="material-symbols-outlined text-[24px] text-[#ffbf00]/80" data-icon="car_repair">car_repair</span>
+</div>
+<!-- Satellite Child: Nissan 300ZX -->
+<div class="absolute bottom-0 right-0 glass-squircle amber-glow w-[56px] h-[56px] flex items-center justify-center translate-x-12 translate-y-12 group hover:scale-focus-scale transition-transform duration-500">
+<div class="absolute -bottom-10 whitespace-nowrap text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<p class="text-label-caps font-label-caps text-on-surface">Nissan 300ZX</p>
+<p class="text-number-sm font-number-sm text-secondary">$15,000</p>
+</div>
+<span class="material-symbols-outlined text-[24px] text-[#ffbf00]/80" data-icon="minor_crash">minor_crash</span>
+</div>
+<!-- Satellite Child: LandCruiser -->
+<div class="absolute bottom-0 left-0 glass-squircle amber-glow w-[56px] h-[56px] flex items-center justify-center translate-x-[-48px] translate-y-12 group hover:scale-focus-scale transition-transform duration-500">
+<div class="absolute -bottom-10 whitespace-nowrap text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<p class="text-label-caps font-label-caps text-on-surface">LandCruiser</p>
+<p class="text-number-sm font-number-sm text-secondary">$28,000</p>
+</div>
+<span class="material-symbols-outlined text-[24px] text-[#ffbf00]/80" data-icon="garage">garage</span>
+</div>
+<!-- Satellite Child: Ford Ranger -->
+<div class="absolute top-0 left-0 glass-squircle amber-glow w-[56px] h-[56px] flex items-center justify-center translate-x-[-48px] translate-y-[-12px] group hover:scale-focus-scale transition-transform duration-500">
+<div class="absolute -top-10 whitespace-nowrap text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<p class="text-label-caps font-label-caps text-on-surface">Ford Ranger</p>
+<p class="text-number-sm font-number-sm text-secondary">$20,000</p>
+</div>
+<span class="material-symbols-outlined text-[24px] text-[#ffbf00]/80" data-icon="electric_car">electric_car</span>
+</div>
+</div>
+</main>
+<!-- SideNavBar Logic (Persistent Entity Details Shell) -->
+<aside class="fixed right-0 top-0 h-full z-40 w-16 hover:w-64 bg-surface-container-highest/90 backdrop-blur-2xl border-l border-white/10 shadow-2xl shadow-black/60 transition-all duration-500 ease-in-out group flex flex-col py-8 overflow-hidden">
+<div class="flex flex-col items-center group-hover:items-start px-4 mb-8">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center mb-4 transition-all">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="analytics">analytics</span>
+</div>
+<div class="hidden group-hover:block transition-all opacity-0 group-hover:opacity-100">
+<h3 class="text-label-caps font-label-caps text-secondary">Entity Details</h3>
+<p class="text-body-lg text-on-surface-variant text-[12px] opacity-70">Wealth Universe Explorer</p>
+</div>
+</div>
+<nav class="flex-1 flex flex-col gap-2 w-full">
+<a class="bg-secondary-container text-on-secondary-container rounded-xl mx-2 p-3 flex items-center gap-4 transition-all" href="#">
+<span class="material-symbols-outlined shrink-0" data-icon="overview">grid_view</span>
+<span class="text-label-caps opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">Overview</span>
+</a>
+<a class="text-on-surface-variant hover:text-on-surface p-3 flex items-center gap-4 mx-2 transition-all" href="#">
+<span class="material-symbols-outlined shrink-0" data-icon="database">database</span>
+<span class="text-label-caps opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">Assets</span>
+</a>
+<a class="text-on-surface-variant hover:text-on-surface p-3 flex items-center gap-4 mx-2 transition-all" href="#">
+<span class="material-symbols-outlined shrink-0" data-icon="history">history</span>
+<span class="text-label-caps opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">History</span>
+</a>
+<a class="text-on-surface-variant hover:text-on-surface p-3 flex items-center gap-4 mx-2 transition-all" href="#">
+<span class="material-symbols-outlined shrink-0" data-icon="settings">settings</span>
+<span class="text-label-caps opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap">Settings</span>
+</a>
+</nav>
+<div class="px-2 mt-auto">
+<button class="w-full bg-primary-container text-on-primary-container py-3 rounded-xl flex items-center justify-center gap-2 group-hover:px-4 transition-all">
+<span class="material-symbols-outlined" data-icon="explore">explore</span>
+<span class="text-label-caps hidden group-hover:inline">Deep Dive</span>
+</button>
+</div>
+</aside>
+<!-- Contextual Instruction -->
+<div class="fixed bottom-safe-area right-gutter z-50 pointer-events-none">
+<p class="text-label-caps font-label-caps text-on-surface-variant/40 tracking-widest uppercase">
+            Tap the centre bubble or ‹ Universe to fly back out
+        </p>
+</div>
+<!-- Data Points (Dust-Motes) Generation -->
+<script>
+        const moteContainer = document.getElementById('mote-container');
+        const moteCount = 60;
+
+        for (let i = 0; i < moteCount; i++) {
+            const mote = document.createElement('div');
+            mote.className = 'dust-mote';
+            
+            const startX = Math.random() * 100;
+            const startY = Math.random() * 100;
+            const size = Math.random() * 3 + 1;
+            const duration = 20 + Math.random() * 40;
+            const delay = Math.random() * -60;
+
+            mote.style.left = `${startX}%`;
+            mote.style.top = `${startY}%`;
+            mote.style.width = `${size}px`;
+            mote.style.height = `${size}px`;
+            mote.style.opacity = Math.random() * 0.4;
+            
+            mote.animate([
+                { transform: 'translate(0, 0)', opacity: 0 },
+                { opacity: 0.3, offset: 0.2 },
+                { opacity: 0.3, offset: 0.8 },
+                { transform: `translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`, opacity: 0 }
+            ], {
+                duration: duration * 1000,
+                iterations: Infinity,
+                delay: delay * 1000,
+                easing: 'ease-in-out'
+            });
+
+            moteContainer.appendChild(mote);
+        }
+
+        // Slight parallax effect on mouse move
+        document.addEventListener('mousemove', (e) => {
+            const moveX = (e.clientX - window.innerWidth / 2) * 0.01;
+            const moveY = (e.clientY - window.innerHeight / 2) * 0.01;
+            document.querySelector('.relative.w-\[500px\]').style.transform = `translate(${moveX}px, ${moveY}px)`;
+        });
+    </script>
+</body></html>

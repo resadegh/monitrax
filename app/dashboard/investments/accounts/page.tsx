@@ -15,11 +15,13 @@ import OwnershipPicker, {
   type OwnershipSelectionValue,
 } from '@/components/ownership/OwnershipPicker';
 import CorrectOwnershipDialog from '@/components/ownership/CorrectOwnershipDialog';
+import OwnershipSummary from '@/components/ownership/OwnershipSummary';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TrendingUp, Plus, Edit2, Trash2, Eye, BarChart3, ArrowUpRight, ArrowDownRight, DollarSign, Receipt, Wallet, Link2, LayoutGrid, List } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { toAnnual } from '@/lib/utils/frequencies';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
 import { useCrossModuleNavigation } from '@/hooks/useCrossModuleNavigation';
 import type { GRDCSLinkedEntity, GRDCSMissingLink } from '@/lib/grdcs';
@@ -114,6 +116,7 @@ function InvestmentAccountsPageContent() {
   const [ownership, setOwnership] = useState<OwnershipSelectionValue>({ mode: 'sole' });
   // Phase 47 Stage A2 — correction flow on the edit path.
   const [correctOwnershipOpen, setCorrectOwnershipOpen] = useState(false);
+  const [ownershipRefreshKey, setOwnershipRefreshKey] = useState(0);
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [formData, setFormData] = useState<Partial<InvestmentAccount>>({
     name: '',
@@ -250,15 +253,11 @@ function InvestmentAccountsPageContent() {
     return new Date(dateString).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  const convertToAnnual = (amount: number, frequency: string) => {
-    switch (frequency) {
-      case 'WEEKLY': return amount * 52;
-      case 'FORTNIGHTLY': return amount * 26;
-      case 'MONTHLY': return amount * 12;
-      case 'ANNUAL': return amount;
-      default: return amount * 12;
-    }
-  };
+  // §12.2 SSOT — frequency conversion lives in lib/utils/frequencies.
+  // (Replaced a local duplicate switch; closes 4 grandfathered
+  // financial-math baseline entries for good.)
+  const convertToAnnual = (amount: number, frequency: string) =>
+    toAnnual(amount, frequency as Parameters<typeof toAnnual>[1]);
 
   // Calculate total value of holdings in an account (holdings + cash balance)
   const calculateTotalValue = (account: InvestmentAccount) => {
@@ -725,13 +724,13 @@ function InvestmentAccountsPageContent() {
             )}
             {editingId && (
               <>
-                <button
-                  type="button"
-                  onClick={() => setCorrectOwnershipOpen(true)}
-                  className="text-xs text-sky-600 underline-offset-2 hover:underline"
-                >
-                  Recorded under the wrong owner? Correct the ownership record
-                </button>
+                <OwnershipSummary
+                  token={token}
+                  objectType="investmentAccount"
+                  objectId={editingId}
+                  onCorrect={() => setCorrectOwnershipOpen(true)}
+                  refreshKey={ownershipRefreshKey}
+                />
                 <CorrectOwnershipDialog
                   open={correctOwnershipOpen}
                   onOpenChange={setCorrectOwnershipOpen}
@@ -739,7 +738,10 @@ function InvestmentAccountsPageContent() {
                   objectType="investmentAccount"
                   objectId={editingId}
                   objectName={formData.name || 'This account'}
-                  onCorrected={() => void loadAccounts()}
+                  onCorrected={() => {
+                    setOwnershipRefreshKey(k => k + 1);
+                    void loadAccounts();
+                  }}
                 />
               </>
             )}

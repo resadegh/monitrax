@@ -16,68 +16,44 @@
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
     },
     {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 255,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 52"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 256,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 26"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 257,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 12"
-    },
-    {
-      "file": "app/dashboard/investments/accounts/page.tsx",
-      "line": 259,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "amount * 12"
-    },
-    {
       "file": "app/dashboard/page.tsx",
-      "line": 1323,
+      "line": 1330,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1331,
+      "line": 1338,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalIncome / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1372,
+      "line": 1379,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1380,
+      "line": 1387,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "cashflow.totalExpenses / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1394,
+      "line": 1401,
       "pattern": "FREQUENCY_CONVERSION",
       "match": "expense.annualAmount / 12"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1593,
+      "line": 1600,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
     {
       "file": "app/dashboard/page.tsx",
-      "line": 1597,
+      "line": 1604,
       "pattern": "INLINE_ARITHMETIC",
       "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
