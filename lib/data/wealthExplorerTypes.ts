@@ -12,6 +12,8 @@
  *   Artefacts: `.stitch/designs/wealth-universe-zoom/*.{html,png}`
  */
 
+import type { WealthGraphAssetKind } from '@/lib/services/wealthGraphService';
+
 export type WealthNodeType =
   | 'holding-company'
   | 'trustee-company'
@@ -155,3 +157,36 @@ export const RIBBON_COLOR: Record<RelationshipType, string> = {
   'flow-distribution': '#34D399',
   'flow-dividend': '#34D399',
 };
+
+/**
+ * WX.5.4 — canonical click-through target for an asset bubble / row.
+ * Single source of truth for the universe surfaces (desktop panel,
+ * mobile card, linked-asset rows) — the per-component copies drifted
+ * (investments + super gained Asset Spotlight detail pages in Phases
+ * 45.2.1 / 45.2.2 while the maps still pointed at the lists).
+ *
+ * Kinds without an individual detail page fall back to their list
+ * route — landing somewhere useful always beats a dead-end (§6.7).
+ */
+export function assetHrefFor(kind: WealthGraphAssetKind, id: string): string {
+  switch (kind) {
+    case 'property': return `/dashboard/properties/${id}`;
+    case 'loan': return `/dashboard/loans/${id}`;
+    case 'account': return '/dashboard/accounts';
+    case 'investment-account': return `/dashboard/investments/accounts/${id}`;
+    case 'asset': return '/dashboard/assets';
+    case 'super': return `/dashboard/investments/super/${id}`;
+  }
+}
+
+/** WX.5.4 — warm CTA wording per asset kind (§14.3 — never clinical). */
+export function assetCtaLabelFor(kind: WealthGraphAssetKind): string {
+  switch (kind) {
+    case 'property': return 'Open property details';
+    case 'loan': return 'Open loan details';
+    case 'account': return 'View in My Accounts';
+    case 'investment-account': return 'Open investment details';
+    case 'asset': return 'View in My Wealth';
+    case 'super': return 'Open super details';
+  }
+}
