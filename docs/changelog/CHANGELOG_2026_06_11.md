@@ -313,3 +313,11 @@ mobile (w-8 h-8). Action cluster extracted to a single `actions` node used by bo
 ### Testing
 - [x] tsc clean
 - [x] Build passes
+
+## Session: serene-goodall-6smazx — Phase 49.6 (bookkeeper card placement)
+
+Reza 2026-06-11: the AI bookkeeper card moves from page-top to directly ABOVE the
+transaction list (after search/filters + advanced panel) — its actions act on
+transactions, so proximity wins over page-top prominence. The "Review" buttons no longer
+need the scroll-into-view (the review list renders right below the card); handler
+simplified. tsc clean, build green.

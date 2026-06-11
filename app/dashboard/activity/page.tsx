@@ -610,25 +610,6 @@ export default function ActivityPage() {
           </Button>
         </header>
 
-        {/* Phase 49 — "Your AI bookkeeper" confidence review card. The page's
-            one clear action: confirm the AI's medium-confidence work in one
-            tap, or step into review for the low band. Self-hides when tidy. */}
-        <ConfidenceReviewCard
-          refreshKey={confidenceRefresh}
-          onConfirmed={async () => {
-            await fetchTransactions();
-            fetchSummary();
-            setCelebrationTrigger((t) => t + 1);
-          }}
-          onReviewBand={(band) => {
-            setConfidenceBand(band);
-            // Scroll the list into view so the review surface is obvious.
-            requestAnimationFrame(() =>
-              document.getElementById('activity-list-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-            );
-          }}
-        />
-
         {/* Phase 42 PR6.5 — Consumer money-flow Sankey. The "where your
             money goes" aha moment. Reuses Phase 41g <MoneyFlowSankey /> by
             projecting MasterFinancialSnapshot through a synthetic single-
@@ -837,6 +818,20 @@ export default function ActivityPage() {
             )}
           </div>
         )}
+
+        {/* Phase 49 — "Your AI bookkeeper" confidence review card. Phase 49.6
+            (Reza 2026-06-11): placed directly ABOVE the transaction list —
+            its actions act on transactions, so proximity wins over page-top
+            prominence. Self-hides when tidy. */}
+        <ConfidenceReviewCard
+          refreshKey={confidenceRefresh}
+          onConfirmed={async () => {
+            await fetchTransactions();
+            fetchSummary();
+            setCelebrationTrigger((t) => t + 1);
+          }}
+          onReviewBand={(band) => setConfidenceBand(band)}
+        />
 
         {/* CONTENT */}
         {confidenceBand ? (
