@@ -182,6 +182,16 @@
       "title": "Monitrax Landing Page - Sections 4 & 5 (Dark)",
       "generatedAt": "2026-05-26T01:34:00.000000Z",
       "scope": "Regen of sections 4-5 on Deep Cosmos dark. THE FIVE capability cards (each TRAIL stage's canonical hue as surgical accent — sky/amber/indigo/emerald/violet) + HOW IT WORKS 3-step editorial. Ivory v1 preserved as five-and-how-ivory.{html,png}."
+    },
+    "universe-widget-focused-dark": {
+      "id": "77b13314b96a4423975b3e89782efa46",
+      "sourceScreen": "projects/1859462351962811110/screens/77b13314b96a4423975b3e89782efa46",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "title": "Wealth Universe · Widget · Focused View (Phase WX.5.2)",
+      "generatedAt": "2026-06-11T01:32:00.000000Z",
+      "scope": "WX.5.2 in-widget navigation — the dashboard widget zoomed INTO one entity: '< UNIVERSE' back pill top-left of the mini canvas, parent bubble centred with focal emerald ring, 5 asset satellites in a ring with structural ribbons, header arrow + footer link carry ?focus= to the full page. Artefact: .stitch/designs/wealth-universe-zoom/universe-widget-focused-dark.{html,png}. Consumer: components/wealth-explorer/WealthUniverseWidget.tsx."
     }
   },
   "failedGenerations": {
@@ -203,4 +213,3 @@
     "userRole": "OWNER"
   }
 }
-

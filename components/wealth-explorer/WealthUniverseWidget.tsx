@@ -22,12 +22,29 @@
  * smudge. Tile scale raised 0.42 → 0.58 — fewer nodes buy bigger tiles.
  * Semantic-zoom SoT: screen `80c21d51c38242d883bec3d6875fabe6`,
  * artefact `.stitch/designs/wealth-universe-zoom/universe-widget-level1-dark.{html,png}`.
+ *
+ * In-widget navigation (Phase WX.5.2, 2026-06-11): the widget is a
+ * living miniature — tapping a bubble zooms IN-PLACE with the same
+ * microscopic camera as the full canvas (scale+opacity only; no
+ * animated blur — iOS Safari frame-drops filter animations, WX.5.1
+ * lesson). A '‹ Universe' pill flies back out. Asset satellites and
+ * holdings-free entities continue on the full page; the header arrow
+ * and footer link carry the current layer as `?focus=` so the
+ * tap-through reads as "keep zooming", never "start over".
+ * Focused-state SoT: screen `77b13314b96a4423975b3e89782efa46`,
+ * artefact `.stitch/designs/wealth-universe-zoom/universe-widget-focused-dark.{html,png}`
+ * (camera choreography inherits the full-canvas scene SoT
+ * `7ad05a712f4e4c7eadcff8eb2dd23d43`).
  */
 
 'use client';
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ChevronLeft } from 'lucide-react';
+import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   Briefcase,
   Scroll,
@@ -78,7 +95,16 @@ const WIDGET_SIZE_SCALE = 0.58;
 
 export default function WealthUniverseWidget() {
   const router = useRouter();
-  const { layout, loading, error } = useWealthExplorerData();
+  const { layout, snapshot, loading, error } = useWealthExplorerData();
+  // WX.5.2 (Reza 2026-06-11: "minimal navigation on the widget as
+  // well") — the widget is a living miniature of the universe: tapping
+  // a bubble zooms IN-PLACE with the same camera; '‹' flies back; the
+  // header arrow / footer link open the full page (carrying the current
+  // layer as ?focus= for continuity).
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
+  const [cameraOrigin, setCameraOrigin] = useState<{ x: number; y: number }>({ x: 50, y: 50 });
+  const [cameraDirection, setCameraDirection] = useState<'in' | 'out'>('in');
+  const prefersReducedMotion = useReducedMotion();
 
   // Silent-fail on error / hide when not yet loaded.
   // Dashboard widgets shouldn't break the page on data issues.
@@ -114,7 +140,14 @@ export default function WealthUniverseWidget() {
     );
   }
 
-  const { nodes, relationships } = layout;
+  // Universe layout (chip + footer totals) vs display layout (the field,
+  // scene-aware). Both from the same snapshot via the canonical layout fn.
+  const displayLayout =
+    snapshot && expandedIds.length > 0
+      ? layoutWealthExplorer(snapshot, { expandedEntityIds: expandedIds })
+      : layout;
+  const { nodes: universeNodes } = layout;
+  const { nodes, relationships } = displayLayout ?? layout;
   // Phase 2 — the dashboard widget is a structural preview, not a
   // money-flow surface. Filter flow ribbons out here so the widget
   // always shows the ownership picture (per CLAUDE.md §0 — restraint
@@ -129,7 +162,7 @@ export default function WealthUniverseWidget() {
   // held wealth. Entity-tier summaries only: cluster tiles (WX.4.1)
   // carry per-type sub-totals of the same holdings — counting both
   // would double-count.
-  const entityTierNodes = nodes.filter(
+  const entityTierNodes = universeNodes.filter(
     n => n.tier === 'entity' || n.tier === 'individual' || n.tier === 'group',
   );
   const totalHeld = entityTierNodes.reduce(
@@ -141,20 +174,45 @@ export default function WealthUniverseWidget() {
     0,
   );
 
+  // Full-page href carries the current layer so the header arrow /
+  // footer link continue the journey instead of starting over.
+  const fullPageHref = expandedIds[0]
+    ? `/dashboard/entities?focus=${encodeURIComponent(expandedIds[0])}`
+    : '/dashboard/entities';
+
+  function zoomOut() {
+    setCameraDirection('out');
+    setExpandedIds([]);
+  }
+
+  function handleTileTap(node: WealthNode) {
+    if (node.tier === 'asset') {
+      // Satellites are leaves — the widget has no detail sheet, so an
+      // asset tap continues on the full page with this layer focused.
+      const parent = node.parentNodeId ?? expandedIds[0];
+      router.push(`/dashboard/entities?focus=${encodeURIComponent(parent ?? node.id)}`);
+      return;
+    }
+    if (expandedIds[0] === node.id) {
+      // Tapping the bubble you're inside zooms back out.
+      zoomOut();
+      return;
+    }
+    if (node.assetSummary && node.assetSummary.count > 0) {
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setCameraDirection('in');
+      setExpandedIds([node.id]);
+    } else {
+      // Nothing to unfold in miniature — open the full canvas focused.
+      router.push(`/dashboard/entities?focus=${encodeURIComponent(node.id)}`);
+    }
+  }
+
   return (
-    // Card-level tap still opens the universe; individual bubbles are
-    // real links carrying ?focus=<node> so the canvas opens with that
-    // constellation already unfolded (Reza 2026-06-10: "zoom into that
-    // bubble").
-    <div
-      role="link"
-      tabIndex={0}
-      onClick={() => router.push('/dashboard/entities')}
-      onKeyDown={e => {
-        if (e.key === 'Enter') router.push('/dashboard/entities');
-      }}
-      className="group block cursor-pointer"
-    >
+    // WX.5.2 — the card body is interactive in-place (bubbles zoom the
+    // widget itself); navigation to the full page lives ONLY on the
+    // header arrow + footer link, both carrying the current layer.
+    <div className="group block">
       <WidgetShell>
         <div className="flex h-full flex-col">
           {/* Header */}
@@ -179,39 +237,87 @@ export default function WealthUniverseWidget() {
                   ? `${holdingsCount} holdings`
                   : `${entityTierNodes.length} entities${holdingsCount > 0 ? ` · ${holdingsCount} holdings` : ''}`}
               </span>
-              <span
-                className="flex h-7 w-7 items-center justify-center rounded-full transition group-hover:bg-emerald-400/15"
+              <Link
+                href={fullPageHref}
+                aria-label="Open the full Wealth Universe"
+                className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-emerald-400/15"
                 style={{
                   background: 'rgba(255, 255, 255, 0.06)',
                   border: '1px solid rgba(255, 255, 255, 0.1)',
                 }}
               >
                 <ArrowUpRight size={13} color="rgba(255,255,255,0.8)" strokeWidth={1.8} />
-              </span>
+              </Link>
             </div>
           </div>
 
-          {/* Mini canvas */}
-          <div className="relative flex-1">
-            {/* SVG ribbons */}
-            <svg
-              viewBox="0 0 100 100"
-              preserveAspectRatio="none"
-              className="pointer-events-none absolute inset-0 h-full w-full"
-            >
-              {structuralRibbons.map(r => (
-                <Ribbon key={r.id} rel={r} nodes={nodesById} />
-              ))}
-            </svg>
-            {/* Tiles */}
-            {nodes.map(node => (
-              <WidgetTile
-                key={node.id}
-                node={node}
-                glyph={NODE_GLYPH[node.type]}
-                accent={NODE_ACCENT[node.type]}
-              />
-            ))}
+          {/* Mini canvas — WX.5.2: same microscopic camera as the full
+              canvas, scale+opacity only (no animated blur — the widget
+              renders on mobile dashboards where iOS Safari frame-drops
+              filter animations; lesson from WX.5.1). Snappier 0.5s —
+              the field is small, the journey shorter. */}
+          <div className="relative flex-1 overflow-hidden">
+            <AnimatePresence mode="sync" initial={false}>
+              <motion.div
+                key={expandedIds[0] ?? 'universe'}
+                className="absolute inset-0"
+                style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
+                initial={
+                  prefersReducedMotion
+                    ? { opacity: 1 }
+                    : cameraDirection === 'in'
+                      ? { opacity: 0, scale: 0.5 }
+                      : { opacity: 0, scale: 2.4 }
+                }
+                animate={{ opacity: 1, scale: 1 }}
+                exit={
+                  prefersReducedMotion
+                    ? { opacity: 0 }
+                    : cameraDirection === 'in'
+                      ? { opacity: 0, scale: 2.4 }
+                      : { opacity: 0, scale: 0.5 }
+                }
+                transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+              >
+                {/* SVG ribbons */}
+                <svg
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                >
+                  {structuralRibbons.map(r => (
+                    <Ribbon key={r.id} rel={r} nodes={nodesById} />
+                  ))}
+                </svg>
+                {/* Tiles */}
+                {nodes.map(node => (
+                  <WidgetTile
+                    key={node.id}
+                    node={node}
+                    glyph={NODE_GLYPH[node.type]}
+                    accent={NODE_ACCENT[node.type]}
+                    onTap={() => handleTileTap(node)}
+                  />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+            {/* Back to universe — mirrors the full canvas's '‹ Universe'
+                pill so the trail-back affordance reads the same. */}
+            {expandedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={zoomOut}
+                aria-label="Zoom back out to the universe"
+                className="absolute left-3 top-1 z-20 flex items-center gap-0.5 rounded-full px-2 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-white/75 transition hover:text-white"
+                style={{
+                  background: 'rgba(13, 18, 36, 0.85)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                }}
+              >
+                <ChevronLeft size={10} strokeWidth={1.8} />
+                Universe
+              </button>
+            )}
           </div>
 
           {/* Footer */}
@@ -224,9 +330,12 @@ export default function WealthUniverseWidget() {
                 ? `${formatTotal(totalHeld)} held across your structure`
                 : `${entityTierNodes.length} ${entityTierNodes.length === 1 ? 'entity' : 'entities'} mapped`}
             </div>
-            <span className="text-[10px] font-medium text-emerald-300 group-hover:underline">
+            <Link
+              href={fullPageHref}
+              className="text-[10px] font-medium text-emerald-300 hover:underline"
+            >
               Open Wealth Universe →
-            </span>
+            </Link>
           </div>
         </div>
       </WidgetShell>
@@ -308,13 +417,13 @@ function WidgetTile({
   node,
   glyph: Glyph,
   accent,
+  onTap,
 }: {
   node: WealthNode;
   glyph: LucideIcon;
   accent: string;
+  onTap: () => void;
 }) {
-  // Deep-link: this bubble opens the full canvas with itself focused.
-  const focusHref = `/dashboard/entities?focus=${encodeURIComponent(node.id)}`;
   const isAnchor = !!node.isAnchor;
   const isFocal = !!node.isFocal;
   const size = Math.max(20, node.size * WIDGET_SIZE_SCALE);
@@ -348,11 +457,20 @@ function WidgetTile({
   const isDashed = node.type === 'trustee-company' || node.type === 'smsf-trustee-company';
 
   return (
-    <Link
-      href={focusHref}
-      onClick={e => e.stopPropagation()}
-      aria-label={`Open ${node.name} on the Wealth Universe`}
-      className="absolute"
+    // WX.5.2 — in-place navigation: the bubble zooms the widget itself
+    // (entities/clusters unfold; assets continue on the full page).
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation();
+        onTap();
+      }}
+      aria-label={
+        node.tier === 'asset'
+          ? `Open ${node.name} on the Wealth Universe`
+          : `Zoom into ${node.name}`
+      }
+      className="absolute cursor-pointer"
       style={{
         left: `${node.position.x}%`,
         top: `${node.position.y}%`,
@@ -388,7 +506,7 @@ function WidgetTile({
           </span>
         )}
       </div>
-    </Link>
+    </button>
   );
 }
 
