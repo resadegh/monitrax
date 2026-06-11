@@ -567,8 +567,8 @@ export default function WealthUniverseCanvas() {
       if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
       return;
     }
-    if (selectedId === node.id) {
-      // Tapping the selected entity again zooms back out to Level 1.
+    if (selectedId === node.id || expandedIds[0] === node.id) {
+      // Clicking the bubble you're inside zooms back out to the universe.
       clearSelection();
       return;
     }
@@ -1057,25 +1057,39 @@ export default function WealthUniverseCanvas() {
             backdropFilter: 'blur(8px)',
           }}
         >
-          {selectedNode ? (
-            <>
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
-                aria-label="Back to universe"
-              >
-                <ChevronLeft size={11} strokeWidth={1.5} />
-                Universe
-              </button>
-              <span className="h-1 w-1 rounded-full bg-white/15" />
-              <span
-                className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
-                style={{ color: NODE_ACCENT[selectedNode.type] }}
-              >
-                Level 2 · {selectedNode.shortName ?? selectedNode.name}
-              </span>
-            </>
+          {(selectedNode || expandedIds.length > 0) ? (
+            (() => {
+              // WX.5.1 — the ownership trail: the layer's OWNER is always
+              // visible so asset ownership is trackable at every depth.
+              const sceneParent = nodes.find(n => n.tier !== 'asset' && n.isExpanded);
+              const trailNode = sceneParent ?? selectedNode!;
+              const trail =
+                trailNode.tier === 'cluster' && trailNode.subtitle
+                  ? `${trailNode.subtitle} › ${trailNode.shortName}`
+                  : trailNode.tier === 'group'
+                    ? `${trailNode.shortName} · ${trailNode.subtitle ?? ''}`
+                    : trailNode.shortName ?? trailNode.name;
+              return (
+                <>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
+                    aria-label="Back to universe"
+                  >
+                    <ChevronLeft size={11} strokeWidth={1.5} />
+                    Universe
+                  </button>
+                  <span className="h-1 w-1 rounded-full bg-white/15" />
+                  <span
+                    className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
+                    style={{ color: NODE_ACCENT[trailNode.type] }}
+                  >
+                    {trail}
+                  </span>
+                </>
+              );
+            })()
           ) : (
             <>
               <span className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/80">
@@ -1103,18 +1117,18 @@ export default function WealthUniverseCanvas() {
             prefersReducedMotion
               ? { opacity: 1 }
               : cameraDirection === 'in'
-                ? { opacity: 0, scale: 0.65, filter: 'blur(6px)' }
-                : { opacity: 0, scale: 1.9, filter: 'blur(8px)' }
+                ? { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
+                : { opacity: 0, scale: 2.4, filter: 'blur(4px)' }
           }
           animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
           exit={
             prefersReducedMotion
               ? { opacity: 0 }
               : cameraDirection === 'in'
-                ? { opacity: 0, scale: 2.1, filter: 'blur(10px)' }
-                : { opacity: 0, scale: 0.6, filter: 'blur(6px)' }
+                ? { opacity: 0, scale: 2.4, filter: 'blur(4px)' }
+                : { opacity: 0, scale: 0.5, filter: 'blur(4px)' }
           }
-          transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+          transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
         >
           {/* Ribbons */}
           <svg

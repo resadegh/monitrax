@@ -196,8 +196,12 @@ export default function WealthUniverseMobile() {
     const node = nodesById[focus] ?? listNodesById[focus];
     if (!node) return;
     setSelectedId(focus);
-    if (node.tier !== 'asset' && node.assetSummary) setExpandedIds([focus]);
-    setSnap('half');
+    if (node.tier !== 'asset' && node.assetSummary) {
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setCameraDirection('in');
+      setExpandedIds([focus]);
+    }
+    // Sheet stays at peek — the arrival zoom is the moment; details on demand.
   }, [searchParams, nodes, nodesById, listNodesById]);
 
   const visibleTypes = useMemo<Set<WealthNodeType> | null>(() => {
@@ -275,23 +279,40 @@ export default function WealthUniverseMobile() {
     // unfolds its own. Cluster tiles (WX.4.1) exist only on the canvas
     // layout, so resolve there first.
     const node = nodesById[id] ?? listNodesById[id];
-    setSelectedId(id);
     if (node?.tier === 'asset') {
+      // Assets open the detail card — the one case the sheet rises.
+      setSelectedId(id);
       if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
-    } else if (node?.assetSummary) {
+      if (snap === 'peek') setSnap('half');
+      return;
+    }
+    // Tapping the bubble you're already inside zooms back out (WX.5.1).
+    if (expandedIds[0] === id) {
+      zoomOut();
+      return;
+    }
+    setSelectedId(id);
+    if (node?.assetSummary) {
+      // Zooming IN keeps the canvas dominant — the sheet stays put
+      // (Reza 2026-06-10: "the list keeps coming up and takes most of
+      // the page").
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       setExpandedIds([id]);
     } else {
       setExpandedIds([]);
     }
-    if (snap === 'peek') setSnap('half');
   }
 
-  function clearSelection() {
+  /** Fly back out to the universe (reverse camera). */
+  function zoomOut() {
     setCameraDirection('out');
     setSelectedId(null);
     setExpandedIds([]);
+  }
+
+  function clearSelection() {
+    zoomOut();
     setSnap('peek');
   }
 
@@ -385,18 +406,21 @@ export default function WealthUniverseMobile() {
               prefersReducedMotion
                 ? { opacity: 1 }
                 : cameraDirection === 'in'
-                  ? { opacity: 0, scale: 0.65, filter: 'blur(6px)' }
-                  : { opacity: 0, scale: 1.9, filter: 'blur(8px)' }
+                  ? { opacity: 0, scale: 0.5 }
+                  : { opacity: 0, scale: 2.4 }
             }
-            animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={
               prefersReducedMotion
                 ? { opacity: 0 }
                 : cameraDirection === 'in'
-                  ? { opacity: 0, scale: 2.1, filter: 'blur(10px)' }
-                  : { opacity: 0, scale: 0.6, filter: 'blur(6px)' }
+                  ? { opacity: 0, scale: 2.4 }
+                  : { opacity: 0, scale: 0.5 }
             }
-            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            // Scale-only on mobile: iOS Safari frame-drops animated
+            // filter:blur, which made WX.5 imperceptible (Reza). Deeper
+            // range + slightly longer ride = the microscopic feel.
+            transition={{ duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
             {/* SVG ribbons */}
             <svg
@@ -429,6 +453,51 @@ export default function WealthUniverseMobile() {
           </motion.div>
         </AnimatePresence>
       </div>
+
+      {/* WX.5.1 — the way back + the ownership trail. The trail keeps
+          the layer's OWNER visible at every depth so asset ownership is
+          always trackable (Reza 2026-06-10: "the owner of the layer
+          should always be available in each layer"). */}
+      {expandedIds.length > 0 && (() => {
+        const sceneParent = nodes.find(n => n.tier !== 'asset' && n.isExpanded);
+        const trail = sceneParent
+          ? sceneParent.tier === 'cluster' && sceneParent.subtitle
+            ? `${sceneParent.subtitle} › ${sceneParent.shortName}`
+            : sceneParent.tier === 'group'
+              ? `${sceneParent.shortName} · ${sceneParent.subtitle ?? ''}`
+              : sceneParent.shortName
+          : '';
+        return (
+          <div className="absolute left-4 right-4 top-4 z-30 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={zoomOut}
+              className="flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] font-medium text-white/85 active:scale-95"
+              style={{
+                background: 'rgba(19, 26, 46, 0.85)',
+                border: '1px solid rgba(255, 255, 255, 0.14)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              }}
+            >
+              <ChevronRight size={13} className="rotate-180" strokeWidth={2} />
+              Universe
+            </button>
+            {trail && (
+              <span
+                className="truncate rounded-full px-3 py-2 text-[11px] font-medium text-white/60"
+                style={{
+                  background: 'rgba(19, 26, 46, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(12px)',
+                }}
+              >
+                {trail}
+              </span>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Bottom sheet */}
       <BottomSheet
@@ -634,10 +703,13 @@ export default function WealthUniverseMobile() {
           <div className="px-4 pb-3">
             <SelectedEntityCard
               node={selectedNode}
-              // Close the selection, fold the constellation, and drop
-              // the sheet — addresses the 'card cannot be minimised'
-              // feedback (2026-05-31).
-              onClose={clearSelection}
+              // Close the CARD only — stay inside the current layer
+              // (WX.5.1: closing details must not eject the user from
+              // the bubble). The Universe pill / re-tap zooms out.
+              onClose={() => {
+                setSelectedId(null);
+                setSnap('peek');
+              }}
               assets={
                 snapshot
                   ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
@@ -1341,19 +1413,34 @@ function BottomSheet({
         onSnapChange(next);
       }}
     >
-      {/* Drag handle — only this is the drag affordance */}
-      <button
-        type="button"
-        onPointerDown={e => dragControls.start(e)}
-        aria-label="Drag sheet"
-        className="flex h-6 w-full flex-shrink-0 items-center justify-center"
-        style={{ touchAction: 'none' }}
-      >
-        <span
-          className="block h-1 w-10 rounded-full"
-          style={{ background: 'rgba(255, 255, 255, 0.25)' }}
-        />
-      </button>
+      {/* Drag handle — only this is the drag affordance. The chevron is
+          an explicit one-tap minimise (WX.5.1: "not possible to
+          minimise it"). */}
+      <div className="relative flex h-7 w-full flex-shrink-0 items-center justify-center">
+        <button
+          type="button"
+          onPointerDown={e => dragControls.start(e)}
+          aria-label="Drag sheet"
+          className="flex h-full w-full items-center justify-center"
+          style={{ touchAction: 'none' }}
+        >
+          <span
+            className="block h-1 w-10 rounded-full"
+            style={{ background: 'rgba(255, 255, 255, 0.25)' }}
+          />
+        </button>
+        {snap !== 'peek' && (
+          <button
+            type="button"
+            aria-label="Minimise sheet"
+            onClick={() => onSnapChange('peek')}
+            className="absolute right-3 top-1 flex h-6 w-6 items-center justify-center rounded-full text-white/60"
+            style={{ background: 'rgba(255,255,255,0.07)' }}
+          >
+            <ChevronRight size={13} className="rotate-90" strokeWidth={2} />
+          </button>
+        )}
+      </div>
 
       <div className="flex-1 overflow-y-auto pt-2">{children}</div>
     </motion.div>
