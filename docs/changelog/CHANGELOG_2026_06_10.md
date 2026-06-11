@@ -339,6 +339,9 @@ verified identity-provider claim; cannot clobber user-entered data.
 - **Sheet hijacking the page**: the bottom sheet no longer auto-rises when zooming into a bubble (canvas stays dominant; it rises only for asset taps), closing the detail card no longer ejects you from the layer, and the handle gained an explicit minimise chevron.
 - **Ownership trail on every layer** (Reza: "the owner of the layer should always be available… to track back the asset ownership"): scene mode shows the chain — "You › Other assets" style — beside the back pill on mobile and in the desktop breadcrumb, coloured by the layer's type accent.
 
+### My Structure ordering fix (Reza 2026-06-11: "the chart should be the first thing user sees")
+- The personal-only invitation banner rendered ABOVE the canvas — first paint was text, not the universe. Swapped: canvas leads, the "add a trust" invitation follows below it (margin flipped mb-4 → mt-4). The universe is the hero of its own page.
+
 ### Decisions (same day)
 - **Q-EOF-1…5 ✅ DECIDED 2026-06-10** — Reza: *"go with your recommended"* (all five per recommendation).
 - **Scope addition (Reza)**: personal & joint ownership capture must be first-class for users with no company/trust — "very complete" against Australian tax/property law. Codified as the binding **§4A personal-tier completeness matrix** in the phase doc v2: P1 sole, P2 joint tenants (TR 93/32 50/50 split regardless of contribution + survivorship), P3 tenants in common (fractional shares), P4 co-ownership-≠-partnership guard (rental co-owners are a tax-law partnership only — UI must never push a PARTNERSHIP entity), P5 spousal attribution, P6 minor/Div 6AA flag, P7 deceased estate, P8 nominee/bare trust, P9 exotic forms flagged `unsupportedStructure` (honest UNCOMPUTED). Stage A's picker is an OWNERSHIP picker ("Just me / Joint with Sarah / Shared 70/30 / Another entity") with inline joint quick-create — warm words, no model jargon.

@@ -665,10 +665,21 @@ export default function EntitiesPage() {
 
           return (
             <>
-              {/* Personal-only invitation — a banner, never a canvas
-                  replacement (Phase 47 fix). Warm framing preserved. */}
+              {/* Desktop — Wealth Universe canvas. The universe leads
+                  (Reza 2026-06-11: "the chart is the first thing user
+                  sees rather than the text"). */}
+              <div className="hidden md:block -mx-4 sm:-mx-6">
+                <WealthUniverseCanvas />
+              </div>
+              {/* Mobile — Apple Maps hybrid (compact canvas + draggable
+                  bottom sheet). */}
+              <div className="md:hidden -mx-4">
+                <WealthUniverseMobile />
+              </div>
+              {/* Personal-only invitation — BELOW the canvas, never above
+                  it. Warm framing preserved. */}
               {!hasRealStructure && (
-                <div className="mb-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white/80 to-amber-50/40 p-4 dark:border-slate-700/50 dark:from-slate-900/70 dark:to-slate-950/70 sm:flex-row sm:items-center">
+                <div className="mt-4 flex flex-col items-start justify-between gap-3 rounded-2xl border border-slate-200/70 bg-gradient-to-br from-white/80 to-amber-50/40 p-4 dark:border-slate-700/50 dark:from-slate-900/70 dark:to-slate-950/70 sm:flex-row sm:items-center">
                   <div>
                     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       Your wealth is held in your personal name — and that&rsquo;s fine.
@@ -691,15 +702,6 @@ export default function EntitiesPage() {
                   </div>
                 </div>
               )}
-              {/* Desktop — Wealth Universe canvas. */}
-              <div className="hidden md:block -mx-4 sm:-mx-6">
-                <WealthUniverseCanvas />
-              </div>
-              {/* Mobile — Apple Maps hybrid (compact canvas + draggable
-                  bottom sheet). */}
-              <div className="md:hidden -mx-4">
-                <WealthUniverseMobile />
-              </div>
             </>
           );
         })()}
