@@ -1936,6 +1936,7 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 ##### Where to apply next (queue)
 
 - Phase 45.4 — KPI row + Net Worth hero — **first canonical application of Compact Dashboard (this PR).**
+- ~~`/dashboard/activity` (What's moving) KPI tiles~~ ✅ **shipped Phase 49 (2026-06-11).** KPI Swipe Strip applied to the Activity page's 4 summary tiles (snap-mandatory, 78vw tiles with 1.2-peek, page-dot indicator via scroll tracking); transaction list correctly stays vertical (rows are destinations). Per-surface learning: the strip's page dots are driven by a simple `scrollLeft / tileWidth` calculation rather than IntersectionObserver — adequate for a 4-tile strip, cheaper to maintain; revisit if a longer strip ships.
 - Phase 45.5 — insight + diagnostic widgets → Bento Pair rows.
 - Phase 45.6 — MoneyStoryHero + WealthUniverse + DailyPulse → full-width hero + Bento Pair where appropriate.
 - Future: `/dashboard/balances` mobile reflow, `/dashboard/cfo` mobile reflow, My Wealth landing mobile reflow.
