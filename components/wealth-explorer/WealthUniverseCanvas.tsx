@@ -1210,8 +1210,37 @@ export default function WealthUniverseCanvas() {
         onClose={clearSelection}
         assets={
           selectedNode && selectedNode.tier !== 'cluster' && snapshot
-            ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
+            ? selectedNode.tier === 'group'
+              ? // Group bubbles (`group-<id>`) hold via OwnershipGroup
+                // rows, not ownerEntityId — resolve through the group.
+                (() => {
+                  const gid = selectedNode.id.slice('group-'.length);
+                  const ownedIds = new Set(
+                    snapshot.ownershipGroups
+                      .filter(g => g.id === gid)
+                      .map(g => g.ownedObjectId),
+                  );
+                  return snapshot.assets.filter(a => ownedIds.has(a.id));
+                })()
+              : snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
             : []
+        }
+        // WX.5.4 — asset bubbles render from the in-memory record (no
+        // entity file exists for them; fetching one 404s).
+        assetRecord={
+          selectedNode?.tier === 'asset' && snapshot
+            ? snapshot.assets.find(a => a.id === selectedNode.id) ?? null
+            : null
+        }
+        ownerName={
+          selectedNode?.tier === 'asset' && snapshot
+            ? snapshot.entities.find(
+                e =>
+                  e.id ===
+                  (selectedNode.ownerEntityId ??
+                    snapshot.assets.find(a => a.id === selectedNode.id)?.ownerEntityId),
+              )?.name ?? null
+            : null
         }
       />
     </CanvasShell>

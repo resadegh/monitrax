@@ -55,6 +55,8 @@ import { layoutWealthExplorer } from '@/lib/data/wealthExplorerLayout';
 import {
   NODE_ACCENT,
   RIBBON_COLOR,
+  assetHrefFor,
+  assetCtaLabelFor,
   type WealthNode,
   type WealthNodeType,
   type WealthRelationship,
@@ -722,6 +724,23 @@ export default function WealthUniverseMobile() {
                   ? snapshot.assets.filter(a => a.ownerEntityId === selectedNode.id)
                   : []
               }
+              // WX.5.4 — asset nodes render from the in-memory record.
+              assetRecord={
+                selectedNode.tier === 'asset' && snapshot
+                  ? snapshot.assets.find(a => a.id === selectedNode.id) ?? null
+                  : null
+              }
+              ownerName={
+                selectedNode.tier === 'asset' && snapshot
+                  ? snapshot.entities.find(
+                      e =>
+                        e.id ===
+                        (selectedNode.ownerEntityId ??
+                          snapshot.assets.find(a => a.id === selectedNode.id)
+                            ?.ownerEntityId),
+                    )?.name ?? null
+                  : null
+              }
             />
           </div>
         )}
@@ -1125,11 +1144,17 @@ function SelectedEntityCard({
   node,
   onClose,
   assets = [],
+  assetRecord = null,
+  ownerName = null,
 }: {
   node: WealthNode;
   onClose: () => void;
   /** Phase 3 Level 3 — assets held by this entity (in-memory pass-through). */
   assets?: WealthGraphAsset[];
+  /** WX.5.4 — for asset nodes: the full graph record (in-memory). */
+  assetRecord?: WealthGraphAsset | null;
+  /** WX.5.4 — the holding entity's name (ownership-trail rule). */
+  ownerName?: string | null;
 }) {
   const { token } = useAuth();
   const [detail, setDetail] = useState<EntityDetail | null>(null);
@@ -1233,8 +1258,26 @@ function SelectedEntityCard({
           <div className="text-[11px] text-white/55">
             {node.type === 'ownership-group'
               ? 'Joint ownership group · members linked above'
-              : 'Owned by an entity in your structure'}
+              : // WX.5.4 — name the owner (ownership-trail rule).
+                ownerName
+                ? `Held by ${ownerName}`
+                : 'Owned by an entity in your structure'}
           </div>
+          {assetRecord && (
+            <Link
+              href={assetHrefFor(assetRecord.kind, assetRecord.id)}
+              onClick={onClose}
+              className="mt-3 flex items-center justify-between gap-3 rounded-xl p-3 text-[12px] font-medium"
+              style={{
+                background: 'rgba(52, 211, 153, 0.08)',
+                border: '1px solid rgba(52, 211, 153, 0.25)',
+                color: '#6EE7B7',
+              }}
+            >
+              <span>{assetCtaLabelFor(assetRecord.kind)}</span>
+              <ChevronRight size={13} strokeWidth={1.5} />
+            </Link>
+          )}
         </>
       )}
 
@@ -1489,7 +1532,7 @@ function LinkedAssetRow({
   onNavigate: () => void;
 }) {
   const { icon: Icon, accent } = assetGlyphFor(asset.kind);
-  const href = assetHrefFor(asset);
+  const href = assetHrefFor(asset.kind, asset.id);
   return (
     <Link
       href={href}
@@ -1533,16 +1576,9 @@ function assetGlyphFor(kind: WealthGraphAsset['kind']): { icon: LucideIcon; acce
   }
 }
 
-function assetHrefFor(asset: WealthGraphAsset): string {
-  switch (asset.kind) {
-    case 'property': return `/dashboard/properties/${asset.id}`;
-    case 'loan': return `/dashboard/loans/${asset.id}`;
-    case 'account': return '/dashboard/accounts';
-    case 'investment-account': return '/dashboard/investments/accounts';
-    case 'asset': return '/dashboard/assets';
-    case 'super': return '/dashboard/investments/super'; // Phase 47 B1
-  }
-}
+// WX.5.4 — `assetHrefFor` now lives canonically in
+// `lib/data/wealthExplorerTypes.ts` (the local copy drifted once
+// investments + super gained detail pages).
 
 function assetKindLabel(kind: WealthGraphAsset['kind']): string {
   switch (kind) {

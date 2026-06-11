@@ -126,3 +126,28 @@ Direction approved by Reza before React ("generate the dark version and ship it"
 ### §17.2 post-merge verification — PR #1057 (WX.5.2)
 - Prod deploy `dpl_2LvHQD8sgbYjxj8LG4QMsmCm4BdK` reached `READY` (2026-06-11 02:12:25), runtime logs clean:
   `(no runtime logs in the retention window — no recent traffic, or the deploy is too old)` — no errors since deploy.
+
+---
+
+## Session: gallant-gates-kb264m (continued) — WX.5.4
+
+### Changes Made — Phase WX.5.4: asset bubbles no longer 404 in the detail panel
+- **Type**: Fix (bug, Reza prod screenshot 2026-06-11: Qantas Credit Card → "Couldn't load full details / Failed (404)")
+- **Root Cause**: the desktop `EntityDetailPanel` fetched `/api/entities/<node.id>` for EVERY selected bubble. Asset bubbles (and `group-<id>` ownership-group bubbles) are synthetic canvas nodes with no entity record — the fetch 404s. The mobile card already gated this (`isEntity`); the desktop panel never got the gate.
+- **Solution**:
+  - Desktop panel ports the mobile `isEntity` gate (`type !== 'ownership-group' && !type.startsWith('asset-')`) — no fetch for synthetic nodes.
+  - Asset bubbles render a proper card from the in-memory graph record: value, **"Held by <owner>"** (ownership-trail rule — owner visible on every layer), subtype, and a warm click-through CTA. Group bubbles show value + the held-jointly asset list (resolved via `OwnershipGroup.ownedObjectId` — group assets don't match `ownerEntityId`).
+  - Mobile asset card upgraded the same way: actual owner name ("Held by Reza Sadegh") + click-through CTA.
+  - **`assetHrefFor` consolidated** into canonical `lib/data/wealthExplorerTypes.ts` (§12.2) — the two per-component copies had drifted: investments + super gained Asset Spotlight detail pages (Phases 45.2.1/45.2.2) while both maps still pointed at list routes. Now `investment-account → /dashboard/investments/accounts/<id>` and `super → /dashboard/investments/super/<id>`. New `assetCtaLabelFor` for warm per-kind CTA wording (§14.3).
+
+### Files Modified
+- `lib/data/wealthExplorerTypes.ts` — canonical `assetHrefFor` + `assetCtaLabelFor`
+- `components/wealth-explorer/EntityDetailPanel.tsx` — `isEntity` gate, asset/group body (value + held-by + CTA + held-jointly list), local href map deleted
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — passes `assetRecord`/`ownerName`; group assets resolved via ownership groups
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — owner name + CTA on asset card, local href map deleted
+
+### Build Status
+- [x] tsc / eslint / financial gate (exit codes checked) / 42 tests / `npm run build` — all pass
+
+### §17.2 post-merge verification — PR #1058 (WX.5.3)
+- Prod deploy `dpl_EDvvDcKNQg7k5NsbDrGNdaQnRC5K` reached `READY` (2026-06-11 02:33:48). Reza's live testing on this deploy surfaced the WX.5.4 asset-bubble 404 (pre-existing since Phase WX.5 — not introduced by #1058).
