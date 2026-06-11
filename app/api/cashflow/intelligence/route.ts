@@ -26,6 +26,11 @@ import {
   TaxOptimization,
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import {
+  detectSavingOpportunities,
+  type SavingOpportunitiesResult,
+} from '@/lib/cashflow/savingOpportunities';
 
 // =============================================================================
 // HELPERS
@@ -643,6 +648,21 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Build smart actions
       const smartActions = buildSmartActions(leaks, healthScore, budgetComparison);
 
+      // Phase 45.8 — detect cross-account / cross-property saving opportunities.
+      // Pulls from the canonical master snapshot so liquidCash, loan balance,
+      // and gross income are SSOT. Failure here must NOT block the rest of
+      // the intelligence response.
+      let savingOpportunities: SavingOpportunitiesResult = {
+        opportunities: [],
+        totalEstimatedAnnualBenefit: 0,
+      };
+      try {
+        const masterSnapshot = await getMasterFinancialSnapshot(userId);
+        savingOpportunities = detectSavingOpportunities(masterSnapshot);
+      } catch (oppError) {
+        console.error('[CashflowIntelligence] Saving opportunities detection failed:', oppError);
+      }
+
       // Calculate data quality
       const transactionCount = data.transactions.length;
       const categorizedCount = data.transactions.filter((t: any) => t.categoryLevel1).length;
@@ -668,7 +688,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       return NextResponse.json({
         success: true,
-        data: intelligence,
+        data: {
+          ...intelligence,
+          savingOpportunities,
+        },
       });
     } catch (error) {
       console.error('[CashflowIntelligence] API error:', error);

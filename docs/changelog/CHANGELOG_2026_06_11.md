@@ -1,5 +1,173 @@
 # Changelog - 2026-06-11
 
+## Session: phase45.8-cashflow-redesign-LIlK9
+
+### Changes Made
+- **Type**: Redesign + new feature
+- **Scope**: `/cashflow` page (full §18.7.2 glass-vocabulary rewrite) + new
+  `Saving Opportunities` detector + enhanced `Money Leaks` classifier.
+- **Description**: Phase 45.8 — Reza brief 2026-06-11: "Let's redesign the
+  cashflow page using stitch and the design principles … the leak detector
+  is a good indicator. I want the user to see where the money is leaking
+  and should be looked at, maybe duplicated transactions, suspicious, etc.
+  … one of my major pain points is due to having multiple accounts and
+  properties it is very hard for me to pinpoint where my money is going and
+  if there are any saving opportunities available. maybe even saving
+  opportunity is another tile that can be very useful". Approved "all good,
+  ship it" / "looks good , ship it".
+
+### Stitch-first compliance (CLAUDE.md §18)
+Project `1859462351962811110`; 4-variant matrix per §18.7.2 dark-mode
+reviewer enforcement:
+| Variant | Screen ID |
+|---|---|
+| Desktop dark | `ff0beab3c934409893fe04441120a472` |
+| Desktop light | `60c5d43c95a64920b38a5da2b777faea` |
+| Mobile dark | `be8c24402cad45ae88d55de0daa59781` |
+| Mobile light | `ffda21749e004a4daf958ec437b7e35b` |
+Artefacts committed at
+`.stitch/designs/cashflow-redesign/dashboard-cashflow-redesign-v1-*.{html,png}`.
+Generation prompts seeded with the §18.7.2 digest verbatim (warm-ivory page
+bg, glass-card recipe + exact shadow values, radius hierarchy, money-signal
+mapping for emerald / amber / rose / sky / indigo / violet, gems, tabular-
+nums, behaviour-psychology framing); mobile applied §18.7.6 Compact
+Dashboard mechanics (KPI swipe strip + 3 Bento Pair rows). Direction
+approved by Reza before React port.
+
+### New composition (top-to-bottom)
+
+1. **Hero** — confident money-story headline (-$ net in rose, +$ in
+   emerald, =$0 in foreground), supporting sentence (warm copy per §0
+   behaviour-psychology lens, never alarming), Cashflow Health pill (tier
+   → emerald / sky / amber / rose chip tone), 4-tile inline KPI row (Money
+   In emerald · Money Out rose · Balance neutral · 30-Day Forecast indigo)
+   reflowing 2×2 on mobile.
+2. **Bento Pair 1** — Money Flow waterfall (sky→indigo glass, top-5 by abs
+   value, mini progress bars) + Next Best Action (indigo→violet glass,
+   distilled AI summary sentence, primary CTA, estimated-impact pill).
+3. **Bento Pair 2** — Budget vs Actual (emerald glass, overall progress
+   bar + top-5 categories, OVER = amber not red per §18.7.2 money-signal)
+   + Tax Summary (violet glass, gradient hero number, 3-cell mini-grid,
+   top strategy callout).
+4. **Bento Pair 3** — Money Leaks **ENHANCED** (amber glass, behavioural
+   classifier chips per leak: duplicate / subscription creep / forgotten
+   subscription / category overspend, annual context if ≥$500/yr,
+   celebratory empty state) + Saving Opportunities **NEW** (emerald glass,
+   list of 3 levers with rationale + estimated annual benefit + CTA,
+   general-information-only footnote pinned).
+5. **Smart Actions long-tail** — preserves the existing
+   `SmartActionsEnhanced` list (rank 2+) to keep all current actions
+   surfaced (Reza directive: "do not remove any of the tiles without my
+   confirmation, we are only redesigning").
+6. Data-coverage footer.
+
+### Files Modified / Created
+- `lib/cashflow/savingOpportunities.ts` — **NEW** pure detector over
+  `MasterFinancialSnapshot`. Three v1 opportunity kinds: `HISA_UPGRADE`
+  (2.5pp uplift × liquid cash, ≥$5k threshold, ≥$125/yr benefit),
+  `OFFSET_LINK` (non-investment loan balance ≥$50k + surplus liquid cash
+  beyond 3-month essential buffer, capped at loan balance × 5.5% rate,
+  ≥$200/yr benefit), `SALARY_SACRIFICE` (gross income > $90k + concessional
+  wedge to $30k FY27 cap × 15pp net-of-super-tax saving, ≥$300/yr benefit).
+  Sorted by estimated annual benefit; empty array is a celebrated state.
+  Conservative assumptions documented inline. Never recommends offsetting
+  an investment loan (converts deductible interest to non-deductible —
+  documented in source).
+- `app/api/cashflow/intelligence/route.ts` — extended to call
+  `getMasterFinancialSnapshot()` + `detectSavingOpportunities()` after the
+  existing intelligence build, with try/catch so the saving-opportunity
+  failure mode (e.g. snapshot fetch error) doesn't block the rest of the
+  response.
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyFlowTile.tsx`
+  — NEW. Sky→indigo glass wrapper around waterfall data.
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassNextBestActionTile.tsx`
+  — NEW. Indigo→violet glass tile distilling AI summary + top SmartAction
+  into a single tile with one CTA + estimated-impact pill.
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassBudgetTile.tsx`
+  — NEW. Emerald glass. UNDER/ON_TRACK/OVER each get a gradient bar but
+  OVER = amber, never red (§18.7.2). Celebrating empty-state CTA links to
+  budget-analysis.
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassTaxTile.tsx`
+  — NEW. Violet glass. Gradient hero number + 3-cell mini-grid +
+  top-recommendation callout.
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassMoneyLeaksTile.tsx`
+  — NEW. Amber glass. In-tile `classifyLeak()` maps the existing leak
+  shape into 4 behavioural kinds via category + trend + description
+  patterns (no new backend data needed): `DUPLICATE` (desc contains
+  duplicate / charged twice / multiple charges), `SUBSCRIPTION_CREEP`
+  (subscription category + INCREASING trend), `FORGOTTEN_SUB` (subscription
+  category + STABLE/DECREASING trend), `CATEGORY_LEAK` (everything else).
+  Empty state celebrates ("Nothing flagged this month — N transactions
+  analysed, no duplicates / creep / forgotten charges").
+- `app/(dashboard)/cashflow/components/intelligence/glass/GlassSavingOpportunitiesTile.tsx`
+  — **NEW**. Emerald glass. Renders the 3 opportunities with their gems
+  (PiggyBank / Building2 / TrendingUp), rationale, annual benefit pill,
+  CTA link. Pinned general-information footnote per §0 financial-adviser
+  lens (estimates use conservative market-rate assumptions, not personal
+  advice).
+- `app/(dashboard)/cashflow/components/intelligence/glass/index.ts` — barrel.
+- `app/(dashboard)/cashflow/page.tsx` — full rewrite. New `CashflowHero`
+  with 4-tile KPI row + Cashflow Health pill; new 3-Bento-Pair composition;
+  glass skeleton + error state; preserves `SmartActionsEnhanced` long-tail
+  (rank 2+) per "do not remove any tiles" directive.
+- `docs/IMPLEMENTATION_PLAN.md` — entry under ✅ Recently Completed.
+- `docs/changelog/CHANGELOG_2026_06_11.md` — this entry.
+
+### Build Status
+- TypeScript compilation: **PASS** (no errors in changed files; only
+  pre-existing unrelated `.next` cache type for the deleted
+  `auth/resend-verification` route lingers).
+- `lint:financial-surfaces`: **PASS** (18 grandfathered, 0 new).
+
+### §18.7.4 / §18.7.5 / §18.7.6 status
+- §18.7.4 Cremorne pattern: not applied here — `/cashflow` is a
+  multi-section diagnostic dashboard, not a single-asset detail page.
+- §18.7.5 Asset Spotlight template: not applicable — list-of-sections
+  dashboard, not a single-focal-asset page.
+- §18.7.6 Compact Dashboard pattern: applied to the mobile reflow (Hero
+  KPIs become 2×2 grid on mobile because each of the 4 tiles needs to
+  remain readable — full swipe-strip with page dots was considered but
+  the 4-tile width was small enough that the 2×2 collapse reads better
+  than a horizontal scroll for this surface).
+
+### Behaviour-psychology lens (§0)
+- Empty states for both Money Leaks and Saving Opportunities celebrate
+  (no flagged leaks = "Your spending patterns are tight this month"; no
+  opportunities = "Your structure is tight" — never "nothing to do" or
+  "you have no savings opportunities").
+- Saving Opportunities footnote: "Estimates use conservative assumptions
+  about market rates. General information only, not personal advice."
+  Reza brief never asked for advice; the tile is decision support.
+- Amber, never red, for leaks (caution money signal per §18.7.2).
+- Annual leak context only surfaces if ≥$500/yr to avoid amplifying small
+  signals into urgency.
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (6 new glass tiles +
+  cashflow page composition + new hero)
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [ ] operational procedure
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/IMPLEMENTATION_PLAN.md` (✅ Recently Completed entry)
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- Inline JSDoc on each new component file points back to the canonical
+  Stitch screen IDs (§16.4 file-header rule)
+- `.stitch/designs/cashflow-redesign/` artefacts committed alongside
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes in this PR. No schema change (§12.12 N/A).
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: serene-goodall-6smazx (continued)
 
 ### Changes Made

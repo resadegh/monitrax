@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Cashflow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "outline-variant": "#3e4a3d",
+                        "on-tertiary-container": "#5a0022",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "secondary-fixed": "#6dfe9c",
+                        "on-error-container": "#ffdad6",
+                        "secondary": "#4de082",
+                        "tertiary-container": "#ec6284",
+                        "secondary-container": "#00b55d",
+                        "outline": "#879485",
+                        "inverse-on-surface": "#2b322b",
+                        "tertiary-fixed": "#ffd9de",
+                        "on-primary-container": "#003111",
+                        "tertiary": "#ffb2bf",
+                        "on-tertiary": "#660027",
+                        "surface-container-lowest": "#09100a",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "surface-container": "#1b211a",
+                        "on-secondary": "#003919",
+                        "on-background": "#dde5d9",
+                        "error-container": "#93000a",
+                        "surface-container-low": "#171d16",
+                        "surface-bright": "#343b33",
+                        "surface": "#0e150f",
+                        "on-secondary-fixed": "#00210c",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-tertiary-fixed": "#3f0016",
+                        "inverse-primary": "#006e2d",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-container-high": "#252c24",
+                        "on-secondary-fixed-variant": "#005227",
+                        "on-primary-fixed": "#002109",
+                        "primary": "#62df7d",
+                        "on-surface-variant": "#bdcaba",
+                        "on-surface": "#dde5d9",
+                        "primary-container": "#1ca64d",
+                        "inverse-surface": "#dde5d9",
+                        "surface-container-highest": "#30372f",
+                        "on-error": "#690005",
+                        "background": "#050913",
+                        "primary-fixed": "#7ffc97",
+                        "surface-dim": "#0e150f",
+                        "error": "#ffb4ab",
+                        "surface-tint": "#62df7d",
+                        "surface-variant": "#30372f",
+                        "on-primary": "#003914",
+                        "on-secondary-container": "#003e1c",
+                        "card": "#16161E"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-mobile": "20px",
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "unit": "4px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-hero-mobile": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-hero": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913;
+            color: #dde5d9;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-card {
+            background: rgba(22, 22, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .sidebar-active {
+            background: rgba(98, 223, 125, 0.1);
+            color: #62df7d;
+            border-left: 4px solid #62df7d;
+        }
+        .hero-shortfall-text { color: #f87171; } /* rose-400 */
+        .health-amber { color: #FBBF24; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex">
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-0 bottom-0 flex flex-col pt-8 pb-4 w-64 bg-surface-container-low dark:bg-inverse-surface border-r border-white/5 z-50">
+<div class="px-6 mb-10">
+<h1 class="text-headline-sm font-black text-primary tracking-tight">Monitrax OS</h1>
+<p class="text-label-md font-label-md text-on-surface-variant/60">Wealth Operating System</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center text-on-surface-variant px-6 py-3 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="text-label-md font-label-md">Net Worth</span>
+</a>
+<div class="py-2">
+<p class="px-6 text-[10px] uppercase tracking-widest text-on-surface-variant/40 mb-2">My Budget</p>
+<a class="sidebar-active flex items-center px-6 py-3 transition-transform active:scale-95" href="#">
+<span class="material-symbols-outlined mr-3">payments</span>
+<span class="text-label-md font-label-md">Cashflow</span>
+</a>
+<a class="flex items-center text-on-surface-variant px-6 py-3 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">pie_chart</span>
+<span class="text-label-md font-label-md">Budgeting</span>
+</a>
+</div>
+<a class="flex items-center text-on-surface-variant px-6 py-3 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="text-label-md font-label-md">Property</span>
+</a>
+<a class="flex items-center text-on-surface-variant px-6 py-3 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="text-label-md font-label-md">Investments</span>
+</a>
+<a class="flex items-center text-on-surface-variant px-6 py-3 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="text-label-md font-label-md">Superannuation</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full bg-primary text-on-primary font-bold py-3 rounded-xl flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">add</span>
+<span class="text-label-md">Add Asset</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 ml-64 min-h-screen flex flex-col relative overflow-hidden">
+<!-- TopAppBar -->
+<header class="h-16 flex justify-between items-center px-margin-desktop w-full max-w-container-max mx-auto z-40 bg-background/50 backdrop-blur-md">
+<div class="flex items-center gap-4">
+<div class="flex flex-col">
+<h2 class="text-headline-sm font-headline-sm font-bold text-on-surface">Welcome back, Reza</h2>
+<div class="h-1 w-8 bg-primary rounded-full mt-1"></div>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="relative hidden md:flex items-center bg-surface-container-highest/40 border border-white/5 px-4 py-2 rounded-full w-64 focus-within:border-primary/50 transition-all">
+<span class="material-symbols-outlined text-on-surface-variant text-sm mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm text-on-surface w-full placeholder:text-on-surface-variant/50 p-0" placeholder="Search commands..." type="text"/>
+</div>
+<button class="relative text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-rose-500 rounded-full"></span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-10 h-10 rounded-full border border-primary/20 p-0.5 overflow-hidden ring-2 ring-transparent hover:ring-primary/40 transition-all cursor-pointer">
+<img alt="User avatar" class="w-full h-full rounded-full object-cover bg-surface-container" src="https://lh3.googleusercontent.com/aida-public/AB6AXuALQg2lOGphKTo3ASDwNnKvk7jfB8A46rUcYyli-BIsJBrKXlyVomKDhvmQRrkgCU_nycDAkVdNyjIQS7NGKdgjKE0E9i-NlSQ26vhW5beG5jsL42wXA-ecXBUvIDWnklZbrAK7hgSGbTkmMQcgHFT0qukFWZF80YinYzkbbSJIemSLvRJVkUYDk9mk0EPrpueTgikFDiCqsr2CLruo0iqsxj7SrB_su_NT_g7fXTJCNcdQKxy-H2NhiTe-RSI-cmGffsEffVUSQEI"/>
+</div>
+</div>
+</header>
+<!-- Canvas -->
+<div class="flex-1 px-margin-desktop py-8 max-w-container-max mx-auto w-full space-y-gutter">
+<!-- Section 1 — Hero Card (Full Width) -->
+<section class="glass-card relative overflow-hidden rounded-xl border-t-[3px] border-t-transparent before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-gradient-to-r before:from-amber-500 before:to-rose-500">
+<div class="p-8">
+<div class="flex justify-between items-start mb-4">
+<div>
+<p class="text-[11px] font-semibold tracking-[0.18em] text-slate-400 uppercase">Cashflow · This Month</p>
+</div>
+<button class="text-on-surface-variant hover:rotate-180 transition-transform duration-500">
+<span class="material-symbols-outlined">refresh</span>
+</button>
+</div>
+<div class="flex flex-col md:flex-row md:items-end gap-6 mb-10">
+<div>
+<h3 class="text-[72px] font-light tracking-tighter hero-shortfall-text tabular-nums leading-none">
+                                −$7,424
+                            </h3>
+<p class="text-body-lg text-slate-300 mt-2 max-w-md">Spending edged ahead this month — trim a leak below to close it.</p>
+</div>
+<div class="ml-auto">
+<div class="bg-amber-400/10 border border-amber-400/20 px-4 py-2 rounded-full flex items-center gap-2">
+<span class="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
+<span class="text-label-caps text-amber-300">Health 48 · Moderate</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<div class="p-4 bg-white/5 rounded-xl border border-white/5">
+<p class="text-label-caps text-slate-400 mb-2 uppercase">Money In</p>
+<p class="text-headline-md font-bold text-secondary tabular-nums">$16,718</p>
+</div>
+<div class="p-4 bg-white/5 rounded-xl border border-white/5">
+<p class="text-label-caps text-slate-400 mb-2 uppercase">Money Out</p>
+<p class="text-headline-md font-bold text-amber-400 tabular-nums">$24,142</p>
+</div>
+<div class="p-4 bg-white/5 rounded-xl border border-white/5">
+<p class="text-label-caps text-slate-400 mb-2 uppercase">Balance</p>
+<p class="text-headline-md font-bold text-on-surface tabular-nums">$408,034</p>
+</div>
+<div class="p-4 bg-white/5 rounded-xl border border-white/5">
+<p class="text-label-caps text-slate-400 mb-2 uppercase">30-Day Forecast</p>
+<div class="flex items-center gap-2">
+<p class="text-headline-md font-bold text-indigo-400 tabular-nums">$400,610</p>
+<span class="text-[10px] bg-amber-400/20 text-amber-400 px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter">Moderate Risk</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 2 — Bento Pair -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Money Flow (Waterfall) -->
+<section class="md:col-span-8 glass-card rounded-xl border-t-[3px] border-t-transparent before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-gradient-to-r before:from-emerald-500 before:to-amber-500">
+<div class="p-6">
+<h4 class="text-headline-sm font-semibold mb-8">Money Flow Analysis</h4>
+<div class="h-64 flex items-end gap-2 px-4 pb-8 border-b border-white/5">
+<!-- Simplified Waterfall Visualizer -->
+<div class="flex-1 flex flex-col items-center gap-2 group">
+<div class="w-full bg-emerald-500/80 rounded-t-sm h-[90%] transition-all group-hover:bg-emerald-500"></div>
+<span class="text-[10px] text-slate-400 font-bold uppercase">Income</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 translate-y-4">
+<div class="w-full bg-amber-400/40 rounded-sm h-[30%] border border-amber-400/20"></div>
+<span class="text-[10px] text-slate-500 uppercase">Rent</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 translate-y-12">
+<div class="w-full bg-amber-400/40 rounded-sm h-[15%] border border-amber-400/20"></div>
+<span class="text-[10px] text-slate-500 uppercase">Groceries</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 translate-y-20">
+<div class="w-full bg-amber-400/40 rounded-sm h-[10%] border border-amber-400/20"></div>
+<span class="text-[10px] text-slate-500 uppercase">Utils</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 translate-y-24">
+<div class="w-full bg-amber-400/40 rounded-sm h-[12%] border border-amber-400/20"></div>
+<span class="text-[10px] text-slate-500 uppercase">Subs</span>
+</div>
+<div class="flex-1 flex flex-col items-center gap-2 translate-y-28">
+<div class="w-full bg-rose-500 rounded-sm h-[20%]"></div>
+<span class="text-[10px] text-rose-400 font-bold uppercase">Shortfall</span>
+</div>
+</div>
+<div class="mt-6 flex justify-between text-body-sm text-slate-400">
+<p>Primary income flow is stable at $16k but fixed costs are climbing.</p>
+<p class="tabular-nums font-mono">FLOW_VAR: -12.4%</p>
+</div>
+</div>
+</section>
+<!-- Next Best Action -->
+<section class="md:col-span-4 glass-card rounded-xl bg-indigo-950/20 border-indigo-500/20 flex flex-col p-6">
+<div class="w-12 h-12 bg-indigo-500/20 rounded-full flex items-center justify-center mb-6 text-indigo-400">
+<span class="material-symbols-outlined">lightbulb</span>
+</div>
+<h4 class="text-headline-md font-bold mb-4">Your subscriptions have crept up.</h4>
+<p class="text-body-md text-slate-300 mb-8 flex-1">Netflix, Audible, and Stan have all introduced price increases recently. Your recurring monthly spend on digital media is now $148, up 15% since Q3.</p>
+<button class="w-full bg-indigo-600 text-white font-bold py-4 rounded-xl hover:bg-indigo-500 transition-colors flex items-center justify-center gap-2">
+<span>Review subscriptions</span>
+<span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</section>
+</div>
+<!-- Section 3 — Bento Pair (Budget vs Actual + Tax Summary) -->
+<div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+<!-- Budget vs Actual -->
+<section class="md:col-span-7 glass-card rounded-xl p-6 border-l-4 border-emerald-500">
+<div class="flex justify-between items-end mb-6">
+<div>
+<p class="text-label-caps text-emerald-400 mb-1 uppercase">Current Budget Spend</p>
+<h4 class="text-headline-lg font-bold tabular-nums">$12,295 <span class="text-body-lg font-normal text-slate-500">of $15,000</span></h4>
+</div>
+<div class="text-right">
+<span class="text-headline-md font-black text-emerald-400">82%</span>
+</div>
+</div>
+<div class="w-full bg-white/5 h-3 rounded-full overflow-hidden mb-8">
+<div class="bg-emerald-500 h-full rounded-full" style="width: 82%"></div>
+</div>
+<ul class="space-y-4">
+<li class="flex items-center justify-between py-2 border-b border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1">check_circle</span>
+<span class="text-body-md">Groceries</span>
+</div>
+<span class="tabular-nums font-medium">$1,240 / $1,500</span>
+</li>
+<li class="flex items-center justify-between py-2 border-b border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1">check_circle</span>
+<span class="text-body-md">Rent</span>
+</div>
+<span class="tabular-nums font-medium">$4,200 / $4,200</span>
+</li>
+<li class="flex items-center justify-between py-2 border-b border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-amber-500">warning</span>
+<span class="text-body-md">Utilities</span>
+</div>
+<span class="tabular-nums font-medium text-amber-500">$840 / $600</span>
+</li>
+<li class="flex items-center justify-between py-2 border-b border-white/5">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-rose-500">error</span>
+<span class="text-body-md">Subscriptions</span>
+</div>
+<span class="tabular-nums font-medium text-rose-500">$148 / $100</span>
+</li>
+<li class="flex items-center justify-between py-2">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-emerald-500" style="font-variation-settings: 'FILL' 1">check_circle</span>
+<span class="text-body-md">Transport</span>
+</div>
+<span class="tabular-nums font-medium">$320 / $500</span>
+</li>
+</ul>
+</section>
+<!-- Tax Summary -->
+<section class="md:col-span-5 glass-card rounded-xl p-6 bg-violet-950/10 border-violet-500/20 flex flex-col">
+<div class="mb-6">
+<p class="text-label-caps text-violet-400 mb-1 uppercase">Estimated Annual Tax</p>
+<h4 class="text-[48px] font-bold text-on-surface tabular-nums">$110,383</h4>
+</div>
+<div class="grid grid-cols-3 gap-4 mb-8">
+<div class="bg-white/5 p-3 rounded-lg border border-white/5">
+<p class="text-[10px] text-slate-400 uppercase mb-1">PAYG Withheld</p>
+<p class="text-body-md font-bold tabular-nums">$92,400</p>
+</div>
+<div class="bg-white/5 p-3 rounded-lg border border-white/5">
+<p class="text-[10px] text-slate-400 uppercase mb-1">Deductions</p>
+<p class="text-body-md font-bold tabular-nums text-emerald-400">$8,210</p>
+</div>
+<div class="bg-white/5 p-3 rounded-lg border border-white/5">
+<p class="text-[10px] text-slate-400 uppercase mb-1">Potential Saved</p>
+<p class="text-body-md font-bold tabular-nums text-violet-400">$3,420</p>
+</div>
+</div>
+<div class="bg-violet-500/5 rounded-xl p-4 border border-violet-500/10 flex-1">
+<p class="text-body-sm text-slate-300 italic">"Increasing your pre-tax super contributions by 2% could reduce this burden by a further $1,400 annually."</p>
+</div>
+<button class="mt-6 w-full py-3 px-4 border border-violet-500/30 rounded-xl text-violet-400 font-bold hover:bg-violet-500/10 transition-colors">
+                        Salary Sacrifice Lever
+                    </button>
+</section>
+</div>
+<!-- Section 4 — Bento Pair (Money Leaks + Saving Opportunities) -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Money Leaks -->
+<section class="glass-card rounded-xl p-6 border-l-4 border-amber-500">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-amber-500">leak_add</span>
+<h4 class="text-headline-md font-bold">3 leaks worth closing</h4>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-amber-400/5 border border-amber-400/10 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-amber-400/20 rounded-full flex items-center justify-center text-amber-500">
+<span class="material-symbols-outlined">content_copy</span>
+</div>
+<div>
+<p class="text-body-md font-bold">Duplicate at Bunnings</p>
+<p class="text-body-sm text-slate-400">Potential double charge detected</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-amber-400 tabular-nums">$67.00</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<div>
+<p class="text-body-md font-bold">Netflix Subscription Creep</p>
+<p class="text-body-sm text-slate-400">Recurring price increase</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-rose-400 tabular-nums">+$5.00/mo</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">pause_circle</span>
+</div>
+<div>
+<p class="text-body-md font-bold">Audible Inactive</p>
+<p class="text-body-sm text-slate-400">No credits used in 90 days</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-slate-300 tabular-nums">$24.99/mo</span>
+</div>
+</div>
+</section>
+<!-- Saving Opportunities -->
+<section class="glass-card rounded-xl p-6 border-l-4 border-emerald-500">
+<div class="flex items-center gap-3 mb-6">
+<span class="material-symbols-outlined text-emerald-500">rocket_launch</span>
+<h4 class="text-headline-md font-bold">3 opportunities to grow</h4>
+</div>
+<div class="space-y-4">
+<div class="flex items-center justify-between p-4 bg-emerald-500/5 border border-emerald-500/10 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-500">
+<span class="material-symbols-outlined">savings</span>
+</div>
+<div>
+<p class="text-body-md font-bold">HISA Opportunity</p>
+<p class="text-body-sm text-slate-400">Move $50k to 5.1% p.a. account</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-emerald-400 tabular-nums">+$2,500/yr</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">home_mini</span>
+</div>
+<div>
+<p class="text-body-md font-bold">Offset Opportunity</p>
+<p class="text-body-sm text-slate-400">Transfer idle cash to mortgage</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-emerald-400 tabular-nums">+$1,620/yr</span>
+</div>
+<div class="flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-xl">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+<span class="material-symbols-outlined">account_balance</span>
+</div>
+<div>
+<p class="text-body-md font-bold">Salary Sacrifice</p>
+<p class="text-body-sm text-slate-400">Tax optimization strategy</p>
+</div>
+</div>
+<span class="text-body-md font-bold text-emerald-400 tabular-nums">+$1,050/yr</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Background Ambient Glows -->
+<div class="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-emerald-500/5 blur-[120px] pointer-events-none rounded-full"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/5 blur-[120px] pointer-events-none rounded-full"></div>
+</main>
+<script>
+        // Simple interaction for the refresh button
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => btn.classList.add('scale-95'));
+            btn.addEventListener('mouseup', () => btn.classList.remove('scale-95'));
+            btn.addEventListener('mouseleave', () => btn.classList.remove('scale-95'));
+        });
+    </script>
+</body></html>
