@@ -880,3 +880,49 @@ where all review piles live). Moves from Up Next → Active; ships as Phase 49.1
 ### Build Status
 - [x] TypeScript compilation passes
 - [x] Build passes (`npm run build`)
+
+## Session: serene-goodall-6smazx — Phase 49.11 ("Possible subscriptions" review card)
+
+Reza approved the dedicated confirm-subscriptions tile (2026-06-11: "a dedicated tile will be
+great, not sure which page it should sit tho, you make the decision"). Placement decision:
+**/dashboard/activity** — the Home pending-actions tile already deep-links there
+(?filter=recurring), all review piles live there, and the user is already in review mode
+(behaviour-psych lens: one bookkeeping desk, not two).
+
+**Stitch-first per §18.2.1** (new section-level composition): full 4-variant matrix generated
+and committed — project 1859462351962811110, screens
+`9195bf71fd7f4e2595194746dfe59f51` (desktop light) / `3fd759a52bdc432ea0e817f2080b4efb`
+(desktop dark) / `72af31e22ae3466e9d65cd46b95bb438` (mobile light) /
+`afec464ced754c72b7df7510f2db9cdd` (mobile dark). Artefacts:
+`.stitch/designs/phase49.11/confirm-subscriptions-*.{html,png}`. Note: the desktop-light
+render drifted the confirm pills to flat emerald; the React conversion uses the specified
+teal→cyan gradient tokens (composition from Stitch, tokens from §18.7.2 — drift never ships).
+
+**Implementation is pure composition — zero new business logic (§12.3):**
+- NEW `components/bookkeeping/SubscriptionsReviewCard.tsx` — glass card (28px radius, 3px
+  teal→cyan top-accent = the recurring sub-palette, distinct from the sky→indigo bookkeeper
+  card), one row per UNMATCHED/SUGGESTED `RecurringPayment` (merchant, cadence, seen-count,
+  next-expected, expected amount with cadence suffix), actions per row: **Confirm bill**
+  (POST `/api/recurring-payments/[id]/link` `createExpense:true, category:'SUBSCRIPTION',
+  isEssential:false`) or **Link bill** when the Phase 29 matcher found an existing expense
+  (emerald hint pill "Matches your existing bill 'X'"; links with the match confidence) or
+  **dismiss** (PATCH → matchStatus DISMISSED). Data: GET `/api/recurring-payments/match`.
+  Self-hides when the pile is empty. Mobile: two-line row reflow, ≥44px tap targets.
+- `app/dashboard/activity/page.tsx` — card rendered directly under the AI-bookkeeper card.
+
+Financial-adviser lens: confirmed subscriptions create SUBSCRIPTION expenses → they feed the
+bills forecast (My Safety Net) through the existing Expense SSOT — no new aggregation.
+
+### Files Modified
+- `components/bookkeeping/SubscriptionsReviewCard.tsx` — NEW
+- `app/dashboard/activity/page.tsx` — import + placement
+- `.stitch/designs/phase49.11/confirm-subscriptions-{desktop,mobile}-{light,dark}.{html,png}` — NEW (8 artefacts)
+- `docs/IMPLEMENTATION_PLAN.md` — Phase 49.11 workstream completed
+
+### Build Status
+- [x] tsc clean
+- [x] Build passes (`npm run build`)
+
+### §17.2 post-merge verification — PR #1072
+- Production deploy `dpl_pAr4e7vm4ZoBXaF3wmazVHBLqULd` ("Merge pull request #1072") reached
+  `READY`. Runtime error-log comparison against pre-merge baseline recorded in-session.

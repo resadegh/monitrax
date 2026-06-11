@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Subscription Confirmation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-bright": "#f4fcf0",
+                      "trail-emerald": "#16A34A",
+                      "secondary-fixed": "#dce2f6",
+                      "on-secondary-fixed-variant": "#404757",
+                      "on-secondary": "#ffffff",
+                      "trail-indigo": "#6366F1",
+                      "trail-sky": "#0EA5E9",
+                      "on-background": "#171d16",
+                      "outline": "#6e7b6c",
+                      "surface-container": "#e9f0e5",
+                      "surface-ivory": "#FAFAF7",
+                      "on-surface": "#171d16",
+                      "outline-slate": "#94A3B8",
+                      "outline-variant": "#bdcaba",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "surface-dim": "#d5dcd1",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-primary-fixed-variant": "#005320",
+                      "inverse-primary": "#62df7d",
+                      "on-secondary-container": "#5c6274",
+                      "on-primary-container": "#f7fff2",
+                      "inverse-surface": "#2b322b",
+                      "tertiary-fixed": "#d3e4fe",
+                      "surface": "#f4fcf0",
+                      "trail-violet": "#8B5CF6",
+                      "primary-container": "#00873a",
+                      "surface-container-high": "#e3eadf",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#eff6ea",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "on-tertiary-container": "#fdfcff",
+                      "trail-amber": "#F59E0B",
+                      "surface-container-highest": "#dde5d9",
+                      "on-secondary-fixed": "#151b2a",
+                      "on-primary-fixed": "#002109",
+                      "error-container": "#ffdad6",
+                      "inverse-on-surface": "#ecf3e7",
+                      "tertiary-container": "#66768d",
+                      "on-error-container": "#93000a",
+                      "background": "#f4fcf0",
+                      "secondary": "#585e6f",
+                      "on-primary": "#ffffff",
+                      "on-error": "#ffffff",
+                      "primary-fixed-dim": "#62df7d",
+                      "error-red": "#DC2626",
+                      "error": "#ba1a1a",
+                      "secondary-container": "#d9dff4",
+                      "on-surface-variant": "#3e4a3d",
+                      "primary-fixed": "#7ffc97",
+                      "primary": "#006b2c",
+                      "surface-variant": "#dde5d9",
+                      "surface-tint": "#006e2d",
+                      "tertiary": "#4d5d73"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "section-gap": "48px",
+                      "container-max": "1280px",
+                      "gutter": "24px",
+                      "margin-mobile": "20px",
+                      "margin-desktop": "48px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "data-lg": [
+                              "Inter"
+                      ],
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "eyebrow": [
+                              "Inter"
+                      ],
+                      "data-xl": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.65",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "eyebrow": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.18em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "data-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.65",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-4 antialiased">
+<main class="w-full max-w-[390px]">
+<!-- Glass Card -->
+<div class="bg-surface-container-lowest/80 backdrop-blur-xl border border-outline-variant/40 rounded-xl p-[16px] shadow-sm flex flex-col relative overflow-hidden">
+<!-- Subtle Inner Glow -->
+<div class="absolute inset-0 bg-gradient-to-b from-white/60 to-transparent pointer-events-none rounded-xl"></div>
+<div class="relative z-10">
+<!-- Header Area -->
+<header class="relative mb-6">
+<!-- Icon Badge -->
+<div class="absolute top-0 right-0 w-[44px] h-[44px] rounded-full bg-gradient-to-br from-trail-sky to-trail-emerald flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-on-primary" style="font-variation-settings: 'FILL' 1;">refresh</span>
+</div>
+<!-- Header Text Stack -->
+<div class="pr-[56px] flex flex-col">
+<span class="font-eyebrow text-eyebrow text-on-surface-variant uppercase mb-1">POSSIBLE SUBSCRIPTIONS</span>
+<h1 class="font-headline-sm text-headline-sm text-on-surface">5 patterns look like subscriptions</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Confirming adds them to your bills forecast so you know what's coming.</p>
+</div>
+</header>
+<!-- Subscription List -->
+<div class="flex flex-col">
+<!-- Row 1: Netflix -->
+<div class="py-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<!-- Line 1: Identity & Amount -->
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md text-on-surface font-semibold">N</div>
+<span class="font-label-md text-label-md text-on-surface">Netflix</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface tabular-nums">$22.99/mo</span>
+</div>
+<!-- Line 2: Meta & Actions -->
+<div class="flex justify-between items-center w-full">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Monthly · seen 12 times</span>
+<div class="flex items-center gap-1">
+<button class="h-[44px] px-4 rounded-full bg-gradient-to-r from-trail-sky to-trail-emerald text-on-primary font-label-md text-label-md transition-transform hover:scale-[0.98] active:scale-95 shadow-sm">Confirm bill</button>
+<button aria-label="Dismiss" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 2: Spotify -->
+<div class="py-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md text-on-surface font-semibold">S</div>
+<span class="font-label-md text-label-md text-on-surface">Spotify AB</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface tabular-nums">$11.99/mo</span>
+</div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Monthly · seen 24 times</span>
+<div class="flex items-center gap-1">
+<button class="h-[44px] px-4 rounded-full bg-gradient-to-r from-trail-sky to-trail-emerald text-on-primary font-label-md text-label-md transition-transform hover:scale-[0.98] active:scale-95 shadow-sm">Confirm bill</button>
+<button aria-label="Dismiss" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 3: AGL Energy (Special) -->
+<div class="py-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md text-on-surface font-semibold">A</div>
+<span class="font-label-md text-label-md text-on-surface">AGL Energy</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface tabular-nums">~$180.00/qtr</span>
+</div>
+<!-- Special Match Hint Pill -->
+<div class="w-full flex mt-1">
+<span class="inline-flex items-center px-2 py-1 rounded bg-surface-container-high text-primary font-body-sm text-[11px] leading-tight font-medium">Matches your existing bill</span>
+</div>
+<div class="flex justify-between items-center w-full mt-1">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Quarterly · seen 4 times</span>
+<div class="flex items-center gap-1">
+<button class="h-[44px] px-4 rounded-full bg-gradient-to-r from-trail-sky to-trail-emerald text-on-primary font-label-md text-label-md transition-transform hover:scale-[0.98] active:scale-95 shadow-sm">Confirm bill</button>
+<button aria-label="Dismiss" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 4: Kayo Sports -->
+<div class="py-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md text-on-surface font-semibold">K</div>
+<span class="font-label-md text-label-md text-on-surface">Kayo Sports</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface tabular-nums">$25.00/mo</span>
+</div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Monthly · seen 8 times</span>
+<div class="flex items-center gap-1">
+<button class="h-[44px] px-4 rounded-full bg-gradient-to-r from-trail-sky to-trail-emerald text-on-primary font-label-md text-label-md transition-transform hover:scale-[0.98] active:scale-95 shadow-sm">Confirm bill</button>
+<button aria-label="Dismiss" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 5: Apple Services -->
+<div class="py-4 border-t border-outline-variant/30 flex flex-col gap-2">
+<div class="flex justify-between items-center w-full">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md text-on-surface font-semibold"></div>
+<span class="font-label-md text-label-md text-on-surface">Apple Services</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface tabular-nums">$14.99/mo</span>
+</div>
+<div class="flex justify-between items-center w-full">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Monthly · seen 15 times</span>
+<div class="flex items-center gap-1">
+<button class="h-[44px] px-4 rounded-full bg-gradient-to-r from-trail-sky to-trail-emerald text-on-primary font-label-md text-label-md transition-transform hover:scale-[0.98] active:scale-95 shadow-sm">Confirm bill</button>
+<button aria-label="Dismiss" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="mt-2 pt-5 border-t border-outline-variant/30">
+<p class="font-body-sm text-body-sm text-on-surface-variant text-center">
+                        Confirmed subscriptions feed your bills forecast in My Safety Net
+                    </p>
+</div>
+</div>
+</div>
+</main>
+</body></html>

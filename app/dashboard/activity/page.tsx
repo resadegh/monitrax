@@ -68,6 +68,7 @@ import { TransferDestinationSheet } from '@/components/bookkeeping/TransferDesti
 import { useSwipeGesture, SWIPE_THRESHOLD_PX } from '@/hooks/useSwipeGesture';
 import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton';
 import { ConfidenceReviewCard } from '@/components/bookkeeping/ConfidenceReviewCard';
+import { SubscriptionsReviewCard } from '@/components/bookkeeping/SubscriptionsReviewCard';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 // ---------------------------------------------------------------------------
@@ -857,6 +858,17 @@ function ActivityPageContent() {
             fetchSummary();
           }}
           onReviewBand={(band) => setConfidenceBand(band)}
+        />
+
+        {/* Phase 49.11 — "Possible subscriptions" review card. The dedicated
+            surface behind the Home pending-actions count (UNMATCHED
+            RecurringPayment patterns); the ?filter=recurring deep link lands
+            the user right here. Self-hides when there's nothing to confirm. */}
+        <SubscriptionsReviewCard
+          refreshKey={confidenceRefresh}
+          onActioned={() => {
+            fetchSummary();
+          }}
         />
 
         {/* CONTENT */}

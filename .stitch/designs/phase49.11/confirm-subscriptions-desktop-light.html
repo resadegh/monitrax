@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Possible Subscriptions Card</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "background": "#f4fcf0",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "on-primary-container": "#f7fff2",
+                      "trail-sky": "#0EA5E9",
+                      "primary-fixed": "#7ffc97",
+                      "inverse-primary": "#62df7d",
+                      "trail-violet": "#8B5CF6",
+                      "tertiary-fixed": "#d3e4fe",
+                      "on-primary": "#ffffff",
+                      "on-primary-fixed": "#002109",
+                      "secondary": "#585e6f",
+                      "on-tertiary-container": "#fdfcff",
+                      "on-secondary-fixed": "#151b2a",
+                      "surface-variant": "#dde5d9",
+                      "surface": "#f4fcf0",
+                      "on-tertiary": "#ffffff",
+                      "surface-container-low": "#eff6ea",
+                      "secondary-fixed": "#dce2f6",
+                      "secondary-container": "#d9dff4",
+                      "primary-container": "#00873a",
+                      "outline": "#6e7b6c",
+                      "inverse-on-surface": "#ecf3e7",
+                      "error-red": "#DC2626",
+                      "primary": "#006b2c",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-error-container": "#93000a",
+                      "surface-container": "#e9f0e5",
+                      "trail-emerald": "#16A34A",
+                      "tertiary-container": "#66768d",
+                      "primary-fixed-dim": "#62df7d",
+                      "on-secondary-container": "#5c6274",
+                      "on-primary-fixed-variant": "#005320",
+                      "inverse-surface": "#2b322b",
+                      "surface-tint": "#006e2d",
+                      "on-error": "#ffffff",
+                      "error": "#ba1a1a",
+                      "surface-dim": "#F1EFE8",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-surface-variant": "#3e4a3d",
+                      "on-secondary": "#ffffff",
+                      "trail-indigo": "#6366F1",
+                      "surface-container-high": "#e3eadf",
+                      "trail-amber": "#F59E0B",
+                      "surface-container-lowest": "#ffffff",
+                      "surface-ivory": "#FAFAF7",
+                      "on-surface": "#171d16",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed-variant": "#404757",
+                      "surface-container-highest": "#dde5d9",
+                      "outline-variant": "#bdcaba",
+                      "outline-slate": "#94A3B8",
+                      "on-background": "#171d16",
+                      "tertiary": "#4d5d73",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "surface-bright": "#f4fcf0"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "container-max": "1280px",
+                      "margin-mobile": "20px",
+                      "margin-desktop": "48px",
+                      "section-gap": "48px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "headline-sm": [
+                              "Inter"
+                      ],
+                      "headline-lg": [
+                              "Inter"
+                      ],
+                      "body-sm": [
+                              "Inter"
+                      ],
+                      "eyebrow": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "Inter"
+                      ],
+                      "headline-lg-mobile": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Inter"
+                      ],
+                      "data-xl": [
+                              "Inter"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "display-lg": [
+                              "Inter"
+                      ],
+                      "data-lg": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "headline-sm": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "eyebrow": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.18em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.65",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-xl": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.65",
+                                      "letterSpacing": "0",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.05",
+                                      "letterSpacing": "-0.03em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "data-lg": [
+                              "28px",
+                              {
+                                      "lineHeight": "1.0",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 30px rgba(15, 23, 42, 0.06);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .glass-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(to right, rgba(255,255,255,0.8), rgba(255,255,255,0.2));
+            z-index: 10;
+        }
+
+        .glass-row {
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.2s ease;
+        }
+
+        .glass-row:hover {
+            background: rgba(255, 255, 255, 0.8);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+        }
+
+        .gradient-text-teal {
+            background: linear-gradient(135deg, #0d9488, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .gradient-bg-teal {
+            background: linear-gradient(135deg, #0d9488, #06b6d4);
+        }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-margin-mobile md:p-margin-desktop font-body-md text-on-surface">
+<main class="w-full max-w-4xl mx-auto">
+<!-- SECTION CARD -->
+<article class="glass-panel rounded-[28px] p-6 md:p-8">
+<!-- Top Gradient Strip -->
+<div class="absolute top-0 left-0 right-0 h-[3px] gradient-bg-teal"></div>
+<!-- Header -->
+<header class="flex items-start justify-between mb-8 relative z-10">
+<div class="space-y-2 max-w-2xl">
+<span class="font-eyebrow text-eyebrow gradient-text-teal uppercase tracking-widest block">POSSIBLE SUBSCRIPTIONS</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">5 patterns look like subscriptions</h2>
+<p class="font-body-sm text-body-sm text-secondary">Confirming adds them to your bills forecast — dismiss the ones that aren't really recurring.</p>
+</div>
+<!-- Badge Icon -->
+<div class="w-11 h-11 rounded-[14px] gradient-bg-teal flex items-center justify-center shadow-sm flex-shrink-0">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">sync</span>
+</div>
+</header>
+<!-- Subscription List -->
+<div class="space-y-3 relative z-10">
+<!-- Row 1: Netflix -->
+<div class="glass-row rounded-[14px] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
+                            N
+                        </div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Netflix</h3>
+<p class="font-body-sm text-[13px] text-secondary mt-0.5">Monthly · seen 12 times · next expected 14 Jun</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+<span class="font-body-md text-body-md font-medium text-on-surface tabular-nums">$22.99/mo</span>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md transition-colors hover:bg-opacity-90">Confirm bill</button>
+<button aria-label="Dismiss" class="w-9 h-9 rounded-full flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 2: Spotify -->
+<div class="glass-row rounded-[14px] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
+                            S
+                        </div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Spotify</h3>
+<p class="font-body-sm text-[13px] text-secondary mt-0.5">Monthly · seen 6 times · next expected 18 Jun</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+<span class="font-body-md text-body-md font-medium text-on-surface tabular-nums">$16.99/mo</span>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md transition-colors hover:bg-opacity-90">Confirm bill</button>
+<button aria-label="Dismiss" class="w-9 h-9 rounded-full flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 3: Anytime Fitness -->
+<div class="glass-row rounded-[14px] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
+                            A
+                        </div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Anytime Fitness</h3>
+<p class="font-body-sm text-[13px] text-secondary mt-0.5">Fortnightly · seen 24 times · next expected 21 Jun</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+<span class="font-body-md text-body-md font-medium text-on-surface tabular-nums">$34.95/fn</span>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md transition-colors hover:bg-opacity-90">Confirm bill</button>
+<button aria-label="Dismiss" class="w-9 h-9 rounded-full flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 4: Adobe -->
+<div class="glass-row rounded-[14px] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0">
+                            A
+                        </div>
+<div>
+<h3 class="font-label-md text-label-md text-on-surface">Adobe</h3>
+<p class="font-body-sm text-[13px] text-secondary mt-0.5">Annual · seen 2 times · next expected 05 Jul</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto">
+<span class="font-body-md text-body-md font-medium text-on-surface tabular-nums">$299.00/yr</span>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md transition-colors hover:bg-opacity-90">Confirm bill</button>
+<button aria-label="Dismiss" class="w-9 h-9 rounded-full flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Row 5: AGL Energy -->
+<div class="glass-row rounded-[14px] p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="flex items-start gap-4">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant flex-shrink-0 mt-1">
+                            A
+                        </div>
+<div>
+<div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+<h3 class="font-label-md text-label-md text-on-surface">AGL Energy</h3>
+<span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-trail-emerald/10 text-trail-emerald">
+                                    Matches your existing bill ‘Electricity’
+                                </span>
+</div>
+<p class="font-body-sm text-[13px] text-secondary mt-1">Quarterly · seen 4 times · next expected 12 Jul</p>
+</div>
+</div>
+<div class="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto mt-2 md:mt-0">
+<span class="font-body-md text-body-md font-medium text-on-surface tabular-nums">$412.50/qt</span>
+<div class="flex items-center gap-2">
+<button class="px-4 py-2 rounded-[12px] bg-trail-emerald text-white font-label-md text-label-md transition-colors hover:bg-opacity-90">Link bill</button>
+<button aria-label="Dismiss" class="w-9 h-9 rounded-full flex items-center justify-center text-secondary hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<footer class="mt-8 border-t border-surface-variant pt-6 relative z-10">
+<p class="font-body-sm text-[13px] text-secondary flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px]">info</span>
+                    Confirmed subscriptions feed your bills forecast in My Safety Net.
+                </p>
+</footer>
+</article>
+</main>
+</body></html>
