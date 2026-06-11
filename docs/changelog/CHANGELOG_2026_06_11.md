@@ -1046,3 +1046,60 @@ existing documented rules within approved sections) — code-first permitted.
 - Production deploy `dpl_5Cxc3v4NrFkHDbQn5TLfZQJTkZ7C` ("Merge pull request #1076") reached
   `READY` after ~3 min. Runtime logs clean — no error/warning lines beyond the pre-existing
   DEP0169 noise.
+## Session: trusting-cerf-v19b70 — Audit-log enum backfill (12 silently-failing audit actions)
+
+### Changes Made
+- **Type**: Fix (security / compliance)
+- **Scope**: AuditLog write path — `prisma/schema.prisma` AuditAction enum, `lib/security/auditLog.ts`, `lib/security/cdrAuditCompliance.ts`, `lib/audit/logger.ts`
+- **Root Cause**: `lib/security/auditLog.ts` declared `type AuditAction = string` and cast
+  `entry.action as any` into `prisma.auditLog.create()`. TypeScript therefore never checked
+  action codes against the schema's `AuditAction` enum. Twelve codes were referenced by
+  `createAuditLog()` call sites without ever being added to the enum, so EVERY such write
+  failed at the DB layer with `Invalid value for argument 'action'. Expected AuditAction.`
+  — and the fire-and-forget `.catch(() => {})` swallowed it. Zero audit rows were ever
+  written for those surfaces (CLAUDE.md §12.5 violation). Found while investigating the
+  My Guide page via prod runtime logs per §17.3:
+  ```
+  07:36:16 prisma:error Invalid `prisma.auditLog.create()` invocation:
+    action: "AI_ADVICE_GENERATED" — Invalid value for argument `action`. Expected AuditAction.
+  ```
+- **Solution**:
+  1. Added the 12 missing values to the `AuditAction` enum + additive migration
+     `20260614000000_fix_missing_audit_action_enum_values` (`ALTER TYPE … ADD VALUE IF NOT
+     EXISTS`, mirrors the Track F precedent migrations): `AI_ADVICE_GENERATED`,
+     `AI_ADVICE_CHAT`, `CFO_SCENARIO_RUN` (Phase 40), `AI_ADVISOR_INVOCATION` (Phase 41
+     ProductionAuditSink), `ADMIN_LOGIN`, `OWNERSHIP_RECORD_CORRECTED`,
+     `PORTAL_SEAT_INVITED`, `PROPERTY_HERO_IMAGE_UPDATED` / `_REMOVED` (Phase 45.2.5),
+     `SMSF_RETURN_SAVED` (Phase 44.2), `HOUSEHOLD_PROFILE_CREATED` / `_UPDATED` (Phase 12 F.1).
+  2. **Root-cause fix**: `lib/security/auditLog.ts` now imports the Prisma-generated
+     `AuditAction` type and passes `entry.action` uncast — a missing enum value is now a
+     COMPILE error repo-wide, not a silent prod no-op. The compile check immediately caught
+     the household-profile + `lib/audit/logger.ts` cases the literal-grep had missed.
+  3. Dead-code deletion (§12.1): `lib/audit/logger.ts`'s parallel audit system
+     (`logAuditEvent` + `AuditEventType` + logLogin/logCreate/… wrappers) had ZERO callers —
+     only `extractRequestMeta` was imported anywhere. Deleted; file now exports only
+     `RequestMeta` + `extractRequestMeta`. Audit writes have one canonical source again
+     (§12.2): `lib/security/auditLog.ts`.
+  4. `lib/security/cdrAuditCompliance.ts` `withAuditedAuth`: removed the `action as string`
+     cast (its `CrudAction` union is a valid enum subset).
+
+### Files Modified
+- `prisma/schema.prisma` — +12 `AuditAction` enum values (documented inline)
+- `prisma/migrations/20260614000000_fix_missing_audit_action_enum_values/migration.sql` — NEW, additive enum migration
+- `lib/security/auditLog.ts` — `AuditAction` now the Prisma-generated enum type; `as any` cast on action removed
+- `lib/security/cdrAuditCompliance.ts` — `as string` cast removed
+- `lib/audit/logger.ts` — dead parallel audit system deleted; only `extractRequestMeta` retained
+
+### Also found this session (separate fix, pending diagnosis)
+- Prod `/api/cfo/advice` is serving `isFallback: true` docs (`model: undefined`) — Gemini
+  generation failing even after the 2026-06-10 model-ID migration (a754c60). `GEMINI_API_KEY`
+  exists in the production env scope; the per-request error line hasn't been captured yet
+  (runtime-log stream window missed it). Diagnosis continues in this session.
+
+### Build Status
+- [x] `npx prisma generate` + full-repo `tsc --noEmit` — 0 errors
+- [x] `npm run build` — green
+- [x] `npm run lint` — 158 pre-existing problems, byte-identical to the pre-change baseline; none in files touched by this PR
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- N/A — additive enum migration only (`ADD VALUE IF NOT EXISTS`); no UPDATE/DELETE/upsert, no DDL on tables.
