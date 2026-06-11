@@ -469,3 +469,44 @@ bills forecast (My Safety Net) through the existing Expense SSOT — no new aggr
 - Production deploy `dpl_BWLer2TULkPcgeds7g3uKQoywhBd` ("Merge pull request #1074") reached
   `READY` after ~3.5 min of building. Runtime logs: no error/warning lines beyond the
   pre-existing DEP0169 deprecation noise — clean against the pre-merge baseline.
+
+## Session: serene-goodall-6smazx — Phase 49.12 (band buttons always visible + confidence-tinted category pills)
+
+Two Reza reports from live prod testing (2026-06-11 screenshots):
+
+1. **"fix the AI Bookkeeping review buttons for high, medium and low"** — root cause: in
+   Reza's data ALL 1,018 queue items sit below 0.7 confidence (they're fallback-categorised
+   rows from the Gemini-outage era), so medium = 0 and the entire medium group (with its
+   "Confirm all") disappeared — the card read as broken/mislabeled. Fix in
+   `ConfidenceReviewCard`: all THREE bands now always render, each in its band colour
+   matching the segmented bar (high = emerald receipt chip; medium = amber "Confirm all N
+   medium" + amber-ghost "Review" — was sky/indigo, now band-mapped; low = rose "Review N
+   low"). Empty bands show a quiet "0 medium — nothing waiting" chip instead of vanishing.
+   Band-assignment audit: import route writes NEEDS_REVIEW for 0.7–0.9 and MANUAL for <0.7
+   (app/api/accounts/[id]/import/route.ts:389) — mapping is correct; this was a
+   presentation bug, not a data bug.
+
+2. **"change the catagory bubble for each transaction colour based on the confidence"** —
+   the transaction-list category pill now takes the confidence colour when the AI was
+   uncertain: amber (0.7–0.9) / rose (<0.7), replacing the small confidence dot (redundant
+   once the pill is tinted). Confident rows (≥0.9 / user-confirmed 1.0) keep the calm
+   category tone — tinting 1,000+ confident rows would be chromatic noise and would collide
+   with emerald = money-positive (§18.7.2). **Standing rule updated (supersedes the 49.8
+   wording):** uncertain rows take confidence colour EVERYWHERE (ledger list + review
+   surfaces); category colours apply only to confident rows.
+
+§18.2.1 note: both changes are true tweaks (control changes + token application per
+existing documented rules within approved sections) — code-first permitted.
+
+### Files Modified
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — three-band always-visible action row,
+  band-coloured (amber medium / rose low / emerald high), zero-state chips
+- `app/dashboard/activity/page.tsx` — confidence-tinted category pills (mobile + desktop),
+  confidence dot removed
+
+### Build Status
+- [x] tsc clean
+- [x] Build passes (`npm run build`)
+
+### §17.2 post-merge verification — PR #1075 (docs-only)
+- Production deploy `dpl_2GNZq2i83SjTWvkGPXDhx3gC8Sag` reached `READY`.
