@@ -1010,6 +1010,13 @@ function ActivityPageContent() {
           fetchTransactions();
           fetchSummary();
         }}
+        onMarkTransfer={() => {
+          // Phase 49.9 — hand off to the destination picker (the canonical
+          // transfer flow for existing transactions).
+          const tx = pickerTx;
+          setPickerTx(null);
+          if (tx) setTransferTx(tx);
+        }}
       />
 
       {/* Phase 49.5 — same picker sheet, but for a review-queue item being
@@ -1041,6 +1048,31 @@ function ActivityPageContent() {
             const json = await res.json().catch(() => null);
             throw new Error(json?.error?.message ?? 'Failed to file with the new category');
           }
+        }}
+        onMarkTransfer={async () => {
+          // Phase 49.9 — file the queue item as an own-account transfer.
+          if (!queueEditItem || !token) return;
+          const res = await fetch('/api/unified-transactions/review-queue', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ action: 'transfer', reviewItemIds: [queueEditItem.id] }),
+          });
+          if (!res.ok) {
+            const json = await res.json().catch(() => null);
+            throw new Error(json?.error?.message ?? 'Failed to mark as transfer');
+          }
+          const editedId = queueEditItem.id;
+          setQueueEditItem(null);
+          setQueueItems((prev) => prev.filter((i) => i.id !== editedId));
+          setQueueSelected((prev) => {
+            const next = new Set(prev);
+            next.delete(editedId);
+            return next;
+          });
+          setConfidenceRefresh((n) => n + 1);
+          fetchBandCounts();
+          fetchTransactions();
+          fetchSummary();
         }}
         onClose={() => setQueueEditItem(null)}
         onSuccess={() => {
@@ -1449,8 +1481,16 @@ function QueueReviewRow({
 }) {
   const isIn = item.direction === 'IN';
   const label = item.description || item.merchant || 'Transaction';
-  const dot = item.band === 'low' ? 'bg-rose-400' : 'bg-amber-400';
   const confidencePct = Math.round(item.aiConfidence * 100);
+  // Phase 49.8 (Reza) — in the REVIEW surface the category pill is
+  // colour-coded by CONFIDENCE BAND (amber = medium, rose = low), not by
+  // category: here the question is "how sure is the AI", and the pill is
+  // the confirm target. (Normal transaction lists keep category colours.)
+  const bandPillTone =
+    item.band === 'low'
+      ? 'bg-rose-500/15 text-rose-700 border-rose-500/30 dark:text-rose-300'
+      : 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300';
+  const bandTextTone = item.band === 'low' ? 'text-rose-600 dark:text-rose-400' : 'text-amber-600 dark:text-amber-400';
 
   // Phase 49.7 (Reza 2026-06-11) — the amount sits IMMEDIATELY LEFT of the
   // category cluster: one clean action line "-$33 · [Food & Dining ▾] ✓ ✗"
@@ -1467,7 +1507,7 @@ function QueueReviewRow({
           onClick={onEditCategory}
           title="Change category"
           aria-label={`Change category (currently ${item.aiCategoryLevel1 ?? 'uncategorised'})`}
-          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${getCategoryTone(item.aiCategoryLevel1)}`}
+          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border transition hover:ring-2 hover:ring-sky-500/30 ${bandPillTone}`}
         >
           {item.aiCategoryLevel1 ?? 'Pick category'}
           <ChevronDown className="w-3 h-3 opacity-60" />
@@ -1511,9 +1551,8 @@ function QueueReviewRow({
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-sm truncate">{label}</div>
-          <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5 mt-0.5">
-            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} aria-hidden />
-            <span className="tabular-nums">{confidencePct}% sure</span>
+          <div className="text-xs truncate mt-0.5">
+            <span className={`tabular-nums ${bandTextTone}`}>{confidencePct}% sure</span>
           </div>
         </div>
         {/* Desktop: amount + category cluster on one line */}

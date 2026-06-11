@@ -74,6 +74,21 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
     const result = await bulkConfirmCategorisations(auth.userId, { reviewItemIds: ids });
     return NextResponse.json({ success: true, data: result });
   }
+  if (body.action === 'transfer') {
+    // Phase 49.9 — file a single item as a transfer between own accounts
+    // (e.g. "R Sadeghtransfer") instead of income/expense.
+    if (ids.length !== 1) {
+      return NextResponse.json(
+        { success: false, error: { code: 'INVALID_TRANSFER', message: "action 'transfer' requires exactly one reviewItemId" } },
+        { status: 400 }
+      );
+    }
+    const result = await editReviewItem(auth.userId, ids[0], {
+      categoryLevel1: 'Transfer',
+      isTransfer: true,
+    });
+    return NextResponse.json({ success: true, data: result });
+  }
   if (body.action === 'edit') {
     // Single-item correction: file with the user's category (stronger
     // USER_CORRECTION learning signal than a confirm).
@@ -104,7 +119,7 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
   return NextResponse.json(
     {
       success: false,
-      error: { code: 'INVALID_ACTION', message: "action must be 'confirm', 'skip', or 'edit'" },
+      error: { code: 'INVALID_ACTION', message: "action must be 'confirm', 'skip', 'edit', or 'transfer'" },
     },
     { status: 400 }
   );

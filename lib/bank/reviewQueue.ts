@@ -122,6 +122,8 @@ export interface ReviewItemValues {
   subcategory?: string | null;
   isEssential?: boolean;
   isRecurring?: boolean;
+  /** Phase 49.9 — file the item as a transfer between own accounts. */
+  isTransfer?: boolean;
 }
 
 /**
@@ -204,6 +206,7 @@ export async function confirmReviewItem(
       isEssential: finalValues.isEssential || false,
       isRecurring: finalValues.isRecurring || false,
       userCorrectedCategory: wasEdited,
+      isTransfer: finalValues.isTransfer ?? false,
       // Confirming = user validated → promote to 1.0 (same convention the
       // bulk-categorise route writes; keeps confirmed rows out of the
       // "uncertain" surfaces).
