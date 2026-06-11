@@ -34,6 +34,7 @@ import {
   findActiveNavItem,
 } from '@/lib/navigation/trailNav';
 import { EditorialNavRow } from './EditorialNavRow';
+import { TrailStagePill } from '@/components/shell/TrailStagePill';
 
 export interface EditorialSidebarProps {
   /** Page-level user context — surface name + avatar at the bottom. */
@@ -141,7 +142,13 @@ export function EditorialSidebar({ user, onSignOut, className }: EditorialSideba
           // identity area, the button is a sibling so click targets
           // never overlap. Sign-out renders only when onSignOut is
           // provided (back-compat for callers that don't wire auth).
-          <div className="mt-2 flex items-center gap-2 rounded-lg pl-3 pr-1.5 py-1.5 transition-colors hover:bg-editorial-warm">
+          //
+          // Phase 14.10 — the TRAIL stage pill renders as a SIBLING
+          // below the row (not nested inside the profile Link) so the
+          // pill's own Link to /dashboard/cfo doesn't violate the
+          // no-nested-anchor rule.
+          <div className="mt-2 flex flex-col gap-1">
+          <div className="flex items-center gap-2 rounded-lg pl-3 pr-1.5 py-1.5 transition-colors hover:bg-editorial-warm">
             <Link
               href="/dashboard/settings/profile"
               className="flex min-w-0 flex-1 items-center gap-3"
@@ -175,6 +182,11 @@ export function EditorialSidebar({ user, onSignOut, className }: EditorialSideba
                 <LogOut className="h-3.5 w-3.5" strokeWidth={1.75} />
               </button>
             )}
+          </div>
+          {/* Phase 14.10 — ambient TRAIL stage pill below the profile
+              row. Renders null until the stage resolves so the layout
+              stays stable. */}
+          <TrailStagePill className="ml-3 self-start" />
           </div>
         )}
       </div>
