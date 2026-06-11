@@ -1041,3 +1041,8 @@ existing documented rules within approved sections) — code-first permitted.
 
 ### §17.2 post-merge verification — PR #1075 (docs-only)
 - Production deploy `dpl_2GNZq2i83SjTWvkGPXDhx3gC8Sag` reached `READY`.
+
+### §17.2 post-merge verification — PR #1076
+- Production deploy `dpl_5Cxc3v4NrFkHDbQn5TLfZQJTkZ7C` ("Merge pull request #1076") reached
+  `READY` after ~3 min. Runtime logs clean — no error/warning lines beyond the pre-existing
+  DEP0169 noise.
