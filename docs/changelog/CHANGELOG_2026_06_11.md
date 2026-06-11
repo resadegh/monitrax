@@ -162,3 +162,30 @@ confirm lives in the review queue, which never had a UI (§12.1 🗑️ row 31).
 - [x] tsc clean
 - [x] 253/253 bookkeeping tests
 - [x] Build passes
+
+## Session: serene-goodall-6smazx — Phase 49.2 ("Where your money goes" donut redesign)
+
+### Changes
+Redesigned the dated grey Sankey on `/dashboard/activity` to a modern Apple-Health-style
+DONUT + legend (Reza directive 2026-06-11: "a pie chart might be a better option … modern,
+clean, apple like"; donut chosen over solid pie per the design principles). Stitch-first
+per §18 — project 1859462351962811110, 4-variant matrix (desktop light
+`6b3ab0e0b5494d109d6954e781a1fd27` / desktop dark `7b9c9445bd364b42b972ad19cbea3319` /
+mobile light `86078d1815a54d68a6f0f198732cf25c`; dark reuses dark vocabulary). Direction
+approved by Reza on the donut before React ("this looks better … ship it"). Artefacts:
+`.stitch/designs/money-flow-redesign/`.
+
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — default view now an inline-SVG donut
+  (no chart-lib dep, §12.7) + legend. Donut = proportions at a glance, Surplus the emerald
+  hero arc (thicker + soft glow); center celebrates "KEPT 12% / $40K surplus"
+  (behaviour-psychology lens). Legend = exact amounts + % (solves donut precision), Surplus
+  row emerald-emphasised. The original Sankey is preserved behind a "View flow detail"
+  opt-in toggle (desktop Sankey / mobile vertical bars unchanged). Glass vocabulary §18.7.2
+  (28px radius, bg-card/70 + blur, 3px gradient top-accent, layered shadow + dark recipe).
+  `projectSnapshotToMoneyFlow` (the SSOT projection, §12.3) untouched — donut consumes the
+  same `MoneyFlowResult`.
+
+### Testing
+- [x] tsc clean
+- [x] 10/10 consumerSankeyProjection tests (projection unchanged)
+- [x] Build passes

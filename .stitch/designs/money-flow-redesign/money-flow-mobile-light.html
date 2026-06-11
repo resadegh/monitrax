@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Monitrax - Year to Date Money Flow</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#3e4a3d",
+                        "trail-violet": "#8B5CF6",
+                        "surface-variant": "#dde5d9",
+                        "surface-tint": "#006e2d",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-amber": "#F59E0B",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "inverse-primary": "#62df7d",
+                        "trail-emerald": "#16A34A",
+                        "surface-container-highest": "#dde5d9",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-container-low": "#eff6ea",
+                        "surface-dim": "#d5dcd1",
+                        "on-primary": "#ffffff",
+                        "surface-ivory": "#FAFAF7",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "error-red": "#DC2626",
+                        "secondary-fixed": "#dce2f6",
+                        "outline-slate": "#94A3B8",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "inverse-surface": "#2b322b",
+                        "error-container": "#ffdad6",
+                        "trail-sky": "#0EA5E9",
+                        "background": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-tertiary": "#ffffff",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-fixed": "#002109",
+                        "outline-variant": "#bdcaba",
+                        "secondary-container": "#d9dff4",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-background": "#171d16",
+                        "outline": "#6e7b6c",
+                        "surface-container-high": "#e3eadf",
+                        "secondary": "#585e6f",
+                        "on-secondary": "#ffffff",
+                        "tertiary": "#4d5d73",
+                        "on-surface": "#171d16",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface": "#f4fcf0",
+                        "trail-indigo": "#6366F1",
+                        "on-primary-container": "#f7fff2",
+                        "on-secondary-container": "#5c6274",
+                        "surface-container": "#e9f0e5",
+                        "tertiary-container": "#66768d",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#f4fcf0",
+                        "primary-fixed": "#7ffc97",
+                        "primary-container": "#00873a",
+                        "on-secondary-fixed": "#151b2a",
+                        "primary": "#006b2c",
+                        "trail-rose": "#E11D48" // Added missing rose color for the prompt requirement
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.375rem", // 22px approximate
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "container-max": "1280px",
+                        "section-gap": "48px",
+                        "margin-mobile": "20px",
+                        "unit": "4px",
+                        "margin-desktop": "48px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        
+        /* SVG Donut Animation */
+        .donut-segment {
+            transition: stroke-dasharray 1s ease-out;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory min-h-screen text-on-surface antialiased pb-safe">
+<!-- Top Navigation Placeholder (suppressed based on prompt focus, but structure implied) -->
+<header class="flex items-center justify-between px-margin-mobile h-16 w-full bg-surface-ivory fixed top-0 w-full z-50">
+<div class="flex items-center">
+<button class="text-primary active:scale-95 duration-150 p-2 -ml-2">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<span class="font-headline-sm text-headline-sm font-semibold text-primary ml-2">Flow</span>
+</div>
+<button class="text-primary active:scale-95 duration-150 p-2 -mr-2">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-margin-mobile pb-24 max-w-[390px] mx-auto w-full flex flex-col gap-section-gap">
+<!-- Year to Date Flow Card -->
+<div class="relative bg-white/80 backdrop-blur-xl rounded-2xl shadow-[0_4px_24px_-4px_rgba(11,18,32,0.04)] border border-outline-variant/40 overflow-hidden flex flex-col">
+<!-- 3px top gradient accent strip -->
+<div class="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-trail-sky via-trail-emerald to-trail-violet z-10"></div>
+<div class="p-4 md:p-6 flex flex-col gap-6 mt-[3px]">
+<!-- 1. Header -->
+<div class="flex flex-col gap-1 items-start">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.18em]">WHERE YOUR MONEY GOES</span>
+<div class="flex justify-between items-center w-full mt-1">
+<h2 class="font-headline-md text-headline-md text-on-surface">Year to date</h2>
+<button class="flex items-center gap-1 px-3 py-1.5 rounded-full border border-secondary/20 bg-transparent hover:bg-surface-container-low transition-colors font-label-md text-label-md text-secondary">
+                            View flow detail
+                            <span class="material-symbols-outlined text-[16px]">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- 2 & 3. Visual & Donut Center -->
+<div class="relative w-full flex justify-center py-4">
+<div class="w-[220px] h-[220px] relative">
+<!-- SVG Donut Chart -->
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 100 100">
+<!-- Background track -->
+<circle cx="50" cy="50" fill="transparent" r="40" stroke="#f4fcf0" stroke-width="12"></circle>
+<!-- 
+                                Circumference = 2 * pi * 40 = 251.327
+                                Values:
+                                Total: 321k
+                                Tax: 110k (34.2%) -> ~86 units
+                                Loans: 95k (29.6%) -> ~74 units
+                                Essentials: 50k (15.5%) -> ~39 units
+                                Discretionary: 26k (8.1%) -> ~20 units
+                                Surplus: 40k (12.4%) -> ~31 units
+                                
+                                Order: Tax (Rose), Loans (Sky), Essentials (Amber), Discretionary (Violet), Surplus (Emerald)
+                            -->
+<!-- Tax (Rose) -->
+<circle class="donut-segment" cx="50" cy="50" fill="transparent" r="40" stroke="#E11D48" stroke-dasharray="84 167.3" stroke-dashoffset="0" stroke-width="12"></circle>
+<!-- Loans (Sky) -->
+<circle class="donut-segment" cx="50" cy="50" fill="transparent" r="40" stroke="#0EA5E9" stroke-dasharray="72 179.3" stroke-dashoffset="-86" stroke-width="12"></circle>
+<!-- Essentials (Amber) -->
+<circle class="donut-segment" cx="50" cy="50" fill="transparent" r="40" stroke="#F59E0B" stroke-dasharray="37 214.3" stroke-dashoffset="-160" stroke-width="12"></circle>
+<!-- Discretionary (Violet) -->
+<circle class="donut-segment" cx="50" cy="50" fill="transparent" r="40" stroke="#8B5CF6" stroke-dasharray="18 233.3" stroke-dashoffset="-199" stroke-width="12"></circle>
+<!-- Surplus (Emerald) -->
+<circle class="donut-segment" cx="50" cy="50" fill="transparent" r="40" stroke="#16A34A" stroke-dasharray="29 222.3" stroke-dashoffset="-219" stroke-width="12"></circle>
+</svg>
+<!-- Center Content -->
+<div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.18em]">KEPT</span>
+<span class="font-data-xl text-data-xl text-on-surface mt-1 mb-1 tabular-nums">12%</span>
+<span class="font-body-sm text-body-sm text-secondary">$40K surplus</span>
+</div>
+</div>
+</div>
+<!-- 4. Legend Header -->
+<div class="w-full mt-2">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.18em]">TOTAL INCOME $321,000 / year</span>
+</div>
+<!-- 5. Legend List Stack -->
+<div class="flex flex-col w-full border-t border-outline-variant/30">
+<!-- Tax Row -->
+<div class="flex items-center justify-between py-3 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-trail-rose"></div>
+<span class="font-body-md text-body-md text-on-surface">Tax</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md text-on-surface tabular-nums">$110,000</span>
+<span class="font-body-sm text-body-sm text-secondary tabular-nums w-10 text-right">34%</span>
+</div>
+</div>
+<!-- Loans Row -->
+<div class="flex items-center justify-between py-3 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-trail-sky"></div>
+<span class="font-body-md text-body-md text-on-surface">Loans</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md text-on-surface tabular-nums">$95,000</span>
+<span class="font-body-sm text-body-sm text-secondary tabular-nums w-10 text-right">30%</span>
+</div>
+</div>
+<!-- Essentials Row -->
+<div class="flex items-center justify-between py-3 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-trail-amber"></div>
+<span class="font-body-md text-body-md text-on-surface">Essentials</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md text-on-surface tabular-nums">$50,000</span>
+<span class="font-body-sm text-body-sm text-secondary tabular-nums w-10 text-right">16%</span>
+</div>
+</div>
+<!-- Discretionary Row -->
+<div class="flex items-center justify-between py-3 border-b border-outline-variant/30">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-trail-violet"></div>
+<span class="font-body-md text-body-md text-on-surface">Discretionary</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md text-on-surface tabular-nums">$26,000</span>
+<span class="font-body-sm text-body-sm text-secondary tabular-nums w-10 text-right">8%</span>
+</div>
+</div>
+<!-- 6. Surplus Row (Highlighted) -->
+<div class="flex items-center justify-between py-3 px-3 -mx-3 bg-trail-emerald/5 rounded-lg border border-trail-emerald/20 mt-2">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-trail-emerald ring-2 ring-trail-emerald/20"></div>
+<span class="font-body-md text-body-md font-medium text-trail-emerald">Surplus</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md font-medium text-trail-emerald tabular-nums">$40,000</span>
+<span class="font-body-sm text-body-sm font-medium text-trail-emerald tabular-nums w-10 text-right">12%</span>
+</div>
+</div>
+</div>
+<!-- 8. Footer -->
+<div class="mt-2 pt-4 border-t border-outline-variant/30">
+<p class="font-body-sm text-body-sm text-secondary italic">
+                        You keep 12% of what you earn — every dollar of surplus is future freedom.
+                    </p>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Shell Placeholder (Mobile) -->
+<nav class="fixed bottom-0 w-full z-50 rounded-t-xl bg-surface-container-lowest shadow-[0_-1px_4px_0_rgba(11,18,32,0.04)] flex justify-around items-center w-full px-4 py-3 pb-safe border-t-0 shadow-sm">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">dashboard</span>
+<span class="font-label-md text-label-md">Overview</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">account_balance_wallet</span>
+<span class="font-label-md text-label-md">Flow</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">show_chart</span>
+<span class="font-label-md text-label-md">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined mb-1">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<script>
+        // Simple entry animation for the donut chart segments to give a premium feel
+        document.addEventListener('DOMContentLoaded', () => {
+            const segments = document.querySelectorAll('.donut-segment');
+            segments.forEach((segment, index) => {
+                const originalDashArray = segment.getAttribute('stroke-dasharray');
+                segment.setAttribute('stroke-dasharray', `0 251.3`);
+                
+                setTimeout(() => {
+                    segment.setAttribute('stroke-dasharray', originalDashArray);
+                }, 100 + (index * 150));
+            });
+        });
+    </script>
+</body></html>
