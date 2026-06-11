@@ -2,187 +2,147 @@
  * Confidence-based bulk confirmation of AI categorisations.
  *
  * Canonical service for the Activity page "AI bookkeeper" card (Phase 49 —
- * Activity redesign, 2026-06-11). Confirming an AI category:
- *   1. Promotes the transaction's confidenceScore to 1.0 — the codebase's
- *      established "user validated this" convention (same value the
- *      bulk-categorise route writes; the UI's confidence dots key off
- *      confidenceScore < 0.9, so confirmed rows naturally drop out of the
- *      review surfaces).
- *   2. Reinforces the Phase 13 learning surface: the merchant's mapping is
- *      stamped lastConfirmedAt / confidence 1.0 so the next import auto-files
- *      this merchant at high confidence.
+ * Activity redesign, 2026-06-11).
  *
- * Deliberately NOT done here:
- *   - No category mutation — confirmation accepts the AI's triple as-is.
- *     (Corrections go through PATCH /api/unified-transactions/[id] or
- *     bulk-categorise, which set userCorrectedCategory.)
- *   - No TransactionEdit rows — nothing user-visible changed on the row.
- *   - USER-source merchant mappings are never overwritten (a deliberate
- *     per-merchant rule the user set via PATCH outranks a bulk confirm).
+ * Where the bands actually live (this is the crux):
+ *   - HIGH (≥0.9) predictions are auto-accepted at import time and already
+ *     exist as UnifiedTransaction rows. Nothing to confirm — counted only
+ *     for the celebratory "N auto-filed" chip.
+ *   - MEDIUM (0.7–0.9) and LOW (<0.7) predictions are parked in
+ *     TransactionReviewQueue (status PENDING) and are NOT yet real
+ *     transactions. Confirming them is what promotes each into a
+ *     UnifiedTransaction (via the shared confirmReviewItem service) and
+ *     feeds the Phase 13 merchant-learning loop.
  *
- * Confidence bands (mirrors classifyByConfidence in aiCategorisation.ts):
- *   high   ≥ 0.90 — auto-accepted at import; no confirmation needed
- *   medium ≥ 0.70 and < 0.90 — the bulk-confirm sweet spot
- *   low    > 0 and < 0.70 — confirmable, but per-row review is encouraged
+ * This finally gives TransactionReviewQueue a user-facing surface (it was
+ * backend-only staging with no UI — the §12.1 "🗑️ row 31" debt).
+ *
+ * Confirmation accepts the AI's prediction as-is. Corrections still go
+ * through PATCH /api/unified-transactions/[id] or bulk-categorise.
  */
 
 import prisma from '@/lib/db';
+import { ImportReviewStatus } from '@prisma/client';
+import { confirmReviewItem } from '@/lib/bank/reviewQueue';
 
 export type ConfidenceBand = 'medium' | 'low';
 
 export interface ConfidenceSummary {
-  /** Categorised, confidence ≥ 0.9 (auto-filed; includes user-confirmed 1.0). */
+  /** Auto-accepted at import (UnifiedTransaction, confidence ≥ 0.9). Done. */
   high: number;
-  /** Categorised, unconfirmed, 0.7 ≤ confidence < 0.9. */
+  /** Review-queue PENDING, NEEDS_REVIEW band (0.7–0.9). Bulk-confirm sweet spot. */
   medium: number;
-  /** Categorised, unconfirmed, 0 < confidence < 0.7. */
+  /** Review-queue PENDING, MANUAL band (<0.7). */
   low: number;
-  /** No category at all — the existing review-queue / picker flows own these. */
-  uncategorised: number;
 }
 
-const BAND_RANGES: Record<ConfidenceBand, { gte: number; lt: number }> = {
-  medium: { gte: 0.7, lt: 0.9 },
-  low: { gte: 0.000001, lt: 0.7 },
+const BAND_TO_LEVEL: Record<ConfidenceBand, string> = {
+  medium: 'NEEDS_REVIEW',
+  low: 'MANUAL',
 };
 
-/** Hard cap per call — same spirit as bulk-categorise's MAX_BULK, sized for one import. */
+/** Hard cap per call — sized for one import's worth of review items. */
 const MAX_CONFIRM = 500;
 
 export async function getConfidenceSummary(userId: string): Promise<ConfidenceSummary> {
-  const [high, medium, low, uncategorised] = await Promise.all([
+  const [high, medium, low] = await Promise.all([
     prisma.unifiedTransaction.count({
       where: { userId, categoryLevel1: { not: null }, confidenceScore: { gte: 0.9 } },
     }),
-    prisma.unifiedTransaction.count({
-      where: {
-        userId,
-        categoryLevel1: { not: null },
-        userCorrectedCategory: false,
-        confidenceScore: { gte: BAND_RANGES.medium.gte, lt: BAND_RANGES.medium.lt },
-      },
+    prisma.transactionReviewQueue.count({
+      where: { userId, status: ImportReviewStatus.PENDING, confidenceLevel: 'NEEDS_REVIEW' },
     }),
-    prisma.unifiedTransaction.count({
-      where: {
-        userId,
-        categoryLevel1: { not: null },
-        userCorrectedCategory: false,
-        confidenceScore: { gte: BAND_RANGES.low.gte, lt: BAND_RANGES.low.lt },
-      },
-    }),
-    prisma.unifiedTransaction.count({
-      where: { userId, categoryLevel1: null, isTransfer: false },
+    prisma.transactionReviewQueue.count({
+      where: { userId, status: ImportReviewStatus.PENDING, confidenceLevel: 'MANUAL' },
     }),
   ]);
 
-  return { high, medium, low, uncategorised };
+  return { high, medium, low };
 }
 
 export interface BulkConfirmResult {
   confirmedCount: number;
-  merchantsLearned: number;
+  /** Review-queue ids that failed to confirm (surfaced for diagnostics). */
+  failedCount: number;
 }
 
 /**
- * Confirm AI categorisations in bulk — either a whole confidence band or an
- * explicit id list (the per-row "Looks right" chip sends a single id).
+ * Confirm AI categorisations in bulk — a whole confidence band, or an explicit
+ * review-queue id list (the per-item "✓ Looks right" affordance sends a
+ * single id). Each confirmation creates the UnifiedTransaction and runs the
+ * Phase 13 learning via the shared confirmReviewItem service.
  *
- * CLAUDE.md §12.11 guards:
- *   - UnifiedTransaction updateMany touches ONLY confidenceScore, and only on
- *     rows where userCorrectedCategory=false AND confidenceScore sits in an
- *     AI-authored band (< 0.9) — user-entered data is structurally out of
- *     reach of the where clause.
- *   - MerchantMapping updates skip source='USER' rows entirely.
+ * CLAUDE.md §12.11: the where clause is scoped to the caller's own PENDING
+ * queue rows in the named band — no user-entered transaction data is reachable
+ * (these rows are not yet transactions). Each confirm is independent; one
+ * failure does not abort the batch.
  */
 export async function bulkConfirmCategorisations(
   userId: string,
-  input: { band?: ConfidenceBand; transactionIds?: string[] }
+  input: { band?: ConfidenceBand; reviewItemIds?: string[] }
 ): Promise<BulkConfirmResult> {
-  const baseWhere = {
-    userId,
-    categoryLevel1: { not: null },
-    userCorrectedCategory: false,
-    // Never re-stamp already-confirmed/high rows, and never touch rows
-    // without an AI confidence at all (rule-based / manual entries).
-    confidenceScore: input.band
-      ? { gte: BAND_RANGES[input.band].gte, lt: BAND_RANGES[input.band].lt }
-      : { gt: 0, lt: 0.9 },
-  } as const;
+  const where = input.reviewItemIds?.length
+    ? {
+        userId,
+        status: ImportReviewStatus.PENDING,
+        id: { in: input.reviewItemIds.slice(0, MAX_CONFIRM) },
+      }
+    : {
+        userId,
+        status: ImportReviewStatus.PENDING,
+        confidenceLevel: input.band ? BAND_TO_LEVEL[input.band] : undefined,
+      };
 
-  const targets = await prisma.unifiedTransaction.findMany({
-    where: input.transactionIds?.length
-      ? { ...baseWhere, id: { in: input.transactionIds.slice(0, MAX_CONFIRM) } }
-      : baseWhere,
-    select: {
-      id: true,
-      merchantStandardised: true,
-      categoryLevel1: true,
-      categoryLevel2: true,
-      subcategory: true,
-      confidenceScore: true,
-    },
+  const items = await prisma.transactionReviewQueue.findMany({
+    where,
     take: MAX_CONFIRM,
   });
 
-  if (targets.length === 0) {
-    return { confirmedCount: 0, merchantsLearned: 0 };
+  let confirmedCount = 0;
+  let failedCount = 0;
+
+  for (const item of items) {
+    try {
+      // accountId/batchId resolved from the item's importBatch inside the service.
+      await confirmReviewItem(userId, null, item.importBatchId, item, 'CONFIRM', null, false);
+      confirmedCount++;
+    } catch (err) {
+      failedCount++;
+      console.error(
+        `[bulkConfirm] review item ${item.id} failed:`,
+        err instanceof Error ? err.message : err
+      );
+    }
   }
 
-  let merchantsLearned = 0;
+  // Roll up batch counters for any batches we touched (keeps the import
+  // batch's status/confirmed counts honest; mirrors the per-batch route).
+  const touchedBatchIds = Array.from(
+    new Set(items.map((i) => i.importBatchId).filter((b): b is string => !!b))
+  );
+  for (const batchId of touchedBatchIds) {
+    const [confirmed, remainingPending] = await Promise.all([
+      prisma.transactionReviewQueue.count({
+        where: {
+          importBatchId: batchId,
+          userId,
+          status: { in: [ImportReviewStatus.USER_CONFIRMED, ImportReviewStatus.USER_EDITED] },
+        },
+      }),
+      prisma.transactionReviewQueue.count({
+        where: { importBatchId: batchId, userId, status: ImportReviewStatus.PENDING },
+      }),
+    ]);
+    await prisma.importBatch
+      .update({
+        where: { id: batchId },
+        data: {
+          userConfirmedCount: confirmed,
+          ...(remainingPending === 0 ? { processingCompletedAt: new Date() } : {}),
+        },
+      })
+      .catch(() => {});
+  }
 
-  await prisma.$transaction(async (txnCtx) => {
-    await txnCtx.unifiedTransaction.updateMany({
-      where: { id: { in: targets.map((t) => t.id) }, userId },
-      data: { confidenceScore: 1.0 },
-    });
-
-    // Phase 13 learning reinforcement — one upsert per distinct merchant,
-    // using THAT merchant's confirmed category (unlike bulk-categorise,
-    // which applies a single user-chosen category to the whole batch).
-    const byMerchant = new Map<string, (typeof targets)[number]>();
-    for (const t of targets) {
-      const key = t.merchantStandardised?.toLowerCase();
-      if (key && !byMerchant.has(key)) byMerchant.set(key, t);
-    }
-
-    for (const [merchantRaw, t] of byMerchant) {
-      if (!t.categoryLevel1 || !t.merchantStandardised) continue;
-      const existing = await txnCtx.merchantMapping.findUnique({
-        where: { userId_merchantRaw: { userId, merchantRaw } },
-        select: { id: true, source: true },
-      });
-      if (existing?.source === 'USER') continue; // user rule outranks bulk confirm
-      if (existing) {
-        await txnCtx.merchantMapping.update({
-          where: { id: existing.id },
-          data: {
-            categoryLevel1: t.categoryLevel1,
-            categoryLevel2: t.categoryLevel2 ?? null,
-            subcategory: t.subcategory ?? null,
-            confidence: 1.0,
-            lastConfirmedAt: new Date(),
-            usageCount: { increment: 1 },
-          },
-        });
-      } else {
-        await txnCtx.merchantMapping.create({
-          data: {
-            userId,
-            merchantRaw,
-            merchantStandardised: t.merchantStandardised,
-            categoryLevel1: t.categoryLevel1,
-            categoryLevel2: t.categoryLevel2 ?? null,
-            subcategory: t.subcategory ?? null,
-            confidence: 1.0,
-            source: 'AI',
-            lastConfirmedAt: new Date(),
-            usageCount: 1,
-          },
-        });
-      }
-      merchantsLearned++;
-    }
-  });
-
-  return { confirmedCount: targets.length, merchantsLearned };
+  return { confirmedCount, failedCount };
 }

@@ -1,26 +1,30 @@
 /**
- * Phase 42 PR6.5 — Consumer money-flow Sankey wrapper.
+ * Phase 42 PR6.5 — Consumer money-flow card.
  *
- * Reuses the Phase 41g `<MoneyFlowSankey />` component (the entity-
- * level Sankey on `/dashboard/entities`) by projecting a
- * `MasterFinancialSnapshot` into the same `MoneyFlowResult` shape
- * with a single synthetic "You" entity.
+ * Reuses the Phase 41g `<MoneyFlowSankey />` rendering primitive by
+ * projecting a `MasterFinancialSnapshot` into the same `MoneyFlowResult`
+ * shape with a single synthetic "You" entity.
  *
  * Per CLAUDE.md §12.3 — no new chart engine, no parallel aggregator.
  * The component composes:
  *   - canonical `getMasterFinancialSnapshot()` (via `/api/master-snapshot`)
- *   - existing `<MoneyFlowSankey />` rendering primitive
+ *   - existing `<MoneyFlowSankey />` rendering primitive (opt-in "flow detail")
  *
- * Per Phase 42 spec §6.6 — placed at the top of `/dashboard/activity`
- * as the *aha moment*: "so THIS is where my money goes." Mobile-first
- * — the underlying Sankey already responsive (per Phase 41g).
+ * Phase 49.2 (2026-06-11) — redesigned to the §18.7.2 glass vocabulary.
+ * Default view is now a modern Apple-Health-style DONUT + legend (the old
+ * grey Sankey read dated against the rest of the page). The Sankey is kept
+ * as an opt-in behind "View flow detail". Stitch-first per §18:
+ * project 1859462351962811110, screens 6b3ab0e0b5494d109d6954e781a1fd27
+ * (desktop light) / 7b9c9445bd364b42b972ad19cbea3319 (desktop dark) /
+ * 86078d1815a54d68a6f0f198732cf25c (mobile light); artefacts
+ * .stitch/designs/money-flow-redesign/.
  *
- * Period: monthly view scaled from the canonical *annual* snapshot.
- * Spec §6 calls for "monthly money-flow Sankey"; we annualise → /12 ×
- * months-elapsed-in-current-year for the display values, then label
- * the visual as "Year to date" so the framing matches what the user
- * has already done. Future PR can switch to a strict trailing-12mo
- * window once the recurring-detection signal is more mature.
+ * Donut = the gestalt (proportions at a glance, Surplus the emerald hero);
+ * legend = the precision (exact amounts + %). Center celebrates what's KEPT
+ * (behaviour-psychology lens — anchor on achievement, not leakage).
+ *
+ * Period: values come from the canonical *annual* snapshot, labelled
+ * "Year to date" to match the framing the user has already seen.
  */
 
 'use client';
@@ -191,37 +195,225 @@ export function ConsumerMoneyFlowSankey({ snapshot: precomputed }: ConsumerMoney
     };
   }, [precomputed, token]);
 
+  const [showDetail, setShowDetail] = useState(false);
+
   if (error || !snapshot) return null;
 
   const flow = projectSnapshotToMoneyFlow(snapshot);
   if (flow.isEmpty) return null;
 
+  const { totalIncome, outflows } = flow;
+  // Legend rows largest-first (financial-adviser lens — biggest first), with
+  // Surplus always rendered last as the celebrated hero regardless of size.
+  const rows = [...outflows]
+    .filter((o) => o.label !== 'Surplus')
+    .sort((a, b) => b.amount - a.amount);
+  const surplus = outflows.find((o) => o.label === 'Surplus');
+  const surplusAmount = surplus?.amount ?? 0;
+  const keptPct = totalIncome > 0 ? Math.round((surplusAmount / totalIncome) * 100) : 0;
+  const orderedForDonut = surplus ? [...rows, surplus] : rows;
+
   return (
     <section
       aria-label="Where your money goes"
-      className="rounded-3xl border border-slate-200 bg-white/70 p-4 sm:p-6 shadow-sm overflow-hidden"
+      className="relative overflow-hidden rounded-[28px] border border-foreground/10 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]"
     >
-      <header className="mb-3">
-        <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-          Where your money goes
-        </p>
-        <p className="text-base sm:text-lg font-semibold text-slate-900 mt-0.5">
-          Year to date
-        </p>
-      </header>
-      {/* Phase 42 PR6.5h — mobile vs desktop fork.
-          Sankey diagrams need horizontal width to be readable; on
-          mobile the labels overlap and bands compress to invisible.
-          Per Reza directive 2026-05-08 — hide the Sankey on
-          mobile and show a clean vertical breakdown instead. The
-          Sankey returns above `sm:` where the canvas has room. */}
-      <div className="hidden sm:block">
-        <MoneyFlowSankey flow={flow} />
-      </div>
-      <div className="sm:hidden">
-        <MobileMoneyFlowSummary flow={flow} />
+      {/* 3px sky→indigo top-accent + curved-glass highlight (§18.7.2) */}
+      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-sky-400 to-indigo-500" aria-hidden />
+      <div className="pointer-events-none absolute inset-x-0 top-[3px] h-[30%] bg-gradient-to-b from-white/40 to-transparent opacity-60 dark:from-white/10" aria-hidden />
+
+      <div className="relative p-5 sm:p-6">
+        <header className="mb-5 flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Where your money goes
+            </p>
+            <h2 className="text-lg sm:text-xl font-semibold tracking-tight mt-0.5">Year to date</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowDetail((v) => !v)}
+            className="inline-flex items-center gap-1 rounded-full border border-foreground/10 bg-background/50 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur transition hover:text-foreground hover:border-foreground/25 shrink-0"
+            aria-expanded={showDetail}
+          >
+            {showDetail ? 'Hide flow detail' : 'View flow detail'}
+            <span aria-hidden>{showDetail ? '⌃' : '›'}</span>
+          </button>
+        </header>
+
+        {showDetail ? (
+          // Opt-in: the original Sankey (desktop) / vertical bars (mobile).
+          <>
+            <div className="hidden sm:block">
+              <MoneyFlowSankey flow={flow} />
+            </div>
+            <div className="sm:hidden">
+              <MobileMoneyFlowSummary flow={flow} />
+            </div>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+            {/* Donut */}
+            <MoneyDonut
+              segments={orderedForDonut}
+              total={totalIncome}
+              keptPct={keptPct}
+              surplusAmount={surplusAmount}
+            />
+            {/* Legend */}
+            <div className="w-full sm:flex-1">
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-2">
+                Total income{' '}
+                <span className="text-foreground tabular-nums">{fmtAUD0(totalIncome)}</span>
+                <span className="text-muted-foreground"> / year</span>
+              </p>
+              <ul>
+                {orderedForDonut.map((o) => {
+                  const meta = SEGMENT_META[o.label] ?? FALLBACK_META;
+                  const pct = totalIncome > 0 ? (o.amount / totalIncome) * 100 : 0;
+                  const isSurplus = o.label === 'Surplus';
+                  return (
+                    <li
+                      key={o.label}
+                      className={`flex items-center gap-3 border-b border-foreground/5 py-2.5 last:border-0 ${
+                        isSurplus ? '-mx-2 rounded-lg bg-emerald-500/[0.06] px-2' : ''
+                      }`}
+                    >
+                      <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${meta.swatch}`} aria-hidden />
+                      <span
+                        className={`flex-1 text-sm ${
+                          isSurplus ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-foreground'
+                        }`}
+                      >
+                        {meta.display}
+                      </span>
+                      <span
+                        className={`text-sm tabular-nums ${
+                          isSurplus ? 'font-semibold text-emerald-700 dark:text-emerald-300' : 'text-foreground'
+                        }`}
+                      >
+                        {fmtAUD0(o.amount)}
+                      </span>
+                      <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">
+                        {pct.toFixed(0)}%
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        )}
+
+        {!showDetail && (
+          <p className="mt-4 text-center text-xs text-muted-foreground/80">
+            You keep {keptPct}% of what you earn — every dollar of surplus is future freedom.
+          </p>
+        )}
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Donut + segment metadata (Phase 49.2)
+// ---------------------------------------------------------------------------
+
+const fmtAUD0 = (n: number) =>
+  Math.abs(n) >= 1000
+    ? `$${Math.round(Math.abs(n) / 1000).toLocaleString('en-AU')}K`
+    : Math.abs(n).toLocaleString('en-AU', { style: 'currency', currency: 'AUD', maximumFractionDigits: 0 });
+
+/**
+ * Per-outflow visual metadata. `swatch` = legend dot colour;
+ * `stroke` = donut arc colour (Tailwind text class + stroke=currentColor so
+ * dark-mode variants apply). TRAIL palette per §18.7.2.
+ */
+const SEGMENT_META: Record<string, { display: string; swatch: string; stroke: string }> = {
+  'Loan repayments': { display: 'Loans', swatch: 'bg-sky-500', stroke: 'text-sky-500 dark:text-sky-400' },
+  'Essential expenses': { display: 'Essentials', swatch: 'bg-amber-500', stroke: 'text-amber-500 dark:text-amber-400' },
+  Tax: { display: 'Tax', swatch: 'bg-rose-500', stroke: 'text-rose-500 dark:text-rose-400' },
+  Discretionary: { display: 'Discretionary', swatch: 'bg-violet-500', stroke: 'text-violet-500 dark:text-violet-400' },
+  Surplus: { display: 'Surplus', swatch: 'bg-emerald-500', stroke: 'text-emerald-500 dark:text-emerald-400' },
+};
+const FALLBACK_META = { display: 'Other', swatch: 'bg-slate-400', stroke: 'text-slate-400' };
+
+/**
+ * Inline-SVG donut — no chart-library dependency (§12.7 simplicity).
+ * Arcs drawn via stroke-dasharray on stacked circles; rounded caps; small
+ * gaps between segments. The emerald Surplus arc is thicker for emphasis.
+ * Center celebrates the KEPT %.
+ */
+function MoneyDonut({
+  segments,
+  total,
+  keptPct,
+  surplusAmount,
+}: {
+  segments: MoneyFlowOutflow[];
+  total: number;
+  keptPct: number;
+  surplusAmount: number;
+}) {
+  const size = 180;
+  const stroke = 22;
+  const r = (size - stroke) / 2 - 4;
+  const cx = size / 2;
+  const cy = size / 2;
+  const C = 2 * Math.PI * r;
+  const GAP = 2; // px gap between segments
+
+  let offset = 0;
+  const arcs = segments
+    .filter((s) => s.amount > 0)
+    .map((s) => {
+      const frac = total > 0 ? s.amount / total : 0;
+      const len = Math.max(0, frac * C - GAP);
+      const meta = SEGMENT_META[s.label] ?? FALLBACK_META;
+      const isSurplus = s.label === 'Surplus';
+      const arc = {
+        key: s.label,
+        len,
+        offset,
+        stroke: meta.stroke,
+        width: isSurplus ? stroke + 4 : stroke,
+        glow: isSurplus,
+      };
+      offset += frac * C;
+      return arc;
+    });
+
+  return (
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+        {/* track */}
+        <circle cx={cx} cy={cy} r={r} fill="none" strokeWidth={stroke} className="text-foreground/5" stroke="currentColor" />
+        {arcs.map((a) => (
+          <circle
+            key={a.key}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={a.width}
+            strokeLinecap="round"
+            strokeDasharray={`${a.len} ${C - a.len}`}
+            strokeDashoffset={-a.offset}
+            className={a.stroke}
+            style={a.glow ? { filter: 'drop-shadow(0 0 5px rgba(16,163,74,0.45))' } : undefined}
+          />
+        ))}
+      </svg>
+      {/* center */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Kept</span>
+        <span className="text-3xl font-semibold tabular-nums tracking-tight text-emerald-600 dark:text-emerald-400">
+          {keptPct}%
+        </span>
+        <span className="text-[11px] tabular-nums text-muted-foreground">{fmtAUD0(surplusAmount)} surplus</span>
+      </div>
+    </div>
   );
 }
 

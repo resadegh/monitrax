@@ -127,6 +127,68 @@ Direction approved by Reza before React ("generate the dark version and ship it"
 - Prod deploy `dpl_2LvHQD8sgbYjxj8LG4QMsmCm4BdK` reached `READY` (2026-06-11 02:12:25), runtime logs clean:
   `(no runtime logs in the retention window — no recent traffic, or the deploy is too old)` — no errors since deploy.
 
+## Session: serene-goodall-6smazx — Phase 49.1 (bulk-confirm correctness fix)
+
+### Root cause
+The Phase 49 "AI bookkeeper" card was invisible in prod. Cause: the QIF/CSV
+import routes auto-accepted predictions (≥0.9) to `UnifiedTransaction` but parks
+MEDIUM (0.7–0.9) and LOW (<0.7) predictions in `TransactionReviewQueue` (PENDING).
+The first bulk-confirm service counted medium/low from `UnifiedTransaction` — always
+zero — so the card's `pending` was 0 and it self-hid. The pile the user wants to
+confirm lives in the review queue, which never had a UI (§12.1 🗑️ row 31).
+
+### Fix (Phase 49.1)
+- **NEW `lib/bank/reviewQueue.ts`** — extracted `confirmReviewItem` (create
+  UnifiedTransaction from a queue row + Phase 13 learning) out of the per-batch
+  review route into a shared service (§12.3 no-duplicate). Confirming now writes
+  confidenceScore 1.0 (the confirmed convention) and resolves accountId from the
+  item's batch when not passed.
+- `app/api/accounts/[id]/import/[batchId]/review/route.ts` — imports the shared
+  `confirmReviewItem`; ~120 lines of duplicated helper deleted.
+- `lib/bank/bulkConfirm.ts` — rewritten to read MEDIUM/LOW from
+  `TransactionReviewQueue` (PENDING, by `confidenceLevel`) and HIGH (auto-filed)
+  from `UnifiedTransaction`; `bulkConfirmCategorisations` promotes queue items in a
+  band (or by id) into real transactions via the shared service, then rolls up the
+  import-batch counters. **This gives the review queue its first user-facing surface.**
+- `app/api/unified-transactions/bulk-confirm/route.ts` — body `transactionIds` →
+  `reviewItemIds`.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — "Review N low" → "Confirm N
+  low" (band confirm); dropped the unused `uncategorised`/`onReviewLow` surface.
+- `app/dashboard/activity/page.tsx` — per-row "✓ Looks right" repointed to the
+  canonical PATCH path (for genuinely-uncertain UnifiedTransactions e.g. Basiq
+  medium-confidence); removed the dead reviewLowMode wiring.
+
+### Testing
+- [x] tsc clean
+- [x] 253/253 bookkeeping tests
+- [x] Build passes
+
+## Session: serene-goodall-6smazx — Phase 49.2 ("Where your money goes" donut redesign)
+
+### Changes
+Redesigned the dated grey Sankey on `/dashboard/activity` to a modern Apple-Health-style
+DONUT + legend (Reza directive 2026-06-11: "a pie chart might be a better option … modern,
+clean, apple like"; donut chosen over solid pie per the design principles). Stitch-first
+per §18 — project 1859462351962811110, 4-variant matrix (desktop light
+`6b3ab0e0b5494d109d6954e781a1fd27` / desktop dark `7b9c9445bd364b42b972ad19cbea3319` /
+mobile light `86078d1815a54d68a6f0f198732cf25c`; dark reuses dark vocabulary). Direction
+approved by Reza on the donut before React ("this looks better … ship it"). Artefacts:
+`.stitch/designs/money-flow-redesign/`.
+
+- `components/bookkeeping/ConsumerMoneyFlowSankey.tsx` — default view now an inline-SVG donut
+  (no chart-lib dep, §12.7) + legend. Donut = proportions at a glance, Surplus the emerald
+  hero arc (thicker + soft glow); center celebrates "KEPT 12% / $40K surplus"
+  (behaviour-psychology lens). Legend = exact amounts + % (solves donut precision), Surplus
+  row emerald-emphasised. The original Sankey is preserved behind a "View flow detail"
+  opt-in toggle (desktop Sankey / mobile vertical bars unchanged). Glass vocabulary §18.7.2
+  (28px radius, bg-card/70 + blur, 3px gradient top-accent, layered shadow + dark recipe).
+  `projectSnapshotToMoneyFlow` (the SSOT projection, §12.3) untouched — donut consumes the
+  same `MoneyFlowResult`.
+
+### Testing
+- [x] tsc clean
+- [x] 10/10 consumerSankeyProjection tests (projection unchanged)
+- [x] Build passes
 ---
 
 ## Session: gallant-gates-kb264m (continued) — WX.5.4

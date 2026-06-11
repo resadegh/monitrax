@@ -32,20 +32,16 @@ interface ConfidenceSummary {
   high: number;
   medium: number;
   low: number;
-  uncategorised: number;
 }
 
 export function ConfidenceReviewCard({
   refreshKey,
   onConfirmed,
-  onReviewLow,
 }: {
   /** Bump to re-fetch the summary (e.g. after an import or bulk action). */
   refreshKey?: number;
   /** Called after a successful bulk confirm so the parent can refresh its list. */
   onConfirmed?: (count: number) => void;
-  /** Routes the user into the existing review flow for low-confidence rows. */
-  onReviewLow?: () => void;
 }) {
   const { token } = useAuth();
   const [summary, setSummary] = useState<ConfidenceSummary | null>(null);
@@ -164,10 +160,11 @@ export function ConfidenceReviewCard({
               {low > 0 && (
                 <button
                   type="button"
-                  onClick={onReviewLow}
-                  className="order-3 inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-foreground/10 bg-background/50 px-4 py-2.5 text-sm font-medium text-foreground backdrop-blur transition hover:border-foreground/25 w-full sm:w-auto"
+                  onClick={() => confirmBand('low')}
+                  disabled={confirming}
+                  className="order-3 inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-foreground/10 bg-background/50 px-4 py-2.5 text-sm font-medium text-foreground backdrop-blur transition hover:border-foreground/25 disabled:opacity-60 w-full sm:w-auto"
                 >
-                  Review {low.toLocaleString('en-AU')} low
+                  Confirm {low.toLocaleString('en-AU')} low
                 </button>
               )}
             </div>

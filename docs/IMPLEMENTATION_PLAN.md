@@ -1387,6 +1387,8 @@ Bank-import codepaths (`components/bank/ImportWizard`, `components/bank/Transact
 
 ## ✅ Recently Completed (rolling 30 days)
 
+- **2026-06-11 — Phase 49.2: "Where your money goes" donut redesign (PR #1061).** Replaced the dated Sankey on /dashboard/activity with an Apple-Health-style donut + legend (Surplus emerald hero, center celebrates KEPT %); old Sankey kept behind a "View flow detail" opt-in. Stitch-first 4-variant matrix (artefacts .stitch/designs/money-flow-redesign/). Inline-SVG donut, no chart-lib dep; projection SSOT untouched. tsc clean, 10/10 projection tests, build green.
+
 - **2026-06-11 — Phase 49: Activity page glass redesign + confidence-based bulk confirmation (PR #TBD).** Stitch-first 4-variant matrix (project 1859462351962811110; artefacts `.stitch/designs/activity-redesign/`). New `lib/bank/bulkConfirm.ts` + `POST/GET /api/unified-transactions/bulk-confirm`; "Your AI bookkeeper" hero card (segmented confidence bar, one-tap "Confirm all medium", "Review low" via the existing card-stack); §18.7.2 polished KPI tiles + §18.7.6 mobile swipe strip with page dots; per-row confidence dots + "✓ Looks right" chips; mobile pill/swipe-hint refinements. No schema change (confirmed = confidenceScore 1.0 per the bulk-categorise convention). Retires the "review queue has no UI" gap from the user-facing side (🗑️ row 31 queue rows remain backend staging). tsc clean, 458/458 tests, build green.
 
 ### 2026-06-10
