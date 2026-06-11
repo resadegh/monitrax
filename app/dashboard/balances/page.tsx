@@ -262,6 +262,14 @@ function BalancesPageContent() {
   // from the account-source picker's Import tile. Body shape and
   // submit flow are handled internally by the existing dialog.
   const [importOpen, setImportOpen] = useState(false);
+  // Phase 49.3 — per-account import. When set, the import dialog opens
+  // pre-targeted at this account (skips the new-vs-existing question).
+  // Null = the general top-level Import flow (asks new-vs-existing).
+  const [importTarget, setImportTarget] = useState<{ id: string; name: string } | null>(null);
+  const openImport = useCallback((target?: { id: string; name: string }) => {
+    setImportTarget(target ?? null);
+    setImportOpen(true);
+  }, []);
 
   // Phase 1c: Basiq Connect Bank, top-level toolbar action. Same
   // hook used by the legacy /dashboard/accounts page so behaviour
@@ -310,8 +318,8 @@ function BalancesPageContent() {
         stripActionParam();
         break;
       case 'import':
-        // Phase 36 Phase 2c — Import Transactions deep link.
-        setImportOpen(true);
+        // Phase 36 Phase 2c — Import Transactions deep link (general flow).
+        openImport();
         stripActionParam();
         break;
       // Unknown actions are silently ignored.
@@ -786,7 +794,7 @@ function BalancesPageContent() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setImportOpen(true)}
+                onClick={() => openImport()}
                 className="hidden sm:inline-flex"
               >
                 <Upload className="w-4 h-4 mr-1.5" /> Import
@@ -928,7 +936,7 @@ function BalancesPageContent() {
               >
                 <div className="anim-rise-stagger">
                   {totals.cashAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} onImport={() => openImport({ id: a.id, name: a.name })} />
                   ))}
                 </div>
               </Section>
@@ -944,7 +952,7 @@ function BalancesPageContent() {
               >
                 <div className="anim-rise-stagger">
                   {totals.creditAccounts.map((a) => (
-                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} />
+                    <AccountRowView key={a.id} account={a} onClick={() => openAccountDetail(a)} onImport={() => openImport({ id: a.id, name: a.name })} />
                   ))}
                 </div>
               </Section>
@@ -1000,8 +1008,11 @@ function BalancesPageContent() {
         onDelete={handleDeleteAccount}
         onLinkedEntityNavigate={handleLinkedEntityNavigate}
         onImportClick={() => {
+          // Phase 49.3 — the user is already viewing this account, so
+          // pre-target the import at it (skip the new-vs-existing step).
+          const target = detailAccount ? { id: detailAccount.id, name: detailAccount.name } : undefined;
           setDetailOpen(false);
-          setImportOpen(true);
+          openImport(target);
         }}
       />
 
@@ -1104,7 +1115,7 @@ function BalancesPageContent() {
               'Upload a CSV, OFX, or QIF file — we’ll create the account using the closing balance.',
             recommended: true,
             accent: 'emerald',
-            onSelect: () => setImportOpen(true),
+            onSelect: () => openImport(),
           },
           {
             icon: Pencil,
@@ -1155,7 +1166,15 @@ function BalancesPageContent() {
        */}
       <TransactionImportDialog
         open={importOpen}
-        onOpenChange={setImportOpen}
+        onOpenChange={(open) => {
+          setImportOpen(open);
+          if (!open) setImportTarget(null); // reset so the next general import asks again
+        }}
+        // Phase 49.3 — when launched from an account row (or its detail
+        // dialog), pre-target that account; the dialog's getInitialStep()
+        // then skips straight to upload, no new-vs-existing question.
+        accountId={importTarget?.id}
+        accountName={importTarget?.name}
         accounts={accounts.map((a) => ({
           id: a.id,
           name: a.name,
@@ -1164,6 +1183,7 @@ function BalancesPageContent() {
         }))}
         onImportComplete={() => {
           setImportOpen(false);
+          setImportTarget(null);
           void reloadData();
         }}
         onAccountCreated={() => {
@@ -1253,55 +1273,74 @@ function Section({
 function AccountRowView({
   account,
   onClick,
+  onImport,
 }: {
   account: AccountRow;
   onClick: () => void;
+  /** Phase 49.3 — open the import dialog pre-targeted at this account. */
+  onImport: () => void;
 }) {
   const meta = ACCOUNT_TYPE_META[account.type];
   const Icon = meta.icon;
 
+  // Row is a div (not a button) so the per-account Import action can be a
+  // real sibling button — nested buttons are invalid HTML.
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="flex w-full items-center gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group text-left"
-    >
-      <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent}`}>
-        <Icon className="w-5 h-5" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <div className="font-medium truncate">{account.name}</div>
-          <DataSourceChip
-            balanceSource={account.balanceSource}
-            balanceLastUpdatedAt={account.balanceLastUpdatedAt}
-          />
+    <div className="flex w-full items-center border-b border-border last:border-0 hover:bg-muted/40 group">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 min-w-0 items-center gap-4 px-4 sm:px-5 py-4 text-left hover-lift"
+      >
+        <div className={`flex items-center justify-center w-10 h-10 rounded-xl shrink-0 ${meta.accent}`}>
+          <Icon className="w-5 h-5" />
         </div>
-        <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-          <span>{meta.label}</span>
-          {account.institution && <><span>·</span><span className="truncate">{account.institution}</span></>}
-          {account.linkedLoan && (
-            <>
-              <span>·</span>
-              <span className="inline-flex items-center gap-1 text-emerald-700">
-                <Link2 className="w-3 h-3" /> Offsets {account.linkedLoan.name}
-              </span>
-            </>
-          )}
-        </div>
-      </div>
 
-      <div className="text-right flex items-center gap-3">
-        <div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <div className="font-medium truncate">{account.name}</div>
+            <DataSourceChip
+              balanceSource={account.balanceSource}
+              balanceLastUpdatedAt={account.balanceLastUpdatedAt}
+            />
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+            <span>{meta.label}</span>
+            {account.institution && <><span>·</span><span className="truncate">{account.institution}</span></>}
+            {account.linkedLoan && (
+              <>
+                <span>·</span>
+                <span className="inline-flex items-center gap-1 text-emerald-700">
+                  <Link2 className="w-3 h-3" /> Offsets {account.linkedLoan.name}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="text-right">
           <div className="font-semibold tabular-nums">{formatCurrency(account.currentBalance)}</div>
           {typeof account.interestRate === 'number' && account.interestRate > 0 && (
             <div className="text-xs text-muted-foreground tabular-nums">{(account.interestRate * 100).toFixed(2)}% p.a.</div>
           )}
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
+      </button>
+
+      {/* Phase 49.3 — direct per-account import. Quiet by default, lights
+          up on row hover / focus; always visible on touch (no hover). */}
+      <div className="flex items-center gap-1 pr-3 sm:pr-4 pl-1">
+        <button
+          type="button"
+          onClick={onImport}
+          title={`Import transactions to ${account.name}`}
+          aria-label={`Import transactions to ${account.name}`}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/70 hover:text-sky-600 hover:bg-sky-500/10 focus:text-sky-600 focus:bg-sky-500/10 transition-colors sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+        >
+          <Upload className="w-4 h-4" />
+        </button>
+        <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors shrink-0" />
       </div>
-    </button>
+    </div>
   );
 }
 
