@@ -1340,6 +1340,10 @@ function ConfidenceChip({
   );
 }
 
+// Phase 49.4–49.10 — item-level confidence review surface (QueueReviewList +
+// QueueReviewRow below). Stitch design source (CLAUDE.md §18.4, backfilled per
+// §18.2.1): project 1859462351962811110, screen 08bce51673d04e7b98fb385538ac865d
+// (desktop light). Artefact: .stitch/designs/activity-redesign/review-surface-desktop-light.{html,png}.
 const BAND_LABEL: Record<'medium' | 'low', { title: string; blurb: string; dot: string; tone: string }> = {
   medium: {
     title: 'Medium confidence',
