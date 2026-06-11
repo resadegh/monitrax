@@ -3969,6 +3969,40 @@ Additive enum values:
 CDR-safe metadata only (§13.3) — type/category + booleans, never
 balances / amounts / addresses.
 
+## **N.5 `AuditAction` enum backfill — 12 silently-failing action codes (2026-06-11)**
+
+Migration `20260614000000_fix_missing_audit_action_enum_values`
+(additive `ALTER TYPE … ADD VALUE IF NOT EXISTS` only).
+
+Twelve action codes were referenced by `createAuditLog()` call sites
+without ever being added to the enum. Because
+`lib/security/auditLog.ts` typed `action` as `string` and cast
+`as any` into Prisma, TypeScript never caught it — every such write
+failed at the DB layer (`Invalid value for argument 'action'`) and
+the fire-and-forget catch swallowed the error. **Zero audit rows were
+ever written for these surfaces** until this migration (§12.5
+violation, found via prod runtime logs per §17.3):
+
+- `AI_ADVICE_GENERATED`, `AI_ADVICE_CHAT`, `CFO_SCENARIO_RUN` —
+  Phase 40 AI advisor surface (`/api/cfo/advice`, `/chat`,
+  `/scenarios/run`)
+- `AI_ADVISOR_INVOCATION` — Phase 41 tax-advisor `ProductionAuditSink`
+- `ADMIN_LOGIN` — admin portal login (user-level trail; AdminAuditLog
+  is a separate String-typed model and was unaffected)
+- `OWNERSHIP_RECORD_CORRECTED` — ownership-selection correction sweep
+- `PORTAL_SEAT_INVITED` — Phase 32B org-portal seat invitations
+- `PROPERTY_HERO_IMAGE_UPDATED` / `_REMOVED` — Phase 45.2.5
+- `SMSF_RETURN_SAVED` — Phase 44.2
+- `HOUSEHOLD_PROFILE_CREATED` / `_UPDATED` — Phase 12 F.1
+  household-profile SSOT route
+
+**Structural fix shipped with the same PR:** `lib/security/auditLog.ts`
+now types `action` with the Prisma-generated `AuditAction` enum and
+passes it uncast — an action code missing from the enum is a compile
+error repo-wide from now on. The dead parallel audit system in
+`lib/audit/logger.ts` (zero callers) was deleted at the same time so
+audit writes have exactly one canonical source (§12.2).
+
 ---
 
 ## **O. Phase 41E reform 2026-27 — schema additions**

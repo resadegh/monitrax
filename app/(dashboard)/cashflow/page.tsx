@@ -1,21 +1,35 @@
 'use client';
 
 /**
- * CASHFLOW INTELLIGENCE CENTER
- * Phase 29 - The Heart and Soul of Monitrax
+ * CASHFLOW — Phase 45.8 redesign.
  *
- * A premium financial command center that provides:
- * - Unified health score across all financial dimensions
- * - Money leak detection with transaction drill-down
- * - AI-powered insights (Gemini)
- * - Budget vs actual tracking
- * - Tax optimization tips
- * - Smart actionable recommendations
+ * §18.7.2 polished glass vocabulary applied end-to-end. Replaces the
+ * previous 8-section editorial column with a hero + 3 Bento Pairs:
  *
- * Key Principles:
- * - Uses ONLY real calculated numbers (zero hallucination)
- * - All sources from existing engines (CFE, COE, Health, Tax, Budget)
- * - Transaction-level drill-down for accountability
+ *   1. Hero — confident money-story headline + 4-tile KPI strip (Money In /
+ *      Out / Balance / 30-Day Forecast) + Cashflow Health pill.
+ *   2. Bento — Money Flow waterfall (sky→indigo) + Next Best Action
+ *      (indigo→violet, distilled AI summary).
+ *   3. Bento — Budget vs Actual (emerald) + Tax Summary (violet).
+ *   4. Bento — Money Leaks ENHANCED (amber) + Saving Opportunities NEW
+ *      (emerald, cross-account opportunities sourced from the master
+ *      snapshot).
+ *
+ * Per Reza brief 2026-06-11: keep the leak detector but enhance it with
+ * behavioural classifications (duplicate / subscription creep / forgotten
+ * sub), and add a new Saving Opportunities tile that surfaces HISA / offset
+ * / salary-sacrifice levers across the user's multiple accounts and
+ * properties — the stated pain point this redesign solves.
+ *
+ * Stitch source: project 1859462351962811110, screens
+ *   ff0beab3c934409893fe04441120a472 (desktop dark)
+ *   60c5d43c95a64920b38a5da2b777faea (desktop light)
+ *   be8c24402cad45ae88d55de0daa59781 (mobile dark)
+ *   ffda21749e004a4daf958ec437b7e35b (mobile light)
+ *
+ * Old components preserved (`./components/intelligence/*` non-glass): no
+ * consumer references after this PR — flagged for §12.1 cleanup in a later
+ * housekeeping PR. Don't delete in the same change as the redesign.
  */
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -26,32 +40,27 @@ import {
   RefreshCw,
   Loader2,
   AlertCircle,
-  LineChart,
   TrendingUp,
   TrendingDown,
+  Wallet,
+  LineChart,
+  Activity,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 
-// Phase 37 PR 2 — design tokens lifted from Home TRAIL banner v3
-// (components/dashboard/TrailStageIndicator.tsx). No new deps.
 const APPLE_EASE: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
-// Intelligence Center Components
 import {
-  CashflowHealthScore,
-  WaterfallChart,
-  MoneyLeakDetector,
-  BudgetVsActual,
-  TaxOptimization,
-  GeminiSummary,
-  SmartActionsEnhanced,
-} from './components/intelligence';
+  GlassMoneyFlowTile,
+  GlassNextBestActionTile,
+  GlassBudgetTile,
+  GlassTaxTile,
+  GlassMoneyLeaksTile,
+  GlassSavingOpportunitiesTile,
+} from './components/intelligence/glass';
+import { SmartActionsEnhanced } from './components/intelligence';
 
-// Existing Components (retained for forecast chart)
-import { CashPositionChart, BreakEvenTimeline } from './components';
-
-// Design system
-import { componentClasses } from './design-system';
+import type { SavingOpportunitiesResult } from '@/lib/cashflow/savingOpportunities';
 
 // =============================================================================
 // TYPES
@@ -168,6 +177,7 @@ interface IntelligenceData {
     actionUrl?: string;
     learnMoreUrl?: string;
   }[];
+  savingOpportunities?: SavingOpportunitiesResult;
   dataQuality: {
     transactionCoverage: number;
     incomeCoverage: number;
@@ -190,20 +200,14 @@ interface SummaryData {
 function PageSkeleton() {
   return (
     <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <div className="h-8 w-64 bg-gray-200 rounded animate-pulse" />
-          <div className="h-4 w-48 bg-gray-100 rounded animate-pulse mt-2" />
-        </div>
-        <div className="h-10 w-28 bg-gray-200 rounded-lg animate-pulse" />
+      <div className="h-64 rounded-[28px] bg-foreground/[0.04] animate-pulse mb-6" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="h-72 rounded-[22px] bg-foreground/[0.04] animate-pulse" />
+        <div className="h-72 rounded-[22px] bg-foreground/[0.04] animate-pulse" />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="h-80 bg-gray-100 rounded-xl animate-pulse" />
-        <div className="lg:col-span-2 h-80 bg-gray-100 rounded-xl animate-pulse" />
-      </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
-        <div className="h-64 bg-gray-100 rounded-xl animate-pulse" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <div className="h-72 rounded-[22px] bg-foreground/[0.04] animate-pulse" />
+        <div className="h-72 rounded-[22px] bg-foreground/[0.04] animate-pulse" />
       </div>
     </div>
   );
@@ -217,15 +221,18 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   return (
     <div className="min-h-[400px] flex items-center justify-center">
       <div className="text-center max-w-md">
-        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <AlertCircle className="h-8 w-8 text-red-500" />
+        <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+          <AlertCircle className="h-8 w-8 text-rose-500" />
         </div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          Unable to load intelligence data
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          Unable to load your cashflow
         </h3>
-        <p className="text-gray-500 mb-6">{error}</p>
-        <button onClick={onRetry} className={componentClasses.buttonPrimary}>
-          Try Again
+        <p className="text-muted-foreground mb-6">{error}</p>
+        <button
+          onClick={onRetry}
+          className="inline-flex items-center gap-2 rounded-[14px] bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-emerald-500/25 transition hover:from-emerald-600 hover:to-emerald-700"
+        >
+          Try again
         </button>
       </div>
     </div>
@@ -233,27 +240,55 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
 }
 
 // =============================================================================
-// PHASE 37 PR 2 — APPLE-STYLE HERO (refined 2026-05-01 evening)
+// HERO — Phase 45.8 redesign
 //
-// Reza's feedback: the all-rose, semibold sentence read as "alert banner",
-// not Apple. Refined hierarchy:
-//   1. Eyebrow      — small uppercase tracked-out muted (context)
-//   2. Hero number  — huge, font-light, tracking-[-0.04em], tabular-nums,
-//                     COLOR ISOLATED to the digits (Apple Wallet pattern)
-//   3. Sentence     — demoted to muted supporting copy, font-normal,
-//                     leading-relaxed, max-w-xl
-//   4. Stats grid   — 3 cards (was 4); the redundant Surplus/Shortfall
-//                     card is removed because the hero number IS that
-//                     value
-//
-// Same data sources, same calc engines, zero new APIs. Just typography.
+// Confident headline + 4-tile inline KPI strip (Money In / Out / Balance /
+// 30-Day Forecast) + Cashflow Health pill. The pill's tone tracks the
+// health tier (excellent → emerald, good → sky, moderate → amber, etc.).
+// Mobile reflows KPIs to a horizontal swipe strip per §18.7.6 Compact
+// Dashboard — we use the same 4 tiles but a `grid-cols-2` collapse below
+// `sm:` keeps each tile readable without a custom carousel component.
 // =============================================================================
+
+const TIER_COLORS: Record<
+  IntelligenceData['healthScore']['tier'],
+  { chip: string; label: string }
+> = {
+  EXCELLENT: {
+    chip:
+      'border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-700 dark:text-emerald-300',
+    label: 'Excellent',
+  },
+  GOOD: {
+    chip:
+      'border-sky-500/20 bg-sky-500/[0.08] text-sky-700 dark:text-sky-300',
+    label: 'Good',
+  },
+  MODERATE: {
+    chip:
+      'border-amber-500/20 bg-amber-500/[0.10] text-amber-700 dark:text-amber-300',
+    label: 'Moderate',
+  },
+  CONCERNING: {
+    chip:
+      'border-amber-500/20 bg-amber-500/[0.12] text-amber-700 dark:text-amber-300',
+    label: 'Concerning',
+  },
+  CRITICAL: {
+    chip:
+      'border-rose-500/20 bg-rose-500/[0.10] text-rose-700 dark:text-rose-300',
+    label: 'Critical',
+  },
+};
 
 function CashflowHero({
   income,
   expenses,
   net,
   balance,
+  forecast30,
+  healthScore,
+  healthTier,
   refreshing,
   onRefresh,
 }: {
@@ -261,23 +296,20 @@ function CashflowHero({
   expenses: number;
   net: number;
   balance: number;
+  forecast30: number;
+  healthScore: number;
+  healthTier: IntelligenceData['healthScore']['tier'];
   refreshing: boolean;
   onRefresh: () => void;
 }) {
   const reduced = useReducedMotion();
 
-  // Apple voice: confident, factual, action-forward. Sentence DOESN'T repeat
-  // the number (the hero shows it) — instead it conveys meaning + next step.
-  // Empowering, never alarming. Reza's note 2026-05-01: must feel engaging
-  // and empowering, never like a warning notification.
   const sentence = useMemo(() => {
     if (net > 0) return 'Money working for you this month — build on it.';
     if (net === 0) return "Every dollar accounted for — that's intentional.";
     return 'Spending edged ahead this month — trim a leak below to close it.';
   }, [net]);
 
-  // Color isolated to the hero number (the one piece of information that
-  // benefits from chromatic encoding). Sentence and stat labels stay neutral.
   const heroToneClass =
     net > 0
       ? 'text-emerald-500 dark:text-emerald-400'
@@ -285,12 +317,40 @@ function CashflowHero({
         ? 'text-rose-500 dark:text-rose-400'
         : 'text-foreground';
 
-  // U+2212 minus / U+002B plus — typographically correct (not hyphen).
   const sign = net < 0 ? '−' : net > 0 ? '+' : '';
+  const tierMeta = TIER_COLORS[healthTier];
+
+  const kpis = [
+    {
+      label: 'Money In',
+      value: income,
+      tone: 'in' as const,
+      icon: TrendingUp,
+    },
+    {
+      label: 'Money Out',
+      value: expenses,
+      tone: 'out' as const,
+      icon: TrendingDown,
+    },
+    {
+      label: 'Balance',
+      value: balance,
+      tone: 'neutral' as const,
+      icon: Wallet,
+    },
+    {
+      label: '30-Day Forecast',
+      value: forecast30,
+      tone: 'forecast' as const,
+      icon: LineChart,
+    },
+  ];
 
   return (
-    <div className="relative isolate overflow-hidden rounded-[28px] border border-white/40 dark:border-white/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl mb-6">
-      {/* Atmospheric mesh gradient — colour shifts with surplus/shortfall */}
+    <div className="relative isolate overflow-hidden rounded-[28px] border border-foreground/10 bg-card/70 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] dark:border-foreground/20 dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] backdrop-blur-xl mb-5">
+      {/* Atmospheric mesh — emerald when surplus, amber when shortfall (never
+          red — §18.7.2 money-signal row reserves red for true loss) */}
       <motion.div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10"
@@ -300,18 +360,32 @@ function CashflowHero({
         style={{
           background:
             net >= 0
-              ? 'radial-gradient(circle at 15% 0%, rgba(16,185,129,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(59,130,246,0.06), transparent 55%)'
-              : 'radial-gradient(circle at 15% 0%, rgba(244,63,94,0.08), transparent 60%), radial-gradient(circle at 85% 100%, rgba(245,158,11,0.06), transparent 55%)',
+              ? 'radial-gradient(circle at 15% 0%, rgba(16,185,129,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(99,102,241,0.06), transparent 55%)'
+              : 'radial-gradient(circle at 15% 0%, rgba(245,158,11,0.10), transparent 60%), radial-gradient(circle at 85% 100%, rgba(244,63,94,0.06), transparent 55%)',
         }}
       />
-      <div className="p-6 sm:p-8 md:p-10">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[40%] bg-gradient-to-b from-white/40 to-transparent opacity-60 dark:from-white/10"
+      />
+      <div className="relative p-6 sm:p-8 md:p-10">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6 mb-8">
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70 mb-4">
-              Cashflow · This month
-            </p>
+            <div className="flex items-center gap-3 mb-4">
+              <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/70">
+                Cashflow · This month
+              </p>
+              {healthScore > 0 && (
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-[0.12em] ${tierMeta.chip}`}
+                  title="Cashflow Health"
+                >
+                  <Activity className="h-3 w-3" strokeWidth={1.5} />
+                  Health {Math.round(healthScore)} · {tierMeta.label}
+                </span>
+              )}
+            </div>
 
-            {/* Hero number — Apple-typography */}
             <motion.div
               initial={reduced ? false : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -322,7 +396,6 @@ function CashflowHero({
               {formatCurrency(Math.abs(net))}
             </motion.div>
 
-            {/* Supporting sentence — muted, refined */}
             <motion.p
               initial={reduced ? false : { opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -337,7 +410,7 @@ function CashflowHero({
           <button
             onClick={onRefresh}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-4 py-2 text-sm font-medium text-muted-foreground backdrop-blur-md transition-all hover:bg-background/80 hover:text-foreground hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0"
+            className="inline-flex items-center gap-2 rounded-xl border border-border/50 bg-background/60 px-4 py-2 text-sm font-medium text-muted-foreground backdrop-blur-md transition hover:bg-background/80 hover:text-foreground hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 shrink-0"
           >
             {refreshing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -348,42 +421,44 @@ function CashflowHero({
           </button>
         </div>
 
-        {/* Stats grid — 3 cards (Surplus/Shortfall removed; it's the hero now).
-            Same source: intelligence.forecast.current. */}
-        <div className="grid grid-cols-3 gap-4 sm:gap-8 pt-6 border-t border-border/40">
-          {[
-            { label: 'Money In', value: income, tone: 'in' as const, icon: <TrendingUp className="h-3 w-3" /> },
-            { label: 'Money Out', value: expenses, tone: 'out' as const, icon: <TrendingDown className="h-3 w-3" /> },
-            { label: 'Balance', value: balance, tone: 'neutral' as const, icon: null },
-          ].map((stat, idx) => (
-            <motion.div
-              key={stat.label}
-              initial={reduced ? false : { opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={
-                reduced
-                  ? { duration: 0 }
-                  : { duration: 0.5, ease: APPLE_EASE, delay: 0.22 + idx * 0.05 }
-              }
-              className="flex flex-col gap-1.5"
-            >
-              <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
-                {stat.icon}
-                {stat.label}
-              </div>
-              <div
-                className={`text-xl sm:text-2xl font-medium tabular-nums tracking-[-0.02em] ${
-                  stat.tone === 'in'
-                    ? 'text-emerald-600 dark:text-emerald-400'
-                    : stat.tone === 'out'
-                      ? 'text-rose-600 dark:text-rose-400'
-                      : 'text-foreground'
-                }`}
+        {/* 4-tile KPI strip — `grid-cols-2` collapse on mobile per §18.7.6
+            (the desktop Stitch uses 4 columns; mobile reflows to 2×2 to keep
+            every tile legible without a horizontal carousel). */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-6 border-t border-foreground/10">
+          {kpis.map((kpi, idx) => {
+            const Icon = kpi.icon;
+            const toneClass =
+              kpi.tone === 'in'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : kpi.tone === 'out'
+                  ? 'text-rose-600 dark:text-rose-400'
+                  : kpi.tone === 'forecast'
+                    ? 'text-indigo-600 dark:text-indigo-400'
+                    : 'text-foreground';
+            return (
+              <motion.div
+                key={kpi.label}
+                initial={reduced ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={
+                  reduced
+                    ? { duration: 0 }
+                    : { duration: 0.5, ease: APPLE_EASE, delay: 0.22 + idx * 0.05 }
+                }
+                className="flex flex-col gap-1.5"
               >
-                {formatCurrency(stat.value)}
-              </div>
-            </motion.div>
-          ))}
+                <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                  <Icon className="h-3 w-3" strokeWidth={1.5} />
+                  {kpi.label}
+                </div>
+                <div
+                  className={`text-lg sm:text-xl lg:text-2xl font-medium tabular-nums tracking-[-0.02em] ${toneClass}`}
+                >
+                  {formatCurrency(kpi.value)}
+                </div>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -403,7 +478,6 @@ export default function CashflowPage() {
   const [error, setError] = useState<string | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
 
-  // Fetch intelligence data
   const fetchIntelligence = useCallback(async () => {
     if (!token) return;
 
@@ -434,7 +508,6 @@ export default function CashflowPage() {
     }
   }, [token]);
 
-  // Fetch AI summary
   const fetchSummary = useCallback(async () => {
     if (!token) return;
 
@@ -445,7 +518,7 @@ export default function CashflowPage() {
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        return; // Silently fail for summary
+        return;
       }
 
       const json = await response.json();
@@ -463,20 +536,15 @@ export default function CashflowPage() {
     }
   }, [token]);
 
-  // Regenerate AI summary
   const regenerateSummary = useCallback(async () => {
     if (!token) return;
-
     setSummaryLoading(true);
-
     try {
       const response = await fetch('/api/cashflow/summary', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
       });
-
       const json = await response.json();
-
       if (response.ok && json.success && json.data) {
         setSummary({
           content: json.data.content,
@@ -505,7 +573,6 @@ export default function CashflowPage() {
     await fetchSummary();
   };
 
-  // Render loading state
   if (loading) {
     return (
       <DashboardLayout>
@@ -514,7 +581,6 @@ export default function CashflowPage() {
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <DashboardLayout>
@@ -525,13 +591,12 @@ export default function CashflowPage() {
     );
   }
 
-  // Render empty state
   if (!intelligence) {
     return (
       <DashboardLayout>
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
           <ErrorState
-            error="No financial data available. Add accounts, income, and expenses to see your intelligence dashboard."
+            error="No financial data available. Add accounts, income, and expenses to see your cashflow."
             onRetry={fetchIntelligence}
           />
         </div>
@@ -539,134 +604,60 @@ export default function CashflowPage() {
     );
   }
 
+  // Top action — the first SmartAction is the route-built rank-1; we surface
+  // it via GlassNextBestActionTile and let the SmartActionsEnhanced section
+  // below handle the long tail.
+  const topAction = intelligence.smartActions[0] ?? null;
+  // Distil the AI summary into a single sentence — first newline-separated
+  // chunk. Empty falls back to the SmartAction description.
+  const distilledHeadline = summary?.content
+    ? summary.content.split(/\n+/).find((s) => s.trim().length > 0)?.trim().slice(0, 240)
+    : undefined;
+
   return (
     <DashboardLayout>
       <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-        {/* Phase 37 PR 2 — TRAIL banner v3 hero. Warm-sentence answer
-            ("am I OK this month?") sourced ENTIRELY from existing
-            intelligence.forecast.current values — no new calculations,
-            no new endpoints. */}
         <CashflowHero
           income={intelligence.forecast.current.income}
           expenses={intelligence.forecast.current.expenses}
           net={intelligence.forecast.current.net}
           balance={intelligence.forecast.current.balance}
+          forecast30={intelligence.forecast.forecast30Day.predictedBalance}
+          healthScore={intelligence.healthScore.overallScore}
+          healthTier={intelligence.healthScore.tier}
           refreshing={refreshing}
           onRefresh={handleRefresh}
         />
 
-        {/* Section 1: AI Summary (Hero) */}
-        {summary && (
-          <div className="mb-6">
-            <GeminiSummary
-              content={summary.content}
-              keyInsights={summary.keyInsights}
-              generatedAt={new Date(summary.generatedAt)}
-              isStale={summary.isStale}
-              isLoading={summaryLoading}
-              onRegenerate={regenerateSummary}
-            />
-          </div>
-        )}
-
-        {/* Section 2: Health Score + Forecast Summary */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          {/* Health Score */}
-          <CashflowHealthScore
-            overallScore={intelligence.healthScore.overallScore}
-            tier={intelligence.healthScore.tier}
-            breakdown={intelligence.healthScore.breakdown}
-            confidence={intelligence.healthScore.confidence}
-            lastCalculated={new Date(intelligence.healthScore.lastCalculated)}
-          />
-
-          {/* Quick Stats */}
-          <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <LineChart className="h-5 w-5 text-indigo-500" />
-              <h3 className="text-lg font-semibold text-gray-900">Forecast Summary</h3>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Current Balance</p>
-                <p className="text-xl font-bold text-gray-900">
-                  ${intelligence.forecast.current.balance.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Monthly Net</p>
-                <p className={`text-xl font-bold ${intelligence.forecast.current.net >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {intelligence.forecast.current.net >= 0 ? '+' : ''}${intelligence.forecast.current.net.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">30-Day Forecast</p>
-                <p className={`text-xl font-bold ${intelligence.forecast.forecast30Day.risk === 'HIGH' ? 'text-red-600' : 'text-gray-900'}`}>
-                  ${intelligence.forecast.forecast30Day.predictedBalance.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-xs text-gray-500 mb-1">Break-Even Day</p>
-                <p className="text-xl font-bold text-gray-900">
-                  {intelligence.forecast.breakEvenDay > 0 ? `Day ${intelligence.forecast.breakEvenDay}` : 'N/A'}
-                </p>
-              </div>
-            </div>
-
-            {intelligence.forecast.shortfallRisk && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
-                <AlertCircle className="h-4 w-4 text-red-600" />
-                <span className="text-sm text-red-800">Shortfall risk detected in forecast period</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Section 3: Money Flow (Waterfall) + Leaks */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          <WaterfallChart
+        {/* Bento Pair 1 — Money Flow + Next Best Action */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <GlassMoneyFlowTile
             items={intelligence.waterfall.items}
             netIncome={intelligence.waterfall.netIncome}
             totalExpenses={intelligence.waterfall.totalExpenses}
             surplus={intelligence.waterfall.surplus}
           />
-          <MoneyLeakDetector
-            totalLeakage={intelligence.leaks.totalLeakage}
-            leaks={intelligence.leaks.leaks}
-            topCategories={intelligence.leaks.topCategories}
-            analyzedFrom={new Date(intelligence.leaks.analyzedFrom)}
-            analyzedTo={new Date(intelligence.leaks.analyzedTo)}
-            transactionCount={intelligence.leaks.transactionCount}
+          <GlassNextBestActionTile
+            topAction={topAction}
+            summaryHeadline={distilledHeadline}
+            isLoading={summaryLoading}
+            onRegenerate={regenerateSummary}
           />
         </div>
 
-        {/* Section 4: Budget vs Actual + Tax */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {intelligence.budgetComparison ? (
-            <BudgetVsActual
-              categories={intelligence.budgetComparison.categories}
-              totalBudgeted={intelligence.budgetComparison.totalBudgeted}
-              totalActual={intelligence.budgetComparison.totalActual}
-              totalVariance={intelligence.budgetComparison.totalVariance}
-              overallStatus={intelligence.budgetComparison.overallStatus}
-              periodStart={new Date(intelligence.budgetComparison.period.start)}
-              periodEnd={new Date(intelligence.budgetComparison.period.end)}
-            />
-          ) : (
-            <BudgetVsActual
-              categories={[]}
-              totalBudgeted={0}
-              totalActual={0}
-              totalVariance={0}
-              overallStatus="ON_TRACK"
-              periodStart={new Date()}
-              periodEnd={new Date()}
-            />
-          )}
-
-          {intelligence.taxOptimization && (
-            <TaxOptimization
+        {/* Bento Pair 2 — Budget + Tax */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <GlassBudgetTile
+            categories={intelligence.budgetComparison?.categories ?? []}
+            totalBudgeted={intelligence.budgetComparison?.totalBudgeted ?? 0}
+            totalActual={intelligence.budgetComparison?.totalActual ?? 0}
+            totalVariance={intelligence.budgetComparison?.totalVariance ?? 0}
+            overallStatus={intelligence.budgetComparison?.overallStatus ?? 'ON_TRACK'}
+            periodStart={new Date(intelligence.budgetComparison?.period.start ?? Date.now())}
+            periodEnd={new Date(intelligence.budgetComparison?.period.end ?? Date.now())}
+          />
+          {intelligence.taxOptimization ? (
+            <GlassTaxTile
               estimatedAnnualTax={intelligence.taxOptimization.estimatedAnnualTax}
               deductibleExpenses={intelligence.taxOptimization.deductibleExpenses}
               potentialSavings={intelligence.taxOptimization.potentialSavings}
@@ -674,21 +665,46 @@ export default function CashflowPage() {
               effectiveTaxRate={intelligence.taxOptimization.effectiveTaxRate}
               paygWithheld={intelligence.taxOptimization.paygWithheld}
             />
+          ) : (
+            <GlassTaxTile
+              estimatedAnnualTax={0}
+              deductibleExpenses={0}
+              potentialSavings={0}
+              recommendations={[]}
+              effectiveTaxRate={0}
+              paygWithheld={0}
+            />
           )}
         </div>
 
-        {/* Section 5: Smart Actions */}
-        {intelligence.smartActions.length > 0 && (
-          <div className="mb-6">
-            <SmartActionsEnhanced actions={intelligence.smartActions} />
+        {/* Bento Pair 3 — Money Leaks (enhanced) + Saving Opportunities (NEW) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+          <GlassMoneyLeaksTile
+            totalLeakage={intelligence.leaks.totalLeakage}
+            leaks={intelligence.leaks.leaks}
+            transactionCount={intelligence.leaks.transactionCount}
+          />
+          <GlassSavingOpportunitiesTile
+            opportunities={intelligence.savingOpportunities?.opportunities ?? []}
+            totalEstimatedAnnualBenefit={
+              intelligence.savingOpportunities?.totalEstimatedAnnualBenefit ?? 0
+            }
+          />
+        </div>
+
+        {/* Smart Actions long-tail (rank 2+) — retained per Reza brief: don't
+            remove tiles, only redesign. SmartActionsEnhanced already handles
+            the long list and matches the rest of the page's visual weight. */}
+        {intelligence.smartActions.length > 1 && (
+          <div className="mb-5">
+            <SmartActionsEnhanced actions={intelligence.smartActions.slice(1)} />
           </div>
         )}
 
-        {/* Footer: Data Quality Indicator */}
-        <div className="flex items-center justify-center gap-4 py-4 text-xs text-gray-400">
+        <div className="flex items-center justify-center gap-4 py-4 text-xs text-muted-foreground/70">
           <span>Data coverage: {intelligence.dataQuality.confidence.toFixed(0)}%</span>
           <span>•</span>
-          <span>{intelligence.leaks.transactionCount} transactions analyzed</span>
+          <span>{intelligence.leaks.transactionCount} transactions analysed</span>
         </div>
       </div>
     </DashboardLayout>

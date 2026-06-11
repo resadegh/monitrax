@@ -39,6 +39,7 @@ import {
   Info,
   ArrowRight,
   Construction,
+  MessageSquare,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { ScenarioType } from '@/lib/cfo/scenarios';
@@ -220,6 +221,46 @@ export default function WhatIfLeverPickerPage() {
           title="What if?"
           description="See how a single move would change your 10-year picture. Pick one lever — Monitrax shows what changes, never what you should do."
         />
+
+        {/*
+         * Phase 14.9 (2026-06-11) — "Ask the Advisor" CTA promoted
+         * above the lever grid.
+         *
+         * Phase 14.8 (PR #1073) placed this CTA *below* the lever grid,
+         * but Reza reported on mobile: "I can't find Ask the Advisor".
+         * On a phone the user had to scroll past 5 lever tiles + the
+         * empty-state tile before reaching it — most never scrolled
+         * that far. Promoting it to the top makes it visible the
+         * moment the page loads. Violet glass + gradient button keep
+         * it visually distinct from the multi-coloured lever tiles
+         * below so the page's main job (lever picking) still leads.
+         */}
+        <div className="mt-6 sm:mt-8">
+          <Link
+            href="/dashboard/cfo/ask"
+            className="group flex flex-col gap-3 rounded-[20px] border border-violet-500/15 bg-violet-500/[0.05] p-5 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] transition hover:bg-violet-500/[0.08] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),0_0_0_1px_rgba(255,255,255,0.04)] sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:p-6"
+          >
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-violet-100/70 text-violet-700 dark:bg-violet-500/20 dark:text-violet-300">
+                <MessageSquare className="h-5 w-5" strokeWidth={2} />
+              </div>
+              <div className="flex-1">
+                <p className="mb-1 text-[11px] font-medium uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                  Decision support · Specific question
+                </p>
+                <p className="text-base font-semibold text-foreground">Have a specific question?</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Ask the advisor about your tax position, contribution headroom, land tax, or a &quot;what if&quot; scenario.
+                  Answers cite the rule and the number from your own data.
+                </p>
+              </div>
+            </div>
+            <div className="inline-flex shrink-0 items-center gap-2 self-start rounded-[14px] bg-gradient-to-r from-violet-500 to-violet-600 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-violet-500/25 transition group-hover:from-violet-600 group-hover:to-violet-700 sm:self-auto">
+              Ask the Advisor
+              <ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </div>
+          </Link>
+        </div>
 
         {/* Lever grid */}
         <div className="mt-8 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 lg:gap-5">

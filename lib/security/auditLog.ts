@@ -80,9 +80,14 @@ function writeToCloudLogging(entry: AuditLogEntry): void {
   }
 }
 
-// Define types locally to avoid Prisma client generation issues
-// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
-type AuditAction = string;
+// Fix (2026-06-11): action was typed `string` + cast `as any` into Prisma,
+// so an action code missing from the schema's AuditAction enum compiled
+// fine and then failed EVERY write at the DB layer — silently, because
+// callers fire-and-forget. Ten action codes (AI_ADVICE_*, CFO_SCENARIO_RUN,
+// AI_ADVISOR_INVOCATION, ADMIN_LOGIN, …) wrote zero audit rows in prod.
+// Using the Prisma-generated enum type makes that drift a compile error.
+// See: docs/changelog/CHANGELOG_2026_06_11.md
+import type { AuditAction } from '@prisma/client';
 type AuditStatus = 'SUCCESS' | 'FAILURE' | 'BLOCKED';
 
 // ============================================
@@ -143,7 +148,9 @@ export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
       data: {
         userId: entry.userId,
         organizationId: entry.organizationId,
-        action: entry.action as any,
+        // No cast — entry.action is the Prisma enum type, so an invalid
+        // value is now a compile error instead of a swallowed runtime one.
+        action: entry.action,
         status: (entry.status ?? 'SUCCESS') as any,
         entityType: entry.entityType,
         entityId: entry.entityId,
