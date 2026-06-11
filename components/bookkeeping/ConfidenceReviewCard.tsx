@@ -30,6 +30,8 @@ import { useAuth } from '@/lib/context/AuthContext';
 
 interface ConfidenceSummary {
   high: number;
+  /** Phase 49.13 — high rows the user hasn't signed off yet. */
+  highUnconfirmed: number;
   medium: number;
   low: number;
 }
@@ -69,7 +71,7 @@ export function ConfidenceReviewCard({
   }, [fetchSummary, refreshKey]);
 
   const confirmBand = useCallback(
-    async (band: 'medium' | 'low') => {
+    async (band: 'high' | 'medium' | 'low') => {
       if (!token || confirming) return;
       setConfirming(true);
       try {
@@ -98,9 +100,12 @@ export function ConfidenceReviewCard({
 
   if (!summary) return null;
 
-  const { high, medium, low } = summary;
+  const { high, highUnconfirmed, medium, low } = summary;
   const total = high + medium + low;
-  const pending = medium + low;
+  // Phase 49.13 — unconfirmed HIGH rows are pending work too (auto-filed
+  // is not confirmed; they still count toward the Home "to categorise"
+  // pile until signed off).
+  const pending = medium + low + highUnconfirmed;
 
   // Nothing sorted yet, or everything already confirmed → stay out of the way.
   if (total === 0 || (pending === 0 && justConfirmed === null)) return null;
@@ -149,10 +154,25 @@ export function ConfidenceReviewCard({
                 confirm is medium-only); low = rose, review-only. Empty bands
                 show a quiet zero chip instead of disappearing. */}
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
-              <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
-                <Check className="w-3.5 h-3.5" />
-                {high.toLocaleString('en-AU')} high — auto-filed
-              </span>
+              {highUnconfirmed > 0 ? (
+                // Phase 49.13 — auto-filed ≠ confirmed. One tap signs off the
+                // whole high band (the AI was ≥90% sure on every one) and
+                // clears them from the Home "to categorise" pile.
+                <button
+                  type="button"
+                  onClick={() => confirmBand('high')}
+                  disabled={confirming}
+                  className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 w-full sm:w-auto"
+                >
+                  {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Confirm all {highUnconfirmed.toLocaleString('en-AU')} high
+                </button>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
+                  <Check className="w-3.5 h-3.5" />
+                  {high.toLocaleString('en-AU')} high — confirmed
+                </span>
+              )}
               {medium > 0 ? (
                 <div className="flex items-stretch gap-1.5">
                   <button

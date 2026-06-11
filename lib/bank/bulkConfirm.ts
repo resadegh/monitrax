@@ -28,8 +28,15 @@ import { confirmReviewItem } from '@/lib/bank/reviewQueue';
 export type ConfidenceBand = 'medium' | 'low';
 
 export interface ConfidenceSummary {
-  /** Auto-accepted at import (UnifiedTransaction, confidence ≥ 0.9). Done. */
+  /** Auto-accepted at import (UnifiedTransaction, confidence ≥ 0.9). */
   high: number;
+  /**
+   * Phase 49.13 — the subset of `high` the user hasn't confirmed yet
+   * (userCorrectedCategory != true). Auto-filed is not the same as
+   * confirmed: these rows still count toward the Home "to categorise"
+   * pile until the user signs them off. Powers "Confirm all N high".
+   */
+  highUnconfirmed: number;
   /** Review-queue PENDING, NEEDS_REVIEW band (0.7–0.9). Bulk-confirm sweet spot. */
   medium: number;
   /** Review-queue PENDING, MANUAL band (<0.7). */
@@ -45,9 +52,17 @@ const BAND_TO_LEVEL: Record<ConfidenceBand, string> = {
 const MAX_CONFIRM = 500;
 
 export async function getConfidenceSummary(userId: string): Promise<ConfidenceSummary> {
-  const [high, medium, low] = await Promise.all([
+  const [high, highUnconfirmed, medium, low] = await Promise.all([
     prisma.unifiedTransaction.count({
       where: { userId, categoryLevel1: { not: null }, confidenceScore: { gte: 0.9 } },
+    }),
+    prisma.unifiedTransaction.count({
+      where: {
+        userId,
+        categoryLevel1: { not: null },
+        confidenceScore: { gte: 0.9 },
+        userCorrectedCategory: { not: true },
+      },
     }),
     prisma.transactionReviewQueue.count({
       where: { userId, status: ImportReviewStatus.PENDING, confidenceLevel: 'NEEDS_REVIEW' },
@@ -57,7 +72,50 @@ export async function getConfidenceSummary(userId: string): Promise<ConfidenceSu
     }),
   ]);
 
-  return { high, medium, low };
+  return { high, highUnconfirmed, medium, low };
+}
+
+/**
+ * Phase 49.13 — bulk-confirm the HIGH band (Reza, live test 2026-06-11:
+ * "there are 1284 high confidence auto filled, but I think they are not
+ * confirmed yet, and I don't have an option to do a bulk catagorising for
+ * high confidence").
+ *
+ * High-band rows are already real UnifiedTransactions (auto-accepted at
+ * import) — confirming them is a flag promotion, not a queue promotion:
+ * confidenceScore → 1.0 + userCorrectedCategory → true, the exact
+ * convention the single-row PATCH path and bulk-categorise write. This
+ * drops them out of the Home "to categorise" pending pile.
+ *
+ * Deliberately NO per-merchant learning pass here: the AI was already
+ * ≥0.9 on these merchants, so a blanket confirm adds no signal worth the
+ * N× write cost. Corrections (the strong signal) still flow through the
+ * per-row PATCH path.
+ *
+ * CLAUDE.md §12.11 (updateMany on existing rows):
+ *  1. `where` matches: the caller's OWN AI-categorised transactions at
+ *     confidence ≥ 0.9 that the user has NOT already reviewed
+ *     (userCorrectedCategory != true). This is exactly the set the
+ *     "Confirm all N high" button displays — and the click IS the user's
+ *     explicit confirmation of that set.
+ *  2. Columns overwritten: `confidenceScore` (AI-derived diagnostic,
+ *     0.9–1.0 → 1.0) and `userCorrectedCategory` (false → true). No
+ *     user-entered column (category, amount, description, links) is
+ *     touched.
+ *  3. Guard: `userCorrectedCategory: { not: true }` ensures rows the user
+ *     already reviewed/corrected are never re-written.
+ */
+export async function bulkConfirmHighBand(userId: string): Promise<BulkConfirmResult> {
+  const res = await prisma.unifiedTransaction.updateMany({
+    where: {
+      userId,
+      categoryLevel1: { not: null },
+      confidenceScore: { gte: 0.9 },
+      userCorrectedCategory: { not: true },
+    },
+    data: { confidenceScore: 1.0, userCorrectedCategory: true },
+  });
+  return { confirmedCount: res.count, failedCount: 0 };
 }
 
 export interface BulkConfirmResult {

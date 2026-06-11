@@ -515,3 +515,42 @@ existing documented rules within approved sections) — code-first permitted.
 - Production deploy `dpl_5Cxc3v4NrFkHDbQn5TLfZQJTkZ7C` ("Merge pull request #1076") reached
   `READY` after ~3 min. Runtime logs clean — no error/warning lines beyond the pre-existing
   DEP0169 noise.
+
+## Session: serene-goodall-6smazx — Phase 49.13 (bulk confirm for the HIGH band)
+
+Reza (live test 2026-06-11): *"there are 1284 high confidence auto filled, but I think they
+are not confirmed yet. and I don't have an option to do a bulk catagorising for high
+confidence"* — correct on both counts. Auto-accepted rows carry confidenceScore ≥0.9 but
+`userCorrectedCategory=false`, so they still count toward the Home "to categorise" pile;
+and the card offered no high-band action.
+
+**Fix:**
+- `lib/bank/bulkConfirm.ts` — summary gains `highUnconfirmed` (high rows with
+  `userCorrectedCategory != true`); NEW `bulkConfirmHighBand()` promotes them in place
+  (`confidenceScore → 1.0`, `userCorrectedCategory → true` — the exact single-row PATCH /
+  bulk-categorise convention). §12.11 checklist documented in the JSDoc: only AI-derived
+  flags overwritten, `userCorrectedCategory != true` guard means user-reviewed rows are
+  never re-written, and the click IS the user's explicit confirmation of the displayed set.
+  Deliberately no per-merchant learning pass (AI already ≥0.9 on these merchants; blanket
+  confirm adds no signal worth N× writes — corrections still flow through the PATCH path).
+- `POST /api/unified-transactions/bulk-confirm` now accepts `band: 'high'`.
+- `ConfidenceReviewCard` — when `highUnconfirmed > 0` the high segment is an emerald
+  gradient **Confirm all N high** button; once confirmed it becomes the
+  "N high — confirmed" receipt chip. Card stays visible while ANY band has pending work
+  (high-unconfirmed included).
+
+Behaviour-psych lens: one tap clears the biggest pile and the Home pending count finally
+drops — the user sees the system acknowledge their sign-off instead of a chip that
+celebrates work they haven't approved.
+
+### Files Modified
+- `lib/bank/bulkConfirm.ts` — highUnconfirmed + bulkConfirmHighBand
+- `app/api/unified-transactions/bulk-confirm/route.ts` — band 'high'
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — Confirm-all-high button + receipt
+
+### Build Status
+- [x] tsc clean
+- [x] Build passes (`npm run build`)
+
+### §17.2 post-merge verification — PR #1078 (docs-only)
+- Production deploy `dpl_9tvJuWwCV2Dy3W2QNinZRhounaAD` reached `READY`.
