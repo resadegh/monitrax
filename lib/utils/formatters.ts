@@ -15,6 +15,13 @@ export interface CurrencyFormatOptions {
  *
  *   - `number` — the legacy path; JSON-parsed responses produce `number`
  *     after `serializeDecimalsForJson` runs on the API boundary.
+ *   - `string` — JSON-stringified Decimal values (Prisma Decimal default
+ *     serializer produces strings like `"12345.67"`). Phase 45.8.1 hot
+ *     fix (2026-06-11): the previous branch called `.toNumber()` on
+ *     anything non-number and crashed at runtime with `e.toNumber is
+ *     not a function` when a Decimal field escaped the API as a string.
+ *     We now parse strings via `Number(...)` so consumer surfaces never
+ *     crash on a serialized Decimal.
  *   - `{ toNumber(): number }` — duck-types `Decimal` (Prisma.Decimal /
  *     decimal.js). Lets components accept Decimal directly without an
  *     intermediate `.toNumber()` call site. Defensive: if a server
@@ -25,6 +32,7 @@ export interface CurrencyFormatOptions {
  */
 export type CurrencyFormatInput =
   | number
+  | string
   | { toNumber(): number }
   | null
   | undefined;
@@ -51,7 +59,22 @@ export function formatCurrency(
   } = options || {};
 
   if (amount === null || amount === undefined) return EMPTY_PLACEHOLDER;
-  const value = typeof amount === 'number' ? amount : amount.toNumber();
+  // Phase 45.8.1 hot fix — accept strings (JSON-serialized Decimals
+  // arrive as strings, not numbers). Falling through to `.toNumber()`
+  // on a string crashed the page with `e.toNumber is not a function`
+  // (production crash on /cashflow after the Phase 45.8 redesign
+  // ship). Coerce strings via Number(); only call `.toNumber()` when
+  // the input actually duck-types Decimal.
+  let value: number;
+  if (typeof amount === 'number') {
+    value = amount;
+  } else if (typeof amount === 'string') {
+    value = Number(amount);
+  } else if (typeof (amount as { toNumber?: () => number }).toNumber === 'function') {
+    value = (amount as { toNumber: () => number }).toNumber();
+  } else {
+    return EMPTY_PLACEHOLDER;
+  }
   if (!Number.isFinite(value)) return EMPTY_PLACEHOLDER;
 
   // Handle abbreviation for large numbers

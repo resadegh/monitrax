@@ -1,5 +1,62 @@
 # Changelog - 2026-06-11
 
+## Session: phase45.8.1-cashflow-tonumber-hotfix-LIlK9
+
+### Changes Made
+- **Type**: Hot fix (production crash)
+- **Scope**: `lib/utils/formatters.ts` — defensive `formatCurrency` against
+  string-serialized Decimals.
+- **Description**: Phase 45.8 (PR #1064) shipped a §18.7.2 glass redesign of
+  `/cashflow` whose new tiles call the shared `lib/utils/formatters.ts`
+  `formatCurrency` (where the previous tiles used local helpers that
+  silently accepted strings via `Intl.NumberFormat.format`). The shared
+  helper's previous branch — `typeof amount === 'number' ? amount :
+  amount.toNumber()` — crashed at runtime when any Decimal-typed field
+  arrived as a JSON-serialized string (Prisma Decimal's default
+  `toJSON()` produces `"12345.67"` strings, not numbers). Reza saw
+  `Something went wrong / e.toNumber is not a function` on production
+  /cashflow ~minutes after the Phase 45.8 deploy went READY.
+
+### Fix
+- `lib/utils/formatters.ts` — added `string` to `CurrencyFormatInput` and
+  branched the coercion explicitly: number → use as-is; string → `Number()`;
+  duck-typed `{toNumber()}` → call it; everything else → empty placeholder.
+  Defensive at the call site so the entire app gains robustness to any
+  Decimal-as-string leak, not just the cashflow page. JSDoc records the
+  Phase 45.8.1 origin.
+- Old call sites that pass numbers are byte-equivalent (number branch
+  short-circuits as before).
+
+### Files Modified
+- `lib/utils/formatters.ts` — `formatCurrency` now accepts strings.
+
+### Build Status
+- TypeScript compilation: **PASS** (no errors in changed files).
+
+### Doc-sync (CLAUDE.md §16.5)
+Surfaces changed in this PR:
+- [ ] visual design system / component pattern
+- [ ] application config
+- [ ] GCP infrastructure
+- [ ] identity / auth
+- [ ] deployment / build
+- [ ] security / CDR posture
+- [x] operational procedure (new failure mode — Decimal-as-string in
+  `formatCurrency`)
+- [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/changelog/CHANGELOG_2026_06_11.md` (this entry)
+- Inline JSDoc on `lib/utils/formatters.ts` documents the failure mode +
+  fix (§16.4 file-header rule)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+No destructive Prisma writes. No schema change (§12.12 N/A).
+
+### PR
+- PR URL: TBD
+- Status: Draft
+
 ## Session: phase45.8-cashflow-redesign-LIlK9
 
 ### Changes Made
