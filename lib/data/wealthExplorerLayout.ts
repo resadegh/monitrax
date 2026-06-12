@@ -893,7 +893,12 @@ export function layoutWealthExplorer(
       from: r.fromEntityId,
       to: r.toEntityId,
       type: ribbonTypeFor(r.type),
-      label: shortLabel(r.type),
+      // Phase 47 F3 — equity edges carry their parcel summary
+      // ("500 ORD") so the advisor chart's bracket detail lives on
+      // the universe ribbon itself.
+      label: r.equitySummary
+        ? `${shortLabel(r.type)} · ${r.equitySummary}`
+        : shortLabel(r.type),
     });
   }
 

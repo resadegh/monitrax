@@ -341,3 +341,20 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
   - All writes via the retained Phase 44 client + routes; no new fetch layer, nothing financial computed in the component (§8.3/§8.4).
 - **Stitch (§18)**: Entity File panel screen `88f4ac2d8f6544bdbacb90fbb4bf9072`, artefact `.stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}` (dark — the panel is the dark universe surface).
 - **Tests**: 7 role-template tests; 111 total green. tsc/eslint/gate/build all pass.
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Phase 47 F3 build
+
+### Changes Made — F3: share parcels (the "[500 ORD]" detail becomes data)
+- **Type**: Feature (Stage F PR 3 of 4)
+- **Solution**:
+  - **Service** (`entityRelationshipService` — stays the ONLY graph writer §8.4): `listShareParcels` / `addShareParcel` / `updateShareParcel` / `deleteShareParcel`. Ownership resolves through the parent SHAREHOLDER_OF/UNITHOLDER_OF edge inside the transaction (§12.11 composite guard); kind auto-derives (UNIT for unitholder edges); **disposal sets `disposedAt`, never deletes** — CGT history is sacred. All writes audited.
+  - **API**: `/api/entities/relationships/[id]/parcels` (GET/POST) + `/[parcelId]` (PATCH incl. dispose / DELETE for mistakes), boundary-validated.
+  - **UI**: each shareholder/unitholder chip in Roles & People gains a lazy parcel block — "500 ordinary · acquired 12 Mar 2021 · $1.00 paid", inline add form (quantity/class/paid/date), dispose action; disposed parcels render dimmed with their date.
+  - **Universe**: `WealthGraphEdge.equitySummary` ("500 ORD" — active parcels, k-format, mixed-class aware) labels ownership ribbons: "Shareholder · 500 ORD".
+- **Reza addition (same day)**: *"if entity is SMSF only available options for that entity is showing"* — the add-role dialog now lists the F2a template's roles first under "Suggested for this entity", with the full grammar grouped under "All roles ·" (guidance, never gates §14.3; the validity engine still judges everything live).
+- **Tests/verify**: 111 green; tsc/eslint/financial-gate/build all pass. No schema change (ShareParcel shipped in 44 1a).
+
+### §12.11 — destructive writes in this change
+- `tx.shareParcel.update` / `tx.shareParcel.delete` (`entityRelationshipService.ts`): (1) where matches — only the parcel id confirmed in-transaction to hang off an edge with `userId = caller`; (2) columns — parcel detail fields the user explicitly edited / the row itself on mistaken-entry delete; (3) guard — `requireParcelEdge` join through `entityRelationship.userId` + parcel `relationshipId` check inside the same transaction. User confirmation: NOT REQUIRED (user-initiated edit of their own captured rows; dispose path never deletes).

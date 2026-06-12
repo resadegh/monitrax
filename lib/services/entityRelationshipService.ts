@@ -24,7 +24,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { Prisma, PrismaClient, EntityRelationshipType, BeneficiaryClass } from '@prisma/client';
+import type { Prisma, PrismaClient, EntityRelationshipType, BeneficiaryClass, ShareClass, EquityKind } from '@prisma/client';
 import { logCRUD } from '@/lib/security/auditLog';
 import type { EntityGraph, GraphNode, GraphEdge, ValidityResult } from '@/lib/entity-graph/types';
 import { classifyEdge, classifyGraph } from '@/lib/entity-graph/validityMatrix';
@@ -602,3 +602,220 @@ export async function setRelationshipAccountantVerified(
 }
 
 export { windowsOverlap as _windowsOverlapForTest };
+
+// =============================================================================
+// SHARE PARCELS — Phase 47 F3 (the first writer; schema shipped in 44 1a)
+// =============================================================================
+
+/**
+ * `ShareParcel` rows hang off SHAREHOLDER_OF / UNITHOLDER_OF edges and
+ * carry the equity detail the advisor chart writes as "[500 ORD]" —
+ * class, quantity, paid/unpaid per unit, CGT acquisition date. This
+ * service stays the ONLY writer of the graph (§8.4): every parcel write
+ * resolves ownership through the parent edge's `userId` before touching
+ * the row, and audits via `logCRUD`.
+ *
+ * Disposal NEVER deletes — `disposedAt` closes the parcel so the CGT
+ * history survives (financial-adviser lens: cost-base evidence is
+ * sacred). Hard delete exists only for mistaken entries.
+ */
+
+const PARCEL_EDGE_TYPES: ReadonlySet<EntityRelationshipType> = new Set<EntityRelationshipType>([
+  'SHAREHOLDER_OF',
+  'UNITHOLDER_OF',
+]);
+
+export interface ShareParcelSummary {
+  id: string;
+  relationshipId: string;
+  kind: EquityKind;
+  shareClass: ShareClass;
+  quantity: number;
+  paidPerUnit: number;
+  unpaidPerUnit: number;
+  acquiredAt: Date;
+  disposedAt: Date | null;
+}
+
+export interface ShareParcelInput {
+  shareClass?: ShareClass;
+  quantity: number;
+  paidPerUnit?: number;
+  unpaidPerUnit?: number;
+  acquiredAt: Date | string;
+}
+
+/** Resolve the parent edge, confirming ownership + that it can carry parcels. */
+async function requireParcelEdge(
+  tx: Prisma.TransactionClient | PrismaClient,
+  userId: string,
+  relationshipId: string,
+): Promise<{ id: string; type: EntityRelationshipType }> {
+  const edge = await tx.entityRelationship.findFirst({
+    where: { id: relationshipId, userId },
+    select: { id: true, type: true },
+  });
+  if (!edge) {
+    throw new RelationshipValidationError(
+      'RELATIONSHIP_NOT_FOUND',
+      'Relationship not found or not owned by you.',
+    );
+  }
+  if (!PARCEL_EDGE_TYPES.has(edge.type)) {
+    throw new RelationshipValidationError(
+      'IMPOSSIBLE_EDGE',
+      'Share parcels only attach to shareholder or unitholder relationships.',
+    );
+  }
+  return edge;
+}
+
+function toParcelSummary(p: {
+  id: string;
+  relationshipId: string;
+  kind: EquityKind;
+  shareClass: ShareClass;
+  quantity: Prisma.Decimal;
+  paidPerUnit: Prisma.Decimal;
+  unpaidPerUnit: Prisma.Decimal;
+  acquiredAt: Date;
+  disposedAt: Date | null;
+}): ShareParcelSummary {
+  return {
+    id: p.id,
+    relationshipId: p.relationshipId,
+    kind: p.kind,
+    shareClass: p.shareClass,
+    quantity: Number(p.quantity),
+    paidPerUnit: Number(p.paidPerUnit),
+    unpaidPerUnit: Number(p.unpaidPerUnit),
+    acquiredAt: p.acquiredAt,
+    disposedAt: p.disposedAt,
+  };
+}
+
+/** List the parcels on one relationship (newest acquisition first). */
+export async function listShareParcels(
+  userId: string,
+  relationshipId: string,
+): Promise<ShareParcelSummary[]> {
+  await requireParcelEdge(prisma, userId, relationshipId);
+  const parcels = await prisma.shareParcel.findMany({
+    where: { relationshipId },
+    orderBy: { acquiredAt: 'desc' },
+  });
+  return parcels.map(toParcelSummary);
+}
+
+/** Add a parcel to a shareholder/unitholder edge. */
+export async function addShareParcel(
+  userId: string,
+  relationshipId: string,
+  input: ShareParcelInput,
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<ShareParcelSummary> {
+  if (!(input.quantity > 0)) {
+    throw new RelationshipValidationError('IMPOSSIBLE_EDGE', 'Quantity must be greater than zero.');
+  }
+  const created = await prisma.$transaction(async (tx) => {
+    const edge = await requireParcelEdge(tx, userId, relationshipId);
+    return tx.shareParcel.create({
+      data: {
+        relationshipId,
+        kind: edge.type === 'UNITHOLDER_OF' ? 'UNIT' : 'SHARE',
+        shareClass: input.shareClass ?? 'ORDINARY',
+        quantity: input.quantity,
+        paidPerUnit: input.paidPerUnit ?? 0,
+        unpaidPerUnit: input.unpaidPerUnit ?? 0,
+        acquiredAt: new Date(input.acquiredAt),
+      },
+    });
+  });
+  void logCRUD({
+    userId,
+    action: 'CREATE',
+    entityType: 'ShareParcel',
+    entityId: created.id,
+    metadata: { relationshipId, shareClass: created.shareClass },
+    ...requestMeta,
+  }).catch(() => {});
+  return toParcelSummary(created);
+}
+
+/**
+ * Update a parcel's details (corrections). §12.11 — ownership resolved
+ * through the parent edge inside the transaction; only the supplied
+ * columns are written; the row is one the user's own edge carries.
+ */
+export async function updateShareParcel(
+  userId: string,
+  relationshipId: string,
+  parcelId: string,
+  input: Partial<ShareParcelInput> & { disposedAt?: Date | string | null },
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<ShareParcelSummary> {
+  if (input.quantity !== undefined && !(input.quantity > 0)) {
+    throw new RelationshipValidationError('IMPOSSIBLE_EDGE', 'Quantity must be greater than zero.');
+  }
+  const updated = await prisma.$transaction(async (tx) => {
+    await requireParcelEdge(tx, userId, relationshipId);
+    const existing = await tx.shareParcel.findFirst({
+      where: { id: parcelId, relationshipId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new RelationshipValidationError('RELATIONSHIP_NOT_FOUND', 'Parcel not found.');
+    }
+    return tx.shareParcel.update({
+      where: { id: parcelId },
+      data: {
+        ...(input.shareClass !== undefined && { shareClass: input.shareClass }),
+        ...(input.quantity !== undefined && { quantity: input.quantity }),
+        ...(input.paidPerUnit !== undefined && { paidPerUnit: input.paidPerUnit }),
+        ...(input.unpaidPerUnit !== undefined && { unpaidPerUnit: input.unpaidPerUnit }),
+        ...(input.acquiredAt !== undefined && { acquiredAt: new Date(input.acquiredAt) }),
+        ...(input.disposedAt !== undefined && {
+          disposedAt: input.disposedAt ? new Date(input.disposedAt) : null,
+        }),
+      },
+    });
+  });
+  void logCRUD({
+    userId,
+    action: 'UPDATE',
+    entityType: 'ShareParcel',
+    entityId: parcelId,
+    metadata: { relationshipId, fieldsChanged: Object.keys(input) },
+    ...requestMeta,
+  }).catch(() => {});
+  return toParcelSummary(updated);
+}
+
+/** Hard-delete a parcel — mistaken entries only; disposals use `disposedAt`. */
+export async function deleteShareParcel(
+  userId: string,
+  relationshipId: string,
+  parcelId: string,
+  requestMeta?: { ipAddress?: string; userAgent?: string },
+): Promise<void> {
+  await prisma.$transaction(async (tx) => {
+    await requireParcelEdge(tx, userId, relationshipId);
+    const existing = await tx.shareParcel.findFirst({
+      where: { id: parcelId, relationshipId },
+      select: { id: true },
+    });
+    if (!existing) {
+      throw new RelationshipValidationError('RELATIONSHIP_NOT_FOUND', 'Parcel not found.');
+    }
+    // §12.11 — the parcel is confirmed to hang off the caller's edge.
+    await tx.shareParcel.delete({ where: { id: parcelId } });
+  });
+  void logCRUD({
+    userId,
+    action: 'DELETE',
+    entityType: 'ShareParcel',
+    entityId: parcelId,
+    metadata: { relationshipId },
+    ...requestMeta,
+  }).catch(() => {});
+}

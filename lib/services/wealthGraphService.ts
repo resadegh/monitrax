@@ -140,6 +140,12 @@ export interface WealthGraphEdge {
   // Optional typed metadata copied through (subset)
   beneficiaryClass: string | null;
   ownershipPercent: number | null;
+  /**
+   * Phase 47 F3 — for SHAREHOLDER_OF / UNITHOLDER_OF edges with active
+   * `ShareParcel` rows: a short display summary like "500 ORD" (sum of
+   * active quantities + the dominant class). Null when no parcels.
+   */
+  equitySummary?: string | null;
 }
 
 export interface WealthGraphOwnershipGroup {
@@ -361,6 +367,11 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         accountantVerified: true,
         beneficiaryClass: true,
         partnerInterestPct: true,
+        // Phase 47 F3 — active parcels summarise on the edge ("500 ORD")
+        shareParcels: {
+          where: { disposedAt: null },
+          select: { quantity: true, shareClass: true },
+        },
       },
     }),
     prisma.ownershipGroup.findMany({
@@ -541,6 +552,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     accountantVerified: r.accountantVerified,
     beneficiaryClass: r.beneficiaryClass,
     ownershipPercent: r.partnerInterestPct ? Number(r.partnerInterestPct) : null,
+    equitySummary: summariseParcels(r.shareParcels),
   }));
 
   // Build a set of (from,to) pairs already covered by explicit edges, so we
@@ -763,4 +775,35 @@ function currentFinancialYear(d: Date): string {
   const month = d.getMonth(); // 0-indexed; July = 6
   const lead = month >= 6 ? year : year - 1;
   return `${lead}-${String(lead + 1).slice(-2)}`;
+}
+
+/**
+ * Phase 47 F3 — "[500 ORD]" style summary of an edge's ACTIVE parcels.
+ * Sums quantities; shows the class when uniform, "mixed" otherwise.
+ */
+function summariseParcels(
+  parcels: Array<{ quantity: unknown; shareClass: string }> | undefined,
+): string | null {
+  if (!parcels || parcels.length === 0) return null;
+  const total = parcels.reduce((s, p) => s + Number(p.quantity), 0);
+  if (!(total > 0)) return null;
+  const classes = new Set(parcels.map(p => p.shareClass));
+  const cls =
+    classes.size === 1
+      ? shortClass([...classes][0])
+      : 'mixed';
+  const qty = total >= 1000 ? `${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}k` : `${total}`;
+  return `${qty} ${cls}`;
+}
+
+function shortClass(c: string): string {
+  switch (c) {
+    case 'ORDINARY': return 'ORD';
+    case 'PREFERENCE': return 'PREF';
+    case 'REDEEMABLE_PREFERENCE': return 'RPREF';
+    case 'A_CLASS': return 'A';
+    case 'B_CLASS': return 'B';
+    case 'C_CLASS': return 'C';
+    default: return 'units';
+  }
 }

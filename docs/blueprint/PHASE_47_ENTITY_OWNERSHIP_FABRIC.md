@@ -167,7 +167,9 @@ The restoration. `EntityDetailPanel` (desktop) + the mobile detail card gain a *
 - **Stored once, used everywhere** — the same edges feed: the entity detail panel rows (this stage), the universe hover popover + accountant-review report (already read the graph), Stage D tax facts (Div 7A associate determination reads FAMILY_MEMBER_OF/DIRECTOR_OF; trust distribution reads BENEFICIARY_OF; SMSF rules read MEMBER_OF — exactly as `PHASE_44_PART_2` designed), and Stage E per-entity report sections. No new storage — the Phase 44 graph IS the store; F2a only completes capture + display.
 - **F4 alignment** — the wizard's per-type cards already implicitly follow per-type roles; F4 re-points them to read `roleTemplates.ts` so wizard and editor can never drift (one SSOT for "what roles does this type have").
 
-#### F3 — Share parcels & equity detail (1 PR)
+#### F3 — Share parcels & equity detail (1 PR) — ✅ SHIPPED 2026-06-12
+
+> Shipped as specced: parcel CRUD in `entityRelationshipService` (stays the only graph writer; ownership resolves through the parent edge in-transaction), nested routes `/api/entities/relationships/[id]/parcels{,/[parcelId]}`, per-edge parcel blocks in the Roles & People section (lazy-loaded, inline add form, dispose-never-delete), and universe ownership ribbons labelled with the active-parcel summary ("Shareholder · 500 ORD") via `WealthGraphEdge.equitySummary`. **Plus (Reza same-day): type-aware role suggestions** — the add-role dialog lists the entity type's template roles first ("Suggested for this entity"); the full grammar stays one optgroup away (guidance, never gates).
 
 - `entityRelationshipService` extension (stays the only graph writer): parcel CRUD hanging off SHAREHOLDER_OF / UNITHOLDER_OF edges. New nested route `/api/entities/relationships/[id]/parcels`.
 - F2\'s shareholder/unitholder rows expand to a parcel list — *"500 ordinary · acquired 12 Mar 2021 · $1.00 paid"* — add / edit / dispose (sets `disposedAt`, never deletes; CGT history is sacred).
