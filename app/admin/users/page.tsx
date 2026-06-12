@@ -16,7 +16,7 @@ import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { Select } from '@/components/admin/ui/AdminForm';
 import { StatusBadge, TierBadge } from '@/components/admin/ui/AdminBadge';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
-import { ADMIN_ROUTES, PAGINATION_DEFAULTS } from '@/lib/admin/constants';
+import { ADMIN_ROUTES, PAGINATION_DEFAULTS, USER_TIER_LIMITS } from '@/lib/admin/constants';
 
 interface UserData {
   id: string;
@@ -24,6 +24,7 @@ interface UserData {
   name: string | null;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt: string | null;
   accountsCount: number;
   propertiesCount: number;
   loansCount: number;
@@ -46,13 +47,6 @@ interface ApiResponse {
   error?: { code: string; message: string };
 }
 
-// MRR calculation based on tier (per ADMIN_PORTAL_COMPLETION_PLAN.md)
-const TIER_MRR: Record<string, number> = {
-  FREE: 0,
-  BASIC: 9.99,
-  PRO: 19.99,
-  PREMIUM: 39.99,
-};
 
 export default function UsersPage() {
   const router = useRouter();
@@ -117,8 +111,10 @@ export default function UsersPage() {
     email: user.email,
     tier: user.subscription.tier,
     status: user.subscription.status,
-    mrr: TIER_MRR[user.subscription.tier] || 0,
-    lastLogin: '-', // Will be populated when we add last login tracking
+    mrr: USER_TIER_LIMITS[user.subscription.tier as keyof typeof USER_TIER_LIMITS]?.monthlyPrice ?? 0,
+    lastLogin: user.lastLoginAt
+      ? new Date(user.lastLoginAt).toLocaleDateString('en-AU')
+      : '—',
     createdAt: new Date(user.createdAt).toLocaleDateString('en-AU'),
   }));
 

@@ -368,6 +368,11 @@ enum AuditAction {
   HOUSEHOLD_PET_CREATED
   HOUSEHOLD_PET_UPDATED
   HOUSEHOLD_PET_DELETED
+  // 2026-06-11 enum backfill (see block at the end of this enum) — the
+  // household-profile SSOT route audited with these two codes but they
+  // were never added here, so the writes silently failed.
+  HOUSEHOLD_PROFILE_CREATED
+  HOUSEHOLD_PROFILE_UPDATED
 
   // Phase 12 Track F.2 (Onboarding two-way sync — properties domain).
   // The property entity API (/api/properties) became the wizard's SSOT
@@ -430,6 +435,51 @@ enum AuditAction {
   CONSENT_MARKETING_OPTED_IN
   CONSENT_MARKETING_OPTED_OUT
   CONSENT_DOCUMENT_VERSION_REACCEPTED
+
+  // 2026-06-11 enum backfill — twelve action codes were referenced by
+  // createAuditLog() call sites WITHOUT ever being added to this enum.
+  // `lib/security/auditLog.ts` typed action as `string` + cast `as any`
+  // into Prisma, so every such write failed at the DB layer and was
+  // swallowed by the fire-and-forget catch: ZERO audit rows were ever
+  // written for these surfaces (CLAUDE.md §12.5 "audit everything"
+  // violation, found via prod runtime logs 2026-06-11). The auditLog
+  // service now types `action` with the Prisma-generated enum so a
+  // missing value is a compile error, not a silent prod no-op.
+
+  // Phase 40 — AI Financial Advisor surface (advice doc generation,
+  // follow-up chat, scenario runs). Metadata is CDR-safe via
+  // sanitizeCdrMetadata(): stage/counts/booleans/token usage only.
+  AI_ADVICE_GENERATED
+  AI_ADVICE_CHAT
+  CFO_SCENARIO_RUN
+
+  // Phase 41 — AI tax advisor invocation (ProductionAuditSink). One row
+  // per advisor tool-call session; metadata carries tool names + token
+  // counts only, never financial values (§13.3).
+  AI_ADVISOR_INVOCATION
+
+  // Admin portal login (app/api/admin/auth/login). Sits on the user-level
+  // audit trail in addition to AdminAuditLog (which is a separate
+  // String-typed model) so the principal's own history shows the login.
+  ADMIN_LOGIN
+
+  // Ownership-selection correction sweep (ownershipSelectionService).
+  OWNERSHIP_RECORD_CORRECTED
+
+  // Org portal team-seat invitation (Phase 32B portal).
+  PORTAL_SEAT_INVITED
+
+  // Phase 45.2.5 — user-uploaded property hero photo lifecycle.
+  PROPERTY_HERO_IMAGE_UPDATED
+  PROPERTY_HERO_IMAGE_REMOVED
+
+  // Phase 44.2 — SMSF annual-return workbook save.
+  SMSF_RETURN_SAVED
+
+  // 2026-06-12 — "Start fresh" account data reset (wipe financial data,
+  // keep account). Fired once per completed reset by
+  // lib/services/accountReset.ts. Metadata: row counts + booleans only.
+  USER_DATA_RESET
 }
 
 enum AuditStatus {

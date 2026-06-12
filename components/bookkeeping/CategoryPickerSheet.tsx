@@ -24,7 +24,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { ArrowLeftRight, Loader2, X } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
 interface CategoryPickerSheetProps {
@@ -39,9 +39,22 @@ interface CategoryPickerSheetProps {
   } | null;
   /** Suggested categories — caller may pass merchant-mapping-aware list. */
   suggestions?: string[];
-  /** Called after the PATCH succeeds. */
+  /** Called after the PATCH (or onPickOverride) succeeds. */
   onSuccess: (categoryLevel1: string) => void;
   onClose: () => void;
+  /**
+   * Phase 49.5 — when provided, the sheet does NOT PATCH a transaction;
+   * it calls this instead (e.g. review-queue items, which aren't
+   * transactions yet). Throw to surface an error in the sheet.
+   */
+  onPickOverride?: (categoryLevel1: string) => Promise<void>;
+  /**
+   * Phase 49.9 — "Mark as transfer" affordance (e.g. own-account
+   * transfers like "R Sadeghtransfer"). Caller decides what that means:
+   * review-queue items file as isTransfer; normal transactions route to
+   * the TransferDestinationSheet.
+   */
+  onMarkTransfer?: () => void | Promise<void>;
 }
 
 const DEFAULT_SUGGESTIONS = [
@@ -58,18 +71,40 @@ export function CategoryPickerSheet({
   suggestions,
   onSuccess,
   onClose,
+  onPickOverride,
+  onMarkTransfer,
 }: CategoryPickerSheetProps) {
   const { token } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [custom, setCustom] = useState('');
+  // Phase 49.9 (Reza) — replace the free-text "Other category" with a
+  // dropdown of the user's EXISTING categories (GET /api/categories).
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open || !token || allCategories.length > 0) return;
+    let active = true;
+    fetch('/api/categories', { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        if (!active || !json) return;
+        const list: { name?: string }[] = json.data?.categories ?? json.data ?? [];
+        const names = Array.from(
+          new Set(list.map((cat) => cat?.name).filter((n): n is string => typeof n === 'string' && n.length > 0))
+        ).sort((a, b) => a.localeCompare(b));
+        setAllCategories(names);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [open, token, allCategories.length]);
 
   // Reset transient state on close.
   useEffect(() => {
     if (!open) {
       setBusy(false);
       setError(null);
-      setCustom('');
     }
   }, [open]);
 
@@ -86,7 +121,22 @@ export function CategoryPickerSheet({
   const chips = (suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS).slice(0, 6);
 
   async function categorise(level1: string) {
-    if (!transactionId || busy || !token) return;
+    if (busy || !token) return;
+    // Phase 49.5 — override path (review-queue items: not transactions yet).
+    if (onPickOverride) {
+      setBusy(true);
+      setError(null);
+      try {
+        await onPickOverride(level1);
+        onSuccess(level1);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to categorise');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    if (!transactionId) return;
     setBusy(true);
     setError(null);
     try {
@@ -166,6 +216,32 @@ export function CategoryPickerSheet({
           </button>
         </header>
 
+        {/* Phase 49.9 — Mark as transfer (own-account movement, not
+            income/expense). Rendered first when available: transfers are
+            the most common "none of these categories fit" case. */}
+        {onMarkTransfer && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError(null);
+              try {
+                await onMarkTransfer();
+              } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to mark as transfer');
+                setBusy(false);
+                return;
+              }
+              setBusy(false);
+            }}
+            className="mb-4 flex w-full items-center justify-center gap-2 px-4 py-3.5 text-sm font-medium rounded-2xl border border-sky-500/30 bg-sky-500/[0.08] text-sky-700 dark:text-sky-300 hover:bg-sky-500/15 transition-colors disabled:opacity-60 min-h-[52px]"
+          >
+            <ArrowLeftRight className="w-4 h-4" />
+            It&apos;s a transfer between my accounts
+          </button>
+        )}
+
         {/* Suggestion chips — large mobile-first tap targets */}
         <div className="grid grid-cols-2 gap-2.5 mb-4">
           {chips.map((cat) => (
@@ -181,35 +257,29 @@ export function CategoryPickerSheet({
           ))}
         </div>
 
-        {/* Custom — free-form */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (custom.trim().length > 0) categorise(custom.trim());
-          }}
-          className="flex items-center gap-2"
-        >
-          <input
-            type="text"
-            value={custom}
-            onChange={(e) => setCustom(e.target.value)}
-            placeholder="Other category..."
-            disabled={busy}
-            className="flex-1 px-4 py-3 text-sm rounded-2xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/40 min-h-[44px]"
-          />
-          <button
-            type="submit"
-            disabled={busy || custom.trim().length === 0}
-            className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-emerald-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
-            aria-label="Apply"
+        {/* Phase 49.9 (Reza) — dropdown of the user's EXISTING categories
+            (replaces the free-text "Other category" input). */}
+        <div className="flex items-center gap-2">
+          <select
+            value=""
+            disabled={busy || allCategories.length === 0}
+            onChange={(e) => {
+              if (e.target.value) categorise(e.target.value);
+            }}
+            className="flex-1 px-4 py-3 text-sm rounded-2xl border border-border bg-background focus:outline-none focus:ring-2 focus:ring-emerald-500/40 min-h-[44px] disabled:opacity-60"
+            aria-label="All categories"
           >
-            {busy ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <span className="text-base font-medium">Set</span>
-            )}
-          </button>
-        </form>
+            <option value="" disabled>
+              {allCategories.length === 0 ? 'Loading categories…' : 'All categories…'}
+            </option>
+            {allCategories.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+          {busy && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground shrink-0" />}
+        </div>
 
         {error && <p className="mt-3 text-xs text-rose-600">{error}</p>}
       </div>

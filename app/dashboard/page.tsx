@@ -66,7 +66,7 @@ import {
 } from '@/components/dashboard/Phase2Enhancements';
 // NetWorthTrend (legacy, Math.random-backfilled) deleted in R-Charts-2 —
 // replaced by EditorialLineChart reading real `NetWorthSnapshot` data.
-import { TrailStageIndicator } from '@/components/dashboard/TrailStageIndicator';
+// TrailStageIndicator moved to /dashboard/cfo in Phase 14.10 — import deleted.
 import {
   SAVING_RATE_ZONES,
   LVR_ZONES,
@@ -531,18 +531,18 @@ export default function DashboardPage() {
           the user has globally opted out. Per Reza directive
           2026-05-08: reconciliation is the most-recurring user
           task — surface it persistently, not on a 24h gate. */}
-      {/* Phase 45.6 — top-of-page widgets wrapped in §18.7.2 glass.
-          mb-6 spacing matches the other top-of-page widgets so Pending
-          Actions doesn't sit flush against TrailStageIndicator below
-          (Reza regression 2026-06-09). */}
+      {/* Phase 45.6 — top-of-page widgets wrapped in §18.7.2 glass. */}
       <div className="mb-6">
         <GlassPendingActions />
       </div>
 
-      {/* TRAIL Stage Indicator */}
-      <div className="mb-6">
-        <TrailStageIndicator />
-      </div>
+      {/* Phase 14.10 (2026-06-11) — TRAIL stage indicator MOVED from
+          here to the top of /dashboard/cfo (My Guide). Reza directive:
+          "TRAIL tile is very important but having it in the dashboard
+          doesn't add any value." Stage is now ambient in the sidebar
+          via <TrailStagePill /> and the full hero lives at the top of
+          My Guide where stage-matched recommendations are. Home stays
+          action-led. */}
 
       <div className="mb-6">
         <GlassDailyPulse />

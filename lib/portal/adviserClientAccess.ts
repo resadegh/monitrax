@@ -10,9 +10,11 @@
  * Layered checks (rejection at any layer returns a structured error):
  *   1. OrganizationClient row exists
  *   2. Client status === 'ACTIVE' AND consentStatus === 'GRANTED'
- *   3. Caller has an active OrganizationMember seat on the same org
- *   4. Caller's role permits viewing client data (PermissionGuards)
- *   5. If caller is PORTAL_ADVISOR, they're assigned to this client
+ *   3. The org's license is not suspended (lib/portal/licenseGuard.ts —
+ *      a suspended firm loses client-data access; added 2026-06-12)
+ *   4. Caller has an active OrganizationMember seat on the same org
+ *   5. Caller's role permits viewing client data (PermissionGuards)
+ *   6. If caller is PORTAL_ADVISOR, they're assigned to this client
  *      (PORTAL_OWNER / PORTAL_ADMIN see the whole book)
  *
  * Returns the canonical access scopes from the DB row (NOT from the
@@ -23,6 +25,7 @@
 
 import { prisma } from '@/lib/db';
 import { PermissionGuards } from '@/lib/portal/permissions';
+import { isOrgLicenseSuspended } from '@/lib/portal/licenseGuard';
 import type { DataAccessScope, PortalUserRole } from '@prisma/client';
 
 const ROLE_MAPPING: Record<string, PortalUserRole> = {
@@ -53,6 +56,7 @@ export interface AdviserAccessError {
   code:
     | 'NOT_FOUND'
     | 'CONSENT_NOT_GRANTED'
+    | 'ORG_SUSPENDED'
     | 'NOT_A_MEMBER'
     | 'INSUFFICIENT_ROLE'
     | 'CLIENT_NOT_ASSIGNED';
@@ -96,6 +100,16 @@ export async function verifyAdviserClientAccess(
       code: 'CONSENT_NOT_GRANTED',
       message:
         'This client has not granted active consent. Send a consent request before viewing their data.',
+    };
+  }
+
+  if (await isOrgLicenseSuspended(orgClient.organizationId)) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'ORG_SUSPENDED',
+      message:
+        'This organisation is suspended. Contact Monitrax support to restore access.',
     };
   }
 

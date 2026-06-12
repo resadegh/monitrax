@@ -1683,10 +1683,39 @@ The rule does NOT apply to (these can ship without Stitch):
 | Accessibility fix (aria labels, focus rings, contrast) | ❌ no |
 | Bug fix in existing component | ❌ no |
 | Adding a missing dead-link target route (functional, not visual) | ❌ no |
-| Internal app (`/dashboard/*`) — uses internal design system per `08_BRAND_UI_DESIGN.md`, NOT Stitch's | ❌ no (unless the agent is told otherwise) |
+| Internal app (`/dashboard/*`) — **section-level compositions follow the §18.2.1 STRICT ruling below**; uses the internal design system per `08_BRAND_UI_DESIGN.md`, NOT Stitch's | ✅ YES for new sections/patterns (§18.2.1) |
 | Org Portal (`/portal/*`), Admin (`/admin/*`) — separate design systems | ❌ no |
 
 When in doubt, ask Reza.
+
+#### 18.2.1 The STRICT in-app ruling (Reza decision 2026-06-11 — CRITICAL, ALWAYS FOLLOW)
+
+> Reza was asked (after Phase 49.4/49.5 shipped a new review-surface composition code-first):
+> *"why is this change in design not through stitch?"* — and ruled **Option 1: stricter**.
+> His directive: *"I stick with 1. stricter — make sure this rule is updated in CLAUDE.md as
+> a critical rule to follow at all time."*
+
+**The rule:** ANY new **section-level composition** — a new card, a new list pattern, a new
+review surface, a new band of controls, any element grouping that did not exist on the page
+before — goes through Stitch FIRST, **even on in-app `/dashboard/*` pages**, even when it is
+composed entirely from existing §18.7.2 primitives, and even when the user has verbally
+specified the layout. Generate the screen, show the preview, get the nod, then write React.
+
+Only **true tweaks** may be code-first:
+- spacing / padding / alignment adjustments to an existing approved section
+- copy edits
+- a single control added/removed/moved within an approved section
+- responsive reflow of an already-approved section
+- colour/token application per an existing documented rule
+
+**Backfill duty:** if a session ships a section-level composition without a Stitch pass
+(e.g. urgent fix), it MUST backfill the Stitch artefact in the same or immediately-following
+PR — generate the screen matching the shipped design, commit HTML+PNG under
+`.stitch/designs/`, and reference the screen ID in the component JSDoc. Phase 49's review
+surface was the first backfill under this rule.
+
+**Reviewer enforcement:** reject any PR introducing a section-level in-app composition with
+neither a Stitch artefact nor a same-PR backfill.
 
 ### 18.3 The Stitch toolset
 
@@ -1936,6 +1965,7 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 ##### Where to apply next (queue)
 
 - Phase 45.4 — KPI row + Net Worth hero — **first canonical application of Compact Dashboard (this PR).**
+- ~~`/dashboard/activity` (What's moving) KPI tiles~~ ✅ **shipped Phase 49 (2026-06-11).** KPI Swipe Strip applied to the Activity page's 4 summary tiles (snap-mandatory, 78vw tiles with 1.2-peek, page-dot indicator via scroll tracking); transaction list correctly stays vertical (rows are destinations). Per-surface learning: the strip's page dots are driven by a simple `scrollLeft / tileWidth` calculation rather than IntersectionObserver — adequate for a 4-tile strip, cheaper to maintain; revisit if a longer strip ships.
 - Phase 45.5 — insight + diagnostic widgets → Bento Pair rows.
 - Phase 45.6 — MoneyStoryHero + WealthUniverse + DailyPulse → full-width hero + Bento Pair where appropriate.
 - Future: `/dashboard/balances` mobile reflow, `/dashboard/cfo` mobile reflow, My Wealth landing mobile reflow.

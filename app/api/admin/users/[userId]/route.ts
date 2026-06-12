@@ -67,24 +67,44 @@ export async function GET(
       );
     }
 
-    // Get subscription
-    const subscription = await prisma.userSubscription.findUnique({
-      where: { userId },
-    });
-
-    // Get organization memberships
-    const memberships = await prisma.organizationMember.findMany({
-      where: { userId },
-      include: {
-        organization: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
+    // Subscription, memberships, last login, recent activity — independent reads
+    const [subscription, memberships, lastLogin, recentActivity] = await Promise.all([
+      prisma.userSubscription.findUnique({
+        where: { userId },
+      }),
+      prisma.organizationMember.findMany({
+        where: { userId },
+        include: {
+          organization: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
           },
         },
-      },
-    });
+      }),
+      prisma.loginAttempt.findFirst({
+        where: { userId, success: true },
+        orderBy: { attemptedAt: 'desc' },
+        select: { attemptedAt: true },
+      }),
+      // metadata deliberately excluded — audit metadata is sanitized at write
+      // time, but the admin surface only needs the event shape (CDR §13.3)
+      prisma.auditLog.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          action: true,
+          status: true,
+          entityType: true,
+          ipAddress: true,
+          createdAt: true,
+        },
+      }),
+    ]);
 
     return NextResponse.json({
       id: user.id,
@@ -92,6 +112,8 @@ export async function GET(
       name: user.name,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
+      lastLoginAt: lastLogin?.attemptedAt ?? null,
+      recentActivity,
       stats: {
         accountsCount: user._count.accounts,
         propertiesCount: user._count.properties,

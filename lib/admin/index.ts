@@ -14,8 +14,11 @@
  * Cloud SQL Connector.
  *
  * Server-only paths consumers MUST import directly:
- *   - `@/lib/admin/auth`    — AdminAuthContext + token helpers (uses Prisma)
- *   - `@/lib/admin/services` — Prisma-backed admin services
+ *   - `@/lib/admin/auth` — AdminAuthContext + token helpers (uses Prisma)
+ *
+ * (`./services` deleted 2026-06-12 — the client-side fetch-wrapper layer was
+ * never imported anywhere and referenced endpoints that don't exist; admin
+ * pages call `fetch()` directly. CLAUDE.md §12.1.)
  */
 
 // Types
@@ -30,5 +33,5 @@ export * from './permissions';
 // Feature flags (pure — no Prisma)
 export * from './featureFlags';
 
-// NOTE: `./auth` and `./services` are server-only — see file header above.
-// Import them directly via their full path, NOT through this barrel.
+// NOTE: `./auth` is server-only — see file header above.
+// Import it directly via its full path, NOT through this barrel.

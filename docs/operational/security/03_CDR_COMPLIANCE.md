@@ -98,6 +98,19 @@ When a consumer revokes consent (via Monitrax UI or directly with their bank):
 
 **There is no "undo" for revocation. Once CDR data is deleted, it is gone.**
 
+### Organization Suspension Cuts Client-Data Access (2026-06-12)
+
+Beyond per-consumer consent, the admin portal can suspend an organisation's
+license (`OrganizationLicense.status = 'suspended'`). A suspended firm loses
+portal access to ALL client financial data, enforced at the three canonical
+access points (`lib/portal/licenseGuard.ts` → wired into
+`verifyAdviserClientAccess()`, `masterFinancialService.loadOrganizationClient()`,
+and `withPortalFeatureGate()`). Client consents are NOT revoked by an org
+suspension — the consent rows stay intact and access resumes on reactivation.
+Members keep their personal Monitrax accounts (org suspension is a firm-level
+billing/compliance state, not an identity action — contrast
+`01_AUTHENTICATION.md` § User Suspension).
+
 ---
 
 ## Audit Logging Requirements

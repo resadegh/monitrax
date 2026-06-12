@@ -30,8 +30,8 @@ interface UserSearchResult {
 
 const supportTools = [
   {
-    title: 'User Impersonation',
-    description: 'Login as a user to debug issues. All actions are logged.',
+    title: 'User Lookup',
+    description: 'Find a user and open their profile for support actions.',
     href: `${ADMIN_ROUTES.SUPPORT}/impersonate`,
     icon: (
       <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -15,6 +15,7 @@ import { log } from '@/lib/utils/logger';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
 import { prisma } from '@/lib/db';
+import { isOrgLicenseSuspended } from '@/lib/portal/licenseGuard';
 import { hasActiveCDRConsent } from '@/lib/services/cdrDataLifecycle';
 import {
   mapPlanToTier,
@@ -529,6 +530,23 @@ export function withPortalFeatureGate<T = unknown>(
       logApiRequest(auth.userId, request, 403, Date.now() - start);
       return formatErrorResponse(
         errors.forbidden('Portal feature requires an active organisation membership')
+      );
+    }
+
+    // A suspended org loses gated portal features (2026-06-12 — see
+    // lib/portal/licenseGuard.ts for the suspension-semantics rationale).
+    if (await isOrgLicenseSuspended(membership.organizationId)) {
+      log.warn('Portal feature gate denied — organisation license suspended', {
+        userId: auth.userId,
+        organizationId: membership.organizationId,
+        feature,
+        path: request.nextUrl.pathname,
+      });
+      logApiRequest(auth.userId, request, 403, Date.now() - start);
+      return formatErrorResponse(
+        errors.forbidden(
+          'This organisation is suspended. Contact Monitrax support to restore access.'
+        )
       );
     }
 

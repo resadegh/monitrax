@@ -215,9 +215,10 @@ export function TransactionImportDialog({
     if (open) {
       setStep(getInitialStep());
       setSelectedAccountId(initialAccountId || '');
-      if (initialAccountId) {
-        setAccountMode('existing');
-      }
+      // Pre-targeted (account row) → existing mode, skip the choice;
+      // general open → reset to 'new' so a prior per-account open doesn't
+      // leave the choice step stuck on 'existing'.
+      setAccountMode(initialAccountId ? 'existing' : 'new');
     }
   }, [open, initialAccountId]);
 

@@ -1,24 +1,31 @@
 /**
  * EditorialBottomNav — mobile-only sticky bottom navigation. Hides on
- * md+ (the desktop sidebar takes over). Five cells map to the user's
- * most-trafficked surfaces; the rest live behind the "More" sheet.
+ * md+ (the desktop sidebar takes over).
  *
- * Spec (from Stitch mobile screen dc038cd19aea4cfc8d0300f4d9122ffd):
- *   - height:   64px + safe-area-bottom
- *   - surface:  white with 1px slate-200 top hairline
- *   - active:   emerald icon + emerald 11px label + 3px emerald top
- *               accent inside the active cell
- *   - inactive: slate-500 icon + slate-500 label
- *   - touch:    44px minimum tappable height inside the 64px cell
+ * Renders from the canonical `mobileTabBarItems` SSOT in
+ * `lib/navigation/trailNav.tsx` so the bottom bar stays aligned with the
+ * desktop sidebar's TRAIL ordering — Phase 14.6 v4 directive (2026-05-08):
+ * *"trail is the IA, all five stages should be visible end-to-end."*
  *
- * The five surfaces:
- *   1. Home              → /dashboard
- *   2. My Accounts (T)   → /dashboard/balances
- *   3. My Wealth (I)     → /dashboard/properties
- *   4. My Guide (L)      → /dashboard/cfo
- *   5. More              → opens drawer (placeholder Settings link for now)
+ * Phase 14.7 (2026-06-11): replaced a hardcoded 5-cell list (Home /
+ * Accounts / Wealth / Guide / More) that had drifted from `mobileTabBarItems`
+ * and dropped both My Budget (Reduce) and My Safety Net (Anchor) from the
+ * mobile journey. The full 6-tab bar restores the missing stages and adds a
+ * 7th "More" cell that opens the existing `<MoreSheet />` drawer for the
+ * non-stage surfaces (Household / Vault / Reports / Settings).
  *
- * @see Stitch screen dc038cd19aea4cfc8d0300f4d9122ffd
+ * Layout: each cell takes `flex-1` so spacing scales with viewport width.
+ * Labels are kept ≤6 chars per `mobileTabBarItems` rule to avoid truncation
+ * on 320px iPhones.
+ *
+ * Active state mirrors the same `findActiveMobileTab` logic used elsewhere
+ * — the active cell adopts the stage's TRAIL tone (sky / amber / indigo /
+ * emerald / violet) instead of a single fixed emerald.
+ *
+ * @see Stitch screen dc038cd19aea4cfc8d0300f4d9122ffd (original 5-cell
+ *      design, now superseded by the canonical SSOT — kept for visual
+ *      reference only)
+ * @see docs/blueprint/TRAIL_FRAMEWORK.md §5
  */
 
 'use client';
@@ -26,64 +33,12 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { Menu } from 'lucide-react';
 import {
-  LayoutDashboard,
-  Wallet,
-  Home as HomeIcon,
-  Brain,
-  Menu,
-  type LucideIcon,
-} from 'lucide-react';
-
-interface BottomNavCell {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  /** Pathname prefixes that should mark this cell active. */
-  matches: string[];
-}
-
-const BOTTOM_NAV: BottomNavCell[] = [
-  { label: 'Home', href: '/dashboard', icon: LayoutDashboard, matches: ['/dashboard'] },
-  {
-    label: 'Accounts',
-    href: '/dashboard/balances',
-    icon: Wallet,
-    matches: ['/dashboard/balances', '/dashboard/activity', '/dashboard/accounts', '/dashboard/loans'],
-  },
-  {
-    label: 'Wealth',
-    href: '/dashboard/properties',
-    icon: HomeIcon,
-    matches: ['/dashboard/properties', '/dashboard/investments', '/dashboard/assets'],
-  },
-  {
-    label: 'Guide',
-    href: '/dashboard/cfo',
-    icon: Brain,
-    matches: ['/dashboard/cfo', '/health', '/dashboard/tax'],
-  },
-  {
-    label: 'More',
-    href: '/dashboard/settings',
-    icon: Menu,
-    matches: [
-      '/dashboard/settings',
-      '/dashboard/household-profile',
-      '/dashboard/reports',
-      '/dashboard/documents',
-      '/dashboard/budget-analysis',
-      '/cashflow',
-    ],
-  },
-];
-
-function cellIsActive(pathname: string, cell: BottomNavCell): boolean {
-  // Home matches exact /dashboard only — otherwise every cell would
-  // appear active under /dashboard/*.
-  if (cell.href === '/dashboard') return pathname === '/dashboard';
-  return cell.matches.some((m) => pathname === m || pathname.startsWith(`${m}/`));
-}
+  mobileTabBarItems,
+  findActiveMobileTab,
+  TRAIL_STAGE_TONES,
+} from '@/lib/navigation/trailNav';
 
 export interface EditorialBottomNavProps {
   /**
@@ -97,6 +52,7 @@ export interface EditorialBottomNavProps {
 
 export function EditorialBottomNav({ onMoreClick, className }: EditorialBottomNavProps) {
   const pathname = usePathname() ?? '/dashboard';
+  const activeTab = findActiveMobileTab(pathname);
 
   return (
     <nav
@@ -109,57 +65,54 @@ export function EditorialBottomNav({ onMoreClick, className }: EditorialBottomNa
       )}
       style={{ height: 'calc(64px + env(safe-area-inset-bottom, 0px))' }}
     >
-      {BOTTOM_NAV.map((cell) => {
-        const active = cellIsActive(pathname, cell);
-        const isMore = cell.label === 'More';
-        const useCallback = isMore && onMoreClick;
+      {mobileTabBarItems.map((cell) => {
+        const Icon = cell.icon;
+        const active = activeTab?.key === cell.key;
+        const tone = cell.trailStage ? TRAIL_STAGE_TONES[cell.trailStage] : null;
         const className = cn(
-          'relative flex flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium transition-colors',
+          'relative flex flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium leading-none transition-colors',
           active
-            ? 'text-editorial-emerald'
-            : 'text-editorial-slate hover:text-editorial-ink'
+            ? tone?.activeText ?? 'text-editorial-emerald'
+            : tone?.inactiveIcon ?? 'text-editorial-slate hover:text-editorial-ink'
         );
-        const inner = (
-          <>
-            {active && (
-              <span
-                aria-hidden
-                className="absolute left-1/2 top-0 h-[3px] w-8 -translate-x-1/2 rounded-b-full bg-editorial-emerald"
-              />
-            )}
-            <cell.icon
-              className="h-5 w-5"
-              strokeWidth={active ? 2 : 1.75}
-              aria-hidden
-            />
-            <span>{cell.label}</span>
-          </>
-        );
-
-        if (useCallback) {
-          return (
-            <button
-              key={cell.label}
-              type="button"
-              onClick={onMoreClick}
-              aria-label="Open more menu"
-              className={className}
-            >
-              {inner}
-            </button>
-          );
-        }
         return (
           <Link
-            key={cell.href}
+            key={cell.key}
             href={cell.href}
             aria-current={active ? 'page' : undefined}
             className={className}
           >
-            {inner}
+            {active && (
+              <span
+                aria-hidden
+                className={cn(
+                  'absolute left-1/2 top-0 h-[3px] w-8 -translate-x-1/2 rounded-b-full',
+                  tone?.accent ?? 'bg-editorial-emerald'
+                )}
+              />
+            )}
+            <Icon
+              className={cn(
+                'h-5 w-5',
+                active && '[&_*]:stroke-[2]'
+              )}
+              aria-hidden
+            />
+            <span className="truncate w-full text-center">{cell.label}</span>
           </Link>
         );
       })}
+      {/* "More" cell — surfaces non-stage pages via the existing
+          <MoreSheet /> drawer (Household / Vault / Reports / Settings). */}
+      <button
+        type="button"
+        onClick={onMoreClick}
+        aria-label="Open more menu"
+        className="relative flex flex-1 flex-col items-center justify-center gap-1 px-1 text-[10px] font-medium leading-none text-editorial-slate transition-colors hover:text-editorial-ink"
+      >
+        <Menu className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+        <span className="truncate w-full text-center">More</span>
+      </button>
     </nav>
   );
 }

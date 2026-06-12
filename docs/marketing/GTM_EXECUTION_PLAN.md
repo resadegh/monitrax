@@ -4,7 +4,7 @@
 > Each step is small, self-contained, and has a clear "done" definition. Come back and say *"guide me through step 2.3"* and I (Claude) will walk you through it.
 
 **Owner:** Reza
-**Last updated:** 2026-05-11
+**Last updated:** 2026-06-10
 **Tracked in:** `docs/IMPLEMENTATION_PLAN.md` → Active Workstream "GTM Automation"
 **Aligns with:** CLAUDE.md §0 (Advisory Mindset), Part 14 (TRAIL), Part 13 (CDR), `.claude/skills/architect-mode`
 
@@ -404,13 +404,31 @@ When Phase 5 closes, ask Claude to flesh this section into a Phase 6 plan with t
 
 ---
 
+## Phase 6A — Consumer Paid Acquisition Engine (build now · spend at Phase 6 trigger)
+
+> **DECIDED 2026-06-10 (Reza):** build and verify the full paid-ads machine (Google Ads + Meta) **now**; ad spend turns on **only when the Phase 5→6 trigger fires** (Basiq live). This keeps the Reversed-Decisions gate intact — the burn-rate engine exists but stays dormant. Designed for ~10 min/week founder involvement once live.
+>
+> **Full spec (SSOT):** `docs/marketing/gtm/PAID_ADS_AUTOMATION.md` — architecture, compliance gates, guardrails, step-by-step build. Do not duplicate its content here.
+
+Summary of the build steps (details + "done when" in the spec doc):
+
+- **6A.1 — Platform verification (Reza, ~3h one-time, start immediately):** Google Ads + Meta Business Manager accounts; Google AU financial-services verification via G2 on the **exemption path** (Monitrax holds no AFSL by design); Meta beneficiary/payer verification with self-declared exemption + "Paid for By" disclaimer. Longest lead-time item; free; cannot be delegated. Exemption basis bundled into the Q-GTM-5 lawyer brief.
+- **6A.2 — Creative engine (n8n + Claude + Canva):** weekly Claude-drafted copy variants from approved website-copy SSOT with AFSL guardrails in the system prompt; Canva tiles from brand templates; one approve/reject email to Reza; approved creatives pushed via Google Ads API / Meta Marketing API.
+- **6A.3 — Guardrail ops:** platform-side hard daily caps + n8n auto-pause rules (CPA breach 3 days → pause + digest flag; bottom-quartile creative rotation). Automation may only ever **decrease** spend; increases and new campaigns always require explicit Reza approval.
+- **6A.4 — Reporting:** nightly spend/CPL/conversion pull → Airtable `AdPerformance` → new ADS section in the Founder Daily Digest. No new dashboards.
+- **6A.5 — Ignition checklist (gated):** Phase 5 trigger fired · 6A.1 verifications green · Decimal migration (Q-DEC) shipped before any paid traffic to `/wealth-check` · landing claims lawyer-cleared · Reza signs the opening budget.
+
+Targeting follows Q-ICP-1 (wealth-builders): Google high-intent search (net-worth / investment-property / SMSF tracking terms); Meta property-investor + SMSF interests and lookalikes seeded from broker-referred users. Consistent with Q-GTM-6: this is paid **acquisition**; the no-display-ads-as-revenue decision is untouched.
+
+---
+
 ## Open questions to resolve before Phase 2 launch
 
 | # | Question | Owner | Status |
 |---|---|---|---|
 | Q-GTM-1 | Review price for first 5 friendlies | Reza | ✅ **DECIDED 2026-05-11 — $197** (public price TBD after Reviews #3–5; recommended ladder $197→$297→$397) |
 | Q-GTM-2 | Outbound sending domain name | Reza | ✅ **DECIDED 2026-05-11 — `try-monitrax.com` via Smartlead** (fallbacks `monitrax-pro.com` / `getmonitrax.com` / `hellomonitrax.com`) |
-| Q-GTM-3 | First aggregator to focus on (Connective / AFG / Loan Market / Mortgage Choice / Finsure)? | Reza | Open — needed before Step 2.2. Claude recommendation: **Finsure** first, Connective second. Avoid AFG / Mortgage Choice for outbound. |
+| Q-GTM-3 | First aggregator to focus on (Connective / AFG / Loan Market / Mortgage Choice / Finsure)? | Reza | ✅ **DECIDED 2026-06-10 — Finsure first, Connective second wave.** Avoid AFG / Mortgage Choice for outbound. Full rationale + targeting criteria: `docs/marketing/gtm/BROKER_ICP.md` (SSOT for outbound targeting). |
 | Q-GTM-4 | VA: hire now (parallel with Phase 2) or wait until first Review sells? | Reza | Open — needed before Step 3.7. Claude recommendation: hire mid-Phase 2 (~week 2–3), small scope (CRM hygiene + lead QA + inbox triage), expand into Review intake from Review #2–3. |
 | Q-GTM-5 | AFSL boundary — DIY scope doc + lawyer review, or engage an AFSL holder? | Reza | Open — needed before Step 3.1. Claude recommendation: **DIY + AU fintech-lawyer review** for v1 (factual-only Review), queue "partner with an AFSL holder for a Review + advice-session upsell" as the trigger if customer feedback demands personal recommendations. |
 | Q-GTM-6 | Advertising as a consumer revenue lever? | Reza | ✅ **DECIDED 2026-05-12 — NO display ads.** Tasteful disclosed affiliate only (products that pass the financial-adviser test, never in the Guide flow, always disclosed); a minor stream, not a pillar. Revenue priority: B2B subs → D2C premium subs → marketplace lead fees → affiliate. See `IMPLEMENTATION_PLAN.md` workstream 0e. |
@@ -451,19 +469,19 @@ I'll never silently change the plan. Every change comes back to you as a one-lin
 ## Status tracker (update as steps complete)
 
 ### Phase 0
-- [ ] 0.1 AFSL boundary doc
-- [ ] 0.2 Success metrics locked
+- [~] 0.1 AFSL boundary doc — 🟡 DRAFT SHIPPED 2026-05-15 (`REVIEW_SCOPE_AND_BOUNDARIES.md`); lawyer review pending (Q-GTM-5) — blocks Reviews to strangers only
+- [x] 0.2 Success metrics locked (targets in `IMPLEMENTATION_PLAN.md` workstream 0d)
 
 ### Phase 1
 - [x] 1.1 n8n live at `https://n8n.monitrax.com.au` (Hetzner CPX22, Nuremberg, 2026-05-13)
-- [ ] 1.2 Airtable CRM
-- [x] 1.3 Sending domain + mailbox set up; **warmup running 2026-05-12** (fully done once 2–3wk warm completes ≈ early June)
+- [x] 1.2 Airtable CRM (DONE 2026-05-15 — base `Monitrax CRM`, 7 tables, PAT wired in n8n, digest CRM ACTIVITY section live)
+- [x] 1.3 Sending domain + mailbox set up; warmup ran 2026-05-12 → early June (window complete). **Gate for 2.7: Reza confirms Smartlead deliverability score ≥90% before first cold send.**
 - [ ] 1.4 SaaS accounts
-- [ ] 1.5 Claude prompts library
-- [ ] 1.6 Founder Daily Digest
+- [x] 1.5 Anthropic API in n8n (credential `Anthropic API - Monitrax` live since the 1.6 build, 2026-05-14); prompt library grows per-step
+- [x] 1.6 Founder Daily Digest (LIVE 2026-05-14, cron published — 06:45 Sydney daily to `admin@monitrax.com.au`)
 
 ### Phase 2
-- [ ] 2.1 Broker ICP
+- [x] 2.1 Broker ICP (2026-06-10 — `docs/marketing/gtm/BROKER_ICP.md`, Finsure-first per Q-GTM-3)
 - [ ] 2.2 Lead list (1,000)
 - [ ] 2.3 Outreach sequence
 - [ ] 2.4 Personalisation workflow
@@ -493,6 +511,13 @@ I'll never silently change the plan. Every change comes back to you as a one-lin
 
 ### Phase 6
 - [ ] To be written when Phase 5 closes
+
+### Phase 6A — Paid Acquisition Engine (dormant build)
+- [ ] 6A.1 Ad accounts + AU financial-services verifications (Google G2 exemption / Meta exemption) — **start now**
+- [ ] 6A.2 Creative engine (n8n + Claude + Canva, weekly approval loop)
+- [ ] 6A.3 Guardrail ops (caps, auto-pause, kill switch)
+- [ ] 6A.4 Reporting → Airtable + Daily Digest ADS section
+- [ ] 6A.5 Ignition (GATED: Phase 5 trigger + verifications + Q-DEC + lawyer-cleared claims + Reza budget sign-off)
 
 ---
 
