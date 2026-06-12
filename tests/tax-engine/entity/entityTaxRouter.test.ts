@@ -510,3 +510,86 @@ describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
     expect(cgt.discountResult.discountRate).toBeCloseTo(1 / 3, 6);
   });
 });
+
+// =============================================================================
+// Stage D PR-1 — honesty hardening (AD-1, AD-3, AD-4; approved 2026-06-12)
+// =============================================================================
+
+describe('Stage D PR-1 — extended entity types never fall through silently (AD-4)', () => {
+  const EXTENDED: EntityTaxFacts['entityType'][] = [
+    'INDIVIDUAL',
+    'FIXED_TRUST',
+    'HYBRID_TRUST',
+    'BARE_TRUST',
+    'TESTAMENTARY_TRUST',
+    'DECEASED_ESTATE',
+    'FOREIGN_COMPANY',
+    'INCORPORATED_ASSOCIATION',
+    'CO_OPERATIVE',
+    'STRATA_BODY_CORPORATE',
+    'CUSTODIAN_PLATFORM',
+    'OTHER',
+  ];
+  it.each(EXTENDED)('%s returns an explicit UNCOMPUTED flag — no false silence', (type) => {
+    const result = calculateEntityTaxPosition(baseFacts({ entityType: type }));
+    expect(result.result).toBeNull();
+    expect(result.uncomputed.length).toBeGreaterThan(0);
+    expect(result.uncomputed[0].rationale.length).toBeGreaterThan(20);
+  });
+
+  it('deceased estate cites the s99/s99A administration gate', () => {
+    const result = calculateEntityTaxPosition(baseFacts({ entityType: 'DECEASED_ESTATE' }));
+    expect(result.uncomputed[0].id).toBe('UC-ENTITY-DECEASED-ESTATE');
+    expect(result.uncomputed[0].rationale).toContain('s99');
+  });
+});
+
+describe('Stage D PR-1 — Div 5A partnership subtype dispatch (AD-1)', () => {
+  it('a corporate limited partnership is NEVER computed as transparent', () => {
+    for (const subtype of ['LIMITED', 'INCORPORATED_LIMITED']) {
+      const result = calculateEntityTaxPosition(
+        baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: subtype }),
+      );
+      expect(result.result).toBeNull();
+      expect(result.uncomputed[0].id).toBe('UC-ENTITY-CLP');
+      expect(result.uncomputed[0].citation?.reference).toBe('Div 5A');
+    }
+  });
+
+  it('VCLP / ESVCLP carry the Measure 7 flag (§12.14 — no post-reform math)', () => {
+    for (const subtype of ['VCLP', 'ESVCLP']) {
+      const result = calculateEntityTaxPosition(
+        baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: subtype }),
+      );
+      expect(result.uncomputed[0].id).toBe('UC-ENTITY-VCLP');
+      expect(result.uncomputed[0].rationale).toContain('Measure 7');
+    }
+  });
+
+  it('a general partnership keeps the generic transparent-partnership flag', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: 'GENERAL' }),
+    );
+    expect(result.uncomputed[0].id).toBe('UC-ENTITY-PARTNERSHIP');
+  });
+});
+
+describe('Stage D PR-1 — suppressed streaming surfaces UC-DIV-6E-STREAMING (AD-3)', () => {
+  it('flags the stripped stream while still computing the proportionate allocation', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'DISCRETIONARY_TRUST',
+        trustDistribution: {
+          trustNetIncome: 100_000,
+          beneficiaries: [
+            { id: 'b1', name: 'Reza', presentlyEntitledShare: 0.5 },
+            { id: 'b2', name: 'Newsha', presentlyEntitledShare: 0.5 },
+          ],
+          streamingSuppressed: true,
+        },
+      }),
+    );
+    expect(result.result).not.toBeNull(); // proportionate allocation computed
+    expect(result.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
+  });
+});

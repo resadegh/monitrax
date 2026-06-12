@@ -386,3 +386,24 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 
 ### Build Status
 - [x] tsc / eslint / financial gate / 90 targeted tests / `npm run build` — all pass
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Stage D APPROVED + PR-1 honesty hardening
+
+### Strategic decision (Reza, 2026-06-12)
+- Stage D gate resolved: Reza delegated the technical review to a dedicated adversarial review agent (verdict: **READY WITH ADDENDA** — staleness vs Stage F, 4 internal contradictions, 0 §12.14 violations, Div 5A gap, founder risk register) and **approved in writing**. `PHASE_44_PART_2` doc status flipped to APPROVED WITH ADDENDA; new §14 records AD-1..AD-4 as binding.
+
+### Changes Made — Stage D PR-1: honesty hardening (creates no new numbers; prevents wrong ones)
+- **AD-1 (Div 5A)**: `EntityTaxFacts.partnershipSubtype` pass-through; router dispatches subtype-specific UNCOMPUTED — `UC-ENTITY-CLP` (Div 5A citation — corporate LPs are never computed as transparent) / `UC-ENTITY-VCLP` (Measure 7, §12.14).
+- **AD-3 residency**: assembler passes `isForeignResident` (explicit flag or FOREIGN_RESIDENT status) so the CGT discount is correctly denied to foreign residents — contracted in §7.1 G-RESIDENCY, never wired until now.
+- **AD-3 streaming gate**: `gateStreamingByDeedPower` (pure, tested) strips recorded streaming amounts when the trust has no active STREAMING_POWER `TrustDeedRule`; the proportionate allocation still computes; router surfaces `UC-DIV-6E-STREAMING` with warm fix-it copy.
+- **AD-4 (no false silence)**: explicit UNCOMPUTED flags for all 12 extended entity types (previously the fall-through emitted NO flag) — s99/s99A for deceased estates, s102AG gate for testamentary trusts, transparent-by-design for bare trusts/custodians, etc.
+- **Tests**: 9 new (router subtype dispatch, no-false-silence sweep across all 12 types, streaming-flag, gate helper) — 867 tax-engine tests green.
+
+### Files Modified
+- `lib/tax-engine/types.ts` — `partnershipSubtype` + `trustDistribution.streamingSuppressed` (additive optional)
+- `lib/services/entityTaxFactsAssembler.ts` — residency + subtype pass-through, deed-power streaming gate
+- `lib/tax-engine/entity/entityTaxRouter.ts` — 12 extended-type flags, partnership-subtype dispatch, streaming flag
+- `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — status APPROVED WITH ADDENDA + §14
+- `tests/tax-engine/entity/entityTaxRouter.test.ts`, `tests/tax-engine/entityTaxFactsAssembler.test.ts`

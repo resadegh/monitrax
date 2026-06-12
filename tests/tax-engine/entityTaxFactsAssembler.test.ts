@@ -183,3 +183,54 @@ describe('Phase 44 Part 2c-ii — pickOperativeResolution', () => {
     expect(pickOperativeResolution([])).toBeNull();
   });
 });
+
+// =============================================================================
+// Stage D PR-1 — gateStreamingByDeedPower (AD-3)
+// =============================================================================
+
+import { gateStreamingByDeedPower } from '@/lib/services/entityTaxFactsAssembler';
+
+describe('Stage D PR-1 — gateStreamingByDeedPower', () => {
+  const withStreams = () => ({
+    trustNetIncome: 100_000,
+    characterPools: { frankedDividends: 20_000, capitalGains: 30_000 },
+    streamingResolutionAt: '2025-06-25T00:00:00.000Z',
+    beneficiaries: [
+      {
+        id: 'b1',
+        name: 'Reza',
+        presentlyEntitledShare: 0.5,
+        streaming: { frankedDividends: 20_000 },
+      },
+      { id: 'b2', name: 'Newsha', presentlyEntitledShare: 0.5 },
+    ],
+  });
+
+  it('passes streams through untouched when the deed has STREAMING_POWER', () => {
+    const gated = gateStreamingByDeedPower(withStreams(), true);
+    expect(gated.characterPools).toBeDefined();
+    expect(gated.beneficiaries[0].streaming).toBeDefined();
+    expect(gated.streamingSuppressed).toBeUndefined();
+  });
+
+  it('strips streams + sets streamingSuppressed when no deed power exists', () => {
+    const gated = gateStreamingByDeedPower(withStreams(), false);
+    expect(gated.characterPools).toBeUndefined();
+    expect(gated.streamingResolutionAt).toBeUndefined();
+    expect(gated.beneficiaries.every((b) => b.streaming === undefined)).toBe(true);
+    expect(gated.streamingSuppressed).toBe(true);
+    // The proportionate allocation survives — only the streams are gated.
+    expect(gated.trustNetIncome).toBe(100_000);
+    expect(gated.beneficiaries[0].presentlyEntitledShare).toBe(0.5);
+  });
+
+  it('is a no-op for a distribution with no streams (no false flag)', () => {
+    const plain = {
+      trustNetIncome: 50_000,
+      beneficiaries: [{ id: 'b1', name: 'Reza', presentlyEntitledShare: 1 }],
+    };
+    const gated = gateStreamingByDeedPower(plain, false);
+    expect(gated.streamingSuppressed).toBeUndefined();
+    expect(gated).toEqual(plain);
+  });
+});
