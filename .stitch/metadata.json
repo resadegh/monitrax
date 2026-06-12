@@ -192,6 +192,26 @@
       "title": "Wealth Universe · Widget · Focused View (Phase WX.5.2)",
       "generatedAt": "2026-06-11T01:32:00.000000Z",
       "scope": "WX.5.2 in-widget navigation — the dashboard widget zoomed INTO one entity: '< UNIVERSE' back pill top-left of the mini canvas, parent bubble centred with focal emerald ring, 5 asset satellites in a ring with structural ribbons, header arrow + footer link carry ?focus= to the full page. Artefact: .stitch/designs/wealth-universe-zoom/universe-widget-focused-dark.{html,png}. Consumer: components/wealth-explorer/WealthUniverseWidget.tsx."
+    },
+    "add-entity-two-tier-picker": {
+      "id": "eb5dd4a37e5c47b087d2405f50d13f49",
+      "sourceScreen": "projects/1859462351962811110/screens/eb5dd4a37e5c47b087d2405f50d13f49",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "title": "Add Entity — Two-Tier Picker (Phase 47 F1)",
+      "generatedAt": "2026-06-12T07:43:00.000000Z",
+      "scope": "F1 two-tier entity-type picker: COMMON 7-card grid (selected = emerald border + 8% wash) + quieter 'More structures (12)' expanded tier with the extended Phase 44 types; conditional Role/Company-subtype/ABN/ACN band. Artefact: .stitch/designs/phase47-f1/add-entity-two-tier-picker.{html,png}. Consumer: app/dashboard/entities/page.tsx form dialog."
+    },
+    "add-entity-two-tier-picker-dark": {
+      "id": "c3c62699a61c4439a5d06a5ac7fcb5af",
+      "sourceScreen": "projects/1859462351962811110/screens/c3c62699a61c4439a5d06a5ac7fcb5af",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "title": "Add Entity — Two-Tier Picker (Dark Mode)",
+      "generatedAt": "2026-06-12T07:46:00.000000Z",
+      "scope": "Dark variant of eb5dd4a3 — #0E1424 navy glass dialog, #22C55E selected accent, same anatomy. Artefact: .stitch/designs/phase47-f1/add-entity-two-tier-picker-dark.{html,png}."
     }
   },
   "failedGenerations": {

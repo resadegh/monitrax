@@ -27,6 +27,8 @@ import {
   Loader2,
   TreePine,
   Users,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
@@ -70,6 +72,19 @@ import {
 import { useAuth } from '@/lib/context/AuthContext';
 import { OwnershipGroupsDialog } from '@/components/entities/OwnershipGroupsDialog';
 import BulkAssignDialog from '@/components/ownership/BulkAssignDialog';
+import {
+  COMMON_ENTITY_TYPES,
+  EXTENDED_ENTITY_TYPES,
+  ALL_ENTITY_ROLES,
+  ENTITY_TYPE_LABELS,
+  ENTITY_TYPE_DESCRIPTIONS,
+  TRUST_FAMILY_TYPES,
+  COMPANY_SUBTYPE_OPTIONS,
+  ESTATE_STATUS_OPTIONS,
+  deriveTrustType,
+  entityFieldApplicability,
+  defaultRoleForEntityType,
+} from '@/lib/entities/entityTypeCatalog';
 
 // Phase 44 Part 1c — the entity-structure canvas (§11A). Dynamically
 // imported with SSR disabled: React Flow needs the DOM, and the canvas +
@@ -99,32 +114,17 @@ const WealthUniverseMobile = dynamic(
 // LOCAL TYPES — mirror the LegalEntitySummary shape from the service
 // =============================================================================
 
-type LegalEntityType =
-  | 'PERSONAL_NAME'
-  | 'COMPANY'
-  | 'DISCRETIONARY_TRUST'
-  | 'UNIT_TRUST'
-  | 'SMSF'
-  | 'PARTNERSHIP'
-  | 'SOLE_TRADER';
+// Phase 47 F1 — the type domain now comes from the canonical catalog
+// (lib/entities/entityTypeCatalog.ts) so the dialog, the API whitelists
+// and (F4) the onboarding wizard can never drift. The full Phase 44
+// grammar is creatable; the picker is two-tier (Common / More
+// structures) per the Stitch SoT
+// `eb5dd4a37e5c47b087d2405f50d13f49` / dark `c3c62699a61c4439a5d06a5ac7fcb5af`.
+type LegalEntityType = import('@prisma/client').LegalEntityType;
+type LegalEntityRole = import('@prisma/client').LegalEntityRole;
+type CompanySubtypeValue = import('@prisma/client').CompanySubtype;
 
-type LegalEntityRole =
-  | 'PERSONAL'
-  | 'HOLDING'
-  | 'OPERATING'
-  | 'INVESTMENT'
-  | 'SUPERANNUATION'
-  | 'CORPORATE_TRUSTEE';
-
-const TYPE_LABELS: Record<LegalEntityType, string> = {
-  PERSONAL_NAME: 'My personal name',
-  COMPANY: 'Company (Pty Ltd)',
-  DISCRETIONARY_TRUST: 'Discretionary / family trust',
-  UNIT_TRUST: 'Unit trust',
-  SMSF: 'Self-Managed Super Fund',
-  PARTNERSHIP: 'Partnership',
-  SOLE_TRADER: 'Sole trader',
-};
+const TYPE_LABELS = ENTITY_TYPE_LABELS;
 
 const ROLE_LABELS: Record<LegalEntityRole, string> = {
   PERSONAL: 'Personal',
@@ -162,23 +162,24 @@ interface Entity {
   // Phase 41E.4 — reform-aware fields (Measure 3 + Measure 4 inputs).
   trustType?: TrustTypeValue | null;
   isForeignResident?: boolean | null;
+  // Phase 47 F1 — extended-grammar detail fields.
+  companySubtype?: CompanySubtypeValue | null;
+  dateOfBirth?: string | null;
+  vestingDate?: string | null;
+  deedDate?: string | null;
+  estateAdministrationStatus?: string | null;
 }
 
 // Phase 41E.4 — closed enum mirrors Prisma's `TrustType`.
-type TrustTypeValue =
-  | 'DISCRETIONARY'
-  | 'FIXED'
-  | 'UNIT'
-  | 'TESTAMENTARY_FIXED'
-  | 'CHARITABLE'
-  | 'DECEASED_ESTATE'
-  | 'SPECIAL_DISABILITY'
-  | 'OTHER';
+// Phase 47 F1 adds HYBRID + TESTAMENTARY (the Phase 44 enum additions).
+type TrustTypeValue = import('@prisma/client').TrustType;
 
 const TRUST_TYPE_OPTIONS: ReadonlyArray<{ value: TrustTypeValue; label: string }> = [
   { value: 'DISCRETIONARY', label: 'Discretionary trust (family trust)' },
   { value: 'FIXED', label: 'Fixed trust' },
   { value: 'UNIT', label: 'Unit trust' },
+  { value: 'HYBRID', label: 'Hybrid trust' },
+  { value: 'TESTAMENTARY', label: 'Testamentary trust' },
   { value: 'TESTAMENTARY_FIXED', label: 'Testamentary fixed trust' },
   { value: 'CHARITABLE', label: 'Charitable trust' },
   { value: 'DECEASED_ESTATE', label: 'Deceased estate' },
@@ -186,11 +187,8 @@ const TRUST_TYPE_OPTIONS: ReadonlyArray<{ value: TrustTypeValue; label: string }
   { value: 'OTHER', label: 'Other / unsure' },
 ];
 
-// Trust subtype only relevant when entity.type is one of these.
-const TRUST_ENTITY_TYPES: ReadonlyArray<LegalEntityType> = [
-  'DISCRETIONARY_TRUST',
-  'UNIT_TRUST',
-];
+// Trust subtype relevant for the whole trust family (catalog SSOT).
+const TRUST_ENTITY_TYPES: ReadonlyArray<LegalEntityType> = TRUST_FAMILY_TYPES;
 
 interface FormState {
   name: string;
@@ -207,60 +205,19 @@ interface FormState {
   // Phase 41E.4 — Measure 3 + Measure 4 inputs.
   trustType: TrustTypeValue | '';  // '' = unset
   isForeignResident: boolean;
+  // Phase 47 F1 — extended-grammar detail fields ('' = unset).
+  companySubtype: CompanySubtypeValue | '';
+  dateOfBirth: string;
+  vestingDate: string;
+  deedDate: string;
+  estateAdministrationStatus: string;
 }
 
-const TYPES: LegalEntityType[] = [
-  'PERSONAL_NAME',
-  'COMPANY',
-  'DISCRETIONARY_TRUST',
-  'UNIT_TRUST',
-  'SMSF',
-  'PARTNERSHIP',
-  'SOLE_TRADER',
-];
-
-const ROLES: LegalEntityRole[] = [
-  'PERSONAL',
-  'HOLDING',
-  'OPERATING',
-  'INVESTMENT',
-  'SUPERANNUATION',
-];
-
-function defaultRoleForType(type: LegalEntityType): LegalEntityRole {
-  switch (type) {
-    case 'PERSONAL_NAME':
-      return 'PERSONAL';
-    case 'SMSF':
-      return 'SUPERANNUATION';
-    case 'COMPANY':
-    case 'SOLE_TRADER':
-    case 'PARTNERSHIP':
-      return 'OPERATING';
-    case 'DISCRETIONARY_TRUST':
-    case 'UNIT_TRUST':
-      return 'HOLDING';
-    default:
-      return 'PERSONAL';
-  }
-}
-
-function fieldApplicability(type: LegalEntityType) {
-  switch (type) {
-    case 'PERSONAL_NAME':
-      return { abn: false, acn: false, tfn: true };
-    case 'COMPANY':
-      return { abn: true, acn: true, tfn: true };
-    case 'DISCRETIONARY_TRUST':
-    case 'UNIT_TRUST':
-    case 'SMSF':
-    case 'PARTNERSHIP':
-    case 'SOLE_TRADER':
-      return { abn: true, acn: false, tfn: true };
-    default:
-      return { abn: true, acn: true, tfn: true };
-  }
-}
+// Phase 47 F1 — ROLES now includes CORPORATE_TRUSTEE; type→role default
+// and per-type field applicability live in the canonical catalog.
+const ROLES: readonly LegalEntityRole[] = ALL_ENTITY_ROLES;
+const defaultRoleForType = defaultRoleForEntityType;
+const fieldApplicability = entityFieldApplicability;
 
 function emptyForm(): FormState {
   return {
@@ -280,6 +237,11 @@ function emptyForm(): FormState {
     // about the most common case. User can change it.
     trustType: 'DISCRETIONARY',
     isForeignResident: false,
+    companySubtype: '',
+    dateOfBirth: '',
+    vestingDate: '',
+    deedDate: '',
+    estateAdministrationStatus: '',
   };
 }
 
@@ -300,6 +262,12 @@ function formFromEntity(e: Entity): FormState {
     // confirmed subtype, false for foreign-resident when unset.
     trustType: e.trustType ?? (TRUST_ENTITY_TYPES.includes(e.type) ? 'OTHER' : ''),
     isForeignResident: e.isForeignResident ?? false,
+    // Phase 47 F1 — extended detail fields.
+    companySubtype: e.companySubtype ?? '',
+    dateOfBirth: e.dateOfBirth ? e.dateOfBirth.split('T')[0] : '',
+    vestingDate: e.vestingDate ? e.vestingDate.split('T')[0] : '',
+    deedDate: e.deedDate ? e.deedDate.split('T')[0] : '',
+    estateAdministrationStatus: e.estateAdministrationStatus ?? '',
   };
 }
 
@@ -434,7 +402,16 @@ export default function EntitiesPage() {
   };
 
   const handleTypeChange = (type: LegalEntityType) => {
-    setForm({ ...form, type, role: defaultRoleForType(type) });
+    setForm({
+      ...form,
+      type,
+      role: defaultRoleForType(type),
+      // Phase 47 F1 — auto-derive the trust subtype so Measure-3
+      // dispatch stays correct by construction (§12.14).
+      trustType: TRUST_ENTITY_TYPES.includes(type)
+        ? (deriveTrustType(type) ?? 'OTHER')
+        : '',
+    });
   };
 
   const applicable = fieldApplicability(form.type);
@@ -474,8 +451,15 @@ export default function EntitiesPage() {
         // which sends null per the PUT route).
         trustType: TrustTypeValue | null;
         isForeignResident: boolean;
+        // Phase 47 F1 — extended detail fields (null clears).
+        companySubtype: CompanySubtypeValue | null;
+        dateOfBirth: string | null;
+        vestingDate: string | null;
+        deedDate: string | null;
+        estateAdministrationStatus: string | null;
       };
       const isTrustEntity = TRUST_ENTITY_TYPES.includes(form.type);
+      const fields = fieldApplicability(form.type);
       const payload: Payload = {
         name: form.name.trim(),
         type: form.type,
@@ -489,6 +473,16 @@ export default function EntitiesPage() {
         // non-trust types we send null to clear any stale value.
         trustType: isTrustEntity && form.trustType ? form.trustType : null,
         isForeignResident: form.isForeignResident,
+        // Phase 47 F1 — per-type gated; null clears stale values when
+        // the type changed away from the field's family.
+        companySubtype: fields.companySubtype && form.companySubtype ? form.companySubtype : null,
+        dateOfBirth: fields.dateOfBirth && form.dateOfBirth ? form.dateOfBirth : null,
+        vestingDate: fields.trustDates && form.vestingDate ? form.vestingDate : null,
+        deedDate: fields.trustDates && form.deedDate ? form.deedDate : null,
+        estateAdministrationStatus:
+          fields.estateStatus && form.estateAdministrationStatus
+            ? form.estateAdministrationStatus
+            : null,
       };
       if (isEdit) {
         if (form.tfnTouched) {
@@ -710,7 +704,7 @@ export default function EntitiesPage() {
 
       {/* Form dialog (add/edit) */}
       <Dialog open={formOpen} onOpenChange={(o) => (o ? null : closeForm())}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? 'Edit entity' : 'Add an entity'}</DialogTitle>
             <DialogDescription>
@@ -732,47 +726,122 @@ export default function EntitiesPage() {
               />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <Label htmlFor="page-entity-type">Type</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => handleTypeChange(v as LegalEntityType)}
-                >
-                  <SelectTrigger id="page-entity-type">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {TYPE_LABELS[t]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            {/* Phase 47 F1 — two-tier type picker. Beginners see only
+                the seven common structures; the full Phase 44 grammar
+                sits one tap behind "More structures". Stitch SoT:
+                eb5dd4a37e5c47b087d2405f50d13f49 (+ dark c3c62699). */}
+            <EntityTypePicker value={form.type} onChange={handleTypeChange} />
 
+            <div>
+              <Label htmlFor="page-entity-role">Role</Label>
+              <Select
+                value={form.role}
+                onValueChange={(v) =>
+                  setForm({ ...form, role: v as LegalEntityRole })
+                }
+              >
+                <SelectTrigger id="page-entity-role">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r} value={r}>
+                      {ROLE_LABELS[r]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Phase 47 F1 — per-type conditional details. */}
+            {applicable.companySubtype && (
               <div>
-                <Label htmlFor="page-entity-role">Role</Label>
+                <Label htmlFor="page-entity-company-subtype">Company subtype</Label>
                 <Select
-                  value={form.role}
+                  value={form.companySubtype || '__unset__'}
                   onValueChange={(v) =>
-                    setForm({ ...form, role: v as LegalEntityRole })
+                    setForm({
+                      ...form,
+                      companySubtype: v === '__unset__' ? '' : (v as CompanySubtypeValue),
+                    })
                   }
                 >
-                  <SelectTrigger id="page-entity-role">
-                    <SelectValue />
+                  <SelectTrigger id="page-entity-company-subtype">
+                    <SelectValue placeholder="Select subtype" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>
-                        {ROLE_LABELS[r]}
+                    <SelectItem value="__unset__">Not sure</SelectItem>
+                    {COMPANY_SUBTYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
+            )}
+
+            {applicable.dateOfBirth && (
+              <div>
+                <Label htmlFor="page-entity-dob">Date of birth (optional)</Label>
+                <Input
+                  id="page-entity-dob"
+                  type="date"
+                  value={form.dateOfBirth}
+                  onChange={(e) => setForm({ ...form, dateOfBirth: e.target.value })}
+                />
+              </div>
+            )}
+
+            {applicable.trustDates && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="page-entity-deed-date">Deed date (optional)</Label>
+                  <Input
+                    id="page-entity-deed-date"
+                    type="date"
+                    value={form.deedDate}
+                    onChange={(e) => setForm({ ...form, deedDate: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="page-entity-vesting-date">Vesting date (optional)</Label>
+                  <Input
+                    id="page-entity-vesting-date"
+                    type="date"
+                    value={form.vestingDate}
+                    onChange={(e) => setForm({ ...form, vestingDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            )}
+
+            {applicable.estateStatus && (
+              <div>
+                <Label htmlFor="page-entity-estate-status">Administration stage</Label>
+                <Select
+                  value={form.estateAdministrationStatus || '__unset__'}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      estateAdministrationStatus: v === '__unset__' ? '' : v,
+                    })
+                  }
+                >
+                  <SelectTrigger id="page-entity-estate-status">
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unset__">Not sure</SelectItem>
+                    {ESTATE_STATUS_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {applicable.abn && (
               <div>
@@ -1080,5 +1149,98 @@ export default function EntitiesPage() {
         />
       )}
     </DashboardLayout>
+  );
+}
+
+// =============================================================================
+// Phase 47 F1 — two-tier entity-type picker
+// =============================================================================
+
+/**
+ * Two-tier type picker: the seven COMMON types render as selectable
+ * cards on first paint; the twelve extended Phase 44 types sit behind a
+ * collapsed "More structures" expander (behaviour-psychology contract —
+ * a beginner adding their first family trust never sees "Strata / body
+ * corporate"; the advanced user finds everything in one tap). The
+ * expander auto-opens when the current value IS an extended type (edit
+ * flows must never hide the selection).
+ *
+ * Stitch SoT: light `eb5dd4a37e5c47b087d2405f50d13f49`,
+ * dark `c3c62699a61c4439a5d06a5ac7fcb5af` —
+ * `.stitch/designs/phase47-f1/add-entity-two-tier-picker{,-dark}.{html,png}`.
+ */
+function EntityTypePicker({
+  value,
+  onChange,
+}: {
+  value: LegalEntityType;
+  onChange: (type: LegalEntityType) => void;
+}) {
+  const valueIsExtended = (EXTENDED_ENTITY_TYPES as readonly string[]).includes(value);
+  const [moreOpen, setMoreOpen] = useState(valueIsExtended);
+  useEffect(() => {
+    if (valueIsExtended) setMoreOpen(true);
+  }, [valueIsExtended]);
+
+  const card = (t: LegalEntityType, quiet: boolean) => {
+    const selected = value === t;
+    return (
+      <button
+        key={t}
+        type="button"
+        onClick={() => onChange(t)}
+        aria-pressed={selected}
+        className={`flex items-start gap-2 rounded-xl border p-2.5 text-left transition ${
+          selected
+            ? 'border-emerald-600 bg-emerald-50/80 dark:border-emerald-400 dark:bg-emerald-500/10'
+            : quiet
+              ? 'border-slate-200/80 bg-slate-50/60 hover:border-slate-300 dark:border-slate-700/60 dark:bg-slate-900/40 dark:hover:border-slate-600'
+              : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-slate-600'
+        }`}
+      >
+        <span className="min-w-0">
+          <span
+            className={`block truncate text-[13px] font-medium ${
+              selected ? 'text-emerald-800 dark:text-emerald-300' : 'text-slate-800 dark:text-slate-200'
+            }`}
+          >
+            {ENTITY_TYPE_LABELS[t]}
+          </span>
+          <span className="mt-0.5 block text-[11px] leading-snug text-slate-500 dark:text-slate-400">
+            {ENTITY_TYPE_DESCRIPTIONS[t]}
+          </span>
+        </span>
+        {selected && (
+          <Check className="ml-auto mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-600 dark:text-emerald-400" />
+        )}
+      </button>
+    );
+  };
+
+  return (
+    <div>
+      <div className="mb-1.5 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        Common
+      </div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        {COMMON_ENTITY_TYPES.map((t) => card(t, false))}
+      </div>
+      <button
+        type="button"
+        onClick={() => setMoreOpen((o) => !o)}
+        aria-expanded={moreOpen}
+        className="mt-2 flex w-full items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-[13px] font-medium text-slate-600 transition hover:bg-slate-100 dark:bg-slate-900/50 dark:text-slate-300 dark:hover:bg-slate-900"
+      >
+        <span>More structures ({EXTENDED_ENTITY_TYPES.length})</span>
+        <ChevronDown
+          className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {moreOpen && (
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {EXTENDED_ENTITY_TYPES.map((t) => card(t, true))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -29,25 +29,34 @@ import {
   isValidAcn,
   isValidTfnFormat,
 } from '@/lib/utils/auValidators';
-import type { LegalEntityType, LegalEntityRole } from '@prisma/client';
+import type { LegalEntityType, LegalEntityRole, CompanySubtype } from '@prisma/client';
+import {
+  ALL_ENTITY_TYPES,
+  ALL_ENTITY_ROLES,
+  COMPANY_SUBTYPE_OPTIONS,
+  ESTATE_STATUS_OPTIONS,
+} from '@/lib/entities/entityTypeCatalog';
 
-const VALID_TYPES: LegalEntityType[] = [
-  'PERSONAL_NAME',
-  'COMPANY',
-  'DISCRETIONARY_TRUST',
-  'UNIT_TRUST',
-  'SMSF',
-  'PARTNERSHIP',
-  'SOLE_TRADER',
-];
+// Phase 47 F1 — the full Phase 44 grammar is creatable (was the original
+// seven). The catalog in lib/entities/entityTypeCatalog.ts is the SSOT.
+const VALID_TYPES: readonly LegalEntityType[] = ALL_ENTITY_TYPES;
+const VALID_ROLES: readonly LegalEntityRole[] = ALL_ENTITY_ROLES;
+const VALID_COMPANY_SUBTYPES: ReadonlySet<string> = new Set(
+  COMPANY_SUBTYPE_OPTIONS.map(o => o.value),
+);
+const VALID_ESTATE_STATUSES: ReadonlySet<string> = new Set(
+  ESTATE_STATUS_OPTIONS.map(o => o.value),
+);
 
-const VALID_ROLES: LegalEntityRole[] = [
-  'PERSONAL',
-  'HOLDING',
-  'OPERATING',
-  'INVESTMENT',
-  'SUPERANNUATION',
-];
+/** Parse an optional ISO date field — undefined when absent, throws on junk. */
+function parseOptionalDateField(value: unknown, field: string): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || isNaN(new Date(value).getTime())) {
+    throw new Error(`${field} must be an ISO date string.`);
+  }
+  return value;
+}
 
 export const GET = withPermission('entity.read', async (_request, auth) => {
   try {
@@ -101,6 +110,12 @@ interface CreateEntityRequestBody {
   // entities step can create a trust WITH its trustType in one POST.
   trustType?: unknown;
   isForeignResident?: unknown;
+  // Phase 47 F1 — extended-grammar detail fields.
+  companySubtype?: unknown;
+  dateOfBirth?: unknown;
+  vestingDate?: unknown;
+  deedDate?: unknown;
+  estateAdministrationStatus?: unknown;
 }
 
 const VALID_TRUST_TYPES: ReadonlyArray<string> = [
@@ -112,6 +127,9 @@ const VALID_TRUST_TYPES: ReadonlyArray<string> = [
   'DECEASED_ESTATE',
   'SPECIAL_DISABILITY',
   'OTHER',
+  // Phase 47 F1 — Phase 44 enum additions (HYBRID_TRUST / TESTAMENTARY_TRUST).
+  'HYBRID',
+  'TESTAMENTARY',
 ];
 
 export const POST = withPermission('entity.write', async (request: NextRequest, auth) => {
@@ -200,6 +218,32 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
     const isForeignResident =
       typeof body.isForeignResident === 'boolean' ? body.isForeignResident : false;
 
+    // Phase 47 F1 — extended-grammar detail fields. Lenient like
+    // trustType: unrecognised values drop to null (the dialog never
+    // sends a bad one); dates are validated.
+    const companySubtype =
+      typeof body.companySubtype === 'string' && VALID_COMPANY_SUBTYPES.has(body.companySubtype)
+        ? (body.companySubtype as CompanySubtype)
+        : null;
+    const estateAdministrationStatus =
+      typeof body.estateAdministrationStatus === 'string' &&
+      VALID_ESTATE_STATUSES.has(body.estateAdministrationStatus)
+        ? body.estateAdministrationStatus
+        : null;
+    let dateOfBirth: string | null | undefined;
+    let vestingDate: string | null | undefined;
+    let deedDate: string | null | undefined;
+    try {
+      dateOfBirth = parseOptionalDateField(body.dateOfBirth, 'dateOfBirth');
+      vestingDate = parseOptionalDateField(body.vestingDate, 'vestingDate');
+      deedDate = parseOptionalDateField(body.deedDate, 'deedDate');
+    } catch (e) {
+      return NextResponse.json(
+        { error: e instanceof Error ? e.message : 'Invalid date field.' },
+        { status: 400 },
+      );
+    }
+
     // -------------------------------------------------------------------
     // Delegate to the canonical service
     // -------------------------------------------------------------------
@@ -215,6 +259,11 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
       parentEntityId,
       trustType,
       isForeignResident,
+      companySubtype,
+      dateOfBirth: dateOfBirth ?? null,
+      vestingDate: vestingDate ?? null,
+      deedDate: deedDate ?? null,
+      estateAdministrationStatus,
     });
 
     // Fire-and-forget audit log (CLAUDE.md §12.10 — never block responses).

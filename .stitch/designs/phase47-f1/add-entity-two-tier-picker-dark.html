@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Add Entity</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-modal {
+            background-color: #0E1424;
+            border: 1.5px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .input-field {
+            background-color: #0A0F1D;
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.2s ease;
+        }
+        .input-field:focus {
+            border-color: #22C55E;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+        }
+        .structure-card {
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
+        }
+        .structure-card.selected {
+            border-color: #22C55E;
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+        .secondary-card {
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        /* Custom scrollbar for the modal content */
+        .modal-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+        .modal-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .modal-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-background": "#dde5d9",
+                        "on-surface-variant": "#bdcaba",
+                        "background": "#0e150f",
+                        "surface-container-lowest": "#09100a",
+                        "on-tertiary-fixed": "#3f0016",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-surface": "#dde5d9",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary-fixed-variant": "#005227",
+                        "on-secondary-fixed": "#00210c",
+                        "on-secondary": "#003919",
+                        "primary-container": "#1ca64d",
+                        "surface-dim": "#0e150f",
+                        "inverse-primary": "#006e2d",
+                        "on-error": "#690005",
+                        "surface-container-high": "#252c24",
+                        "surface": "#0e150f",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1b211a",
+                        "secondary-fixed": "#6dfe9c",
+                        "primary": "#62df7d",
+                        "outline": "#879485",
+                        "on-tertiary-container": "#5a0022",
+                        "on-primary-container": "#003111",
+                        "surface-container-highest": "#30372f",
+                        "on-primary": "#003914",
+                        "inverse-surface": "#dde5d9",
+                        "error-container": "#93000a",
+                        "tertiary-fixed": "#ffd9de",
+                        "primary-fixed-dim": "#62df7d",
+                        "secondary-container": "#00b55d",
+                        "surface-variant": "#30372f",
+                        "inverse-on-surface": "#2b322b",
+                        "surface-container-low": "#171d16",
+                        "on-secondary-container": "#003e1c",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-container": "#ec6284",
+                        "surface-bright": "#343b33",
+                        "outline-variant": "#3e4a3d",
+                        "primary-fixed": "#7ffc97",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "surface-tint": "#62df7d",
+                        "tertiary": "#ffb2bf",
+                        "secondary": "#4de082",
+                        "on-tertiary": "#660027"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4">
+<!-- Background Content Mock (The "Dashboard") -->
+<div class="fixed inset-0 z-0 opacity-20 pointer-events-none overflow-hidden">
+
+</div>
+<!-- Scrim Backdrop -->
+<div class="fixed inset-0 bg-black/50 backdrop-blur-[2px] z-10"></div>
+<!-- Modal Container -->
+<div class="relative z-20 w-full max-w-2xl glass-modal rounded-[16px] flex flex-col overflow-hidden max-h-[921px]">
+<!-- Header -->
+<header class="px-6 pt-6 pb-4 shrink-0">
+<h1 class="text-[20px] font-semibold text-[#FAFAF7]">Add an entity</h1>
+<p class="text-[14px] text-[#94A3B8] mt-1">Tell us about a structure you hold wealth through.</p>
+</header>
+<!-- Scrollable Content Area -->
+<div class="modal-scroll overflow-y-auto px-6 py-2 space-y-8 flex-grow">
+<!-- Display Name -->
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]" for="display-name">Display name</label>
+<input class="w-full input-field rounded-[12px] h-12 px-4 text-[#FAFAF7] placeholder-[#4A5568]" id="display-name" placeholder='e.g. "The Smith Family Trust"' type="text"/>
+</div>
+<!-- Common Structures Grid -->
+<div class="space-y-4">
+<h3 class="text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]">COMMON</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<!-- My Personal Name -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">person</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">My personal name</p>
+<p class="text-[12px] text-[#94A3B8]">Direct individual ownership</p>
+</div>
+</div>
+<!-- Company (SELECTED) -->
+<div class="structure-card selected rounded-[12px] p-4 flex items-start gap-4 cursor-pointer">
+<div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#22C55E]">corporate_fare</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Company (Pty Ltd)</p>
+<p class="text-[12px] text-[#94A3B8]">Proprietary limited structure</p>
+</div>
+</div>
+<!-- Family Trust -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">family_restroom</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Family / discretionary trust</p>
+<p class="text-[12px] text-[#94A3B8]">Trust for family beneficiaries</p>
+</div>
+</div>
+<!-- Unit Trust -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">account_balance</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Unit trust</p>
+<p class="text-[12px] text-[#94A3B8]">Trust with fixed unit holdings</p>
+</div>
+</div>
+<!-- SMSF -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">savings</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Self-Managed Super Fund</p>
+<p class="text-[12px] text-[#94A3B8]">Retirement savings vehicle</p>
+</div>
+</div>
+<!-- Partnership -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">handshake</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Partnership</p>
+<p class="text-[12px] text-[#94A3B8]">Shared business structure</p>
+</div>
+</div>
+<!-- Sole Trader -->
+<div class="structure-card rounded-[12px] p-4 flex items-start gap-4 cursor-pointer hover:bg-white/5">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[#94A3B8]">storefront</span>
+</div>
+<div>
+<p class="text-[14px] font-medium text-[#FAFAF7]">Sole trader</p>
+<p class="text-[12px] text-[#94A3B8]">Individual business owner</p>
+</div>
+</div>
+</div>
+</div>
+<!-- More Structures Expander -->
+<div class="space-y-4">
+<button class="w-full flex items-center justify-between px-4 py-3 bg-white/[0.04] rounded-[12px] group">
+<span class="text-[13px] font-medium text-[#CBD5E1]">More structures (12)</span>
+<span class="material-symbols-outlined text-[#94A3B8] group-hover:text-[#FAFAF7] transition-colors">expand_less</span>
+</button>
+<!-- Expanded Secondary Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Bare trust</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Individual</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Fixed trust</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Hybrid trust</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Testamentary trust</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Deceased estate</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Foreign company</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Incorporated association</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Co-operative</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Strata / body corporate</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Custodian / platform</p>
+</div>
+<div class="secondary-card rounded-[10px] p-3 cursor-pointer hover:bg-white/5">
+<p class="text-[13px] font-medium text-[#CBD5E1]">Other structure</p>
+</div>
+</div>
+</div>
+<!-- Conditional Band (Company) -->
+<div class="pt-6 border-t border-white/[0.08] space-y-6">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]">Role</label>
+<select class="w-full input-field rounded-[12px] h-12 px-4 text-[#FAFAF7] appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%20fill%3D%22none%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] bg-[length:1em]">
+<option value="operating">Operating</option>
+<option value="holding">Holding / Investment</option>
+<option value="trustee">Corporate Trustee</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]">Company subtype</label>
+<select class="w-full input-field rounded-[12px] h-12 px-4 text-[#FAFAF7] appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%20fill%3D%22none%22%20stroke%3D%22%2394A3B8%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_1rem_center] bg-[length:1em]">
+<option value="pty-ltd">Proprietary (Pty Ltd)</option>
+<option value="public">Public (Ltd)</option>
+<option value="foreign">Foreign Registered</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]">ABN (Optional)</label>
+<input class="w-full input-field rounded-[12px] h-12 px-4 text-[#FAFAF7] placeholder-[#4A5568]" placeholder="-- --- --- ---" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block text-[12px] font-semibold uppercase tracking-wider text-[#94A3B8]">ACN</label>
+<input class="w-full input-field rounded-[12px] h-12 px-4 text-[#FAFAF7] placeholder-[#4A5568]" placeholder="--- --- ---" type="text"/>
+</div>
+</div>
+</div>
+<!-- Bottom spacing for scroll padding -->
+<div class="h-6"></div>
+</div>
+<!-- Footer -->
+<footer class="px-6 py-6 border-t border-white/[0.08] flex items-center justify-between shrink-0 bg-[#0E1424]/80 backdrop-blur-md">
+<button class="px-6 h-11 text-[14px] font-medium text-[#94A3B8] hover:text-[#FAFAF7] transition-colors">
+                Cancel
+            </button>
+<button class="px-8 h-11 bg-[#22C55E] text-white rounded-full text-[14px] font-semibold shadow-[0_10px_20px_rgba(34,197,94,0.2)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                Add entity
+            </button>
+</footer>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.structure-card, .secondary-card');
+            
+            cards.forEach(card => {
+                card.addEventListener('click', () => {
+                    // Remove selected state from all
+                    cards.forEach(c => c.classList.remove('selected'));
+                    cards.forEach(c => {
+                        const iconContainer = c.querySelector('div.w-10');
+                        const icon = c.querySelector('.material-symbols-outlined');
+                        if(iconContainer && icon) {
+                            iconContainer.classList.remove('bg-emerald-500/20');
+                            iconContainer.classList.add('bg-white/5');
+                            icon.classList.remove('text-[#22C55E]');
+                            icon.classList.add('text-[#94A3B8]');
+                        }
+                    });
+
+                    // Add selected state to clicked
+                    card.classList.add('selected');
+                    const activeIconContainer = card.querySelector('div.w-10');
+                    const activeIcon = card.querySelector('.material-symbols-outlined');
+                    if(activeIconContainer && activeIcon) {
+                        activeIconContainer.classList.remove('bg-white/5');
+                        activeIconContainer.classList.add('bg-emerald-500/20');
+                        activeIcon.classList.remove('text-[#94A3B8]');
+                        activeIcon.classList.add('text-[#22C55E]');
+                    }
+                });
+            });
+        });
+    </script>
+</body></html>

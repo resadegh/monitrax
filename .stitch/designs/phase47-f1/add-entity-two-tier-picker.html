@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Add Entity</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .scrim-blur {
+            backdrop-filter: blur(4px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #E2E8F0;
+            border-radius: 10px;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-highest": "#dde5d9",
+                        "trail-amber": "#F59E0B",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#d9dff4",
+                        "tertiary-container": "#66768d",
+                        "tertiary": "#4d5d73",
+                        "on-surface": "#171d16",
+                        "trail-violet": "#8B5CF6",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "surface-bright": "#f4fcf0",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-container-high": "#e3eadf",
+                        "on-primary-container": "#f7fff2",
+                        "secondary-fixed": "#dce2f6",
+                        "outline": "#6e7b6c",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-secondary-fixed-variant": "#404757",
+                        "trail-indigo": "#6366F1",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-dim": "#F1EFE8",
+                        "outline-slate": "#94A3B8",
+                        "background": "#f4fcf0",
+                        "surface": "#f4fcf0",
+                        "error-container": "#ffdad6",
+                        "primary-fixed": "#7ffc97",
+                        "on-background": "#171d16",
+                        "surface-container-low": "#eff6ea",
+                        "primary-container": "#00873a",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-variant": "#dde5d9",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-tint": "#006e2d",
+                        "inverse-surface": "#2b322b",
+                        "on-primary-fixed": "#002109",
+                        "trail-sky": "#0EA5E9",
+                        "on-error": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "primary-fixed-dim": "#62df7d",
+                        "error-red": "#DC2626",
+                        "inverse-primary": "#62df7d",
+                        "on-tertiary-container": "#fdfcff",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#006b2c",
+                        "secondary": "#585e6f",
+                        "surface-container": "#e9f0e5",
+                        "outline-variant": "#bdcaba",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-emerald": "#16A34A",
+                        "on-secondary-fixed": "#151b2a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "label-md": ["Inter"],
+                        "data-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "eyebrow": ["11px", {"lineHeight": "1.2", "letterSpacing": "0.16em", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory font-body-md text-on-surface antialiased">
+<!-- Dashboard Backdrop Simulation -->
+<div class="fixed inset-0 flex">
+<!-- Sidebar Shell (Shared Component Blueprint) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64">
+<div class="p-6 flex items-center space-x-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-sm" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface leading-tight">Monitrax</h1>
+<p class="text-[10px] font-eyebrow uppercase tracking-widest text-on-surface-variant">Wealth OS</p>
+</div>
+</div>
+<nav class="flex-1 px-4 py-2 space-y-1">
+<div class="flex items-center h-11 text-on-surface-variant px-4 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-label-md text-label-md">Home</span>
+</div>
+<div class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 cursor-default">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">group</span>
+<span class="font-label-md text-label-md">My Household</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant px-4 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3">account_balance</span>
+<span class="font-label-md text-label-md">My Accounts</span>
+</div>
+<div class="flex items-center h-11 text-on-surface-variant px-4 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="font-label-md text-label-md">My Budget</span>
+</div>
+</nav>
+</aside>
+<!-- Main Content Canvas Placeholder -->
+<main class="flex-1 ml-64 p-gutter pt-20">
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="w-96 flex items-center bg-surface-container px-3 py-1.5 rounded-lg border border-outline-variant/30">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-lg">search</span>
+<span class="text-on-surface-variant text-body-sm">Search assets or entities...</span>
+</div>
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqThQynsZEQh492zPhXfrMFQNFTtMxFrZ8_JM6TvDkMtRkn95ccGP2eo0Yvn7FsyUO9QXafeB4vEkhTDMbGaaXEvfMxKWW_hwf60CjCUP0qe_cnwkQehztf9B-n7wekoQKFsDAoKxdwa_yuUwPJEBuu4mAXOc4R89T6KnG0nMRDnJHZTPjjAobBipRMlbFsY7maLGdHQ2MErkhsB2bx-Q3RcpR28rcz1_TkzBcXJ-xw8n2Zkslybnw77QvEGKy9ULr0ARqGhfEDHk"/>
+</div>
+</div>
+</header>
+<div class="max-w-container-max mx-auto space-y-12 opacity-40">
+<div class="flex justify-between items-end">
+<div>
+<p class="font-eyebrow text-eyebrow uppercase text-on-surface-variant mb-2">Portfolio Overview</p>
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Total Household Wealth</h2>
+</div>
+<button class="bg-primary text-white px-5 py-2.5 rounded-xl font-label-md text-label-md flex items-center space-x-2">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>Add Entity</span>
+</button>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
+<p class="font-eyebrow text-[10px] uppercase text-on-surface-variant mb-1">Net Worth</p>
+<p class="font-data-xl text-data-xl text-on-surface">$4,284,000</p>
+<div class="mt-4 flex items-center space-x-2">
+<span class="bg-trail-emerald/10 text-trail-emerald text-[11px] px-2 py-0.5 rounded-full font-bold">+1.2%</span>
+<span class="text-[11px] text-on-surface-variant">vs last month</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
+<p class="font-eyebrow text-[10px] uppercase text-on-surface-variant mb-1">Investable Assets</p>
+<p class="font-data-xl text-data-xl text-on-surface">$1,150,200</p>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant shadow-sm">
+<p class="font-eyebrow text-[10px] uppercase text-on-surface-variant mb-1">Total Liabilities</p>
+<p class="font-data-xl text-data-xl text-on-surface text-error-red">$840,000</p>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- MODAL OVERLAY: Phase 47 F1 -->
+<div class="fixed inset-0 z-50 flex items-center justify-center p-4">
+<!-- Scrim -->
+<div class="absolute inset-0 bg-black/40 scrim-blur"></div>
+<!-- Dialog Container -->
+<div class="relative w-full max-w-[560px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[921px]">
+<!-- Header -->
+<div class="px-8 pt-8 pb-4">
+<h3 class="font-headline-sm text-headline-sm text-[#0B1220]">Add an entity</h3>
+<p class="text-body-sm text-outline-slate mt-1">Tell us about a structure you hold wealth through.</p>
+</div>
+<!-- Scrollable Content Body -->
+<div class="flex-1 overflow-y-auto px-8 pb-8 custom-scrollbar space-y-8">
+<!-- Section 1: Name -->
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface font-medium">Display name</label>
+<input class="w-full h-12 px-4 rounded-xl border-1.5 border-[#E2E8F0] focus:ring-0 focus:border-trail-emerald transition-colors placeholder:text-outline-slate/50 text-body-md" placeholder='e.g. "The Smith Family Trust"' type="text"/>
+</div>
+<!-- Section 2: Type Picker -->
+<div class="space-y-4">
+<h4 class="font-eyebrow text-eyebrow uppercase text-outline-slate tracking-[0.16em]">Common</h4>
+<div class="grid grid-cols-2 gap-3">
+<!-- Option: Personal Name -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">person</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">My personal name</p>
+<p class="text-[11px] text-outline-slate truncate">Individual ownership</p>
+</div>
+</div>
+<!-- Option: Company (SELECTED) -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-trail-emerald bg-trail-emerald/5 cursor-pointer ring-1 ring-trail-emerald/20">
+<div class="w-8 h-8 rounded-lg bg-trail-emerald/10 flex items-center justify-center text-trail-emerald">
+<span class="material-symbols-outlined text-lg">domain</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Company (Pty Ltd)</p>
+<p class="text-[11px] text-outline-slate truncate">Corporate structure</p>
+</div>
+</div>
+<!-- Family Trust -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">family_restroom</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Family / discretionary trust</p>
+<p class="text-[11px] text-outline-slate truncate">Asset protection</p>
+</div>
+</div>
+<!-- Unit Trust -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Unit trust</p>
+<p class="text-[11px] text-outline-slate truncate">Investment vehicle</p>
+</div>
+</div>
+<!-- SMSF -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">savings</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Self-Managed Super Fund</p>
+<p class="text-[11px] text-outline-slate truncate">Retirement savings</p>
+</div>
+</div>
+<!-- Partnership -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">handshake</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Partnership</p>
+<p class="text-[11px] text-outline-slate truncate">Co-owned business</p>
+</div>
+</div>
+<!-- Sole Trader -->
+<div class="flex items-center p-3 h-14 rounded-xl border-1.5 border-[#E2E8F0] hover:border-trail-emerald/30 cursor-pointer transition-all bg-white group">
+<div class="w-8 h-8 rounded-lg bg-surface-ivory flex items-center justify-center text-outline-slate group-hover:text-trail-emerald">
+<span class="material-symbols-outlined text-lg">work</span>
+</div>
+<div class="ml-3 overflow-hidden">
+<p class="text-body-sm font-medium text-on-surface truncate">Sole trader</p>
+<p class="text-[11px] text-outline-slate truncate">Self-employed</p>
+</div>
+</div>
+</div>
+<!-- Expander Tier 2 -->
+<div class="pt-2">
+<button class="w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 group transition-colors hover:bg-slate-100">
+<span class="text-label-md font-medium text-slate-600">More structures (12)</span>
+<span class="material-symbols-outlined text-slate-400 group-hover:text-slate-600 transition-transform">keyboard_arrow_down</span>
+</button>
+<!-- Expanded Tier 2 Grid -->
+<div class="mt-3 grid grid-cols-2 gap-2">
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Bare trust</span>
+</div>
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Individual</span>
+</div>
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Fixed trust</span>
+</div>
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Hybrid trust</span>
+</div>
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Testamentary trust</span>
+</div>
+<div class="flex items-center p-2.5 h-12 rounded-lg border border-[#E2E8F0]/60 bg-white hover:bg-slate-50 cursor-pointer">
+<span class="text-[13px] font-medium text-slate-600">Deceased estate</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Conditional Fields (Company) -->
+<div class="p-6 rounded-2xl bg-surface-ivory/50 border border-[#E2E8F0] space-y-6">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface font-medium">Role</label>
+<div class="relative">
+<select class="w-full h-11 px-4 rounded-xl border-1.5 border-[#E2E8F0] bg-white appearance-none focus:ring-0 focus:border-trail-emerald text-body-sm">
+<option>Operating</option>
+<option>Investment</option>
+<option>Holding</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-slate pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface font-medium">Company subtype</label>
+<div class="relative">
+<select class="w-full h-11 px-4 rounded-xl border-1.5 border-[#E2E8F0] bg-white appearance-none focus:ring-0 focus:border-trail-emerald text-body-sm">
+<option>Proprietary</option>
+<option>Public</option>
+<option>Trustee Co.</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-outline-slate pointer-events-none">expand_more</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface font-medium">ABN (optional)</label>
+<input class="w-full h-11 px-4 rounded-xl border-1.5 border-[#E2E8F0] bg-white focus:ring-0 focus:border-trail-emerald text-body-sm" placeholder="00 000 000 000" type="text"/>
+</div>
+<div class="space-y-2">
+<label class="block font-label-md text-label-md text-on-surface font-medium">ACN (optional)</label>
+<input class="w-full h-11 px-4 rounded-xl border-1.5 border-[#E2E8F0] bg-white focus:ring-0 focus:border-trail-emerald text-body-sm" placeholder="000 000 000" type="text"/>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer -->
+<div class="px-8 py-6 border-t border-[#E2E8F0] bg-white flex justify-between items-center">
+<button class="px-6 py-2.5 text-label-md font-medium text-outline-slate hover:text-on-surface transition-colors">Cancel</button>
+<button class="bg-trail-emerald text-white px-8 py-2.5 rounded-xl font-label-md font-medium shadow-sm hover:shadow-md transition-all active:scale-[0.98]">
+                    Add entity
+                </button>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('focus', () => {
+                    input.parentElement.classList.add('focused');
+                });
+                input.addEventListener('blur', () => {
+                    input.parentElement.classList.remove('focused');
+                });
+            });
+        });
+    </script>
+</body></html>

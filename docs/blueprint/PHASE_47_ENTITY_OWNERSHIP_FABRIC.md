@@ -139,7 +139,9 @@ Execute the already-designed, review-gated Part 2: persist "what actually happen
 | `ShareParcel` — share class, quantity, paid/unpaid, CGT acquisition date ("[1 ORD]", "[500]") | ✅ | ❌ **no writer anywhere** | ❌ | **F3** |
 | Universe glyph/classification for the extended types | n/a | n/a | ❌ falls to generic company | **F1** |
 
-#### F1 — Unlock the full entity-type grammar (1 PR)
+#### F1 — Unlock the full entity-type grammar (1 PR) — ✅ SHIPPED 2026-06-12
+
+> Shipped exactly as specced, plus: canonical `lib/entities/entityTypeCatalog.ts` (type tiers, warm labels/descriptions, trust-family + company-family groupings, `deriveTrustType`, per-type field applicability, default roles) is the SSOT consumed by the dialog AND both API routes — F4 re-points the wizard to it. Stitch SoT: light `eb5dd4a37e5c47b087d2405f50d13f49` + dark `c3c62699a61c4439a5d06a5ac7fcb5af` (`.stitch/designs/phase47-f1/add-entity-two-tier-picker{,-dark}.{html,png}`); mobile variants ride F2's Stitch pass (consolidated with the Stage-A OWED debt). 7 catalog tests + extended-type universe classification test.
 
 - `app/api/entities/route.ts`: `VALID_TYPES` → all 19 `LegalEntityType` values; `VALID_ROLES` + `CORPORATE_TRUSTEE`; accept per-type conditional fields with a per-type whitelist — `companySubtype` (companies), `dateOfBirth` (INDIVIDUAL), `vestingDate`/`deedDate` (trusts), `estateAdministrationStatus` (DECEASED_ESTATE). Auto-derive `trustType` for the new trust types (FIXED_TRUST→FIXED, HYBRID_TRUST→HYBRID, TESTAMENTARY_TRUST→TESTAMENTARY) so §12.14 Measure-3 dispatch stays correct.
 - `app/dashboard/entities/page.tsx` create/edit dialog: **two-tier type picker** — "Common" (today's seven, unchanged first paint) + a collapsed "More structures" expander for the twelve extended types. Behaviour-psychology contract: a beginner adding their first family trust NEVER sees "Strata body corporate"; the advanced user finds everything in one tap. Warm one-line descriptions per type (*"Bare trust — holds a single asset for someone else; used for SMSF property loans"*).

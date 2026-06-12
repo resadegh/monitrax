@@ -298,3 +298,29 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 - [x] `npm run build` — green (418 pages, `/api/account/reset` registered)
 - [x] `npx vitest run` — 2469 passed, 0 failed (incl. 4 new classification tests)
 - [ ] Manual prod verification post-merge (§17.2)
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Phase 47 F1 build
+
+### Changes Made — F1: full entity-type grammar unlocked
+- **Type**: Feature (Stage F PR 1 of 4; Reza: "go")
+- **Scope**: entity capture surfaces — catalog, service, API routes, My Structure dialog, universe classification
+- **Solution**:
+  - **`lib/entities/entityTypeCatalog.ts` (new, canonical SSOT)** — two tiers (7 common / 12 extended = the full 19-type Phase 44 grammar), warm labels + one-line descriptions (§14.3), trust-family + company-family groupings, `deriveTrustType` (keeps Phase 41E Measure-3 dispatch correct by construction: FIXED/HYBRID/TESTAMENTARY/BARE map to correctly-EXCLUDED subtypes, §12.14), per-type field applicability, default roles. Consumed by the dialog AND both API routes; F4 re-points the wizard.
+  - **Service** (`legalEntityService.ts`): Create/Update inputs + summary gain `companySubtype`/`dateOfBirth`/`vestingDate`/`deedDate`/`estateAdministrationStatus` (per-type gated persistence); trustType persists for the whole trust family with auto-derive; trustType input unions widened to the Prisma enum (HYBRID/TESTAMENTARY).
+  - **API** (`/api/entities` POST + `[id]` PUT): whitelists → all 19 types + 6 roles (CORPORATE_TRUSTEE was missing); extended fields validated at the boundary (closed enums, ISO dates).
+  - **Dialog** (`app/dashboard/entities/page.tsx`): two-tier `EntityTypePicker` (Common cards first paint; "More structures (12)" expander, auto-open when editing an extended-type entity); per-type conditional fields; Role picker includes Corporate trustee; dialog scrollable.
+  - **Universe** (`wealthExplorerLayout.classifyEntity`): trust family + deceased estate → trust vocabulary; custodian/platform → trustee-company; foreign company/assoc/co-op/strata → other-company.
+- **Stitch (§18.2.1)**: section-level composition designed first — light `eb5dd4a37e5c47b087d2405f50d13f49` + dark `c3c62699a61c4439a5d06a5ac7fcb5af`, artefacts at `.stitch/designs/phase47-f1/add-entity-two-tier-picker{,-dark}.{html,png}`, recorded in `.stitch/metadata.json`. Mobile variants ride F2's Stitch pass (consolidated with Stage A's OWED debt).
+- **No schema change** — every column already existed (Phase 44 1a); no migration (§12.12 n/a).
+- **Tests**: 7 new catalog tests + extended-type universe classification test — 104 total green across wealth-explorer/ownership/entities/entity-graph suites.
+
+### Files Modified
+- `lib/entities/entityTypeCatalog.ts` (new), `lib/services/legalEntityService.ts`, `app/api/entities/route.ts`, `app/api/entities/[id]/route.ts`, `app/dashboard/entities/page.tsx`, `lib/data/wealthExplorerLayout.ts`, `tests/entities/entityTypeCatalog.test.ts` (new), `tests/wealth-explorer/semanticZoomLayout.test.ts`, `.stitch/{metadata.json,designs/phase47-f1/*}`, `docs/blueprint/PHASE_47_ENTITY_OWNERSHIP_FABRIC.md`, `docs/IMPLEMENTATION_PLAN.md`
+
+### Build Status
+- [x] tsc 0 (after `prisma generate` — client was stale post main-merge) / eslint 0 / financial gate 0 / 104 tests / `npm run build` 0
+
+### §17.2 post-merge verification — PR #1089 (Stage F plan)
+- Prod deploy `dpl_GMHhTQBaQp4zKFR3juoBoKQoYEBo` reached `READY` (2026-06-12 07:43:00) — docs-only merge, clean.

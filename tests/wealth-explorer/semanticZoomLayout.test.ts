@@ -281,6 +281,27 @@ describe('Phase WX.4 — semantic zoom layout', () => {
       expect(result.nodes.filter(n => n.tier === 'cluster').length).toBeGreaterThan(0);
     });
 
+    // Phase 47 F1 — the extended grammar renders with the right
+    // universe vocabulary (the type label carries the precision).
+    it('classifies the extended Phase 44 types into universe vocabulary', () => {
+      const result = layoutWealthExplorer(
+        snapshot({
+          entities: [
+            entity('you', 'PERSONAL_NAME'),
+            entity('bare', 'BARE_TRUST'),
+            entity('estate', 'DECEASED_ESTATE'),
+            entity('custodian', 'CUSTODIAN_PLATFORM'),
+            entity('foreign', 'FOREIGN_COMPANY', { role: 'OPERATING' }),
+          ],
+        }),
+      );
+      const byId = Object.fromEntries(result.nodes.map(n => [n.id, n]));
+      expect(byId['bare'].type).toBe('trust');
+      expect(byId['estate'].type).toBe('trust');
+      expect(byId['custodian'].type).toBe('trustee-company');
+      expect(byId['foreign'].type).toBe('other-company');
+    });
+
     it('keeps entities expandable outside cluster mode (3+ entities)', () => {
       const result = layoutWealthExplorer(baseSnapshot());
       const expandables = result.nodes.filter(
