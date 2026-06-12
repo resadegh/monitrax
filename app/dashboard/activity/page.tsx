@@ -88,6 +88,8 @@ interface Transaction {
   categoryLevel2: string | null;
   tags: string[];
   confidenceScore: number | null;
+  /** Phase 49.14 — true once the user has confirmed/corrected the category. */
+  userCorrectedCategory?: boolean;
   isRecurring: boolean;
   isTransfer: boolean;
   anomalyFlags: string[];
@@ -260,15 +262,24 @@ function ActivityPageContent() {
   const [reviewMode, setReviewMode] = useState(false);
   // Phase 49 — bump to re-fetch the AI bookkeeper confidence summary.
   const [confidenceRefresh, setConfidenceRefresh] = useState(0);
-  // Phase 49.4 — confidence-band review surface. When set, the list shows
-  // the PENDING review-queue items for that band (which aren't real
-  // transactions yet) instead of the normal transaction list, so the user
-  // can see + confirm/skip the medium/low pile before bulk-confirming.
-  const [confidenceBand, setConfidenceBand] = useState<'medium' | 'low' | null>(null);
+  // Phase 49.4 / 49.14 — confidence-band lens. When set, the page shows
+  // EVERYTHING in that band as one simple view (Reza directives 2026-06-12:
+  // band chips act as filters; "the solution must be simple enough for
+  // everyone to understand"): new items still waiting from imports (queue)
+  // AND booked transactions, each with a plain confirmed / not-confirmed
+  // status. This reconciles the discrepancy where "Review low" showed
+  // queue items while low-score booked rows hid in the main list.
+  const [confidenceBand, setConfidenceBand] = useState<'high' | 'medium' | 'low' | null>(null);
   const [queueItems, setQueueItems] = useState<ReviewQueueItem[]>([]);
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueSelected, setQueueSelected] = useState<Set<string>>(() => new Set());
-  const [bandCounts, setBandCounts] = useState<{ medium: number; low: number }>({ medium: 0, low: 0 });
+  const [bandCounts, setBandCounts] = useState<{
+    high: number;
+    medium: number;
+    low: number;
+    txMedium: number;
+    txLow: number;
+  }>({ high: 0, medium: 0, low: 0, txMedium: 0, txLow: 0 });
   // Phase 49.5 — queue item whose category is being corrected via the picker.
   const [queueEditItem, setQueueEditItem] = useState<ReviewQueueItem | null>(null);
 
@@ -281,7 +292,13 @@ function ActivityPageContent() {
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        setBandCounts({ medium: json.data.medium ?? 0, low: json.data.low ?? 0 });
+        setBandCounts({
+          high: json.data.high ?? 0,
+          medium: json.data.medium ?? 0,
+          low: json.data.low ?? 0,
+          txMedium: json.data.txMedium ?? 0,
+          txLow: json.data.txLow ?? 0,
+        });
       }
     } catch {
       // Quiet — chips just show 0.
@@ -309,7 +326,13 @@ function ActivityPageContent() {
   }, [token]);
 
   useEffect(() => {
-    if (confidenceBand) fetchQueueItems(confidenceBand);
+    // High has no queue (≥0.9 was auto-accepted at import) — queue items
+    // exist only for medium/low.
+    if (confidenceBand === 'medium' || confidenceBand === 'low') {
+      fetchQueueItems(confidenceBand);
+    } else {
+      setQueueItems([]);
+    }
   }, [confidenceBand, fetchQueueItems]);
 
   // Phase 49.4 — confirm or skip the selected queue items.
@@ -402,7 +425,9 @@ function ActivityPageContent() {
           }),
         });
         setTransactions((prev) =>
-          prev.map((t) => (t.id === tx.id ? { ...t, confidenceScore: 1.0 } : t))
+          prev.map((t) =>
+            t.id === tx.id ? { ...t, confidenceScore: 1.0, userCorrectedCategory: true } : t
+          )
         );
       } catch {
         // Quiet failure — chip stays, user can retry.
@@ -438,6 +463,8 @@ function ActivityPageContent() {
       if (dateRange.end) params.append('endDate', dateRange.end);
       if (showRecurringOnly) params.append('recurring', 'true');
       if (showAnomaliesOnly) params.append('hasAnomalies', 'true');
+      // Phase 49.14 — confidence-band lens filters the booked list too.
+      if (confidenceBand) params.append('confidence', confidenceBand);
 
       if (tileFilter === 'uncategorized') {
         params.append('uncategorized', 'true');
@@ -475,7 +502,7 @@ function ActivityPageContent() {
     } finally {
       setLoading(false);
     }
-  }, [token, page, search, accountFilter, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly, tileFilter]);
+  }, [token, page, search, accountFilter, categoryFilter, dateRange, showRecurringOnly, showAnomaliesOnly, tileFilter, confidenceBand]);
 
   const fetchSummary = useCallback(async () => {
     if (!token) return;
@@ -738,24 +765,32 @@ function ActivityPageContent() {
           </form>
 
           <div className="flex items-center gap-1.5 overflow-x-auto -mx-1 px-1 pb-1 sm:pb-0">
-            {/* Phase 49.4 — confidence-band review filters. Surface the
-                medium/low pile (which lives in the review queue, not the
-                transaction list) so the user can see + confirm/skip before
-                a blind bulk-confirm. */}
-            {bandCounts.medium > 0 && (
+            {/* Phase 49.14 (Reza) — the three confidence bands act as plain
+                list filters. Counts include EVERYTHING in the band: new
+                items from imports + booked transactions, so the chip number
+                matches what the user actually sees when they click it. */}
+            {bandCounts.high > 0 && (
               <ConfidenceChip
-                active={confidenceBand === 'medium'}
-                onClick={() => setConfidenceBand(confidenceBand === 'medium' ? null : 'medium')}
-                dot="bg-amber-400"
-                label={`Medium · ${bandCounts.medium.toLocaleString('en-AU')}`}
+                active={confidenceBand === 'high'}
+                onClick={() => { setConfidenceBand(confidenceBand === 'high' ? null : 'high'); setPage(1); }}
+                dot="bg-emerald-400"
+                label={`High · ${bandCounts.high.toLocaleString('en-AU')}`}
               />
             )}
-            {bandCounts.low > 0 && (
+            {bandCounts.medium + bandCounts.txMedium > 0 && (
+              <ConfidenceChip
+                active={confidenceBand === 'medium'}
+                onClick={() => { setConfidenceBand(confidenceBand === 'medium' ? null : 'medium'); setPage(1); }}
+                dot="bg-amber-400"
+                label={`Medium · ${(bandCounts.medium + bandCounts.txMedium).toLocaleString('en-AU')}`}
+              />
+            )}
+            {bandCounts.low + bandCounts.txLow > 0 && (
               <ConfidenceChip
                 active={confidenceBand === 'low'}
-                onClick={() => setConfidenceBand(confidenceBand === 'low' ? null : 'low')}
+                onClick={() => { setConfidenceBand(confidenceBand === 'low' ? null : 'low'); setPage(1); }}
                 dot="bg-rose-400"
-                label={`Low · ${bandCounts.low.toLocaleString('en-AU')}`}
+                label={`Low · ${(bandCounts.low + bandCounts.txLow).toLocaleString('en-AU')}`}
               />
             )}
             <ChipToggle
@@ -872,12 +907,14 @@ function ActivityPageContent() {
         />
 
         {/* CONTENT */}
-        {confidenceBand ? (
-          // Phase 49.4 — review surface for a confidence band. Shows the
-          // PENDING queue items (not real transactions yet), each with a
-          // confidence dot + per-item confirm/skip + a bulk action bar.
+        {/* Phase 49.14 — when a band lens is active, show BOTH halves of the
+            band in one simple view: new items from imports (confirm to add)
+            followed by the band-filtered booked list with a plain
+            confirmed / not-confirmed status per row. Stitch screen
+            05d687e487894fd988a904280f47184a (.stitch/designs/phase49.14/). */}
+        {confidenceBand && (confidenceBand === 'high' ? false : queueLoading || queueItems.length > 0) && (
           <QueueReviewList
-            band={confidenceBand}
+            band={confidenceBand as 'medium' | 'low'}
             items={queueItems}
             loading={queueLoading}
             selected={queueSelected}
@@ -895,7 +932,8 @@ function ActivityPageContent() {
             onEditCategory={(item) => setQueueEditItem(item)}
             onClose={() => setConfidenceBand(null)}
           />
-        ) : loading ? (
+        )}
+        {loading ? (
           <LoadingList />
         ) : error ? (
           <ErrorState error={error} onRetry={fetchTransactions} />
@@ -920,6 +958,7 @@ function ActivityPageContent() {
                         selected={selectedIds.has(tx.id)}
                         onToggleSelected={() => toggleSelected(tx.id)}
                         advancedView={advancedView}
+                        showConfirmState={confidenceBand !== null}
                         onConfirm={() => confirmRow(tx)}
                         onClick={() => {
                           setLinkingTransaction(tx);
@@ -1357,15 +1396,18 @@ function ConfidenceChip({
 // §18.2.1): project 1859462351962811110, screen 08bce51673d04e7b98fb385538ac865d
 // (desktop light). Artefact: .stitch/designs/activity-redesign/review-surface-desktop-light.{html,png}.
 const BAND_LABEL: Record<'medium' | 'low', { title: string; blurb: string; dot: string; tone: string }> = {
+  // Phase 49.14 — plain-English headers (Reza: "simple enough for everyone
+  // to understand"). These items came from imports and are NOT in the
+  // user's books until confirmed; the booked list renders below this card.
   medium: {
-    title: 'Medium confidence',
-    blurb: 'The AI is fairly sure. Skim, then confirm — confirming teaches it.',
+    title: 'New — confirm to add',
+    blurb: 'From your imports, not in your books yet. The AI is fairly sure — confirm what looks right, fix what doesn’t.',
     dot: 'bg-amber-400',
     tone: 'text-amber-600 dark:text-amber-400',
   },
   low: {
-    title: 'Low confidence',
-    blurb: 'The AI is unsure here. Worth a closer look before you confirm.',
+    title: 'New — confirm to add',
+    blurb: 'From your imports, not in your books yet. The AI is unsure here — worth a closer look before you confirm.',
     dot: 'bg-rose-400',
     tone: 'text-rose-600 dark:text-rose-400',
   },
@@ -1601,6 +1643,7 @@ function TransactionRow({
   selected,
   onToggleSelected,
   advancedView = false,
+  showConfirmState = false,
   onConfirm,
   onSwipeLeft,
   onSwipeRight,
@@ -1612,6 +1655,9 @@ function TransactionRow({
   selected: boolean;
   onToggleSelected: () => void;
   advancedView?: boolean;
+  /** Phase 49.14 — band-lens mode: show a plain ✓ Confirmed / Not confirmed
+      status chip on every row so the user can compare bands at a glance. */
+  showConfirmState?: boolean;
   /** Phase 49 — "✓ Looks right": confirm the AI's category for this row. */
   onConfirm?: () => void;
   onSwipeLeft?: () => void;
@@ -1631,8 +1677,11 @@ function TransactionRow({
   // category tone — tinting 1,000+ confident rows would be chromatic noise
   // and would collide with emerald = money-positive (§18.7.2). The pill
   // colour replaces the Phase 49 confidence dot (redundant once tinted).
+  // Phase 49.14 fix: the old `> 0` guard excluded score-0 rows (the AI
+  // fallback writes confidence 0) — exactly the rows that most need the
+  // rose tint. Reza caught these masquerading as confident category tones.
   const uncertain =
-    tx.confidenceScore !== null && tx.confidenceScore > 0 && tx.confidenceScore < 0.9;
+    tx.confidenceScore !== null && tx.confidenceScore < 0.9 && tx.userCorrectedCategory !== true;
   const lowBand = tx.confidenceScore !== null && tx.confidenceScore < 0.7;
   const confidencePillTone = lowBand
     ? 'bg-rose-500/15 text-rose-700 border-rose-500/30 dark:text-rose-300'
@@ -1640,9 +1689,13 @@ function TransactionRow({
   const showConfidence = advancedView && uncertain;
   const confidenceLabel = lowBand ? 'Low confidence' : 'Medium confidence';
   const confidenceTone = lowBand ? 'text-rose-600' : 'text-amber-600';
-  // "✓ Looks right" quick-confirm chip: only for uncertain rows that DO have
-  // an AI category to confirm.
-  const showConfirmChip = uncertain && !!tx.categoryLevel1 && !!onConfirm;
+  // "✓ Looks right" quick-confirm chip: uncertain rows always; in band-lens
+  // mode (Phase 49.14) ANY unconfirmed row, so the user can sign off
+  // straight from the comparison view.
+  const showConfirmChip =
+    (uncertain || (showConfirmState && tx.userCorrectedCategory !== true)) &&
+    !!tx.categoryLevel1 &&
+    !!onConfirm;
   // Anomaly badge: also gated behind Advanced view per the same rule.
   const showAnomalyBadge = advancedView && hasAnomaly;
 
@@ -1849,6 +1902,20 @@ function TransactionRow({
       >
         {tx.categoryLevel1 || 'Uncategorised'}
       </span>
+
+      {/* Phase 49.14 — plain-English status chip in band-lens mode:
+          "✓ Confirmed" (user signed off) vs "Not confirmed yet". */}
+      {showConfirmState && (
+        tx.userCorrectedCategory ? (
+          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25 shrink-0">
+            ✓ Confirmed
+          </span>
+        ) : (
+          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-foreground/15 text-muted-foreground shrink-0">
+            Not confirmed yet
+          </span>
+        )
+      )}
 
       {/* Amount */}
       <div className="text-right shrink-0">
