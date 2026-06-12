@@ -17,8 +17,9 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { Prisma, PrismaClient, LegalEntityType, LegalEntityRole, TrustType } from '@prisma/client';
+import type { Prisma, PrismaClient, LegalEntityType, LegalEntityRole, TrustType, CompanySubtype } from '@prisma/client';
 import { encryptTfn } from '@/lib/security/tfnEncryption';
+import { deriveTrustType, isTrustFamily, isCompanyFamily } from '@/lib/entities/entityTypeCatalog';
 
 type PrismaTxOrClient = PrismaClient | Prisma.TransactionClient;
 
@@ -224,6 +225,13 @@ export interface LegalEntitySummary {
   // foreign-resident toggle.
   trustType: TrustType | null;
   isForeignResident: boolean | null;
+  // Phase 47 F1 — extended-grammar detail fields (all nullable; only
+  // set for the types they apply to — see entityTypeCatalog).
+  companySubtype: CompanySubtype | null;
+  dateOfBirth: Date | null;
+  vestingDate: Date | null;
+  deedDate: Date | null;
+  estateAdministrationStatus: string | null;
   createdAt: Date;
   updatedAt: Date;
   ownedObjectsCount: {
@@ -267,6 +275,12 @@ export async function listEntitiesForUser(
       // form can show the user's current trustType + isForeignResident.
       trustType: true,
       isForeignResident: true,
+      // Phase 47 F1 — extended-grammar detail fields.
+      companySubtype: true,
+      dateOfBirth: true,
+      vestingDate: true,
+      deedDate: true,
+      estateAdministrationStatus: true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -299,6 +313,12 @@ export async function listEntitiesForUser(
     // Phase 41E.4 — surface reform fields on the summary.
     trustType: e.trustType,
     isForeignResident: e.isForeignResident,
+    // Phase 47 F1 — extended-grammar detail fields.
+    companySubtype: e.companySubtype,
+    dateOfBirth: e.dateOfBirth,
+    vestingDate: e.vestingDate,
+    deedDate: e.deedDate,
+    estateAdministrationStatus: e.estateAdministrationStatus,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     ownedObjectsCount: {
@@ -336,17 +356,18 @@ export interface CreateEntityInput {
    * entities step (`entitiesSync.ts`) can create a trust WITH its
    * `trustType` in one call. Mirrors `UpdateEntityInput`.
    */
-  trustType?:
-    | 'DISCRETIONARY'
-    | 'FIXED'
-    | 'UNIT'
-    | 'TESTAMENTARY_FIXED'
-    | 'CHARITABLE'
-    | 'DECEASED_ESTATE'
-    | 'SPECIAL_DISABILITY'
-    | 'OTHER'
-    | null;
+  trustType?: TrustType | null;
   isForeignResident?: boolean | null;
+  /**
+   * Phase 47 F1 — extended-grammar detail fields. Each is persisted
+   * only for the entity types it applies to (entityTypeCatalog gating);
+   * values supplied for non-applicable types are dropped to null.
+   */
+  companySubtype?: CompanySubtype | null;
+  dateOfBirth?: Date | string | null;
+  vestingDate?: Date | string | null;
+  deedDate?: Date | string | null;
+  estateAdministrationStatus?: string | null;
 }
 
 /**
@@ -391,14 +412,27 @@ export async function createEntity(
       establishedDate:
         input.establishedDate ? new Date(input.establishedDate) : null,
       parentEntityId: input.parentEntityId ?? null,
-      // Phase 12 Track G.3a — reform-aware inputs. Only persist trustType
-      // for trust entity types (mirrors the entity edit form's logic).
-      trustType:
-        input.trustType &&
-        (input.type === 'DISCRETIONARY_TRUST' || input.type === 'UNIT_TRUST')
-          ? input.trustType
-          : null,
+      // Phase 12 Track G.3a + Phase 47 F1 — trustType persists for the
+      // whole trust family. When not supplied, auto-derive from the
+      // entity type so Phase 41E Measure-3 dispatch stays correct by
+      // construction (§12.14 — FIXED/HYBRID/TESTAMENTARY/BARE map to
+      // their correctly-EXCLUDED subtypes; only DISCRETIONARY is
+      // reform-affected).
+      trustType: isTrustFamily(input.type)
+        ? (input.trustType ?? deriveTrustType(input.type))
+        : null,
       isForeignResident: input.isForeignResident ?? false,
+      // Phase 47 F1 — extended-grammar detail fields, gated per type.
+      companySubtype: isCompanyFamily(input.type) ? (input.companySubtype ?? null) : null,
+      dateOfBirth:
+        (input.type === 'INDIVIDUAL' || input.type === 'PERSONAL_NAME') && input.dateOfBirth
+          ? new Date(input.dateOfBirth)
+          : null,
+      vestingDate:
+        isTrustFamily(input.type) && input.vestingDate ? new Date(input.vestingDate) : null,
+      deedDate: isTrustFamily(input.type) && input.deedDate ? new Date(input.deedDate) : null,
+      estateAdministrationStatus:
+        input.type === 'DECEASED_ESTATE' ? (input.estateAdministrationStatus ?? null) : null,
     },
     select: { id: true },
   });
@@ -427,22 +461,19 @@ export interface UpdateEntityInput {
    * are subject to the 30% min tax from FY 2028-29. Pass null to clear,
    * undefined to leave untouched. See PHASE_41E_REFORM_2026_27.md §4.2 + §10.3.
    */
-  trustType?:
-    | 'DISCRETIONARY'
-    | 'FIXED'
-    | 'UNIT'
-    | 'TESTAMENTARY_FIXED'
-    | 'CHARITABLE'
-    | 'DECEASED_ESTATE'
-    | 'SPECIAL_DISABILITY'
-    | 'OTHER'
-    | null;
+  trustType?: TrustType | null;
   /**
    * Phase 41E.3 — Measure 4 dispatch input. Drives Div 855 TARP + 365-day
    * PAT applicability. Pass null to clear, undefined to leave untouched.
    * See PHASE_41E_REFORM_2026_27.md §4.2 + §10.4.
    */
   isForeignResident?: boolean | null;
+  /** Phase 47 F1 — extended-grammar detail fields (partial-update semantics). */
+  companySubtype?: CompanySubtype | null;
+  dateOfBirth?: Date | string | null;
+  vestingDate?: Date | string | null;
+  deedDate?: Date | string | null;
+  estateAdministrationStatus?: string | null;
 }
 
 /**
@@ -506,6 +537,20 @@ export async function updateEntity(
   }
   if (input.isForeignResident !== undefined) {
     data.isForeignResident = input.isForeignResident;
+  }
+  // Phase 47 F1 — extended-grammar detail fields (partial-update).
+  if (input.companySubtype !== undefined) data.companySubtype = input.companySubtype;
+  if (input.dateOfBirth !== undefined) {
+    data.dateOfBirth = input.dateOfBirth ? new Date(input.dateOfBirth) : null;
+  }
+  if (input.vestingDate !== undefined) {
+    data.vestingDate = input.vestingDate ? new Date(input.vestingDate) : null;
+  }
+  if (input.deedDate !== undefined) {
+    data.deedDate = input.deedDate ? new Date(input.deedDate) : null;
+  }
+  if (input.estateAdministrationStatus !== undefined) {
+    data.estateAdministrationStatus = input.estateAdministrationStatus;
   }
 
   await client.legalEntity.update({

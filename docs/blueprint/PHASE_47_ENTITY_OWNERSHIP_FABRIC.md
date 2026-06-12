@@ -139,14 +139,18 @@ Execute the already-designed, review-gated Part 2: persist "what actually happen
 | `ShareParcel` — share class, quantity, paid/unpaid, CGT acquisition date ("[1 ORD]", "[500]") | ✅ | ❌ **no writer anywhere** | ❌ | **F3** |
 | Universe glyph/classification for the extended types | n/a | n/a | ❌ falls to generic company | **F1** |
 
-#### F1 — Unlock the full entity-type grammar (1 PR)
+#### F1 — Unlock the full entity-type grammar (1 PR) — ✅ SHIPPED 2026-06-12
+
+> Shipped exactly as specced, plus: canonical `lib/entities/entityTypeCatalog.ts` (type tiers, warm labels/descriptions, trust-family + company-family groupings, `deriveTrustType`, per-type field applicability, default roles) is the SSOT consumed by the dialog AND both API routes — F4 re-points the wizard to it. Stitch SoT: light `eb5dd4a37e5c47b087d2405f50d13f49` + dark `c3c62699a61c4439a5d06a5ac7fcb5af` (`.stitch/designs/phase47-f1/add-entity-two-tier-picker{,-dark}.{html,png}`); mobile variants ride F2's Stitch pass (consolidated with the Stage-A OWED debt). 7 catalog tests + extended-type universe classification test.
 
 - `app/api/entities/route.ts`: `VALID_TYPES` → all 19 `LegalEntityType` values; `VALID_ROLES` + `CORPORATE_TRUSTEE`; accept per-type conditional fields with a per-type whitelist — `companySubtype` (companies), `dateOfBirth` (INDIVIDUAL), `vestingDate`/`deedDate` (trusts), `estateAdministrationStatus` (DECEASED_ESTATE). Auto-derive `trustType` for the new trust types (FIXED_TRUST→FIXED, HYBRID_TRUST→HYBRID, TESTAMENTARY_TRUST→TESTAMENTARY) so §12.14 Measure-3 dispatch stays correct.
 - `app/dashboard/entities/page.tsx` create/edit dialog: **two-tier type picker** — "Common" (today's seven, unchanged first paint) + a collapsed "More structures" expander for the twelve extended types. Behaviour-psychology contract: a beginner adding their first family trust NEVER sees "Strata body corporate"; the advanced user finds everything in one tap. Warm one-line descriptions per type (*"Bare trust — holds a single asset for someone else; used for SMSF property loans"*).
 - Universe: `classifyEntity` additions — BARE_TRUST / FIXED / HYBRID / TESTAMENTARY_TRUST + DECEASED_ESTATE → `trust` vocabulary; CUSTODIAN_PLATFORM → `trustee-company`; FOREIGN_COMPANY / INCORPORATED_ASSOCIATION / CO_OPERATIVE / STRATA → `other-company`. No new glyphs v1 (restraint) — the type label carries the precision.
 - Stitch pass (§18): the expanded picker inside the existing glass dialog (4-variant matrix).
 
-#### F2 — "Roles & People" editor on My Structure (1 PR)
+#### F2 — "Roles & People" editor on My Structure (1 PR) — ✅ BUILT 2026-06-12 (ships as its own PR after F1 merges)
+
+> Shipped as specced + F2a: shared `RolesAndPeopleSection` (desktop panel + mobile sheet), canonical `lib/entity-graph/roleTemplates.ts` (per-type required/expected/optional rows; guidance layer — the validity matrix stays the law), template rows with end-role chips + quiet dashed invitations, completeness chip, "More roles" full-grammar dialog with LIVE `classifyEdge` §6.2 preview (NON_COMPLIANT records amber; IMPOSSIBLE blocks), quick-create INDIVIDUAL counterparts, and the "Actually held for…" beneficial-ownership recorder (basis incl. Bare trust — the LRBA shape). Stitch SoT: `88f4ac2d8f6544bdbacb90fbb4bf9072` (`.stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}`). Universe popover completeness chip deferred to F-G polish. 7 role-template tests.
 
 The restoration. `EntityDetailPanel` (desktop) + the mobile detail card gain a **Roles & people** section:
 

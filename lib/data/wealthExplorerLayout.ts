@@ -110,7 +110,22 @@ function classifyEntity(e: WealthGraphEntity): WealthNodeType {
   // are people, not companies — same vocabulary as the user's own tile.
   if (e.type === 'PERSONAL_NAME' || e.type === 'INDIVIDUAL') return 'individual';
   if (e.type === 'SMSF') return 'smsf';
-  if (e.type === 'DISCRETIONARY_TRUST' || e.type === 'UNIT_TRUST') return 'trust';
+  // Phase 47 F1 — the whole trust family (incl. the LRBA bare trust and
+  // a deceased estate, which behaves like a trust on the canvas) reads
+  // as trust vocabulary; the type label carries the precision.
+  if (
+    e.type === 'DISCRETIONARY_TRUST' ||
+    e.type === 'UNIT_TRUST' ||
+    e.type === 'FIXED_TRUST' ||
+    e.type === 'HYBRID_TRUST' ||
+    e.type === 'BARE_TRUST' ||
+    e.type === 'TESTAMENTARY_TRUST' ||
+    e.type === 'DECEASED_ESTATE'
+  ) {
+    return 'trust';
+  }
+  // A custodian/platform holds FOR others — trustee-company vocabulary.
+  if (e.type === 'CUSTODIAN_PLATFORM') return 'trustee-company';
   if (e.role === 'HOLDING') return 'holding-company';
   if (e.role === 'CORPORATE_TRUSTEE') return 'trustee-company';
   return 'other-company';
