@@ -486,12 +486,20 @@ export interface FifoCgtResult {
   hadUnmatchedSell: boolean;
 }
 
-/** Whole months between two dates (calendar-aware, floors partial months). */
+/**
+ * Whole months between two dates — STRICTLY-elapsed (audit fix
+ * 2026-06-12, finding 14): the same-day anniversary counts as 11, not
+ * 12, because s115-25(1) requires acquisition AT LEAST 12 months
+ * BEFORE the CGT event (the ATO reading excludes both days — an asset
+ * bought 10 Jan and sold the following 10 Jan does NOT qualify; sold
+ * 11 Jan it does). With this convention `monthsHeld >= 12` downstream
+ * is exactly the statutory test.
+ */
 function monthsBetween(from: Date, to: Date): number {
   let months =
     (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
     (to.getUTCMonth() - from.getUTCMonth());
-  if (to.getUTCDate() < from.getUTCDate()) months -= 1;
+  if (to.getUTCDate() <= from.getUTCDate()) months -= 1;
   return Math.max(0, months);
 }
 

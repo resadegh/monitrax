@@ -144,8 +144,8 @@ describe('calculateCgtDiscount — per-entity rate dispatch', () => {
     expect(result.discountAmount).toBe(0);
     expect(result.discountedGain).toBe(200000);
     expect(result.reason).toMatch(/companies are not eligible/);
-    // Boundary footer needs s115-280 visible
-    expect(result.citations.some((c) => c.reference === 's115-280')).toBe(true);
+    // Boundary footer needs s115-10 visible (audit fix 2026-06-12: company exclusion is by omission from s115-10; s115-280 is the Subdiv 115-D LIC provision)
+    expect(result.citations.some((c) => c.reference === 's115-10')).toBe(true);
   });
 });
 

@@ -440,16 +440,21 @@ function classifyCorporateTrusteeSmsf(
             issue(
               'INFO',
               'SMSF_SECOND_DIRECTOR_BASIS',
-              'The second director is recorded as a relative / legal personal representative of the member — the "not employed by the member" condition is not modelled; confirm with the accountant.',
+              'The second director is recorded as a relative / legal personal representative of the member. SIS s17A(2) also requires the member not be an EMPLOYEE OF the second director — employment is not modelled; confirm with the accountant.',
               smsfId,
             ),
           );
         } else {
+          // Audit fix 2026-06-12 (finding 7) — s17A(2)(a)(iii): the
+          // second director may be ANY person provided the member is
+          // not an employee of that person. Relative/LPR is one limb,
+          // not the only one — INFO, not ERROR (employment isn't
+          // modelled, so compliance can't be judged here).
           issues.push(
             issue(
-              'ERROR',
+              'INFO',
               'SMSF_SECOND_DIRECTOR_BASIS',
-              'The second director of a single-member corporate-trustee SMSF must be a relative of the member, or a legal personal representative.',
+              'The second director is not recorded as a relative or legal personal representative of the member. That can still comply with SIS s17A(2) provided the member is not an employee of the second director — confirm with the accountant.',
               smsfId,
             ),
           );
@@ -548,11 +553,13 @@ function classifyIndividualTrusteeSmsf(
           ),
         );
       } else {
+        // Audit fix 2026-06-12 (finding 7) — same s17A(2)(b) limb
+        // structure as the corporate-trustee branch above.
         issues.push(
           issue(
-            'ERROR',
+            'INFO',
             'SMSF_SECOND_TRUSTEE_BASIS',
-            'The second trustee of a single-member individual-trustee SMSF must be a relative of the member, or a legal personal representative.',
+            'The second trustee is not recorded as a relative or legal personal representative of the member. That can still comply with SIS s17A(2) provided the member is not an employee of the second trustee — confirm with the accountant.',
             smsfId,
           ),
         );

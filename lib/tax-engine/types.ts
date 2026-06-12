@@ -346,6 +346,15 @@ export interface IncomeContext {
   propertyId?: string;
   investmentAccountId?: string;
   frankingPercentage?: number;
+  /**
+   * Conformance fix (audit 2026-06-12, finding 2) — the EXPLICIT
+   * franking credits attached to the dividend (s202-60: the credit is
+   * set at the paying company's corporate tax rate for imputation —
+   * 25% for base-rate entities, 30% otherwise). When present it is
+   * authoritative; recomputing from `frankingPercentage` at a
+   * hard-coded 30/70 overstates base-rate-entity credits by ~28.6%.
+   */
+  frankingCredits?: number;
   isFromTrust?: boolean;
   isGovernmentPayment?: boolean;
   paymentType?: string;

@@ -69,6 +69,11 @@ export const S99A_TRUSTEE_PENALTY_RATE = 0.47;
 function isResolutionValidForFy(
   resolutionAt: string | undefined,
   financialYear: string | undefined,
+  // Conformance fix (audit 2026-06-12, finding 5) — the deadlines are
+  // PER CHARACTER: franked distributions must be resolved by 30 June
+  // (s207-58); specific entitlement to a CAPITAL GAIN may be recorded
+  // up to 2 months after year end, i.e. 31 August (s115-228(1)(b)).
+  character: 'frankedDividends' | 'capitalGains' = 'frankedDividends',
 ): boolean {
   if (!resolutionAt) return false;
   const resolutionDate = new Date(resolutionAt);
@@ -79,7 +84,10 @@ function isResolutionValidForFy(
   const startYear = parseInt(startStr, 10);
   if (Number.isNaN(startYear)) return true;
   const fyStart = new Date(startYear, 6, 1); // July 1
-  const fyEnd = new Date(startYear + 1, 5, 30, 23, 59, 59); // June 30
+  const fyEnd =
+    character === 'capitalGains'
+      ? new Date(startYear + 1, 7, 31, 23, 59, 59) // 31 August (s115-228)
+      : new Date(startYear + 1, 5, 30, 23, 59, 59); // 30 June (s207-58)
   return resolutionDate >= fyStart && resolutionDate <= fyEnd;
 }
 
@@ -325,18 +333,45 @@ export function allocateTrustDistribution(
     resolutionValid &&
     (totalFrankedPool > 0 || totalCapitalGainsPool > 0);
 
+  // Conformance fix (audit 2026-06-12, findings 5+6):
+  //  - capital-gain streaming has its own 31-Aug deadline (s115-228) —
+  //    a resolution valid for gains may be late for franked amounts;
+  //  - the UNSTREAMED residual of each pool flows proportionately to
+  //    every presently-entitled beneficiary (Div 6E) — it never
+  //    silently collapses into ordinary income.
+  const cgResolutionValid = isResolutionValidForFy(
+    input.streamingResolutionAt,
+    input.financialYear,
+    'capitalGains',
+  );
+  const frankedStreamingApplies = streamingApplies;
+  const cgStreamingApplies =
+    hasStreamingAllocation && cgResolutionValid && totalCapitalGainsPool > 0;
+  const streamedFrankedTotal = frankedStreamingApplies
+    ? beneficiaries.reduce((sum, b) => sum + Math.max(0, b.streaming?.frankedDividends ?? 0), 0)
+    : 0;
+  const streamedCgTotal = cgStreamingApplies
+    ? beneficiaries.reduce((sum, b) => sum + Math.max(0, b.streaming?.capitalGains ?? 0), 0)
+    : 0;
+  const residualFrankedPool = Math.max(0, totalFrankedPool - streamedFrankedTotal);
+  const residualCgPool = Math.max(0, totalCapitalGainsPool - streamedCgTotal);
+
   const distributions: BeneficiaryDistribution[] = beneficiaries.map((b) => {
     const amount = trustNetIncome * b.presentlyEntitledShare;
     let frankedDividends = 0;
     let capitalGains = 0;
-    if (streamingApplies) {
-      // Explicit streaming — apply allocations directly. Residual
-      // pools (after streaming) are then distributed pro-rata.
-      frankedDividends = Math.max(0, b.streaming?.frankedDividends ?? 0);
-      capitalGains = Math.max(0, b.streaming?.capitalGains ?? 0);
+    if (frankedStreamingApplies) {
+      frankedDividends =
+        Math.max(0, b.streaming?.frankedDividends ?? 0) +
+        residualFrankedPool * b.presentlyEntitledShare;
     } else {
-      // Pro-rata across pools.
       frankedDividends = totalFrankedPool * b.presentlyEntitledShare;
+    }
+    if (cgStreamingApplies) {
+      capitalGains =
+        Math.max(0, b.streaming?.capitalGains ?? 0) +
+        residualCgPool * b.presentlyEntitledShare;
+    } else {
       capitalGains = totalCapitalGainsPool * b.presentlyEntitledShare;
     }
     const ordinaryIncome = Math.max(0, amount - frankedDividends - capitalGains);
@@ -372,7 +407,7 @@ export function allocateTrustDistribution(
   // Phase 41e.4 — when streaming applies, cite Div 6E + s207-58 + s115-228.
   if (streamingApplies) {
     citations.push(
-      { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1936', reference: 'Div 6E', lastReviewed: '2026-05-05' },
       { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
       { kind: 'ITAA_1997', reference: 's115-228', lastReviewed: '2026-05-05' },
     );
@@ -444,7 +479,7 @@ export function allocateTrustDistribution(
         id: 'UC-DIV-6E-STREAMING',
         rationale:
           'No Div 6E streaming requested for this distribution — character (franked dividends, capital gains) flows pro-rata to net-income share. Pass `characterPools` + per-beneficiary `streaming` + `streamingResolutionAt` to activate explicit streaming under Div 6E.',
-        citation: { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+        citation: { kind: 'ITAA_1936', reference: 'Div 6E', lastReviewed: '2026-05-05' },
       });
     }
   }
@@ -638,7 +673,7 @@ export function allocateTrustDistributionDecimal(
 
   if (streamingApplies) {
     citations.push(
-      { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+      { kind: 'ITAA_1936', reference: 'Div 6E', lastReviewed: '2026-05-05' },
       { kind: 'ITAA_1997', reference: 's207-58', lastReviewed: '2026-05-05' },
       { kind: 'ITAA_1997', reference: 's115-228', lastReviewed: '2026-05-05' },
     );
@@ -699,7 +734,7 @@ export function allocateTrustDistributionDecimal(
         id: 'UC-DIV-6E-STREAMING',
         rationale:
           'No Div 6E streaming requested for this distribution — character (franked dividends, capital gains) flows pro-rata to net-income share. Pass `characterPools` + per-beneficiary `streaming` + `streamingResolutionAt` to activate explicit streaming under Div 6E.',
-        citation: { kind: 'ITAA_1997', reference: 'Div 6E', lastReviewed: '2026-05-05' },
+        citation: { kind: 'ITAA_1936', reference: 'Div 6E', lastReviewed: '2026-05-05' },
       });
     }
   }
