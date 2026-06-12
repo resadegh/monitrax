@@ -475,6 +475,11 @@ enum AuditAction {
 
   // Phase 44.2 — SMSF annual-return workbook save.
   SMSF_RETURN_SAVED
+
+  // 2026-06-12 — "Start fresh" account data reset (wipe financial data,
+  // keep account). Fired once per completed reset by
+  // lib/services/accountReset.ts. Metadata: row counts + booleans only.
+  USER_DATA_RESET
 }
 
 enum AuditStatus {

@@ -4003,6 +4003,12 @@ error repo-wide from now on. The dead parallel audit system in
 `lib/audit/logger.ts` (zero callers) was deleted at the same time so
 audit writes have exactly one canonical source (§12.2).
 
+**Addendum (2026-06-12):** `USER_DATA_RESET` added (migration
+`20260615000000_add_user_data_reset_audit_action`) — fired once per
+completed "Start fresh" account data reset by
+`lib/services/accountReset.ts` (see `07_API_STANDARDS.md` →
+`POST /api/account/reset`). Metadata carries row counts + booleans only.
+
 ---
 
 ## **O. Phase 41E reform 2026-27 — schema additions**

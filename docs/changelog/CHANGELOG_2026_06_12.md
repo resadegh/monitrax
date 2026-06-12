@@ -168,3 +168,45 @@ Audited every page under `app/admin/**` against `app/api/admin/**`:
 
 ### Destructive writes (§12.11)
 - None — this PR adds reads only (findFirst/findMany/groupBy) and UI changes.
+## Session: trusting-cerf-v19b70 — "Start fresh" full data reset (Settings → Privacy Danger Zone)
+
+### Changes Made
+- **Type**: Feature
+- **Scope**: Account lifecycle — new reset executor service, API endpoint, Settings UI, audit action
+- **Why**: Reza (2026-06-12): *"sometimes users data will get so out of hand they want to start over, a fresh start as a new user. or just delete all their data and logoff for good. I don't see an option for that in the settings."* Research findings: (a) "delete and leave for good" already exists (Settings → Security Danger Zone, 30-day grace, `accountDeletion.ts`) but was undiscoverable — Reza himself looked in the Privacy danger zone and didn't find it; (b) "wipe data, keep account" did not exist (`lib/testing/reset.ts` is testing-only and incomplete).
+- **Solution**:
+  1. **`lib/services/accountReset.ts`** — canonical reset executor, sibling of `accountDeletion.ts`. Classifies all 74 user-owned Prisma models into exported DELETE (51) / KEEP (22) / CDR-delegated (1) lists with documented rationale (legal consents, audit logs, AFSL-retained adviser communications, auth/security, billing, integrations and app preferences survive). CDR purge delegates to `deleteCDRData()` (remote Basiq + local). Single 60s transaction: 7 Restrict-bearing entity models first (same proven order as `accountDeletion.ts`), then the rest, then User onboarding flags reset (`onboardingCompleted=false`, `onboardingStep=0`, `basiqUserId=null`) so the wizard treats them as day one.
+  2. **DMMF drift test** `tests/services/accountReset.classification.test.ts` (4 tests) — fails the build if a new user-owned model is unclassified, double-classified, lacks a `userId` column while in DELETE, or if the Restrict-aware wipe order is violated. Same structural-drift defence as the 2026-06-11 AuditAction enum fix.
+  3. **`POST /api/account/reset`** — `withPermission('account.delete')`, server-side type-RESET re-validation (400), active-adviser-link guard via `OrganizationClient` non-ARCHIVED statuses (409), `maxDuration=120`. Audited `USER_DATA_RESET` (new enum value + additive migration `20260615000000_add_user_data_reset_audit_action`).
+  4. **`components/settings/StartFreshDialog.tsx`** — Stitch-first (§18.2.1) glass dialog: centred modal desktop / bottom sheet mobile, rose→amber destructive sub-palette, WHAT GOES vs WHAT STAYS comparison grid (behaviour-psychology: transparency reduces anxiety), export-first JSON nudge (reuses `/api/account/export`), type-RESET gate, success routes to `/onboarding`.
+  5. **Privacy page Danger Zone** (`app/dashboard/settings/privacy/page.tsx`) gains two cards following the existing card pattern: "Start Fresh" (opens the dialog) and "Delete Account" (cross-link to Settings → Security — the discoverability fix; the full 30-day flow stays canonical there, §12.4 no duplication).
+
+### Stitch (CLAUDE.md §18)
+- Project `1859462351962811110`, screens: `a1e90a99dc7c4ea38bc4d82a96e910b5` (desktop light), `e25724ebe7ec43d5806268cbf6c0dcb2` (desktop dark), `63d60c3325a2490e8af081b7ec47e197` (mobile light), `e7a8d990084742259a0c8b38d6ef815c` (mobile dark).
+- Artefacts committed: `.stitch/designs/start-fresh/start-fresh-dialog{,-dark,-mobile,-mobile-dark}-v1.{html,png}`. Prompts seeded with §18.7.2 principles (glass, radii, rose-for-destruction money signal, warm copy).
+- The two Danger-Zone cards follow the page's existing approved card pattern (§18.2.1 "single control added within an approved section" tweak class); the dialog is the new composition and carries the Stitch pass.
+
+### Files Modified
+- `lib/services/accountReset.ts` — NEW canonical reset executor + classification lists
+- `tests/services/accountReset.classification.test.ts` — NEW DMMF drift test (4 tests)
+- `app/api/account/reset/route.ts` — NEW endpoint
+- `components/settings/StartFreshDialog.tsx` — NEW dialog (Stitch-sourced)
+- `app/dashboard/settings/privacy/page.tsx` — Danger Zone: + Start Fresh card, + Delete Account cross-link, dialog mount
+- `prisma/schema.prisma` — `USER_DATA_RESET` enum value
+- `prisma/migrations/20260615000000_add_user_data_reset_audit_action/migration.sql` — NEW additive migration
+- `docs/architecture/07_API_STANDARDS.md` — endpoint section
+- `docs/architecture/03_DATA_MODEL.md` — §N.5 addendum (USER_DATA_RESET)
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry
+
+### Destructive write checklist (CLAUDE.md §12.11)
+Operations: `deleteMany({ where: { userId } })` across the 51 RESET_DELETE_MODELS + `user.update({ where: { id: userId } })` in `lib/services/accountReset.ts`.
+1. **`where` matches:** only rows belonging to the requesting user (`userId` from the verified bearer token; never from the body). The drift test asserts every DELETE model has a literal `userId` column.
+2. **Columns/rows:** all financial-data rows for that user (that is the feature); on User only onboarding flags + `basiqUserId` are overwritten — identity/email/password/security/trusted-contact untouched.
+3. **Guard:** explicit type-RESET confirmation validated client AND server side; active-adviser-link 409 block; single transaction (all-or-nothing); KEEP list excludes legal/compliance/billing/auth models; classification enforced by test.
+User confirmation: feature explicitly requested and approved by Reza 2026-06-12 ("go ahead and build it based on your recommendations").
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors
+- [x] `npm run build` — green (418 pages, `/api/account/reset` registered)
+- [x] `npx vitest run` — 2469 passed, 0 failed (incl. 4 new classification tests)
+- [ ] Manual prod verification post-merge (§17.2)

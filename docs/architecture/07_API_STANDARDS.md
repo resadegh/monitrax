@@ -996,3 +996,28 @@ for fully Basiq-fed users). `href` → `/dashboard/balances?action=import`.
 Importing advances the data coverage, so the due-date cycle moves and the
 reminder clears, returning next cycle. The reminder links to the **existing**
 import flow — R7 is a reminder only, not a new import engine (Reza 2026-05-29).
+
+## `POST /api/account/reset` — "Start fresh" full data reset (2026-06-12)
+
+Immediately and irreversibly wipes ALL financial data for the requesting
+user while keeping the account (login, MFA/passkeys, legal consents,
+billing, integrations, support history). The user's onboarding flags are
+reset so they land back in the wizard as a day-one user.
+
+- **Auth:** `withPermission('account.delete')` — same tier as the
+  30-day account-deletion request.
+- **Body:** `{ "confirm": "RESET" }` — required verbatim; anything else
+  is rejected 400 `CONFIRMATION_REQUIRED`. The UI's type-RESET gate is
+  re-validated server-side.
+- **Guard:** an active adviser link (`OrganizationClient` in any
+  non-ARCHIVED status) blocks the reset with 409 `ADVISER_LINK_ACTIVE`.
+- **Executor:** `lib/services/accountReset.ts` — single transaction,
+  Restrict-aware ordering, CDR purge delegated to `deleteCDRData()`.
+  Model classification (DELETE / KEEP / CDR-delegated) is enforced by a
+  DMMF drift test (`tests/services/accountReset.classification.test.ts`)
+  so new user-owned models cannot silently escape classification.
+- **Response:** `{ success: true, data: { deletedRows, cdrPurged } }`.
+- **Audit:** `USER_DATA_RESET` (counts + booleans only, §13.3).
+- **Contrast with `/api/account/delete-request`:** deletion removes the
+  User row + Firebase identity after a 30-day grace; reset executes
+  immediately and keeps both.
