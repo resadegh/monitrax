@@ -232,6 +232,40 @@ mutate identities. Code: `lib/auth/identityPlatformAdmin.ts`. IAM grant:
 
 ---
 
+## User Suspension (Admin Portal — 2026-06-12)
+
+Suspending a user from the admin portal (`/admin/users/[userId]` → Account
+Status → Suspend) is **enforced at the IAM authority**, not in the app DB:
+
+1. The admin subscription route (`PATCH /api/admin/users/:userId/subscription`
+   with `status: 'suspended'`) calls `setIdentityDisabledByEmail(email, true)`
+   (`lib/auth/identityPlatformAdmin.ts`) — Identity Platform Admin REST
+   `accounts:update {disableUser: true}` via the same WIF SA + IAM grant as
+   the deletion executor.
+2. **Only if that succeeds** is the local `UserSubscription.status` row
+   mirrored to `'suspended'` (suspendedAt / suspendedReason / suspendedBy).
+   If the identity call fails the route returns 502 and nothing is written —
+   a DB-only "suspended" flag would be cosmetic, since nothing in the
+   consumer app reads it (token verification is stateless JWKS).
+3. Reactivation is the inverse (`disableUser: false` first, then the mirror
+   is cleared).
+
+**Lockout semantics:** disabling blocks new sign-ins and refresh-token
+exchange immediately. Already-issued ID tokens remain valid until natural
+expiry (**≤1 hour**) — Monitrax deliberately performs no per-request
+revocation check (an extra DB/API round-trip on every authenticated request;
+see CLAUDE.md §12.10 and the 2026-05-20 pool-exhaustion incident). Full
+lockout therefore completes within the hour. The suspended user sees
+Firebase `auth/user-disabled` on their next sign-in attempt.
+
+**Audit trail:** `AdminAuditLog` actions `USER_SUSPENDED` / `USER_REACTIVATED`
+with the Identity Platform outcome (`updated` / `not_found` / `skipped`) in
+metadata. `not_found` = local-only user with no Firebase identity (seeded);
+`skipped` = GCP not configured (local dev) — both proceed with the DB mirror
+only.
+
+---
+
 ## Troubleshooting: User Cannot Sign In
 
 ### Step 1: Identify the Error

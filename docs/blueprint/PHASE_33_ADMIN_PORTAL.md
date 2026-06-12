@@ -1024,10 +1024,13 @@ ADMIN_SUPPORT_TOOLS=true
 - Activity logs
 
 ### Phase 33.3: User Management
-- User list and search
-- User detail view
-- Subscription management
-- Activity logs
+- ✅ User list and search (real data)
+- ✅ User detail view (real data — fixed 2026-06-12; was mock scaffold)
+- ✅ Subscription management (tier change + suspend/reactivate; suspension
+  enforced via GCP Identity Platform `accounts:update {disableUser}` —
+  see `docs/operational/security/01_AUTHENTICATION.md` § User Suspension)
+- Activity logs (not yet — API exposes no per-user activity/last-login;
+  the mock activity feed was removed rather than faked)
 
 ### Phase 33.4: Billing Dashboard
 - Revenue overview

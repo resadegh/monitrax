@@ -27,11 +27,27 @@
 - **Audit logs page** (`/admin/audit-logs/`) — Real data from `AuditLog` table with filtering/export
 
 ### What Has Mock/Dummy Data (Needs Fixing)
-- **Organizations page** (`/admin/organizations/`) — Hardcoded mock array (lines 21-27)
-- **Users page** (`/admin/users/`) — Hardcoded mock array (lines 20-27)
-- **Billing page** (`/admin/billing/`) — Mock metrics and transactions (lines 19-43)
-- **Analytics page** (`/admin/analytics/`) — Mock active users, feature usage, growth data
-- **Feature Flags page** (`/admin/feature-flags/`) — Mock flags array (lines 19-26)
+- ~~**Organizations page** (`/admin/organizations/`)~~ ✅ real data
+- ~~**Users page** (`/admin/users/`)~~ ✅ real data
+- ~~**Billing page** (`/admin/billing/`)~~ ✅ real data
+- ~~**Analytics page** (`/admin/analytics/`)~~ ✅ real data
+- ~~**Feature Flags page** (`/admin/feature-flags/`)~~ ✅ real data
+
+> **2026-06-12 full-portal re-audit.** This inventory only listed top-level
+> pages — the two DETAIL pages slipped through and stayed on Phase 33
+> scaffold mock data long after the steps above shipped:
+>
+> - ~~**User detail page** (`/admin/users/[userId]`)~~ ✅ **FIXED 2026-06-12**
+>   — rewired to `GET /api/admin/users/:userId`; suspend/reactivate now
+>   enforced via GCP Identity Platform disable (see
+>   `docs/operational/security/01_AUTHENTICATION.md` § User Suspension).
+> - **Organization detail page** (`/admin/organizations/[orgId]`) — ⚠ STILL
+>   FULLY MOCK ("Acme Accounting", stub handlers). Backend GET/PATCH +
+>   license routes exist; fix is frontend wiring (queued in
+>   `IMPLEMENTATION_PLAN.md` Up Next).
+> - **Impersonation** — `/admin/support/impersonate` calls
+>   `POST /api/admin/users/[userId]/impersonate` which **does not exist**
+>   (404). Needs a design pass before building (queued).
 
 ### What Needs Building
 - Support tools page (impersonation, error logs)

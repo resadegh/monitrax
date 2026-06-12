@@ -27,9 +27,21 @@
  *   grant exists the REST call returns 403 and the executor SAFELY ABORTS the
  *   data deletion (it never half-deletes a resurrectable account).
  *
- * SCOPE: only what the executor needs — lookup by email + delete by localId.
- * Do NOT grow this into a general Firebase-admin shim; if more is needed,
- * adopt `firebase-admin` properly and document the trade-off (CLAUDE.md §12.7).
+ * SCOPE: identity-lifecycle operations only — lookup by email, delete by
+ * localId (right-to-erasure executor), and disable/enable by email (admin
+ * suspension, 2026-06-12 — `accounts:update {disableUser}`; same IAM grant,
+ * same impersonation chain). Do NOT grow this into a general Firebase-admin
+ * shim; if more is needed, adopt `firebase-admin` properly and document the
+ * trade-off (CLAUDE.md §12.7).
+ *
+ * SUSPENSION SEMANTICS (admin portal "Suspend user"):
+ *   Disabling an identity blocks new sign-ins AND refresh-token exchange
+ *   immediately. Already-issued ID tokens stay valid until natural expiry
+ *   (≤1 hour) because Monitrax verifies tokens statelessly via JWKS — there
+ *   is no per-request revocation check by design (§12.10: no extra DB/API
+ *   round-trip per authenticated request). Full lockout completes within
+ *   the hour. See docs/operational/security/01_AUTHENTICATION.md
+ *   § User Suspension.
  */
 
 import { log } from '@/lib/utils/logger';
@@ -145,6 +157,90 @@ async function deleteUid(localId: string, token: string, projectId: string): Pro
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`accounts:delete failed for ${localId} (HTTP ${res.status}): ${body.slice(0, 300)}`);
+  }
+}
+
+/**
+ * Outcome of an identity disable/enable attempt (admin suspension).
+ * The subscription route treats `updated` and `not_found` as proceed
+ * (`not_found` = local-only user with no Firebase identity, e.g. seeded),
+ * `skipped` as proceed-with-DB-only (GCP not the auth provider — local dev),
+ * and `failed` as ABORT (the suspension would be cosmetic; surface the error).
+ */
+export type IdentityDisableStatus = 'updated' | 'not_found' | 'skipped' | 'failed';
+
+export interface IdentityDisableResult {
+  status: IdentityDisableStatus;
+  /** Firebase localIds (UIDs) that were updated. */
+  updatedUids: string[];
+  /** Diagnostic message when status === 'failed' or 'skipped'. */
+  detail?: string;
+}
+
+/** Set the `disabled` flag on a single Firebase identity by localId (UID). */
+async function setUidDisabled(
+  localId: string,
+  disabled: boolean,
+  token: string,
+  projectId: string,
+): Promise<void> {
+  const res = await fetch(`${IDENTITY_TOOLKIT_BASE}/projects/${projectId}/accounts:update`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ localId, disableUser: disabled }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`accounts:update failed for ${localId} (HTTP ${res.status}): ${body.slice(0, 300)}`);
+  }
+}
+
+/**
+ * Disable (suspend) or enable (reactivate) the Firebase Auth identity (or
+ * identities) associated with an email. GCP Identity Platform is the IAM
+ * authority — the admin portal's UserSubscription.status row is only the UI
+ * mirror, so callers MUST treat `failed` as "the suspension did not happen".
+ *
+ * Never throws — all failure modes are returned as `status: 'failed'`.
+ */
+export async function setIdentityDisabledByEmail(
+  email: string,
+  disabled: boolean,
+): Promise<IdentityDisableResult> {
+  if (!isGcpAuthProvider()) {
+    return { status: 'skipped', updatedUids: [], detail: 'GCP Identity Platform not configured (no GCP_PROJECT_ID)' };
+  }
+  if (!isWifConfigured()) {
+    return {
+      status: 'failed',
+      updatedUids: [],
+      detail:
+        'GCP Identity Platform is the auth provider but WIF impersonation is not configured — ' +
+        'cannot mint an admin token to disable the identity. Aborting so the suspension is not cosmetic.',
+    };
+  }
+
+  const projectId = process.env.GCP_PROJECT_ID!.trim();
+
+  try {
+    const token = await getImpersonatedAccessToken();
+    const uids = await lookupUidsByEmail(email, token, projectId);
+
+    if (uids.length === 0) {
+      return { status: 'not_found', updatedUids: [] };
+    }
+
+    for (const uid of uids) {
+      await setUidDisabled(uid, disabled, token, projectId);
+    }
+
+    log.info('Firebase identity disabled-state updated', { uidCount: uids.length, disabled });
+    return { status: 'updated', updatedUids: uids };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    log.error('Firebase identity disable/enable failed', err as Error);
+    return { status: 'failed', updatedUids: [], detail };
   }
 }
 
