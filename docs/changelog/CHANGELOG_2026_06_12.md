@@ -1,5 +1,66 @@
 # Changelog - 2026-06-12
 
+## Session: email-verification-gcp-3ivh5a — unified `/auth/action` handler
+
+### Changes Made
+- **Type**: Feature (consolidation) + incident fix — resolves Open Question Q-AUTH-1
+- **Scope**: Authentication / Firebase email action links
+
+### Incident context (2026-06-12)
+Sign-in hung (`auth/network-request-failed`) and every email-verification link
+returned **403 `API_KEY_HTTP_REFERRER_BLOCKED`** ("Requests from referer
+https://monitrax-479700.firebaseapp.com/ are blocked"). Root cause: a GCP
+**API-key HTTP-referrer restriction** in the console, compounded by a
+two-key split:
+- App sign-in uses the **Monitrax Auth (Web)** key (= Vercel
+  `NEXT_PUBLIC_FIREBASE_API_KEY`).
+- Firebase's **hosted** action handler (`firebaseapp.com/__/auth/action`)
+  signs verify/reset links with the **project's default web key**, which on
+  this project is the **"Monitrax frontend (Maps Embed + Places)"** key —
+  whose referrer allow-list didn't include `firebaseapp.com`.
+
+The link's `apiKey=…` URL param proved the two keys differed. The project has
+**no registered Firebase Web app** (config injected via env vars), which is
+why the hosted handler's default key drifted to an unrelated Maps key.
+
+### Solution
+New prefetch-safe **`/auth/action`** page (`app/auth/action/page.tsx`) — the
+single Monitrax-hosted target for Firebase's "Customise action URL". Handles
+`verifyEmail` + `resetPassword` + `recoverEmail`. Because the code is applied
+by OUR client SDK, it uses the app's **Monitrax Auth (Web)** key on
+`www.monitrax.com.au` — the firebaseapp.com hosted handler and the Maps key
+leave the auth path entirely. Prefetch-safe: read-only validation on load
+(`checkActionCode` / `verifyPasswordResetCode`), code consumed only on an
+explicit button tap (verify/recover) or form submit (reset). Closes the
+password-reset prefetch exposure (Q-AUTH-1) too.
+
+### Files Modified
+- `app/auth/action/page.tsx` — NEW unified handler (verify / reset / recover)
+- `lib/context/AuthContext.tsx` — verification continue-URL `/verify-email` → `/dashboard`
+
+### Operator steps (Reza — Firebase/GCP console)
+1. **Customise action URL** → Firebase → Authentication → Templates →
+   `https://www.monitrax.com.au/auth/action` (covers verify + reset + recover).
+2. **Monitrax Auth (Web)** key: Websites = `www.monitrax.com.au/*`,
+   `monitrax.com.au/*`, `monitrax-479700.firebaseapp.com/*`, `localhost:*`;
+   APIs = Identity Toolkit + Token Service.
+3. No Vercel change — `NEXT_PUBLIC_FIREBASE_API_KEY` already = Monitrax Auth (Web).
+4. (Optional hygiene) drop auth scopes/referrers from the Maps key.
+
+### Build Status
+| Step | Status | Notes |
+|------|--------|-------|
+| tsc --noEmit | PASS | no errors in changed files |
+| Lint | PASS | `next lint` 0 warnings/errors |
+| Build | PASS | `next build` ✓ — `/auth/action` 4.61 kB |
+
+### Documentation Updated
+- `docs/operational/security/01_AUTHENTICATION.md` — unified handler + new
+  § Troubleshooting (`API_KEY_HTTP_REFERRER_BLOCKED`, two-key split, no-web-app note)
+- `docs/IMPLEMENTATION_PLAN.md` — Q-AUTH-1 marked DECIDED/BUILT
+
+---
+
 ## Session: serene-goodall-6smazx — Phase 49.14 (confidence bands as list filters + the discrepancy fix)
 
 Reza live-test report (2026-06-12, three parts): (1) transactions in the list LOOK confident
