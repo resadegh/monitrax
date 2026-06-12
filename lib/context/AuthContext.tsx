@@ -323,7 +323,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // user can re-send from /verify-email-sent or the dashboard banner.
     try {
       await sendEmailVerification(credential.user, {
-        url: `${window.location.origin}/verify-email`,
+        url: `${window.location.origin}/dashboard`,
       });
     } catch (err) {
       console.error('Verification email send failed (user can resend):', err);
@@ -394,7 +394,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const fbUser = auth?.currentUser;
     if (!fbUser) throw new Error('You need to be signed in to resend the verification email.');
     await sendEmailVerification(fbUser, {
-      url: `${window.location.origin}/verify-email`,
+      url: `${window.location.origin}/dashboard`,
     });
   }, []);
 

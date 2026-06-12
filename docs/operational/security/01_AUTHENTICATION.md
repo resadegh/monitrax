@@ -109,19 +109,55 @@ order of likelihood:
    URL / domain" flow is mid-verification (DNS not yet validated), live links
    can break. Cancel it until DNS verifies, or finish the DNS records.
 
-**Our mitigation:**
-- **Email verification** is hardened (2026-06-10): `/verify-email` validates
-  on load via read-only `checkActionCode` and only consumes the code on an
-  explicit button tap → a silent prefetch can't burn it. Plus the
-  `/verify-email-sent` interstitial's "I've verified — continue" re-checks
-  status without needing the original link at all.
-- **Password reset** still uses Firebase's **hosted** handler
-  (`firebaseapp.com/__/auth/action`) — we do not host a custom reset page, so
-  it remains exposed to prefetch. Operator guidance: request one fresh reset,
-  open the newest email, tap once; if it still fails instantly, copy-paste
-  the link into a browser manually (defeats most prefetchers) or use a
-  non-scanning inbox. A custom prefetch-safe reset handler is the durable fix
-  if this recurs (deferred — see IMPLEMENTATION_PLAN Open Questions).
+**Our mitigation (2026-06-12 — unified prefetch-safe handler):**
+All auth emails now route through our own **`/auth/action`** page
+(`app/auth/action/page.tsx`), set via Firebase → Authentication → Templates →
+**Customise action URL** = `https://www.monitrax.com.au/auth/action`. It
+handles `verifyEmail` + `resetPassword` + `recoverEmail`, validating the code
+read-only on load (`checkActionCode` / `verifyPasswordResetCode` — neither
+consumes it) and consuming it only on an explicit button tap / form submit. A
+silent prefetch can't complete any action. `/verify-email` remains for the
+continue-URL bounce + old links. The `/verify-email-sent` interstitial's
+"I've verified — continue" also re-checks status without the original link.
+
+### Troubleshooting — `API_KEY_HTTP_REFERRER_BLOCKED` / `auth/network-request-failed`
+
+**Incident 2026-06-12.** Sign-in hung / `auth/network-request-failed`, and
+verify links 403'd with `API_KEY_HTTP_REFERRER_BLOCKED` ("Requests from
+referer https://monitrax-479700.firebaseapp.com/ are blocked").
+
+**Root cause:** a GCP **API-key HTTP-referrer restriction** was tightened in
+the console. Two distinct keys are involved, and that's the trap:
+
+| Flow | Key | Referrer it calls from |
+|---|---|---|
+| App sign-in (Firebase JS SDK) | **Monitrax Auth (Web)** — value = Vercel `NEXT_PUBLIC_FIREBASE_API_KEY` | `www.monitrax.com.au` / `monitrax.com.au` |
+| Firebase's **hosted** email action handler (`firebaseapp.com/__/auth/action`) | the **project's default web key** — which here is **"Monitrax frontend (Maps Embed + Places)"** | `monitrax-479700.firebaseapp.com` |
+
+So the email-verification link was signed with the **Maps key**, whose
+referrer list didn't include `firebaseapp.com` → 403. Editing "Monitrax Auth
+(Web)" didn't help because the link used a *different* key.
+
+**How to identify the exact key:** the action link contains it as a URL
+param — `…&apiKey=AIzaSy…`. Match that value in **GCP Console → APIs &
+Services → Credentials → (Show key)**.
+
+**Permanent fix (shipped 2026-06-12):** the unified `/auth/action` handler
+above takes Firebase's hosted handler — and therefore the Maps key — out of
+the auth path entirely. Auth emails are now applied by our SDK = the
+**Monitrax Auth (Web)** key on `www.monitrax.com.au`. Required key config on
+**Monitrax Auth (Web)**: Application restrictions → Websites include
+`https://www.monitrax.com.au/*`, `https://monitrax.com.au/*`,
+`https://monitrax-479700.firebaseapp.com/*`, `localhost:*`; API restrictions
+→ **Identity Toolkit API** + **Token Service API**. The Maps key no longer
+needs any auth scopes.
+
+> ⚠️ **No registered Firebase Web app.** This project shows "There are no apps
+> in your project" — the JS SDK config is injected via `NEXT_PUBLIC_FIREBASE_*`
+> env vars instead. That's why the project's default web key (used by the
+> hosted handler) drifted to an unrelated Maps key. Registering a proper Web
+> app would give a clean canonical web key; until then, the `/auth/action`
+> custom handler is what keeps auth on the right key.
 
 ---
 
