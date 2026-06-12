@@ -21,3 +21,7 @@
 
 ### §17.2 post-merge verification — PR #1060 (WX.5.4)
 - Prod deploy `dpl_6MLy28ed4rwHVbW1RaNMcdWMp1xJ` reached `READY` (2026-06-11 02:52:45), runtime logs clean — reported to Reza in session.
+
+### Addendum — F2a "Entity File" per-type role templates (Reza, same day)
+- Reza: *"there is an easy way to mark the company director, shareholders, trustee, beneficiary, etc for any entity based on the required type of entity… make sure all related information is captured and stored and used where and when needed."*
+- Stage F spec amended: F2 gains **F2a** — canonical `lib/entity-graph/roleTemplates.ts` (per-type required/expected/optional roles, guidance layer beside the validity matrix's law layer), chart-style filled/missing role rows on the entity panel, per-entity completeness chip (invitation framing, never shame), explicit consumption map (panel, universe popover, accountant-review, Stage D tax facts, Stage E reports), and F4 re-pointed to the same template SSOT so wizard and editor can't drift.
