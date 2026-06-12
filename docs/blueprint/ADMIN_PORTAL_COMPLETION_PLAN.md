@@ -41,10 +41,12 @@
 >   — rewired to `GET /api/admin/users/:userId`; suspend/reactivate now
 >   enforced via GCP Identity Platform disable (see
 >   `docs/operational/security/01_AUTHENTICATION.md` § User Suspension).
-> - **Organization detail page** (`/admin/organizations/[orgId]`) — ⚠ STILL
->   FULLY MOCK ("Acme Accounting", stub handlers). Backend GET/PATCH +
->   license routes exist; fix is frontend wiring (queued in
->   `IMPLEMENTATION_PLAN.md` Up Next).
+> - ~~**Organization detail page** (`/admin/organizations/[orgId]`)~~ ✅
+>   **FIXED 2026-06-12** — rewired to `GET /api/admin/organizations/:orgId`;
+>   license management + suspend/reactivate wired to the license PATCH;
+>   suspension now ENFORCED (a suspended firm loses portal access to client
+>   data — `lib/portal/licenseGuard.ts`, see
+>   `docs/operational/security/03_CDR_COMPLIANCE.md`).
 > - **Impersonation** — `/admin/support/impersonate` calls
 >   `POST /api/admin/users/[userId]/impersonate` which **does not exist**
 >   (404). Needs a design pass before building (queued).
