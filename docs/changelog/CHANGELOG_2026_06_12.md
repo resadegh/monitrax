@@ -372,3 +372,17 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 
 ### §12.12 — schema change
 - `prisma/schema.prisma` + matching migration `prisma/migrations/20260612120000_add_partnership_subtype/migration.sql` in the same PR (single additive nullable TEXT column — no destructive DDL).
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Stage F polish + OWED Stitch debt
+
+### Changes Made
+- **Universe popover completeness chip (F-G polish)**: hovering an entity tile on the desktop universe now shows "Structure file 2/3" — derived from the same F2a role templates as the Entity File (invitation framing). `WealthUniverseCanvas` computes it from snapshot relationships; popover renders the quiet pill.
+- **OWED Stitch debt cleared (Stage A, queued "before Stage E")**: ownership picker DARK desktop variant (screen `77f18d26b9344b68bc3f7a3d1ad68058`) + picker AND correction-dialog MOBILE-light variants in one stacked screen (screen `40930f573b7e4e54a352576f2b971a21`). Artefacts at `.stitch/designs/phase47/ownership-picker-dark.{html,png}` + `ownership-picker-correction-mobile.{html,png}`, recorded in `.stitch/metadata.json`. **Residual matrix cells** (mobile-dark pair + correction desktop-dark) are documented as derivable via the §18.7.2 mode-flip token rules — the shipped components already render both modes via `.dark` tokens; these two screens pin the non-trivial reflows (dark glass recipe, single-column mobile stack).
+
+### §17.2 post-merge verification — PR #1092 (F4 + migration)
+- Prod deploy `dpl_3nLv6PtMi8p5Bkc5MT4SnfjmqgsD` reached `READY` (2026-06-12 11:46) — the `partnershipSubtype` migration applied to PROD cleanly; runtime logs clean. Stage F fully live.
+
+### Build Status
+- [x] tsc / eslint / financial gate / 90 targeted tests / `npm run build` — all pass

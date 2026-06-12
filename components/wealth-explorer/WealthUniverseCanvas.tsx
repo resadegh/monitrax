@@ -59,6 +59,7 @@ import {
 } from '@/lib/data/wealthExplorerTypes';
 import { useWealthExplorerData } from '@/lib/hooks/useWealthExplorerData';
 import EntityDetailPanel from './EntityDetailPanel';
+import { roleCompleteness } from '@/lib/entity-graph/roleTemplates';
 
 const NODE_GLYPH: Record<WealthNodeType, LucideIcon> = {
   'holding-company': Briefcase,
@@ -439,7 +440,14 @@ function RelationshipRibbon({ rel, nodes, isActive, isDimmed }: RibbonProps) {
 }
 
 /** Floating preview anchored to a node by % coords. */
-function EntityPreviewPopover({ node }: { node: WealthNode }) {
+function EntityPreviewPopover({
+  node,
+  completeness,
+}: {
+  node: WealthNode;
+  /** Phase 47 F2a — "Structure file 2/3" line, null when not applicable. */
+  completeness?: string | null;
+}) {
   const accent = NODE_ACCENT[node.type];
   const Glyph = NODE_GLYPH[node.type];
   // Anchor to the right if there's room, otherwise to the left.
@@ -483,6 +491,11 @@ function EntityPreviewPopover({ node }: { node: WealthNode }) {
         </div>
         {node.value && (
           <div className="text-[16px] font-semibold tabular-nums text-white">{node.value}</div>
+        )}
+        {completeness && (
+          <div className="mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] tabular-nums text-white/70" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)' }}>
+            {completeness}
+          </div>
         )}
         <div className="mt-2 text-[10px] font-medium text-white/55">
           Tap to open full file →
@@ -553,6 +566,24 @@ export default function WealthUniverseCanvas() {
 
   const hoveredNode = hoveredId ? nodesById[hoveredId] : null;
   const selectedNode = selectedId ? nodesById[selectedId] : null;
+
+  // Phase 47 F2a — "Structure file 2/3" on the hover popover. Entity
+  // tiles only; derived from the same role templates as the Entity
+  // File (invitation framing, never a shame score).
+  const hoveredCompleteness = useMemo(() => {
+    if (!hoveredNode || !snapshot) return null;
+    if (hoveredNode.tier !== 'entity' && hoveredNode.tier !== 'individual') return null;
+    const entity = snapshot.entities.find(e => e.id === hoveredNode.id);
+    if (!entity) return null;
+    const inbound = new Set(
+      snapshot.relationships
+        .filter(r => r.toEntityId === hoveredNode.id && r.effectiveTo == null && r.type !== 'PARENT_OF')
+        .map(r => r.type as import('@prisma/client').EntityRelationshipType),
+    );
+    const c = roleCompleteness(entity.type, inbound);
+    if (c.total === 0) return null;
+    return `Structure file ${c.filled}/${c.total}`;
+  }, [hoveredNode, snapshot]);
 
   // Phase WX.4 — selection drives the semantic zoom.
   function clearSelection() {
@@ -1171,7 +1202,12 @@ export default function WealthUniverseCanvas() {
       </AnimatePresence>
 
       {/* Live preview popover follows the hovered tile */}
-      {hoveredNode && !selectedNode && <EntityPreviewPopover node={hoveredNode} />}
+      {hoveredNode && !selectedNode && (
+        <EntityPreviewPopover
+          node={hoveredNode}
+          completeness={hoveredCompleteness}
+        />
+      )}
 
       {/* Detail panel tab — peek */}
       {!selectedNode && (

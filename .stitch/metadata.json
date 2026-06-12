@@ -222,6 +222,22 @@
       "title": "Renew Investment Family Trust · Entity File",
       "generatedAt": "2026-06-12T08:22:00.000000Z",
       "scope": "F2 Entity File pattern: Roles & People template rows (filled chips + quiet dashed invitations), 'Structure file 2/3' completeness chip, 'Actually held for' beneficial-ownership card with basis pill, More roles affordance — in the Wealth Universe dark panel vocabulary. Artefact: .stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}. Consumers: components/wealth-explorer/RolesAndPeopleSection.tsx via EntityDetailPanel + WealthUniverseMobile."
+    },
+    "ownership-picker-dark": {
+      "id": "77f18d26b9344b68bc3f7a3d1ad68058",
+      "sourceScreen": "projects/1859462351962811110/screens/77f18d26b9344b68bc3f7a3d1ad68058",
+      "deviceType": "DESKTOP",
+      "title": "Add Property — Ownership Picker (Dark Mode)",
+      "generatedAt": "2026-06-12T12:30:00.000000Z",
+      "scope": "OWED debt (Stage A §18.7.2 matrix): dark variant of the approved picker 8e6fc018. Artefact: .stitch/designs/phase47/ownership-picker-dark.{html,png}."
+    },
+    "ownership-picker-correction-mobile": {
+      "id": "40930f573b7e4e54a352576f2b971a21",
+      "sourceScreen": "projects/1859462351962811110/screens/40930f573b7e4e54a352576f2b971a21",
+      "deviceType": "MOBILE",
+      "title": "Add Property — Ownership Picker & Correction (Mobile Light)",
+      "generatedAt": "2026-06-12T12:33:00.000000Z",
+      "scope": "OWED debt: mobile-light variants of the picker 8e6fc018 + correction dialog ce11109f, stacked in one screen (single-column card reflow). Artefact: .stitch/designs/phase47/ownership-picker-correction-mobile.{html,png}. Residual matrix cells (mobile-dark pair + correction desktop-dark) documented as derivable via the §18.7.2 mode-flip rules — noted in CHANGELOG_2026_06_12."
     }
   },
   "failedGenerations": {
