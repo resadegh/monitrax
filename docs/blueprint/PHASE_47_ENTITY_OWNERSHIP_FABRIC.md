@@ -176,7 +176,27 @@ The restoration. `EntityDetailPanel` (desktop) + the mobile detail card gain a *
 - Universe ownership ribbons label quantity + class where parcels exist ("500 ORD").
 - §12.11 checklist required (parcel update/delete paths).
 
-#### F4 — Onboarding wizard fine-tune (1 PR)
+#### F-LAW — Australian-law completeness review (Reza directive, 2026-06-12) — ✅ DONE
+
+> Reza: *"my structure is only one example you should review the Australian laws and enable every possible entity and combinations."*
+
+**Verdict: the Phase 44 grammar was derived from Australian law (two adversarial reviews), not from any one example, and it holds — with one material gap fixed in F4.** The audit:
+
+| Area | Finding |
+|---|---|
+| Companies | All five ASIC forms via `CompanySubtype` (Pty Ltd / public / limited-by-guarantee with members-not-shareholders / unlimited / NL) + `FOREIGN_COMPANY` + `regulatoryStatus` (ACNC charity / DGR / AFSL / RE). ✅ |
+| Trusts | Discretionary / unit / fixed / hybrid / bare (LRBA) / testamentary as entity types; charitable, special-disability, deceased-estate via `TrustType`; deed/vesting/proper-law fields. ✅ |
+| Super | SMSF as an entity with SIS Act s17A member⇔trustee/director rules enforced in the validity matrix; retail/industry funds are correctly ACCOUNTS (`SuperannuationAccount`), not entities. Small APRA funds → `OTHER` (rare; trigger: first real user). ✅ |
+| Partnerships | **GAP FOUND + FIXED (F4):** no subtype distinguishing general vs limited vs incorporated-limited vs VCLP/ESVCLP. Corporate limited partnerships are taxed AS COMPANIES (Div 5A ITAA36) and VCLP/ESVCLP carry Phase 41E Measure 7 treatment. New nullable `LegalEntity.partnershipSubtype` column (migration `20260612120000_add_partnership_subtype`) + catalog options + dialog field. Stage D's tax assembler must read it (scope note added there by reference). |
+| Estates | `DECEASED_ESTATE` + executor/administrator edges + administration stages + residuary/specific-gift/life-tenant/remainderman beneficiary classes. ✅ |
+| Other bodies | Incorporated associations, co-operatives, strata bodies, custodian/wrap platforms. ✅ |
+| Co-ownership | Joint tenants (survivorship) / tenants-in-common (fractional) via OwnershipGroup; TR 93/32 co-ownership-≠-partnership guard (§4A P4). Unincorporated property JVs are legally TIC co-ownership — correctly modelled as groups; contractual operating JVs → `OTHER`. ✅ |
+| Explicit exclusions (recordable as `OTHER` + `unsupportedStructure`, never silently mismodelled) | CATSI Indigenous corporations, government entities, registered MIS/MIT/AMIT (users HOLD UNITS in them via investment accounts — the right consumer modelling), bankrupt estates, small APRA funds. Future grammar extensions, deliberate per Phase 44 §4. |
+| Combinations | Phase 44 §3 principle — model the GRAMMAR, never enumerate combinations: any lawful combination composes; the §6 validity matrix judges; §14.1 combination-completeness tests + the F-G golden test pin it. ✅ |
+
+#### F4 — Onboarding wizard fine-tune (1 PR) — ✅ SHIPPED 2026-06-12
+
+> Shipped: wizard type domain re-pointed to the catalog SSOT (full 19-type grammar as a two-tier grouped select — Common / More structures), `rolesForEntityType` re-pointed to the F2a templates (wizard and Entity File can never drift), optional roles (secretary / settlor / appointor / guardian / executor) behind a per-entity "More detail" disclosure that auto-opens when edges exist, ReviewStep note extended. **Scope trim (documented deviation):** the share count/class quick-entry stays OUT of the wizard — parcels live in My Structure's F3 editor; capturing CGT-relevant equity detail mid-onboarding is friction without payoff (growth lens), and "finishable later" is now genuinely true. Plus `partnershipSubtype` (F-LAW gap) end-to-end. Golden test `renewStructure.golden.test.ts` ships in this PR.
 
 - `EntitiesStep`: the same two-tier type picker (Common seven first paint; "More structures" collapsed — zero added friction for the 90% case; growth lens defends every onboarding step).
 - `RelationshipsStep`: per-entity optional **"More detail"** disclosure adds secretary / settlor / appointor chips + a one-line share quick-entry per shareholder (count + class only; full parcel detail lives in F3\'s editor). The default skeleton capture (directors, shareholders, trustee, beneficiaries, members) is unchanged.

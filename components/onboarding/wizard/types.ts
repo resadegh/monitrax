@@ -150,35 +150,16 @@ export const WIZARD_STEPS: WizardStep[] = [
 // PHASE 41b — LEGAL ENTITY DATA TYPES (matches Prisma LegalEntityType / Role)
 // =============================================================================
 
-// Prisma: enum LegalEntityType { PERSONAL_NAME, COMPANY, DISCRETIONARY_TRUST,
-//   UNIT_TRUST, SMSF, PARTNERSHIP, SOLE_TRADER }
-export type LegalEntityType =
-  | 'PERSONAL_NAME'
-  | 'COMPANY'
-  | 'DISCRETIONARY_TRUST'
-  | 'UNIT_TRUST'
-  | 'SMSF'
-  | 'PARTNERSHIP'
-  | 'SOLE_TRADER';
+// Phase 47 F4 — the wizard's type domain is the FULL Prisma grammar,
+// re-pointed to the canonical catalog (lib/entities/entityTypeCatalog.ts)
+// so the wizard and My Structure can never drift (§12.2). The
+// EntitiesStep presents it two-tier (Common / More structures) like the
+// F1 dialog picker.
+export type LegalEntityType = import('@prisma/client').LegalEntityType;
+export type LegalEntityRole = import('@prisma/client').LegalEntityRole;
 
-// Prisma: enum LegalEntityRole { PERSONAL, HOLDING, OPERATING, INVESTMENT, SUPERANNUATION }
-export type LegalEntityRole =
-  | 'PERSONAL'
-  | 'HOLDING'
-  | 'OPERATING'
-  | 'INVESTMENT'
-  | 'SUPERANNUATION';
-
-// Warm AU language — drives all entity-pickers and copy.
-export const LEGAL_ENTITY_TYPE_LABELS: Record<LegalEntityType, string> = {
-  PERSONAL_NAME: 'My personal name',
-  COMPANY: 'Company (Pty Ltd)',
-  DISCRETIONARY_TRUST: 'Discretionary / family trust',
-  UNIT_TRUST: 'Unit trust',
-  SMSF: 'Self-Managed Super Fund (SMSF)',
-  PARTNERSHIP: 'Partnership',
-  SOLE_TRADER: 'Sole trader (ABN, no separate entity)',
-};
+// Warm AU language — re-exported from the catalog SSOT.
+export { ENTITY_TYPE_LABELS as LEGAL_ENTITY_TYPE_LABELS } from '@/lib/entities/entityTypeCatalog';
 
 export const LEGAL_ENTITY_ROLE_LABELS: Record<LegalEntityRole, string> = {
   PERSONAL: 'Personal — natural-person ownership',
@@ -186,6 +167,7 @@ export const LEGAL_ENTITY_ROLE_LABELS: Record<LegalEntityRole, string> = {
   OPERATING: 'Operating — runs an active business',
   INVESTMENT: 'Investment — investment-only vehicle',
   SUPERANNUATION: 'Superannuation — SMSF only',
+  CORPORATE_TRUSTEE: 'Corporate trustee — exists to be a trustee',
 };
 
 // One captured-during-wizard entity row. Mirrors `CreateEntityInput` from
@@ -234,7 +216,14 @@ export type WizardRelationshipType =
   | 'UNITHOLDER_OF'
   | 'MEMBER_OF'
   | 'PARTNER_OF'
-  | 'OPERATES_AS_SOLE_TRADER';
+  | 'OPERATES_AS_SOLE_TRADER'
+  // Phase 47 F4 — the optional "More detail" disclosure roles.
+  | 'SECRETARY_OF'
+  | 'SETTLOR_OF'
+  | 'APPOINTOR_OF'
+  | 'GUARDIAN_OF'
+  | 'EXECUTOR_OF'
+  | 'ADMINISTRATOR_OF';
 
 // One captured-during-wizard relationship edge. `from`/`to` point at
 // `EntityInput.id`. By the time the relationship step runs, the entity

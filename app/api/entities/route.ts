@@ -35,6 +35,7 @@ import {
   ALL_ENTITY_ROLES,
   COMPANY_SUBTYPE_OPTIONS,
   ESTATE_STATUS_OPTIONS,
+  PARTNERSHIP_SUBTYPE_OPTIONS,
 } from '@/lib/entities/entityTypeCatalog';
 
 // Phase 47 F1 — the full Phase 44 grammar is creatable (was the original
@@ -46,6 +47,9 @@ const VALID_COMPANY_SUBTYPES: ReadonlySet<string> = new Set(
 );
 const VALID_ESTATE_STATUSES: ReadonlySet<string> = new Set(
   ESTATE_STATUS_OPTIONS.map(o => o.value),
+);
+const VALID_PARTNERSHIP_SUBTYPES: ReadonlySet<string> = new Set(
+  PARTNERSHIP_SUBTYPE_OPTIONS.map(o => o.value),
 );
 
 /** Parse an optional ISO date field — undefined when absent, throws on junk. */
@@ -116,6 +120,7 @@ interface CreateEntityRequestBody {
   vestingDate?: unknown;
   deedDate?: unknown;
   estateAdministrationStatus?: unknown;
+  partnershipSubtype?: unknown;
 }
 
 const VALID_TRUST_TYPES: ReadonlyArray<string> = [
@@ -230,6 +235,11 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
       VALID_ESTATE_STATUSES.has(body.estateAdministrationStatus)
         ? body.estateAdministrationStatus
         : null;
+    const partnershipSubtype =
+      typeof body.partnershipSubtype === 'string' &&
+      VALID_PARTNERSHIP_SUBTYPES.has(body.partnershipSubtype)
+        ? body.partnershipSubtype
+        : null;
     let dateOfBirth: string | null | undefined;
     let vestingDate: string | null | undefined;
     let deedDate: string | null | undefined;
@@ -264,6 +274,7 @@ export const POST = withPermission('entity.write', async (request: NextRequest, 
       vestingDate: vestingDate ?? null,
       deedDate: deedDate ?? null,
       estateAdministrationStatus,
+      partnershipSubtype,
     });
 
     // Fire-and-forget audit log (CLAUDE.md §12.10 — never block responses).

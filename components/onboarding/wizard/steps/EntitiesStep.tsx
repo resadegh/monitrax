@@ -52,10 +52,17 @@ import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  COMMON_ENTITY_TYPES,
+  EXTENDED_ENTITY_TYPES,
+  defaultRoleForEntityType,
+} from '@/lib/entities/entityTypeCatalog';
 import {
   Dialog,
   DialogContent,
@@ -98,24 +105,9 @@ import '@/styles/wizard-animations.css';
 // HELPERS
 // =============================================================================
 
-/** Default role for a given entity type — drives the role select default. */
-function defaultRoleForType(type: LegalEntityType): LegalEntityRole {
-  switch (type) {
-    case 'PERSONAL_NAME':
-      return 'PERSONAL';
-    case 'SMSF':
-      return 'SUPERANNUATION';
-    case 'COMPANY':
-    case 'SOLE_TRADER':
-    case 'PARTNERSHIP':
-      return 'OPERATING';
-    case 'DISCRETIONARY_TRUST':
-    case 'UNIT_TRUST':
-      return 'HOLDING';
-    default:
-      return 'PERSONAL';
-  }
-}
+// Phase 47 F4 — default role comes from the canonical catalog (one SSOT
+// with the My Structure dialog).
+const defaultRoleForType = defaultRoleForEntityType;
 
 /** Whether ABN/ACN/TFN are typically applicable for a given type. */
 function fieldApplicability(type: LegalEntityType): {
@@ -330,13 +322,25 @@ function EntityDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(LEGAL_ENTITY_TYPE_LABELS) as LegalEntityType[]).map(
-                    (t) => (
+                  {/* Phase 47 F4 — two-tier grammar (catalog SSOT): the
+                      common seven first, the extended types below. Zero
+                      added friction for the 90% case. */}
+                  <SelectGroup>
+                    <SelectLabel>Common</SelectLabel>
+                    {COMMON_ENTITY_TYPES.map((t) => (
                       <SelectItem key={t} value={t}>
                         {LEGAL_ENTITY_TYPE_LABELS[t]}
                       </SelectItem>
-                    ),
-                  )}
+                    ))}
+                  </SelectGroup>
+                  <SelectGroup>
+                    <SelectLabel>More structures</SelectLabel>
+                    {EXTENDED_ENTITY_TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {LEGAL_ENTITY_TYPE_LABELS[t]}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
                 </SelectContent>
               </Select>
             </div>
