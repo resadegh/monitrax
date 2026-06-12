@@ -121,6 +121,70 @@ Execute the already-designed, review-gated Part 2: persist "what actually happen
 - **E1. Per-entity report sections** — `contextBuilder` partitions by entity; financial-overview + tax-time reports gain per-entity sections (entity name, type badge, holdings, net position, engine-computed tax position or honest `UNCOMPUTED`).
 - **E2. Universe tax-flow overlay** — extend the existing Money Flow lens with the Stage-D tax treatments (per-flow regime already renders; add per-entity tax-position badges to entity tiles). This completes the directive: structure + value + money flow + **tax flow**, one canvas.
 
+### Stage F — Structure Capture Completion (added 2026-06-12, Reza directive)
+
+> **Origin.** Reza compared his advisor-drawn **Renew Group structure chart** (trading company, bucket company, discretionary family trust, two corporate trustees, SMSF, bare trust + bare trustee holding an LRBA property — plus directors, secretaries, shareholders with share classes/counts, members, beneficiaries, spouse links) against Monitrax and asked whether it can all be captured. Audit verdict (2026-06-12): **the Phase 44 data model represents every element; the capture surfaces don't.** Reza: *"plan the build to add all possible entities and their relationship not just this example. The onboarding wizard should be able to capture most of this but fine tuning and further details should be also available through my structure page."*
+
+**Capability-regression record (honest §15 framing).** Phase 44 Part 1c SHIPPED a full relationship editor (`EntityDetailDialog` — add / end / delete edges with live `classifyEdge` validity preview). It was deleted 2026-05-31 in the legacy-canvas retirement (dead-code rule, correctly applied — zero consumers) when the Wealth Universe became the My Structure surface, and the universe's `EntityDetailPanel` never inherited the editing affordances. Stage F is therefore **restoration + completion in the universe's design language**, not greenfield: the rules engine (`lib/entity-graph/validityMatrix.ts`), the only-writer service (`entityRelationshipService.ts`), and the API routes (`/api/entities/relationships*`, `/beneficial-ownership*`) are all live and tested. The genuinely-new build is the `ShareParcel` writer (schema shipped in 1a; no writer was ever built).
+
+**The audit gap matrix (2026-06-12) — what exists vs what's capturable:**
+
+| Capability | Schema | Service/API | UI | Stage |
+|---|---|---|---|---|
+| 7 common entity types (personal, company, disc/unit trust, SMSF, partnership, sole trader) | ✅ | ✅ | ✅ | shipped (41a) |
+| 12 extended types (BARE_TRUST, INDIVIDUAL, FIXED/HYBRID/TESTAMENTARY_TRUST, DECEASED_ESTATE, FOREIGN_COMPANY, INCORPORATED_ASSOCIATION, CO_OPERATIVE, STRATA_BODY_CORPORATE, CUSTODIAN_PLATFORM, OTHER) | ✅ | ❌ API whitelist stops at 7 | ❌ | **F1** |
+| CORPORATE_TRUSTEE role; CompanySubtype; INDIVIDUAL dateOfBirth; trust vesting/deed dates; estate status | ✅ | ❌ not accepted | ❌ | **F1** |
+| Full 19-type relationship grammar (incl. SECRETARY_OF, SETTLOR_OF, APPOINTOR_OF, GUARDIAN_OF, POWER_HOLDER_OF, PUBLIC_OFFICER_OF, EXECUTOR_OF, LPR, FAMILY_MEMBER_OF…) | ✅ | ✅ | ❌ wizard captures 5 types; **no post-onboarding editor** | **F2** (editor) + **F4** (wizard depth) |
+| Beneficial-ownership override (incl. `BARE_TRUST` basis — the LRBA case) | ✅ | ✅ | ❌ | **F2** |
+| `ShareParcel` — share class, quantity, paid/unpaid, CGT acquisition date ("[1 ORD]", "[500]") | ✅ | ❌ **no writer anywhere** | ❌ | **F3** |
+| Universe glyph/classification for the extended types | n/a | n/a | ❌ falls to generic company | **F1** |
+
+#### F1 — Unlock the full entity-type grammar (1 PR)
+
+- `app/api/entities/route.ts`: `VALID_TYPES` → all 19 `LegalEntityType` values; `VALID_ROLES` + `CORPORATE_TRUSTEE`; accept per-type conditional fields with a per-type whitelist — `companySubtype` (companies), `dateOfBirth` (INDIVIDUAL), `vestingDate`/`deedDate` (trusts), `estateAdministrationStatus` (DECEASED_ESTATE). Auto-derive `trustType` for the new trust types (FIXED_TRUST→FIXED, HYBRID_TRUST→HYBRID, TESTAMENTARY_TRUST→TESTAMENTARY) so §12.14 Measure-3 dispatch stays correct.
+- `app/dashboard/entities/page.tsx` create/edit dialog: **two-tier type picker** — "Common" (today's seven, unchanged first paint) + a collapsed "More structures" expander for the twelve extended types. Behaviour-psychology contract: a beginner adding their first family trust NEVER sees "Strata body corporate"; the advanced user finds everything in one tap. Warm one-line descriptions per type (*"Bare trust — holds a single asset for someone else; used for SMSF property loans"*).
+- Universe: `classifyEntity` additions — BARE_TRUST / FIXED / HYBRID / TESTAMENTARY_TRUST + DECEASED_ESTATE → `trust` vocabulary; CUSTODIAN_PLATFORM → `trustee-company`; FOREIGN_COMPANY / INCORPORATED_ASSOCIATION / CO_OPERATIVE / STRATA → `other-company`. No new glyphs v1 (restraint) — the type label carries the precision.
+- Stitch pass (§18): the expanded picker inside the existing glass dialog (4-variant matrix).
+
+#### F2 — "Roles & People" editor on My Structure (1 PR)
+
+The restoration. `EntityDetailPanel` (desktop) + the mobile detail card gain a **Roles & people** section:
+
+- Current edges listed, grouped by the §11A lens vocabulary (Control / Ownership / Eligibility / Office / Family), each with the counterpart\'s name, effective dates, and an end-date affordance ("Sarah resigned as director" closes the edge — never deletes history).
+- **"Add a role" dialog**: pick the person/entity (existing chips + INDIVIDUAL quick-create with D1 dedup) → pick the role (full 19-type grammar, grouped, `graphMeta` plain-English labels) → type-specific metadata (beneficiary class, family relation incl. SPOUSE, appointor powers, power type/subject, TFN-quoted flag) → **live §6.2 validity preview** via the pure `classifyEdge` (imported client-side exactly as the deleted 1c dialog did). NON_COMPLIANT records with an amber badge; IMPOSSIBLE blocks with a plain-English reason.
+- **"Actually held for…" row** (beneficial-ownership override) on asset-holding entities — basis picker incl. Bare trust / Nominee / Custodian. This is how the Renew LRBA property reads: legal title → bare trustee ATF bare trust, beneficially → the SMSF.
+- Reuses `entityGraphClient` (already retained for accountant-review) — no new fetch layer. Stitch-first for the section + dialog (4-variant matrix; also clears the OWED dark/mobile variants debt from Stage A).
+
+**F2a — The per-type role template (the "Entity File" pattern; Reza addition 2026-06-12).** Reza: *"there is an easy way to mark the company director, shareholders, trustee, beneficiary, etc for any entity based on the required type of entity… make sure all related information is captured and stored and used where and when needed."* The advisor chart works because each card is a TYPE-AWARE FILE — a company card shows Director / Shareholder / Secretary rows; a trust card shows Trustee / Beneficiary rows. F2 must render the same pattern, not a freeform relationship list:
+
+- **New canonical `lib/entity-graph/roleTemplates.ts`** — one SSOT map `roleTemplateFor(type)`: per entity type, which roles are **required** (company → ≥1 director; trust → trustee; SMSF → trustee + members; partnership → ≥2 partners; deceased estate → executor/administrator; bare trust → trustee + beneficiary), **expected** (company → shareholders; trust → beneficiaries; SMSF → member balances), and **optional** (secretary, public officer, settlor, appointor, guardian, power holder). The validity matrix stays the law (the stick — flags violations); the template is the guidance (the carrot — drives affordances). The matrix's §6.3/§6.4 knowledge is NOT duplicated — templates only name the rows; `classifyEntity` keeps judging them.
+- **The Roles & People section renders the template rows** exactly like the advisor chart: filled roles show names inline ("Director — Reza, Newsha"; "Shareholder — Newsha [500 ORD], Reza [500 ORD]" once F3 lands), missing REQUIRED roles render a quiet add affordance ("Add a director") — celebration-of-next-action framing, never a red wall of missing fields. Roles not in the type's template are reachable under "More roles" (the full grammar never disappears).
+- **Per-entity completeness chip** — derived from required-roles coverage + `classifyEntity` issues; surfaces on the entity card and the universe preview popover ("Structure file 4/5 complete"). Behaviour-psychology contract: completeness is an invitation, not a score that shames.
+- **Stored once, used everywhere** — the same edges feed: the entity detail panel rows (this stage), the universe hover popover + accountant-review report (already read the graph), Stage D tax facts (Div 7A associate determination reads FAMILY_MEMBER_OF/DIRECTOR_OF; trust distribution reads BENEFICIARY_OF; SMSF rules read MEMBER_OF — exactly as `PHASE_44_PART_2` designed), and Stage E per-entity report sections. No new storage — the Phase 44 graph IS the store; F2a only completes capture + display.
+- **F4 alignment** — the wizard's per-type cards already implicitly follow per-type roles; F4 re-points them to read `roleTemplates.ts` so wizard and editor can never drift (one SSOT for "what roles does this type have").
+
+#### F3 — Share parcels & equity detail (1 PR)
+
+- `entityRelationshipService` extension (stays the only graph writer): parcel CRUD hanging off SHAREHOLDER_OF / UNITHOLDER_OF edges. New nested route `/api/entities/relationships/[id]/parcels`.
+- F2\'s shareholder/unitholder rows expand to a parcel list — *"500 ordinary · acquired 12 Mar 2021 · $1.00 paid"* — add / edit / dispose (sets `disposedAt`, never deletes; CGT history is sacred).
+- Universe ownership ribbons label quantity + class where parcels exist ("500 ORD").
+- §12.11 checklist required (parcel update/delete paths).
+
+#### F4 — Onboarding wizard fine-tune (1 PR)
+
+- `EntitiesStep`: the same two-tier type picker (Common seven first paint; "More structures" collapsed — zero added friction for the 90% case; growth lens defends every onboarding step).
+- `RelationshipsStep`: per-entity optional **"More detail"** disclosure adds secretary / settlor / appointor chips + a one-line share quick-entry per shareholder (count + class only; full parcel detail lives in F3\'s editor). The default skeleton capture (directors, shareholders, trustee, beneficiaries, members) is unchanged.
+- `ReviewStep` note extends: *"Fine-tune roles, share details and unusual structures anytime in My Structure."* — the F2 editor makes "finishable later" (Phase 44 §11 1d contract) actually true for the full grammar.
+- D2 decision unchanged: ASSET ownership stays out of onboarding; F4 only deepens STRUCTURE capture, which already lives in the wizard.
+
+#### F-G — Golden acceptance test (builds across F1–F3, lands complete in F4\'s PR)
+
+`tests/entity-graph/renewStructure.golden.test.ts` reproduces Reza\'s advisor chart node-for-node via the services: 10 entities (incl. BARE_TRUST + bare trustee + SMSF trustee company + bucket company), every edge type on the chart (directors, secretaries, shareholders **with parcels [1 ORD] / [500] / [50]**, members, beneficiaries incl. a company beneficiary, trustee ATF links, spouse FAMILY_MEMBER_OF), the LRBA property legally on the bare trust with a `BARE_TRUST`-basis beneficial override to the SMSF. Asserts: every edge classifies VALID, the universe layout renders every node with the right vocabulary, and the additive `byEntity` invariant still holds. **Phase 47 §7 acceptance criteria gains this row: the Renew chart is reproducible in Monitrax node-for-node.**
+
+**Sequencing rationale.** F1 first — types unblock everything and are pure whitelist+form work. F2 second — the daily-driver editor; F3 needs F2\'s surface to hang parcels on. F4 last — the wizard touches the activation funnel, so it ships only once "finishable later" is real. Stage F is independent of Stage D (tax compute) and can interleave; Stage E\'s per-entity reports get richer for free as F lands.
+
+**TRAIL mapping:** Track ("Track your full picture" — the structure IS the picture for entity-rich users) with Invest-stage depth surfaced progressively.
+
 ## §5 — Non-breaking guarantees (how "don't break anything" is enforced)
 
 | Guarantee | Mechanism |
