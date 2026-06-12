@@ -96,3 +96,41 @@ Audited every page under `app/admin/**` against `app/api/admin/**`:
 | Hash | Message |
 |------|---------|
 | ecbc5f3 | fix(admin): wire user detail page to real data + GCP-enforced suspend |
+
+---
+
+## Session: gracious-sagan-42r5le (PR 2) — Admin org-detail page real data + license-suspension enforcement
+
+### Changes Made
+- **Type**: Fix + Feature
+- **Scope**: Admin portal org management (`/admin/organizations/[orgId]`), portal access-control layer
+- **Root Cause**: Same disease as the user-detail page (PR #1084) — the Phase 33 org-detail page was scaffold-only: hardcoded "Acme Accounting" mock, `orgId` never used, Update License / Suspend buttons were `console.log` stubs. And `OrganizationLicense.status = 'suspended'` was read by NOTHING in the portal layer — a suspended firm would have retained full access to client financial data.
+- **Solution**:
+  1. `app/admin/organizations/[orgId]/page.tsx` — full rewrite onto `GET /api/admin/organizations/:orgId`: real org profile, license, members table, portal settings (ABN, portal enabled), client count; license management (plan/limits/notes) and suspend/reactivate (reason required) wired to `PATCH .../license`; mock members/activity deleted.
+  2. **Enforcement** — new `lib/portal/licenseGuard.ts` → `isOrgLicenseSuspended()` wired into the three canonical portal access points: `lib/portal/adviserClientAccess.ts` `verifyAdviserClientAccess()` (new `ORG_SUSPENDED` 403 error code — the canonical client-data gate), `lib/services/masterFinancialService.ts` `loadOrganizationClient()` (scoped-snapshot consent verifier returns null), `lib/auth/guards.ts` `withPortalFeatureGate()` (403 before plan-tier check).
+  3. Semantics (deliberate contrast with user suspension): org suspension is a firm-level billing/compliance state — members keep their personal Monitrax accounts and identities; the firm loses portal access to CLIENT data and gated features. Client consent rows are NOT revoked; access resumes on reactivation.
+
+### Files Modified
+- `app/admin/organizations/[orgId]/page.tsx` — full rewrite: mock → real API data + wired license/suspend actions
+- `lib/portal/licenseGuard.ts` — NEW: canonical `isOrgLicenseSuspended()` helper (file-header documents semantics + wiring points)
+- `lib/portal/adviserClientAccess.ts` — license check as layer 3; new `ORG_SUSPENDED` error code
+- `lib/services/masterFinancialService.ts` — `loadOrganizationClient()` denies suspended orgs
+- `lib/auth/guards.ts` — `withPortalFeatureGate()` denies suspended orgs
+
+### Documentation Updated
+- `docs/operational/security/03_CDR_COMPLIANCE.md` — new § Organization Suspension Cuts Client-Data Access
+- `docs/blueprint/PHASE_33_ADMIN_PORTAL.md` — Phase 33.2 status
+- `docs/blueprint/ADMIN_PORTAL_COMPLETION_PLAN.md` — org-detail gap closed
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry; Up Next row reduced to the impersonation gap
+
+### Build Status
+- [x] Build passes (`npm run build`)
+- [x] Changed files lint clean (repo baseline unchanged)
+- [x] Tests: 105/105 (tests/calculations + tests/portal via vitest)
+
+### Destructive writes (§12.11)
+- `prisma.organizationLicense.upsert` in the license PATCH — pre-existing operation, NOT modified in this PR (frontend now calls it; checklist in PR body for transparency).
+
+### §17.2 post-merge verification — PR #1084 (user-detail PR, earlier this session)
+- Production deploy `dpl_ozk25Q8LkMPSG32d62ivd4zm1po5` reached `READY` (~3 min build).
+- Runtime logs: empty response — no traffic on the new deploy yet at 03:20 UTC (§17.6 "no logs in retention window" case, not an error). Preview of the same commit built + served green pre-merge. Re-scan on first traffic.

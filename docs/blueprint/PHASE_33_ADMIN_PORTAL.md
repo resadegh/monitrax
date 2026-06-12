@@ -1018,10 +1018,13 @@ ADMIN_SUPPORT_TOOLS=true
 - Feature flag infrastructure
 
 ### Phase 33.2: Organization Management
-- Organization list and search
-- Organization detail view
-- License management
-- Activity logs
+- ✅ Organization list and search (real data)
+- ✅ Organization detail view (real data — fixed 2026-06-12; was mock scaffold)
+- ✅ License management (plan/limits/notes + suspend/reactivate; suspension
+  blocks the firm's portal access to client data via
+  `lib/portal/licenseGuard.ts` — members keep their personal accounts)
+- Activity logs (not yet — API exposes no per-org activity; the mock
+  activity feed was removed rather than faked)
 
 ### Phase 33.3: User Management
 - ✅ User list and search (real data)
