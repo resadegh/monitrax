@@ -89,6 +89,100 @@ const UNCOMPUTED_ENTITY_TAX: Record<string, UncomputedFlag> = {
     rationale:
       'Partnership-level distribution to partners is deferred — partnerships are tax-transparent (s92), but the per-partner attribution requires the Phase 41e.17 orchestrator.',
   },
+  // Stage D PR-1 (AD-4, 2026-06-12) — the Phase 47 F1 extended types are
+  // user-creatable; each gets an EXPLICIT honest flag (previously they
+  // fell through with NO flag at all — false silence).
+  INDIVIDUAL: {
+    id: 'UC-ENTITY-INDIVIDUAL',
+    rationale:
+      'This person is recorded for structure (roles, co-ownership) — their personal tax position is computed on their own Monitrax account, not through your structure view.',
+  },
+  FIXED_TRUST: {
+    id: 'UC-ENTITY-FIXED-TRUST',
+    rationale:
+      'Fixed-trust distribution follows the fixed entitlements in the deed (Div 6). Computation lands with the trust-distribution feed for fixed entitlements; recording a distribution resolution does not yet drive a number for this trust type.',
+  },
+  HYBRID_TRUST: {
+    id: 'UC-ENTITY-HYBRID-TRUST',
+    rationale:
+      'Hybrid trusts mix fixed and discretionary entitlements — the Div 6 split depends on the deed. Computation deferred until the deed-rule feed can separate the two components.',
+  },
+  BARE_TRUST: {
+    id: 'UC-ENTITY-BARE-TRUST',
+    rationale:
+      'A bare trust is transparent — its income and gains belong to the beneficial owner (e.g. the SMSF in an LRBA). The attribution lands with the beneficial-ownership feed; no tax is computed at the bare-trust level by design.',
+  },
+  TESTAMENTARY_TRUST: {
+    id: 'UC-ENTITY-TESTAMENTARY-TRUST',
+    rationale:
+      'Testamentary-trust income to minor beneficiaries can be excepted from Div 6AA penalty rates — but only for deceased-estate-derived assets (s102AG). Computation is gated on asset-source tracking (design doc G-ASSETSRC) so the concession is never over-claimed.',
+  },
+  DECEASED_ESTATE: {
+    id: 'UC-ENTITY-DECEASED-ESTATE',
+    rationale:
+      'Estate income during administration is assessed to the executor under s99/s99A — beneficiaries are not presently entitled until administration completes. Computation is gated on the administration-stage feed (design doc G-S99).',
+  },
+  FOREIGN_COMPANY: {
+    id: 'UC-ENTITY-FOREIGN-COMPANY',
+    rationale:
+      'A foreign company\u2019s Australian tax position depends on residency, permanent establishment and treaty relief — outside the current engine\u2019s scope. Recorded for structure; no number is computed.',
+  },
+  INCORPORATED_ASSOCIATION: {
+    id: 'UC-ENTITY-INCORPORATED-ASSOCIATION',
+    rationale:
+      'Association taxation depends on NFP / mutuality status. Recorded for structure; no number is computed.',
+  },
+  CO_OPERATIVE: {
+    id: 'UC-ENTITY-CO-OPERATIVE',
+    rationale:
+      'Co-operative taxation (Div 9) is outside the current engine\u2019s scope. Recorded for structure; no number is computed.',
+  },
+  STRATA_BODY_CORPORATE: {
+    id: 'UC-ENTITY-STRATA',
+    rationale:
+      'A body corporate is taxed on non-mutual income only — typically immaterial to a personal wealth picture. Recorded for structure; no number is computed.',
+  },
+  CUSTODIAN_PLATFORM: {
+    id: 'UC-ENTITY-CUSTODIAN',
+    rationale:
+      'A custodian holds for others — its holdings are attributed to their beneficial owners, never taxed at the custodian. Recorded for structure by design.',
+  },
+  OTHER: {
+    id: 'UC-ENTITY-OTHER',
+    rationale:
+      'This structure is outside the supported grammar (recorded and flagged, never silently mismodelled). No tax is computed for it.',
+  },
+};
+
+// Stage D PR-1 (AD-1) — partnership SUBTYPE dispatch. A corporate
+// limited partnership is taxed AS A COMPANY (Div 5A ITAA36) — running
+// transparent s92 math for it would be wrong, so those subtypes carry
+// their own honest flags. VCLP / ESVCLP retain flow-through treatment
+// but are Phase 41E Measure 7-affected (§12.14 FW-2: no post-reform
+// math before Royal Assent — UNCOMPUTED is the correct state).
+const UNCOMPUTED_PARTNERSHIP_SUBTYPE: Record<string, UncomputedFlag> = {
+  LIMITED: {
+    id: 'UC-ENTITY-CLP',
+    rationale:
+      'This limited partnership is a corporate limited partnership — taxed as a COMPANY under Div 5A ITAA36, not as a transparent partnership. Computing it with partnership rules would be wrong; the company-style dispatch for CLPs is deferred.',
+    citation: { kind: 'ITAA_1936', reference: 'Div 5A', lastReviewed: '2026-06-12' },
+  },
+  INCORPORATED_LIMITED: {
+    id: 'UC-ENTITY-CLP',
+    rationale:
+      'This incorporated limited partnership is taxed as a COMPANY under Div 5A ITAA36, not as a transparent partnership. Computing it with partnership rules would be wrong; the company-style dispatch for CLPs is deferred.',
+    citation: { kind: 'ITAA_1936', reference: 'Div 5A', lastReviewed: '2026-06-12' },
+  },
+  VCLP: {
+    id: 'UC-ENTITY-VCLP',
+    rationale:
+      'VCLPs are flow-through with venture-capital concessions — and the 2026-27 reform (Measure 7) changes the caps from 1 Jul 2027. No number is computed until the per-partner orchestrator lands and the reform commencement is verified.',
+  },
+  ESVCLP: {
+    id: 'UC-ENTITY-VCLP',
+    rationale:
+      'ESVCLPs are flow-through with venture-capital concessions — and the 2026-27 reform (Measure 7) changes the caps from 1 Jul 2027. No number is computed until the per-partner orchestrator lands and the reform commencement is verified.',
+  },
 };
 
 const BASE_CITATIONS: Record<string, AuthorityCitation[]> = {
@@ -277,11 +371,31 @@ export function calculateEntityTaxPosition(
       s100aFacts: facts.trustDistribution.s100aFacts,
     });
 
+    // Stage D PR-1 (AD-3) — the assembler stripped streaming amounts
+    // because no STREAMING_POWER deed rule exists. Surface it: the
+    // default proportionate allocation below is computed; the recorded
+    // streams were NOT applied.
+    const trustUncomputed = facts.trustDistribution.streamingSuppressed
+      ? [
+          ...distributionResult.uncomputed,
+          {
+            id: 'UC-DIV-6E-STREAMING',
+            rationale:
+              'Streaming amounts were recorded, but no streaming power is on file for this trust\u2019s deed — Div 6E streaming is only valid if the deed permits it. The default proportionate allocation was computed instead. Record the deed\u2019s streaming power (or confirm with your accountant) to activate streaming.',
+            citation: {
+              kind: 'ITAA_1936' as const,
+              reference: 'Div 6E',
+              lastReviewed: '2026-06-12',
+            },
+          },
+        ]
+      : distributionResult.uncomputed;
+
     const merged = cgt
-      ? mergeCgt(distributionResult.citations, distributionResult.uncomputed, cgt)
+      ? mergeCgt(distributionResult.citations, trustUncomputed, cgt)
       : {
           citations: distributionResult.citations,
-          uncomputed: distributionResult.uncomputed,
+          uncomputed: trustUncomputed,
         };
 
     return {
@@ -443,7 +557,14 @@ export function calculateEntityTaxPosition(
   // calc still surfaces (with the right per-entity discount rate). A
   // COMPANY entity hitting this branch with cgtEvents returns
   // `result: null + UC-ENTITY-COMPANY` AND `cgtResult: <real number>`.
-  const flag = UNCOMPUTED_ENTITY_TAX[facts.entityType];
+  // Stage D PR-1 (AD-1) — a partnership with a Div 5A / Measure 7
+  // subtype gets its subtype-specific flag instead of the generic
+  // transparent-partnership rationale.
+  const subtypeFlag =
+    facts.entityType === 'PARTNERSHIP' && facts.partnershipSubtype
+      ? UNCOMPUTED_PARTNERSHIP_SUBTYPE[facts.partnershipSubtype]
+      : undefined;
+  const flag = subtypeFlag ?? UNCOMPUTED_ENTITY_TAX[facts.entityType];
   const baseUncomputed: UncomputedFlag[] = flag ? [flag] : [];
   const merged = cgt
     ? mergeCgt([], baseUncomputed, cgt)

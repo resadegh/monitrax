@@ -23,6 +23,18 @@
  *    to the engine — that treatment is legally contested; the engine
  *    must not auto-deem them a Div 7A dividend.
  *  - Q-PARTNERSHIP — partnerships are not assembled (stay `UNCOMPUTED`).
+ *
+ * Stage D PR-1 — honesty hardening (AD-1..AD-3, approved by Reza
+ * 2026-06-12 after the adversarial design review):
+ *  - Residency passes through (`taxResidencyStatus` / `isForeignResident`)
+ *    so the CGT discount is correct for foreign residents (§7.1
+ *    G-RESIDENCY — was contracted but never wired).
+ *  - Streaming amounts are STRIPPED unless a STREAMING_POWER
+ *    `TrustDeedRule` exists for the trust (§4.1 F4 — streaming is only
+ *    valid if the deed permits it); the router surfaces
+ *    `UC-DIV-6E-STREAMING` so the omission is visible.
+ *  - `partnershipSubtype` passes through so the router can refuse to
+ *    treat a Div 5A corporate limited partnership as transparent (AD-1).
  */
 
 import { prisma } from '@/lib/db';
@@ -126,6 +138,35 @@ export function pickOperativeResolution(
   return resolutions.find((r) => r.status === 'CONFIRMED') ?? null;
 }
 
+/**
+ * Stage D PR-1 (AD-3) — gate Div 6E streaming on deed power. When the
+ * trust has NO active STREAMING_POWER `TrustDeedRule`, the streaming
+ * amounts the user recorded are stripped from the engine input (the
+ * deed doesn't permit them — computing them would bless an invalid
+ * stream) and `streamingSuppressed` is set so the router surfaces
+ * `UC-DIV-6E-STREAMING`. The default Bamford proportionate allocation
+ * still computes. Pure function — exported for unit testing.
+ */
+export function gateStreamingByDeedPower(
+  distribution: NonNullable<EntityTaxFacts['trustDistribution']>,
+  hasStreamingPower: boolean,
+): NonNullable<EntityTaxFacts['trustDistribution']> {
+  const hasStreams =
+    distribution.characterPools !== undefined ||
+    distribution.beneficiaries.some((b) => b.streaming !== undefined);
+  if (hasStreamingPower || !hasStreams) return distribution;
+  return {
+    ...distribution,
+    characterPools: undefined,
+    streamingResolutionAt: undefined,
+    beneficiaries: distribution.beneficiaries.map((b) => ({
+      ...b,
+      streaming: undefined,
+    })),
+    streamingSuppressed: true,
+  };
+}
+
 // =============================================================================
 // THE ASSEMBLER
 // =============================================================================
@@ -142,7 +183,14 @@ export async function assembleEntityTaxFacts(
 ): Promise<EntityTaxFacts | null> {
   const entity = await prisma.legalEntity.findFirst({
     where: { id: entityId, userId },
-    select: { id: true, type: true },
+    select: {
+      id: true,
+      type: true,
+      // Stage D PR-1 — residency + partnership-subtype pass-through.
+      taxResidencyStatus: true,
+      isForeignResident: true,
+      partnershipSubtype: true,
+    },
   });
   if (!entity) return null;
 
@@ -204,6 +252,22 @@ export async function assembleEntityTaxFacts(
     depreciations: [],
   };
 
+  // Stage D PR-1 (G-RESIDENCY) — pass residency through so the CGT
+  // discount is denied to foreign residents (s855; the engine's
+  // capital-loss netting already accepts the flag — it was simply
+  // never fed). Null status keeps the existing "treated as resident"
+  // convention; the explicit boolean or FOREIGN_RESIDENT status wins.
+  const foreign =
+    entity.isForeignResident === true ||
+    entity.taxResidencyStatus === 'FOREIGN_RESIDENT';
+  if (foreign) facts.isForeignResident = true;
+
+  // Stage D PR-1 (AD-1) — partnership subtype pass-through for the
+  // router's Div 5A / Measure 7 dispatch.
+  if (entity.type === 'PARTNERSHIP' && entity.partnershipSubtype) {
+    facts.partnershipSubtype = entity.partnershipSubtype;
+  }
+
   // --- Trust distribution (DISCRETIONARY_TRUST / UNIT_TRUST) -----------
   if (TRUST_DISTRIBUTION_TYPES.has(entity.type)) {
     const resolutions = await listDistributionResolutions(userId, {
@@ -220,7 +284,23 @@ export async function assembleEntityTaxFacts(
         select: { id: true, name: true },
       });
       const nameById = new Map(beneficiaries.map((b) => [b.id, b.name]));
-      facts.trustDistribution = buildTrustDistribution(operative, nameById);
+      const distribution = buildTrustDistribution(operative, nameById);
+      // Stage D PR-1 (AD-3) — streaming is only valid if the deed
+      // permits it. Active STREAMING_POWER rule present → pass through;
+      // absent → strip streams, surface UC-DIV-6E-STREAMING downstream.
+      const streamingRule = await prisma.trustDeedRule.findFirst({
+        where: {
+          userId,
+          trustEntityId: entityId,
+          ruleType: 'STREAMING_POWER',
+          OR: [{ effectiveTo: null }, { effectiveTo: { gt: new Date() } }],
+        },
+        select: { id: true },
+      });
+      facts.trustDistribution = gateStreamingByDeedPower(
+        distribution,
+        streamingRule !== null,
+      );
     }
   }
 

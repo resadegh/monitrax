@@ -1,6 +1,6 @@
 # Phase 44 Part 2 — Money-Flow, Transactions & Tax-Engine Rewire
 
-> **Status:** 🟡 DESIGN — not yet built. Code follows only after Reza review of this document.
+> **Status:** ✅ **APPROVED WITH ADDENDA — BUILD AUTHORISED (Reza, 2026-06-12).** Reza delegated the technical review to a dedicated adversarial review agent (verdict: READY WITH ADDENDA — see §14 below) and approved in writing ("Approved"). The four addenda AD-1..AD-4 are binding on every further Stage D PR. PR-1 (honesty hardening) shipped with this approval; 2a–2d were built earlier under the per-sub-part gates.
 > **Version:** v2 (2026-05-22) — external Australian-tax-law conformance review incorporated; see §13.
 > **Owner:** Reza (direction + structural/legal review) + Claude (audit, design, build).
 > **Created:** 2026-05-22. **Design pass for:** `PHASE_44_ENTITY_GRAPH.md` §11 "Part 2".
@@ -413,6 +413,20 @@ This document was put through an external Australian-tax-law conformance review 
 *This document is the Part 2 design contract — v2, external law-conformance review (§13) incorporated. Build begins only after Reza review. Created 2026-05-22.*
 
 ---
+
+
+## §14 — Approval addenda (adversarial review, 2026-06-12) — BINDING
+
+> Reza (2026-06-12): *"I am not an accountant so I think your review on the tax law and documents is better than me. Maybe get a dedicated agent to perform the required review?"* → dedicated review agent ran the adversarial pass (staleness vs Phase 47 Stage F, internal consistency, §12.14, the 23 external findings, Div 5A); Reza approved the verdict + risk register in writing. These addenda update this contract; every further Stage D PR is reviewed against them.
+
+| # | Addendum | Status |
+|---|---|---|
+| **AD-1** | **Div 5A / partnership subtypes.** The partnership branch MUST fork on `LegalEntity.partnershipSubtype` (Phase 47 F4 column): LIMITED / INCORPORATED_LIMITED are corporate limited partnerships taxed AS COMPANIES (Div 5A ITAA36) — never transparent s92 math; VCLP / ESVCLP are flow-through but Measure 7-affected (§12.14 — UNCOMPUTED until commencement verified + per-partner orchestrator). | ✅ PR-1: subtype passes through the assembler; router dispatches subtype-specific UNCOMPUTED (`UC-ENTITY-CLP` / `UC-ENTITY-VCLP`). Company-style CLP compute = future sub-part. |
+| **AD-2** | **Stake & beneficial attribution.** The assembler must read `OwnershipStake` percentages (TR 93/32 joint splits) and `BeneficialOwnershipOverride` (incl. BARE_TRUST / LRBA) — Phase 47 §4A P2/P3/P5/P8 + D6 bind Stage D to this. Until wired, jointly-held income is attributed flat by `ownerEntityId` — documented limitation, surfaced honestly. | 🔜 Scoped as its own sub-part after PR-2 (the attribution feed). |
+| **AD-3** | **Design-vs-built honesty.** §6.1's contract listed inputs the shipped assembler didn't read. PR-1 closes the cheap ones (residency pass-through; streaming gated on a STREAMING_POWER `TrustDeedRule`, suppressed streams surface `UC-DIV-6E-STREAMING`); PR-2 closes the contracted feeds (trust/SMSF `cgtEvents` per Q-CGT-FEED + `DividendDistribution` → Div 207 franking). Graph-derived inputs (`isAssociateOf`, trustee chains) remain deferred and are now marked as such in §6.1's margin. | ✅ PR-1 partial / 🔜 PR-2 |
+| **AD-4** | **Extended-type coverage.** All 19 entity types are user-creatable (Phase 47 F1). Every type MUST carry an explicit UNCOMPUTED rationale — the pre-PR-1 fall-through emitted NO flag for the 12 extended types (false silence). | ✅ PR-1: explicit flags for all 12 (s99/s99A for estates, s102AG gate for testamentary, transparent-by-design for bare trusts/custodians, etc.). |
+
+**Blocking note carried from the review:** Q-CGT-FEED (trust CGT events) blocks calling trust numbers complete — a trust with capital gains currently computes from income alone (understated). PR-2 is therefore not optional polish; it is the next mandatory step.
 
 ## Phase 44.2 — SMSF fund-income tax surface (SHIPPED 2026-06-02)
 
