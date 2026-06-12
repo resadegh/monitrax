@@ -41,6 +41,16 @@ export interface ConfidenceSummary {
   medium: number;
   /** Review-queue PENDING, MANUAL band (<0.7). */
   low: number;
+  /**
+   * Phase 49.14 — BOOKED transactions in the medium/low score ranges
+   * (e.g. Basiq-synced or outage-era fallback rows written straight to
+   * UnifiedTransaction). The queue counts above MISS these — which is
+   * exactly the discrepancy Reza hit: the list showed low-score rows the
+   * "Review low" surface didn't. Band filter chips show queue + booked
+   * combined so the numbers finally reconcile.
+   */
+  txMedium: number;
+  txLow: number;
 }
 
 const BAND_TO_LEVEL: Record<ConfidenceBand, string> = {
@@ -72,7 +82,16 @@ export async function getConfidenceSummary(userId: string): Promise<ConfidenceSu
     }),
   ]);
 
-  return { high, highUnconfirmed, medium, low };
+  const [txMedium, txLow] = await Promise.all([
+    prisma.unifiedTransaction.count({
+      where: { userId, confidenceScore: { gte: 0.7, lt: 0.9 } },
+    }),
+    prisma.unifiedTransaction.count({
+      where: { userId, confidenceScore: { lt: 0.7, not: null } },
+    }),
+  ]);
+
+  return { high, highUnconfirmed, medium, low, txMedium, txLow };
 }
 
 /**

@@ -54,6 +54,11 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
       const excludeTransfers = searchParams.get('excludeTransfers');
       const uncategorized = searchParams.get('uncategorized');
       const direction = searchParams.get('direction');
+      // Phase 49.14 — confidence-band filter (Reza: band chips on the
+      // bookkeeper card act as list filters). Bands mirror the import
+      // thresholds: high ≥0.9, medium 0.7–0.9, low <0.7 (score 0 = AI
+      // fallback rows included; NULL = no AI involvement, excluded).
+      const confidence = searchParams.get('confidence');
 
       // Build where clause
       const where: Record<string, unknown> = {
@@ -78,6 +83,9 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
       if (isTransfer === 'false') where.isTransfer = false;
       if (excludeTransfers === 'true') where.isTransfer = { not: true };
       if (direction) where.direction = direction;
+      if (confidence === 'high') where.confidenceScore = { gte: 0.9 };
+      if (confidence === 'medium') where.confidenceScore = { gte: 0.7, lt: 0.9 };
+      if (confidence === 'low') where.confidenceScore = { lt: 0.7, not: null };
 
       // Uncategorized filter: transactions available for categorization.
       // Per Reza directive 2026-05-08 — once a tx has a categoryLevel1
