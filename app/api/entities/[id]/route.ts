@@ -39,6 +39,7 @@ import {
   ALL_ENTITY_ROLES,
   COMPANY_SUBTYPE_OPTIONS,
   ESTATE_STATUS_OPTIONS,
+  PARTNERSHIP_SUBTYPE_OPTIONS,
 } from '@/lib/entities/entityTypeCatalog';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -51,6 +52,9 @@ const VALID_COMPANY_SUBTYPES: ReadonlySet<string> = new Set(
 );
 const VALID_ESTATE_STATUSES: ReadonlySet<string> = new Set(
   ESTATE_STATUS_OPTIONS.map(o => o.value),
+);
+const VALID_PARTNERSHIP_SUBTYPES: ReadonlySet<string> = new Set(
+  PARTNERSHIP_SUBTYPE_OPTIONS.map(o => o.value),
 );
 
 export const GET = withPermission<RouteContext>(
@@ -95,6 +99,7 @@ interface UpdateEntityRequestBody {
   vestingDate?: unknown;
   deedDate?: unknown;
   estateAdministrationStatus?: unknown;
+  partnershipSubtype?: unknown;
 }
 
 /** Phase 47 F1 — optional ISO date field: undefined absent, null clears. */
@@ -237,6 +242,20 @@ export const PUT = withPermission<RouteContext>(
           { status: 400 },
         );
       }
+      if (
+        body.partnershipSubtype !== undefined &&
+        body.partnershipSubtype !== null &&
+        body.partnershipSubtype !== '' &&
+        (typeof body.partnershipSubtype !== 'string' ||
+          !VALID_PARTNERSHIP_SUBTYPES.has(body.partnershipSubtype))
+      ) {
+        return NextResponse.json(
+          {
+            error: `partnershipSubtype must be one of: ${[...VALID_PARTNERSHIP_SUBTYPES].join(', ')}`,
+          },
+          { status: 400 },
+        );
+      }
       let dateOfBirthField: string | null | undefined;
       let vestingDateField: string | null | undefined;
       let deedDateField: string | null | undefined;
@@ -310,6 +329,12 @@ export const PUT = withPermission<RouteContext>(
             body.estateAdministrationStatus === null || body.estateAdministrationStatus === ''
               ? null
               : (body.estateAdministrationStatus as string),
+        }),
+        ...(body.partnershipSubtype !== undefined && {
+          partnershipSubtype:
+            body.partnershipSubtype === null || body.partnershipSubtype === ''
+              ? null
+              : (body.partnershipSubtype as string),
         }),
       });
 

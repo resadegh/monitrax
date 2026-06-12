@@ -576,7 +576,7 @@ Phase 41 (§10) modelled entity *types*. Phase 44 adds the *relationship* layer 
 
 ### `LegalEntity` additions
 
-`LegalEntityType` gains 12 values (`INDIVIDUAL`, `FIXED_TRUST`, `HYBRID_TRUST`, `BARE_TRUST`, `TESTAMENTARY_TRUST`, `DECEASED_ESTATE`, `FOREIGN_COMPANY`, `INCORPORATED_ASSOCIATION`, `CO_OPERATIVE`, `STRATA_BODY_CORPORATE`, `CUSTODIAN_PLATFORM`, `OTHER`); `LegalEntityRole` gains `CORPORATE_TRUSTEE`; `TrustType` gains `HYBRID` + `TESTAMENTARY`. Plus 22 additive columns — `companySubtype`, `dateOfBirth`, `directorIdEncrypted` (encrypted, same treatment as TFN), the legal-title/beneficial/control capability flags, the residency + jurisdiction blocks, trust + estate metadata, `regulatoryStatus`, `structuralState`, `accountantVerified`.
+`LegalEntityType` gains 12 values (`INDIVIDUAL`, `FIXED_TRUST`, `HYBRID_TRUST`, `BARE_TRUST`, `TESTAMENTARY_TRUST`, `DECEASED_ESTATE`, `FOREIGN_COMPANY`, `INCORPORATED_ASSOCIATION`, `CO_OPERATIVE`, `STRATA_BODY_CORPORATE`, `CUSTODIAN_PLATFORM`, `OTHER`); `LegalEntityRole` gains `CORPORATE_TRUSTEE`; `TrustType` gains `HYBRID` + `TESTAMENTARY`. Plus 22 additive columns — `companySubtype`, `dateOfBirth`, `directorIdEncrypted` (encrypted, same treatment as TFN), the legal-title/beneficial/control capability flags, the residency + jurisdiction blocks, trust + estate metadata, `regulatoryStatus`, `structuralState`, `accountantVerified`. **Phase 47 F4 (2026-06-12)** adds `partnershipSubtype String?` (GENERAL / LIMITED / INCORPORATED_LIMITED / VCLP / ESVCLP — corporate limited partnerships are taxed as companies per Div 5A ITAA36; VCLP/ESVCLP carry Phase 41E Measure 7 treatment; migration `20260612120000_add_partnership_subtype`).
 
 ### Migration note
 

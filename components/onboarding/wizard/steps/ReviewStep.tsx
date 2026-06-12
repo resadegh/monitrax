@@ -280,7 +280,8 @@ export function ReviewStep({ data }: ReviewStepProps) {
             <span>
               Everything you&apos;ve added is recorded in your name for now. Own something
               jointly, or through a trust or company? You can set who owns each item
-              anytime — just open it from your dashboard.
+              anytime — and fine-tune roles, share details and unusual structures in
+              My Structure.
             </span>
           </div>
         )}

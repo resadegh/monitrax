@@ -81,6 +81,7 @@ import {
   TRUST_FAMILY_TYPES,
   COMPANY_SUBTYPE_OPTIONS,
   ESTATE_STATUS_OPTIONS,
+  PARTNERSHIP_SUBTYPE_OPTIONS,
   deriveTrustType,
   entityFieldApplicability,
   defaultRoleForEntityType,
@@ -168,6 +169,7 @@ interface Entity {
   vestingDate?: string | null;
   deedDate?: string | null;
   estateAdministrationStatus?: string | null;
+  partnershipSubtype?: string | null;
 }
 
 // Phase 41E.4 — closed enum mirrors Prisma's `TrustType`.
@@ -211,6 +213,7 @@ interface FormState {
   vestingDate: string;
   deedDate: string;
   estateAdministrationStatus: string;
+  partnershipSubtype: string;
 }
 
 // Phase 47 F1 — ROLES now includes CORPORATE_TRUSTEE; type→role default
@@ -242,6 +245,7 @@ function emptyForm(): FormState {
     vestingDate: '',
     deedDate: '',
     estateAdministrationStatus: '',
+    partnershipSubtype: '',
   };
 }
 
@@ -268,6 +272,7 @@ function formFromEntity(e: Entity): FormState {
     vestingDate: e.vestingDate ? e.vestingDate.split('T')[0] : '',
     deedDate: e.deedDate ? e.deedDate.split('T')[0] : '',
     estateAdministrationStatus: e.estateAdministrationStatus ?? '',
+    partnershipSubtype: e.partnershipSubtype ?? '',
   };
 }
 
@@ -457,6 +462,7 @@ export default function EntitiesPage() {
         vestingDate: string | null;
         deedDate: string | null;
         estateAdministrationStatus: string | null;
+        partnershipSubtype: string | null;
       };
       const isTrustEntity = TRUST_ENTITY_TYPES.includes(form.type);
       const fields = fieldApplicability(form.type);
@@ -482,6 +488,10 @@ export default function EntitiesPage() {
         estateAdministrationStatus:
           fields.estateStatus && form.estateAdministrationStatus
             ? form.estateAdministrationStatus
+            : null,
+        partnershipSubtype:
+          fields.partnershipSubtype && form.partnershipSubtype
+            ? form.partnershipSubtype
             : null,
       };
       if (isEdit) {
@@ -813,6 +823,36 @@ export default function EntitiesPage() {
                     onChange={(e) => setForm({ ...form, vestingDate: e.target.value })}
                   />
                 </div>
+              </div>
+            )}
+
+            {applicable.partnershipSubtype && (
+              <div>
+                <Label htmlFor="page-entity-partnership-subtype">Partnership subtype</Label>
+                <Select
+                  value={form.partnershipSubtype || '__unset__'}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      partnershipSubtype: v === '__unset__' ? '' : v,
+                    })
+                  }
+                >
+                  <SelectTrigger id="page-entity-partnership-subtype">
+                    <SelectValue placeholder="Select subtype" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__unset__">General / not sure</SelectItem>
+                    {PARTNERSHIP_SUBTYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Corporate limited partnerships are taxed as companies; VCLP and ESVCLP have their own treatment.
+                </p>
               </div>
             )}
 

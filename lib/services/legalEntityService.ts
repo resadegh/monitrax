@@ -232,6 +232,7 @@ export interface LegalEntitySummary {
   vestingDate: Date | null;
   deedDate: Date | null;
   estateAdministrationStatus: string | null;
+  partnershipSubtype: string | null;
   createdAt: Date;
   updatedAt: Date;
   ownedObjectsCount: {
@@ -281,6 +282,7 @@ export async function listEntitiesForUser(
       vestingDate: true,
       deedDate: true,
       estateAdministrationStatus: true,
+      partnershipSubtype: true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -319,6 +321,7 @@ export async function listEntitiesForUser(
     vestingDate: e.vestingDate,
     deedDate: e.deedDate,
     estateAdministrationStatus: e.estateAdministrationStatus,
+    partnershipSubtype: e.partnershipSubtype,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
     ownedObjectsCount: {
@@ -368,6 +371,7 @@ export interface CreateEntityInput {
   vestingDate?: Date | string | null;
   deedDate?: Date | string | null;
   estateAdministrationStatus?: string | null;
+  partnershipSubtype?: string | null;
 }
 
 /**
@@ -433,6 +437,8 @@ export async function createEntity(
       deedDate: isTrustFamily(input.type) && input.deedDate ? new Date(input.deedDate) : null,
       estateAdministrationStatus:
         input.type === 'DECEASED_ESTATE' ? (input.estateAdministrationStatus ?? null) : null,
+      partnershipSubtype:
+        input.type === 'PARTNERSHIP' ? (input.partnershipSubtype ?? null) : null,
     },
     select: { id: true },
   });
@@ -474,6 +480,7 @@ export interface UpdateEntityInput {
   vestingDate?: Date | string | null;
   deedDate?: Date | string | null;
   estateAdministrationStatus?: string | null;
+  partnershipSubtype?: string | null;
 }
 
 /**
@@ -551,6 +558,9 @@ export async function updateEntity(
   }
   if (input.estateAdministrationStatus !== undefined) {
     data.estateAdministrationStatus = input.estateAdministrationStatus;
+  }
+  if (input.partnershipSubtype !== undefined) {
+    data.partnershipSubtype = input.partnershipSubtype;
   }
 
   await client.legalEntity.update({

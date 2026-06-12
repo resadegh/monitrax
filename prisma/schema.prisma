@@ -677,6 +677,7 @@ model LegalEntity {
   lastVariationDate                     DateTime? // trusts
   trustProperLawJurisdiction            String? // trusts
   estateAdministrationStatus            String? // DECEASED_ESTATE only — EARLY / PARTLY / FULLY_ADMINISTERED / FINAL_DISTRIBUTION_COMPLETE
+  partnershipSubtype                    String? // Phase 47 F4 (F-LAW review) — PARTNERSHIP only: GENERAL / LIMITED / INCORPORATED_LIMITED / VCLP / ESVCLP. Corporate limited partnerships are taxed as companies (Div 5A ITAA36); VCLP/ESVCLP carry Phase 41E Measure 7 treatment.
   regulatoryStatus                      String[] // ACNC_REGISTERED_CHARITY / DGR / INCOME_TAX_EXEMPT / NFP / REGISTERED_FOREIGN_BODY / AFSL_HOLDER / RESPONSIBLE_ENTITY
   unsupportedStructure                  Boolean         @default(false) // true when type = OTHER
   structuralState                       StructuralState @default(VALID) // §6.1 three-state classification

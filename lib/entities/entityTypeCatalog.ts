@@ -161,6 +161,20 @@ export const COMPANY_SUBTYPE_OPTIONS: ReadonlyArray<{ value: CompanySubtype; lab
   { value: 'NO_LIABILITY', label: 'No liability (NL)' },
 ] as const;
 
+/**
+ * Partnership subtypes — F-LAW review (2026-06-12). Corporate limited
+ * partnerships are taxed AS COMPANIES (Div 5A ITAA36); VCLP / ESVCLP
+ * carry Phase 41E Measure 7 treatment. String set mirrors the schema's
+ * documented values.
+ */
+export const PARTNERSHIP_SUBTYPE_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: 'GENERAL', label: 'General partnership' },
+  { value: 'LIMITED', label: 'Limited partnership' },
+  { value: 'INCORPORATED_LIMITED', label: 'Incorporated limited partnership' },
+  { value: 'VCLP', label: 'Venture capital LP (VCLP)' },
+  { value: 'ESVCLP', label: 'Early-stage venture capital LP (ESVCLP)' },
+] as const;
+
 /** Estate administration stages — mirrors the schema's documented string set. */
 export const ESTATE_STATUS_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: 'EARLY', label: 'Early administration' },
@@ -178,6 +192,7 @@ export function entityFieldApplicability(type: LegalEntityType): {
   dateOfBirth: boolean;
   trustDates: boolean; // deedDate + vestingDate
   estateStatus: boolean;
+  partnershipSubtype: boolean;
 } {
   const company = isCompanyFamily(type);
   const trust = isTrustFamily(type);
@@ -190,6 +205,7 @@ export function entityFieldApplicability(type: LegalEntityType): {
     dateOfBirth: type === 'INDIVIDUAL' || type === 'PERSONAL_NAME',
     trustDates: trust,
     estateStatus: type === 'DECEASED_ESTATE',
+    partnershipSubtype: type === 'PARTNERSHIP',
   };
 }
 

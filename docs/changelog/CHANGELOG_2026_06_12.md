@@ -358,3 +358,17 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 
 ### §12.11 — destructive writes in this change
 - `tx.shareParcel.update` / `tx.shareParcel.delete` (`entityRelationshipService.ts`): (1) where matches — only the parcel id confirmed in-transaction to hang off an edge with `userId = caller`; (2) columns — parcel detail fields the user explicitly edited / the row itself on mistaken-entry delete; (3) guard — `requireParcelEdge` join through `entityRelationship.userId` + parcel `relationshipId` check inside the same transaction. User confirmation: NOT REQUIRED (user-initiated edit of their own captured rows; dispose path never deletes).
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Phase 47 F4 + F-LAW + golden test
+
+### Changes Made — F4: wizard fine-tune + the law-completeness gap + the Renew golden test
+- **Type**: Feature (Stage F PR 4 of 4 — Stage F capture surfaces COMPLETE)
+- **F-LAW (Reza: "review the Australian laws and enable every possible entity and combinations")**: full audit written into the phase doc — the Phase 44 grammar holds against the AU structural inventory (companies all 5 ASIC forms, all trust shapes, SMSF w/ SIS rules, estates, associations/co-ops/strata/custodians, co-ownership per TR 93/32, explicit OTHER-flagged exclusions). **One material gap found + fixed: `partnershipSubtype`** (GENERAL/LIMITED/INCORPORATED_LIMITED/VCLP/ESVCLP — Div 5A taxes corporate LPs as companies; VCLP/ESVCLP carry 41E Measure 7). Nullable column + additive migration `20260612120000_add_partnership_subtype` + catalog + service + both API routes + dialog field.
+- **F4 wizard**: type domain re-pointed to the catalog SSOT (two-tier grouped select: Common / More structures — full 19-type grammar, zero added friction); `rolesForEntityType` re-pointed to the F2a templates (wizard ↔ Entity File can never drift); optional roles (secretary/settlor/appointor/guardian/executor/administrator) behind a per-entity "More detail" disclosure (auto-opens when edges exist); ReviewStep note extended ("fine-tune roles, share details and unusual structures in My Structure"). **Documented scope trim**: share quick-entry stays OUT of the wizard — parcels live in F3's editor (growth lens: CGT detail mid-onboarding is friction without payoff; "finishable later" is genuinely true now).
+- **F-G golden test** (`tests/entity-graph/renewStructure.golden.test.ts`): Reza's advisor chart node-for-node — 10 entities, 29 edges (directors, secretaries, shareholders, members, beneficiaries incl. bucket-company, ATF links, spouse, LRBA bare trust held for the SMSF). Asserts: nothing IMPOSSIBLE, the SMSF passes SIS s17A member⇔director rules **VALID**, the universe renders every node with the right vocabulary, every chart row is capturable via its type template. **Passes.**
+- **Verify**: 2,488 tests green (full suite); tsc/eslint/financial gate/build all pass.
+
+### §12.12 — schema change
+- `prisma/schema.prisma` + matching migration `prisma/migrations/20260612120000_add_partnership_subtype/migration.sql` in the same PR (single additive nullable TEXT column — no destructive DDL).
