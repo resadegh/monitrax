@@ -5,7 +5,12 @@
  * Get user subscription.
  *
  * PATCH /api/admin/users/:userId/subscription
- * Update user subscription.
+ * Update user subscription. Suspend/reactivate transitions are enforced at
+ * the IAM authority first: the user's GCP Identity Platform account is
+ * disabled/enabled via `setIdentityDisabledByEmail()` BEFORE the local
+ * UserSubscription row is mirrored. If the identity update fails, the whole
+ * request fails — a DB-only "suspended" flag would be cosmetic (nothing in
+ * the consumer app reads it; GCP is the IAM/IDM authority).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -14,6 +19,7 @@ import { verifyAdminGCPAuth } from '@/lib/admin/auth';
 import { hasPermission } from '@/lib/admin/permissions';
 import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
 import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
+import { setIdentityDisabledByEmail } from '@/lib/auth/identityPlatformAdmin';
 
 export async function GET(
   request: NextRequest,
@@ -88,6 +94,20 @@ export async function PATCH(
     const { userId } = await params;
     const body = await request.json();
 
+    // The user must exist — we need the email for the Identity Platform call,
+    // and upserting a subscription for a non-existent user would orphan a row.
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: { code: ADMIN_ERROR_CODES.USER_NOT_FOUND, message: 'User not found' } },
+        { status: 404 }
+      );
+    }
+
     // Get existing subscription
     const existingSubscription = await prisma.userSubscription.findUnique({
       where: { userId },
@@ -99,12 +119,36 @@ export async function PATCH(
     if (body.tier) updateData.tier = body.tier;
     if (body.status) updateData.status = body.status;
 
-    // Handle suspension
-    if (body.status === 'suspended' && existingSubscription?.status !== 'suspended') {
+    // Handle suspension — IAM authority first, DB mirror second.
+    const isSuspending = body.status === 'suspended' && existingSubscription?.status !== 'suspended';
+    const isReactivating = body.status === 'active' && existingSubscription?.status === 'suspended';
+    let identityResult: Awaited<ReturnType<typeof setIdentityDisabledByEmail>> | null = null;
+
+    if (isSuspending || isReactivating) {
+      identityResult = await setIdentityDisabledByEmail(user.email, isSuspending);
+
+      if (identityResult.status === 'failed') {
+        // Do NOT write the DB mirror — a suspension GCP didn't apply is a lie.
+        return NextResponse.json(
+          {
+            error: {
+              code: ADMIN_ERROR_CODES.INTERNAL_ERROR,
+              message: `Identity Platform ${isSuspending ? 'disable' : 'enable'} failed — suspension state unchanged. ${identityResult.detail ?? ''}`.trim(),
+            },
+          },
+          { status: 502 }
+        );
+      }
+      // 'updated'   — identity disabled/enabled; proceed with mirror.
+      // 'not_found' — no Firebase identity (local-only/seeded user); DB mirror only.
+      // 'skipped'   — GCP not the auth provider (local dev); DB mirror only.
+    }
+
+    if (isSuspending) {
       updateData.suspendedAt = new Date();
       updateData.suspendedReason = body.reason || 'Suspended by admin';
       updateData.suspendedBy = authResult.context.adminId;
-    } else if (body.status === 'active' && existingSubscription?.status === 'suspended') {
+    } else if (isReactivating) {
       updateData.suspendedAt = null;
       updateData.suspendedReason = null;
       updateData.suspendedBy = null;
@@ -126,16 +170,29 @@ export async function PATCH(
     await prisma.adminAuditLog.create({
       data: {
         adminUserId: authResult.context.adminId,
-        action: existingSubscription?.tier !== body.tier ? 'USER_TIER_CHANGED' : 'USER_UPDATED',
+        action: isSuspending
+          ? 'USER_SUSPENDED'
+          : isReactivating
+            ? 'USER_REACTIVATED'
+            : existingSubscription?.tier !== body.tier
+              ? 'USER_TIER_CHANGED'
+              : 'USER_UPDATED',
         category: 'USER_MANAGEMENT',
         targetType: 'User',
         targetId: userId,
-        description: `Updated subscription for user`,
+        description: isSuspending
+          ? `Suspended user ${user.email} (Identity Platform: ${identityResult?.status})`
+          : isReactivating
+            ? `Reactivated user ${user.email} (Identity Platform: ${identityResult?.status})`
+            : `Updated subscription for user`,
         ipAddress: authResult.context.ipAddress,
         metadata: {
           before: existingSubscription,
           after: subscription,
           reason: body.reason,
+          identityPlatform: identityResult
+            ? { status: identityResult.status, detail: identityResult.detail }
+            : undefined,
         },
       },
     });

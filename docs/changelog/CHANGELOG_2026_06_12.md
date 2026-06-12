@@ -47,3 +47,52 @@ deliberately SIMPLIFIED to one list + plain words after Reza's directive — scr
 ### §17.2 post-merge verification — PR #1081
 - Production deploy `dpl_9LdfsWTs9NUBNAVBoWGcopjsYaQa` reached `READY` after ~3 min.
   Runtime logs clean — only pre-existing DEP0169 noise.
+
+---
+
+## Session: gracious-sagan-42r5le — Admin portal: user detail real data + GCP-enforced suspend + full-portal audit
+
+### Changes Made
+- **Type**: Fix + Feature + Cleanup
+- **Scope**: Admin portal user management (`/admin/users/[userId]`), Identity Platform admin module, subscription API
+- **Root Cause**: The Phase 33 user-detail page shipped as scaffold and was never wired — it rendered a hardcoded `mockUser` ("John Smith") regardless of which user was clicked, and Suspend/Impersonate/Update Subscription were `console.log` stubs. The ADMIN_PORTAL_COMPLETION_PLAN mock-data inventory only listed top-level pages, so the detail page slipped through when the list pages migrated to real data. Separately, "suspension" had no enforcement anywhere: nothing in the consumer app reads `UserSubscription.status`, so even a wired DB flag would have been cosmetic.
+- **Solution**:
+  1. Rewired `app/admin/users/[userId]/page.tsx` to the existing `GET /api/admin/users/:userId` — real profile, entity counts, subscription, org memberships; loading/error/retry states; mock data and the fabricated activity feed deleted (an honest smaller page beats a fake-rich one); Impersonate button removed (no backend exists — queued for its own design pass).
+  2. Suspend/reactivate enforced at the IAM authority per Reza's directive ("portal is used as a UI but IAM and IDM is done through GCP"): new `setIdentityDisabledByEmail()` in `lib/auth/identityPlatformAdmin.ts` (Identity Platform Admin REST `accounts:update {disableUser}`, same WIF impersonation chain + `roles/firebaseauth.admin` grant as the right-to-erasure executor). The subscription PATCH disables/enables the GCP identity FIRST and only then mirrors `UserSubscription.status`; if the identity call fails the route returns 502 and writes nothing. Lockout: sign-in + refresh blocked immediately; already-issued ID tokens expire ≤1h (stateless JWKS verification — deliberately no per-request revocation query, §12.10 + the 2026-05-20 pool incident).
+  3. Audit: `USER_SUSPENDED` / `USER_REACTIVATED` actions with the Identity Platform outcome in metadata; 404 added when the target user doesn't exist.
+  4. §12.1 dead code: `lib/admin/services/` deleted entirely (8 files — client fetch-wrapper layer with zero importers, calling endpoints that don't exist, e.g. `POST .../suspend`). §12.2: the users list page's local `TIER_MRR` map replaced with canonical `USER_TIER_LIMITS[].monthlyPrice`.
+
+### Full admin portal dummy-data audit (same session, Reza request)
+Audited every page under `app/admin/**` against `app/api/admin/**`:
+- **REAL (22+ pages):** login/MFA, dashboard, analytics, audit-logs (+compliance/export), billing, users list, organizations list, security, settings, feature flags (incl. create modal), CDR compliance, GCP security-findings / errors / uptime / scheduler, support + support/logs, feedback, marketplace listings (+detail), AI advisor demo, calc-audit. All actions wired to live endpoints.
+- **Gaps found (queued in IMPLEMENTATION_PLAN Up Next):**
+  - `/admin/organizations/[orgId]` — fully mock ("Acme Accounting", 3 stub handlers, `page.tsx:20-67`); backend GET/PATCH + license routes exist → frontend wiring only.
+  - `POST /api/admin/users/[userId]/impersonate` does not exist — `/admin/support/impersonate` calls it and 404s. Needs a design pass (audit/CDR implications) before building.
+
+### Files Modified
+- `app/admin/users/[userId]/page.tsx` — full rewrite: mock → real API data + wired suspend/reactivate/tier-change
+- `app/admin/users/page.tsx` — local `TIER_MRR` → canonical `USER_TIER_LIMITS`
+- `app/api/admin/users/[userId]/subscription/route.ts` — user-existence check (404), IAM-authority-first suspend/reactivate orchestration, richer audit actions
+- `lib/auth/identityPlatformAdmin.ts` — `setIdentityDisabledByEmail()` + scope/suspension-semantics header docs
+- `lib/admin/index.ts` — header note updated for the services deletion
+- `lib/admin/services/*` — DELETED (8 files, orphaned)
+
+### Documentation Updated
+- `docs/operational/security/01_AUTHENTICATION.md` — new § User Suspension (Admin Portal)
+- `docs/operational/security/02_IAM_AND_PERMISSIONS.md` — `roles/firebaseauth.admin` row + least-privilege custom role now includes `firebaseauth.users.update`
+- `docs/blueprint/ADMIN_PORTAL_COMPLETION_PLAN.md` — mock-data inventory corrected + 2026-06-12 re-audit note
+- `docs/blueprint/PHASE_33_ADMIN_PORTAL.md` — Phase 33.3 status updated
+- `docs/IMPLEMENTATION_PLAN.md` — Recently Completed entry + Up Next row for the remaining gaps
+
+### Build Status
+- [x] Build passes (`npm run build`)
+- [x] Changed files lint clean (repo lint baseline of 99 pre-existing errors unchanged)
+- [ ] Tests — no test suite covers the admin portal pages (pre-existing)
+
+### Destructive writes (§12.11)
+- `prisma.userSubscription.upsert` in the subscription PATCH (pre-existing operation, modified in this PR) — see the PR body checklist. No schema change; no migration needed.
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| ecbc5f3 | fix(admin): wire user detail page to real data + GCP-enforced suspend |
