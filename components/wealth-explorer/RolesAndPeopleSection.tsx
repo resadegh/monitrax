@@ -234,25 +234,34 @@ export default function RolesAndPeopleSection({
               <div key={rowDef.key}>
                 <div className="mb-1 text-[12px] font-medium text-white/85">{rowDef.label}</div>
                 {rowEdges.length > 0 ? (
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {rowEdges.map(e => (
-                      <RoleChip
-                        key={e.id}
-                        edge={e}
-                        nodeType={nodesById[e.fromEntityId]?.type}
-                        busy={busyEdgeId === e.id}
-                        onEnd={() => void endRole(e)}
-                      />
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => setAddRole({ preset: rowDef })}
-                      className="rounded-full px-2 py-1 text-[11px] text-white/45 transition hover:text-white/75"
-                      style={{ border: '1px dashed rgba(255,255,255,0.15)' }}
-                    >
-                      + Add
-                    </button>
-                  </div>
+                  <>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {rowEdges.map(e => (
+                        <RoleChip
+                          key={e.id}
+                          edge={e}
+                          nodeType={nodesById[e.fromEntityId]?.type}
+                          busy={busyEdgeId === e.id}
+                          onEnd={() => void endRole(e)}
+                        />
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setAddRole({ preset: rowDef })}
+                        className="rounded-full px-2 py-1 text-[11px] text-white/45 transition hover:text-white/75"
+                        style={{ border: '1px dashed rgba(255,255,255,0.15)' }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                    {/* Phase 47 F3 — equity edges expand to their parcels
+                        ("500 ordinary · acquired 12 Mar 2021"). */}
+                    {rowEdges
+                      .filter(e => e.type === 'SHAREHOLDER_OF' || e.type === 'UNITHOLDER_OF')
+                      .map(e => (
+                        <EquityParcels key={`parcels-${e.id}`} edge={e} />
+                      ))}
+                  </>
                 ) : (
                   // Empty — a quiet invitation, never a warning (F2a).
                   <button
@@ -348,6 +357,7 @@ export default function RolesAndPeopleSection({
         <AddRoleDialog
           graph={graph}
           entityId={entityId}
+          entityType={entityType}
           entityName={entityName}
           preset={addRole.preset}
           onClose={() => setAddRole(null)}
@@ -426,6 +436,7 @@ function RoleChip({
 function AddRoleDialog({
   graph,
   entityId,
+  entityType,
   entityName,
   preset,
   onClose,
@@ -433,13 +444,24 @@ function AddRoleDialog({
 }: {
   graph: CanvasGraph;
   entityId: string;
+  entityType: LegalEntityType;
   entityName: string;
   preset?: RoleTemplateRow;
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { token } = useAuth();
-  const [type, setType] = useState<EntityRelationshipType>(preset?.anyOf[0] ?? 'DIRECTOR_OF');
+  // Type-aware suggestions (Reza 2026-06-12) — the entity's template
+  // rows name the roles that make sense here; everything else stays
+  // reachable under "All roles".
+  const suggestedTypes = useMemo(
+    () => [...new Set(roleTemplateFor(entityType).flatMap(r => r.anyOf))],
+    [entityType],
+  );
+  const suggestedSet = useMemo(() => new Set(suggestedTypes), [suggestedTypes]);
+  const [type, setType] = useState<EntityRelationshipType>(
+    preset?.anyOf[0] ?? suggestedTypes[0] ?? 'DIRECTOR_OF',
+  );
   const [counterpartId, setCounterpartId] = useState<string>('');
   const [newPersonName, setNewPersonName] = useState('');
   const [beneficiaryClass, setBeneficiaryClass] = useState<BeneficiaryClass | ''>('');
@@ -533,21 +555,42 @@ function AddRoleDialog({
             className="w-full rounded-lg bg-white/5 px-3 py-2 text-[13px] text-white outline-none"
             style={{ border: '1px solid rgba(255,255,255,0.12)' }}
           >
-            {preset
-              ? preset.anyOf.map(t => (
-                  <option key={t} value={t} className="bg-slate-900">
-                    {relationshipTypeMeta(t).label}
-                  </option>
-                ))
-              : RELATIONSHIP_TYPE_GROUPS.map(g => (
-                  <optgroup key={g.group} label={g.group}>
-                    {g.types.map(t => (
+            {preset ? (
+              preset.anyOf.map(t => (
+                <option key={t} value={t} className="bg-slate-900">
+                  {relationshipTypeMeta(t).label}
+                </option>
+              ))
+            ) : (
+              // Reza 2026-06-12: "if entity is SMSF only available
+              // options for that entity is showing" — the F2a template
+              // drives a suggested-first list; the full grammar stays
+              // one optgroup away (guidance, never gates — §14.3).
+              <>
+                {suggestedTypes.length > 0 && (
+                  <optgroup label="Suggested for this entity">
+                    {suggestedTypes.map(t => (
                       <option key={t} value={t} className="bg-slate-900">
                         {relationshipTypeMeta(t).label}
                       </option>
                     ))}
                   </optgroup>
-                ))}
+                )}
+                {RELATIONSHIP_TYPE_GROUPS.map(g => {
+                  const rest = g.types.filter(t => !suggestedSet.has(t));
+                  if (rest.length === 0) return null;
+                  return (
+                    <optgroup key={g.group} label={`All roles · ${g.group}`}>
+                      {rest.map(t => (
+                        <option key={t} value={t} className="bg-slate-900">
+                          {relationshipTypeMeta(t).label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
+              </>
+            )}
           </select>
         </div>
       ) : (
@@ -855,6 +898,230 @@ function DialogActions({
         {saving && <Loader2 size={12} className="animate-spin" />}
         {saveLabel}
       </button>
+    </div>
+  );
+}
+
+// =============================================================================
+// equity parcels — Phase 47 F3 ("[500 ORD]" becomes data)
+// =============================================================================
+
+interface ParcelRow {
+  id: string;
+  shareClass: string;
+  quantity: number;
+  paidPerUnit: number;
+  acquiredAt: string;
+  disposedAt: string | null;
+}
+
+const SHARE_CLASS_OPTIONS = [
+  { value: 'ORDINARY', label: 'Ordinary' },
+  { value: 'PREFERENCE', label: 'Preference' },
+  { value: 'REDEEMABLE_PREFERENCE', label: 'Redeemable preference' },
+  { value: 'A_CLASS', label: 'A class' },
+  { value: 'B_CLASS', label: 'B class' },
+  { value: 'C_CLASS', label: 'C class' },
+  { value: 'OTHER', label: 'Other' },
+] as const;
+
+/**
+ * Per-edge parcel block: lazy-loads on expand, lists active + disposed
+ * parcels, adds via an inline form, disposes (never deletes — CGT
+ * history survives; §12.11-guarded server-side).
+ */
+function EquityParcels({ edge }: { edge: CanvasEdge }) {
+  const { token } = useAuth();
+  const unitWord = edge.type === 'UNITHOLDER_OF' ? 'units' : 'shares';
+  const [open, setOpen] = useState(false);
+  const [parcels, setParcels] = useState<ParcelRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [form, setForm] = useState({ shareClass: 'ORDINARY', quantity: '', paidPerUnit: '', acquiredAt: '' });
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/entities/relationships/${edge.id}/parcels`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(extractApiError(json, res.status, 'Failed to load parcels.'));
+      setParcels((json as { data?: ParcelRow[] }).data ?? []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load parcels.');
+    }
+  }, [token, edge.id]);
+
+  useEffect(() => {
+    if (open && parcels === null) void load();
+  }, [open, parcels, load]);
+
+  async function addParcel() {
+    if (!token) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/entities/relationships/${edge.id}/parcels`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          shareClass: form.shareClass,
+          quantity: Number(form.quantity),
+          paidPerUnit: form.paidPerUnit ? Number(form.paidPerUnit) : undefined,
+          acquiredAt: form.acquiredAt,
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(extractApiError(json, res.status, 'Failed to add the parcel.'));
+      setForm({ shareClass: 'ORDINARY', quantity: '', paidPerUnit: '', acquiredAt: '' });
+      setAdding(false);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add the parcel.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function dispose(parcelId: string) {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/entities/relationships/${edge.id}/parcels/${parcelId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ disposedAt: new Date().toISOString() }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(extractApiError(json, res.status, 'Failed to record the disposal.'));
+      }
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to record the disposal.');
+    }
+  }
+
+  const canAdd = !saving && Number(form.quantity) > 0 && form.acquiredAt.length > 0;
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  return (
+    <div className="mt-1.5 pl-2">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/35 transition hover:text-white/65"
+      >
+        {edge.fromEntityName}&rsquo;s {unitWord} {open ? '▾' : '▸'}
+      </button>
+      {open && (
+        <div className="mt-1.5 space-y-1.5">
+          {error && <div className="text-[11px] text-amber-200/80">{error}</div>}
+          {parcels === null && !error && (
+            <div className="text-[11px] text-white/40">Loading…</div>
+          )}
+          {parcels?.length === 0 && (
+            <div className="text-[11px] text-white/40">No {unitWord} recorded yet.</div>
+          )}
+          {parcels?.map(pcl => (
+            <div
+              key={pcl.id}
+              className="flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[11px]"
+              style={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                opacity: pcl.disposedAt ? 0.55 : 1,
+              }}
+            >
+              <span className="tabular-nums text-white/85">
+                {pcl.quantity.toLocaleString()}{' '}
+                {SHARE_CLASS_OPTIONS.find(c => c.value === pcl.shareClass)?.label.toLowerCase() ?? pcl.shareClass}
+                <span className="text-white/45"> · acquired {fmtDate(pcl.acquiredAt)}</span>
+                {pcl.paidPerUnit > 0 && (
+                  <span className="text-white/45"> · ${pcl.paidPerUnit.toFixed(2)} paid</span>
+                )}
+                {pcl.disposedAt && (
+                  <span className="text-white/45"> · disposed {fmtDate(pcl.disposedAt)}</span>
+                )}
+              </span>
+              {!pcl.disposedAt && (
+                <button
+                  type="button"
+                  onClick={() => void dispose(pcl.id)}
+                  title="Record a disposal (keeps the history for CGT)"
+                  className="flex-shrink-0 text-[10px] text-white/40 transition hover:text-white/75"
+                >
+                  dispose
+                </button>
+              )}
+            </div>
+          ))}
+          {adding ? (
+            <div className="space-y-1.5 rounded-lg p-2.5" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <div className="grid grid-cols-2 gap-1.5">
+                <input
+                  value={form.quantity}
+                  onChange={e => setForm({ ...form, quantity: e.target.value })}
+                  placeholder="Quantity"
+                  inputMode="decimal"
+                  className="rounded-md bg-white/5 px-2 py-1.5 text-[11px] text-white placeholder-white/30 outline-none"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                />
+                <select
+                  value={form.shareClass}
+                  onChange={e => setForm({ ...form, shareClass: e.target.value })}
+                  className="rounded-md bg-white/5 px-2 py-1.5 text-[11px] text-white outline-none"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                >
+                  {SHARE_CLASS_OPTIONS.map(c => (
+                    <option key={c.value} value={c.value} className="bg-slate-900">{c.label}</option>
+                  ))}
+                </select>
+                <input
+                  value={form.paidPerUnit}
+                  onChange={e => setForm({ ...form, paidPerUnit: e.target.value })}
+                  placeholder="$ paid each (optional)"
+                  inputMode="decimal"
+                  className="rounded-md bg-white/5 px-2 py-1.5 text-[11px] text-white placeholder-white/30 outline-none"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                />
+                <input
+                  type="date"
+                  value={form.acquiredAt}
+                  onChange={e => setForm({ ...form, acquiredAt: e.target.value })}
+                  className="rounded-md bg-white/5 px-2 py-1.5 text-[11px] text-white outline-none"
+                  style={{ border: '1px solid rgba(255,255,255,0.12)' }}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button type="button" onClick={() => setAdding(false)} className="text-[11px] text-white/50">
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void addParcel()}
+                  disabled={!canAdd}
+                  className="rounded-md px-2.5 py-1 text-[11px] font-medium text-white disabled:opacity-40"
+                  style={{ background: '#059669' }}
+                >
+                  {saving ? 'Saving…' : 'Add parcel'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] text-white/45 transition hover:text-white/70"
+              style={{ border: '1px dashed rgba(255,255,255,0.15)' }}
+            >
+              <Plus size={11} strokeWidth={1.5} /> Add a parcel
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
