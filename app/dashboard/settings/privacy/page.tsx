@@ -22,6 +22,7 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
+import Link from 'next/link';
 import {
   Lock,
   Shield,
@@ -29,12 +30,15 @@ import {
   CheckCircle2,
   Trash2,
   RefreshCw,
+  RotateCcw,
   Building2,
   Database,
   Calendar,
   ExternalLink,
   Download,
+  UserX,
 } from 'lucide-react';
+import StartFreshDialog from '@/components/settings/StartFreshDialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -70,6 +74,7 @@ export default function PrivacySettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [startFreshOpen, setStartFreshOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showRevokeAllConfirm, setShowRevokeAllConfirm] = useState(false);
 
@@ -558,8 +563,70 @@ export default function PrivacySettingsPage() {
                   )}
                 </div>
               </div>
+
+              {/*
+               * Start fresh — full data reset, account survives. Added
+               * 2026-06-12 (Reza: "users data will get so out of hand they
+               * want to start over"). Unlike the two CDR cards above, this
+               * wipes ALL financial data (manual + imported) via
+               * /api/account/reset; the confirmation dialog carries the
+               * what-goes/what-stays comparison + export nudge.
+               */}
+              <div className="p-4 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-900/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-rose-700 dark:text-rose-400 flex items-center gap-2">
+                      <RotateCcw className="h-4 w-4" />
+                      Start Fresh
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Erase all your financial data and begin again as a new user — your login,
+                      security settings, legal consents and billing stay. You&apos;ll land back in
+                      the welcome wizard with a clean slate.
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="border-rose-300 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400"
+                    onClick={() => setStartFreshOpen(true)}
+                  >
+                    Start Fresh
+                  </Button>
+                </div>
+              </div>
+
+              {/*
+               * Delete account cross-link — the full right-to-erasure flow
+               * (30-day grace) lives on Settings → Security. Discoverability
+               * fix 2026-06-12: users looking to "delete everything" check
+               * THIS danger zone first (screenshot-confirmed), so the path
+               * is surfaced here instead of leaving them to hunt.
+               */}
+              <div className="p-4 rounded-lg border border-red-200 dark:border-red-900/50 bg-red-50/50 dark:bg-red-900/10">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
+                      <UserX className="h-4 w-4" />
+                      Delete Account
+                    </h4>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Permanently delete your account and all data, with a 30-day grace period to
+                      change your mind. Managed from the Security page.
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400">
+                    <Link href="/dashboard/settings/security">Go to Security</Link>
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          <StartFreshDialog
+            open={startFreshOpen}
+            onClose={() => setStartFreshOpen(false)}
+            token={token}
+          />
 
           {/* Your CDR Rights Info */}
           <Card>
