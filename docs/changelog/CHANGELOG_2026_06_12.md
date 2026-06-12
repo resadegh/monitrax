@@ -134,3 +134,37 @@ Audited every page under `app/admin/**` against `app/api/admin/**`:
 ### §17.2 post-merge verification — PR #1084 (user-detail PR, earlier this session)
 - Production deploy `dpl_ozk25Q8LkMPSG32d62ivd4zm1po5` reached `READY` (~3 min build).
 - Runtime logs: empty response — no traffic on the new deploy yet at 03:20 UTC (§17.6 "no logs in retention window" case, not an error). Preview of the same commit built + served green pre-merge. Re-scan on first traffic.
+
+---
+
+## Session: gracious-sagan-42r5le (PR 3) — Real Last Login + activity timeline, impersonation 404 removed, users-list N+1 fixed
+
+### Changes Made
+- **Type**: Feature + Fix + Cleanup
+- **Scope**: Admin portal user management + support tools
+- **Root Cause**: (a) The user list/detail pages showed "Last Login: -" and no activity because the APIs never exposed data that already exists in `LoginAttempt` and `AuditLog`. (b) `/admin/support/impersonate`'s Impersonate button called `POST /api/admin/users/[userId]/impersonate` — an endpoint that was never built — so every click 404'd; its "recent sessions" table queried a non-existent audit action and was permanently empty. (c) The users list API ran a per-user `userSubscription.findUnique` loop (N+1, §12.10).
+- **Solution**:
+  1. `GET /api/admin/users/:userId` returns `lastLoginAt` (latest successful `LoginAttempt`) + `recentActivity` (last 10 `AuditLog` events — action/status/entityType/ip/timestamp only; **metadata deliberately excluded** per CDR §13.3). Detail page renders real Last Login + a real Recent Activity card.
+  2. Users list API batched to 2 page-level queries (`userSubscription.findMany` + `loginAttempt.groupBy`); list shows real Last Login.
+  3. `/admin/support/impersonate` repurposed to an honest "User Lookup" page — search routes to the real user-detail profile; broken action + empty sessions table deleted; support-landing tile copy updated; dead `ADMIN_API_ROUTES.USER_IMPERSONATE` constant removed (§12.1). Real impersonation queued in `IMPLEMENTATION_PLAN.md` Up Next pending a design doc (recommended: read-only view-as via the `viewerContext` pattern, time-boxed, fully audited).
+
+### Files Modified
+- `app/api/admin/users/[userId]/route.ts` — `lastLoginAt` + `recentActivity` (batched Promise.all)
+- `app/api/admin/users/route.ts` — N+1 → 2 batched queries; `lastLoginAt` in payload
+- `app/admin/users/[userId]/page.tsx` — Last Login cell + Recent Activity card
+- `app/admin/users/page.tsx` — real Last Login column
+- `app/admin/support/impersonate/page.tsx` — rewrite: User Lookup (honest interim)
+- `app/admin/support/page.tsx` — tile copy
+- `lib/admin/constants.ts` — dead `USER_IMPERSONATE` route constant removed
+
+### Documentation Updated
+- `docs/IMPLEMENTATION_PLAN.md` — PR 3 completed entry; Up Next row now scoped to the impersonation design pass with the recommended shape
+- `docs/blueprint/PHASE_33_ADMIN_PORTAL.md` — Phase 33.3 activity logs ✅
+- `docs/blueprint/ADMIN_PORTAL_COMPLETION_PLAN.md` — impersonation interim fix noted
+
+### Build Status
+- [x] Build passes (`npm run build`)
+- [x] Changed files lint clean (repo baseline unchanged)
+
+### Destructive writes (§12.11)
+- None — this PR adds reads only (findFirst/findMany/groupBy) and UI changes.

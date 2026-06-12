@@ -24,6 +24,7 @@ interface UserData {
   name: string | null;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt: string | null;
   accountsCount: number;
   propertiesCount: number;
   loansCount: number;
@@ -111,7 +112,9 @@ export default function UsersPage() {
     tier: user.subscription.tier,
     status: user.subscription.status,
     mrr: USER_TIER_LIMITS[user.subscription.tier as keyof typeof USER_TIER_LIMITS]?.monthlyPrice ?? 0,
-    lastLogin: '-', // Will be populated when we add last login tracking
+    lastLogin: user.lastLoginAt
+      ? new Date(user.lastLoginAt).toLocaleDateString('en-AU')
+      : '—',
     createdAt: new Date(user.createdAt).toLocaleDateString('en-AU'),
   }));
 

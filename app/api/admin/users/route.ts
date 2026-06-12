@@ -81,39 +81,56 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where }),
     ]);
 
-    // Enrich with subscription data
-    const enrichedUsers = await Promise.all(
-      users.map(async (user: typeof users[number]) => {
-        const subscription = await prisma.userSubscription.findUnique({
-          where: { userId: user.id },
-        });
-
-        // Filter by tier and status if provided
-        if (tier && subscription?.tier !== tier) return null;
-        if (status && subscription?.status !== status) return null;
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          createdAt: user.createdAt,
-          updatedAt: user.updatedAt,
-          accountsCount: user._count.accounts,
-          propertiesCount: user._count.properties,
-          loansCount: user._count.loans,
-          subscription: subscription
-            ? {
-                tier: subscription.tier,
-                status: subscription.status,
-                currentPeriodEnd: subscription.currentPeriodEnd,
-              }
-            : {
-                tier: 'FREE',
-                status: 'active',
-              },
-        };
-      })
+    // Enrich with subscription + last-login data. Batched (2 queries for the
+    // whole page) — the previous per-user findUnique loop was an N+1
+    // (§12.10), fixed 2026-06-12 while adding lastLoginAt.
+    const userIds = users.map((u: typeof users[number]) => u.id);
+    const [subscriptions, lastLogins] = await Promise.all([
+      prisma.userSubscription.findMany({
+        where: { userId: { in: userIds } },
+      }),
+      prisma.loginAttempt.groupBy({
+        by: ['userId'],
+        where: { userId: { in: userIds }, success: true },
+        _max: { attemptedAt: true },
+      }),
+    ]);
+    const subscriptionByUserId = new Map(
+      subscriptions.map((s: typeof subscriptions[number]) => [s.userId, s])
     );
+    const lastLoginByUserId = new Map(
+      lastLogins.map((l: typeof lastLogins[number]) => [l.userId, l._max.attemptedAt])
+    );
+
+    const enrichedUsers = users.map((user: typeof users[number]) => {
+      const subscription = subscriptionByUserId.get(user.id);
+
+      // Filter by tier and status if provided
+      if (tier && subscription?.tier !== tier) return null;
+      if (status && subscription?.status !== status) return null;
+
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        lastLoginAt: lastLoginByUserId.get(user.id) ?? null,
+        accountsCount: user._count.accounts,
+        propertiesCount: user._count.properties,
+        loansCount: user._count.loans,
+        subscription: subscription
+          ? {
+              tier: subscription.tier,
+              status: subscription.status,
+              currentPeriodEnd: subscription.currentPeriodEnd,
+            }
+          : {
+              tier: 'FREE',
+              status: 'active',
+            },
+      };
+    });
 
     // Filter out nulls
     const filteredUsers = enrichedUsers.filter(Boolean);

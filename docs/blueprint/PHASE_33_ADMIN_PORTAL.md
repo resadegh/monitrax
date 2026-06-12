@@ -1032,8 +1032,8 @@ ADMIN_SUPPORT_TOOLS=true
 - ✅ Subscription management (tier change + suspend/reactivate; suspension
   enforced via GCP Identity Platform `accounts:update {disableUser}` —
   see `docs/operational/security/01_AUTHENTICATION.md` § User Suspension)
-- Activity logs (not yet — API exposes no per-user activity/last-login;
-  the mock activity feed was removed rather than faked)
+- ✅ Activity logs (real since 2026-06-12 PR 3 — `lastLoginAt` from
+  `LoginAttempt` + last-10 `AuditLog` events, metadata excluded per CDR §13.3)
 
 ### Phase 33.4: Billing Dashboard
 - Revenue overview

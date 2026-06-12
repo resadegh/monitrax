@@ -47,9 +47,12 @@
 >   suspension now ENFORCED (a suspended firm loses portal access to client
 >   data — `lib/portal/licenseGuard.ts`, see
 >   `docs/operational/security/03_CDR_COMPLIANCE.md`).
-> - **Impersonation** — `/admin/support/impersonate` calls
->   `POST /api/admin/users/[userId]/impersonate` which **does not exist**
->   (404). Needs a design pass before building (queued).
+> - ~~**Impersonation** — `/admin/support/impersonate` calls
+>   `POST /api/admin/users/[userId]/impersonate` which does not exist
+>   (404)~~ ✅ **INTERIM FIX 2026-06-12 (PR 3)** — page repurposed to an
+>   honest "User Lookup" tool routing to the real user-detail profile.
+>   Real impersonation remains queued pending a design doc
+>   (`IMPLEMENTATION_PLAN.md` § Up Next).
 
 ### What Needs Building
 - Support tools page (impersonation, error logs)
