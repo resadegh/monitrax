@@ -407,3 +407,14 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 - `lib/tax-engine/entity/entityTaxRouter.ts` — 12 extended-type flags, partnership-subtype dispatch, streaming flag
 - `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — status APPROVED WITH ADDENDA + §14
 - `tests/tax-engine/entity/entityTaxRouter.test.ts`, `tests/tax-engine/entityTaxFactsAssembler.test.ts`
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Stage D PR-2: the contracted feeds
+
+### Changes Made
+- **Q-CGT-FEED (mandatory per the approved review)**: `buildCgtEventsFifo` — CGT events for trust/SMSF entities from persisted BUY/SELL investment transactions, FIFO-matched **per lot** so every event carries its own holding period (Div 115 discount depends on it; never an averaged monthsHeld). Acquisition fees → cost base (s110-25); disposal fees reduce proceeds. Pre-FY sells consume lots silently; unmatched in-FY sells are SKIPPED (a fabricated zero cost base would overstate the gain) and flagged `UC-CGT-UNMATCHED-SELL`. FIFO assumption surfaced as `UC-CGT-PARCEL-ID` (Subdiv 115-A citation, "confirm the identification method with your accountant").
+- **Div 207 franking feed**: CONFIRMED `DividendPayment` rows where the entity is the shareholder become synthetic income items carrying their franking credits; the dedup risk with manually-recorded dividends is surfaced as `UC-DIVIDEND-REGISTER`, never silently double-counted.
+- **`EntityTaxFacts.assemblerNotes`** — new no-false-silence channel: assembly assumptions (FIFO, register feed) merge into every position's `uncomputed` via a router wrapper (de-duped by id).
+- **§17.2 — PR-1 (#1094)**: prod deploy `dpl_6fPUo2JSoLXiRaRYpzfcHjSjnLqb` READY (2026-06-12 23:21), clean.
+- **Tests**: 10 new (FIFO gain/split-lots/pre-FY/unmatched/loss/orphan, FY range, dividend mapper, notes merge) — **877 tax-engine tests green**, zero regressions.

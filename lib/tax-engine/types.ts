@@ -790,6 +790,16 @@ export interface EntityTaxFacts {
    */
   partnershipSubtype?: string;
   /**
+   * Stage D PR-2 (2026-06-12) — caveats the ASSEMBLER attaches to the
+   * facts it built (e.g. "CGT parcels matched FIFO", "dividends fed
+   * from the register — remove manual duplicates"). The router merges
+   * them into every position's `uncomputed` array so an assembly
+   * assumption is never silent. Same `UncomputedFlag` shape — these are
+   * "computed WITH a stated assumption" notes, the no-false-silence
+   * channel for the data layer.
+   */
+  assemblerNotes?: ReadonlyArray<UncomputedFlag>;
+  /**
    * Phase 41e.2 — SMSF contribution caps. When provided for an SMSF
    * entity, the router runs the existing `capTracker.trackContributionCaps`
    * primitive and produces an `EntityTaxPosition.result` containing the

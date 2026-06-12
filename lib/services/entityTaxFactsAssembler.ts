@@ -304,6 +304,115 @@ export async function assembleEntityTaxFacts(
     }
   }
 
+  const assemblerNotes: NonNullable<EntityTaxFacts['assemblerNotes']>[number][] = [];
+
+  // --- Stage D PR-2: Div 207 dividend feed (any recipient) -------------
+  // CONFIRMED DividendPayment rows where this entity is the shareholder
+  // become synthetic income items carrying their franking credits. The
+  // register is the source of truth; a manual duplicate is surfaced via
+  // UC-DIVIDEND-REGISTER, never silently double-counted.
+  const dividendPayments = await prisma.dividendPayment.findMany({
+    where: {
+      shareholderEntityId: entityId,
+      dividend: { userId, financialYear: fy.financialYear, status: 'CONFIRMED' },
+    },
+    select: {
+      id: true,
+      amount: true,
+      frankingCredits: true,
+      dividend: { select: { companyEntityId: true, frankingPercentage: true } },
+    },
+  });
+  if (dividendPayments.length > 0) {
+    const companyIds = [...new Set(dividendPayments.map((p) => p.dividend.companyEntityId))];
+    const companies = await prisma.legalEntity.findMany({
+      where: { id: { in: companyIds }, userId },
+      select: { id: true, name: true },
+    });
+    const companyNameById = new Map(companies.map((c) => [c.id, c.name]));
+    const dividendIncomes = buildDividendIncomeFromPayments(
+      dividendPayments.map((p) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        frankingCredits: Number(p.frankingCredits),
+        companyEntityId: p.dividend.companyEntityId,
+        frankingPercentage: Number(p.dividend.frankingPercentage),
+      })),
+      companyNameById,
+    );
+    facts.incomes = [...facts.incomes, ...dividendIncomes];
+    assemblerNotes.push({
+      id: 'UC-DIVIDEND-REGISTER',
+      rationale:
+        'Dividends from your companies were included from the dividend register with their franking credits (Div 207). If you also recorded the same dividend manually as income, remove the manual entry to avoid double counting.',
+      citation: { kind: 'ITAA_1997', reference: 'Div 207', lastReviewed: '2026-06-12' },
+    });
+  }
+
+  // --- Stage D PR-2: CGT events for trust / SMSF (Q-CGT-FEED) ----------
+  // Capital gains form part of the s 95 net income a trust distributes
+  // (Subdiv 115-C) — the trust path is not real without them (review
+  // F13). FIFO-matched from persisted BUY/SELL investment transactions
+  // on accounts this entity owns; the FIFO assumption is surfaced.
+  if (
+    entity.type === 'DISCRETIONARY_TRUST' ||
+    entity.type === 'UNIT_TRUST' ||
+    entity.type === 'SMSF'
+  ) {
+    const range = fyDateRange(fy.financialYear);
+    if (range) {
+      const txns = await prisma.investmentTransaction.findMany({
+        where: {
+          investmentAccount: { userId, ownerEntityId: entityId },
+          type: { in: ['BUY', 'SELL'] },
+          date: { lt: range.end }, // full buy history up to FY end
+        },
+        select: {
+          id: true,
+          holdingId: true,
+          ticker: true,
+          date: true,
+          type: true,
+          price: true,
+          units: true,
+          fees: true,
+        },
+        orderBy: { date: 'asc' },
+      });
+      const fifo = buildCgtEventsFifo(
+        txns.map((t) => ({
+          id: t.id,
+          holdingId: t.holdingId,
+          ticker: t.ticker,
+          date: t.date,
+          type: t.type as 'BUY' | 'SELL',
+          price: t.price,
+          units: t.units,
+          fees: t.fees,
+        })),
+        range,
+      );
+      if (fifo.events.length > 0) {
+        facts.cgtEvents = fifo.events;
+        assemblerNotes.push({
+          id: 'UC-CGT-PARCEL-ID',
+          rationale:
+            'Capital gains were computed by matching sold units to the earliest purchases (first-in-first-out). You may choose specific parcels instead — confirm the identification method with your accountant.',
+          citation: { kind: 'ITAA_1997', reference: 'Subdiv 115-A', lastReviewed: '2026-06-12' },
+        });
+      }
+      if (fifo.hadUnmatchedSell) {
+        assemblerNotes.push({
+          id: 'UC-CGT-UNMATCHED-SELL',
+          rationale:
+            'Some sold units had no recorded purchase history, so their gain was NOT computed (a guessed cost base would overstate it). Add the missing buy transactions to complete the picture.',
+        });
+      }
+    }
+  }
+
+  if (assemblerNotes.length > 0) facts.assemblerNotes = assemblerNotes;
+
   // --- Div 7A loans (COMPANY) — Q-UPE: LOAN rows only -----------------
   if (entity.type === 'COMPANY') {
     const benefits = await listPrivateCompanyBenefits(userId, {
@@ -342,4 +451,158 @@ export async function assembleEntityTaxFacts(
   }
 
   return facts;
+}
+
+// =============================================================================
+// STAGE D PR-2 — the contracted feeds (Q-CGT-FEED + Div 207 franking)
+// =============================================================================
+
+/** '2024-25' → the FY's UTC date range [1 Jul 2024, 1 Jul 2025). Null on junk. */
+export function fyDateRange(financialYear: string): { start: Date; end: Date } | null {
+  const m = /^(\d{4})-(\d{2})$/.exec(financialYear);
+  if (!m) return null;
+  const startYear = parseInt(m[1], 10);
+  return {
+    start: new Date(Date.UTC(startYear, 6, 1)),
+    end: new Date(Date.UTC(startYear + 1, 6, 1)),
+  };
+}
+
+export interface EquityTxn {
+  id: string;
+  /** Matching key — holdingId when linked, else ticker. Null = unmatchable. */
+  holdingId: string | null;
+  ticker: string | null;
+  date: Date;
+  type: 'BUY' | 'SELL';
+  price: number;
+  units: number;
+  fees: number | null;
+}
+
+export interface FifoCgtResult {
+  events: NonNullable<EntityTaxFacts['cgtEvents']>[number][];
+  /** True when an in-FY sell could not be fully matched to buy history. */
+  hadUnmatchedSell: boolean;
+}
+
+/** Whole months between two dates (calendar-aware, floors partial months). */
+function monthsBetween(from: Date, to: Date): number {
+  let months =
+    (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
+    (to.getUTCMonth() - from.getUTCMonth());
+  if (to.getUTCDate() < from.getUTCDate()) months -= 1;
+  return Math.max(0, months);
+}
+
+/**
+ * Q-CGT-FEED (design doc §7.2, revised up by review F13) — build CGT
+ * events from persisted BUY/SELL investment transactions, matched
+ * **first-in-first-out**. One event per (sell, matched-lot) pair so
+ * each carries ITS OWN holding period — never an averaged `monthsHeld`
+ * (the Div 115 discount depends on it).
+ *
+ * Honesty rules:
+ *  - Sells BEFORE the target FY still consume lots (so the queue is
+ *    correct) but emit no events.
+ *  - An in-FY sell that cannot be fully matched to buy history emits
+ *    events only for the MATCHED portion; the unmatched units are
+ *    skipped (a fabricated zero cost base would OVERSTATE the gain)
+ *    and `hadUnmatchedSell` is set so the caller surfaces a flag.
+ *  - FIFO is an assumption — the taxpayer may choose specific parcel
+ *    identification. The caller attaches `UC-CGT-PARCEL-ID`.
+ *
+ * Pure function — exported for unit testing.
+ */
+export function buildCgtEventsFifo(
+  transactions: readonly EquityTxn[],
+  fyRange: { start: Date; end: Date },
+): FifoCgtResult {
+  const events: FifoCgtResult['events'] = [];
+  let hadUnmatchedSell = false;
+
+  // Group by holding (holdingId preferred, ticker fallback).
+  const groups = new Map<string, EquityTxn[]>();
+  for (const t of transactions) {
+    const key = t.holdingId ?? (t.ticker ? `ticker:${t.ticker}` : null);
+    if (!key) continue;
+    const arr = groups.get(key) ?? [];
+    arr.push(t);
+    groups.set(key, arr);
+  }
+
+  for (const [, txns] of groups) {
+    const sorted = [...txns].sort((a, b) => a.date.getTime() - b.date.getTime());
+    // FIFO queue of open lots.
+    const lots: Array<{ date: Date; unitsLeft: number; unitCost: number }> = [];
+    for (const t of sorted) {
+      if (t.type === 'BUY') {
+        if (t.units > 0) {
+          lots.push({
+            date: t.date,
+            unitsLeft: t.units,
+            // Acquisition fees form part of the cost base (s110-25).
+            unitCost: t.price + (t.fees ?? 0) / t.units,
+          });
+        }
+        continue;
+      }
+      // SELL — match against the queue.
+      let remaining = t.units;
+      const inFy = t.date >= fyRange.start && t.date < fyRange.end;
+      // Disposal fees reduce proceeds, apportioned per matched unit.
+      const sellFeePerUnit = t.units > 0 ? (t.fees ?? 0) / t.units : 0;
+      while (remaining > 0 && lots.length > 0) {
+        const lot = lots[0];
+        const take = Math.min(remaining, lot.unitsLeft);
+        if (inFy) {
+          const proceeds = take * (t.price - sellFeePerUnit);
+          const costBase = take * lot.unitCost;
+          events.push({
+            id: `cgt-${t.id}-${events.length}`,
+            monthsHeld: monthsBetween(lot.date, t.date),
+            nominalAmount: proceeds - costBase,
+            label: `${t.ticker ?? 'Holding'} — ${take} units`,
+          });
+        }
+        lot.unitsLeft -= take;
+        remaining -= take;
+        if (lot.unitsLeft <= 0) lots.shift();
+      }
+      if (remaining > 0 && inFy) hadUnmatchedSell = true;
+    }
+  }
+
+  return { events, hadUnmatchedSell };
+}
+
+export interface DividendPaymentRow {
+  id: string;
+  amount: number;
+  frankingCredits: number;
+  companyEntityId: string;
+  frankingPercentage: number;
+}
+
+/**
+ * Div 207 feed — map the recipient's CONFIRMED `DividendPayment` rows
+ * to synthetic income items carrying their franking credits (the
+ * engine's gross-up reads `frankingCredits` off the income row). The
+ * caller attaches `UC-DIVIDEND-REGISTER` so a manually-recorded
+ * duplicate is the user's to remove, never silently double-counted.
+ * Pure function — exported for unit testing.
+ */
+export function buildDividendIncomeFromPayments(
+  payments: readonly DividendPaymentRow[],
+  companyNameById: ReadonlyMap<string, string>,
+): EntityTaxFacts['incomes'][number][] {
+  return payments.map((p) => ({
+    id: `divreg-${p.id}`,
+    name: `Dividend — ${companyNameById.get(p.companyEntityId) ?? 'company'} (from dividend register)`,
+    type: 'DIVIDEND',
+    amount: p.amount,
+    frequency: 'ANNUALLY',
+    frankingPercentage: p.frankingPercentage,
+    frankingCredits: p.frankingCredits,
+  }));
 }

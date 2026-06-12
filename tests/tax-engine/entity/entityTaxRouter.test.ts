@@ -593,3 +593,16 @@ describe('Stage D PR-1 — suppressed streaming surfaces UC-DIV-6E-STREAMING (AD
     expect(result.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
   });
 });
+
+describe('Stage D PR-2 — assembler notes surface on every branch', () => {
+  it('merges assemblerNotes into uncomputed (de-duped)', () => {
+    const note = {
+      id: 'UC-CGT-PARCEL-ID',
+      rationale: 'Capital gains were matched first-in-first-out.',
+    };
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PERSONAL_NAME', assemblerNotes: [note, note] }),
+    );
+    expect(result.uncomputed.filter((u) => u.id === 'UC-CGT-PARCEL-ID')).toHaveLength(1);
+  });
+});

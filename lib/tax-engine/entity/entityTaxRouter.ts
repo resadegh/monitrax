@@ -300,6 +300,27 @@ function mergeCgt(
 export function calculateEntityTaxPosition(
   facts: EntityTaxFacts,
 ): EntityTaxPosition {
+  const position = dispatchEntityTaxPosition(facts);
+  // Stage D PR-2 — surface the assembler's stated assumptions on every
+  // branch (FIFO parcel matching, register-fed dividends, …). De-dup by
+  // flag id so a re-dispatch never doubles a note.
+  if (facts.assemblerNotes && facts.assemblerNotes.length > 0) {
+    const seen = new Set(position.uncomputed.map((u) => u.id));
+    const merged = [...position.uncomputed];
+    for (const note of facts.assemblerNotes) {
+      if (!seen.has(note.id)) {
+        seen.add(note.id);
+        merged.push(note);
+      }
+    }
+    return { ...position, uncomputed: merged };
+  }
+  return position;
+}
+
+function dispatchEntityTaxPosition(
+  facts: EntityTaxFacts,
+): EntityTaxPosition {
   const config = facts.fy.financialYear
     ? getTaxYearConfig(facts.fy.financialYear)
     : getCurrentTaxYearConfig();
