@@ -26,6 +26,15 @@ interface UserDetail {
   name: string | null;
   createdAt: string;
   updatedAt: string;
+  lastLoginAt: string | null;
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    status: string;
+    entityType: string | null;
+    ipAddress: string | null;
+    createdAt: string;
+  }>;
   stats: {
     accountsCount: number;
     propertiesCount: number;
@@ -264,9 +273,11 @@ export default function UserDetailPage() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Last Login</p>
                 <p className="font-medium text-gray-900 dark:text-white">
-                  {new Date(user.updatedAt).toLocaleDateString('en-AU')}
+                  {user.lastLoginAt
+                    ? new Date(user.lastLoginAt).toLocaleString('en-AU')
+                    : 'Never'}
                 </p>
               </div>
               <div>
@@ -355,6 +366,45 @@ export default function UserDetailPage() {
                 <AdminButton variant="danger" onClick={handleSuspend} disabled={saving}>
                   {saving ? 'Saving...' : 'Suspend Account'}
                 </AdminButton>
+              </div>
+            )}
+          </AdminCard>
+          {/* Recent Activity (real audit-log events; metadata never exposed — CDR §13.3) */}
+          <AdminCard>
+            <AdminCardHeader
+              title="Recent Activity"
+              description="Latest audit-log events for this user"
+            />
+            {user.recentActivity.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-gray-400">No activity recorded yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {user.recentActivity.map((activity) => (
+                  <div
+                    key={activity.id}
+                    className="flex items-start justify-between pb-4 border-b border-gray-100 dark:border-gray-800 last:border-0 last:pb-0"
+                  >
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">
+                        {activity.action.replace(/_/g, ' ').toLowerCase().replace(/^./, (c) => c.toUpperCase())}
+                        {activity.status !== 'SUCCESS' && (
+                          <span className="ml-2 text-xs text-red-600 dark:text-red-400">
+                            {activity.status.toLowerCase()}
+                          </span>
+                        )}
+                      </p>
+                      {activity.entityType && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{activity.entityType}</p>
+                      )}
+                      {activity.ipAddress && (
+                        <p className="text-xs text-gray-400 font-mono">{activity.ipAddress}</p>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      {new Date(activity.createdAt).toLocaleString('en-AU')}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
           </AdminCard>
