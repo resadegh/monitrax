@@ -91,3 +91,8 @@ Audited every page under `app/admin/**` against `app/api/admin/**`:
 
 ### Destructive writes (§12.11)
 - `prisma.userSubscription.upsert` in the subscription PATCH (pre-existing operation, modified in this PR) — see the PR body checklist. No schema change; no migration needed.
+
+### Commit History
+| Hash | Message |
+|------|---------|
+| ecbc5f3 | fix(admin): wire user detail page to real data + GCP-enforced suspend |
