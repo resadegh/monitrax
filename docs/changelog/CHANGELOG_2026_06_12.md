@@ -324,3 +324,20 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 
 ### §17.2 post-merge verification — PR #1089 (Stage F plan)
 - Prod deploy `dpl_GMHhTQBaQp4zKFR3juoBoKQoYEBo` reached `READY` (2026-06-12 07:43:00) — docs-only merge, clean.
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Phase 47 F2 build
+
+### Changes Made — F2: "Roles & People" editor (the Entity File)
+- **Type**: Feature (Stage F PR 2 of 4)
+- **Scope**: `lib/entity-graph/roleTemplates.ts` (new, F2a SSOT), `components/wealth-explorer/RolesAndPeopleSection.tsx` (new), wired into `EntityDetailPanel` (desktop) + `WealthUniverseMobile` (sheet)
+- **Solution**: restores the relationship editing deleted with the legacy EntityCanvas (2026-05-31), in universe vocabulary + the F2a Entity File pattern:
+  - Per-type template rows (company → Directors/Shareholders/Secretary; trust → Trustee/Beneficiaries/Appointor/Settlor; SMSF → Trustee/Members; bare trust → Trustee + Held-for, both required — the LRBA shape; deceased estate → Executor/Administrator anyOf row). Filled rows = counterpart chips with end-role affordance (closes the edge, keeps history); empty required/expected rows = quiet dashed invitations.
+  - "Structure file N/M" completeness chip (invitation framing).
+  - "More roles" → full 19-type grammar (graphMeta groups) with **live §6.2 validity preview** via pure `classifyEdge` — exactly the deleted 1c dialog's contract: amber records, red blocks.
+  - Counterpart quick-create (INDIVIDUAL) inline.
+  - "Actually held for…" — lists + records `BeneficialOwnershipOverride` rows on the entity's assets (basis picker incl. Bare trust / Nominee / Custodian).
+  - All writes via the retained Phase 44 client + routes; no new fetch layer, nothing financial computed in the component (§8.3/§8.4).
+- **Stitch (§18)**: Entity File panel screen `88f4ac2d8f6544bdbacb90fbb4bf9072`, artefact `.stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}` (dark — the panel is the dark universe surface).
+- **Tests**: 7 role-template tests; 111 total green. tsc/eslint/gate/build all pass.

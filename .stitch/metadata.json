@@ -212,6 +212,16 @@
       "title": "Add Entity — Two-Tier Picker (Dark Mode)",
       "generatedAt": "2026-06-12T07:46:00.000000Z",
       "scope": "Dark variant of eb5dd4a3 — #0E1424 navy glass dialog, #22C55E selected accent, same anatomy. Artefact: .stitch/designs/phase47-f1/add-entity-two-tier-picker-dark.{html,png}."
+    },
+    "entity-file-roles-people-dark": {
+      "id": "88f4ac2d8f6544bdbacb90fbb4bf9072",
+      "sourceScreen": "projects/1859462351962811110/screens/88f4ac2d8f6544bdbacb90fbb4bf9072",
+      "deviceType": "DESKTOP",
+      "width": 2560,
+      "height": 2048,
+      "title": "Renew Investment Family Trust · Entity File",
+      "generatedAt": "2026-06-12T08:22:00.000000Z",
+      "scope": "F2 Entity File pattern: Roles & People template rows (filled chips + quiet dashed invitations), 'Structure file 2/3' completeness chip, 'Actually held for' beneficial-ownership card with basis pill, More roles affordance — in the Wealth Universe dark panel vocabulary. Artefact: .stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}. Consumers: components/wealth-explorer/RolesAndPeopleSection.tsx via EntityDetailPanel + WealthUniverseMobile."
     }
   },
   "failedGenerations": {

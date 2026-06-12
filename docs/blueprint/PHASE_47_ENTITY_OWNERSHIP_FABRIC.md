@@ -148,7 +148,9 @@ Execute the already-designed, review-gated Part 2: persist "what actually happen
 - Universe: `classifyEntity` additions — BARE_TRUST / FIXED / HYBRID / TESTAMENTARY_TRUST + DECEASED_ESTATE → `trust` vocabulary; CUSTODIAN_PLATFORM → `trustee-company`; FOREIGN_COMPANY / INCORPORATED_ASSOCIATION / CO_OPERATIVE / STRATA → `other-company`. No new glyphs v1 (restraint) — the type label carries the precision.
 - Stitch pass (§18): the expanded picker inside the existing glass dialog (4-variant matrix).
 
-#### F2 — "Roles & People" editor on My Structure (1 PR)
+#### F2 — "Roles & People" editor on My Structure (1 PR) — ✅ BUILT 2026-06-12 (ships as its own PR after F1 merges)
+
+> Shipped as specced + F2a: shared `RolesAndPeopleSection` (desktop panel + mobile sheet), canonical `lib/entity-graph/roleTemplates.ts` (per-type required/expected/optional rows; guidance layer — the validity matrix stays the law), template rows with end-role chips + quiet dashed invitations, completeness chip, "More roles" full-grammar dialog with LIVE `classifyEdge` §6.2 preview (NON_COMPLIANT records amber; IMPOSSIBLE blocks), quick-create INDIVIDUAL counterparts, and the "Actually held for…" beneficial-ownership recorder (basis incl. Bare trust — the LRBA shape). Stitch SoT: `88f4ac2d8f6544bdbacb90fbb4bf9072` (`.stitch/designs/phase47-f2/entity-file-roles-people-dark.{html,png}`). Universe popover completeness chip deferred to F-G polish. 7 role-template tests.
 
 The restoration. `EntityDetailPanel` (desktop) + the mobile detail card gain a **Roles & people** section:
 

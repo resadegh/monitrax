@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Wealth Explorer | Renew Investment Family Trust</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050810;
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .universe-canvas {
+            background: radial-gradient(circle at 40% 50%, #0A0E1F 0%, #050810 100%);
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
+
+        .entity-bubble {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(192, 193, 255, 0.08) 0%, transparent 70%);
+            filter: blur(40px);
+            animation: pulse 10s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.6; }
+        }
+
+        .glass-panel {
+            background: rgba(13, 18, 32, 0.96);
+            backdrop-filter: blur(40px);
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: -20px 0 50px rgba(0, 0, 0, 0.5);
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .dashed-button {
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+        }
+        .dashed-button:hover {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .squirckel-grid-tile {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+        .squirckel-grid-tile:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .silk-ribbon {
+            position: absolute;
+            pointer-events: none;
+            stroke: rgba(192, 193, 255, 0.15);
+            fill: none;
+            stroke-width: 1.5;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-variant": "#313441",
+                        "on-error": "#690005",
+                        "error": "#ffb4ab",
+                        "secondary-fixed-dim": "#89ceff",
+                        "secondary": "#89ceff",
+                        "primary-container": "#8083ff",
+                        "on-secondary-fixed-variant": "#004c6e",
+                        "background": "#10131e",
+                        "inverse-primary": "#494bd6",
+                        "tertiary-fixed": "#6ffbbe",
+                        "secondary-fixed": "#c9e6ff",
+                        "outline-variant": "#464554",
+                        "on-secondary-fixed": "#001e2f",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "primary": "#c0c1ff",
+                        "surface-container-high": "#262a36",
+                        "surface": "#10131e",
+                        "secondary-container": "#00a2e6",
+                        "on-surface-variant": "#c7c4d7",
+                        "on-secondary": "#00344d",
+                        "tertiary": "#4edea3",
+                        "on-background": "#e0e1f2",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "on-tertiary-fixed": "#002113",
+                        "inverse-surface": "#e0e1f2",
+                        "surface-dim": "#10131e",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "on-primary": "#1000a9",
+                        "tertiary-container": "#00885d",
+                        "surface-tint": "#c0c1ff",
+                        "error-container": "#93000a",
+                        "surface-container-lowest": "#0a0e19",
+                        "primary-fixed": "#e1e0ff",
+                        "on-primary-container": "#0d0096",
+                        "outline": "#908fa0",
+                        "on-primary-fixed": "#07006c",
+                        "surface-bright": "#353945",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-low": "#181b27",
+                        "surface-container-highest": "#313441",
+                        "on-tertiary": "#003824",
+                        "on-surface": "#e0e1f2",
+                        "surface-container": "#1c1f2b",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-secondary-container": "#00344e",
+                        "on-tertiary-container": "#000703",
+                        "inverse-on-surface": "#2d303c",
+                        "violet-accent": "#A78BFA",
+                        "emerald-accent": "#10B981",
+                        "sky-accent": "#0EA5E9"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "safe-area": "40px",
+                        "gutter": "24px"
+                    },
+                    fontFamily: {
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "headline-md": ["24px", { "lineHeight": "1.4", "fontWeight": "600" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.1em", "fontWeight": "700" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="dark bg-background text-on-surface">
+<!-- Universe Background -->
+<div class="universe-canvas overflow-hidden">
+<!-- Floating Entity Bubbles -->
+<div class="entity-bubble w-[300px] h-[300px] top-[10%] left-[15%]"></div>
+<div class="entity-bubble w-[200px] h-[200px] top-[60%] left-[5%]"></div>
+<div class="entity-bubble w-[400px] h-[400px] top-[40%] left-[50%]"></div>
+<!-- Subtle Connection Lines -->
+<svg class="absolute inset-0 w-full h-full opacity-20 pointer-events-none">
+<path class="silk-ribbon" d="M 200,300 C 400,300 400,600 600,600"></path>
+<path class="silk-ribbon" d="M 150,150 C 300,150 400,100 550,100"></path>
+</svg>
+<!-- Top Nav (from JSON Reference) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-gutter h-[60px] bg-surface-container-lowest/90 backdrop-blur-xl border-b border-outline-variant/20 shadow-lg shadow-black/40">
+<div class="flex items-center gap-8">
+<span class="text-headline-md font-headline-md font-bold tracking-tight text-primary">Wealth Explorer</span>
+<nav class="hidden md:flex items-center gap-6">
+<a class="text-label-caps font-label-caps text-on-surface-variant hover:text-on-surface transition-colors" href="#">Portfolio</a>
+<a class="text-label-caps font-label-caps text-primary border-b-2 border-primary pb-1" href="#">Universe</a>
+<a class="text-label-caps font-label-caps text-on-surface-variant hover:text-on-surface transition-colors" href="#">Analysis</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-bright/10 transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="tune">tune</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-bright/10 transition-all text-on-surface-variant">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Side Rail (from JSON Reference) -->
+<aside class="fixed right-0 top-[60px] h-[calc(100vh-60px)] z-40 flex flex-col items-center py-8 w-16 bg-surface-container-highest/90 backdrop-blur-2xl border-l border-white/10 shadow-2xl shadow-black/60 group hover:w-64 transition-all duration-500 ease-in-out">
+<div class="flex flex-col gap-4 w-full px-2">
+<div class="flex items-center gap-4 bg-secondary-container text-on-secondary-container rounded-xl p-3 cursor-pointer">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-label-caps font-label-caps opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Overview</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-bright/20 p-3 rounded-xl transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="database">database</span>
+<span class="text-label-caps font-label-caps opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Assets</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-bright/20 p-3 rounded-xl transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span class="text-label-caps font-label-caps opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">History</span>
+</div>
+<div class="flex items-center gap-4 text-on-surface-variant hover:bg-surface-bright/20 p-3 rounded-xl transition-all cursor-pointer">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span class="text-label-caps font-label-caps opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Settings</span>
+</div>
+</div>
+<div class="mt-auto px-4 w-full opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<div class="bg-white/5 p-4 rounded-2xl">
+<p class="text-[10px] text-white/40 uppercase tracking-widest mb-2">Entity Explorer</p>
+<p class="text-white font-medium text-sm leading-tight">Deep Dive Active</p>
+</div>
+</div>
+</aside>
+<!-- Right Detail Panel -->
+<div class="fixed right-16 top-0 h-full w-[420px] glass-panel z-50 flex flex-col transform transition-transform duration-500 custom-scrollbar overflow-y-auto">
+<!-- Header Section -->
+<div class="p-6 pb-4 flex flex-col gap-4">
+<div class="flex justify-between items-start">
+<div class="w-11 h-11 rounded-xl flex items-center justify-center border border-violet-accent/33 bg-violet-accent/10">
+<span class="material-symbols-outlined text-violet-accent text-[22px]" data-icon="umbrella">umbrella</span>
+</div>
+<button class="p-1 text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<div>
+<span class="text-[10px] font-bold text-violet-accent tracking-[0.2em] uppercase block mb-1">Family Trust</span>
+<h1 class="text-[16px] font-semibold text-white leading-tight">Renew Investment Family Trust</h1>
+</div>
+<div class="flex items-center gap-2">
+<div class="px-2 py-1 bg-emerald-accent/10 border border-emerald-accent/20 rounded-full flex items-center gap-1.5">
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-accent shadow-[0_0_8px_rgba(16,185,129,0.8)]"></div>
+<span class="text-[11px] font-medium text-emerald-accent leading-none">Active · Verified</span>
+</div>
+<div class="px-2 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-2">
+<span class="text-[11px] text-white/70 leading-none">Structure file 2/3</span>
+<div class="w-12 h-1 bg-white/10 rounded-full overflow-hidden">
+<div class="w-2/3 h-full bg-primary shadow-[0_0_8px_rgba(192,193,255,0.4)]"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="h-px w-full bg-gradient-to-r from-transparent via-white/5 to-transparent"></div>
+<!-- Identity Section -->
+<div class="px-6 py-5">
+<h2 class="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase mb-4">Identity</h2>
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<span class="text-[11px] text-white/50">ABN</span>
+<span class="text-[12px] text-white/90 font-medium tabular-nums">12 359 350 731</span>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-[11px] text-white/50">Established</span>
+<span class="text-[12px] text-white/90 font-medium">14 Mar 2019</span>
+</div>
+</div>
+</div>
+<!-- Roles & People Section -->
+<div class="px-6 py-5 border-t border-white/5">
+<h2 class="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase mb-4">Roles &amp; People</h2>
+<!-- Trustee -->
+<div class="mb-5">
+<p class="text-[11px] text-white/40 mb-2">Trustee</p>
+<div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/[0.05] border border-sky-accent/30 rounded-lg group cursor-pointer hover:bg-sky-accent/5 transition-colors">
+<span class="material-symbols-outlined text-[14px] text-sky-accent" data-icon="corporate_fare">corporate_fare</span>
+<span class="text-[12px] text-white/90">Renew Investment Pty Ltd</span>
+</div>
+</div>
+<!-- Beneficiaries -->
+<div class="mb-5">
+<p class="text-[11px] text-white/40 mb-2">Beneficiaries</p>
+<div class="flex flex-wrap gap-2">
+<div class="px-3 py-1.5 bg-white/[0.03] border border-white/10 rounded-lg flex items-center gap-2">
+<span class="text-[12px] text-white/90">Reza Sadegh</span>
+</div>
+<div class="px-3 py-1.5 bg-white/[0.03] border border-white/10 rounded-lg flex items-center gap-2">
+<span class="text-[12px] text-white/90">Newsha Javahery</span>
+</div>
+<div class="px-3 py-1.5 bg-violet-accent/10 border border-violet-accent/20 rounded-lg flex items-center gap-2">
+<span class="text-[12px] text-violet-accent/90">Renew Holding Company Pty Ltd</span>
+</div>
+<button class="px-3 py-1.5 text-[11px] text-white/40 hover:text-white/70 transition-colors">
+                            + Add
+                        </button>
+</div>
+</div>
+<!-- Empty States -->
+<div class="grid grid-cols-2 gap-3 mb-4">
+<button class="dashed-button py-2.5 rounded-lg flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-white/30" data-icon="person_add">person_add</span>
+<span class="text-[11px] text-white/45">Add an appointor</span>
+</button>
+<button class="dashed-button py-2.5 rounded-lg flex flex-col items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px] text-white/30" data-icon="how_to_reg">how_to_reg</span>
+<span class="text-[11px] text-white/45">Add the settlor</span>
+</button>
+</div>
+<button class="text-[11px] text-white/50 hover:text-white/80 transition-colors flex items-center gap-1">
+                    More roles <span class="material-symbols-outlined text-[14px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+<!-- Actually Held For Section -->
+<div class="px-6 py-5 border-t border-white/5">
+<h2 class="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase mb-4">Actually Held For</h2>
+<div class="p-4 bg-white/[0.03] border border-white/10 rounded-xl group cursor-pointer hover:bg-white/[0.06] transition-all">
+<div class="flex justify-between items-start mb-3">
+<div class="flex flex-col">
+<p class="text-[12px] text-white font-medium group-hover:text-primary transition-colors flex items-center gap-1">
+                                10 Fairview St property
+                                <span class="material-symbols-outlined text-[14px]" data-icon="arrow_forward">arrow_forward</span>
+</p>
+<p class="text-[11px] text-white/50">held for <span class="text-white/80">Renew Super</span></p>
+</div>
+<div class="px-2 py-0.5 bg-amber-400/10 border border-amber-400/20 rounded text-[10px] text-amber-400 uppercase tracking-wider font-semibold">
+                            Bare trust
+                        </div>
+</div>
+<button class="text-[11px] text-primary/70 hover:text-primary transition-colors">+ Add basis</button>
+</div>
+</div>
+<!-- Holds Section -->
+<div class="px-6 py-5 border-t border-white/5 pb-12">
+<h2 class="text-[10px] font-bold text-white/30 tracking-[0.2em] uppercase mb-4">Holds</h2>
+<div class="grid grid-cols-2 gap-3">
+<div class="squirckel-grid-tile p-4 rounded-2xl">
+<div class="flex justify-between items-center mb-1">
+<span class="material-symbols-outlined text-sky-accent text-[20px]" data-icon="domain">domain</span>
+<span class="text-[18px] font-semibold text-white">1</span>
+</div>
+<p class="text-[11px] text-white/50">Properties</p>
+</div>
+<div class="squirckel-grid-tile p-4 rounded-2xl opacity-50">
+<div class="flex justify-between items-center mb-1">
+<span class="material-symbols-outlined text-indigo-400 text-[20px]" data-icon="monitoring">monitoring</span>
+<span class="text-[18px] font-semibold text-white">0</span>
+</div>
+<p class="text-[11px] text-white/50">Investments</p>
+</div>
+<div class="squirckel-grid-tile p-4 rounded-2xl border-emerald-accent/20">
+<div class="flex justify-between items-center mb-1">
+<span class="material-symbols-outlined text-emerald-accent text-[20px]" data-icon="account_balance">account_balance</span>
+<span class="text-[18px] font-semibold text-white">2</span>
+</div>
+<p class="text-[11px] text-white/50">Accounts</p>
+</div>
+<div class="squirckel-grid-tile p-4 rounded-2xl opacity-50">
+<div class="flex justify-between items-center mb-1">
+<span class="material-symbols-outlined text-amber-400 text-[20px]" data-icon="category">category</span>
+<span class="text-[18px] font-semibold text-white">0</span>
+</div>
+<p class="text-[11px] text-white/50">Other assets</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Background Animation Layer (Dust Motes) -->
+<div class="fixed inset-0 pointer-events-none z-10 overflow-hidden" id="dust-layer"></div>
+<script>
+        // Simple Atmospheric Dust Motes
+        const dustLayer = document.getElementById('dust-layer');
+        const moteCount = 60;
+
+        for (let i = 0; i < moteCount; i++) {
+            const mote = document.createElement('div');
+            mote.style.position = 'absolute';
+            mote.style.width = Math.random() * 2 + 1 + 'px';
+            mote.style.height = mote.style.width;
+            mote.style.background = 'white';
+            mote.style.borderRadius = '50%';
+            mote.style.opacity = Math.random() * 0.15;
+            mote.style.top = Math.random() * 100 + '%';
+            mote.style.left = Math.random() * 100 + '%';
+            
+            const duration = 20 + Math.random() * 40;
+            const delay = -Math.random() * 40;
+            
+            mote.animate([
+                { transform: 'translate(0, 0)', opacity: 0 },
+                { transform: `translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px)`, opacity: mote.style.opacity },
+                { transform: `translate(${Math.random() * 200 - 100}px, ${Math.random() * 200 - 100}px)`, opacity: 0 }
+            ], {
+                duration: duration * 1000,
+                iterations: Infinity,
+                delay: delay * 1000,
+                easing: 'ease-in-out'
+            });
+
+            dustLayer.appendChild(mote);
+        }
+
+        // micro-interaction: subtle scaling on hover for tiles
+        document.querySelectorAll('.squirckel-grid-tile').forEach(tile => {
+            tile.addEventListener('mouseenter', () => {
+                tile.style.transition = 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                tile.style.transform = 'scale(1.05)';
+            });
+            tile.addEventListener('mouseleave', () => {
+                tile.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>
