@@ -120,7 +120,7 @@ Execute the already-designed, review-gated Part 2: persist "what actually happen
 
 ### Stage E — Report (bird's-eye outputs) — ~2 PRs
 
-- **E1. Per-entity report sections** — `contextBuilder` partitions by entity; financial-overview + tax-time reports gain per-entity sections (entity name, type badge, holdings, net position, engine-computed tax position or honest `UNCOMPUTED`).
+- **E1. Per-entity report sections** — ✅ **SHIPPED 2026-06-13.** `contextBuilder` gains `fetchEntityBreakdown` (net position from the SSOT master-snapshot `byEntity`; per-entity tax status from `assembleEntityTaxFacts` + `calculateEntityTaxPositionDecimal`). The financial-overview + tax-time reports render a **Per-Entity Breakdown** table (warm type badge, net position, monthly cashflow, holdings, tax status with reconciling totals) + a deduped **Per-Entity Tax Notes** block surfacing every engine caveat in plain English — including AD-2's `UC-OWNERSHIP-SPLIT` / `UC-BENEFICIAL-*` flags. Honesty: NO tax dollar is quoted from the engine's type-varied `result: unknown` (computed/has-caveats only). Progressive disclosure — hidden below 2 entities. Pure shared section builder `lib/reports/generators/entityBreakdownSection.ts` (8 tests). Additive — no schema/endpoint change. Remaining: **E2** (universe tax-flow overlay).
 - **E2. Universe tax-flow overlay** — extend the existing Money Flow lens with the Stage-D tax treatments (per-flow regime already renders; add per-entity tax-position badges to entity tiles). This completes the directive: structure + value + money flow + **tax flow**, one canvas.
 
 ### Stage F — Structure Capture Completion (added 2026-06-12, Reza directive)

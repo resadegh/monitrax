@@ -55,3 +55,36 @@ Continue Phase 47 Entity Ownership Fabric → Stage D addendum **AD-2** (binding
 
 ### §12.11 / §12.12
 - No destructive Prisma writes (read-only assembler + new pure module). No `prisma/schema.prisma` change → no migration.
+
+---
+
+## Session: ad2-implementation-dyaozo — Phase 47 Stage E1 (per-entity report sections)
+
+### Driver
+After AD-2 merged (#1097), Reza chose Stage E — per-entity reports — as the next increment. Stage E1 spec (`PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` §Stage E): *"contextBuilder partitions by entity; financial-overview + tax-time reports gain per-entity sections (entity name, type badge, holdings, net position, engine-computed tax position or honest UNCOMPUTED)."*
+
+### Changes Made
+- **Type**: Feature (reporting layer, additive)
+- **Scope**: `lib/reports/*` (contextBuilder + financial-overview + tax-time generators)
+- **Description**: The financial-overview and tax-time reports now carry a **Per-Entity Breakdown** section — one row per entity (warm type badge, net position, monthly cashflow, holdings count, tax status), totals that reconcile to the household figure, plus a deduped **Per-Entity Tax Notes** block listing every engine caveat in plain English (including AD-2's TR 93/32 split / beneficial-redirect flags).
+  - **Net position is SSOT** — read from the master snapshot `byEntity` (the same canonical engines the dashboard uses), never re-aggregated.
+  - **Tax status is honest** — `computed` vs caveat list from the per-entity tax engine (`assembleEntityTaxFacts` + `calculateEntityTaxPositionDecimal`). We deliberately do NOT quote a tax dollar from the engine's type-varied `result: unknown` (guessing a field name would risk false precision — financial-adviser lens).
+  - **Progressive disclosure** — the section is hidden below 2 entities (a one-entity household's per-entity table would just restate the totals).
+- **Additive**: no schema change, no new endpoint, no change to existing report sections; the new section only appears when ≥2 entities hold assets.
+
+### Files Modified / Created
+- `lib/reports/types.ts` — `EntityTaxStatus`, `EntityReportData`, `ReportContext.entityBreakdown`.
+- `lib/reports/contextBuilder.ts` — `fetchEntityBreakdown` (master-snapshot byEntity + per-entity tax status); wired into financial-overview + tax-time.
+- `lib/reports/generators/entityBreakdownSection.ts` (NEW) — pure shared section builder (table + caveat notes).
+- `lib/reports/generators/financialOverview.ts` + `taxTime.ts` — render the section.
+- `tests/reports/entityBreakdownSection.test.ts` (NEW) — 8 tests.
+- Docs: `PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` Stage E1; `IMPLEMENTATION_PLAN.md`.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors
+- [x] `tests/reports` + `tests/ownership` + `tests/tax-engine` = 932 passed (8 new)
+- [x] `eslint` clean on changed files
+- [x] `npm run build`
+
+### §12.11 / §12.12 / §12.14
+- No destructive Prisma writes (read-only report builder). No schema change → no migration. No tax-engine function modified (consumes existing engine output) → no §12.14 reform surface.

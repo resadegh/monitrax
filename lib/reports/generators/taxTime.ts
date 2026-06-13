@@ -5,6 +5,7 @@
 
 import type { ReportContext, ReportConfig, AnyReportSection } from '../types';
 import { createMetricSection, createTableSection, formatCurrency } from './index';
+import { buildEntityBreakdownSections } from './entityBreakdownSection';
 
 export function generateTaxTimeReport(
   context: ReportContext,
@@ -214,11 +215,14 @@ export function generateTaxTimeReport(
     }
   }
 
-  // Section 6: Important Notes
+  // Section 6.5: Per-Entity Breakdown (Phase 47 E1 — only with ≥2 entities)
+  sections.push(...buildEntityBreakdownSections(context, 7));
+
+  // Section 7: Important Notes
   sections.push({
     id: 'tax-notes',
     title: 'Important Notes',
-    order: 7,
+    order: 9,
     visible: true,
     type: 'text',
     content:
