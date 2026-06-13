@@ -4,6 +4,7 @@
 
 import type { ReportContext, ReportConfig, AnyReportSection } from '../types';
 import { createMetricSection, createTableSection, formatCurrency, formatPercentage } from './index';
+import { buildEntityBreakdownSections } from './entityBreakdownSection';
 
 export function generateFinancialOverviewReport(
   context: ReportContext,
@@ -177,6 +178,9 @@ export function generateFinancialOverviewReport(
       )
     );
   }
+
+  // Section 7: Per-Entity Breakdown (Phase 47 E1 — only with ≥2 entities)
+  sections.push(...buildEntityBreakdownSections(context, 7));
 
   return sections;
 }
