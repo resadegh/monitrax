@@ -238,6 +238,14 @@
       "title": "Add Property — Ownership Picker & Correction (Mobile Light)",
       "generatedAt": "2026-06-12T12:33:00.000000Z",
       "scope": "OWED debt: mobile-light variants of the picker 8e6fc018 + correction dialog ce11109f, stacked in one screen (single-column card reflow). Artefact: .stitch/designs/phase47/ownership-picker-correction-mobile.{html,png}. Residual matrix cells (mobile-dark pair + correction desktop-dark) documented as derivable via the §18.7.2 mode-flip rules — noted in CHANGELOG_2026_06_12."
+    },
+    "trust-distributions-mobile-dark": {
+      "id": "29d8f3b2ac3f43adae74e673bfde4995",
+      "sourceScreen": "projects/1859462351962811110/screens/29d8f3b2ac3f43adae74e673bfde4995",
+      "deviceType": "MOBILE",
+      "title": "Trust Distributions · Entity File & Record Split",
+      "generatedAt": "2026-06-13T01:00:00.000000Z",
+      "scope": "Stage D capture (Reza spot-check): Distributions section on the trust Entity File (resolution cards w/ status pill + per-beneficiary shares) + Record-this-year's-split dialog (per-beneficiary % inputs, live 100% sum check, signed-before-30-June toggle). Artefact: .stitch/designs/phase47-f2/trust-distributions-mobile-dark.{html,png}. Consumer: components/wealth-explorer/TrustDistributionsSection.tsx."
     }
   },
   "failedGenerations": {
