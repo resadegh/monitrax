@@ -407,3 +407,39 @@ User confirmation: feature explicitly requested and approved by Reza 2026-06-12 
 - `lib/tax-engine/entity/entityTaxRouter.ts` — 12 extended-type flags, partnership-subtype dispatch, streaming flag
 - `docs/blueprint/PHASE_44_PART_2_MONEY_FLOW_TAX_REWIRE.md` — status APPROVED WITH ADDENDA + §14
 - `tests/tax-engine/entity/entityTaxRouter.test.ts`, `tests/tax-engine/entityTaxFactsAssembler.test.ts`
+
+---
+
+## Session: gallant-gates-kb264m (continued) — Stage D PR-2: the contracted feeds
+
+### Changes Made
+- **Q-CGT-FEED (mandatory per the approved review)**: `buildCgtEventsFifo` — CGT events for trust/SMSF entities from persisted BUY/SELL investment transactions, FIFO-matched **per lot** so every event carries its own holding period (Div 115 discount depends on it; never an averaged monthsHeld). Acquisition fees → cost base (s110-25); disposal fees reduce proceeds. Pre-FY sells consume lots silently; unmatched in-FY sells are SKIPPED (a fabricated zero cost base would overstate the gain) and flagged `UC-CGT-UNMATCHED-SELL`. FIFO assumption surfaced as `UC-CGT-PARCEL-ID` (Subdiv 115-A citation, "confirm the identification method with your accountant").
+- **Div 207 franking feed**: CONFIRMED `DividendPayment` rows where the entity is the shareholder become synthetic income items carrying their franking credits; the dedup risk with manually-recorded dividends is surfaced as `UC-DIVIDEND-REGISTER`, never silently double-counted.
+- **`EntityTaxFacts.assemblerNotes`** — new no-false-silence channel: assembly assumptions (FIFO, register feed) merge into every position's `uncomputed` via a router wrapper (de-duped by id).
+- **§17.2 — PR-1 (#1094)**: prod deploy `dpl_6fPUo2JSoLXiRaRYpzfcHjSjnLqb` READY (2026-06-12 23:21), clean.
+- **Tests**: 10 new (FIFO gain/split-lots/pre-FY/unmatched/loss/orphan, FY range, dividend mapper, notes merge) — **877 tax-engine tests green**, zero regressions.
+
+---
+
+## Session: gallant-gates-kb264m (continued) — AU-LAW CONFORMANCE AUDIT + FIXES
+
+### The audit (Reza directive: "all calculations and relationships about the entities and tax rules should be 100% correct")
+Dedicated reviewer agent performed a code-level conformance audit of `lib/entity-graph/` + `lib/tax-engine/` against the statutes each module cites. **Verdict: 4 critical drifts, 9 minor, 14+ honest (UNCOMPUTED-gated) gaps, and the heavyweight items verified correct** (SIS s17A rules, Div 6 Bamford allocation + s99A, Div 7A s109E(6) annuity math, Div 115 rates + loss ordering, Div 295/NALI/ECPI, FY brackets/LITO/caps, TR 93/32 ownership semantics, FIFO fee treatment ≡ s110-25/s116-20).
+
+### Fixes shipped (all four criticals + six minors)
+1. **CRITICAL — super bring-forward (s292-85)**: branch ladder corrected in BOTH number+Decimal paths — TSB ≥ general TBC → **nil** NCC cap (was: standard cap); reduced band → **1 year/standard cap** (was: 2yr/$240k — modelled an illegal contribution with 47% excess-NCC exposure); thresholds now read from FY config. One pre-existing test was PINNING the drift — corrected.
+2. **CRITICAL — Div 207 franking (s202-60)**: explicit `frankingCredits` on the income row now WIN over the hard-coded 30/70 recompute (which overstated base-rate-entity credits ~28.6%) — both Float + Decimal taxability paths; calculator passes the row value through. The PR-2 dividend-register feed now lands at the paying company's actual rate.
+3. **CRITICAL — Medicare levy surcharge tiers**: FY24-25 singles $97k/$113k/$151k (had FY23-24's); FY23-24 corrected to $93k/$108k/$144k (had FY22-23's).
+4. **CRITICAL — FY25-26 indexation**: general transfer balance cap → **$2.0M** (1 Jul 2025 indexation) + bring-forward tiers $1.76M/$1.88M/$2.0M; MSCB swap fixed (FY24-25 $65,070 / FY25-26 $62,500); FY23-24 bring-forward tiers corrected to $1.68M/$1.79M/$1.9M.
+5. **Streaming deadlines (s115-228 / s207-58)**: capital-gain specific entitlement valid to **31 August**; franked to 30 June — per-character validation.
+6. **Residual streaming pools (Div 6E)**: the unstreamed remainder of each character pool now flows proportionately to ALL presently-entitled beneficiaries (was: collapsed to ordinary income for non-streamed beneficiaries).
+7. **SIS s17A(2) second director/trustee**: ERROR→INFO with corrected copy — the law permits ANY person provided the member is not their employee (relative/LPR is one limb); the old copy also reversed the employment direction.
+8. **Decimal-router parity**: Div 5A subtype dispatch + `UC-DIV-6E-STREAMING` + assembler-notes merge now identical on the Decimal path.
+9. **CGT 12-month boundary (s115-25(1))**: same-day-anniversary disposals no longer qualify for the discount (day-precise "at least 12 months BEFORE the event"; one-day boundary noted VERIFY-WITH-AGENT in the audit, conservative direction taken).
+10. **Citations**: company CGT exclusion s115-280→s115-10; Div 7A formula → s109E(6); Div 6E → ITAA 1936.
+
+### Remaining audit items (tracked, not fixed here)
+- Minor 3 family-MLS tiers (single-only modelled — documented gap); the s100A/UPE/s109Y/estate items are honest UNCOMPUTED gaps by design; final assurance = registered tax agent review at Basiq prep (already scheduled).
+
+### Tests
+- 71 net-new/updated pins incl. the corrected bring-forward bands, FY25-26 $2.0M tiers, explicit-franking preference + fallback, s17A INFO state — **2,524 tests green (full suite), zero unexplained regressions** (3 tests updated because they pinned the drift/stale citations).

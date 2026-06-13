@@ -300,6 +300,27 @@ function mergeCgt(
 export function calculateEntityTaxPosition(
   facts: EntityTaxFacts,
 ): EntityTaxPosition {
+  const position = dispatchEntityTaxPosition(facts);
+  // Stage D PR-2 — surface the assembler's stated assumptions on every
+  // branch (FIFO parcel matching, register-fed dividends, …). De-dup by
+  // flag id so a re-dispatch never doubles a note.
+  if (facts.assemblerNotes && facts.assemblerNotes.length > 0) {
+    const seen = new Set(position.uncomputed.map((u) => u.id));
+    const merged = [...position.uncomputed];
+    for (const note of facts.assemblerNotes) {
+      if (!seen.has(note.id)) {
+        seen.add(note.id);
+        merged.push(note);
+      }
+    }
+    return { ...position, uncomputed: merged };
+  }
+  return position;
+}
+
+function dispatchEntityTaxPosition(
+  facts: EntityTaxFacts,
+): EntityTaxPosition {
   const config = facts.fy.financialYear
     ? getTaxYearConfig(facts.fy.financialYear)
     : getCurrentTaxYearConfig();
@@ -710,6 +731,26 @@ function mergeCgtDecimal(
 export function calculateEntityTaxPositionDecimal(
   facts: EntityTaxFacts,
 ): EntityTaxPositionDecimal {
+  const position = dispatchEntityTaxPositionDecimal(facts);
+  // Stage D PR-2 parity (audit fix 2026-06-12, finding 10) — assembler
+  // notes surface on the Decimal path too.
+  if (facts.assemblerNotes && facts.assemblerNotes.length > 0) {
+    const seen = new Set(position.uncomputed.map((u) => u.id));
+    const merged = [...position.uncomputed];
+    for (const note of facts.assemblerNotes) {
+      if (!seen.has(note.id)) {
+        seen.add(note.id);
+        merged.push(note);
+      }
+    }
+    return { ...position, uncomputed: merged };
+  }
+  return position;
+}
+
+function dispatchEntityTaxPositionDecimal(
+  facts: EntityTaxFacts,
+): EntityTaxPositionDecimal {
   const config = facts.fy.financialYear
     ? getTaxYearConfig(facts.fy.financialYear)
     : getCurrentTaxYearConfig();
@@ -771,11 +812,29 @@ export function calculateEntityTaxPositionDecimal(
       s100aFacts: facts.trustDistribution.s100aFacts,
     });
 
+    // Audit fix 2026-06-12 (finding 10) — Decimal-path parity with the
+    // number path: suppressed streaming is never silent.
+    const trustUncomputedDec = facts.trustDistribution.streamingSuppressed
+      ? [
+          ...distributionResult.uncomputed,
+          {
+            id: 'UC-DIV-6E-STREAMING',
+            rationale:
+              'Streaming amounts were recorded, but no streaming power is on file for this trust\u2019s deed — Div 6E streaming is only valid if the deed permits it. The default proportionate allocation was computed instead. Record the deed\u2019s streaming power (or confirm with your accountant) to activate streaming.',
+            citation: {
+              kind: 'ITAA_1936' as const,
+              reference: 'Div 6E',
+              lastReviewed: '2026-06-12',
+            },
+          },
+        ]
+      : distributionResult.uncomputed;
+
     const merged = cgt
-      ? mergeCgtDecimal(distributionResult.citations, distributionResult.uncomputed, cgt)
+      ? mergeCgtDecimal(distributionResult.citations, trustUncomputedDec, cgt)
       : {
           citations: distributionResult.citations,
-          uncomputed: distributionResult.uncomputed,
+          uncomputed: trustUncomputedDec,
         };
 
     return {
@@ -918,7 +977,15 @@ export function calculateEntityTaxPositionDecimal(
 
   // Net-new entity types without slice-D dispatch data — income tax
   // UNCOMPUTED; CGT side calc may still surface.
-  const flag = UNCOMPUTED_ENTITY_TAX[facts.entityType];
+  // Audit fix 2026-06-12 (finding 10) — Decimal-path parity: a Div 5A /
+  // Measure 7 partnership subtype gets its subtype-specific flag here
+  // too (the generic s92 transparent-partnership rationale is legally
+  // WRONG for a corporate limited partnership).
+  const subtypeFlagDec =
+    facts.entityType === 'PARTNERSHIP' && facts.partnershipSubtype
+      ? UNCOMPUTED_PARTNERSHIP_SUBTYPE[facts.partnershipSubtype]
+      : undefined;
+  const flag = subtypeFlagDec ?? UNCOMPUTED_ENTITY_TAX[facts.entityType];
   const baseUncomputed: UncomputedFlag[] = flag ? [flag] : [];
   const merged = cgt
     ? mergeCgtDecimal([], baseUncomputed, cgt)
