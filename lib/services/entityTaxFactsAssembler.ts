@@ -38,7 +38,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import type { EntityTaxFacts, FYReference } from '@/lib/tax-engine/types';
+import type { EntityTaxFacts, FYReference, UncomputedFlag } from '@/lib/tax-engine/types';
 import {
   listDistributionResolutions,
   type DistributionResolutionSummary,
@@ -47,6 +47,15 @@ import {
   listPrivateCompanyBenefits,
   type PrivateCompanyBenefitSummary,
 } from './privateCompanyBenefitService';
+import { listOwnershipGroups } from './ownershipService';
+import { listBeneficialOwnershipOverrides } from './beneficialOwnershipService';
+import {
+  attributeAsset,
+  isActiveInFy,
+  type AssetOwnershipContext,
+  type OwnershipGroupLite,
+  type BeneficialOverrideLite,
+} from './ownershipAttribution';
 
 /** Entity types for which a `DistributionResolution` feeds `trustDistribution`. */
 const TRUST_DISTRIBUTION_TYPES: ReadonlySet<string> = new Set([
@@ -194,61 +203,21 @@ export async function assembleEntityTaxFacts(
   });
   if (!entity) return null;
 
-  const [incomes, expenses] = await Promise.all([
-    prisma.income.findMany({
-      where: { userId, ownerEntityId: entityId },
-      select: {
-        id: true,
-        name: true,
-        amount: true,
-        frequency: true,
-        type: true,
-        grossAmount: true,
-        paygWithholding: true,
-        propertyId: true,
-        investmentAccountId: true,
-      },
-    }),
-    prisma.expense.findMany({
-      where: { userId, ownerEntityId: entityId },
-      select: {
-        id: true,
-        name: true,
-        amount: true,
-        frequency: true,
-        category: true,
-        isTaxDeductible: true,
-        propertyId: true,
-        loanId: true,
-      },
-    }),
-  ]);
+  // Phase 47 Stage D (AD-2) — attribute income / expense by LEGAL
+  // INTEREST (TR 93/32 co-ownership splits) and BENEFICIAL ownership
+  // (bare-trust / nominee / LRBA overrides), not flat by `ownerEntityId`.
+  // Additive guarantee: an entity with no ownership group and no
+  // beneficial override on any of its assets receives byte-for-byte the
+  // prior flat attribution. The attribution notes flow into
+  // `assemblerNotes` so a split / redirect is never silent.
+  const attributed = await loadAttributedIncomeExpense(userId, entityId, fy);
 
   const facts: EntityTaxFacts = {
     entityId: entity.id,
     entityType: entity.type,
     fy,
-    incomes: incomes.map((i) => ({
-      id: i.id,
-      name: i.name,
-      type: i.type,
-      amount: Number(i.amount),
-      frequency: i.frequency,
-      propertyId: i.propertyId ?? undefined,
-      investmentAccountId: i.investmentAccountId ?? undefined,
-      grossAmount: i.grossAmount ? Number(i.grossAmount) : undefined,
-      paygWithholding: i.paygWithholding ? Number(i.paygWithholding) : undefined,
-    })),
-    expenses: expenses.map((e) => ({
-      id: e.id,
-      name: e.name,
-      category: e.category ?? 'OTHER',
-      amount: Number(e.amount),
-      frequency: e.frequency,
-      isTaxDeductible: e.isTaxDeductible,
-      propertyId: e.propertyId ?? undefined,
-      loanId: e.loanId ?? undefined,
-    })),
+    incomes: attributed.incomes,
+    expenses: attributed.expenses,
     depreciations: [],
   };
 
@@ -304,7 +273,11 @@ export async function assembleEntityTaxFacts(
     }
   }
 
-  const assemblerNotes: NonNullable<EntityTaxFacts['assemblerNotes']>[number][] = [];
+  // AD-2 attribution notes seed the channel (TR 93/32 split / beneficial
+  // redirect / uncomputable-split) so the no-false-silence rule holds.
+  const assemblerNotes: NonNullable<EntityTaxFacts['assemblerNotes']>[number][] = [
+    ...attributed.notes,
+  ];
 
   // --- Stage D PR-2: Div 207 dividend feed (any recipient) -------------
   // CONFIRMED DividendPayment rows where this entity is the shareholder
@@ -613,4 +586,227 @@ export function buildDividendIncomeFromPayments(
     frankingPercentage: p.frankingPercentage,
     frankingCredits: p.frankingCredits,
   }));
+}
+
+// =============================================================================
+// PHASE 47 STAGE D (AD-2) — stake & beneficial attribution feed
+// Reads OwnershipStake percentages (TR 93/32) + BeneficialOwnershipOverride
+// so a co-owned asset's income/deductions split per legal interest and a
+// bare-trust / nominee asset attributes to its beneficial owner. The pure
+// decision lives in `lib/services/ownershipAttribution.ts`; this section is
+// the DB plumbing + the asset-key resolution that feeds it.
+// =============================================================================
+
+/** Asset key matching `OwnershipGroup.ownedObjectType` + the FK the row links to. */
+export type AssetKey = { type: 'property' | 'investmentAccount' | 'asset' | 'loan'; id: string };
+
+/** Income rows link to a property or an investment account. Pure. */
+export function resolveIncomeAssetKey(row: {
+  propertyId: string | null;
+  investmentAccountId: string | null;
+}): AssetKey | null {
+  if (row.propertyId) return { type: 'property', id: row.propertyId };
+  if (row.investmentAccountId) return { type: 'investmentAccount', id: row.investmentAccountId };
+  return null;
+}
+
+/**
+ * Expense rows can link to a property, a loan, an investment account or a
+ * standalone asset. Property wins (a property's loan-interest expense
+ * splits with the property), then the other holdings. Pure.
+ */
+export function resolveExpenseAssetKey(row: {
+  propertyId: string | null;
+  loanId: string | null;
+  investmentAccountId: string | null;
+  assetId: string | null;
+}): AssetKey | null {
+  if (row.propertyId) return { type: 'property', id: row.propertyId };
+  if (row.investmentAccountId) return { type: 'investmentAccount', id: row.investmentAccountId };
+  if (row.assetId) return { type: 'asset', id: row.assetId };
+  if (row.loanId) return { type: 'loan', id: row.loanId };
+  return null;
+}
+
+/** Asset types that bear income / expense and so participate in attribution. */
+const INCOME_BEARING_GROUP_TYPES: ReadonlySet<string> = new Set([
+  'property',
+  'investmentAccount',
+  'asset',
+  'loan',
+]);
+
+interface AttributedFacts {
+  incomes: EntityTaxFacts['incomes'][number][];
+  expenses: EntityTaxFacts['expenses'][number][];
+  notes: UncomputedFlag[];
+}
+
+/**
+ * Load + attribute the entity's income / expense for the FY. The flat
+ * `ownerEntityId === entityId` pull is the base; on top of it, assets the
+ * entity CO-OWNS (a stake in an `OwnershipGroup`) or BENEFICIALLY owns (a
+ * `BeneficialOwnershipOverride`) are pulled even when another co-owner is
+ * the stamped legal owner, and every row is scaled by the entity's legal
+ * interest (TR 93/32) or redirected per beneficial ownership.
+ *
+ * Additive: with no group / override touching any of the entity's assets
+ * the output equals the prior flat mapping exactly (every weight is 1).
+ */
+async function loadAttributedIncomeExpense(
+  userId: string,
+  entityId: string,
+  fy: FYReference,
+): Promise<AttributedFacts> {
+  const fyRange = fyDateRange(fy.financialYear);
+
+  // --- Ownership context (groups + overrides active in the FY) --------
+  const [allGroups, allOverrides] = await Promise.all([
+    listOwnershipGroups(userId),
+    listBeneficialOwnershipOverrides(userId),
+  ]);
+
+  const groupByAssetKey = new Map<string, OwnershipGroupLite>();
+  const claimAssetIds = new Set<string>(); // assets this entity may claim beyond its flat rows
+  for (const g of allGroups) {
+    if (!INCOME_BEARING_GROUP_TYPES.has(g.ownedObjectType)) continue;
+    if (fyRange && !isActiveInFy(g.effectiveFrom, g.effectiveTo, fyRange)) continue;
+    // listOwnershipGroups is newest-first — first write per asset wins.
+    const key = `${g.ownedObjectType}:${g.ownedObjectId}`;
+    if (!groupByAssetKey.has(key)) {
+      groupByAssetKey.set(key, {
+        tenancyType: g.tenancyType,
+        stakes: g.stakes.map((s) => ({ entityId: s.entityId, sharePct: s.sharePct })),
+      });
+    }
+    if (g.stakes.some((s) => s.entityId === entityId)) claimAssetIds.add(g.ownedObjectId);
+  }
+
+  // Overrides are keyed by the bare object id — the create paths disagree
+  // on the type vocabulary ('property' vs 'asset'), but ids are uuids.
+  const overrideByObjectId = new Map<string, BeneficialOverrideLite>();
+  for (const o of allOverrides) {
+    if (o.legalOwnerEntityId !== entityId && o.beneficialOwnerEntityId !== entityId) continue;
+    if (fyRange && !isActiveInFy(o.effectiveFrom, o.effectiveTo, fyRange)) continue;
+    // Newest-first — first write per asset wins.
+    if (!overrideByObjectId.has(o.ownedObjectId)) {
+      overrideByObjectId.set(o.ownedObjectId, {
+        legalOwnerEntityId: o.legalOwnerEntityId,
+        beneficialOwnerEntityId: o.beneficialOwnerEntityId,
+        basis: o.basis,
+      });
+    }
+    if (o.beneficialOwnerEntityId === entityId) claimAssetIds.add(o.ownedObjectId);
+  }
+
+  // --- Pull rows: flat (legal-owned) + claimed (co-owned / beneficial)
+  const claimIds = [...claimAssetIds];
+  const incomeSelect = {
+    id: true,
+    name: true,
+    amount: true,
+    frequency: true,
+    type: true,
+    grossAmount: true,
+    paygWithholding: true,
+    ownerEntityId: true,
+    propertyId: true,
+    investmentAccountId: true,
+  } as const;
+  const expenseSelect = {
+    id: true,
+    name: true,
+    amount: true,
+    frequency: true,
+    category: true,
+    isTaxDeductible: true,
+    ownerEntityId: true,
+    propertyId: true,
+    loanId: true,
+    investmentAccountId: true,
+    assetId: true,
+  } as const;
+
+  const [flatIncomes, claimIncomes, flatExpenses, claimExpenses] = await Promise.all([
+    prisma.income.findMany({ where: { userId, ownerEntityId: entityId }, select: incomeSelect }),
+    claimIds.length > 0
+      ? prisma.income.findMany({
+          where: {
+            userId,
+            OR: [
+              { propertyId: { in: claimIds } },
+              { investmentAccountId: { in: claimIds } },
+            ],
+          },
+          select: incomeSelect,
+        })
+      : Promise.resolve([]),
+    prisma.expense.findMany({ where: { userId, ownerEntityId: entityId }, select: expenseSelect }),
+    claimIds.length > 0
+      ? prisma.expense.findMany({
+          where: {
+            userId,
+            OR: [
+              { propertyId: { in: claimIds } },
+              { investmentAccountId: { in: claimIds } },
+              { assetId: { in: claimIds } },
+              { loanId: { in: claimIds } },
+            ],
+          },
+          select: expenseSelect,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  // Merge unique by id (a row can be both legal-owned AND on a co-owned asset).
+  const incomeById = new Map<string, (typeof flatIncomes)[number]>();
+  for (const r of [...flatIncomes, ...claimIncomes]) incomeById.set(r.id, r);
+  const expenseById = new Map<string, (typeof flatExpenses)[number]>();
+  for (const r of [...flatExpenses, ...claimExpenses]) expenseById.set(r.id, r);
+
+  const notesById = new Map<string, UncomputedFlag>();
+  const ctxFor = (key: AssetKey | null, legalOwnerEntityId: string): AssetOwnershipContext => ({
+    legalOwnerEntityId,
+    group: key ? groupByAssetKey.get(`${key.type}:${key.id}`) : undefined,
+    override: key ? overrideByObjectId.get(key.id) : undefined,
+  });
+
+  const incomes: EntityTaxFacts['incomes'][number][] = [];
+  for (const i of incomeById.values()) {
+    const outcome = attributeAsset(entityId, ctxFor(resolveIncomeAssetKey(i), i.ownerEntityId));
+    if (outcome.flag) notesById.set(outcome.flag.id, outcome.flag);
+    if (outcome.weight <= 0) continue;
+    const w = outcome.weight;
+    incomes.push({
+      id: i.id,
+      name: i.name,
+      type: i.type,
+      amount: Number(i.amount) * w,
+      frequency: i.frequency,
+      propertyId: i.propertyId ?? undefined,
+      investmentAccountId: i.investmentAccountId ?? undefined,
+      grossAmount: i.grossAmount ? Number(i.grossAmount) * w : undefined,
+      paygWithholding: i.paygWithholding ? Number(i.paygWithholding) * w : undefined,
+    });
+  }
+
+  const expenses: EntityTaxFacts['expenses'][number][] = [];
+  for (const e of expenseById.values()) {
+    const outcome = attributeAsset(entityId, ctxFor(resolveExpenseAssetKey(e), e.ownerEntityId));
+    if (outcome.flag) notesById.set(outcome.flag.id, outcome.flag);
+    if (outcome.weight <= 0) continue;
+    const w = outcome.weight;
+    expenses.push({
+      id: e.id,
+      name: e.name,
+      category: e.category ?? 'OTHER',
+      amount: Number(e.amount) * w,
+      frequency: e.frequency,
+      isTaxDeductible: e.isTaxDeductible,
+      propertyId: e.propertyId ?? undefined,
+      loanId: e.loanId ?? undefined,
+    });
+  }
+
+  return { incomes, expenses, notes: [...notesById.values()] };
 }
