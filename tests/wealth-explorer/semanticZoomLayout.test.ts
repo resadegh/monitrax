@@ -410,3 +410,26 @@ describe('Phase WX.4 — semantic zoom layout', () => {
     });
   });
 });
+
+describe('Phase 47 E2 — per-entity tax status pass-through', () => {
+  it('carries WealthGraphEntity.taxStatus onto the entity node', () => {
+    const result = layoutWealthExplorer(
+      snapshot({
+        entities: [
+          entity('you', 'PERSONAL_NAME', { taxStatus: { computed: true, caveatCount: 0 } }),
+          entity('trust', 'DISCRETIONARY_TRUST', { taxStatus: { computed: false, caveatCount: 2 } }),
+        ],
+        assets: [asset('prop-1', 'property', 'trust', 1_000_000)],
+      }),
+    );
+    expect(result.nodes.find(n => n.id === 'you')!.taxStatus).toEqual({ computed: true, caveatCount: 0 });
+    expect(result.nodes.find(n => n.id === 'trust')!.taxStatus).toEqual({ computed: false, caveatCount: 2 });
+  });
+
+  it('leaves taxStatus undefined on the node when the entity has none', () => {
+    const result = layoutWealthExplorer(
+      snapshot({ entities: [entity('you', 'PERSONAL_NAME')] }),
+    );
+    expect(result.nodes.find(n => n.id === 'you')!.taxStatus).toBeUndefined();
+  });
+});

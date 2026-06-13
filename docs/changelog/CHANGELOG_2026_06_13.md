@@ -88,3 +88,37 @@ After AD-2 merged (#1097), Reza chose Stage E — per-entity reports — as the 
 
 ### §12.11 / §12.12 / §12.14
 - No destructive Prisma writes (read-only report builder). No schema change → no migration. No tax-engine function modified (consumes existing engine output) → no §12.14 reform surface.
+
+---
+
+## Session: ad2-implementation-dyaozo — Phase 47 Stage E2 (universe tax-flow overlay)
+
+### Driver
+After E1 merged (#1098), Reza chose to continue → Stage E2, completing Stage E. Spec: *"extend the existing Money Flow lens with the Stage-D tax treatments (per-flow regime already renders; add per-entity tax-position badges to entity tiles)."* §18.2.1 design-process decision (Reza, this session): **code-first + Stitch backfill** (the badge extends the already-shipped per-flow tax overlay + reuses the canvas's emerald/amber vocabulary).
+
+### Changes Made
+- **Type**: Feature (in-app design overlay, additive)
+- **Scope**: Wealth Explorer canvas (`/dashboard/wealth-explorer`) Money Flow lens
+- **Description**: Each entity tile now shows a per-entity **tax-position pip** when the Money Flow lens is active — **emerald ✓** (computed, no caveats) or **amber N** (N items pending/assumed, reusing the canvas's reform-amber). A toolbar **legend pill** ("N computed · N to review") decodes them.
+  - **Engine-backed, SSOT-aligned** — `wealthGraphService` computes per-entity `taxStatus` via the same `assembleEntityTaxFacts` + `calculateEntityTaxPositionDecimal` path the reports (E1) + per-entity tax page use, so the canvas badge never disagrees with those surfaces. Computed in parallel across entities (§12.10).
+  - **Honest** — status only (`{ computed, caveatCount }`); the engine's type-varied `result` (a tax dollar) stays server-side — no false precision on the pip (§0.3).
+  - **Additive** — no schema change, no new endpoint. The `entity.read`-gated `/api/wealth-graph` now also carries the status; since no tax figure is returned, no `tax_data.read` escalation is needed.
+
+### Files Modified
+- `lib/services/wealthGraphService.ts` — `EntityTaxStatusSummary` + `WealthGraphEntity.taxStatus`; parallel per-entity computation.
+- `lib/data/wealthExplorerTypes.ts` — `WealthNode.taxStatus`.
+- `lib/data/wealthExplorerLayout.ts` — carry `taxStatus` onto entity nodes.
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — tile pip (Money Flow lens only) + legend pill + JSDoc with Stitch screen ref.
+- `tests/wealth-explorer/semanticZoomLayout.test.ts` — 2 pass-through tests.
+- `.stitch/designs/phase47-e2/wealth-universe-tax-flow-overlay.{html,png}` (NEW) — §18.2.1 backfill, screen `8e2871ee0fc64e78a5361d86155c66eb` (project `1859462351962811110`).
+- Docs: `PHASE_47_ENTITY_OWNERSHIP_FABRIC.md` Stage E2 ✅; `IMPLEMENTATION_PLAN.md` Stage E COMPLETE.
+
+### Build Status
+- [x] `tsc --noEmit` — 0 errors
+- [x] `tests/wealth-explorer` 27 + `tests/wealth-graph`/`ownership`/`reports` green
+- [x] `eslint` clean on changed files
+- [x] `npm run build`
+
+### §18.2.1 / §16 / §12.x
+- Stitch backfill committed in this PR (screen ID in component JSDoc) — §18.2.1 satisfied.
+- No destructive Prisma writes; no schema change → no migration. No tax-engine function modified (consumes existing engine output) → no §12.14 reform surface.

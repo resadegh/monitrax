@@ -20,6 +20,16 @@
  * Semantic-zoom SoT: screens `770687a1c73c42f0b4fd5686782bf5f3` (L1) +
  * `068403f1296440508b601c2fc32d5e20` (L2)
  * Artefacts: `.stitch/designs/wealth-universe-zoom/universe-level{1,2}-desktop-dark.{html,png}`
+ *
+ * Phase 47 Stage E2 (2026-06-13) — tax-flow overlay. In the Money Flow
+ * lens, entity tiles carry a per-entity tax-position pip (emerald ✓ =
+ * computed with no caveats; amber N = N items pending/assumed) sourced
+ * from `WealthGraphEntity.taxStatus`, plus a legend pill. Status only —
+ * never a tax dollar (the engine's `result` stays server-side). Built
+ * code-first; Stitch backfill per CLAUDE.md §18.2.1 — screen
+ * `8e2871ee0fc64e78a5361d86155c66eb`, artefact
+ * `.stitch/designs/phase47-e2/wealth-universe-tax-flow-overlay.{html,png}`
+ * (project `1859462351962811110`).
  */
 
 'use client';
@@ -145,6 +155,12 @@ interface TileProps {
   isSelected: boolean;
   /** Satellite entrance stagger (Phase WX.4) — only set for asset tiles. */
   entranceDelayMs?: number;
+  /**
+   * Phase 47 E2 — when true (Money Flow lens active), entity tiles show a
+   * per-entity tax-position pip from `node.taxStatus`. Off in the
+   * structure lens so the canvas stays calm there.
+   */
+  taxOverlay?: boolean;
   onHover: () => void;
   onLeave: () => void;
   onClick: () => void;
@@ -159,6 +175,7 @@ function WealthNodeTile({
   isHovered,
   isSelected,
   entranceDelayMs,
+  taxOverlay,
   onHover,
   onLeave,
   onClick,
@@ -166,6 +183,32 @@ function WealthNodeTile({
   const isAnchor = !!node.isAnchor;
   const isFocal = !!node.isFocal || isSelected;
   const renderedSize = node.size * scaleMultiplier;
+
+  // Phase 47 E2 — per-entity tax pip (Money Flow lens only, entity tiles
+  // only). Emerald = computed with no caveats; amber = N items pending or
+  // assumed (matches the canvas's existing reform-amber language). The
+  // `title` carries the plain-English explanation; the detail panel/page
+  // remains the place to read the full per-entity position.
+  const taxPip =
+    taxOverlay && node.taxStatus && (node.tier === 'entity' || isAnchor) ? (
+      node.taxStatus.computed ? (
+        <span
+          className="absolute -left-1 -top-1 z-10 flex h-[16px] w-[16px] items-center justify-center rounded-full text-[9px] font-semibold text-[#062b1f]"
+          style={{ background: '#34D399', boxShadow: '0 0 8px rgba(52,211,153,0.4)' }}
+          title="Tax position computed for this entity — no caveats"
+        >
+          ✓
+        </span>
+      ) : (
+        <span
+          className="absolute -left-1 -top-1 z-10 flex h-[16px] min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-semibold tabular-nums text-[#3a2a05]"
+          style={{ background: '#FBBF24', boxShadow: '0 0 8px rgba(251,191,36,0.4)' }}
+          title={`${node.taxStatus.caveatCount} item${node.taxStatus.caveatCount === 1 ? '' : 's'} pending or assumed — open this entity to review`}
+        >
+          {node.taxStatus.caveatCount}
+        </span>
+      )
+    ) : null;
 
   const accentRgb = hexToRgb(accent);
   const innerGlow = accentRgb
@@ -262,6 +305,7 @@ function WealthNodeTile({
             {node.assetSummary.count}
           </span>
         )}
+        {taxPip}
         <div
           className="absolute left-1/2 top-full mt-2 -translate-x-1/2 text-center"
           style={{ width: Math.max(120, renderedSize * 1.4) }}
@@ -549,6 +593,19 @@ export default function WealthUniverseCanvas() {
 
   const nodes = useMemo(() => layout?.nodes ?? [], [layout]);
   const relationships = useMemo(() => layout?.relationships ?? [], [layout]);
+  // Phase 47 E2 — tally per-entity tax-position pips for the Money-Flow
+  // lens legend (computed vs caveat). Entity/anchor tiles only.
+  const taxOverlayCounts = useMemo(() => {
+    let computed = 0;
+    let caveat = 0;
+    for (const n of nodes) {
+      if ((n.tier === 'entity' || n.isAnchor) && n.taxStatus) {
+        if (n.taxStatus.computed) computed += 1;
+        else caveat += 1;
+      }
+    }
+    return { computed, caveat, total: computed + caveat };
+  }, [nodes]);
   // Phase 2 enhancement — FY-slider state. Default to the most recent
   // FY with data (from the service). User can scrub through historical
   // FYs in money-flow mode. `null` until the layout loads.
@@ -997,6 +1054,32 @@ export default function WealthUniverseCanvas() {
             pill surfaces "N pending Royal Assent" with the canonical
             notice in a tooltip. NEVER replaced by a computed number —
             this is the FW-2 honesty surface. */}
+        {/* Phase 47 E2 — tax-position pip legend. Decodes the emerald/amber
+            pips on entity tiles. Status only — the per-entity tax page is
+            where the full position (and any tax figures) live. */}
+        {flowMode === 'money-flow' && taxOverlayCounts.total > 0 && (
+          <div
+            className="flex h-7 items-center gap-2 rounded-full px-2.5 text-[10px] font-medium"
+            style={{
+              background: 'rgba(19, 26, 46, 0.7)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              color: 'rgba(255,255,255,0.7)',
+            }}
+            title="Per-entity tax-position status for the current financial year. Emerald = computed with no caveats. Amber = items pending or assumed — open the entity to review. Monitrax never shows a guessed tax figure here."
+          >
+            <span className="flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#34D399' }} />
+              {taxOverlayCounts.computed} computed
+            </span>
+            {taxOverlayCounts.caveat > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full" style={{ background: '#FBBF24' }} />
+                {taxOverlayCounts.caveat} to review
+              </span>
+            )}
+          </div>
+        )}
+
         {flowMode === 'money-flow' && pendingReformFlowCount > 0 && (
           <div
             className="flex h-7 items-center gap-1.5 rounded-full px-2.5 text-[10px] font-medium"
@@ -1193,6 +1276,7 @@ export default function WealthUniverseCanvas() {
               isHovered={hoveredId === node.id}
               isSelected={selectedId === node.id}
               entranceDelayMs={satelliteDelayById.get(node.id)}
+              taxOverlay={flowMode === 'money-flow'}
               onHover={() => setHoveredId(node.id)}
               onLeave={() => setHoveredId(prev => (prev === node.id ? null : prev))}
               onClick={() => handleNodeClick(node)}
