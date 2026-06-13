@@ -43,6 +43,7 @@ import {
   WizardData,
   EntityInput,
   LegalEntityType,
+  LegalEntityRole,
   WizardRelationshipType,
   RelationshipInput,
   LEGAL_ENTITY_TYPE_LABELS,
@@ -59,7 +60,8 @@ import '@/styles/wizard-animations.css';
 // ROLE CONFIG — the load-bearing edges per entity type
 // =============================================================================
 
-const isIndividualType = (t: LegalEntityType): boolean => t === 'PERSONAL_NAME';
+const isIndividualType = (t: LegalEntityType): boolean =>
+  t === 'PERSONAL_NAME' || t === 'INDIVIDUAL';
 const isCompanyType = (t: LegalEntityType): boolean => t === 'COMPANY';
 
 interface RoleDef {
@@ -317,6 +319,79 @@ export function RelationshipsStep({
     [data.entities],
   );
 
+  // Reza spot-check fix (2026-06-13): PEOPLE must be pickable for roles
+  // — he couldn't nominate himself or Newsha as beneficiaries because
+  // the wizard's candidate pool only carried structure entities. The
+  // user's PERSONAL_NAME entity ("You") + any INDIVIDUAL entities are
+  // fetched with their REAL ids (auto-created server-side at signup /
+  // by the ownership picker), so the relationship sync persists edges
+  // directly. A quick "Add a person" creates an INDIVIDUAL on the spot.
+  const [people, setPeople] = useState<EntityInput[]>([]);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [addingPerson, setAddingPerson] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/entities', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data?: Array<{ id: string; name: string; type: LegalEntityType }>;
+        };
+        if (cancelled) return;
+        setPeople(
+          (json.data ?? [])
+            .filter((r) => r.type === 'PERSONAL_NAME' || r.type === 'INDIVIDUAL')
+            .map((r) => ({
+              id: r.id,
+              name: r.type === 'PERSONAL_NAME' ? `You (${r.name})` : r.name,
+              type: r.type,
+              role: 'PERSONAL' as LegalEntityRole,
+            })),
+        );
+      } catch {
+        // People stay empty — the chips simply don't render.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  async function addPerson() {
+    const name = newPersonName.trim();
+    if (!token || !name) return;
+    setAddingPerson(true);
+    try {
+      const res = await fetch('/api/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, type: 'INDIVIDUAL', role: 'PERSONAL' }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { data?: { id?: string; name?: string } };
+      const created = json.data;
+      if (res.ok && created?.id) {
+        setPeople((prev) => [
+          ...prev,
+          { id: created.id!, name: created.name ?? name, type: 'INDIVIDUAL', role: 'PERSONAL' as LegalEntityRole },
+        ]);
+        setNewPersonName('');
+      }
+    } finally {
+      setAddingPerson(false);
+    }
+  }
+
+  // The candidate pool every wiring card picks from: wizard entities +
+  // persisted people (deduped by id).
+  const candidatePool = useMemo(() => {
+    const seen = new Set(data.entities.map((e) => e.id));
+    return [...data.entities, ...people.filter((p) => !seen.has(p.id))];
+  }, [data.entities, people]);
+
   // Pre-seed TRUSTEE_OF edges from the trustee links the user already set
   // in the entity step (`parentEntityTempId`) — no double entry. Runs once.
   const seededRef = useRef(false);
@@ -412,11 +487,28 @@ export function RelationshipsStep({
               <EntityWiringCard
                 key={entity.id}
                 entity={entity}
-                allEntities={data.entities}
+                allEntities={candidatePool}
                 relationships={data.relationships}
                 onToggle={toggle}
               />
             ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              value={newPersonName}
+              onChange={(e) => setNewPersonName(e.target.value)}
+              placeholder="Add a person (e.g. your spouse) so you can pick them above"
+              className="h-9 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            />
+            <button
+              type="button"
+              onClick={() => void addPerson()}
+              disabled={addingPerson || newPersonName.trim().length === 0}
+              className="h-9 rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white disabled:opacity-40"
+            >
+              {addingPerson ? 'Adding…' : 'Add person'}
+            </button>
           </div>
 
           <p className="text-center text-xs text-slate-500 dark:text-slate-400">

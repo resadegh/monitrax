@@ -71,6 +71,7 @@ import {
   type RoleTemplateRow,
 } from '@/lib/entity-graph/roleTemplates';
 import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
+import TrustDistributionsSection from './TrustDistributionsSection';
 
 // =============================================================================
 // shared option sets
@@ -176,6 +177,26 @@ export default function RolesAndPeopleSection({
     [template],
   );
   const otherEdges = inboundEdges.filter(e => !templateTypes.has(e.type));
+
+  // Stage D capture (Reza spot-check 2026-06-13) — distributing trusts
+  // get the per-FY Distributions section. The PERCENTAGES live on the
+  // trustee's yearly resolution, never on the beneficiary roles — a
+  // discretionary trust's defining feature.
+  const DISTRIBUTING_TRUST_TYPES: ReadonlySet<string> = new Set([
+    'DISCRETIONARY_TRUST',
+    'UNIT_TRUST',
+    'FIXED_TRUST',
+    'HYBRID_TRUST',
+    'TESTAMENTARY_TRUST',
+  ]);
+  const isDistributingTrust = DISTRIBUTING_TRUST_TYPES.has(entityType);
+  const distributionBeneficiaries = useMemo(
+    () =>
+      inboundEdges
+        .filter(e => e.type === 'BENEFICIARY_OF' || e.type === 'UNITHOLDER_OF')
+        .map(e => ({ id: e.fromEntityId, name: e.fromEntityName })),
+    [inboundEdges],
+  );
 
   const myOverrides = overrides.filter(o => o.legalOwnerEntityId === entityId);
 
@@ -303,8 +324,25 @@ export default function RolesAndPeopleSection({
           >
             More roles →
           </button>
+          {entityType === 'DISCRETIONARY_TRUST' && (
+            // Financial-adviser teaching line (Reza 2026-06-13) — fixed
+            // percentages are not a thing for discretionary
+            // beneficiaries; the yearly split is.
+            <p className="text-[11px] leading-relaxed text-white/45">
+              Beneficiaries don&rsquo;t hold fixed shares in a family trust —
+              the trustee decides each year&rsquo;s split. Record it under
+              Distributions below.
+            </p>
+          )}
         </div>
       </div>
+
+      {isDistributingTrust && (
+        <TrustDistributionsSection
+          trustEntityId={entityId}
+          beneficiaries={distributionBeneficiaries}
+        />
+      )}
 
       {/* Beneficial ownership — "this entity holds X, but it's really
           Y's" (the LRBA shape). Only offered when the entity holds
