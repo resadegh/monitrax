@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `f38bb80` · **on:** 2026-06-14 · **by:** chat session (PM)
+**Last verified against HEAD:** `3eaeb90` · **on:** 2026-06-14 · **by:** Cowork session (Phase 1 deep ingestion)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -24,6 +24,8 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## B. THE MAP  (authority order — full registry in `docs/00_INDEX.md`)
 
+0. `SYSTEM_MAP.md` (repo root) — **orientation pointer-map.** What Monitrax is, every authoritative doc +
+   what it owns, architecture overview, calc-engine inventory, tool stack. Start here after this STATE.md.
 1. `CLAUDE.md` (repo root) — **law.** Governance, four-lens mindset, SSOT + single-calc-engine rule, warm-words,
    session protocol (Parts 1/7/10). When anything conflicts with CLAUDE.md, CLAUDE.md wins.
 2. `docs/IMPLEMENTATION_PLAN.md` — **status SSOT.** What's shipped / active / queued / blocked / reversed.
@@ -35,26 +37,49 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> v1 SEED — fields marked (PENDING) must be populated by the first Cowork/Code session that
-> range-reads the live `IMPLEMENTATION_PLAN.md`. Chat cannot range-read 884 KB; that's by design.
+> Updated 2026-06-14 by the Cowork Phase 1 deep-ingestion session. v1 SEED (PENDING) fields are now filled
+> from a live range-read of `IMPLEMENTATION_PLAN.md` at HEAD 3eaeb90. Every claim below carries a live source.
 
-- **Current focus:** Standing up this continuity system (Phase 0).
-- **Active task + stop-point:** PR #1100 MERGED (STATE.md + session-start hook live on main at f38bb80). This
-  follow-up PR re-lands the RESUME CHECK ritual step that was dropped from #1100's merge (only the first commit
-  landed). Chat-side `Section 0` boot gate already pasted into the Claude.ai project instructions.
-- **Immediate next action:** Merge this follow-up PR. Then: (1) grant GitHub `workflow` scope so
-  `continuity-gate.yml` (write-rail) can be committed; (2) begin Phase 1 deep ingestion (Cowork range-reads the
-  live plan + architecture + calc engines, fills PENDING fields, settles Q-GTM-3 + Float->Decimal).
+- **Current focus:** Phase 1 deep ingestion — COMPLETE this PR (SYSTEM_MAP produced, cursor filled,
+  Q-GTM-3 + Q-DEC settled). The live active workstream is **Phase 47 — Entity Ownership Fabric** (the
+  "golden feature"); open PR #1099 (Phase 47 Stage E2 — universe tax-flow overlay) on branch
+  `claude/ad2-implementation-dyaozo`. (`IMPLEMENTATION_PLAN.md`:123 §0·EOF.)
+- **Active task + stop-point:** This continuity PR (`claude/phase1-deep-ingestion-system-map`) adds
+  `SYSTEM_MAP.md`, fills this cursor, and records the two resolutions + drift findings. **Stop-point:** PR
+  open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this PR. (2) Apply the in-place `IMPLEMENTATION_PLAN.md`
+  edits (bump the stale `Last updated: 2026-05-20` header to 2026-06-14; add a Recently-Completed 2026-06-14
+  entry for this ingestion) in a **git-capable (Code) session** — the GitHub connector cannot write the
+  884 KB file in one call (see blockers). (3) Grant GitHub `workflow` scope so `continuity-gate.yml` +
+  the Phase 4 test-runner can land. (4) Resume Phase 47 Stage E2 (PR #1099).
 - **Open decisions / blockers:**
-  - GitHub `workflow` scope NOT granted — blocks `.github/workflows/continuity-gate.yml` (and the Phase 4 test-runner workflow).
-  - Q-GTM-3 (first aggregator = Finsure?) — status UNCONFIRMED against live plan (cache & memory disagree). RESOLVE on first live read.
-  - Float->Decimal (Q-DEC) — reportedly gates `/wealth-check` paid traffic per cache; confirm live status.
-  - CI has NO test-runner rail today (`security-audit.yml` runs audit+lint+build only). Phase 4 regression suite needs a CI job.
-- **Verified-live this session (HEAD f38bb80):** PR #1100 merged 2026-06-14; main contains STATE.md + the
-  session-start continuity block (first commit f2b20ce); second commit 5216d66 (RESUME CHECK) was NOT in the
-  merge — re-landed here. doc tree has `audit/ quality/ legal/ help/ policy/ design/ BASIQ FILES/`;
-  `IMPLEMENTATION_PLAN.md` = 884 KB; `docs/marketing/gtm/` contains BROKER_ICP, PAID_ADS_AUTOMATION,
-  FRIENDLIES_INVITE_PLAYBOOK, REVIEW_SCOPE_AND_BOUNDARIES.
+  - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
+    decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a
+    recommendation, not a decision — cache/memory "Finsure?" was the rec, never a ruling).
+    (`IMPLEMENTATION_PLAN.md`:1314 Open-Questions row · :582 §0d · :1328 open-as-of.)
+  - **Q-DEC (Float -> Decimal) — DECIDED 2026-05-24 (Reza), migration v1 STRUCTURALLY COMPLETE 2026-06-09.**
+    Final architecture: Prisma stores Float; engines convert at the boundary via `lib/decimal/`
+    (`Decimal` = `Prisma.Decimal`, decimal.js `ROUND_HALF_EVEN`) and compute in Decimal; Q-DEC PR4 dropped
+    the *dormant* `*_decimal` columns (INVERSE of the original Float-drop plan). The **precision gate on
+    `/wealth-check` paid traffic is satisfied**; remaining `/wealth-check` traffic-on gates are
+    Q-HOOK-AFSL (lawyer sign-off) + Q-HOOK-BENCHMARK (benchmark-refresh owner) — compliance/benchmark, NOT
+    precision. (`IMPLEMENTATION_PLAN.md`:1315 + :276–281 §0·WI · :1328.)
+  - **GitHub `workflow` scope NOT granted** — blocks `.github/workflows/continuity-gate.yml` and the Phase 4
+    test-runner workflow.
+  - **884 KB `IMPLEMENTATION_PLAN.md` cannot be written via the GitHub connector in one call** (new
+    constraint, this session) — its in-place edits must come from a git-capable session.
+  - **CI has NO test-runner rail today** (`security-audit.yml` runs audit+lint+build only). Phase 4
+    regression suite needs a CI job.
+  - **Doc drift / SSOT findings** logged in `docs/audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md` (input to
+    the Phase 2 governance audit).
+- **Verified-live this session (HEAD 3eaeb90):** RESUME CHECK — PR #1101 (`claude/continuity-resume-check`)
+  merged 2026-06-14 since the prior cursor HEAD `f38bb80`, re-landing the RESUME CHECK ritual step dropped
+  from #1100; that is the move from f38bb80 -> 3eaeb90. 26 open PRs (mostly stale dependabot + design
+  branches); active workstream PR is #1099 (Phase 47 Stage E2). `IMPLEMENTATION_PLAN.md` = 884 KB / 1739
+  lines. Calc engine confirmed: orchestrator `lib/services/masterFinancialService.ts`; 10 modules in
+  `lib/calculations/`; engine families `tax-engine` / `cfo` / `health` / `cgt` / `cashflow` / `intelligence`
+  / `wealthCheck` / `decimal` / `calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models
+  · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
@@ -81,7 +106,8 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 ## E. HOW THIS STAYS TRUE  (integration + enforcement)
 
 - **Owns:** current position (cursor) + the universal session ritual. **Defers to:** CLAUDE.md (law),
-  IMPLEMENTATION_PLAN (detail), 00_INDEX (map). No content is duplicated from those here — only pointers + position.
+  IMPLEMENTATION_PLAN (detail), 00_INDEX (map), SYSTEM_MAP (what-owns-what). No content is duplicated from
+  those here — only pointers + position.
 - **Enforced by:** (a) `.claude/hooks/session-start.sh` prints this cursor + HEAD at the start of every Code session
   (skip-on-failure, never blocks the session); (b) `.github/workflows/continuity-gate.yml` fails a PR that changes
   workstream files without updating STATE.md + IMPLEMENTATION_PLAN in the same PR (soft-launch first, then required;
