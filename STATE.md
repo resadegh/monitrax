@@ -37,7 +37,7 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Updated 2026-06-14 by the Cowork Phase 1 deep-ingestion session. v1 SEED (PENDING) fields are now filled
+> Updated 2026-06-14 by the Cowork Phase 1 deep-ingestion session. The v1 seed placeholder fields are now filled
 > from a live range-read of `IMPLEMENTATION_PLAN.md` at HEAD 3eaeb90. Every claim below carries a live source.
 
 - **Current focus:** Phase 1 deep ingestion — COMPLETE this PR (SYSTEM_MAP produced, cursor filled,
@@ -111,5 +111,5 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 - **Enforced by:** (a) `.claude/hooks/session-start.sh` prints this cursor + HEAD at the start of every Code session
   (skip-on-failure, never blocks the session); (b) `.github/workflows/continuity-gate.yml` fails a PR that changes
   workstream files without updating STATE.md + IMPLEMENTATION_PLAN in the same PR (soft-launch first, then required;
-  PENDING `workflow` scope); (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
+  workflow scope still PENDING); (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
 - **Update cadence:** cursor every session end; Section A/Section B only on a real change, via PR, never ad hoc.
