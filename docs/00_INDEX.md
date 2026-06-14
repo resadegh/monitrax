@@ -1,7 +1,7 @@
 # Monitrax Documentation Index
 
 **Date:** 2026-06-14 | **Version:** 1.2 | **Status:** ACTIVE | **Owner:** Dev Lead
-**Last refresh:** 2026-06-14 — Phase 2 PR-A (continuity governance audit, finding F-4): added the GTM set (`docs/marketing/` + `docs/marketing/gtm/`), the full `docs/compliance/` CDR set, `architecture/AI_PROVIDER_STRATEGY.md`, the root continuity docs (STATE.md / SYSTEM_MAP.md), and the 2026-06 audit findings. _Known still-pending (Phase 2 PR-B): `docs/audit/` vs `docs/audits/` folder de-dup (F-5); `docs/policy/` completeness; a CI check that diffs indexed paths vs `docs/**/*.md`._
+**Last refresh:** 2026-06-14 — Phase 2 PR-A + PR-B (continuity governance audit). PR-A (F-4): added the GTM set (`docs/marketing/` + `docs/marketing/gtm/`), the full `docs/compliance/` CDR set, `architecture/AI_PROVIDER_STRATEGY.md`, the root continuity docs (STATE.md / SYSTEM_MAP.md), and the 2026-06 audit findings. PR-B (F-5): de-duplicated the audit folders — `docs/audit/` merged into the canonical `docs/audits/`; maths audit re-indexed. _Known still-pending (later Phase 2 work): `docs/policy/` completeness; a CI check that diffs indexed paths vs `docs/**/*.md`._
 
 > Master registry of all Monitrax documentation. This is the starting point for finding any document.
 
@@ -210,8 +210,9 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [PHASE9_REGRESSION_2025-11-23.md](audits/PHASE9_REGRESSION_2025-11-23.md) | Nov 2025 | Phase 9 regression test results |
 | [PHASE9_TEST_MATRIX_2025-11-23.md](audits/PHASE9_TEST_MATRIX_2025-11-23.md) | Nov 2025 | Phase 9 test coverage matrix |
 | [PHASE1_INGESTION_FINDINGS_2026-06-14.md](audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md) | Jun 2026 | Continuity deep-ingestion drift / SSOT findings (F-1…F-8) — input to the Phase 2 governance audit |
+| [2026-06-MATHS-AUDIT.md](audits/2026-06-MATHS-AUDIT.md) | Jun 2026 | Maths / calc / tax-law correctness audit (workstream §0·MA — constants cross-checked against AU tax law) |
 
-> **Note (F-5, pending Phase 2 PR-B):** a second `docs/audit/` folder also exists (`docs/audit/2026-06-MATHS-AUDIT.md`). The two audit folders will be de-duplicated into one canonical location in PR-B.
+> **Canonical audit folder = `docs/audits/` (plural).** Resolved F-5 (Phase 2 PR-B): the former singular `docs/audit/` folder was merged in — `2026-06-MATHS-AUDIT.md` now lives at `docs/audits/2026-06-MATHS-AUDIT.md`. Place all future audit docs under `docs/audits/`.
 
 ---
 

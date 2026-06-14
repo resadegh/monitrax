@@ -79,7 +79,7 @@ NONE — additive code only. The function signature is widened, not narrowed; ex
 
 ### Files Created
 
-- `docs/audit/2026-06-MATHS-AUDIT.md` — anchor doc for the entire `0·MA` workstream. Section 2 covers MA.1 findings + verification table per constant. Sections 4 + 5 queue MA.1b (state taxes), MA.2 (cashflow), MA.3 (data relationships), MA.4 (cross-engine consistency), MA.5 (reform-aware correctness).
+- `docs/audits/2026-06-MATHS-AUDIT.md` — anchor doc for the entire `0·MA` workstream. Section 2 covers MA.1 findings + verification table per constant. Sections 4 + 5 queue MA.1b (state taxes), MA.2 (cashflow), MA.3 (data relationships), MA.4 (cross-engine consistency), MA.5 (reform-aware correctness).
 
 ### Files Modified
 
@@ -121,7 +121,7 @@ Surfaces changed in this PR:
 - [x] strategic decision (MA.1 first pass complete; queued passes MA.1b, MA.2, MA.3, MA.4, MA.5)
 
 Docs updated in this PR:
-- `docs/audit/2026-06-MATHS-AUDIT.md` — new audit anchor doc
+- `docs/audits/2026-06-MATHS-AUDIT.md` — new audit anchor doc
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·WI` Last touched + workstream `0·MA` status flipped IN PROGRESS
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -155,7 +155,7 @@ Reza directive 2026-06-07: *"The audit should also check the calculations agains
 
 ### What changed in this PR
 
-1. **`docs/audit/2026-06-MATHS-AUDIT.md`**
+1. **`docs/audits/2026-06-MATHS-AUDIT.md`**
    - Added §0a "Law Fact-Check Rule (LFC)" — 7 sub-rules (LFC-1 through LFC-7) — applies to every MA pass + every fix PR.
    - Added §3a "MA.1b — Authority re-verification" — tracks the re-cite work.
    - Added §3a.1 Medicare Levy thresholds FY24-25 — ✅ authority confirmed via ATO `tax-table-weekly-with-no-and-half-medicare-levy` (LFC-1 + LFC-5 redundancy via NAT 1005 cross-link).
@@ -190,7 +190,7 @@ Surfaces changed in this PR:
 - [x] strategic decision (LFC rule codified across all five MA passes; MA.1-003 unblocked; MA.1-005 surfaced)
 
 Docs updated in this PR:
-- `docs/audit/2026-06-MATHS-AUDIT.md` §0a + §3a + §3 summary
+- `docs/audits/2026-06-MATHS-AUDIT.md` §0a + §3a + §3 summary
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — LFC sub-rules + MA.1b status + MA.1-005
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -237,7 +237,7 @@ NONE — doc-only PR.
    - **High-band $4000 (top bracket a=0.45)** → 0.45 × 4000.99 - 595.11 = $1205.34 → round → $1205. Pinned the canonical ATO answer.
    - **Divergence point $869.39** → $101 (vs $100 pre-fix). Constructed boundary case demonstrating that the fix does materially shift rounded outcomes. Per-payslip diff $1 → annualises to $52 if every weekly run lands on this boundary (extreme case; typical impact $0–$5/employee/year).
 
-3. **`docs/audit/2026-06-MATHS-AUDIT.md`** — MA.1-005 status flipped 🛑 NEW → ✅ FIXED. Pre-fix vs post-fix code blocks both shown. Action items struck through with ✅ markers.
+3. **`docs/audits/2026-06-MATHS-AUDIT.md`** — MA.1-005 status flipped 🛑 NEW → ✅ FIXED. Pre-fix vs post-fix code blocks both shown. Action items struck through with ✅ markers.
 
 4. **`docs/IMPLEMENTATION_PLAN.md`** — workstream `0·MA` MA.1-005 bullet flipped to ✅ FIXED.
 
@@ -257,7 +257,7 @@ Surfaces changed in this PR:
 
 Docs updated in this PR:
 - `lib/tax-engine/core/paygCalculator.ts` — file-header JSDoc + inline comments per LFC-1 + MA.1-002 reference preserved
-- `docs/audit/2026-06-MATHS-AUDIT.md` §3 + §3a.3 — status flipped + post-fix code shown
+- `docs/audits/2026-06-MATHS-AUDIT.md` §3 + §3a.3 — status flipped + post-fix code shown
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.1-005 ✅
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -314,7 +314,7 @@ N/A — code change only, no Prisma operations.
    - `MEDICARE_LEVY_SHADE_OUT_SINGLE`: `32500 → 34028` (= `ceil(27222 × 1.25)`)
    - Comment notes the SSOT lives in `taxYearConfig.ts`; these are kept aligned only because `/api/calculate/tax` is technically still reachable via curl.
 
-3. **`docs/audit/2026-06-MATHS-AUDIT.md`** — MA.1-003 status flipped 🛑 → ✅ FIXED. New finding **MA.4-001** logged (parallel/competing engine) with severity Medium-High structural.
+3. **`docs/audits/2026-06-MATHS-AUDIT.md`** — MA.1-003 status flipped 🛑 → ✅ FIXED. New finding **MA.4-001** logged (parallel/competing engine) with severity Medium-High structural.
 
 4. **`docs/IMPLEMENTATION_PLAN.md`** — workstream `0·MA` MA.1-003 bullet flipped to ✅ FIXED. Dead Code section gains row **#29** (`lib/tax/auTax.ts` retirement queued for MA.4 pass).
 
@@ -351,7 +351,7 @@ Surfaces changed in this PR:
 Docs updated in this PR:
 - `lib/tax-engine/config/taxYearConfig.ts:50-66` — inline LFC comment block
 - `lib/tax/auTax.ts` — `@deprecated` header + Medicare constants
-- `docs/audit/2026-06-MATHS-AUDIT.md` §3 + §3a.1 + §3a.1b — status flipped + MA.4-001 logged
+- `docs/audits/2026-06-MATHS-AUDIT.md` §3 + §3a.1 + §3a.1b — status flipped + MA.4-001 logged
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` MA.1-003 ✅ + Dead Code #29
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -423,7 +423,7 @@ Surfaces changed in this PR:
 - [x] strategic decision (MA.1b CLOSED with zero new bugs — first MA pass officially LFC-compliant)
 
 Docs updated in this PR:
-- `docs/audit/2026-06-MATHS-AUDIT.md` §3a.4–§3a.10 — Stage 3 / super / LITO / CGT / REFORM_CUT_OVER_UTC / M1-M9 re-cite sections + methodology table flipped MA.1b → CLOSED + closing metadata
+- `docs/audits/2026-06-MATHS-AUDIT.md` §3a.4–§3a.10 — Stage 3 / super / LITO / CGT / REFORM_CUT_OVER_UTC / M1-M9 re-cite sections + methodology table flipped MA.1b → CLOSED + closing metadata
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.1b closure noted with full citation summary
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -536,7 +536,7 @@ Surfaces changed in this PR:
 - [x] strategic decision (ALL MA passes CLOSED; Phase 45 PR 1 unblocked from audit gate)
 
 Docs updated in this PR:
-- `docs/audit/2026-06-MATHS-AUDIT.md` §4 + §5 + §6 + §7 — combined pass + findings summary + follow-up backlog + audit conclusion
+- `docs/audits/2026-06-MATHS-AUDIT.md` §4 + §5 + §6 + §7 — combined pass + findings summary + follow-up backlog + audit conclusion
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — all five passes closed + Dead Code #29 closed + Dead Code #30 added
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -611,7 +611,7 @@ Surfaces changed in this PR:
 Docs updated in this PR:
 - `lib/intelligence/portfolioEngine.ts` — refactor + file-header JSDoc
 - `tests/intelligence/portfolioEngine.netWorth.test.ts` — NEW regression tests
-- `docs/audit/2026-06-MATHS-AUDIT.md` §6 + §7 + §8 + §9 — follow-ups closed
+- `docs/audits/2026-06-MATHS-AUDIT.md` §6 + §7 + §8 + §9 — follow-ups closed
 - `docs/IMPLEMENTATION_PLAN.md` workstream `0·MA` — MA.4-002 ✅ + MA.2-001 ✅; Dead Code #30 closed
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
@@ -692,7 +692,7 @@ Surfaces changed in this PR:
 Docs updated in this PR:
 - `lib/intelligence/portfolioEngine.ts` — cashflow refactor + file-header JSDoc
 - `tests/intelligence/portfolioEngine.cashflow.test.ts` — NEW
-- `docs/audit/2026-06-MATHS-AUDIT.md` §10 — cashflow follow-on documented
+- `docs/audits/2026-06-MATHS-AUDIT.md` §10 — cashflow follow-on documented
 - `docs/changelog/CHANGELOG_2026_06_07.md` — this entry
 
 ### Phase 41E reform compliance (CLAUDE.md §12.14)
