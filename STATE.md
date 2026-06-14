@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `6c0ff92` · **on:** 2026-06-14 · **by:** Code session (F-8 — deferred plan edits + cursor re-pin)
+**Last verified against HEAD:** `25180ea` · **on:** 2026-06-14 · **by:** Code session (Phase 2 PR-A — plan/index hygiene)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -37,23 +37,24 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-14 by the Code F-8 session (HEAD `6c0ff92`). The Phase 1 deep-ingestion cursor (first
-> filled at `3eaeb90`) is reconciled forward after two tracked PRs merged; every claim below carries a live source.
+> Re-pinned 2026-06-14 by the Code Phase 2 PR-A session (HEAD `25180ea`, after F-8 PR #1104 merged `6c0ff92` -> `25180ea`).
+> Continuity Phase 0+1 is COMPLETE; Phase 2 governance audit is now in flight. Every claim below carries a live source.
 
-- **Current focus:** Continuity **Phase 0+1 — COMPLETE.** Phase 0 (STATE.md + `.claude/hooks/session-start.sh`
-  + `.github/workflows/continuity-gate.yml`, soft-launch) and Phase 1 deep ingestion (SYSTEM_MAP.md + this
-  cursor + Q-GTM-3/Q-DEC recorded) are both merged to main (continuity PR #1102 = `9e36425`). The live active
-  workstream is **Phase 47 — Entity Ownership Fabric** (the "golden feature"); PR #1099 (Stage E2 — universe
-  tax-flow overlay) has now MERGED (`6c0ff92`). (`IMPLEMENTATION_PLAN.md` §0·EOF.)
-- **Active task + stop-point:** This Code PR (F-8, branch `claude/cool-wright-oidxmq`) applies the deferred
-  in-place `IMPLEMENTATION_PLAN.md` edits the GitHub connector couldn't write against the 884 KB file —
-  header date bump (F-1), §0·WI Q-DEC checkbox reconcile to `[x]` (F-2), Recently-Completed 2026-06-14
-  entry — and re-pins this cursor. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) **Reza decision on Q-GTM-3** (first aggregator — Claude rec Finsure first,
-  Connective second; gates GTM Step 2.2). (2) **Phase 2 governance audit** — consume the F-1…F-8 findings in
-  `docs/audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md` (00_INDEX refresh, audit-folder de-dup, §12.4↔§12.2
-  reconcile, add the continuity workstream to the plan). (3) Grant GitHub `workflow` scope so
-  `continuity-gate.yml` + the Phase 4 test-runner can land. (4) Reza review + merge this PR.
+- **Current focus:** Continuity **Phase 2 governance audit — IN PROGRESS (PR-A in flight).** Phase 0+1 are
+  COMPLETE on main (rails + deep ingestion + F-8 deferred edits, PRs #1100/#1101/#1102/#1104). Phase 2 consumes
+  the F-1…F-8 drift findings; the continuity workstream is now a first-class plan entry (§0·CONT). The other
+  live product workstream remains **Phase 47 — Entity Ownership Fabric** (`IMPLEMENTATION_PLAN.md` §0·EOF).
+- **Active task + stop-point:** This Code PR (**Phase 2 PR-A**, branch `claude/phase2-pra-plan-index-hygiene`)
+  ships the plan/index hygiene cluster: **F-3** (backfill the 10 `PR #TBD` Recently-Completed entries with real
+  PR numbers from `git log --merges`), **F-4** (refresh `docs/00_INDEX.md` to the live tree — GTM set, compliance
+  CDR set, AI_PROVIDER_STRATEGY, STATE/SYSTEM_MAP, findings), **F-7** (add the §0·CONT continuity workstream).
+  **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this PR-A. (2) **Phase 2 PR-B** — the remaining findings:
+  **F-5** de-dup `docs/audit/` vs `docs/audits/` (pick one canonical folder, redirect the other), **F-6** reconcile
+  CLAUDE.md §12.4 ↔ §12.2 on `/api/portfolio/snapshot` (§12.2 is the newer sourced position — never delete that
+  route as a "dup"), **F-1** add a header-date lint, **F-8** structural fix (split the 884 KB plan or a patch-capable
+  write path). (3) **Reza decision on Q-GTM-3** (first aggregator — Claude rec Finsure first, Connective second;
+  gates GTM Step 2.2). (4) Grant GitHub `workflow` scope so `continuity-gate.yml` + the Phase 4 test-runner can land.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
     decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a
