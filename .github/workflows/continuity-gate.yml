@@ -1,0 +1,41 @@
+name: Continuity Gate
+
+# Write rail of the Monitrax continuity system: a PR that changes substantive
+# workstream files must also update STATE.md AND docs/IMPLEMENTATION_PLAN.md in
+# the same PR. SOFT-LAUNCH: warns only. To ARM later: change ::warning:: to
+# ::error:: and the final `exit 0` to `exit 1`, then add as a required check.
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  state-sync:
+    name: STATE / plan write-back check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require STATE + plan write-back when workstream files change
+        run: |
+          changed="$(git diff --name-only \
+            '${{ github.event.pull_request.base.sha }}' \
+            '${{ github.event.pull_request.head.sha }}')"
+          echo "Changed files:"; echo "$changed"
+          if printf '%s %s' "${{ github.event.pull_request.title }}" "${{ github.event.pull_request.body }}" \
+               | grep -q '\[skip-state\]'; then
+            echo "Bypass [skip-state] present — gate skipped."; exit 0
+          fi
+          substantive="$(echo "$changed" \
+            | grep -E '^(app/|lib/|components/|contexts/|hooks/|prisma/|mobile-app/|docs/(marketing|architecture|compliance)/)' \
+            || true)"
+          if [ -z "$substantive" ]; then
+            echo "No substantive workstream files changed — gate not required."; exit 0
+          fi
+          if echo "$changed" | grep -qx 'STATE.md' \
+             && echo "$changed" | grep -qx 'docs/IMPLEMENTATION_PLAN.md'; then
+            echo "STATE.md and docs/IMPLEMENTATION_PLAN.md both updated."; exit 0
+          fi
+          echo "::warning::PR changes workstream files but does not update BOTH STATE.md and docs/IMPLEMENTATION_PLAN.md. Update them, or add [skip-state] if trivial. (Soft-launch — will become blocking once armed.)"
+          exit 0
