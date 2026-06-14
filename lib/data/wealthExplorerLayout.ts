@@ -664,6 +664,9 @@ export function layoutWealthExplorer(
       // this entity's holdings; tapping the entity itself opens the
       // detail card, never the (removed) all-holdings scene.
       isExpandable: !!summary && !clusterMode,
+      // Phase 47 E2 — carry the per-entity tax status onto the node for
+      // the Money-Flow-lens pip.
+      taxStatus: e.taxStatus ?? undefined,
     });
     nodePositionById.set(e.id, pos);
   }

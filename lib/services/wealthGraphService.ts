@@ -32,6 +32,8 @@ import {
   isPostCommencementFy,
 } from '@/lib/tax-engine/config/reformConstants';
 import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
+import { calculateEntityTaxPositionDecimal } from '@/lib/tax-engine/entity/entityTaxRouter';
 import type {
   LegalEntityType,
   LegalEntityRole,
@@ -105,6 +107,24 @@ export interface WealthGraphEntity {
     investmentAccounts: number;
     assets: number;
   };
+  /**
+   * Phase 47 Stage E2 — per-entity tax-position status for the Money
+   * Flow lens overlay. `computed` is true when the per-entity tax engine
+   * produced a position with ZERO caveats; `caveatCount` counts the
+   * engine's `uncomputed` + assembler notes (incl. AD-2 ownership flags).
+   * Null when no position could be assembled (entity not found / no FY
+   * config). Status only — NO tax dollar crosses the boundary (the
+   * engine's `result` is type-varied; quoting it would risk false
+   * precision — §0.3 financial-adviser lens). Surfaced as an honest
+   * emerald (computed) / amber (caveats) pip on the entity tile.
+   */
+  taxStatus: EntityTaxStatusSummary | null;
+}
+
+/** Phase 47 E2 — minimal, honest per-entity tax-position status. */
+export interface EntityTaxStatusSummary {
+  computed: boolean;
+  caveatCount: number;
 }
 
 export type WealthGraphAssetKind =
@@ -452,6 +472,27 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
   ]);
 
   // --- entities mapping
+  // --- Phase 47 E2 — per-entity tax-position status (Money Flow overlay).
+  // Net position is structural (this service); the tax STATUS reuses the
+  // same per-entity engine the reports + per-entity tax page use, so the
+  // canvas badge and those surfaces never disagree. Status-only: we keep
+  // the engine's `result` (a tax dollar) server-side. Computed in parallel
+  // — typical households have a handful of entities (§12.10).
+  const fyCfg = getTaxYearConfig(currentFy);
+  const fyRef = { financialYear: fyCfg.financialYear, label: fyCfg.label };
+  const taxStatusByEntityId = new Map<string, EntityTaxStatusSummary>();
+  await Promise.all(
+    entitiesRaw.map(async e => {
+      const facts = await assembleEntityTaxFacts(userId, e.id, fyRef);
+      if (!facts) return;
+      const position = calculateEntityTaxPositionDecimal(facts);
+      taxStatusByEntityId.set(e.id, {
+        computed: position.uncomputed.length === 0,
+        caveatCount: position.uncomputed.length,
+      });
+    }),
+  );
+
   const entities: WealthGraphEntity[] = entitiesRaw.map(e => ({
     id: e.id,
     type: e.type,
@@ -469,6 +510,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
       investmentAccounts: e._count.investmentAccounts,
       assets: e._count.assets,
     },
+    taxStatus: taxStatusByEntityId.get(e.id) ?? null,
   }));
 
   // --- assets mapping (all 5 kinds → uniform shape)
