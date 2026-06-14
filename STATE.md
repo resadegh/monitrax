@@ -5,8 +5,9 @@
 > **Prime directive: read live, never recall.** No claim about Monitrax is made from memory; it is read
 > from the repo at the pinned HEAD, or it is flagged unverified. Memory and any project-knowledge cache are
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
+> **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `7778847` · **on:** 2026-06-14 · **by:** chat session (PM)
+**Last verified against HEAD:** `f38bb80` · **on:** 2026-06-14 · **by:** chat session (PM)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -38,23 +39,29 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 > range-reads the live `IMPLEMENTATION_PLAN.md`. Chat cannot range-read 884 KB; that's by design.
 
 - **Current focus:** Standing up this continuity system (Phase 0).
-- **Active task + stop-point:** Continuity-system PR opened (this `STATE.md` + `session-start.sh` continuity
-  block + `continuity-gate.yml`). Awaiting Reza review/merge. Chat-side `Section 0` boot gate already pasted into
-  the Claude.ai project instructions.
-- **Immediate next action:** Merge PR -> run gate non-blocking ~1 week -> arm it as required -> begin Phase 1
-  deep ingestion (Cowork range-reads the live plan + architecture + calc engines, fills the PENDING fields).
+- **Active task + stop-point:** PR #1100 MERGED (STATE.md + session-start hook live on main at f38bb80). This
+  follow-up PR re-lands the RESUME CHECK ritual step that was dropped from #1100's merge (only the first commit
+  landed). Chat-side `Section 0` boot gate already pasted into the Claude.ai project instructions.
+- **Immediate next action:** Merge this follow-up PR. Then: (1) grant GitHub `workflow` scope so
+  `continuity-gate.yml` (write-rail) can be committed; (2) begin Phase 1 deep ingestion (Cowork range-reads the
+  live plan + architecture + calc engines, fills PENDING fields, settles Q-GTM-3 + Float->Decimal).
 - **Open decisions / blockers:**
+  - GitHub `workflow` scope NOT granted — blocks `.github/workflows/continuity-gate.yml` (and the Phase 4 test-runner workflow).
   - Q-GTM-3 (first aggregator = Finsure?) — status UNCONFIRMED against live plan (cache & memory disagree). RESOLVE on first live read.
   - Float->Decimal (Q-DEC) — reportedly gates `/wealth-check` paid traffic per cache; confirm live status.
-  - CI has NO test-runner rail today (`security-audit.yml` runs audit+lint+build only). Phase 4 regression suite needs a CI job — dependency, not yet built.
-- **Verified-live this session (HEAD 7778847):** doc tree has `audit/ quality/ legal/ help/ policy/ design/ BASIQ FILES/`;
+  - CI has NO test-runner rail today (`security-audit.yml` runs audit+lint+build only). Phase 4 regression suite needs a CI job.
+- **Verified-live this session (HEAD f38bb80):** PR #1100 merged 2026-06-14; main contains STATE.md + the
+  session-start continuity block (first commit f2b20ce); second commit 5216d66 (RESUME CHECK) was NOT in the
+  merge — re-landed here. doc tree has `audit/ quality/ legal/ help/ policy/ design/ BASIQ FILES/`;
   `IMPLEMENTATION_PLAN.md` = 884 KB; `docs/marketing/gtm/` contains BROKER_ICP, PAID_ADS_AUTOMATION,
-  FRIENDLIES_INVITE_PLAYBOOK, REVIEW_SCOPE_AND_BOUNDARIES; `.claude/` SessionStart hook exists (Stitch-only);
-  `.github/workflows/` has only `security-audit.yml`.
+  FRIENDLIES_INVITE_PLAYBOOK, REVIEW_SCOPE_AND_BOUNDARIES.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
 **START (before any work):**
+0. RESUME CHECK. List open + recently-merged PRs on `resadegh/monitrax` (GitHub connector). If a tracked PR
+   (continuity / plan / workstream) merged since this cursor's HEAD, pull the new HEAD, read what changed, and
+   continue from the updated next action. There is NO notification — this pull is how a session learns a PR merged.
 1. Pull live HEAD. Run freshness gate (above).
 2. Read this STATE.md -> then CLAUDE.md -> then the relevant `IMPLEMENTATION_PLAN.md` section for the active task.
 3. Print a <=5-line orientation: what Monitrax is (1 line) - current task (1) - next action (1) - blockers (1) - HEAD (1).
@@ -77,6 +84,6 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   IMPLEMENTATION_PLAN (detail), 00_INDEX (map). No content is duplicated from those here — only pointers + position.
 - **Enforced by:** (a) `.claude/hooks/session-start.sh` prints this cursor + HEAD at the start of every Code session
   (skip-on-failure, never blocks the session); (b) `.github/workflows/continuity-gate.yml` fails a PR that changes
-  workstream files without updating STATE.md + IMPLEMENTATION_PLAN in the same PR (soft-launch first, then required);
-  (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
+  workstream files without updating STATE.md + IMPLEMENTATION_PLAN in the same PR (soft-launch first, then required;
+  PENDING `workflow` scope); (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
 - **Update cadence:** cursor every session end; Section A/Section B only on a real change, via PR, never ad hoc.
