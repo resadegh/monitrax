@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `3eaeb90` · **on:** 2026-06-14 · **by:** Cowork session (Phase 1 deep ingestion)
+**Last verified against HEAD:** `6c0ff92` · **on:** 2026-06-14 · **by:** Code session (F-8 — deferred plan edits + cursor re-pin)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -37,21 +37,23 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Updated 2026-06-14 by the Cowork Phase 1 deep-ingestion session. The v1 seed placeholder fields are now filled
-> from a live range-read of `IMPLEMENTATION_PLAN.md` at HEAD 3eaeb90. Every claim below carries a live source.
+> Re-pinned 2026-06-14 by the Code F-8 session (HEAD `6c0ff92`). The Phase 1 deep-ingestion cursor (first
+> filled at `3eaeb90`) is reconciled forward after two tracked PRs merged; every claim below carries a live source.
 
-- **Current focus:** Phase 1 deep ingestion — COMPLETE this PR (SYSTEM_MAP produced, cursor filled,
-  Q-GTM-3 + Q-DEC settled). The live active workstream is **Phase 47 — Entity Ownership Fabric** (the
-  "golden feature"); open PR #1099 (Phase 47 Stage E2 — universe tax-flow overlay) on branch
-  `claude/ad2-implementation-dyaozo`. (`IMPLEMENTATION_PLAN.md`:123 §0·EOF.)
-- **Active task + stop-point:** This continuity PR (`claude/phase1-deep-ingestion-system-map`) adds
-  `SYSTEM_MAP.md`, fills this cursor, and records the two resolutions + drift findings. **Stop-point:** PR
-  open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this PR. (2) Apply the in-place `IMPLEMENTATION_PLAN.md`
-  edits (bump the stale `Last updated: 2026-05-20` header to 2026-06-14; add a Recently-Completed 2026-06-14
-  entry for this ingestion) in a **git-capable (Code) session** — the GitHub connector cannot write the
-  884 KB file in one call (see blockers). (3) Grant GitHub `workflow` scope so `continuity-gate.yml` +
-  the Phase 4 test-runner can land. (4) Resume Phase 47 Stage E2 (PR #1099).
+- **Current focus:** Continuity **Phase 0+1 — COMPLETE.** Phase 0 (STATE.md + `.claude/hooks/session-start.sh`
+  + `.github/workflows/continuity-gate.yml`, soft-launch) and Phase 1 deep ingestion (SYSTEM_MAP.md + this
+  cursor + Q-GTM-3/Q-DEC recorded) are both merged to main (continuity PR #1102 = `9e36425`). The live active
+  workstream is **Phase 47 — Entity Ownership Fabric** (the "golden feature"); PR #1099 (Stage E2 — universe
+  tax-flow overlay) has now MERGED (`6c0ff92`). (`IMPLEMENTATION_PLAN.md` §0·EOF.)
+- **Active task + stop-point:** This Code PR (F-8, branch `claude/cool-wright-oidxmq`) applies the deferred
+  in-place `IMPLEMENTATION_PLAN.md` edits the GitHub connector couldn't write against the 884 KB file —
+  header date bump (F-1), §0·WI Q-DEC checkbox reconcile to `[x]` (F-2), Recently-Completed 2026-06-14
+  entry — and re-pins this cursor. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) **Reza decision on Q-GTM-3** (first aggregator — Claude rec Finsure first,
+  Connective second; gates GTM Step 2.2). (2) **Phase 2 governance audit** — consume the F-1…F-8 findings in
+  `docs/audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md` (00_INDEX refresh, audit-folder de-dup, §12.4↔§12.2
+  reconcile, add the continuity workstream to the plan). (3) Grant GitHub `workflow` scope so
+  `continuity-gate.yml` + the Phase 4 test-runner can land. (4) Reza review + merge this PR.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
     decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a
@@ -66,17 +68,20 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
     precision. (`IMPLEMENTATION_PLAN.md`:1315 + :276–281 §0·WI · :1328.)
   - **GitHub `workflow` scope NOT granted** — blocks `.github/workflows/continuity-gate.yml` and the Phase 4
     test-runner workflow.
-  - **884 KB `IMPLEMENTATION_PLAN.md` cannot be written via the GitHub connector in one call** (new
-    constraint, this session) — its in-place edits must come from a git-capable session.
+  - **884 KB `IMPLEMENTATION_PLAN.md` cannot be written via the GitHub connector in one call** — its
+    in-place edits must come from a git-capable session. **This F-8 Code session did exactly that**
+    (sed + targeted Edit, no whole-file overwrite). The structural fix (split the plan, or a patch-capable
+    connector path — finding F-8) remains for Phase 2.
   - **CI has NO test-runner rail today** (`security-audit.yml` runs audit+lint+build only). Phase 4
     regression suite needs a CI job.
   - **Doc drift / SSOT findings** logged in `docs/audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md` (input to
     the Phase 2 governance audit).
-- **Verified-live this session (HEAD 3eaeb90):** RESUME CHECK — PR #1101 (`claude/continuity-resume-check`)
-  merged 2026-06-14 since the prior cursor HEAD `f38bb80`, re-landing the RESUME CHECK ritual step dropped
-  from #1100; that is the move from f38bb80 -> 3eaeb90. 26 open PRs (mostly stale dependabot + design
-  branches); active workstream PR is #1099 (Phase 47 Stage E2). `IMPLEMENTATION_PLAN.md` = 884 KB / 1739
-  lines. Calc engine confirmed: orchestrator `lib/services/masterFinancialService.ts`; 10 modules in
+- **Verified-live this session (HEAD 6c0ff92):** RESUME CHECK — since the prior cursor HEAD `3eaeb90`, two
+  tracked PRs that were OPEN at the last cursor have merged to main: the continuity PR #1102
+  (`claude/phase1-deep-ingestion-system-map`) = `9e36425`, and the Phase 47 active-workstream PR #1099
+  (Stage E2) = `6c0ff92`. The cursor is reconciled forward to `6c0ff92`. (Earlier hop: PR #1101 merged
+  `f38bb80` -> `3eaeb90`, re-landing the RESUME CHECK ritual dropped from #1100.) `IMPLEMENTATION_PLAN.md` =
+  884 KB / 1741 lines. Calc engine confirmed: orchestrator `lib/services/masterFinancialService.ts`; 10 modules in
   `lib/calculations/`; engine families `tax-engine` / `cfo` / `health` / `cgt` / `cashflow` / `intelligence`
   / `wealthCheck` / `decimal` / `calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models
   · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
