@@ -1,7 +1,7 @@
 # Monitrax Documentation Index
 
-**Date:** 2026-05-09 | **Version:** 1.1 | **Status:** ACTIVE | **Owner:** Dev Lead
-**Last refresh:** 2026-05-09 — DEMO-COMPLETE doc-sync (Phase 32B + 32C + 33a-d/g + 41a-d/g)
+**Date:** 2026-06-14 | **Version:** 1.2 | **Status:** ACTIVE | **Owner:** Dev Lead
+**Last refresh:** 2026-06-14 — Phase 2 PR-A (continuity governance audit, finding F-4): added the GTM set (`docs/marketing/` + `docs/marketing/gtm/`), the full `docs/compliance/` CDR set, `architecture/AI_PROVIDER_STRATEGY.md`, the root continuity docs (STATE.md / SYSTEM_MAP.md), and the 2026-06 audit findings. _Known still-pending (Phase 2 PR-B): `docs/audit/` vs `docs/audits/` folder de-dup (F-5); `docs/policy/` completeness; a CI check that diffs indexed paths vs `docs/**/*.md`._
 
 > Master registry of all Monitrax documentation. This is the starting point for finding any document.
 
@@ -11,7 +11,10 @@
 
 | Need | Go To |
 |------|-------|
+| **Session "you-are-here" cursor (read first, every session)** | [STATE.md](../STATE.md) (repo root) |
+| **What-owns-what orientation map** | [SYSTEM_MAP.md](../SYSTEM_MAP.md) (repo root) |
 | **Live operational SSOT (now / next / blocked)** | [docs/IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) |
+| **Go-to-market (B2B-led playbook)** | [docs/marketing/](#marketing) |
 | **Lighthouse adviser pitch playbook** | [docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md](pitch/LIGHTHOUSE_ADVISER_PITCH.md) |
 | System architecture & design | [docs/architecture/](#architecture) |
 | Phase specifications & roadmap | [docs/blueprint/](#blueprint-phases) |
@@ -50,6 +53,7 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [07_API_STANDARDS.md](architecture/07_API_STANDARDS.md) | API design standards, auth, validation | ACTIVE |
 | [08_BRAND_UI_DESIGN.md](architecture/08_BRAND_UI_DESIGN.md) | Visual design system, brand guidelines | ACTIVE |
 | [09_INFRASTRUCTURE_AND_DEPLOYMENT.md](architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md) | Infrastructure architecture | ACTIVE |
+| [AI_PROVIDER_STRATEGY.md](architecture/AI_PROVIDER_STRATEGY.md) | AI provider strategy — Gemini decision (Q-AI-PROVIDER 2026-05-16), provider-agnostic interface | ACTIVE |
 | [99_APPENDIX_GLOSSARY.md](architecture/99_APPENDIX_GLOSSARY.md) | Terminology reference | ACTIVE |
 
 ---
@@ -150,8 +154,14 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | Document | Description | Status |
 |----------|-------------|--------|
 | [CDR_BASIQ_COMPLIANCE_MATRIX.md](compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md) | Basiq accreditation requirement tracking (~87%) | ACTIVE |
+| [CDR_BASIQ_COMPLIANCE_STATUS_REPORT.md](compliance/CDR_BASIQ_COMPLIANCE_STATUS_REPORT.md) | Point-in-time Basiq accreditation status report | ACTIVE |
+| [CDR_SYSTEM_ARCHITECTURE.md](compliance/CDR_SYSTEM_ARCHITECTURE.md) | CDR system architecture (consent / data-flow / isolation) | ACTIVE |
 | [CDR_IMPLEMENTATION_PLAN.md](compliance/CDR_IMPLEMENTATION_PLAN.md) | CDR implementation roadmap | ACTIVE |
 | [CDR_DATA_RETENTION_SCHEDULE.md](compliance/CDR_DATA_RETENTION_SCHEDULE.md) | Data retention policy for CDR data | ACTIVE |
+| [CDR_WIF_AUTHENTICATION_EVIDENCE.md](compliance/CDR_WIF_AUTHENTICATION_EVIDENCE.md) | WIF / Cloud SQL IAM-auth evidence pack (cutover record + compensating controls) | ACTIVE |
+| [CDR_EVIDENCE_SCREENSHOT_GUIDE.md](compliance/CDR_EVIDENCE_SCREENSHOT_GUIDE.md) | Guide for capturing accreditation evidence screenshots | ACTIVE |
+| [CDR_SPREADSHEET_ANSWERS_AND_GAPS.md](compliance/CDR_SPREADSHEET_ANSWERS_AND_GAPS.md) | Basiq questionnaire answers + outstanding gaps | ACTIVE |
+| [DRAFT_EMAIL_REPLY_TO_BASIQ.md](compliance/DRAFT_EMAIL_REPLY_TO_BASIQ.md) | Working draft of the reply to Basiq | DRAFT |
 
 ---
 
@@ -199,6 +209,9 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [AUDIT_DATABASE_CALCULATIONS_2026-01.md](audits/AUDIT_DATABASE_CALCULATIONS_2026-01.md) | Jan 2026 | Calculation accuracy verification |
 | [PHASE9_REGRESSION_2025-11-23.md](audits/PHASE9_REGRESSION_2025-11-23.md) | Nov 2025 | Phase 9 regression test results |
 | [PHASE9_TEST_MATRIX_2025-11-23.md](audits/PHASE9_TEST_MATRIX_2025-11-23.md) | Nov 2025 | Phase 9 test coverage matrix |
+| [PHASE1_INGESTION_FINDINGS_2026-06-14.md](audits/PHASE1_INGESTION_FINDINGS_2026-06-14.md) | Jun 2026 | Continuity deep-ingestion drift / SSOT findings (F-1…F-8) — input to the Phase 2 governance audit |
+
+> **Note (F-5, pending Phase 2 PR-B):** a second `docs/audit/` folder also exists (`docs/audit/2026-06-MATHS-AUDIT.md`). The two audit folders will be de-duplicated into one canonical location in PR-B.
 
 ---
 
@@ -260,10 +273,19 @@ To run the demo: `npm run seed:lighthouse` (idempotent; `--reset` for clean re-s
 
 ## Marketing
 
+> **Purpose:** Go-to-market strategy (B2B-led), public messaging, and the executable GTM playbook.
+> **Canonical GTM SSOT:** `GTM_EXECUTION_PLAN.md`.
+
 | Document | Location | Description |
 |----------|----------|-------------|
+| [GTM_EXECUTION_PLAN.md](marketing/GTM_EXECUTION_PLAN.md) | docs/marketing/ | Step-by-step B2B-led launch playbook (phases 0–6, status tracker) — canonical GTM SSOT |
+| [GTM_TOOL_STACK.md](marketing/GTM_TOOL_STACK.md) | docs/marketing/ | Living GTM tool stack + cost register |
 | [THE_TRAIL_METHOD.md](marketing/THE_TRAIL_METHOD.md) | docs/marketing/ | Public-facing TRAIL method messaging |
 | [TRAIL_WEBSITE_COPY.md](marketing/TRAIL_WEBSITE_COPY.md) | docs/marketing/ | Website copy for the TRAIL framework |
+| [gtm/BROKER_ICP.md](marketing/gtm/BROKER_ICP.md) | docs/marketing/gtm/ | Mortgage-broker ICP (first beachhead) |
+| [gtm/REVIEW_SCOPE_AND_BOUNDARIES.md](marketing/gtm/REVIEW_SCOPE_AND_BOUNDARIES.md) | docs/marketing/gtm/ | AFSL scope of the paid Financial Health Review (general info / factual diagnostic only) |
+| [gtm/FRIENDLIES_INVITE_PLAYBOOK.md](marketing/gtm/FRIENDLIES_INVITE_PLAYBOOK.md) | docs/marketing/gtm/ | Private-beta friendlies onboarding playbook |
+| [gtm/PAID_ADS_AUTOMATION.md](marketing/gtm/PAID_ADS_AUTOMATION.md) | docs/marketing/gtm/ | Paid-ads automation (parked — consumer-first GTM deferred) |
 
 ---
 
@@ -308,4 +330,4 @@ To run the demo: `npm run seed:lighthouse` (idempotent; `--reset` for clean re-s
 
 ---
 
-*Last updated: 2026-04-10*
+*Last updated: 2026-06-14*
