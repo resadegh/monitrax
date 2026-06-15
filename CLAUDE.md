@@ -728,10 +728,16 @@ export async function GET(request: NextRequest) {
 
 | Duplicate | Canonical Replacement | Action |
 |-----------|----------------------|--------|
-| `/api/portfolio/snapshot` | `/api/master-snapshot` | Migrate callers, then delete |
 | `/api/financial-snapshot` | `/api/master-snapshot` | Migrate callers, then delete |
 | `/api/auth/login` | Firebase Auth SDK (client-side) | Delete (dead code) |
 | `/api/auth/register` | Firebase Auth SDK (client-side) | Delete (dead code) |
+
+> **`/api/portfolio/snapshot` is deliberately NOT in this table — it is not a duplicate.** It was once
+> listed here, but **§12.2 is the newer, sourced position and it wins** (confirmed by PR #598, 2026-05-02):
+> the route returns `SnapshotV2` (GRDCS per-entity `_links`/`_meta`, `linkageHealth`, `moduleCompleteness`,
+> `relationalInsights`) — a relational-graph scope that `/api/master-snapshot` does **not** expose. Migrating
+> its callers to master would silently lose GRDCS data. **Never delete `/api/portfolio/snapshot` as a
+> "duplicate of master."** (Resolves audit finding F-6 — the §12.4 ↔ §12.2 contradiction.)
 
 ### 12.5 Secure by Design — Not Bolted On
 
