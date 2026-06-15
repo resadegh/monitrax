@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 2 — golden-master regression)
+**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 3 — invariant / property checks)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,24 +39,23 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-2** session (base HEAD `2ca4043` = merge of #1114).
-> Phase 3 is structurally DONE (#1113 + #1114). Phase 4 builds the regression/UAT rails in four PRs, one per
-> layer, each off main, in order. **Layer 1 = PR #1115 (open).** Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-3** session (base HEAD `2ca4043` = merge of #1114).
+> Phase 4 builds the regression/UAT rails in four PRs, one per layer, each off main, in order.
+> **Layer 1 = PR #1115 · Layer 2 = PR #1116 (both open).** Every claim below carries a live source.
 
-- **Current focus:** **Phase 4 Layer 2 — golden-master regression (this PR).** Six canonical archetypes
-  (sole owner; couple 50/50; discretionary trust; SMSF; company; mixed entity portfolio) under
-  `tests/regression/golden-master/`. For each, the canonical engines run and their output is captured into
-  committed vitest snapshots — **net worth (household + per-entity via the `ownerEntityId` filter), cashflow,
-  per-entity breakdown (`buildEntityBreakdown`), and per-entity CGT split (`computePropertyDisposalCgt`).**
-  Snapshots are serialized FROM the engine (`toMatchSnapshot`) — **no number hand-authored** (§2/§12.3;
-  Decimal outputs projected via `.toNumber()`). 24 tests / 24 snapshots, green + stable on re-run. Sanity
-  cross-checks held: Div 115 discount = 0 (company) / 0.3333 (complying SMSF) / 0.5 (individual·trust); SMSF
-  member super excluded from the net-worth super sum (Phase 39.5) with the fund's owned assets counted instead.
-  **No correctness bug surfaced** (engine matches documented behaviour).
-- **Active task + stop-point:** Layer-2 PR (`claude/phase4-layer2-golden-master`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge Layer 1 (#1115) then Layer 2 (resolve the STATE.md Section-C
-  conflict in favour of the later layer — both are off main, by directive). (2) Repo-admin: add required check
-  `vitest`. (3) Build Layer 3 (invariants/property) then Layer 4 (Playwright UAT), each off main.
+- **Current focus:** **Phase 4 Layer 3 — invariant / property checks (this PR).** `tests/regression/invariants/`
+  asserts the engine *laws* over the 6 archetypes + a seeded 40-portfolio pseudo-random sweep (deterministic
+  mulberry32, no new dep): (1) **net worth == assets − liabilities** across all read-paths (canonical Float,
+  canonical Decimal, `buildEntityBreakdown`, and the #1113 unified valuation helpers `sumHoldingsMarketValue`/
+  `sumLoanBalances`); (2) **per-entity legal-title value reconciles to the household total** + ownership shares
+  sum to 100% (`attributeAsset`: joint = 1/n, TIC = sharePct, override → 100% to beneficial owner); (3)
+  **Float/Decimal siblings agree at the boundary**; (4) **D6 CGT** — each owner's discount + share equals
+  `calculateCgtDiscountDecimal` + `attributeAsset` (taxable == nominal × (1 − discount); Σ shares == total).
+  **246 tests green. No correctness bug surfaced.**
+- **Active task + stop-point:** Layer-3 PR (`claude/phase4-layer3-invariants`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge L1 #1115 → L2 #1116 → L3 (resolve the STATE.md Section-C +
+  hub-date conflicts in favour of the later layer — all off main, by directive). (2) Repo-admin: add required
+  check `vitest`. (3) Build Layer 4 (Playwright UAT, off main) + wire Playwright into the L1 CI workflow.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
   - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15) — `tests.yml` landed in Layer 1.
@@ -65,8 +64,8 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   - **Phase 3 P2 findings** await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
   - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
 - **Verified-live this session:** RESUME CHECK — since cursor HEAD `de3e9c4` (#1113), only **#1114** merged →
-  live HEAD `2ca4043`. Engines used are pure/DB-free; golden-master suite runs in ~1.3s. Phase-4 Layer 1 shipped
-  as PR #1115 (vitest CI). Full repo suite green at `2ca4043` (2594 pass / 69 skip / 0 fail) + 24 new golden tests.
+  live HEAD `2ca4043`. Phase-4 L1 (#1115 vitest CI) + L2 (#1116 golden-master, 24 snapshots) shipped. L3 adds
+  246 invariant tests (~0.9s). All engines exercised are pure/DB-free.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
