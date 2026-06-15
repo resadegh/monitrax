@@ -19,6 +19,15 @@ export {
 } from './netWorthCalculator';
 
 export {
+  holdingMarketValue,
+  sumHoldingsMarketValue,
+  loanBalance,
+  sumLoanBalances,
+  type HoldingValueInput,
+  type LoanBalanceInput,
+} from './assetValuation';
+
+export {
   calculateCashflow,
   calculateMonthlyCashflow,
   calculateAnnualCashflow,

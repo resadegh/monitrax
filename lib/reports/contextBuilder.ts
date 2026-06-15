@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { sumHoldingsMarketValue, sumLoanBalances } from '@/lib/calculations/assetValuation';
 import type {
   ReportContext,
   ReportType,
@@ -189,7 +190,7 @@ async function calculateFinancialSummary(userId: string) {
     }),
     prisma.investmentAccount.findMany({
       where: { userId },
-      include: { holdings: { select: { units: true, averagePrice: true } } },
+      include: { holdings: { select: { units: true, currentPrice: true, averagePrice: true } } },
     }),
   ]);
 
@@ -204,19 +205,18 @@ async function calculateFinancialSummary(userId: string) {
     accountBalances += a.currentBalance || 0;
   }
 
+  // Phase 3 fix PR1 (audit L1-2): value holdings by the canonical net-worth
+  // basis (units × live price) via the shared helper, not cost basis.
   let investmentValue = 0;
   for (const acc of investmentAccounts) {
-    for (const h of acc.holdings) {
-      investmentValue += h.averagePrice * h.units;
-    }
+    investmentValue += sumHoldingsMarketValue(acc.holdings);
   }
 
   const totalAssets = propertyValue + accountBalances + investmentValue;
 
-  let totalLiabilities = 0;
-  for (const l of loans) {
-    totalLiabilities += l.principal || 0;
-  }
+  // Phase 3 fix PR1 (audit L1-2): canonical loan-balance basis (`Loan.principal`
+  // is the current balance) via the shared helper.
+  const totalLiabilities = sumLoanBalances(loans);
   const netWorth = totalAssets - totalLiabilities;
 
   // Simple cashflow runway calculation (months of expenses covered by liquid assets)
