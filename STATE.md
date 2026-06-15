@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `c10333d2` · **on:** 2026-06-15 · **by:** Cowork session (Phase 3 engine-correctness audit)
+**Last verified against HEAD:** `3e5881f1` · **on:** 2026-06-15 · **by:** Cowork session (Phase 3 engine-correctness audit)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,7 +39,7 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Cowork Phase 3 engine-correctness audit (read live at HEAD `c10333d2`).
+> Re-pinned 2026-06-15 by the Cowork Phase 3 engine-correctness audit (read live at HEAD `3e5881f1`).
 > Phase 3 was a STATIC read/trace audit (record-don't-fix). Every claim below carries a live source.
 
 - **Current focus:** **Phase 3 calc-engine + data-relationship correctness audit — COMPLETE this PR.**
@@ -52,20 +52,20 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   polymorphically (no FK) → orphan rows on asset delete. The canonical SSOT itself is sound and its
   Float/Decimal siblings agree; MA.4-002 fix confirmed not regressed.
 - **Active task + stop-point:** This Cowork PR (`claude/phase3-engine-correctness-audit`) adds the audit doc +
-  bumps the plan hub date. The matching one-line backlog index row for `03_OPEN_QUESTIONS_AND_BACKLOG.md` (#34)
-  is **staged but withheld from this PR** — a verbatim connector round-trip of the 63 KB spoke risks corrupting
-  the SSOT (finding F-8 in practice); apply it in a git-capable session. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this audit PR. (2) Apply the staged Phase-3 backlog row #34
+  bumps the plan hub date. The matching one-line backlog index row for `03_OPEN_QUESTIONS_AND_BACKLOG.md` (#35
+  — #34 was taken by PR #1111 mid-session) is **staged but withheld from this PR** — a verbatim connector
+  round-trip of the 63 KB spoke risks corrupting the SSOT (finding F-8 in practice); apply it in a git-capable
+  session. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this audit PR. (2) Apply the staged Phase-3 backlog row #35
   to `03_OPEN_QUESTIONS_AND_BACKLOG.md` in a git-capable session (text specified in the PR body). (3) Spin the
   **separate fix PRs** the audit recommends — priority: a single canonical "asset market value / loan balance"
   helper (closes L1-1+L1-2+L1-3), then the per-entity ownership-semantics decision (L2-1, product + AFSL call for
   Reza), then ownership-row referential-integrity cleanup (L2-2). (4) Carry-overs from the D6 cursor still open:
-  bump the tax-config review date so `tests/tax-engine/config/taxYearConfig.test.ts` ("nextReviewBy in the
-  future") passes — its own PR; the plan-hygiene pass to bring spokes `01`/`04` under the §15.5 budget (Backlog
-  #33); Reza's Q-GTM-3 decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
+  the plan-hygiene pass to bring spokes `01`/`04` under the §15.5 budget (Backlog #33); Reza's Q-GTM-3 decision;
+  repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
 - **Open decisions / blockers:**
   - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`
-    §"Recommended fix PRs" (+ the staged Backlog #34).
+    §"Recommended fix PRs" (+ the staged Backlog #35).
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; live plan says "Needs Reza decision
     before Step 2.2." Claude **recommendation = Finsure first, Connective second** (a rec, not a ruling).
     (`03_OPEN_QUESTIONS_AND_BACKLOG.md` Q-GTM-3 row.)
@@ -78,17 +78,19 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
     test-runner workflow (and arming the three soft-launch workflows to blocking).
   - **Connector cannot reliably rewrite a 63 KB+ plan spoke in one call** (Phase 3 — F-8 in practice). The safe
     ceiling for an in-place connector rewrite is well under the §15.5 ~150 KB target; prefer git-capable edits or split further.
-  - **Pre-existing test failure (unrelated to Phase 3):** `tests/tax-engine/config/taxYearConfig.test.ts`
-    "nextReviewBy in the future" fails — the tax-config review date (2026-06-14) is now past; needs a date bump in its own PR.
   - **CI test-runner rail** still absent (`security-audit.yml` runs audit+lint+build only). Phase 4 needs a CI test job.
-- **Verified-live this session (HEAD c10333d2):** RESUME CHECK — since the prior cursor HEAD `4a49a93`, four
-  PRs merged to main: #1106 (`phase2-prb`), #1108 (`phase2-prc` — the F-8 plan hub+spoke split), #1109
-  (`boot-direc`), #1110 (`ad2-implementation` — Phase 47). Phase 47 (Entity Ownership Fabric) is
-  **feature-complete**. My Phase 1 PR #1102 (SYSTEM_MAP + cursor) merged as `9e36425`; Phase 2 adopted findings
-  F-1 (plan-freshness CI check) + F-8 (hub+spoke split, per-spoke size budget). Calc engine confirmed:
-  orchestrator `lib/services/masterFinancialService.ts` calls canonical `calculateNetWorth` (`:1688`) +
-  aggregators; engine families `tax-engine`/`cfo`/`health`/`cgt`/`cashflow`/`intelligence`/`wealthCheck`/
-  `decimal`/`calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
+  - **✅ RESOLVED 2026-06-15 by PR #1111:** the prior cursor's `tests/tax-engine/config/taxYearConfig.test.ts`
+    "nextReviewBy in the future" failure — #1111 extended the FY-review checkpoint + hardened the config fallback.
+- **Verified-live this session:** RESUME CHECK ran twice. (a) At session start: since the prior cursor HEAD
+  `4a49a93`, PRs #1106/#1108/#1109/#1110 had merged (Phase 47 feature-complete; F-8 plan hub+spoke split landed
+  as #1108); pinned `c10333d2`. (b) Mid-session, main advanced again `c10333d2 → 3e5881f1` via **PR #1111**
+  (`taxyear-fy26-review` — FY-review checkpoint + config-fallback hardening; resolves the taxYearConfig test
+  failure above). This branch is based on `3e5881f1`; the Phase 3 findings are unaffected (#1111 touched tax-config
+  dates, not the calc/ownership paths audited). My Phase 1 PR #1102 (SYSTEM_MAP + cursor) merged as `9e36425`;
+  Phase 2 adopted findings F-1 (plan-freshness CI check) + F-8 (hub+spoke split + per-spoke size budget). Calc
+  engine confirmed: orchestrator `lib/services/masterFinancialService.ts` calls canonical `calculateNetWorth`
+  (`:1688`) + aggregators; engine families `tax-engine`/`cfo`/`health`/`cgt`/`cashflow`/`intelligence`/
+  `wealthCheck`/`decimal`/`calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
