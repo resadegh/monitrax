@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { cleanupAssetOwnership } from '@/lib/services/assetOwnershipCleanup';
 import { REFORM_CUT_OVER_UTC } from '@/lib/tax-engine/config/reformConstants';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -380,8 +381,16 @@ export const DELETE = withPermission<RouteContext>('property.delete', async (req
       const ownershipResult = verifyOwnership(existing, auth.userId, 'Property');
       if (!ownershipResult.success) return ownershipResult.response;
 
-      await prisma.property.delete({
-        where: { id },
+      // Delete the property AND its polymorphic ownership rows atomically
+      // (audit L2-2: no DB FK on OwnershipGroup/BeneficialOwnershipOverride, so
+      // the DB can't cascade — clean up in the same transaction).
+      const cleanup = await prisma.$transaction(async (tx) => {
+        await tx.property.delete({ where: { id } });
+        return cleanupAssetOwnership(tx, {
+          userId: auth.userId,
+          ownedObjectType: 'property',
+          ownedObjectId: id,
+        });
       });
 
       // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
@@ -391,6 +400,10 @@ export const DELETE = withPermission<RouteContext>('property.delete', async (req
         status: 'SUCCESS',
         entityType: 'Property',
         entityId: id,
+        metadata: {
+          ownershipGroupsDeleted: cleanup.ownershipGroupsDeleted,
+          beneficialOverridesDeleted: cleanup.beneficialOverridesDeleted,
+        },
       });
 
       return NextResponse.json({ message: 'Property deleted successfully' });

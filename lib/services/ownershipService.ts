@@ -228,6 +228,30 @@ export async function deleteOwnershipGroup(
   }).catch(() => {});
 }
 
+/**
+ * Phase 3 fix PR2 (audit L2-2) — delete EVERY `OwnershipGroup` referencing a
+ * given asset, for cleanup when that asset is deleted. The ownership tables
+ * reference assets polymorphically (`ownedObjectType` + `ownedObjectId`, no DB
+ * FK), so the database cannot cascade — the owning asset's delete handler must
+ * call this. `OwnershipStake` rows cascade via their real FK to the group.
+ *
+ * Accepts a transaction client so the cleanup is atomic with the asset delete.
+ * Returns the number of groups removed (0 is the common case — most assets are
+ * sole-owned and have no group). §12.11: the composite `where` confines the
+ * delete to the caller's rows for exactly this asset.
+ */
+export async function deleteOwnershipGroupsForAsset(
+  client: PrismaTxOrClient,
+  userId: string,
+  ownedObjectType: string,
+  ownedObjectId: string,
+): Promise<number> {
+  const result = await client.ownershipGroup.deleteMany({
+    where: { userId, ownedObjectType, ownedObjectId },
+  });
+  return result.count;
+}
+
 export interface OwnershipGroupSummary {
   id: string;
   ownedObjectType: string;

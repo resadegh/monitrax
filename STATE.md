@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `e3a1071` · **on:** 2026-06-15 · **by:** Code session (Phase 3 fix PR1 — canonical value/balance helper)
+**Last verified against HEAD:** `de3e9c4` · **on:** 2026-06-15 · **by:** Code session (Phase 3 fix PR2 — ownership integrity + Entity-Value label)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,28 +39,26 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Code Phase 3 fix-PR1 session (branch base HEAD `e3a1071`, after the Phase 3 audit PR #1112 merged).
-> The audit was STATIC (record-don't-fix); this session ships the first FIX PR from its recommendations. Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the Code Phase 3 fix-PR2 session (branch base HEAD `de3e9c4`, after fix PR1 #1113 merged).
+> The Phase 3 audit was STATIC; this session ships fix PR2 (L2-2 + L2-1 Option B). Every claim below carries a live source.
 
-- **Current focus:** **Phase 3 fix PR1 — canonical asset-value / loan-balance helper — DONE this PR (closes L1-1/L1-2/L1-3).**
-  New `lib/calculations/assetValuation.ts` (`holdingMarketValue`/`sumHoldingsMarketValue` = `units × (currentPrice
-  || averagePrice)`; `loanBalance`/`sumLoanBalances` = `Number(principal || 0)`) — the exact Float basis the
-  untouched canonical `netWorthCalculator` uses (`Loan.principal` IS the current balance per schema). Imported into
-  `wealthGraphService` (L1-1: was the `currentValue` cache + cost basis; `currentPrice` added to the holdings
-  select), `reports/contextBuilder` (L1-2: was `averagePrice × units` cost basis + raw `principal`), and
-  `ai/services/financialAdvisor` (L1-3: loan total now via the helper; its snapshot layer has no raw units/price
-  so the holding helper applies upstream). 14 new tests pin each helper `===` canonical for the same input;
-  0 tsc errors project-wide; calculations 98/98 + consumer suites 57/57 green. **`netWorthCalculator` untouched.**
-- **Active task + stop-point:** This Code PR (`claude/fix-pr1-canonical-value-helper`, off main `e3a1071`) ships the
-  helper + 3 consumer rewires + tests + this plan/cursor update. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this fix PR1. (2) **Fix PR2 — per-entity ownership-value
-  semantics (L2-1)**: a *product + AFSL decision for Reza* — make `entityValueBreakdown`/`entityBreakdown` apply
-  `attributeAsset` fractional weighting so per-entity *value* reconciles with per-entity *tax*, OR document
-  "Entity Value = legal title" + surface a UI note. (3) **Fix PR3 — ownership-row referential integrity (L2-2)**:
-  app-level cascade / orphan sweep for `OwnershipGroup`/`OwnershipStake`/`BeneficialOwnershipOverride` on asset
-  delete (polymorphic refs can't use a DB FK). (4) Still-staged: the Phase-3 backlog index row for
-  `03_OPEN_QUESTIONS_AND_BACKLOG.md` (the audit recorded the findings; the backlog one-liner was withheld from
-  #1112 and not yet applied). (5) Carry-overs: plan-hygiene pass for spokes `01`/`04` (Backlog #33); Reza's Q-GTM-3
+- **Current focus:** **Phase 3 fix PR2 — ownership referential integrity (L2-2) + Entity-Value label (L2-1 = Option B) — DONE this PR.**
+  **L2-2:** new canonical `lib/services/assetOwnershipCleanup.ts` (`cleanupAssetOwnership(tx, …)`) + two per-table
+  deleters (`deleteOwnershipGroupsForAsset` / `deleteBeneficialOverridesForAsset`); wired into ALL 5 asset-delete
+  handlers (properties/loans/accounts/investments-accounts/assets) inside a `$transaction` so the asset + its
+  polymorphic ownership rows delete atomically (no DB FK → DB can't cascade). §12.11-safe (composite `where` per
+  user+asset). 7 tests. **L2-1 = Option B (Reza decided):** Entity Value stays legal-title (`entityValueBreakdown`
+  math UNCHANGED); factual "by legal title → ownership-share tax effects in the Tax view" labels added to both
+  entity-value surfaces (dashboard `EntityBreakdownWidget` + "Entity Value Contribution" chart) — label-on-existing,
+  no Stitch (§18.2.1). Backlog row **#35** appended (verbatim from #1112) + **Q-ENTITY-VALUE-SHARE** (Option A,
+  share-weighted *value*) logged PARKED. 0 tsc errors; 7/7 + ownership/entity-graph 83/83; eslint + financial lint clean.
+- **Active task + stop-point:** This Code PR (`claude/fix-pr2-ownership-integrity`, off main `de3e9c4`) ships the
+  cleanup helper + 5 handler rewires + L2-1 labels + backlog/Open-Question entries + plan/cursor update.
+  **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this fix PR2. (2) **Phase-3 cleanup is now structurally done**
+  — L1-1/2/3 (PR1 #1113), L2-2 + L2-1 (this PR); only optional L1-4 (money-flow ↔ aggregator alignment) +
+  record-only L1-5/L2-3 remain (close with the Float-path retirement). (3) Carry-overs: plan-hygiene pass for
+  spokes `01`/`04` (Backlog #33); Reza's Q-GTM-3
   decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
 - **Open decisions / blockers:**
   - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`

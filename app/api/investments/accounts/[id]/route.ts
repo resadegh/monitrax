@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { cleanupAssetOwnership } from '@/lib/services/assetOwnershipCleanup';
 import { z } from 'zod';
 
 const updateAccountSchema = z.object({
@@ -115,8 +116,14 @@ export const DELETE = withPermission<RouteContext>('investment.delete', async (r
     const ownershipResult = verifyOwnership(existing, auth.userId, 'Investment account');
     if (!ownershipResult.success) return ownershipResult.response;
 
-    await prisma.investmentAccount.delete({
-      where: { id },
+    // Delete the investment account AND its polymorphic ownership rows atomically (audit L2-2).
+    const cleanup = await prisma.$transaction(async (tx) => {
+      await tx.investmentAccount.delete({ where: { id } });
+      return cleanupAssetOwnership(tx, {
+        userId: auth.userId,
+        ownedObjectType: 'investmentAccount',
+        ownedObjectId: id,
+      });
     });
 
     // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
@@ -126,6 +133,10 @@ export const DELETE = withPermission<RouteContext>('investment.delete', async (r
       status: 'SUCCESS',
       entityType: 'InvestmentAccount',
       entityId: id,
+      metadata: {
+        ownershipGroupsDeleted: cleanup.ownershipGroupsDeleted,
+        beneficialOverridesDeleted: cleanup.beneficialOverridesDeleted,
+      },
     });
 
     return NextResponse.json({ message: 'Investment account deleted successfully' });
