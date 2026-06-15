@@ -59,8 +59,11 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   §0x workstreams (0·WI/0·DG/0·StD/0·WX) from `01_ACTIVE_WORKSTREAMS` → `04_RECENTLY_COMPLETED`, and roll >30-day
   completions into `IMPLEMENTATION_CHANGELOG.md`, to bring both over-budget spokes under the §15.5 limit (tracked:
   Backlog row 33). (3) **Index-completeness pass** — clear the 5 residual `check-index-paths.sh` soft warnings.
-  (4) **Reza decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) Grant GitHub
-  `workflow` scope so `continuity-gate.yml` + `docs-hygiene.yml` can be armed (`--strict`).
+  (4) **Reza decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) **Repo-admin /
+  operator actions:** enable **GitHub branch protection on `main` → "Require status checks to pass" → "Require
+  branches to be up to date before merging"** (the authoritative branch-currency control; the new soft-launch
+  `branch-currency.yml` is the CI backstop until then); grant GitHub `workflow` scope; then arm all three
+  soft-launch workflows (`continuity-gate.yml`, `docs-hygiene.yml`, `branch-currency.yml`) to blocking.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
     decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a
