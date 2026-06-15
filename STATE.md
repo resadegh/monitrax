@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `de3e9c4` · **on:** 2026-06-15 · **by:** Code session (Phase 3 fix PR2 — ownership integrity + Entity-Value label)
+**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 2 — golden-master regression)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,55 +39,34 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Code Phase 3 fix-PR2 session (branch base HEAD `de3e9c4`, after fix PR1 #1113 merged).
-> The Phase 3 audit was STATIC; this session ships fix PR2 (L2-2 + L2-1 Option B). Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-2** session (base HEAD `2ca4043` = merge of #1114).
+> Phase 3 is structurally DONE (#1113 + #1114). Phase 4 builds the regression/UAT rails in four PRs, one per
+> layer, each off main, in order. **Layer 1 = PR #1115 (open).** Every claim below carries a live source.
 
-- **Current focus:** **Phase 3 fix PR2 — ownership referential integrity (L2-2) + Entity-Value label (L2-1 = Option B) — DONE this PR.**
-  **L2-2:** new canonical `lib/services/assetOwnershipCleanup.ts` (`cleanupAssetOwnership(tx, …)`) + two per-table
-  deleters (`deleteOwnershipGroupsForAsset` / `deleteBeneficialOverridesForAsset`); wired into ALL 5 asset-delete
-  handlers (properties/loans/accounts/investments-accounts/assets) inside a `$transaction` so the asset + its
-  polymorphic ownership rows delete atomically (no DB FK → DB can't cascade). §12.11-safe (composite `where` per
-  user+asset). 7 tests. **L2-1 = Option B (Reza decided):** Entity Value stays legal-title (`entityValueBreakdown`
-  math UNCHANGED); factual "by legal title → ownership-share tax effects in the Tax view" labels added to both
-  entity-value surfaces (dashboard `EntityBreakdownWidget` + "Entity Value Contribution" chart) — label-on-existing,
-  no Stitch (§18.2.1). Backlog row **#35** appended (verbatim from #1112) + **Q-ENTITY-VALUE-SHARE** (Option A,
-  share-weighted *value*) logged PARKED. 0 tsc errors; 7/7 + ownership/entity-graph 83/83; eslint + financial lint clean.
-- **Active task + stop-point:** This Code PR (`claude/fix-pr2-ownership-integrity`, off main `de3e9c4`) ships the
-  cleanup helper + 5 handler rewires + L2-1 labels + backlog/Open-Question entries + plan/cursor update.
-  **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this fix PR2. (2) **Phase-3 cleanup is now structurally done**
-  — L1-1/2/3 (PR1 #1113), L2-2 + L2-1 (this PR); only optional L1-4 (money-flow ↔ aggregator alignment) +
-  record-only L1-5/L2-3 remain (close with the Float-path retirement). (3) Carry-overs: plan-hygiene pass for
-  spokes `01`/`04` (Backlog #33); Reza's Q-GTM-3
-  decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
+- **Current focus:** **Phase 4 Layer 2 — golden-master regression (this PR).** Six canonical archetypes
+  (sole owner; couple 50/50; discretionary trust; SMSF; company; mixed entity portfolio) under
+  `tests/regression/golden-master/`. For each, the canonical engines run and their output is captured into
+  committed vitest snapshots — **net worth (household + per-entity via the `ownerEntityId` filter), cashflow,
+  per-entity breakdown (`buildEntityBreakdown`), and per-entity CGT split (`computePropertyDisposalCgt`).**
+  Snapshots are serialized FROM the engine (`toMatchSnapshot`) — **no number hand-authored** (§2/§12.3;
+  Decimal outputs projected via `.toNumber()`). 24 tests / 24 snapshots, green + stable on re-run. Sanity
+  cross-checks held: Div 115 discount = 0 (company) / 0.3333 (complying SMSF) / 0.5 (individual·trust); SMSF
+  member super excluded from the net-worth super sum (Phase 39.5) with the fund's owned assets counted instead.
+  **No correctness bug surfaced** (engine matches documented behaviour).
+- **Active task + stop-point:** Layer-2 PR (`claude/phase4-layer2-golden-master`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge Layer 1 (#1115) then Layer 2 (resolve the STATE.md Section-C
+  conflict in favour of the later layer — both are off main, by directive). (2) Repo-admin: add required check
+  `vitest`. (3) Build Layer 3 (invariants/property) then Layer 4 (Playwright UAT), each off main.
 - **Open decisions / blockers:**
-  - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`
-    §"Recommended fix PRs" (+ the staged Backlog #35).
-  - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; live plan says "Needs Reza decision
-    before Step 2.2." Claude **recommendation = Finsure first, Connective second** (a rec, not a ruling).
-    (`03_OPEN_QUESTIONS_AND_BACKLOG.md` Q-GTM-3 row.)
-  - **Q-DEC (Float -> Decimal) — DECIDED 2026-05-24 (Reza), migration v1 STRUCTURALLY COMPLETE 2026-06-09.**
-    Prisma stores Float; engines convert at the boundary via `lib/decimal/` (`Decimal` = `Prisma.Decimal`,
-    decimal.js `ROUND_HALF_EVEN`) and compute in Decimal; Q-DEC PR4 dropped the *dormant* `*_decimal` columns.
-    `/wealth-check` precision gate satisfied; remaining traffic-on gates are Q-HOOK-AFSL + Q-HOOK-BENCHMARK
-    (compliance/benchmark, not precision).
-  - **GitHub `workflow` scope NOT granted** — blocks `.github/workflows/continuity-gate.yml` + the Phase 4
-    test-runner workflow (and arming the three soft-launch workflows to blocking).
-  - **Connector cannot reliably rewrite a 63 KB+ plan spoke in one call** (Phase 3 — F-8 in practice). The safe
-    ceiling for an in-place connector rewrite is well under the §15.5 ~150 KB target; prefer git-capable edits or split further.
-  - **CI test-runner rail** still absent (`security-audit.yml` runs audit+lint+build only). Phase 4 needs a CI test job.
-  - **✅ RESOLVED 2026-06-15 by PR #1111:** the prior cursor's `tests/tax-engine/config/taxYearConfig.test.ts`
-    "nextReviewBy in the future" failure — #1111 extended the FY-review checkpoint + hardened the config fallback.
-- **Verified-live this session:** RESUME CHECK ran twice. (a) At session start: since the prior cursor HEAD
-  `4a49a93`, PRs #1106/#1108/#1109/#1110 had merged (Phase 47 feature-complete; F-8 plan hub+spoke split landed
-  as #1108); pinned `c10333d2`. (b) Mid-session, main advanced again `c10333d2 → 3e5881f1` via **PR #1111**
-  (`taxyear-fy26-review` — FY-review checkpoint + config-fallback hardening; resolves the taxYearConfig test
-  failure above). This branch is based on `3e5881f1`; the Phase 3 findings are unaffected (#1111 touched tax-config
-  dates, not the calc/ownership paths audited). My Phase 1 PR #1102 (SYSTEM_MAP + cursor) merged as `9e36425`;
-  Phase 2 adopted findings F-1 (plan-freshness CI check) + F-8 (hub+spoke split + per-spoke size budget). Calc
-  engine confirmed: orchestrator `lib/services/masterFinancialService.ts` calls canonical `calculateNetWorth`
-  (`:1688`) + aggregators; engine families `tax-engine`/`cfo`/`health`/`cgt`/`cashflow`/`intelligence`/
-  `wealthCheck`/`decimal`/`calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
+  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
+  - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15) — `tests.yml` landed in Layer 1.
+  - **Plan-spoke connector ceiling:** the ~290–300 KB spokes exceed the safe single-call rewrite ceiling, so this
+    PR updates STATE.md + the thin hub and stages the verbatim spoke entry in the PR body (same handling as #1112).
+  - **Phase 3 P2 findings** await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
+  - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
+- **Verified-live this session:** RESUME CHECK — since cursor HEAD `de3e9c4` (#1113), only **#1114** merged →
+  live HEAD `2ca4043`. Engines used are pure/DB-free; golden-master suite runs in ~1.3s. Phase-4 Layer 1 shipped
+  as PR #1115 (vitest CI). Full repo suite green at `2ca4043` (2594 pass / 69 skip / 0 fail) + 24 new golden tests.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
