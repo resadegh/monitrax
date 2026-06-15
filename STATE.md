@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 1 — vitest test-runner CI)
+**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 2 — golden-master regression)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,41 +39,34 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-1** session (base HEAD `2ca4043` = merge of #1114).
-> Phase 3 is structurally DONE (fix PR1 #1113 + fix PR2 #1114 both merged). Phase 4 builds the regression/UAT
-> test rails in four PRs — one per layer, each off main, in order. Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-2** session (base HEAD `2ca4043` = merge of #1114).
+> Phase 3 is structurally DONE (#1113 + #1114). Phase 4 builds the regression/UAT rails in four PRs, one per
+> layer, each off main, in order. **Layer 1 = PR #1115 (open).** Every claim below carries a live source.
 
-- **Current focus:** **Phase 4 — regression + scenario/UAT test suite (4 layered PRs).**
-  **Layer 1 (this PR) — vitest test-runner CI:** new `.github/workflows/tests.yml` runs `npm run test`
-  (the full vitest suite) on every PR + push to main/master; the `workflow` token scope is now granted so the
-  file can land. **Verified live:** the suite is GREEN at `2ca4043` — **2594 passed / 69 skipped / 0 failed in
-  ~19s**, runs as pure functions with NO database (DB paths guarded, no-op without `DATABASE_URL`). The prior
-  cursor's `tests/tax-engine/config/taxYearConfig.test.ts` "nextReviewBy in the future" failure is **already
-  fixed by #1111** (`lib/tax-engine/config/taxYearConfig.ts:123/210/314` now `2026-09-30` > today) — so Layer 1
-  did NOT need a date bump (confirmed, skipped per directive).
-- **Active task + stop-point:** Layer-1 PR (`claude/phase4-layer1-test-runner-ci`, off main `2ca4043`) ships the
-  workflow + this cursor + the hub `Last updated` bump/Phase-4 note. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) **Repo-admin (Reza):** add a required status check named exactly **`vitest`** to the
-  `main` ruleset / branch-protection required-check list — the new job does NOT gate merges until it is listed.
-  (2) Reza review + merge Layer 1. (3) Build Layer 2 (golden-master regression), Layer 3 (invariants/property),
-  Layer 4 (Playwright UAT) — each its own PR off main, in order. (4) Paste the staged spoke entries (in the
-  Layer-1 PR body) into `04_RECENTLY_COMPLETED.md` + `01_ACTIVE_WORKSTREAMS.md` from a git-capable session.
+- **Current focus:** **Phase 4 Layer 2 — golden-master regression (this PR).** Six canonical archetypes
+  (sole owner; couple 50/50; discretionary trust; SMSF; company; mixed entity portfolio) under
+  `tests/regression/golden-master/`. For each, the canonical engines run and their output is captured into
+  committed vitest snapshots — **net worth (household + per-entity via the `ownerEntityId` filter), cashflow,
+  per-entity breakdown (`buildEntityBreakdown`), and per-entity CGT split (`computePropertyDisposalCgt`).**
+  Snapshots are serialized FROM the engine (`toMatchSnapshot`) — **no number hand-authored** (§2/§12.3;
+  Decimal outputs projected via `.toNumber()`). 24 tests / 24 snapshots, green + stable on re-run. Sanity
+  cross-checks held: Div 115 discount = 0 (company) / 0.3333 (complying SMSF) / 0.5 (individual·trust); SMSF
+  member super excluded from the net-worth super sum (Phase 39.5) with the fund's owned assets counted instead.
+  **No correctness bug surfaced** (engine matches documented behaviour).
+- **Active task + stop-point:** Layer-2 PR (`claude/phase4-layer2-golden-master`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge Layer 1 (#1115) then Layer 2 (resolve the STATE.md Section-C
+  conflict in favour of the later layer — both are off main, by directive). (2) Repo-admin: add required check
+  `vitest`. (3) Build Layer 3 (invariants/property) then Layer 4 (Playwright UAT), each off main.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
-  - **GitHub `workflow` scope — ✅ NOW GRANTED** (2026-06-15). Unblocks `tests.yml` (this PR) + arming
-    `continuity-gate.yml` / `docs-hygiene.yml` / `branch-currency.yml` to blocking (still a separate repo-admin step).
-  - **CI test-runner rail — being ADDED by THIS PR** (`tests.yml`). Was absent (`security-audit.yml` = audit/lint/build only).
-  - **Plan-spoke connector ceiling:** `01_ACTIVE_WORKSTREAMS.md` (~292 KB) + `04_RECENTLY_COMPLETED.md` (~303 KB)
-    exceed the safe single-call connector-rewrite ceiling, so this Cowork PR updates STATE.md + the thin hub and
-    **stages the verbatim spoke entries in the PR body** (same handling as #1112's backlog row #35). A git-capable
-    session pastes them in.
-  - **Phase 3 P2 findings** still await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
+  - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15) — `tests.yml` landed in Layer 1.
+  - **Plan-spoke connector ceiling:** the ~290–300 KB spokes exceed the safe single-call rewrite ceiling, so this
+    PR updates STATE.md + the thin hub and stages the verbatim spoke entry in the PR body (same handling as #1112).
+  - **Phase 3 P2 findings** await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
   - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
-- **Verified-live this session:** RESUME CHECK ran — since the prior cursor HEAD `de3e9c4` (#1113), only **#1114**
-  (`claude/fix-pr2-ownership-integrity`) merged → live HEAD `2ca4043` (Phase 3 cleanup structurally complete).
-  Test stack confirmed live: `vitest ^1.6.1`, include `tests/**/*.test.{ts,tsx}`, node env, `@`+`server-only`
-  aliases (`vitest.config.ts`); entry `npm run test` = `vitest run` (`package.json`). No Playwright dependency
-  yet (added in Layer 4). Suite green as above.
+- **Verified-live this session:** RESUME CHECK — since cursor HEAD `de3e9c4` (#1113), only **#1114** merged →
+  live HEAD `2ca4043`. Engines used are pure/DB-free; golden-master suite runs in ~1.3s. Phase-4 Layer 1 shipped
+  as PR #1115 (vitest CI). Full repo suite green at `2ca4043` (2594 pass / 69 skip / 0 fail) + 24 new golden tests.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
