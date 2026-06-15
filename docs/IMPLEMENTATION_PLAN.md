@@ -6,7 +6,7 @@
 >
 > See CLAUDE.md §1 (Session Startup Protocol) and §15 (Implementation Plan Protocol) for the rules that govern this document.
 
-**Last updated:** 2026-06-15 (Phase 2 PR-C / finding F-8 — the plan was split from one 884 KB file into this hub + the `docs/implementation/` spokes so it stays connector-writable and under the §15.5 size budget; the historical preamble narrative was relocated to `docs/changelog/IMPLEMENTATION_CHANGELOG.md`). _Keep this date current: it must never be older than the newest entry in [`04_RECENTLY_COMPLETED.md`](implementation/04_RECENTLY_COMPLETED.md) (CI-checked — finding F-1)._
+**Last updated:** 2026-06-15 (Phase 47 Stage D · D6 — the `sellProperty` What-If lever now computes CGT through the canonical per-entity path; Phase 47 is feature-complete. Prior same-day: Phase 2 PR-C / finding F-8 — the plan was split from one 884 KB file into this hub + the `docs/implementation/` spokes so it stays connector-writable and under the §15.5 size budget; the historical preamble narrative was relocated to `docs/changelog/IMPLEMENTATION_CHANGELOG.md`). _Keep this date current: it must never be older than the newest entry in [`04_RECENTLY_COMPLETED.md`](implementation/04_RECENTLY_COMPLETED.md) (CI-checked — finding F-1)._
 
 ---
 

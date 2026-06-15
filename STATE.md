@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `25180ea` · **on:** 2026-06-14 · **by:** Code session (Phase 2 PR-A — plan/index hygiene)
+**Last verified against HEAD:** `4a49a93` · **on:** 2026-06-15 · **by:** Code session (Phase 47 Stage D · D6 — What-If lever per-entity CGT)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,31 +39,27 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Code Phase 2 PR-C session (HEAD `b8427a9`, after PR-B PR #1106 merged `671efee` -> `b8427a9`).
-> Continuity Phase 0+1 is COMPLETE; Phase 2 governance audit is in flight (PR-A + PR-B merged, PR-C this session). Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the Code Phase 47 D6 session (branched from HEAD `4a49a93`, after #1108 merged the plan split).
+> Phase 47 is now feature-complete: Stage D · D6 (What-If lever per-entity CGT) shipped this session. Every claim below carries a live source.
 
-- **Current focus:** Continuity **Phase 2 governance audit — IN PROGRESS (PR-C in flight; PR-A + PR-B merged).**
-  Phase 0+1 are COMPLETE on main; PR-A (#1105) shipped F-3/F-4/F-7; PR-B (#1106) shipped F-5/F-6. PR-C closes the
-  **plan-size rail** (F-8) + adds the **doc-hygiene CI** (F-1). The continuity workstream is a first-class plan
-  entry (§0·CONT, now in `docs/implementation/01_ACTIVE_WORKSTREAMS.md`). The other live product workstream remains
-  **Phase 47 — Entity Ownership Fabric** (`01_ACTIVE_WORKSTREAMS.md` §0·EOF).
-- **Active task + stop-point:** This Code PR (**Phase 2 PR-C**, branch `claude/phase2-prc-plan-split`):
-  **F-8** — split the 884 KB `IMPLEMENTATION_PLAN.md` into a thin hub + four `docs/implementation/` spokes
-  (`01_ACTIVE_WORKSTREAMS` / `02_UP_NEXT` / `03_OPEN_QUESTIONS_AND_BACKLOG` / `04_RECENTLY_COMPLETED`); the 86 KB
-  historical preamble narrative moved to `IMPLEMENTATION_CHANGELOG.md`; hub stays the canonical entry point so the
-  ~90 casual references resolve unchanged; CLAUDE.md §15.5/§1.5, SYSTEM_MAP, 00_INDEX, the continuity-gate + STATE
-  Map all updated. **F-1** — two soft-launch CI checks (`scripts/check-plan-freshness.sh` +
-  `scripts/check-index-paths.sh`, wired in `.github/workflows/docs-hygiene.yml`): header-date freshness + 00_INDEX
-  coverage. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this PR-C. (2) **Plan hygiene pass** — retire the completed
-  §0x workstreams (0·WI/0·DG/0·StD/0·WX) from `01_ACTIVE_WORKSTREAMS` → `04_RECENTLY_COMPLETED`, and roll >30-day
-  completions into `IMPLEMENTATION_CHANGELOG.md`, to bring both over-budget spokes under the §15.5 limit (tracked:
-  Backlog row 33). (3) **Index-completeness pass** — clear the 5 residual `check-index-paths.sh` soft warnings.
-  (4) **Reza decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) **Repo-admin /
-  operator actions:** enable **GitHub branch protection on `main` → "Require status checks to pass" → "Require
-  branches to be up to date before merging"** (the authoritative branch-currency control; the new soft-launch
-  `branch-currency.yml` is the CI backstop until then); grant GitHub `workflow` scope; then arm all three
-  soft-launch workflows (`continuity-gate.yml`, `docs-hygiene.yml`, `branch-currency.yml`) to blocking.
+- **Current focus:** **Phase 47 — Entity Ownership Fabric: FEATURE-COMPLETE.** Stage D's last build item —
+  **D6 (What-If `sellProperty` lever per-entity CGT) — ✅ shipped this session.** Stages A/B/C/D/E/F all complete
+  (`01_ACTIVE_WORKSTREAMS.md` §0·EOF). The only Phase-47 residual is the registered-tax-agent sign-off (a review
+  gate, scheduled at Basiq prep — not a build item). The continuity workstream (§0·CONT) remains the other live
+  entry; continuity Phase 2 governance audit PR-C merged as #1108 (the plan hub+spoke split).
+- **Active task + stop-point:** This Code PR (**Phase 47 D6**, branch `claude/ad2-implementation-dyaozo`):
+  the `sellProperty` lever now computes CGT through the canonical per-entity path — new pure core
+  `lib/cfo/scenarios/propertyDisposalCgt.ts` (composes `calculateCgtDiscountDecimal` Div 115 + AD-2 `attributeAsset`
+  weighting), additive `ScenarioContext` fields, both sellProperty siblings wired, run-route lazy context builder,
+  16 D6 tests. Honesty: only the user's own share → an estimated tax dollar; co-owners show taxable gain only;
+  FW-2 post-reform → `UC-CGT-POST-REFORM`. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this D6 PR. (2) **Pre-existing test failure to triage
+  separately:** `tests/tax-engine/config/taxYearConfig.test.ts` "nextReviewBy in the future" fails as of today
+  (the config's review date 2026-06-14 is now past) — needs a tax-config review-date bump in its own PR (untouched
+  by D6). (3) **Plan hygiene pass** — retire the completed §0x workstreams from `01_ACTIVE_WORKSTREAMS` →
+  `04_RECENTLY_COMPLETED` to bring both over-budget spokes under the §15.5 limit (Backlog row 33). (4) **Reza
+  decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) **Repo-admin:** enable
+  GitHub branch protection + grant `workflow` scope, then arm the three soft-launch workflows to blocking.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
     decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a
