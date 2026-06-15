@@ -1,0 +1,53 @@
+name: Tests
+
+# Test-runner rail (Phase 4, Layer 1). The repo carries 2500+ vitest tests but
+# NOTHING ran them in CI — security-audit.yml does audit/lint/build only, so a
+# regression in the calc engines, read-paths or ownership could land on main
+# unnoticed. This workflow runs the full vitest suite on every PR (and on push
+# to main/master) so the suite is the gate.
+#
+# Verified green at HEAD 2ca4043 (2026-06-15): 2594 passed, 69 skipped, 0 failed
+# in ~19s. The suite runs as pure functions and needs NO database — DB-touching
+# paths are guarded and no-op without DATABASE_URL — so no service container is
+# required here.
+#
+# REQUIRED CHECK (repo-admin action for Reza): once this lands, add the job to
+# the `main` ruleset / branch-protection required-status-check list. The exact
+# check name to add is:  vitest  (the job `name:` below). See the PR body.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+# A new push to the same PR/branch cancels the superseded in-flight run so we
+# don't burn minutes validating a commit that's already been replaced.
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `npm ci` already runs the `postinstall` (prisma generate); we run it
+      # again explicitly so the test job is robust if that postinstall is ever
+      # changed — the suite type-checks against the generated client.
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Run vitest suite
+        run: npm run test
