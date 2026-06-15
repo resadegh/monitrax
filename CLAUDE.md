@@ -93,13 +93,19 @@ docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md
 > **Critical pre-requirement.** This file is the single source of truth for "what is being worked on, what is queued, what is blocked, what changed recently, what was reverted." It exists so the user does not have to re-explain context every session.
 
 ```
-docs/IMPLEMENTATION_PLAN.md
+docs/IMPLEMENTATION_PLAN.md            (hub — navigation + rules; start here)
+docs/implementation/01_ACTIVE_WORKSTREAMS.md
+docs/implementation/02_UP_NEXT.md
+docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md
+docs/implementation/04_RECENTLY_COMPLETED.md
 ```
+
+> Since 2026-06-15 (finding F-8) the plan is a thin **hub** + **spokes**. Read the hub first (it's small), then the spoke(s) relevant to your task. The hub remains the canonical entry point.
 
 What you MUST do every session:
 
-1. **Read the entire file before doing anything else** — including before reading Phase docs in Step 2.
-2. **Identify the active workstream** that matches the user's request. If the user's request doesn't match anything in `🟡 Active Workstreams`, ask them to confirm whether this is a new workstream (so you can add it) or a continuation of an existing one.
+1. **Read the hub, then the relevant spoke(s) before doing anything else** — including before reading Phase docs in Step 2. At minimum read `01_ACTIVE_WORKSTREAMS.md` to find the workstream your task touches.
+2. **Identify the active workstream** that matches the user's request (in `01_ACTIVE_WORKSTREAMS.md`). If the user's request doesn't match anything there, ask them to confirm whether this is a new workstream (so you can add it) or a continuation of an existing one.
 3. **Honour `↩️ Reversed Decisions`** — if a previous attempt at the user's request was reverted, **do not silently re-attempt it**. Surface the reversal, restate the lesson, and confirm the user wants a different approach before proceeding.
 4. **Honour `🗑️ Dead Code / Tech Debt`** — when working in an area listed there, ask if the housekeeping should be done in the same PR (often yes — single touch).
 5. **Update the file in the same PR** that materially changes any workstream — see CLAUDE.md §15 for the exact rules.
@@ -1421,7 +1427,9 @@ The file is a **living contract** between the user and any agent working on the 
 
 ### 15.5 Format Discipline
 
-- Keep the file under ~600 lines. When it exceeds that, archive completed items older than 30 days into `IMPLEMENTATION_CHANGELOG.md` and remove from this file.
+- **The plan is a hub + spokes (since 2026-06-15, finding F-8).** `docs/IMPLEMENTATION_PLAN.md` is a thin hub (navigation + status legend + update rules); the detail lives in spokes under `docs/implementation/` (`01_ACTIVE_WORKSTREAMS.md`, `02_UP_NEXT.md`, `03_OPEN_QUESTIONS_AND_BACKLOG.md`, `04_RECENTLY_COMPLETED.md`). The hub remains the canonical entry point — edit the relevant spoke, and bump the hub's `Last updated` date. This split exists because the single file grew to 884 KB, which the GitHub connector cannot write in one call.
+- **Per-spoke size budget: ≤ ~600 lines / ≤ ~150 KB.** When a spoke exceeds it, retire settled content: completed workstreams → `04_RECENTLY_COMPLETED.md`; recently-completed items older than 30 days → `IMPLEMENTATION_CHANGELOG.md`.
+- **Keep the hub's `Last updated` date current** — CI (`scripts/check-plan-freshness.sh`, finding F-1) fails if it falls behind the newest `04_RECENTLY_COMPLETED.md` entry.
 - Each `🟡 Active Workstream` entry MUST have: Status, Started date, Owner, Last touched, phase checklist, Risk, Blocking, Why-this-matters.
 - Each `🗑️ Dead Code` entry MUST have: Location (file path), why it's dead, remove-when trigger.
 - Each `↩️ Reversed Decision` entry MUST have: Date, what was tried, why reverted, lesson.
@@ -1431,7 +1439,7 @@ The file is a **living contract** between the user and any agent working on the 
 
 | Doc | Role | Cadence |
 |---|---|---|
-| `docs/IMPLEMENTATION_PLAN.md` | **Live tracker** — what's now / next / blocked / done in last 30 days | Updated every PR |
+| `docs/IMPLEMENTATION_PLAN.md` (hub) + `docs/implementation/*` (spokes) | **Live tracker** — what's now / next / blocked / done in last 30 days. Hub = navigation; spokes = detail (§15.5). | Updated every PR |
 | `docs/blueprint/MASTER_BLUEPRINT.md` §4 | Phase-level status table (Completed / In Progress / Planned) | Updated when a whole phase changes status |
 | `docs/blueprint/PHASE_*.md` | Per-phase spec + acceptance criteria | Updated when phase requirements change |
 | `docs/changelog/CHANGELOG_YYYY_MM_DD.md` | Daily session detail | Append-only, per session |
