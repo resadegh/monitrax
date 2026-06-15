@@ -1,5 +1,45 @@
 # Changelog — 2026-06-15
 
+## Session: taxYearConfig FY-review checkpoint — extend + fallback hardening
+
+### Changes Made
+- **Type**: Fix (tax-config review checkpoint) — follow-up to the D6 PR's flagged pre-existing failure.
+- **Scope**: `lib/tax-engine/config/taxYearConfig.ts`
+- **Context**: The per-FY review checkpoint (`reviewSchedule.nextReviewBy: '2026-06-15'`) fired
+  on its date as designed — a deliberate "review the config before the next FY commences" reminder
+  (its test, `taxYearConfig.test.ts` "nextReviewBy in the future", goes red when overdue). FY2026-27
+  commences 1 Jul 2026 and has a legislated change (lowest resident bracket 16% → 15% from 1 Jul 2026)
+  plus indexed items that need confirmed ATO data + a registered-tax-agent pass.
+- **Decision (Reza 2026-06-15)**: "Extend the checkpoint, defer the FY26-27 config to Basiq prep" —
+  do NOT draft unverified FY26-27 numbers.
+- **Shipped**:
+  - `nextReviewBy` bumped `2026-06-15` → `2026-09-30` on all three FY configs (documented rationale).
+  - `getTaxYearConfig` fallback changed from hard-coded `TAX_YEAR_2024_25` → the **latest available
+    config** (FY25-26) so a not-yet-configured FY (FY26-27 from 1 Jul) resolves to the most recent
+    known year — honest-stale, not two-years-stale. This makes the chosen option's "keeps using
+    FY25-26 brackets" actually true (the code previously fell back to FY24-25).
+  - File-header rationale comment updated; FY26-27 review tracked as backlog item #34.
+- **Known consequence (documented, not silent)**: until the FY26-27 config lands, the engine applies
+  FY25-26 brackets (16% lowest, not the legislated 15%) to FY26-27 calcs. Tracked in backlog #34.
+
+### Files Modified
+- `lib/tax-engine/config/taxYearConfig.ts` — review-date bump (×3) + fallback hardening + doc comment.
+
+### Documentation Updated
+- `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — new Dead-Code/Tech-Debt row #34.
+- `docs/IMPLEMENTATION_PLAN.md` (hub date), `STATE.md` (cursor).
+
+### Build Status
+- [x] `tsc --noEmit` — clean
+- [x] `tests/tax-engine/config/taxYearConfig.test.ts` — 22/22
+- [x] `tests/tax-engine` full suite — 906/906 (the previously-failing checkpoint test now green for the right reason)
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- Trigger matched: §12.14 #1/#2 (tax-engine config touch). No regime math changed — this only adjusts a
+  review-date constant + a config-lookup fallback. No new column, no AI tool, no post-reform branch touched.
+
+---
+
 ## Session: Phase 47 Stage D · D6 — What-If lever per-entity CGT
 
 ### Changes Made

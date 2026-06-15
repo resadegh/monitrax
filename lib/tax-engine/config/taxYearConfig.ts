@@ -120,7 +120,7 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   cgtDiscountMonths: 12, // Must hold for 12+ months
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
@@ -155,7 +155,16 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
  *  - SG quarterly cap recalculated for the new SG rate (ATO publishes
  *    annually; using preliminary $65,250).
  *  - All other thresholds: review and update with confirmed ATO data
- *    by `reviewSchedule.nextReviewBy` (2026-06-15) before FY commences.
+ *    by `reviewSchedule.nextReviewBy`.
+ *
+ * FY26-27 review checkpoint (2026-06-15) — DEFERRED to Basiq prep (Reza
+ * decision 2026-06-15). FY2026-27 has at least one legislated change (lowest
+ * resident bracket 16% → 15% from 1 Jul 2026, 2025 Budget) plus indexed items
+ * (super caps via AWOTE, Medicare thresholds) that need confirmed ATO + a
+ * registered-tax-agent pass before they can be trusted. Until a FY26-27 config
+ * is added, `getCurrentTaxYearConfig()` resolves the post-1-Jul-2026 "current"
+ * FY to the LATEST available config (FY25-26) — see `getTaxYearConfig` fallback.
+ * Tracked: `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md`.
  */
 export const TAX_YEAR_2025_26: TaxYearConfig = {
   financialYear: '2025-26',
@@ -198,7 +207,7 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
   cgtDiscountMonths: 12,
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
@@ -302,7 +311,7 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   cgtDiscountMonths: 12,
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15',
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
@@ -342,9 +351,15 @@ const TAX_YEAR_CONFIGS: Record<string, TaxYearConfig> = {
 export function getTaxYearConfig(financialYear: string): TaxYearConfig {
   const config = TAX_YEAR_CONFIGS[financialYear];
   if (!config) {
-    // Default to current year if not found
-    console.warn(`Tax config not found for ${financialYear}, using 2024-25`);
-    return TAX_YEAR_2024_25;
+    // Fall back to the LATEST available config (not a hard-coded year) so a
+    // not-yet-configured FY — e.g. FY26-27 from 1 Jul 2026 until its config is
+    // added (deferred to Basiq prep, Reza 2026-06-15) — resolves to the most
+    // recent known year rather than a two-years-stale one. Honest-stale, not
+    // wrong-stale.
+    const latest = getAvailableTaxYears()[0];
+    const fallback = latest ? TAX_YEAR_CONFIGS[latest] : TAX_YEAR_2024_25;
+    console.warn(`Tax config not found for ${financialYear}, using latest available (${fallback.financialYear})`);
+    return fallback;
   }
   return config;
 }

@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `4a49a93` · **on:** 2026-06-15 · **by:** Code session (Phase 47 Stage D · D6 — What-If lever per-entity CGT)
+**Last verified against HEAD:** `c10333d` · **on:** 2026-06-15 · **by:** Code session (Phase 47 D6 merged #1110 + taxYearConfig FY-review checkpoint extend)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -53,10 +53,9 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   weighting), additive `ScenarioContext` fields, both sellProperty siblings wired, run-route lazy context builder,
   16 D6 tests. Honesty: only the user's own share → an estimated tax dollar; co-owners show taxable gain only;
   FW-2 post-reform → `UC-CGT-POST-REFORM`. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this D6 PR. (2) **Pre-existing test failure to triage
-  separately:** `tests/tax-engine/config/taxYearConfig.test.ts` "nextReviewBy in the future" fails as of today
-  (the config's review date 2026-06-14 is now past) — needs a tax-config review-date bump in its own PR (untouched
-  by D6). (3) **Plan hygiene pass** — retire the completed §0x workstreams from `01_ACTIVE_WORKSTREAMS` →
+- **Immediate next action:** (1) D6 PR #1110 ✅ MERGED + prod-verified READY. (2) ✅ **DONE this session** —
+  `taxYearConfig` FY-review checkpoint extended to 2026-09-30 + lookup fallback hardened to latest-available;
+  FY26-27 config review deferred to Basiq prep (Reza decision; backlog #34). (3) **Plan hygiene pass** — retire the completed §0x workstreams from `01_ACTIVE_WORKSTREAMS` →
   `04_RECENTLY_COMPLETED` to bring both over-budget spokes under the §15.5 limit (Backlog row 33). (4) **Reza
   decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) **Repo-admin:** enable
   GitHub branch protection + grant `workflow` scope, then arm the three soft-launch workflows to blocking.
