@@ -159,6 +159,28 @@ export async function deleteBeneficialOwnershipOverride(
   }).catch(() => {});
 }
 
+/**
+ * Phase 3 fix PR2 (audit L2-2) — delete EVERY `BeneficialOwnershipOverride`
+ * referencing a given asset, for cleanup when that asset is deleted. Like
+ * `OwnershipGroup`, overrides point at assets polymorphically with no DB FK, so
+ * the owning asset's delete handler must call this (no cascade otherwise).
+ *
+ * Accepts a transaction client so the cleanup is atomic with the asset delete.
+ * Returns the number of overrides removed. §12.11: the composite `where`
+ * confines the delete to the caller's rows for exactly this asset.
+ */
+export async function deleteBeneficialOverridesForAsset(
+  client: PrismaTxOrClient,
+  userId: string,
+  ownedObjectType: string,
+  ownedObjectId: string,
+): Promise<number> {
+  const result = await client.beneficialOwnershipOverride.deleteMany({
+    where: { userId, ownedObjectType, ownedObjectId },
+  });
+  return result.count;
+}
+
 export interface BeneficialOwnershipSummary {
   id: string;
   legalOwnerEntityId: string;

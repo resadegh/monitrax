@@ -4,6 +4,7 @@ import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership } from '@/lib/utils/ownership';
 import { balanceWriteFields } from '@/lib/utils/accountBalance';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { cleanupAssetOwnership } from '@/lib/services/assetOwnershipCleanup';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -115,7 +116,15 @@ export const DELETE = withPermission<RouteContext>('account.delete', async (requ
       const result = verifyOwnership(existing, auth.userId, 'Account');
       if (!result.success) return result.response;
 
-      await prisma.account.delete({ where: { id } });
+      // Delete the account AND its polymorphic ownership rows atomically (audit L2-2).
+      const cleanup = await prisma.$transaction(async (tx) => {
+        await tx.account.delete({ where: { id } });
+        return cleanupAssetOwnership(tx, {
+          userId: auth.userId,
+          ownedObjectType: 'account',
+          ownedObjectId: id,
+        });
+      });
 
       // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
       void createAuditLog({
@@ -124,6 +133,10 @@ export const DELETE = withPermission<RouteContext>('account.delete', async (requ
         status: 'SUCCESS',
         entityType: 'Account',
         entityId: id,
+        metadata: {
+          ownershipGroupsDeleted: cleanup.ownershipGroupsDeleted,
+          beneficialOverridesDeleted: cleanup.beneficialOverridesDeleted,
+        },
       });
 
       return NextResponse.json({ message: 'Account deleted successfully' });
