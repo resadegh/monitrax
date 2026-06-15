@@ -25,11 +25,16 @@ state is provided:
 - `auth.setup.ts` writes it to `tests/e2e/.auth/state.json`; the `uat` project
   loads it.
 
-**Reza decision required:** either (a) provision the `E2E_STORAGE_STATE_JSON`
-CI secret + a Firebase TEST project, or (b) approve a server-only test-auth
-bypass (an app-surface security change — intentionally NOT made in this PR).
-Until then the `playwright` CI job is **wired and green with the UAT specs
-skipped** — it is not yet a real gate.
+**Reza decision required.** The `playwright` CI job is **skipped by default**
+(gated on `if: vars.E2E_ENABLED == 'true'`), so it adds no red/noise to PRs.
+To turn it on, set BOTH in the repo:
+- repository **variable** `E2E_ENABLED = true` (Settings → Secrets and variables → Actions → Variables), and
+- repository **secret** `E2E_STORAGE_STATE_JSON` = a captured Playwright storage
+  state for a seeded user on a dedicated Firebase **TEST** project.
+
+The alternative is to approve a server-only test-auth bypass (an app-surface
+security change — intentionally NOT made in this PR). Once enabled and green,
+promote `playwright (UAT)` to a required check.
 
 ## Run locally
 ```bash

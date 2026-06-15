@@ -4,15 +4,15 @@ name: Tests
 #   - vitest    (Layer 1) — the full unit/integration suite on every PR/push.
 #   - playwright (Layer 4) — seeded-archetype UAT end-to-end flows.
 #
-# vitest is verified green at HEAD 2ca4043 (2594 pass / 69 skip / 0 fail, no DB).
-# REQUIRED CHECK to add to the `main` ruleset:  vitest  (the job name below).
+# vitest is the gate (REQUIRED check name to add to the `main` ruleset: vitest).
 #
-# playwright provisions Postgres + builds + starts the app. Login is GCP/Firebase
-# only (no test bypass in the codebase), so the UAT specs SKIP unless an
-# authenticated storage state is injected via the `E2E_STORAGE_STATE_JSON`
-# secret — the job is wired and green (with skips) until Reza provisions that
-# secret + a dedicated Firebase TEST project, after which `playwright` can be
-# promoted to a required check too. See tests/e2e/README.md.
+# playwright is SKIPPED by default — login is GCP/Firebase only with no test
+# bypass, so it can't run green without an authenticated session. To turn it on,
+# Reza sets BOTH:
+#   - repository VARIABLE  E2E_ENABLED = true   (un-skips the job), and
+#   - repository SECRET    E2E_STORAGE_STATE_JSON = <captured Playwright storage
+#     state for a seeded user on a dedicated Firebase TEST project>.
+# Until then the job is skipped (neutral, non-blocking). See tests/e2e/README.md.
 
 on:
   pull_request:
@@ -44,6 +44,9 @@ jobs:
 
   playwright:
     name: playwright (UAT)
+    # Skipped until Reza opts in (repo variable E2E_ENABLED=true) and provisions
+    # the E2E_STORAGE_STATE_JSON secret. Skipped jobs are neutral, not failing.
+    if: ${{ vars.E2E_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -64,8 +67,6 @@ jobs:
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: placeholder
       NEXT_PUBLIC_GCP_PROJECT_ID: placeholder
       GCP_PROJECT_ID: placeholder
-      # Captured authenticated Playwright storage state (JSON) for a seeded
-      # seed:lighthouse user. Absent ⇒ the UAT specs skip themselves.
       E2E_STORAGE_STATE_JSON: ${{ secrets.E2E_STORAGE_STATE_JSON }}
     steps:
       - uses: actions/checkout@v4
