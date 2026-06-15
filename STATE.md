@@ -28,8 +28,10 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
    what it owns, architecture overview, calc-engine inventory, tool stack. Start here after this STATE.md.
 1. `CLAUDE.md` (repo root) — **law.** Governance, four-lens mindset, SSOT + single-calc-engine rule, warm-words,
    session protocol (Parts 1/7/10). When anything conflicts with CLAUDE.md, CLAUDE.md wins.
-2. `docs/IMPLEMENTATION_PLAN.md` — **status SSOT.** What's shipped / active / queued / blocked / reversed.
-   (~884 KB; range-read it — don't pull whole. This STATE.md holds the *cursor*; the plan holds the *detail*.)
+2. `docs/IMPLEMENTATION_PLAN.md` (hub) + `docs/implementation/*` (spokes) — **status SSOT.** Shipped / active /
+   queued / blocked / reversed. Split from one 884 KB file into a thin hub + spokes (F-8, 2026-06-15) so each
+   stays connector-writable: `01_ACTIVE_WORKSTREAMS` / `02_UP_NEXT` / `03_OPEN_QUESTIONS_AND_BACKLOG` /
+   `04_RECENTLY_COMPLETED`. Start at the hub; read the relevant spoke. STATE.md holds the *cursor*; the spokes hold the *detail*.
 3. `docs/00_INDEX.md` — **the map** of every doc. Start here to locate anything.
 4. Topic authorities: architecture -> `docs/architecture/`; phases -> `docs/blueprint/MASTER_BLUEPRINT.md`;
    compliance -> `docs/compliance/`; GTM -> `docs/marketing/` (+ `docs/marketing/gtm/`); design -> Stitch system
@@ -37,26 +39,31 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-14 by the Code Phase 2 PR-B session (HEAD `671efee`, after PR-A PR #1105 merged `25180ea` -> `671efee`).
-> Continuity Phase 0+1 is COMPLETE; Phase 2 governance audit is in flight (PR-A merged, PR-B this session). Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the Code Phase 2 PR-C session (HEAD `b8427a9`, after PR-B PR #1106 merged `671efee` -> `b8427a9`).
+> Continuity Phase 0+1 is COMPLETE; Phase 2 governance audit is in flight (PR-A + PR-B merged, PR-C this session). Every claim below carries a live source.
 
-- **Current focus:** Continuity **Phase 2 governance audit — IN PROGRESS (PR-B in flight; PR-A merged).** Phase 0+1
-  are COMPLETE on main (rails + deep ingestion + F-8 deferred edits, PRs #1100/#1101/#1102/#1104); PR-A (#1105)
-  shipped F-3/F-4/F-7. Phase 2 consumes the F-1…F-8 drift findings; the continuity workstream is a first-class
-  plan entry (§0·CONT). The other live product workstream remains **Phase 47 — Entity Ownership Fabric**
-  (`IMPLEMENTATION_PLAN.md` §0·EOF).
-- **Active task + stop-point:** This Code PR (**Phase 2 PR-B**, branch `claude/phase2-prb-ssot-dedup`) ships the
-  SSOT de-dup cluster: **F-5** (audit-folder de-dup — `docs/audit/2026-06-MATHS-AUDIT.md` moved into the canonical
-  `docs/audits/`; refs in the plan + 2026-06-07 changelog redirected; 00_INDEX re-indexed), **F-6** (resolve the
-  CLAUDE.md §12.4 ↔ §12.2 contradiction on `/api/portfolio/snapshot` — row removed from the §12.4 violations table
-  + annotated; §12.2 / PR #598 is the sourced position: it is NOT a duplicate, never delete it).
-  **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this PR-B. (2) **Phase 2 PR-C** — the remaining findings:
-  **F-1** add a header-date lint (fail if the plan header is older than the newest Recently-Completed entry),
-  **F-8** structural fix (split the 884 KB plan into per-section files or a patch-capable write path), plus
-  `docs/policy/` index completeness + a CI check diffing indexed paths vs `docs/**/*.md`. (3) **Reza decision on
-  Q-GTM-3** (first aggregator — Claude rec Finsure first, Connective second; gates GTM Step 2.2). (4) Grant GitHub
-  `workflow` scope so `continuity-gate.yml` + the Phase 4 test-runner can land.
+- **Current focus:** Continuity **Phase 2 governance audit — IN PROGRESS (PR-C in flight; PR-A + PR-B merged).**
+  Phase 0+1 are COMPLETE on main; PR-A (#1105) shipped F-3/F-4/F-7; PR-B (#1106) shipped F-5/F-6. PR-C closes the
+  **plan-size rail** (F-8) + adds the **doc-hygiene CI** (F-1). The continuity workstream is a first-class plan
+  entry (§0·CONT, now in `docs/implementation/01_ACTIVE_WORKSTREAMS.md`). The other live product workstream remains
+  **Phase 47 — Entity Ownership Fabric** (`01_ACTIVE_WORKSTREAMS.md` §0·EOF).
+- **Active task + stop-point:** This Code PR (**Phase 2 PR-C**, branch `claude/phase2-prc-plan-split`):
+  **F-8** — split the 884 KB `IMPLEMENTATION_PLAN.md` into a thin hub + four `docs/implementation/` spokes
+  (`01_ACTIVE_WORKSTREAMS` / `02_UP_NEXT` / `03_OPEN_QUESTIONS_AND_BACKLOG` / `04_RECENTLY_COMPLETED`); the 86 KB
+  historical preamble narrative moved to `IMPLEMENTATION_CHANGELOG.md`; hub stays the canonical entry point so the
+  ~90 casual references resolve unchanged; CLAUDE.md §15.5/§1.5, SYSTEM_MAP, 00_INDEX, the continuity-gate + STATE
+  Map all updated. **F-1** — two soft-launch CI checks (`scripts/check-plan-freshness.sh` +
+  `scripts/check-index-paths.sh`, wired in `.github/workflows/docs-hygiene.yml`): header-date freshness + 00_INDEX
+  coverage. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this PR-C. (2) **Plan hygiene pass** — retire the completed
+  §0x workstreams (0·WI/0·DG/0·StD/0·WX) from `01_ACTIVE_WORKSTREAMS` → `04_RECENTLY_COMPLETED`, and roll >30-day
+  completions into `IMPLEMENTATION_CHANGELOG.md`, to bring both over-budget spokes under the §15.5 limit (tracked:
+  Backlog row 33). (3) **Index-completeness pass** — clear the 5 residual `check-index-paths.sh` soft warnings.
+  (4) **Reza decision on Q-GTM-3** (first aggregator — rec Finsure first, Connective second). (5) **Repo-admin /
+  operator actions:** enable **GitHub branch protection on `main` → "Require status checks to pass" → "Require
+  branches to be up to date before merging"** (the authoritative branch-currency control; the new soft-launch
+  `branch-currency.yml` is the CI backstop until then); grant GitHub `workflow` scope; then arm all three
+  soft-launch workflows (`continuity-gate.yml`, `docs-hygiene.yml`, `branch-currency.yml`) to blocking.
 - **Open decisions / blockers:**
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; the live plan says "Needs Reza
     decision before Step 2.2." Claude **recommendation = Finsure first, Connective second** (this is a

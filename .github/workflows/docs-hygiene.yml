@@ -1,0 +1,35 @@
+name: Docs Hygiene
+
+# Continuity Phase 2, finding F-1: two doc-drift guards.
+#   (a) plan freshness  — the IMPLEMENTATION_PLAN hub's "Last updated" date
+#       must not fall behind the newest Recently-Completed entry.
+#   (b) index coverage  — every in-scope doc under docs/ must be referenced
+#       in docs/00_INDEX.md.
+#
+# SOFT-LAUNCH: both scripts run without --strict, so they emit ::warning::
+# annotations and exit 0 (never block a merge). To ARM later: add --strict to
+# the two run steps and add this workflow as a required status check. Arming
+# also depends on the GitHub `workflow` scope being granted (same blocker as
+# continuity-gate.yml — see STATE.md / §0·CONT).
+
+on:
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'docs/**'
+      - 'STATE.md'
+      - 'SYSTEM_MAP.md'
+      - 'scripts/check-plan-freshness.sh'
+      - 'scripts/check-index-paths.sh'
+      - '.github/workflows/docs-hygiene.yml'
+
+jobs:
+  docs-hygiene:
+    name: Plan freshness + index coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Plan freshness (F-1a)
+        run: bash scripts/check-plan-freshness.sh
+      - name: Index coverage (F-1b)
+        run: bash scripts/check-index-paths.sh

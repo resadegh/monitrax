@@ -1,7 +1,7 @@
 # Monitrax Documentation Index
 
-**Date:** 2026-06-14 | **Version:** 1.2 | **Status:** ACTIVE | **Owner:** Dev Lead
-**Last refresh:** 2026-06-14 — Phase 2 PR-A + PR-B (continuity governance audit). PR-A (F-4): added the GTM set (`docs/marketing/` + `docs/marketing/gtm/`), the full `docs/compliance/` CDR set, `architecture/AI_PROVIDER_STRATEGY.md`, the root continuity docs (STATE.md / SYSTEM_MAP.md), and the 2026-06 audit findings. PR-B (F-5): de-duplicated the audit folders — `docs/audit/` merged into the canonical `docs/audits/`; maths audit re-indexed. _Known still-pending (later Phase 2 work): `docs/policy/` completeness; a CI check that diffs indexed paths vs `docs/**/*.md`._
+**Date:** 2026-06-15 | **Version:** 1.3 | **Status:** ACTIVE | **Owner:** Dev Lead
+**Last refresh:** 2026-06-14 — Phase 2 PR-A + PR-B (continuity governance audit). PR-A (F-4): added the GTM set (`docs/marketing/` + `docs/marketing/gtm/`), the full `docs/compliance/` CDR set, `architecture/AI_PROVIDER_STRATEGY.md`, the root continuity docs (STATE.md / SYSTEM_MAP.md), and the 2026-06 audit findings. PR-B (F-5): de-duplicated the audit folders — `docs/audit/` merged into the canonical `docs/audits/`; maths audit re-indexed. PR-C (F-8 + F-1): indexed the new `docs/implementation/` plan spokes + the missing `docs/policy/` CDR docs; the live index-coverage check (`scripts/check-index-paths.sh`) now guards this section. _Residual soft warnings (design system, bau playbook, copy-extracts, quality audit, HELP_COVERAGE_MAP) are the known index-completeness backlog — surfaced by the check, not yet indexed._
 
 > Master registry of all Monitrax documentation. This is the starting point for finding any document.
 
@@ -33,6 +33,20 @@
 ### Demo-Complete state (2026-05-09)
 
 The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 41a-d/g all SHIPPED. Critical-path engineering remaining: zero. Run `npm run seed:lighthouse` to populate the demo fixture (Smithfield Wealth Advisers + 3 archetype consumers — Sarah Kim / David Mei + Emma Liu / Olivia Novak). See `docs/pitch/LIGHTHOUSE_ADVISER_PITCH.md` for the runnable demo script. Full deliverables list in `docs/IMPLEMENTATION_PLAN.md` Recently Completed (rolling 30 days).
+
+---
+
+## Implementation Plan (hub + spokes)
+
+> **Purpose:** The live status SSOT — what's active / queued / blocked / recently done. Split into a thin hub + spokes (finding F-8) so each file stays connector-writable. **Enter via the hub.**
+
+| Document | Holds |
+|----------|-------|
+| [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md) | **Hub** — navigation, status legend, update rules. Start here. |
+| [implementation/01_ACTIVE_WORKSTREAMS.md](implementation/01_ACTIVE_WORKSTREAMS.md) | 🟡 Work in flight right now |
+| [implementation/02_UP_NEXT.md](implementation/02_UP_NEXT.md) | 📋 Up Next + Demo-Complete critical path |
+| [implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md](implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md) | ❓🚧🗑️↩️ Open Questions, Blocked, Dead Code, Reversed |
+| [implementation/04_RECENTLY_COMPLETED.md](implementation/04_RECENTLY_COMPLETED.md) | ✅ Rolling 30-day completion log |
 
 ---
 
@@ -172,6 +186,9 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | Document | Description | Review Date |
 |----------|-------------|-------------|
 | [APPROVED_DEPENDENCIES.md](policy/APPROVED_DEPENDENCIES.md) | Reviewed npm packages | 2026-06-08 |
+| [MONITRAX_SECURITY_POLICIES.md](policy/MONITRAX_SECURITY_POLICIES.md) | Consolidated organisational security policy set | 2027-03-08 |
+| [CDR_COMPLAINTS_POLICY.md](policy/CDR_COMPLAINTS_POLICY.md) | CDR complaints-handling policy (Basiq accreditation) | 2027-03-08 |
+| [CDR_DATA_MINIMISATION.md](policy/CDR_DATA_MINIMISATION.md) | CDR data-minimisation policy | 2027-03-08 |
 | [CDR_DATA_RETENTION_SCHEDULE.md](policy/CDR_DATA_RETENTION_SCHEDULE.md) | CDR data retention rules | 2027-03-08 |
 | [DEVICE_SECURITY_POLICY.md](policy/DEVICE_SECURITY_POLICY.md) | Device/endpoint security | 2027-03-08 |
 | [INCIDENT_RESPONSE_PLAN.md](policy/INCIDENT_RESPONSE_PLAN.md) | Breach notification/containment | 2027-03-08 |
@@ -331,4 +348,4 @@ To run the demo: `npm run seed:lighthouse` (idempotent; `--reset` for clean re-s
 
 ---
 
-*Last updated: 2026-06-14*
+*Last updated: 2026-06-15*

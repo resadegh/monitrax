@@ -8,7 +8,7 @@
 > **Reading order:** `STATE.md` (you-are-here cursor) → this file (what-owns-what) → the canonical
 > source you need. `docs/00_INDEX.md` is the exhaustive doc registry; this file is the curated map.
 >
-> **Pinned to HEAD:** `3eaeb90` · **verified:** 2026-06-14 (Cowork — Phase 1 deep ingestion).
+> **Pinned to HEAD:** `b8427a9` · **verified:** 2026-06-15 (Code — Phase 2 PR-C; the plan is now a hub + `docs/implementation/` spokes, F-8).
 > Every line below was read live at this HEAD. If live `git rev-parse HEAD` differs, re-verify before trusting.
 
 ---
@@ -39,7 +39,7 @@ When anything conflicts, the higher line wins.
 | `CLAUDE.md` (root) | **Law.** Governance, four-lens mindset, SSOT + single-calc-engine rule, session protocol, PR/doc-sync gates (§15 plan protocol, §16.5 PR doc-sync block, §17.2 post-merge verify). |
 | `STATE.md` (root) | **You-are-here.** Current cursor + the universal session ritual (START/DURING/END). Pointers + position only. |
 | `SYSTEM_MAP.md` (root, this file) | **What-owns-what.** Curated orientation map across docs + code. |
-| `docs/IMPLEMENTATION_PLAN.md` | **Status SSOT.** Active / Up-Next / Blocked / Open-Questions / Dead-Code / Reversed / Recently-Completed. (884 KB — range-read.) |
+| `docs/IMPLEMENTATION_PLAN.md` (hub) + `docs/implementation/*` (spokes) | **Status SSOT.** Hub = navigation + status legend + rules; spokes = the detail: `01_ACTIVE_WORKSTREAMS` / `02_UP_NEXT` / `03_OPEN_QUESTIONS_AND_BACKLOG` / `04_RECENTLY_COMPLETED`. Split from one 884 KB file (F-8) to stay connector-writable. Start at the hub. |
 | `docs/00_INDEX.md` | **Doc registry.** The exhaustive map of every doc (note: see findings — currently stale vs. live tree). |
 
 ---

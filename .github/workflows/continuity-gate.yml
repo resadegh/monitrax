@@ -1,8 +1,9 @@
 name: Continuity Gate
 
 # Write rail of the Monitrax continuity system: a PR that changes substantive
-# workstream files must also update STATE.md AND docs/IMPLEMENTATION_PLAN.md in
-# the same PR. SOFT-LAUNCH: warns only. To ARM later: change ::warning:: to
+# workstream files must also update STATE.md AND the implementation plan
+# (docs/IMPLEMENTATION_PLAN.md hub or a docs/implementation/ spoke) in the same
+# PR. SOFT-LAUNCH: warns only. To ARM later: change ::warning:: to
 # ::error:: and the final `exit 0` to `exit 1`, then add as a required check.
 
 on:
@@ -18,12 +19,19 @@ jobs:
         with:
           fetch-depth: 0
       - name: Require STATE + plan write-back when workstream files change
+        # PR title/body + SHAs are passed via env (NOT inline ${{ }} into the
+        # script) so arbitrary Markdown in the PR body — parens, backticks,
+        # pipes — can never break the shell parse. (Fixes the 2026-06-15
+        # `syntax error near unexpected token` crash on PR #1108.)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          changed="$(git diff --name-only \
-            '${{ github.event.pull_request.base.sha }}' \
-            '${{ github.event.pull_request.head.sha }}')"
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           echo "Changed files:"; echo "$changed"
-          if printf '%s %s' "${{ github.event.pull_request.title }}" "${{ github.event.pull_request.body }}" \
+          if printf '%s %s' "$PR_TITLE" "$PR_BODY" \
                | grep -q '\[skip-state\]'; then
             echo "Bypass [skip-state] present — gate skipped."; exit 0
           fi
@@ -33,9 +41,11 @@ jobs:
           if [ -z "$substantive" ]; then
             echo "No substantive workstream files changed — gate not required."; exit 0
           fi
+          # The plan is a hub + spokes (docs/implementation/*) since 2026-06-15 (F-8) —
+          # a workstream update touches a spoke (or the hub), so accept either.
           if echo "$changed" | grep -qx 'STATE.md' \
-             && echo "$changed" | grep -qx 'docs/IMPLEMENTATION_PLAN.md'; then
-            echo "STATE.md and docs/IMPLEMENTATION_PLAN.md both updated."; exit 0
+             && echo "$changed" | grep -qE '^docs/(IMPLEMENTATION_PLAN\.md|implementation/)'; then
+            echo "STATE.md and the implementation plan (hub or a docs/implementation/ spoke) both updated."; exit 0
           fi
-          echo "::warning::PR changes workstream files but does not update BOTH STATE.md and docs/IMPLEMENTATION_PLAN.md. Update them, or add [skip-state] if trivial. (Soft-launch — will become blocking once armed.)"
+          echo "::warning::PR changes workstream files but does not update BOTH STATE.md and the implementation plan (docs/IMPLEMENTATION_PLAN.md or a docs/implementation/ spoke). Update them, or add [skip-state] if trivial. (Soft-launch — will become blocking once armed.)"
           exit 0
