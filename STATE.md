@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `de3e9c4` · **on:** 2026-06-15 · **by:** Code session (Phase 3 fix PR2 — ownership integrity + Entity-Value label)
+**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 1 — vitest test-runner CI)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,55 +39,41 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Code Phase 3 fix-PR2 session (branch base HEAD `de3e9c4`, after fix PR1 #1113 merged).
-> The Phase 3 audit was STATIC; this session ships fix PR2 (L2-2 + L2-1 Option B). Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-1** session (base HEAD `2ca4043` = merge of #1114).
+> Phase 3 is structurally DONE (fix PR1 #1113 + fix PR2 #1114 both merged). Phase 4 builds the regression/UAT
+> test rails in four PRs — one per layer, each off main, in order. Every claim below carries a live source.
 
-- **Current focus:** **Phase 3 fix PR2 — ownership referential integrity (L2-2) + Entity-Value label (L2-1 = Option B) — DONE this PR.**
-  **L2-2:** new canonical `lib/services/assetOwnershipCleanup.ts` (`cleanupAssetOwnership(tx, …)`) + two per-table
-  deleters (`deleteOwnershipGroupsForAsset` / `deleteBeneficialOverridesForAsset`); wired into ALL 5 asset-delete
-  handlers (properties/loans/accounts/investments-accounts/assets) inside a `$transaction` so the asset + its
-  polymorphic ownership rows delete atomically (no DB FK → DB can't cascade). §12.11-safe (composite `where` per
-  user+asset). 7 tests. **L2-1 = Option B (Reza decided):** Entity Value stays legal-title (`entityValueBreakdown`
-  math UNCHANGED); factual "by legal title → ownership-share tax effects in the Tax view" labels added to both
-  entity-value surfaces (dashboard `EntityBreakdownWidget` + "Entity Value Contribution" chart) — label-on-existing,
-  no Stitch (§18.2.1). Backlog row **#35** appended (verbatim from #1112) + **Q-ENTITY-VALUE-SHARE** (Option A,
-  share-weighted *value*) logged PARKED. 0 tsc errors; 7/7 + ownership/entity-graph 83/83; eslint + financial lint clean.
-- **Active task + stop-point:** This Code PR (`claude/fix-pr2-ownership-integrity`, off main `de3e9c4`) ships the
-  cleanup helper + 5 handler rewires + L2-1 labels + backlog/Open-Question entries + plan/cursor update.
-  **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this fix PR2. (2) **Phase-3 cleanup is now structurally done**
-  — L1-1/2/3 (PR1 #1113), L2-2 + L2-1 (this PR); only optional L1-4 (money-flow ↔ aggregator alignment) +
-  record-only L1-5/L2-3 remain (close with the Float-path retirement). (3) Carry-overs: plan-hygiene pass for
-  spokes `01`/`04` (Backlog #33); Reza's Q-GTM-3
-  decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
+- **Current focus:** **Phase 4 — regression + scenario/UAT test suite (4 layered PRs).**
+  **Layer 1 (this PR) — vitest test-runner CI:** new `.github/workflows/tests.yml` runs `npm run test`
+  (the full vitest suite) on every PR + push to main/master; the `workflow` token scope is now granted so the
+  file can land. **Verified live:** the suite is GREEN at `2ca4043` — **2594 passed / 69 skipped / 0 failed in
+  ~19s**, runs as pure functions with NO database (DB paths guarded, no-op without `DATABASE_URL`). The prior
+  cursor's `tests/tax-engine/config/taxYearConfig.test.ts` "nextReviewBy in the future" failure is **already
+  fixed by #1111** (`lib/tax-engine/config/taxYearConfig.ts:123/210/314` now `2026-09-30` > today) — so Layer 1
+  did NOT need a date bump (confirmed, skipped per directive).
+- **Active task + stop-point:** Layer-1 PR (`claude/phase4-layer1-test-runner-ci`, off main `2ca4043`) ships the
+  workflow + this cursor + the hub `Last updated` bump/Phase-4 note. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) **Repo-admin (Reza):** add a required status check named exactly **`vitest`** to the
+  `main` ruleset / branch-protection required-check list — the new job does NOT gate merges until it is listed.
+  (2) Reza review + merge Layer 1. (3) Build Layer 2 (golden-master regression), Layer 3 (invariants/property),
+  Layer 4 (Playwright UAT) — each its own PR off main, in order. (4) Paste the staged spoke entries (in the
+  Layer-1 PR body) into `04_RECENTLY_COMPLETED.md` + `01_ACTIVE_WORKSTREAMS.md` from a git-capable session.
 - **Open decisions / blockers:**
-  - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`
-    §"Recommended fix PRs" (+ the staged Backlog #35).
-  - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; live plan says "Needs Reza decision
-    before Step 2.2." Claude **recommendation = Finsure first, Connective second** (a rec, not a ruling).
-    (`03_OPEN_QUESTIONS_AND_BACKLOG.md` Q-GTM-3 row.)
-  - **Q-DEC (Float -> Decimal) — DECIDED 2026-05-24 (Reza), migration v1 STRUCTURALLY COMPLETE 2026-06-09.**
-    Prisma stores Float; engines convert at the boundary via `lib/decimal/` (`Decimal` = `Prisma.Decimal`,
-    decimal.js `ROUND_HALF_EVEN`) and compute in Decimal; Q-DEC PR4 dropped the *dormant* `*_decimal` columns.
-    `/wealth-check` precision gate satisfied; remaining traffic-on gates are Q-HOOK-AFSL + Q-HOOK-BENCHMARK
-    (compliance/benchmark, not precision).
-  - **GitHub `workflow` scope NOT granted** — blocks `.github/workflows/continuity-gate.yml` + the Phase 4
-    test-runner workflow (and arming the three soft-launch workflows to blocking).
-  - **Connector cannot reliably rewrite a 63 KB+ plan spoke in one call** (Phase 3 — F-8 in practice). The safe
-    ceiling for an in-place connector rewrite is well under the §15.5 ~150 KB target; prefer git-capable edits or split further.
-  - **CI test-runner rail** still absent (`security-audit.yml` runs audit+lint+build only). Phase 4 needs a CI test job.
-  - **✅ RESOLVED 2026-06-15 by PR #1111:** the prior cursor's `tests/tax-engine/config/taxYearConfig.test.ts`
-    "nextReviewBy in the future" failure — #1111 extended the FY-review checkpoint + hardened the config fallback.
-- **Verified-live this session:** RESUME CHECK ran twice. (a) At session start: since the prior cursor HEAD
-  `4a49a93`, PRs #1106/#1108/#1109/#1110 had merged (Phase 47 feature-complete; F-8 plan hub+spoke split landed
-  as #1108); pinned `c10333d2`. (b) Mid-session, main advanced again `c10333d2 → 3e5881f1` via **PR #1111**
-  (`taxyear-fy26-review` — FY-review checkpoint + config-fallback hardening; resolves the taxYearConfig test
-  failure above). This branch is based on `3e5881f1`; the Phase 3 findings are unaffected (#1111 touched tax-config
-  dates, not the calc/ownership paths audited). My Phase 1 PR #1102 (SYSTEM_MAP + cursor) merged as `9e36425`;
-  Phase 2 adopted findings F-1 (plan-freshness CI check) + F-8 (hub+spoke split + per-spoke size budget). Calc
-  engine confirmed: orchestrator `lib/services/masterFinancialService.ts` calls canonical `calculateNetWorth`
-  (`:1688`) + aggregators; engine families `tax-engine`/`cfo`/`health`/`cgt`/`cashflow`/`intelligence`/
-  `wealthCheck`/`decimal`/`calc-audit`. Stack: Next.js 15.5.19 · React 19 · Prisma 5.22 / 130 models · GCP + Vercel(syd1) · Gemini + Anthropic SDK.
+  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
+  - **GitHub `workflow` scope — ✅ NOW GRANTED** (2026-06-15). Unblocks `tests.yml` (this PR) + arming
+    `continuity-gate.yml` / `docs-hygiene.yml` / `branch-currency.yml` to blocking (still a separate repo-admin step).
+  - **CI test-runner rail — being ADDED by THIS PR** (`tests.yml`). Was absent (`security-audit.yml` = audit/lint/build only).
+  - **Plan-spoke connector ceiling:** `01_ACTIVE_WORKSTREAMS.md` (~292 KB) + `04_RECENTLY_COMPLETED.md` (~303 KB)
+    exceed the safe single-call connector-rewrite ceiling, so this Cowork PR updates STATE.md + the thin hub and
+    **stages the verbatim spoke entries in the PR body** (same handling as #1112's backlog row #35). A git-capable
+    session pastes them in.
+  - **Phase 3 P2 findings** still await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
+  - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
+- **Verified-live this session:** RESUME CHECK ran — since the prior cursor HEAD `de3e9c4` (#1113), only **#1114**
+  (`claude/fix-pr2-ownership-integrity`) merged → live HEAD `2ca4043` (Phase 3 cleanup structurally complete).
+  Test stack confirmed live: `vitest ^1.6.1`, include `tests/**/*.test.{ts,tsx}`, node env, `@`+`server-only`
+  aliases (`vitest.config.ts`); entry `npm run test` = `vitest run` (`package.json`). No Playwright dependency
+  yet (added in Layer 4). Suite green as above.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
@@ -119,5 +105,5 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 - **Enforced by:** (a) `.claude/hooks/session-start.sh` prints this cursor + HEAD at the start of every Code session
   (skip-on-failure, never blocks the session); (b) `.github/workflows/continuity-gate.yml` fails a PR that changes
   workstream files without updating STATE.md + IMPLEMENTATION_PLAN in the same PR (soft-launch first, then required;
-  workflow scope still PENDING); (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
+  workflow scope GRANTED 2026-06-15 — arming is a repo-admin step); (c) chat/Cowork: read-STATE-first is the hard first instruction (project instructions Section 0).
 - **Update cadence:** cursor every session end; Section A/Section B only on a real change, via PR, never ad hoc.
