@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 3 — invariant / property checks)
+**Last verified against HEAD:** `2ca4043` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 Layer 4 — Playwright UAT; Phase 4 PR set complete)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,33 +39,38 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-3** session (base HEAD `2ca4043` = merge of #1114).
-> Phase 4 builds the regression/UAT rails in four PRs, one per layer, each off main, in order.
-> **Layer 1 = PR #1115 · Layer 2 = PR #1116 (both open).** Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the **Cowork Phase 4 Layer-4** session (base HEAD `2ca4043` = merge of #1114).
+> **Phase 4 is built — all four layers opened as PRs off main (merge in order):**
+> **L1 #1115** (vitest CI) · **L2 #1116** (golden-master) · **L3 #1117** (invariants) · **L4 (this PR)** (Playwright UAT).
 
-- **Current focus:** **Phase 4 Layer 3 — invariant / property checks (this PR).** `tests/regression/invariants/`
-  asserts the engine *laws* over the 6 archetypes + a seeded 40-portfolio pseudo-random sweep (deterministic
-  mulberry32, no new dep): (1) **net worth == assets − liabilities** across all read-paths (canonical Float,
-  canonical Decimal, `buildEntityBreakdown`, and the #1113 unified valuation helpers `sumHoldingsMarketValue`/
-  `sumLoanBalances`); (2) **per-entity legal-title value reconciles to the household total** + ownership shares
-  sum to 100% (`attributeAsset`: joint = 1/n, TIC = sharePct, override → 100% to beneficial owner); (3)
-  **Float/Decimal siblings agree at the boundary**; (4) **D6 CGT** — each owner's discount + share equals
-  `calculateCgtDiscountDecimal` + `attributeAsset` (taxable == nominal × (1 − discount); Σ shares == total).
-  **246 tests green. No correctness bug surfaced.**
-- **Active task + stop-point:** Layer-3 PR (`claude/phase4-layer3-invariants`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge L1 #1115 → L2 #1116 → L3 (resolve the STATE.md Section-C +
-  hub-date conflicts in favour of the later layer — all off main, by directive). (2) Repo-admin: add required
-  check `vitest`. (3) Build Layer 4 (Playwright UAT, off main) + wire Playwright into the L1 CI workflow.
+- **Current focus:** **Phase 4 Layer 4 — Playwright UAT (this PR), and Phase 4 wrap.** `tests/e2e/` adds a
+  Playwright scaffold (`playwright.config.ts`, `auth.setup.ts`, `uat.spec.ts`, `README.md`) for four
+  seeded-archetype real-human flows: add property → dashboard net worth; sell-property What-If → per-entity CGT
+  (`Estimated CGT (your share)`, D6); entity-value widget legal-title label (#1114); delete property → ownership
+  rows gone (L2-2). Playwright is wired into the L1 CI workflow as a second `playwright` job (Postgres service +
+  build + run). **Config + all 5 tests validated via `playwright test --list`** (discovery + syntax).
+  **BLOCKER (honest):** login is GCP/Firebase only with **no test-auth bypass** in the codebase, so the UAT specs
+  **skip** unless a captured `E2E_STORAGE_STATE_JSON` is injected — the job is wired + green-with-skips, not yet a
+  real gate. This is the one Phase-4 layer NOT executed end-to-end in this Cowork session (no Postgres/Next/auth).
+- **Active task + stop-point:** Layer-4 PR (`claude/phase4-layer4-playwright-uat`, off main `2ca4043`). **Stop-point:** PR open for review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge **L1 #1115 → L2 #1116 → L3 #1117 → L4** in order (resolve the
+  STATE.md Section-C, hub-date, and `tests.yml`/`archetypes.ts` overlaps in favour of the later layer — all off
+  main by directive; L4's `tests.yml` is the superset = vitest + playwright). (2) Repo-admin: add required check
+  `vitest`. (3) **Reza decision for L4 UAT to become a real gate:** provision an `E2E_STORAGE_STATE_JSON` secret +
+  a Firebase TEST project, OR approve a server-only test-auth bypass (an app-surface security change, intentionally
+  NOT made here). Then promote `playwright (UAT)` to a required check.
 - **Open decisions / blockers:**
+  - **E2E auth (L4) — Reza decision** (test storage-state secret vs server-only test bypass). See `tests/e2e/README.md`.
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
-  - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15) — `tests.yml` landed in Layer 1.
-  - **Plan-spoke connector ceiling:** the ~290–300 KB spokes exceed the safe single-call rewrite ceiling, so this
-    PR updates STATE.md + the thin hub and stages the verbatim spoke entry in the PR body (same handling as #1112).
+  - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15) — `tests.yml` landed (L1) + extended (L4).
+  - **Plan-spoke connector ceiling:** the ~290–300 KB spokes exceed the safe single-call rewrite ceiling, so each
+    Phase-4 PR updates STATE.md + the thin hub and stages the verbatim spoke entry in its PR body (same as #1112).
   - **Phase 3 P2 findings** await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
   - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
 - **Verified-live this session:** RESUME CHECK — since cursor HEAD `de3e9c4` (#1113), only **#1114** merged →
-  live HEAD `2ca4043`. Phase-4 L1 (#1115 vitest CI) + L2 (#1116 golden-master, 24 snapshots) shipped. L3 adds
-  246 invariant tests (~0.9s). All engines exercised are pure/DB-free.
+  live HEAD `2ca4043`. Phase-4: L1 (#1115, suite green 2594/69/0) · L2 (#1116, 24 engine snapshots green) ·
+  L3 (#1117, 246 invariant tests green) · L4 (this PR, Playwright scaffold — `--list` validated; UAT skips
+  pending E2E auth). **No correctness bug surfaced across L2/L3** (engine matches documented behaviour).
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 

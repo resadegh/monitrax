@@ -1,19 +1,18 @@
 name: Tests
 
-# Test-runner rail (Phase 4, Layer 1). The repo carries 2500+ vitest tests but
-# NOTHING ran them in CI — security-audit.yml does audit/lint/build only, so a
-# regression in the calc engines, read-paths or ownership could land on main
-# unnoticed. This workflow runs the full vitest suite on every PR (and on push
-# to main/master) so the suite is the gate.
+# Test-runner rail (Phase 4). Two jobs:
+#   - vitest    (Layer 1) — the full unit/integration suite on every PR/push.
+#   - playwright (Layer 4) — seeded-archetype UAT end-to-end flows.
 #
-# Verified green at HEAD 2ca4043 (2026-06-15): 2594 passed, 69 skipped, 0 failed
-# in ~19s. The suite runs as pure functions and needs NO database — DB-touching
-# paths are guarded and no-op without DATABASE_URL — so no service container is
-# required here.
+# vitest is the gate (REQUIRED check name to add to the `main` ruleset: vitest).
 #
-# REQUIRED CHECK (repo-admin action for Reza): once this lands, add the job to
-# the `main` ruleset / branch-protection required-status-check list. The exact
-# check name to add is:  vitest  (the job `name:` below). See the PR body.
+# playwright is SKIPPED by default — login is GCP/Firebase only with no test
+# bypass, so it can't run green without an authenticated session. To turn it on,
+# Reza sets BOTH:
+#   - repository VARIABLE  E2E_ENABLED = true   (un-skips the job), and
+#   - repository SECRET    E2E_STORAGE_STATE_JSON = <captured Playwright storage
+#     state for a seeded user on a dedicated Firebase TEST project>.
+# Until then the job is skipped (neutral, non-blocking). See tests/e2e/README.md.
 
 on:
   pull_request:
@@ -21,8 +20,6 @@ on:
   push:
     branches: [main, master]
 
-# A new push to the same PR/branch cancels the superseded in-flight run so we
-# don't burn minutes validating a commit that's already been replaced.
 concurrency:
   group: tests-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -33,21 +30,73 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
       - name: Install dependencies
         run: npm ci
-
-      # `npm ci` already runs the `postinstall` (prisma generate); we run it
-      # again explicitly so the test job is robust if that postinstall is ever
-      # changed — the suite type-checks against the generated client.
       - name: Generate Prisma client
         run: npx prisma generate
-
       - name: Run vitest suite
         run: npm run test
+
+  playwright:
+    name: playwright (UAT)
+    # Skipped until Reza opts in (repo variable E2E_ENABLED=true) and provisions
+    # the E2E_STORAGE_STATE_JSON secret. Skipped jobs are neutral, not failing.
+    if: ${{ vars.E2E_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: monitrax
+          POSTGRES_PASSWORD: monitrax
+          POSTGRES_DB: monitrax_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://monitrax:monitrax@localhost:5432/monitrax_e2e?schema=public
+      JWT_SECRET: e2e-placeholder-secret
+      NEXT_PUBLIC_FIREBASE_API_KEY: placeholder
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: placeholder
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: placeholder
+      NEXT_PUBLIC_GCP_PROJECT_ID: placeholder
+      GCP_PROJECT_ID: placeholder
+      E2E_STORAGE_STATE_JSON: ${{ secrets.E2E_STORAGE_STATE_JSON }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Prisma generate + migrate
+        run: |
+          npx prisma generate
+          npx prisma migrate deploy
+      - name: Seed archetypes (idempotent)
+        run: npm run seed:lighthouse
+        continue-on-error: true
+      - name: Build
+        run: npm run build
+      - name: Install Playwright (not in package.json — installed here to keep `npm ci` lockstep)
+        run: |
+          npm i -D @playwright/test@^1.49.0 --no-save
+          npx playwright install --with-deps chromium
+      - name: Run Playwright UAT
+        run: npx playwright test
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore
