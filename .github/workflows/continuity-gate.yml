@@ -19,12 +19,19 @@ jobs:
         with:
           fetch-depth: 0
       - name: Require STATE + plan write-back when workstream files change
+        # PR title/body + SHAs are passed via env (NOT inline ${{ }} into the
+        # script) so arbitrary Markdown in the PR body — parens, backticks,
+        # pipes — can never break the shell parse. (Fixes the 2026-06-15
+        # `syntax error near unexpected token` crash on PR #1108.)
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          changed="$(git diff --name-only \
-            '${{ github.event.pull_request.base.sha }}' \
-            '${{ github.event.pull_request.head.sha }}')"
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
           echo "Changed files:"; echo "$changed"
-          if printf '%s %s' "${{ github.event.pull_request.title }}" "${{ github.event.pull_request.body }}" \
+          if printf '%s %s' "$PR_TITLE" "$PR_BODY" \
                | grep -q '\[skip-state\]'; then
             echo "Bypass [skip-state] present — gate skipped."; exit 0
           fi
