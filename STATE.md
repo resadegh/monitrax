@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `3e5881f1` · **on:** 2026-06-15 · **by:** Cowork session (Phase 3 engine-correctness audit)
+**Last verified against HEAD:** `e3a1071` · **on:** 2026-06-15 · **by:** Code session (Phase 3 fix PR1 — canonical value/balance helper)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,30 +39,29 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 by the Cowork Phase 3 engine-correctness audit (read live at HEAD `3e5881f1`).
-> Phase 3 was a STATIC read/trace audit (record-don't-fix). Every claim below carries a live source.
+> Re-pinned 2026-06-15 by the Code Phase 3 fix-PR1 session (branch base HEAD `e3a1071`, after the Phase 3 audit PR #1112 merged).
+> The audit was STATIC (record-don't-fix); this session ships the first FIX PR from its recommendations. Every claim below carries a live source.
 
-- **Current focus:** **Phase 3 calc-engine + data-relationship correctness audit — COMPLETE this PR.**
-  Output: `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` — 7 findings (4×P2, 3×P3), each `file:line`,
-  RECORD-don't-fix. Headlines: (L1-1) `wealthGraphService` values holdings off the `currentValue` cache +
-  `averagePrice`, never `currentPrice`, diverging from canonical net worth; (L1-2) `lib/reports/contextBuilder`
-  uses cost-basis investments + loan `principal` (not `currentBalance`); (L2-1) per-entity *value* uses binary
-  `ownerEntityId` while per-entity *tax* uses fractional + beneficial attribution (`attributeAsset`) — they
-  don't reconcile for co-owned assets; (L2-2) `OwnershipGroup`/`BeneficialOwnershipOverride` reference assets
-  polymorphically (no FK) → orphan rows on asset delete. The canonical SSOT itself is sound and its
-  Float/Decimal siblings agree; MA.4-002 fix confirmed not regressed.
-- **Active task + stop-point:** This Cowork PR (`claude/phase3-engine-correctness-audit`) adds the audit doc +
-  bumps the plan hub date. The matching one-line backlog index row for `03_OPEN_QUESTIONS_AND_BACKLOG.md` (#35
-  — #34 was taken by PR #1111 mid-session) is **staged but withheld from this PR** — a verbatim connector
-  round-trip of the 63 KB spoke risks corrupting the SSOT (finding F-8 in practice); apply it in a git-capable
-  session. **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this audit PR. (2) Apply the staged Phase-3 backlog row #35
-  to `03_OPEN_QUESTIONS_AND_BACKLOG.md` in a git-capable session (text specified in the PR body). (3) Spin the
-  **separate fix PRs** the audit recommends — priority: a single canonical "asset market value / loan balance"
-  helper (closes L1-1+L1-2+L1-3), then the per-entity ownership-semantics decision (L2-1, product + AFSL call for
-  Reza), then ownership-row referential-integrity cleanup (L2-2). (4) Carry-overs from the D6 cursor still open:
-  the plan-hygiene pass to bring spokes `01`/`04` under the §15.5 budget (Backlog #33); Reza's Q-GTM-3 decision;
-  repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
+- **Current focus:** **Phase 3 fix PR1 — canonical asset-value / loan-balance helper — DONE this PR (closes L1-1/L1-2/L1-3).**
+  New `lib/calculations/assetValuation.ts` (`holdingMarketValue`/`sumHoldingsMarketValue` = `units × (currentPrice
+  || averagePrice)`; `loanBalance`/`sumLoanBalances` = `Number(principal || 0)`) — the exact Float basis the
+  untouched canonical `netWorthCalculator` uses (`Loan.principal` IS the current balance per schema). Imported into
+  `wealthGraphService` (L1-1: was the `currentValue` cache + cost basis; `currentPrice` added to the holdings
+  select), `reports/contextBuilder` (L1-2: was `averagePrice × units` cost basis + raw `principal`), and
+  `ai/services/financialAdvisor` (L1-3: loan total now via the helper; its snapshot layer has no raw units/price
+  so the holding helper applies upstream). 14 new tests pin each helper `===` canonical for the same input;
+  0 tsc errors project-wide; calculations 98/98 + consumer suites 57/57 green. **`netWorthCalculator` untouched.**
+- **Active task + stop-point:** This Code PR (`claude/fix-pr1-canonical-value-helper`, off main `e3a1071`) ships the
+  helper + 3 consumer rewires + tests + this plan/cursor update. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this fix PR1. (2) **Fix PR2 — per-entity ownership-value
+  semantics (L2-1)**: a *product + AFSL decision for Reza* — make `entityValueBreakdown`/`entityBreakdown` apply
+  `attributeAsset` fractional weighting so per-entity *value* reconciles with per-entity *tax*, OR document
+  "Entity Value = legal title" + surface a UI note. (3) **Fix PR3 — ownership-row referential integrity (L2-2)**:
+  app-level cascade / orphan sweep for `OwnershipGroup`/`OwnershipStake`/`BeneficialOwnershipOverride` on asset
+  delete (polymorphic refs can't use a DB FK). (4) Still-staged: the Phase-3 backlog index row for
+  `03_OPEN_QUESTIONS_AND_BACKLOG.md` (the audit recorded the findings; the backlog one-liner was withheld from
+  #1112 and not yet applied). (5) Carry-overs: plan-hygiene pass for spokes `01`/`04` (Backlog #33); Reza's Q-GTM-3
+  decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
 - **Open decisions / blockers:**
   - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`
     §"Recommended fix PRs" (+ the staged Backlog #35).

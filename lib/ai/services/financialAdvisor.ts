@@ -18,6 +18,7 @@ import {
   QUESTION_ANSWERING_PROMPT,
   PROJECTIONS_SYSTEM_PROMPT,
 } from '../google';
+import { sumLoanBalances } from '@/lib/calculations/assetValuation';
 
 import type {
   AIAdvisorRequest,
@@ -445,7 +446,13 @@ export function buildFinancialContextFromSnapshot(
     (sum: number, p: any) => sum + p.equity,
     0
   );
-  const totalDebt = loans.reduce((sum: number, l: any) => sum + l.balance, 0);
+  // Phase 3 fix PR1 (audit L1-3): loan balances via the shared canonical helper.
+  const totalDebt = sumLoanBalances(loans);
+  // `inv.currentValue` here is the snapshot's already-aggregated market value
+  // (this layer has no raw units/price), so the canonical `holdingMarketValue`
+  // basis is applied upstream where the snapshot is built. The net-worth line
+  // below prefers the canonical `snapshot.netWorth` and only falls back to this
+  // local sum when the snapshot omits it.
   const totalInvestments = investments.reduce(
     (sum: number, inv: any) => sum + inv.currentValue,
     0

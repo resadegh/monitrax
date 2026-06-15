@@ -28,6 +28,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { sumHoldingsMarketValue } from '@/lib/calculations/assetValuation';
 import {
   isPostCommencementFy,
 } from '@/lib/tax-engine/config/reformConstants';
@@ -342,7 +343,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         currency: true,
         // Aggregate current value from holdings
         holdings: {
-          select: { currentValue: true, units: true, averagePrice: true },
+          select: { units: true, currentPrice: true, averagePrice: true },
         },
       },
     }),
@@ -780,13 +781,13 @@ export function classifyDistributionRegime(
 // helpers
 // ===========================================================================
 
+// Phase 3 fix PR1 (audit L1-1): value holdings by the canonical net-worth basis
+// (`units × (currentPrice || averagePrice)`) via the shared helper — NOT the
+// denormalized `currentValue` cache, which drifts from the dashboard when stale.
 function sumHoldingsValue(
-  holdings: Array<{ currentValue: number | null; units: number; averagePrice: number }>,
+  holdings: Array<{ units: number; currentPrice: number | null; averagePrice: number }>,
 ): number {
-  return holdings.reduce((sum, h) => {
-    if (h.currentValue != null) return sum + h.currentValue;
-    return sum + h.units * h.averagePrice;
-  }, 0);
+  return sumHoldingsMarketValue(holdings);
 }
 
 function prettyPropertyType(t: string | null): string | null {
