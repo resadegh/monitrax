@@ -51,19 +51,21 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   don't reconcile for co-owned assets; (L2-2) `OwnershipGroup`/`BeneficialOwnershipOverride` reference assets
   polymorphically (no FK) → orphan rows on asset delete. The canonical SSOT itself is sound and its
   Float/Decimal siblings agree; MA.4-002 fix confirmed not regressed.
-- **Active task + stop-point:** This Cowork PR (`claude/phase3-engine-correctness-audit`) adds the audit doc,
-  bumps the plan hub date, and logs the umbrella tech-debt row (#34) in `03_OPEN_QUESTIONS_AND_BACKLOG.md`.
-  **Stop-point:** PR open for Reza review — NOT merged.
-- **Immediate next action:** (1) Reza review + merge this audit PR. (2) Spin the **separate fix PRs** the audit
-  recommends — priority: a single canonical "asset market value / loan balance" helper (closes L1-1+L1-2+L1-3),
-  then the per-entity ownership-semantics decision (L2-1, product + AFSL call for Reza), then ownership-row
-  referential-integrity cleanup (L2-2). (3) Carry-overs from the D6 cursor still open: bump the tax-config
-  review date so `tests/tax-engine/config/taxYearConfig.test.ts` ("nextReviewBy in the future") passes — its
-  own PR; the plan-hygiene pass to bring spokes `01`/`04` under the §15.5 budget (Backlog #33); Reza's Q-GTM-3
-  decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
+- **Active task + stop-point:** This Cowork PR (`claude/phase3-engine-correctness-audit`) adds the audit doc +
+  bumps the plan hub date. The matching one-line backlog index row for `03_OPEN_QUESTIONS_AND_BACKLOG.md` (#34)
+  is **staged but withheld from this PR** — a verbatim connector round-trip of the 63 KB spoke risks corrupting
+  the SSOT (finding F-8 in practice); apply it in a git-capable session. **Stop-point:** PR open for Reza review — NOT merged.
+- **Immediate next action:** (1) Reza review + merge this audit PR. (2) Apply the staged Phase-3 backlog row #34
+  to `03_OPEN_QUESTIONS_AND_BACKLOG.md` in a git-capable session (text specified in the PR body). (3) Spin the
+  **separate fix PRs** the audit recommends — priority: a single canonical "asset market value / loan balance"
+  helper (closes L1-1+L1-2+L1-3), then the per-entity ownership-semantics decision (L2-1, product + AFSL call for
+  Reza), then ownership-row referential-integrity cleanup (L2-2). (4) Carry-overs from the D6 cursor still open:
+  bump the tax-config review date so `tests/tax-engine/config/taxYearConfig.test.ts` ("nextReviewBy in the
+  future") passes — its own PR; the plan-hygiene pass to bring spokes `01`/`04` under the §15.5 budget (Backlog
+  #33); Reza's Q-GTM-3 decision; repo-admin (branch protection + `workflow` scope + arm the soft-launch workflows).
 - **Open decisions / blockers:**
   - **Phase 3 P2 findings await fix PRs** (record-don't-fix). See `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md`
-    §"Recommended fix PRs" + Backlog #34.
+    §"Recommended fix PRs" (+ the staged Backlog #34).
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** No Reza decision recorded; live plan says "Needs Reza decision
     before Step 2.2." Claude **recommendation = Finsure first, Connective second** (a rec, not a ruling).
     (`03_OPEN_QUESTIONS_AND_BACKLOG.md` Q-GTM-3 row.)
@@ -74,6 +76,8 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
     (compliance/benchmark, not precision).
   - **GitHub `workflow` scope NOT granted** — blocks `.github/workflows/continuity-gate.yml` + the Phase 4
     test-runner workflow (and arming the three soft-launch workflows to blocking).
+  - **Connector cannot reliably rewrite a 63 KB+ plan spoke in one call** (Phase 3 — F-8 in practice). The safe
+    ceiling for an in-place connector rewrite is well under the §15.5 ~150 KB target; prefer git-capable edits or split further.
   - **Pre-existing test failure (unrelated to Phase 3):** `tests/tax-engine/config/taxYearConfig.test.ts`
     "nextReviewBy in the future" fails — the tax-config review date (2026-06-14) is now past; needs a date bump in its own PR.
   - **CI test-runner rail** still absent (`security-audit.yml` runs audit+lint+build only). Phase 4 needs a CI test job.
