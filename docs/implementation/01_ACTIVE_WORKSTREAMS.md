@@ -8,6 +8,23 @@
 
 ## 🟡 Active Workstreams
 
+### 0·DOC. AI Document Router (recognise → attach-or-create → file)
+
+- **Status:** 🟡 ACTIVE — **Phase A ✅ shipped & live (PR #1123, prod verified 2026-06-16).** Phase B IN PROGRESS (this PR = the per-user storage quota slice of the storage track). Phase C queued.
+- **Started:** 2026-06-16 (Reza vision: *"every document/receipt should be recognised by AI, attached to the correct item/asset OR used to create a new item/expense, and filed in the right Vault folder for reporting/extraction."*)
+- **Owner:** Reza (direction + Stitch sign-off + GCS provisioning) + Claude (build).
+- **Last touched:** 2026-06-16 — **B-storage quota ✅ (this PR):** canonical `lib/documents/storage/storageQuota.ts` (drift-free per-user quota computed from `SUM(Document.size)`, default 2 GiB, backend-independent), enforced at the DME `processUpload` chokepoint **and** the legacy `documentService.uploadDocument` (scan) path; `/api/documents/upload` maps the breach to **413**; 7 tests. Prior (PR #1123): Phase A — scan recognition fix (rewired `GlobalScanReceipt` → `/api/documents/analyze-for-form`) + `ASSET` linkable type end-to-end.
+- **Spec:** `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
+- **Phases:**
+  - [x] **Phase A — Foundation + fix the live scan bug (PR #1123)** — recognition fix + `ASSET` linkable type.
+  - [~] **Phase B — Intelligence + storage (IN PROGRESS)** — two tracks:
+    - **B-storage (GCS + quota):** [x] per-user storage quota (this PR); [ ] GCS-aware `/api/documents/download` (currently DB-only — breaks the moment GCS is active); [ ] (optional) migrate existing inline bytea docs. **The GCS switch itself needs no code** — the factory auto-selects GCS once the 3 env vars are set. **⛔ BLOCKED on operator provisioning** (bucket + SA grant + Vercel env vars — see spec §B-storage + Blocking below).
+    - **B-intelligence (attach-or-create):** [ ] `ATTACH_TO_*` confirm actions (confirm flow has only `CREATE_*` today); [ ] entity-picker endpoint scoped by `ownerEntityId`; [ ] owning-legal-entity linking; [ ] scan-UI "attach vs create" branch (**§18.2.1 STRICT — Stitch FIRST**); [ ] always-confirm `PICK_FROM`. The Phase 42 receipt-matcher already exists and is live — this surfaces it.
+  - [ ] **Phase C — Per-item Documents + Tax-pack** — per-item Documents sections (Stitch design already generated under `.stitch/designs/asset-documents/`), Tax-pack export + ATO 5yr retention, renewal-date tie-in.
+- **Risk:** Low for the quota slice (additive, no schema change, computed-not-counted so no drift, §12.11 N/A). Medium for GCS cut-over (operator-provisioned; mitigated by the factory's auto-fallback to DB if GCS init fails).
+- **Blocking:** **GCS provisioning (Reza/operator only):** (1) create bucket `monitrax-documents` (`australia-southeast1`, uniform access, CMEK); (2) grant the WIF-impersonated runtime SA `roles/storage.objectAdmin` on it (prefer ADC, no key file per §13.6); (3) set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` (+ omit `GCS_SERVICE_ACCOUNT_KEY` under ADC) in Vercel Production. Likely also clears the residual `/api/documents/analyze` 500.
+- **Why this matters:** the Vault is passive today — a scanned receipt lands as an unfiled blob. The router makes intake active: one photo → recognised → routed to the right item/asset (or a new expense) → filed for tax-time reporting. It's the difference between "a folder of photos" and "my finances understand my paperwork."
+
 ### 0·CONT. Continuity System (cross-session memory — STATE.md + SYSTEM_MAP + gate)
 
 - **Status:** ✅ **Phase 0+1 COMPLETE; Phase 2 governance audit IN PROGRESS.** The cross-session continuity rails that let any surface (chat · Cowork · Code) resume Monitrax in <1 min without the user re-explaining context. Phase 0 (rails) + Phase 1 (deep ingestion) are live on main; Phase 2 consumes the F-1…F-8 drift findings.

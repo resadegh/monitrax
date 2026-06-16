@@ -1,5 +1,55 @@
 # Changelog — 2026-06-16
 
+## Session: document-router-phase-b-shk180 (Phase B — per-user storage quota)
+
+### Context
+Continuation of the AI Document Router (Phase A merged & live, PRs #1122/#1123).
+Reza: "document everything and continue." Storage decision: **GCS, with a
+per-user quota.** This session delivers the quota half (the GCS switch itself is
+operator-provisioning + the factory's existing auto-select — no code) and the
+full Phase A→C documentation.
+
+### Changes Made (Phase B — storage track, slice 1)
+- **Per-user storage quota (canonical SSOT).** New
+  `lib/documents/storage/storageQuota.ts`. **Drift-free by design** — usage is
+  COMPUTED from `SUM(Document.size) WHERE deletedAt IS NULL` at check time, never
+  a maintained counter that could desync. **Backend-independent** (counts DB
+  bytea + GCS identically). Default allowance **2 GiB**, with a per-user override
+  hook (`resolveQuotaBytes`) for later paid-tier/household work. Exposes
+  `getStorageUsage`, `assertWithinQuota`, `StorageQuotaExceededError`.
+- **Enforced at every upload path, none bypassable.** Wired into the single DME
+  chokepoint `DocumentManagementEngine.processUpload` (Step 0, before any byte is
+  written) AND the legacy `documentService.uploadDocument` path (the scan).
+  LOCAL_DRIVE is exempt (bytes live on the user's own machine).
+- **Correct HTTP semantics.** `/api/documents/upload` maps a quota breach to
+  **413 Payload Too Large** (a client condition) via a new `errorCode` on
+  `EngineResult` — not a generic 500.
+
+### Files Modified
+- `lib/documents/storage/storageQuota.ts` — **new** canonical quota SSOT
+- `lib/documents/storage/index.ts` — barrel exports
+- `lib/documents/engine/types.ts` — `EngineResult.errorCode`
+- `lib/documents/engine/DocumentManagementEngine.ts` — Step-0 quota guard + 413 code
+- `lib/documents/documentService.ts` — quota guard on the legacy/scan path
+- `app/api/documents/upload/route.ts` — 413 mapping
+- `tests/documents/storageQuota.test.ts` — **new**, 7 tests
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — **new** phase spec (A/B/C + GCS provisioning checklist + decisions log)
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — new `0·DOC` workstream
+
+### Testing
+- [x] `npx vitest run tests/documents/storageQuota.test.ts` — 7/7 green
+- [x] `npx tsc --noEmit` clean (only pre-existing tsconfig baseUrl warning)
+
+### Notes / boundaries
+- **§12.11:** no destructive write. **§12.12:** no schema change (quota is computed
+  from the existing `Document.size` column — deliberately no migration, no
+  counter to drift).
+- **GCS cut-over is operator-provisioning, not code** — the factory auto-selects
+  GCS once `GCS_PROJECT_ID`/`GCS_BUCKET_NAME`(/`GCS_SERVICE_ACCOUNT_KEY`) are set.
+  Checklist + IAM in PHASE_50 §B-storage. Likely also clears the analyze 500.
+- **Next slices:** GCS-aware `/api/documents/download` (DB-only today); then
+  B-intelligence (`ATTACH_TO_*` actions + entity picker + Stitch scan-UI branch).
+
 ## Session: asset-document-upload-shk180 (Phase A — AI document router foundation)
 
 ### Context

@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import { getStorageProvider } from './storage';
+import { getStorageProvider, assertWithinQuota, StorageQuotaExceededError } from './storage';
 import {
   DocumentMetadata,
   DocumentWithLinks,
@@ -82,6 +82,23 @@ export async function uploadDocument(
       // Handle Web API File/Blob type
       const blob = request.file as Blob;
       fileBuffer = Buffer.from(await blob.arrayBuffer());
+    }
+
+    // Enforce the per-user storage quota for server-backed providers (SSOT:
+    // storageQuota.ts). LOCAL_DRIVE keeps bytes on the user's own machine, so
+    // it does not count against server storage.
+    if (request.storageProvider !== 'LOCAL_DRIVE') {
+      try {
+        await assertWithinQuota(userId, fileBuffer.length);
+      } catch (quotaError) {
+        if (quotaError instanceof StorageQuotaExceededError) {
+          return {
+            success: false,
+            error: 'Storage limit reached. Free up space by deleting documents you no longer need.',
+          };
+        }
+        throw quotaError;
+      }
     }
 
     // Check if this is a LOCAL_DRIVE upload (file already saved on client)
