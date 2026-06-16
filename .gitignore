@@ -39,6 +39,18 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Playwright E2E (Phase 4 L4) — run artifacts, never committed
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# Firebase emulator debug logs
+firebase-debug.log
+firebase-debug.*.log
+*-debug.log
+.firebase/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

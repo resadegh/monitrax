@@ -65,7 +65,15 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 - **Open decisions / blockers:**
   - **GCS provisioning — pending Reza** (blocks the GCS cut-over; the quota + DB fallback work today regardless).
   - **DECIDED 2026-06-16:** storage = GCS with per-user quota; household = shared finances incl. documents (if/when multi-user accounts exist). See PHASE_50 decisions log.
-  - **E2E UAT gate — pending Reza** (E2E_ENABLED + secret). Not blocking anything.
+  - **E2E UAT (`playwright (UAT)`) — ✅ GREEN under the Firebase Auth emulator; PR #1121 open (NOT merged).** Superseded
+    the old "E2E_ENABLED + storage-state secret" plan — the job now runs unconditionally under
+    `firebase emulators:exec --only auth` (no secret, no real Firebase project, no manual login). Reproduced locally
+    (Postgres + emulator + `seed:lighthouse` + a real prod build): all 4 specs green twice. Root causes fixed on the
+    branch (see `04_RECENTLY_COMPLETED.md` 2026-06-16): `lib/gcp/credentials.ts` ADC uncaught-exception gated under the
+    emulator env (prod untouched; vitest 2870✓); `seed-emulator.ts` marks onboarding complete + seeds the mandatory
+    `UserConsent` rows (both blocking modals were swallowing clicks); `uat.spec.ts` made robust (auth-shell waits,
+    scoped dialog, investment-property CGT, `reducedMotion`). **Next:** once CI confirms green, add the required check
+    `playwright (UAT)` to the `main` ruleset.
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
 - **Verified-live this session:** #1122/#1123/#1124 each built + merged; prod deploys reached READY on monitrax.com.au
   (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.

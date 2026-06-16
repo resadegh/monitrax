@@ -88,6 +88,51 @@ async function getFirebaseCerts(): Promise<Record<string, string>> {
  * @param idToken - The raw ID token string from the client
  * @returns Verified token claims or null if verification fails
  */
+/**
+ * Build standardized claims from a verified/decoded token payload.
+ * Shared by the real (signature-verified) and emulator (decode-only) paths so
+ * the claim shape and required-field checks are identical.
+ */
+function buildClaimsFromPayload(payload: Record<string, unknown>): GCPTokenClaims | null {
+  const uid = payload.sub as string | undefined;
+  const email = payload.email as string | undefined;
+
+  if (!uid) {
+    log.warn('GCP token missing sub (uid) claim');
+    return null;
+  }
+  if (!email) {
+    log.warn('GCP token missing email claim', { uid });
+    return null;
+  }
+
+  // auth_time must not be in the future
+  const authTime = payload.auth_time as number | undefined;
+  if (authTime && authTime > Math.floor(Date.now() / 1000)) {
+    log.warn('GCP token auth_time is in the future', { authTime });
+    return null;
+  }
+
+  const firebaseClaims = payload.firebase as
+    | { sign_in_provider?: string; sign_in_second_factor?: string }
+    | undefined;
+
+  return {
+    uid,
+    email,
+    emailVerified: (payload.email_verified as boolean) ?? false,
+    displayName: (payload.name as string) || undefined,
+    phoneNumber: (payload.phone_number as string) || undefined,
+    photoURL: (payload.picture as string) || undefined,
+    signInProvider: firebaseClaims?.sign_in_provider,
+    signInSecondFactor: firebaseClaims?.sign_in_second_factor,
+    iat: (payload.iat as number) ?? 0,
+    exp: (payload.exp as number) ?? 0,
+    aud: typeof payload.aud === 'string' ? payload.aud : GCP_PROJECT_ID,
+    iss: payload.iss as string,
+  };
+}
+
 export async function verifyGCPIdToken(idToken: string): Promise<GCPTokenClaims | null> {
   if (!GCP_PROJECT_ID) {
     log.error('GCP_PROJECT_ID not configured - cannot verify GCP tokens');
@@ -97,6 +142,38 @@ export async function verifyGCPIdToken(idToken: string): Promise<GCPTokenClaims 
   if (!idToken || typeof idToken !== 'string') {
     log.warn('Invalid ID token provided to verifier');
     return null;
+  }
+
+  // =====================================================================
+  // E2E EMULATOR PATH (env-gated — NEVER active in prod/preview)
+  // The Firebase Auth emulator issues UNSIGNED tokens (no Google cert), so the
+  // RS256/JWKS path below can't verify them. When FIREBASE_AUTH_EMULATOR_HOST
+  // is set — which only happens in the Playwright CI job — decode without
+  // signature verification but still enforce issuer / audience / expiry / sub /
+  // email exactly as the real path does. This mirrors how the Firebase Admin
+  // SDK behaves in emulator mode. The env var is absent in every real deploy,
+  // so production token verification is byte-for-byte unchanged.
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    log.warn('AUTH EMULATOR MODE: verifying token WITHOUT signature (E2E only)');
+    const payload = jwt.decode(idToken) as Record<string, unknown> | null;
+    if (!payload) {
+      log.warn('Emulator token could not be decoded');
+      return null;
+    }
+    const now = Math.floor(Date.now() / 1000);
+    if (typeof payload.exp === 'number' && payload.exp < now) {
+      log.warn('Emulator token expired');
+      return null;
+    }
+    if (payload.iss !== VALID_ISSUER) {
+      log.warn('Emulator token issuer mismatch', { iss: payload.iss, expected: VALID_ISSUER });
+      return null;
+    }
+    if (payload.aud !== GCP_PROJECT_ID) {
+      log.warn('Emulator token audience mismatch', { aud: payload.aud });
+      return null;
+    }
+    return buildClaimsFromPayload(payload);
   }
 
   try {
@@ -127,55 +204,7 @@ export async function verifyGCPIdToken(idToken: string): Promise<GCPTokenClaims 
       issuer: VALID_ISSUER,
     }) as Record<string, unknown>;
 
-    // Validate required fields
-    const uid = payload.sub as string | undefined;
-    const email = payload.email as string | undefined;
-
-    if (!uid) {
-      log.warn('GCP token missing sub (uid) claim');
-      return null;
-    }
-
-    if (!email) {
-      log.warn('GCP token missing email claim', { uid });
-      return null;
-    }
-
-    // Firebase includes auth_time - ensure it's not in the future
-    const authTime = payload.auth_time as number | undefined;
-    if (authTime && authTime > Math.floor(Date.now() / 1000)) {
-      log.warn('GCP token auth_time is in the future', { authTime });
-      return null;
-    }
-
-    // Extract Firebase-specific claims
-    const firebaseClaims = payload.firebase as
-      | { sign_in_provider?: string; sign_in_second_factor?: string }
-      | undefined;
-
-    const claims: GCPTokenClaims = {
-      uid,
-      email,
-      emailVerified: (payload.email_verified as boolean) ?? false,
-      displayName: (payload.name as string) || undefined,
-      phoneNumber: (payload.phone_number as string) || undefined,
-      photoURL: (payload.picture as string) || undefined,
-      signInProvider: firebaseClaims?.sign_in_provider,
-      // Fix: G17 — Extract MFA second factor claim for session-level MFA verification
-      signInSecondFactor: firebaseClaims?.sign_in_second_factor,
-      iat: (payload.iat as number) ?? 0,
-      exp: (payload.exp as number) ?? 0,
-      aud: typeof payload.aud === 'string' ? payload.aud : GCP_PROJECT_ID,
-      iss: payload.iss as string,
-    };
-
-    log.debug('GCP token verified successfully', {
-      uid: claims.uid,
-      email: claims.email,
-      signInProvider: claims.signInProvider,
-    });
-
-    return claims;
+    return buildClaimsFromPayload(payload);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
 
