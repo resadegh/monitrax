@@ -70,6 +70,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
       investmentAccountId: (formData.get('investmentAccountId') as string) || undefined,
       investmentHoldingId: (formData.get('investmentHoldingId') as string) || undefined,
       transactionId: (formData.get('transactionId') as string) || undefined,
+      assetId: (formData.get('assetId') as string) || undefined,
     };
 
     // Remove undefined values
@@ -137,9 +138,11 @@ export const POST = withPermission('report.export', async (request, auth) => {
 
     if (!result.success) {
       console.error('[API/upload] Engine upload failed:', result.error);
+      // Quota exhaustion is a client condition (413), not a server error (500).
+      const status = result.errorCode === 'STORAGE_QUOTA_EXCEEDED' ? 413 : 500;
       return NextResponse.json(
-        { error: result.error || 'Upload failed' },
-        { status: 500 }
+        { error: result.error || 'Upload failed', code: result.errorCode },
+        { status }
       );
     }
 

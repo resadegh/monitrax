@@ -200,7 +200,8 @@ psql "your-render-database-url" -f script.sql
 | `USE_CLOUD_SQL_CONNECTOR` + WIF vars (5) | Phase 9 WIF runtime DB auth — see §5.3 | Vercel runtime | PROD since 2026-05-01 |
 | `STRIPE_SECRET_KEY` + 5 related (Phase 32C PR6) | Stripe billing test-mode | Vercel | Optional — billing UI gracefully disables when unset |
 | `SENDGRID_API_KEY` + 2 related (Phase 32C PR4d) | Conversation email-through-app | Vercel | Optional — outbound mirror falls through to console-log when unset |
-| `GCS_*` (Phase 19) | Google Cloud Storage for documents | Vercel | Required for document upload |
+| `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` (Phase 50) | Google Cloud Storage for documents. **Keyless** — the GCS client reuses the existing WIF identity (`GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL`, already set for the DB) via `lib/gcp/wifAuthClient.ts`; **no service-account key needed.** The storage factory auto-selects GCS as the default backend once `GCS_BUCKET_NAME` (+ `GCS_PROJECT_ID`) are present (`lib/documents/storage/factory.ts`); otherwise it falls back to Monitrax DB (Postgres bytea). Reads stream through `/api/documents/download` (keyless can't sign native v4 URLs). | Vercel | Pending prod provisioning (bucket + IAM grant + these 2 vars) — until set, uploads persist to the DB |
+| `GCS_SERVICE_ACCOUNT_KEY` (legacy, optional) | A base64 SA key. **Only** if you deliberately want native GCS signed URLs instead of keyless streaming. Omit it to stay keyless (recommended — §13.6). | Vercel | Optional — leave unset for the keyless path |
 | `GOOGLE_MAPS_API_KEY` (Phase 20) | Property location lookup | Vercel | Required for Google Maps integration |
 | `GEMINI_API_KEY` (Phase 27) | All AI features (CFO advice, document analysis, AskAPro suggestions) | Vercel | Required for AI features |
 

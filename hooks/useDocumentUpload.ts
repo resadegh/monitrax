@@ -61,6 +61,7 @@ const LINK_FIELD_BY_ENTITY: Record<string, string> = {
   INVESTMENT_ACCOUNT: 'investmentAccountId',
   INVESTMENT_HOLDING: 'investmentHoldingId',
   TRANSACTION: 'transactionId',
+  ASSET: 'assetId',
 };
 
 /**

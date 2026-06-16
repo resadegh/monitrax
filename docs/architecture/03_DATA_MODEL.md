@@ -258,7 +258,7 @@ category: "HOUSING" | "RATES" | "INSURANCE" | "MAINTENANCE" | "PERSONAL" | "UTIL
 customCategoryId?: string     // Reference to user-defined Category (takes precedence over category if set)
 sourceType: "GENERAL" | "PROPERTY" | "LOAN" | "INVESTMENT" | "ASSET"
 amount: number
-frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL"
+frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "ANNUAL"
 vendorName?: string
 isEssential: boolean          // Is this an essential expense? (default: true)
 isTaxDeductible: boolean      // Is this expense tax deductible? (default: false)
@@ -3201,6 +3201,8 @@ unified_transactions.matchedDocumentId  TEXT (nullable)
 ```
 
 Direct pointer for "show me the receipt for this transaction." Set by the DME `analyze/confirm` flow on AUTO_LINK or NO_MATCH paths. Complements the existing many-to-many `DocumentLink` table (which still serves general document↔entity relations).
+
+> **`LinkedEntityType` (DocumentLink) — 2026-06-16 (AI Document Router, Phase A):** the polymorphic document-link enum is `PROPERTY · LOAN · EXPENSE · INCOME · ACCOUNT · OFFSET_ACCOUNT · INVESTMENT_ACCOUNT · INVESTMENT_HOLDING · TRANSACTION · ASSET`. **`ASSET`** was added so a document/receipt can be tagged to a specific asset (e.g. a CTP policy or rego notice on a vehicle). Wired through the DME upload route (`assetId`), the `useDocumentUpload` hook, and a new `asset_direct` rule in `lib/documents/engine/rules/LinkingRules.ts`. Additive enum migration `20260616093000_add_asset_linked_entity_type`.
 
 ### Service surface (`lib/bookkeeping/`)
 

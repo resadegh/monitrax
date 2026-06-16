@@ -20,6 +20,7 @@ describe('toAnnualDecimal', () => {
     expect(toAnnualDecimal(100, 'FORTNIGHTLY').toString()).toBe('2600');
     expect(toAnnualDecimal(100, 'MONTHLY').toString()).toBe('1200');
     expect(toAnnualDecimal(100, 'QUARTERLY').toString()).toBe('400');
+    expect(toAnnualDecimal(100, 'HALF_YEARLY').toString()).toBe('200');
     expect(toAnnualDecimal(100, 'ANNUAL').toString()).toBe('100');
   });
 
@@ -64,6 +65,7 @@ describe('Decimal converters agree with Float at currency tolerance', () => {
     { amount: 100, frequency: 'WEEKLY' },
     { amount: 250, frequency: 'FORTNIGHTLY' },
     { amount: 4500, frequency: 'QUARTERLY' },
+    { amount: 215.59, frequency: 'HALF_YEARLY' },
     { amount: 87654.32, frequency: 'ANNUAL' },
   ];
 

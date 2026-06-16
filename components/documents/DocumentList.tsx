@@ -92,6 +92,7 @@ const ENTITY_TYPE_LABELS: Record<LinkedEntityType, string> = {
   INVESTMENT_ACCOUNT: 'Investment Account',
   INVESTMENT_HOLDING: 'Holding',
   TRANSACTION: 'Transaction',
+  ASSET: 'Asset',
 };
 
 function getFileIcon(mimeType: string) {

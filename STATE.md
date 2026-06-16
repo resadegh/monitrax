@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `5566867` (branch `claude/phase4-l4-auth-emulator`, off main `4b20dc8`) · **on:** 2026-06-16 · **by:** Code session (Phase 4 L4 — drove the `playwright (UAT)` job GREEN locally)
+**Last verified against HEAD:** `654bc55`+ (keyless-GCS PR open) · **on:** 2026-06-16 · **by:** Code session (AI Document Router Phase A+B; keyless GCS auth + GCS-aware download)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,45 +39,44 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-16 (Cowork) at base HEAD `4b20dc8`. Phase 4 (L1–L4) shipped #1115–#1118; cursor refresh #1119.
-> **This PR makes the Layer-4 Playwright UAT actually run — via the Firebase Auth EMULATOR (no real project, no secret, no manual login).**
+> Re-pinned 2026-06-16 (Code) at HEAD `654bc55` = merge of #1124.
+> **AI Document Router (workstream `0·DOC`) is the active line of work.** Three PRs merged & prod-verified this
+> session: **#1122** (HALF_YEARLY frequency everywhere) · **#1123** (Doc Router Phase A — scan recognition fix +
+> `ASSET` linkable type) · **#1124** (Doc Router Phase B — per-user storage quota). Spec: `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
 
-- **Current focus:** **Phase 4 Layer 4 — wire Playwright UAT with the Firebase Auth emulator (this PR).**
-  The `playwright (UAT)` job now runs unconditionally (gate removed) under the Auth emulator:
-  CI starts `firebase emulators:exec --only auth` (config `firebase.json` → :9099), seeds synthetic users
-  (`tests/e2e/seed-emulator.ts` → links each emulator UID to a `seed:lighthouse` archetype user via `OAuthAccount`),
-  and each spec signs in through the real `/signin` form (`tests/e2e/auth.ts` `loginAs` fixture). **No
-  `E2E_STORAGE_STATE_JSON` secret** (deleted) — Firebase persists in IndexedDB, so a programmatic UI login is used.
-  Emulator wiring is gated behind `FIREBASE_AUTH_EMULATOR_HOST` / `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`,
-  set ONLY in the job — prod/preview unaffected (server path unit-tested: `tests/auth/gcpTokenVerifier.emulator.test.ts`).
-  The 4 UAT flows: add property → net worth; sellProperty What-If → per-owner CGT breakdown (D6); entity-value
-  legal-title label (#1114); delete property → ownership rows gone (L2-2).
-- **Active task + stop-point:** PR `claude/phase4-l4-auth-emulator` (#1121). **Stop-point:** PR open — NOT merged.
-- **✅ The 4 UAT flows are GREEN (reproduced locally, Code session 2026-06-16).** A faithful CI repro (Postgres +
-  Auth emulator + `seed:lighthouse` + a real prod build) drove all 4 specs green twice (~9s). **Root causes fixed
-  this session** (see `04_RECENTLY_COMPLETED.md` 2026-06-16 for detail): (1) `lib/gcp/credentials.ts` returned a
-  credential-less options object when `GCP_PROJECT_ID` is set → the Cloud Logging audit sink failed ADC
-  *asynchronously* → `uncaughtException` aborted `/api/master-snapshot` → dashboard stuck "Loading…"; gated to
-  null under `FIREBASE_AUTH_EMULATOR_HOST` (prod untouched; vitest 2870✓). (2) Two blocking modals
-  (OnboardingWelcomeModal + ConsentMigrationModal) overlaid the page and swallowed clicks — `seed-emulator.ts`
-  now marks onboarding complete + writes the mandatory `UserConsent` rows (E2E-only). (3) `uat.spec.ts` made
-  robust: auth-shell + `LOAD` waits, scoped the add-property dialog past the persistent feedback/help asides,
-  fills all required fields, picks an **investment** property for CGT (the auto-selected PPR is exempt) and asserts
-  the per-owner CGT breakdown in the "How we computed this" panel; `playwright.config` gains
-  `reducedMotion: 'reduce'` + 120s test timeout. The sellProperty assertion changed from the literal
-  `Estimated CGT (your share)` (an internal impact label the lever summarises) to the rendered per-owner split.
-- **Immediate next action:** (1) Let the PR's `playwright (UAT)` job run on the pushed fix; confirm CI green
-  (it's green locally). (2) **Add the required-check string `playwright (UAT)`** to the `main` ruleset once CI is green.
-  (3) Standing backlog unchanged: Q-GTM-3 (Finsure rec); spoke hygiene; Phase 3 P2 fix PRs.
+- **Current focus:** **AI Document Router — Phase B in progress.** Vision (Reza): every receipt → AI recognises →
+  attaches to the correct item/asset OR creates a new expense → filed in the Vault for tax-time. Phase A ✅ shipped
+  (the scan now identifies receipts via `/api/documents/analyze-for-form`; assets are linkable). Phase B has two
+  tracks: **B-storage** (storage = GCS + per-user quota) and **B-intelligence** (attach-to-existing, not just create).
+  Phase B slice 1 ✅ = the **per-user storage quota** (`lib/documents/storage/storageQuota.ts`, SSOT — drift-free,
+  computed from `SUM(Document.size)`, default 2 GiB, backend-independent; enforced at the DME `processUpload`
+  chokepoint + the legacy scan path; `/api/documents/upload` → 413 on breach).
+- **Active task + stop-point:** AI Document Router · Phase B storage track — **keyless GCS auth + GCS-aware download**
+  shipped this PR (`lib/gcp/wifAuthClient.ts`, provider-aware `/api/documents/download`, read-URL policy `readUrl.ts`).
+  Code is keyless-ready; only operator provisioning remains to make GCS live.
+- **Immediate next action:**
+  (1) **GCS provisioning — REZA/operator only** (the only thing left to make GCS live; code is keyless-ready):
+  create bucket `monitrax-documents` (`australia-southeast1`, uniform access, CMEK), grant the existing runtime SA
+  (`$GCP_SERVICE_ACCOUNT_EMAIL`) `roles/storage.objectAdmin` **on the bucket**, set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME`
+  in Vercel Production (**no key — keyless WIF reuses the DB identity**). Factory auto-switches once set.
+  (2) **`/api/documents/analyze` 500 — separate diagnostic** (Phase A traced it to the two-step analyze path, NOT
+  confirmed GCS-related): read live logs + fix directly; do NOT assume GCS provisioning resolves it.
+  (3) **B-intelligence (needs Stitch per §18.2.1):** `ATTACH_TO_*` confirm actions + entity picker + scan-UI "attach vs create" branch.
 - **Open decisions / blockers:**
-  - **E2E auth — ✅ RESOLVED by this PR** (emulator; no Firebase project / secret / manual login needed). Supersedes the
-    earlier "provision E2E_STORAGE_STATE_JSON / approve a test-auth bypass" decision.
-  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second.
-  - **`vitest` required check — ✅ ADDED** to the `main` ruleset (Phase 4 L1). **GitHub `workflow` scope — ✅ GRANTED.**
-  - **Plan-spoke connector ceiling:** ~290–300 KB spokes still exceed the safe single-call rewrite ceiling.
-  - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
-- **Verified-live this session:** RESUME CHECK — since cursor HEAD `fa038ad`, #1119 (cursor refresh) + #1120
-  (doc-upload camera capture, unrelated) merged → live HEAD `4b20dc8`. This branch is off `4b20dc8`.
+  - **GCS provisioning — pending Reza** (blocks the GCS cut-over; the quota + DB fallback work today regardless).
+  - **DECIDED 2026-06-16:** storage = GCS with per-user quota; household = shared finances incl. documents (if/when multi-user accounts exist). See PHASE_50 decisions log.
+  - **E2E UAT (`playwright (UAT)`) — ✅ GREEN under the Firebase Auth emulator; PR #1121 open (NOT merged).** Superseded
+    the old "E2E_ENABLED + storage-state secret" plan — the job now runs unconditionally under
+    `firebase emulators:exec --only auth` (no secret, no real Firebase project, no manual login). Reproduced locally
+    (Postgres + emulator + `seed:lighthouse` + a real prod build): all 4 specs green twice. Root causes fixed on the
+    branch (see `04_RECENTLY_COMPLETED.md` 2026-06-16): `lib/gcp/credentials.ts` ADC uncaught-exception gated under the
+    emulator env (prod untouched; vitest 2870✓); `seed-emulator.ts` marks onboarding complete + seeds the mandatory
+    `UserConsent` rows (both blocking modals were swallowing clicks); `uat.spec.ts` made robust (auth-shell waits,
+    scoped dialog, investment-property CGT, `reducedMotion`). **Next:** once CI confirms green, add the required check
+    `playwright (UAT)` to the `main` ruleset.
+  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
+- **Verified-live this session:** #1122/#1123/#1124 each built + merged; prod deploys reached READY on monitrax.com.au
+  (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 
