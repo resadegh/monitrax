@@ -40,6 +40,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
+import { DocumentsSection } from '@/components/documents';
+import { LinkedEntityType } from '@/lib/documents/types';
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -484,6 +486,11 @@ export default function InvestmentAccountDetailPage() {
           <div className="flex flex-col gap-5 lg:col-span-2">
             <HoldingsCard account={account} />
             <RecentActivityCard account={account} />
+            <DocumentsSection
+              entityType={LinkedEntityType.INVESTMENT_ACCOUNT}
+              entityId={account.id}
+              entityLabel={account.name}
+            />
           </div>
 
           {/* RIGHT column (1/3 width) */}

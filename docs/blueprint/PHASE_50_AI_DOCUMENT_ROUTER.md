@@ -136,8 +136,13 @@ first-class outcome alongside **create**, always with user confirmation.
 
 ### Phase C — Per-item Documents + Tax-pack
 
-- [ ] Per-item **Documents** sections on Asset Spotlight detail pages (Stitch
+- [~] Per-item **Documents** sections on Asset Spotlight detail pages (Stitch
   design already generated under `.stitch/designs/asset-documents/`).
+  **Shipped for Properties, Investments, Assets** (reusable `components/documents/DocumentsSection.tsx`
+  — upload + mobile camera + list/view/delete; uploads link to the item AND file under the
+  item's folder via the new `asset_path` rule; bypasses the AI path so it works while Vision is down).
+  **Pulled forward from Phase C** after Reza flagged the gap (upload was missing on every wealth item).
+  **Super deferred** — needs a `SUPER` `LinkedEntityType` + migration. Full light/mobile Stitch variants to backfill.
 - [ ] **Tax-pack export** + ATO 5-year retention.
 - [ ] Renewal-date tie-in (insurance/rego docs surface their renewal).
 

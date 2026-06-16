@@ -22,7 +22,7 @@ import {
   Car, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   DollarSign, Calendar, Package, Laptop, Sofa, Wrench,
   Gem, LayoutGrid, List, Eye, Receipt, History, Settings,
-  Fuel, Shield, FileText, Zap
+  Fuel, Shield, FileText, Zap, FolderOpen
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -31,6 +31,8 @@ import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 import { AssetsHero, type AssetsHeroSegment } from '@/components/assets/AssetsHero';
 import { AssetTile } from '@/components/assets/AssetTile';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
+import { DocumentsSection } from '@/components/documents';
+import { LinkedEntityType, DocumentCategory } from '@/lib/documents/types';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import {
   computeAssetRenewals,
@@ -1215,7 +1217,19 @@ function AssetsPageContent() {
                     <TabsTrigger value="details">
                       <Settings className="h-4 w-4 mr-1" /> Details
                     </TabsTrigger>
+                    <TabsTrigger value="documents">
+                      <FolderOpen className="h-4 w-4 mr-1" /> Documents
+                    </TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="documents" className="mt-4">
+                    <DocumentsSection
+                      entityType={LinkedEntityType.ASSET}
+                      entityId={selectedAsset.id}
+                      entityLabel={selectedAsset.name}
+                      defaultCategory={DocumentCategory.RECEIPT}
+                    />
+                  </TabsContent>
 
                   <TabsContent value="expenses" className="mt-4">
                     <div className="flex justify-between items-center mb-4">
