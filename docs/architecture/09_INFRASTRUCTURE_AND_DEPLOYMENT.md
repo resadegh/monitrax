@@ -200,7 +200,7 @@ psql "your-render-database-url" -f script.sql
 | `USE_CLOUD_SQL_CONNECTOR` + WIF vars (5) | Phase 9 WIF runtime DB auth — see §5.3 | Vercel runtime | PROD since 2026-05-01 |
 | `STRIPE_SECRET_KEY` + 5 related (Phase 32C PR6) | Stripe billing test-mode | Vercel | Optional — billing UI gracefully disables when unset |
 | `SENDGRID_API_KEY` + 2 related (Phase 32C PR4d) | Conversation email-through-app | Vercel | Optional — outbound mirror falls through to console-log when unset |
-| `GCS_*` (Phase 19) | Google Cloud Storage for documents | Vercel | Required for document upload |
+| `GCS_*` (Phase 19 / Phase 50) | Google Cloud Storage for documents — `GCS_PROJECT_ID`, `GCS_BUCKET_NAME`, optional `GCS_SERVICE_ACCOUNT_KEY` (omit under ADC/WIF). **The storage factory auto-selects GCS as the default backend the moment all required vars are present** (`lib/documents/storage/factory.ts`); otherwise it falls back to Monitrax DB (Postgres bytea). | Vercel | Pending prod provisioning (Phase 50 B-storage) — until set, uploads persist to the DB |
 | `GOOGLE_MAPS_API_KEY` (Phase 20) | Property location lookup | Vercel | Required for Google Maps integration |
 | `GEMINI_API_KEY` (Phase 27) | All AI features (CFO advice, document analysis, AskAPro suggestions) | Vercel | Required for AI features |
 
