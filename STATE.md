@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `fa038ad` · **on:** 2026-06-15 · **by:** Cowork session (Phase 4 COMPLETE — all four layers merged; cursor refresh)
+**Last verified against HEAD:** `4b20dc8` · **on:** 2026-06-16 · **by:** Cowork session (Phase 4 Layer 4 — Playwright UAT via Firebase Auth emulator)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -39,37 +39,37 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-15 (Cowork) at HEAD `fa038ad` = merge of #1118.
-> **Phase 4 is COMPLETE — all four layers merged to main, in order:**
-> **L1 #1115** (vitest CI, now a required check) · **L2 #1116** (golden-master, 24 engine snapshots) ·
-> **L3 #1117** (246 invariants) · **L4 #1118** (Playwright UAT scaffold). Every claim carries a live source.
+> Re-pinned 2026-06-16 (Cowork) at base HEAD `4b20dc8`. Phase 4 (L1–L4) shipped #1115–#1118; cursor refresh #1119.
+> **This PR makes the Layer-4 Playwright UAT actually run — via the Firebase Auth EMULATOR (no real project, no secret, no manual login).**
 
-- **Current focus:** **Nothing in flight — Phase 4 shipped.** The test rail now gates every PR:
-  `.github/workflows/tests.yml` runs the full vitest suite (`vitest`, **required** on the `main` ruleset);
-  `tests/regression/golden-master/` (engine-sourced snapshots) + `tests/regression/invariants/` (net-worth
-  identity across all read-paths · per-entity legal-title reconciliation · ownership shares = 100% · Float/Decimal
-  boundary · D6 CGT = `calculateCgtDiscountDecimal` + `attributeAsset`) fail on drift. Playwright UAT
-  (`tests/e2e/`) is wired but **skipped** (`if: vars.E2E_ENABLED == 'true'`) until E2E auth is provisioned.
-  **No correctness bug surfaced across L2/L3** (engine matches documented behaviour).
-- **Active task + stop-point:** none open. This PR is a cursor/plan refresh only (STATE.md + hub).
-- **Immediate next action (all optional / Reza's call):**
-  (1) **Enable the UAT gate when ready:** set repo **variable** `E2E_ENABLED=true` + **secret**
-  `E2E_STORAGE_STATE_JSON` (captured Playwright session on a dedicated Firebase TEST project), then add
-  `playwright (UAT)` as a required check (`tests/e2e/README.md`). (2) **Git-capable session:** paste the four
-  staged `04_RECENTLY_COMPLETED.md` Phase-4 entries (verbatim in the #1115/#1116/#1117/#1118 PR bodies) into the
-  spoke — withheld here because the ~300 KB spoke exceeds the connector single-call rewrite ceiling.
-  (3) Resume the standing backlog: **Q-GTM-3** (first aggregator — Claude rec Finsure first); plan-hygiene pass
-  to bring the over-budget `01`/`04` spokes under §15.5; Phase 3 P2 fix PRs (record-don't-fix, Backlog #35).
+- **Current focus:** **Phase 4 Layer 4 — wire Playwright UAT with the Firebase Auth emulator (this PR).**
+  The `playwright (UAT)` job now runs unconditionally (gate removed) under the Auth emulator:
+  CI starts `firebase emulators:exec --only auth` (config `firebase.json` → :9099), seeds synthetic users
+  (`tests/e2e/seed-emulator.ts` → links each emulator UID to a `seed:lighthouse` archetype user via `OAuthAccount`),
+  and each spec signs in through the real `/signin` form (`tests/e2e/auth.ts` `loginAs` fixture). **No
+  `E2E_STORAGE_STATE_JSON` secret** (deleted) — Firebase persists in IndexedDB, so a programmatic UI login is used.
+  Emulator wiring is gated behind `FIREBASE_AUTH_EMULATOR_HOST` / `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`,
+  set ONLY in the job — prod/preview unaffected (server path unit-tested: `tests/auth/gcpTokenVerifier.emulator.test.ts`).
+  The 4 UAT flows: add property → net worth; sellProperty What-If → `Estimated CGT (your share)`; entity-value
+  legal-title label (#1114); delete property → ownership rows gone (L2-2).
+- **Active task + stop-point:** PR `claude/phase4-l4-auth-emulator` off main `4b20dc8`. **Stop-point:** PR open — NOT merged.
+- **Verified in this Cowork session (no full app/DB/browser here):** server emulator verify path 6/6 unit tests green +
+  full vitest suite green (2870 pass / 69 skip / 0 fail) after the verifier refactor; `playwright test --list` discovers
+  the 4 specs + fixture; YAML + firebase.json valid. **NOT yet verified:** the end-to-end CI run (emulator + Postgres +
+  Next + browser) — that is what the first CI run on this PR proves. Job is **non-required** until green.
+- **Immediate next action:** (1) Let the PR's `playwright (UAT)` job run; iterate to green if the first run surfaces
+  wiring issues. (2) Once green, add **`playwright (UAT)`** as a required status check on the `main` ruleset.
+  (3) Standing backlog unchanged: Q-GTM-3 (Finsure rec); spoke hygiene; Phase 3 P2 fix PRs; paste the four staged
+  Phase-4 `04_RECENTLY_COMPLETED` entries (in #1115–#1118 PR bodies) from a git-capable session.
 - **Open decisions / blockers:**
-  - **E2E UAT gate — pending Reza** (E2E_ENABLED + secret, or approve a server-only test-auth bypass). Not blocking anything.
-  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
-  - **GitHub `workflow` scope — ✅ GRANTED** (2026-06-15). **`vitest` required check — ✅ ADDED to the `main` ruleset.**
-  - **Plan-spoke connector ceiling:** ~290–300 KB spokes still exceed the safe single-call rewrite ceiling — prefer git-capable edits.
-  - **Phase 3 P2 findings** await their own fix PRs (record-don't-fix) — `docs/audits/PHASE3_ENGINE_CORRECTNESS_2026-06-15.md` + Backlog #35.
+  - **E2E auth — ✅ RESOLVED by this PR** (emulator; no Firebase project / secret / manual login needed). Supersedes the
+    earlier "provision E2E_STORAGE_STATE_JSON / approve a test-auth bypass" decision.
+  - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second.
+  - **`vitest` required check — ✅ ADDED** to the `main` ruleset (Phase 4 L1). **GitHub `workflow` scope — ✅ GRANTED.**
+  - **Plan-spoke connector ceiling:** ~290–300 KB spokes still exceed the safe single-call rewrite ceiling.
   - **✅ RESOLVED by #1111:** the `taxYearConfig.test.ts` "nextReviewBy" date time-bomb.
-- **Verified-live this session:** Phase 4 built + merged across PRs #1115–#1118; main advanced `2ca4043 → fa038ad`.
-  Suites green in real CI (vitest ran green on the #1115/#1116 PRs); build verification + Vercel green on #1118
-  after the `tsconfig` fix (excluded `playwright.config.ts` from the build); `playwright (UAT)` correctly skipped.
+- **Verified-live this session:** RESUME CHECK — since cursor HEAD `fa038ad`, #1119 (cursor refresh) + #1120
+  (doc-upload camera capture, unrelated) merged → live HEAD `4b20dc8`. This branch is off `4b20dc8`.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 

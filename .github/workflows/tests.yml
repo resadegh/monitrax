@@ -1,18 +1,15 @@
 name: Tests
 
-# Test-runner rail (Phase 4). Two jobs:
-#   - vitest    (Layer 1) — the full unit/integration suite on every PR/push.
-#   - playwright (Layer 4) — seeded-archetype UAT end-to-end flows.
+# Test-runner rail (Phase 4).
+#   - vitest    (Layer 1) — full unit/integration suite on every PR/push.
+#                REQUIRED check on the `main` ruleset: vitest
+#   - playwright (UAT)     — Layer 4 end-to-end flows, run under the Firebase
+#                AUTH EMULATOR (no real Firebase project, no stored credential,
+#                no manual login). NON-required until proven green.
 #
-# vitest is the gate (REQUIRED check name to add to the `main` ruleset: vitest).
-#
-# playwright is SKIPPED by default — login is GCP/Firebase only with no test
-# bypass, so it can't run green without an authenticated session. To turn it on,
-# Reza sets BOTH:
-#   - repository VARIABLE  E2E_ENABLED = true   (un-skips the job), and
-#   - repository SECRET    E2E_STORAGE_STATE_JSON = <captured Playwright storage
-#     state for a seeded user on a dedicated Firebase TEST project>.
-# Until then the job is skipped (neutral, non-blocking). See tests/e2e/README.md.
+# Emulator wiring is gated behind FIREBASE_AUTH_EMULATOR_HOST /
+# NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST, which are set ONLY here — never in
+# prod or Vercel preview. See tests/e2e/README.md.
 
 on:
   pull_request:
@@ -44,9 +41,6 @@ jobs:
 
   playwright:
     name: playwright (UAT)
-    # Skipped until Reza opts in (repo variable E2E_ENABLED=true) and provisions
-    # the E2E_STORAGE_STATE_JSON secret. Skipped jobs are neutral, not failing.
-    if: ${{ vars.E2E_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -62,12 +56,12 @@ jobs:
     env:
       DATABASE_URL: postgresql://monitrax:monitrax@localhost:5432/monitrax_e2e?schema=public
       JWT_SECRET: e2e-placeholder-secret
-      NEXT_PUBLIC_FIREBASE_API_KEY: placeholder
-      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: placeholder
-      NEXT_PUBLIC_FIREBASE_PROJECT_ID: placeholder
-      NEXT_PUBLIC_GCP_PROJECT_ID: placeholder
-      GCP_PROJECT_ID: placeholder
-      E2E_STORAGE_STATE_JSON: ${{ secrets.E2E_STORAGE_STATE_JSON }}
+      # Firebase Auth emulator wiring (E2E ONLY — never set in prod/preview).
+      GCP_PROJECT_ID: monitrax-e2e
+      NEXT_PUBLIC_GCP_PROJECT_ID: monitrax-e2e
+      NEXT_PUBLIC_FIREBASE_API_KEY: fake-e2e-api-key
+      NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node.js
@@ -81,17 +75,24 @@ jobs:
         run: |
           npx prisma generate
           npx prisma migrate deploy
-      - name: Seed archetypes (idempotent)
+      - name: Seed archetypes into Postgres (idempotent)
         run: npm run seed:lighthouse
         continue-on-error: true
-      - name: Build
-        run: npm run build
-      - name: Install Playwright (not in package.json — installed here to keep `npm ci` lockstep)
+      - name: Install Playwright + firebase-tools (kept out of package.json so `npm ci` stays lockstep)
         run: |
           npm i -D @playwright/test@^1.49.0 --no-save
+          npm i -g firebase-tools@^13
           npx playwright install --with-deps chromium
-      - name: Run Playwright UAT
-        run: npx playwright test
+      - name: Build (NEXT_PUBLIC_* emulator flags are inlined here)
+        run: npm run build
+      - name: Run UAT under the Firebase Auth emulator
+        # emulators:exec starts the auth emulator (firebase.json → :9099), runs
+        # the command, then shuts it down. The seed creates synthetic users +
+        # links them to the seeded Postgres archetypes; Playwright then signs in
+        # through the real /signin UI. No secret, no manual login.
+        run: |
+          firebase emulators:exec --project monitrax-e2e --only auth \
+            "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' tests/e2e/seed-emulator.ts && npx playwright test"
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
