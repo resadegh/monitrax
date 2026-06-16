@@ -1,5 +1,74 @@
 # Changelog — 2026-06-16
 
+## Session: gcs-factory-keyless-gate-shk180 (fix — factory GCS-detection must accept keyless)
+
+### Why (root cause)
+While provisioning keyless GCS in prod (Reza granting `vercel-monitrax-db`
+`objectUser` on the bucket, about to delete `GCS_SERVICE_ACCOUNT_KEY`), Reza
+asked *"are you sure the app won't break by deleting the key?"* — and it would
+have. The keyless PR (#1126) made the **provider** keyless-capable but left the
+**factory's** GCS-detection gate still requiring the key:
+
+```ts
+// BEFORE (lib/documents/storage/factory.ts) — required the key:
+const isGCSConfigured = !!(GCS_PROJECT_ID && GCS_BUCKET_NAME && GCS_SERVICE_ACCOUNT_KEY);
+```
+
+So deleting `GCS_SERVICE_ACCOUNT_KEY` would make `isGCSConfigured` false → the
+factory builds **no** GCS provider → `getDefaultProvider()` returns Monitrax (DB)
+→ **new uploads silently route to Postgres bytea instead of keyless GCS.** No
+crash, no error — just the wrong backend. Caught before any prod change.
+
+### What changed
+```ts
+// AFTER — pure, testable; accepts a key OR the keyless WIF env:
+export function computeGcsConfigured(env = process.env): boolean {
+  const hasLocation = !!(env.GCS_PROJECT_ID && env.GCS_BUCKET_NAME);
+  const hasKey = !!env.GCS_SERVICE_ACCOUNT_KEY;
+  const hasKeylessWif = !!(env.GCP_WORKLOAD_IDENTITY_PROVIDER && env.GCP_SERVICE_ACCOUNT_EMAIL);
+  return hasLocation && (hasKey || hasKeylessWif);
+}
+const isGCSConfigured = computeGcsConfigured();
+```
+The startup log now also reports `keylessWif: available|NOT available`.
+
+### Blast radius (what this touches, what it does NOT)
+- **Touches ONLY** the factory's "should I use GCS as default?" decision.
+- **Backward-compatible:** with the key still set, `hasKey` is true → `isGCSConfigured`
+  true → **identical** behaviour to before (key path). Nothing changes until the
+  key is removed.
+- **No change** to the provider's auth, the download route, readUrl, the quota,
+  or the DB. No schema change, no destructive write.
+- Local dev: WIF env absent + no key → `isGCSConfigured` false → Monitrax DB (unchanged).
+
+### Rollback (if anything misbehaves)
+1. **Code rollback:** revert this commit → `isGCSConfigured` reverts to requiring
+   the key. Safe as long as the key env var is present.
+2. **Runtime rollback (fastest, no deploy of code):** re-add
+   `GCS_SERVICE_ACCOUNT_KEY` (the `monitrax-backend` base64 key) in Vercel +
+   redeploy → `initialize` checks the key first, so GCS instantly reverts to the
+   known-good key path regardless of this change. **Keep the `monitrax-backend`
+   key recoverable until keyless is proven in prod.**
+3. **Fall all the way back to DB:** unset `GCS_BUCKET_NAME` → `isGCSConfigured`
+   false → Monitrax DB. (Existing GCS docs still *read* fine via the provider.)
+
+Full operational reference: `PHASE_50_AI_DOCUMENT_ROUTER.md` § "Storage backend —
+how it resolves, and how to roll back".
+
+### Files Modified
+- `lib/documents/storage/factory.ts` — `computeGcsConfigured()` (key OR keyless WIF)
+- `tests/documents/gcsConfigured.test.ts` — **new**, 5 tests (keyless-true, key-true, missing-location, no-auth, partial-WIF)
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — storage-resolution + rollback runbook section
+
+### Testing
+- [x] `npx vitest run tests/documents/gcsConfigured.test.ts` — 5/5 green
+- [x] `npx tsc --noEmit` clean; `npm run build` + financial-surfaces gate green
+
+### Cutover state (2026-06-16)
+- ✅ Bucket `monitrax-documents` exists; `monitrax-backend` (key) + `vercel-monitrax-db` (keyless, `objectUser`) both have access.
+- ✅ Vercel prod has `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` + (still) `GCS_SERVICE_ACCOUNT_KEY` → GCS active **via the key today**.
+- ⏭️ After this PR merges: delete `GCS_SERVICE_ACCOUNT_KEY` + redeploy → keyless engages. Then verify from logs.
+
 ## Session: gcs-keyless-wif-shk180 (Phase B — keyless GCS auth + GCS-aware download)
 
 ### Context

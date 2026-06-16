@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `654bc55`+ (keyless-GCS PR open) · **on:** 2026-06-16 · **by:** Code session (AI Document Router Phase A+B; keyless GCS auth + GCS-aware download)
+**Last verified against HEAD:** `9cd51a8`+ (factory keyless-gate PR open) · **on:** 2026-06-16 · **by:** Code session (GCS keyless cutover — provisioning + factory-gate fix)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -51,16 +51,18 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   Phase B slice 1 ✅ = the **per-user storage quota** (`lib/documents/storage/storageQuota.ts`, SSOT — drift-free,
   computed from `SUM(Document.size)`, default 2 GiB, backend-independent; enforced at the DME `processUpload`
   chokepoint + the legacy scan path; `/api/documents/upload` → 413 on breach).
-- **Active task + stop-point:** AI Document Router · Phase B storage track — **keyless GCS auth + GCS-aware download**
-  shipped this PR (`lib/gcp/wifAuthClient.ts`, provider-aware `/api/documents/download`, read-URL policy `readUrl.ts`).
-  Code is keyless-ready; only operator provisioning remains to make GCS live.
+- **Active task + stop-point:** **GCS keyless cutover IN PROGRESS.** #1126 (keyless GCS auth + GCS-aware download)
+  merged & prod-verified. THIS PR fixes the factory gate: `computeGcsConfigured()` now accepts keyless WIF (was
+  requiring the key — deleting it would have silently sent uploads to the DB). Reza has provisioned: bucket
+  `monitrax-documents` exists; `vercel-monitrax-db` granted `roles/storage.objectUser`; Vercel prod has
+  PROJECT_ID + BUCKET_NAME + (still) the key. **GCS is live TODAY via the key.** Full resolution-order + rollback
+  runbook: `PHASE_50_AI_DOCUMENT_ROUTER.md` § "Storage backend — how it resolves, and how to roll back".
 - **Immediate next action:**
-  (1) **GCS provisioning — REZA/operator only** (the only thing left to make GCS live; code is keyless-ready):
-  create bucket `monitrax-documents` (`australia-southeast1`, uniform access, CMEK), grant the existing runtime SA
-  (`$GCP_SERVICE_ACCOUNT_EMAIL`) `roles/storage.objectAdmin` **on the bucket**, set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME`
-  in Vercel Production (**no key — keyless WIF reuses the DB identity**). Factory auto-switches once set.
+  (1) **Finish the keyless cutover (after this PR merges):** delete `GCS_SERVICE_ACCOUNT_KEY` from Vercel + redeploy
+  → keyless engages (`vercel-monitrax-db`). **Verify from logs:** `[GCS] Using keyless Workload Identity Federation
+  auth` + new `Document.storageProvider = GOOGLE_CLOUD_STORAGE`. **Emergency rollback = re-add the key + redeploy.**
   (2) **`/api/documents/analyze` 500 — separate diagnostic** (Phase A traced it to the two-step analyze path, NOT
-  confirmed GCS-related): read live logs + fix directly; do NOT assume GCS provisioning resolves it.
+  confirmed GCS-related): read live logs + fix directly; do NOT assume GCS resolves it.
   (3) **B-intelligence (needs Stitch per §18.2.1):** `ATTACH_TO_*` confirm actions + entity picker + scan-UI "attach vs create" branch.
 - **Open decisions / blockers:**
   - **GCS provisioning — pending Reza** (blocks the GCS cut-over; the quota + DB fallback work today regardless).
