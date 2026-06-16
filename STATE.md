@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `4b20dc8` · **on:** 2026-06-16 · **by:** Cowork session (Phase 4 Layer 4 — Playwright UAT via Firebase Auth emulator)
+**Last verified against HEAD:** `5566867` (branch `claude/phase4-l4-auth-emulator`, off main `4b20dc8`) · **on:** 2026-06-16 · **by:** Code session (Phase 4 L4 — drove the `playwright (UAT)` job GREEN locally)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -50,17 +50,25 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   `E2E_STORAGE_STATE_JSON` secret** (deleted) — Firebase persists in IndexedDB, so a programmatic UI login is used.
   Emulator wiring is gated behind `FIREBASE_AUTH_EMULATOR_HOST` / `NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST`,
   set ONLY in the job — prod/preview unaffected (server path unit-tested: `tests/auth/gcpTokenVerifier.emulator.test.ts`).
-  The 4 UAT flows: add property → net worth; sellProperty What-If → `Estimated CGT (your share)`; entity-value
+  The 4 UAT flows: add property → net worth; sellProperty What-If → per-owner CGT breakdown (D6); entity-value
   legal-title label (#1114); delete property → ownership rows gone (L2-2).
-- **Active task + stop-point:** PR `claude/phase4-l4-auth-emulator` off main `4b20dc8`. **Stop-point:** PR open — NOT merged.
-- **Verified in this Cowork session (no full app/DB/browser here):** server emulator verify path 6/6 unit tests green +
-  full vitest suite green (2870 pass / 69 skip / 0 fail) after the verifier refactor; `playwright test --list` discovers
-  the 4 specs + fixture; YAML + firebase.json valid. **NOT yet verified:** the end-to-end CI run (emulator + Postgres +
-  Next + browser) — that is what the first CI run on this PR proves. Job is **non-required** until green.
-- **Immediate next action:** (1) Let the PR's `playwright (UAT)` job run; iterate to green if the first run surfaces
-  wiring issues. (2) Once green, add **`playwright (UAT)`** as a required status check on the `main` ruleset.
-  (3) Standing backlog unchanged: Q-GTM-3 (Finsure rec); spoke hygiene; Phase 3 P2 fix PRs; paste the four staged
-  Phase-4 `04_RECENTLY_COMPLETED` entries (in #1115–#1118 PR bodies) from a git-capable session.
+- **Active task + stop-point:** PR `claude/phase4-l4-auth-emulator` (#1121). **Stop-point:** PR open — NOT merged.
+- **✅ The 4 UAT flows are GREEN (reproduced locally, Code session 2026-06-16).** A faithful CI repro (Postgres +
+  Auth emulator + `seed:lighthouse` + a real prod build) drove all 4 specs green twice (~9s). **Root causes fixed
+  this session** (see `04_RECENTLY_COMPLETED.md` 2026-06-16 for detail): (1) `lib/gcp/credentials.ts` returned a
+  credential-less options object when `GCP_PROJECT_ID` is set → the Cloud Logging audit sink failed ADC
+  *asynchronously* → `uncaughtException` aborted `/api/master-snapshot` → dashboard stuck "Loading…"; gated to
+  null under `FIREBASE_AUTH_EMULATOR_HOST` (prod untouched; vitest 2870✓). (2) Two blocking modals
+  (OnboardingWelcomeModal + ConsentMigrationModal) overlaid the page and swallowed clicks — `seed-emulator.ts`
+  now marks onboarding complete + writes the mandatory `UserConsent` rows (E2E-only). (3) `uat.spec.ts` made
+  robust: auth-shell + `LOAD` waits, scoped the add-property dialog past the persistent feedback/help asides,
+  fills all required fields, picks an **investment** property for CGT (the auto-selected PPR is exempt) and asserts
+  the per-owner CGT breakdown in the "How we computed this" panel; `playwright.config` gains
+  `reducedMotion: 'reduce'` + 120s test timeout. The sellProperty assertion changed from the literal
+  `Estimated CGT (your share)` (an internal impact label the lever summarises) to the rendered per-owner split.
+- **Immediate next action:** (1) Let the PR's `playwright (UAT)` job run on the pushed fix; confirm CI green
+  (it's green locally). (2) **Add the required-check string `playwright (UAT)`** to the `main` ruleset once CI is green.
+  (3) Standing backlog unchanged: Q-GTM-3 (Finsure rec); spoke hygiene; Phase 3 P2 fix PRs.
 - **Open decisions / blockers:**
   - **E2E auth — ✅ RESOLVED by this PR** (emulator; no Firebase project / secret / manual login needed). Supersedes the
     earlier "provision E2E_STORAGE_STATE_JSON / approve a test-auth bypass" decision.

@@ -37,6 +37,22 @@ export function getGCPCredentials(): ParsedCredentials | null {
   if (credentialsResolveFailed) return null;
   if (cachedCredentials) return cachedCredentials;
 
+  // E2E ONLY (Phase 4 L4): under the Firebase Auth emulator there are no real
+  // GCP credentials. `GCP_PROJECT_ID` is set to a synthetic value
+  // (`monitrax-e2e`), which would otherwise make us hand back a credential-less
+  // options object (the ADC fall-through below). GCP client libraries
+  // (e.g. the Cloud Logging audit sink) then construct successfully but fail
+  // ADC resolution ASYNCHRONOUSLY, surfacing an `uncaughtException`
+  // ("Could not load the default credentials") that escapes the sink's
+  // fire-and-forget `.catch()` and aborts the in-flight request. Treating the
+  // emulator env as "no GCP" means no GCP client is ever constructed in E2E.
+  // This var is set ONLY in the Playwright CI job — never in prod or Vercel
+  // preview — so this is a strict no-op there.
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    credentialsResolveFailed = true;
+    return null;
+  }
+
   try {
     // Get project ID
     const projectId = process.env.GCP_PROJECT_ID || process.env.GCS_PROJECT_ID;

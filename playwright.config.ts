@@ -23,11 +23,20 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
+  // Each spec signs in AND drives data-dependent pages whose server-side
+  // snapshot/scenario compute takes several seconds; the 30s default is too
+  // tight on slower CI runners. See tests/e2e/uat.spec.ts (LOAD ceiling).
+  timeout: 120_000,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: BASE_URL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    // The app uses framer-motion heavily (per CLAUDE.md §18.7.2 every animation
+    // has a reduced-motion fallback). Without this, continuously-animating
+    // elements never reach Playwright's "stable" actionability state and clicks
+    // hang. Emulating reduced-motion makes the UI settle so interactions land.
+    reducedMotion: 'reduce',
   },
   projects: [{ name: 'uat', use: { ...devices['Desktop Chrome'] } }],
   webServer: process.env.E2E_BASE_URL

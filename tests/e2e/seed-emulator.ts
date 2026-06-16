@@ -16,8 +16,16 @@
  */
 import { PrismaClient } from '@prisma/client';
 import { E2E_USERS } from './users';
+import { getCurrentDocumentVersion } from '../../lib/legal/content';
 
 const prisma = new PrismaClient();
+
+/** Mandatory legal documents the ConsentMigrationModal blocks the app on. */
+const MANDATORY_CONSENT_DOCS = [
+  'TERMS_OF_SERVICE',
+  'PRIVACY_POLICY',
+  'AFSL_BOUNDARY_DISCLOSURE',
+] as const;
 const HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 const PROJECT = process.env.GCP_PROJECT_ID || 'monitrax-e2e';
 const KEY = 'fake-e2e-api-key'; // emulator ignores the key value
@@ -63,6 +71,36 @@ async function main() {
     if (!user) {
       console.warn(`⚠️  No seeded Postgres user for ${u.email} — run seed:lighthouse first. Skipping link.`);
       continue;
+    }
+
+    // Mark onboarding complete. The seeded archetypes are established
+    // portfolios (past onboarding); without this the first-visit
+    // OnboardingWelcomeModal auto-opens on /dashboard, and its full-screen Radix
+    // overlay (`fixed inset-0 z-50`) persists across client navigation and
+    // intercepts every click on the dashboard sub-pages — hanging the UAT
+    // flows. E2E-only (this seed runs solely against the emulator + the
+    // monitrax_e2e DB).
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { onboardingCompleted: true, onboardingCompletedAt: new Date() },
+    });
+
+    // Accept the current legal-document versions. Otherwise the
+    // ConsentMigrationModal (GET /api/auth/consent/status → requiresConsent)
+    // opens a blocking full-screen overlay that intercepts every click. Mirrors
+    // what POST /api/auth/consent writes (one ACTIVE UserConsent row per
+    // mandatory doc at the current version). E2E-only.
+    for (const documentType of MANDATORY_CONSENT_DOCS) {
+      const documentVersion = getCurrentDocumentVersion(documentType);
+      const has = await prisma.userConsent.findFirst({
+        where: { userId: user.id, documentType, documentVersion, revokedAt: null },
+        select: { id: true },
+      });
+      if (!has) {
+        await prisma.userConsent.create({
+          data: { userId: user.id, documentType, documentVersion, consentSource: 'EXISTING_USER_MIGRATION' },
+        });
+      }
     }
 
     // Link the emulator UID to the seeded user so findOrSyncUser resolves it.
