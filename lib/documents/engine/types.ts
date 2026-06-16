@@ -187,6 +187,8 @@ export interface EngineResult {
   storagePath?: string;
   storageUrl?: string | null;
   error?: string;
+  /** Machine-readable failure reason (e.g. 'STORAGE_QUOTA_EXCEEDED') for precise HTTP mapping. */
+  errorCode?: string;
 }
 
 // ============================================================================

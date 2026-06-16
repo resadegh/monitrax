@@ -11,3 +11,10 @@ export {
   getStorageProvider,
   isGoogleCloudStorageConfigured,
 } from './factory';
+export {
+  getStorageUsage,
+  assertWithinQuota,
+  StorageQuotaExceededError,
+  DEFAULT_STORAGE_QUOTA_BYTES,
+} from './storageQuota';
+export type { StorageUsage } from './storageQuota';

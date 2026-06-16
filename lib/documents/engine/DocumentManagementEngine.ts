@@ -13,7 +13,7 @@ import {
   UploadSource,
 } from './types';
 import { RuleEngine, getRuleEngine } from './RuleEngine';
-import { getStorageProvider } from '../storage';
+import { getStorageProvider, assertWithinQuota, StorageQuotaExceededError } from '../storage';
 import { DocumentCategory, StorageProviderType } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -86,6 +86,11 @@ export class DocumentManagementEngine {
     });
 
     try {
+      // Step 0: Enforce the per-user storage quota BEFORE any byte is written
+      // (SSOT: lib/documents/storage/storageQuota.ts). Computed from live
+      // Document.size — drift-free, and backend-independent (DB or GCS).
+      await assertWithinQuota(context.userId, context.size);
+
       // Step 1: Resolve configuration through rules
       const config = await this.ruleEngine.resolve(context);
 
@@ -208,6 +213,13 @@ export class DocumentManagementEngine {
       };
     } catch (error) {
       console.error('[DME] Upload error:', error);
+      if (error instanceof StorageQuotaExceededError) {
+        return {
+          success: false,
+          error: 'Storage limit reached. Free up space by deleting documents you no longer need.',
+          errorCode: error.code,
+        };
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
