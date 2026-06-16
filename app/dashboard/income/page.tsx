@@ -89,7 +89,7 @@ interface Income {
   type: 'SALARY' | 'RENT' | 'RENTAL' | 'INVESTMENT' | 'OTHER';
   sourceType: 'GENERAL' | 'PROPERTY' | 'INVESTMENT';
   amount: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY';
   isTaxable: boolean;
   propertyId: string | null;
   investmentAccountId: string | null;
@@ -231,7 +231,7 @@ function IncomePageContent() {
 
     if (mappings.frequency?.value) {
       const frequencyValue = String(mappings.frequency.value).toUpperCase();
-      const validFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'];
+      const validFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL', 'HALF_YEARLY'];
       if (validFrequencies.includes(frequencyValue)) {
         updates.frequency = frequencyValue as Income['frequency'];
         filledFields.push('frequency');
@@ -595,10 +595,10 @@ function IncomePageContent() {
   // formatCurrency imported from lib/utils/formatters
   // Frequency conversions use centralized toAnnual from lib/utils/frequencies
   const convertToMonthly = (amount: number, frequency: string) =>
-    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL') / 12;
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY') / 12;
 
   const convertToAnnual = (amount: number, frequency: string) =>
-    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL');
+    toAnnual(amount, frequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY');
 
   // Get effective (after-tax) amounts using shared calculator
   // This ensures income page and dashboard always show identical values
@@ -1494,6 +1494,7 @@ function IncomePageContent() {
                     <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                     <SelectItem value="MONTHLY">Monthly</SelectItem>
                     <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                    <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
                     <SelectItem value="ANNUAL">Annually</SelectItem>
                   </SelectContent>
                 </Select>

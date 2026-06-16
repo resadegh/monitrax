@@ -39,6 +39,17 @@ describe('toAnnual', () => {
     it('returns annual as-is (x1)', () => {
       expect(toAnnual(100, 'ANNUAL')).toBe(100);
     });
+
+    it('converts half-yearly to annual (x2)', () => {
+      expect(toAnnual(100, 'HALF_YEARLY')).toBe(200);
+    });
+
+    // Insurance commonly billed half-yearly — a $215.59 premium every
+    // 6 months is $431.18/yr, NOT $215.59 (the bug this guards against).
+    it('annualises a half-yearly insurance premium correctly', () => {
+      expect(toAnnual(215.59, 'HALF_YEARLY')).toBeCloseTo(431.18, 2);
+      expect(toMonthly(215.59, 'HALF_YEARLY')).toBeCloseTo(35.93, 2);
+    });
   });
 
   describe('real-world financial scenarios', () => {
@@ -195,6 +206,10 @@ describe('periodsPerYear', () => {
   it('returns 1 for annual', () => {
     expect(periodsPerYear('ANNUAL')).toBe(1);
   });
+
+  it('returns 2 for half-yearly', () => {
+    expect(periodsPerYear('HALF_YEARLY')).toBe(2);
+  });
 });
 
 // =============================================================================
@@ -212,7 +227,7 @@ describe('conversion consistency', () => {
   });
 
   it('converting to annual and back gives original amount', () => {
-    const frequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'] as const;
+    const frequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'ANNUAL'] as const;
 
     frequencies.forEach((freq) => {
       const annual = toAnnual(testAmount, freq);

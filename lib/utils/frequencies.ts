@@ -14,6 +14,8 @@ export function toAnnual(amount: number, frequency: Frequency | RepaymentFrequen
       return amount * 12;
     case 'QUARTERLY':
       return amount * 4;
+    case 'HALF_YEARLY':
+      return amount * 2;
     case 'ANNUAL':
       return amount;
     default:
@@ -55,6 +57,8 @@ export function periodsPerYear(frequency: Frequency | RepaymentFrequency): numbe
       return 12;
     case 'QUARTERLY':
       return 4;
+    case 'HALF_YEARLY':
+      return 2;
     case 'ANNUAL':
       return 1;
     default:
@@ -93,6 +97,8 @@ export function toAnnualDecimal(
       return dec.times(12);
     case 'QUARTERLY':
       return dec.times(4);
+    case 'HALF_YEARLY':
+      return dec.times(2);
     case 'ANNUAL':
       return dec;
     default:
