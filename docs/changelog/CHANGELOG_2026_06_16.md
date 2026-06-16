@@ -57,6 +57,19 @@ transaction-match intelligence; C: per-item Documents sections + Tax-pack).
 - **Q-SCAN-FREQ** still applies — the scan's "Add expense" defaults frequency
   to MONTHLY (existing convention); Phase B's attach-or-create flow supersedes it.
 
+### Strategic decisions (Reza, 2026-06-16) — to action in Phase B
+- **DECIDED — Storage = Google Cloud Storage.** Move document/photo bytes from
+  inline DB (bytea) to GCS, with a per-user quota. To be done carefully in the
+  Phase B storage track: verify the prod GCS bucket + service-account access
+  (likely the root cause of the unresolved `/api/documents/analyze` 500 — stored
+  bytes not retrievable), add the quota, and decide migrate-vs-leave for existing
+  inline docs. The DME already has a `googleCloudStorageProvider`.
+- **DECIDED — Household document visibility.** Multi-*user* household accounts
+  don't exist yet (today "My Household" is family members/pets as data, single
+  login). Ruling for if/when multi-user is added: **all household finances,
+  documents included, are shared across household users** — no per-document
+  privacy. No work now; direction settled so it isn't re-litigated.
+
 ---
 
 ## Session: document-upload-camera-capture-shk180
