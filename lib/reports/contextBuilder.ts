@@ -259,6 +259,8 @@ function convertToMonthly(amount: number, frequency: string): number {
       return amount;
     case 'QUARTERLY':
       return amount / 3;
+    case 'HALF_YEARLY':
+      return amount / 6;
     case 'ANNUALLY':
     case 'YEARLY':
       return amount / 12;
@@ -547,6 +549,8 @@ function calculateAnnualAmount(amount: number, frequency: string): number {
       return amount * 12;
     case 'QUARTERLY':
       return amount * 4;
+    case 'HALF_YEARLY':
+      return amount * 2;
     case 'ANNUALLY':
     case 'YEARLY':
       return amount;

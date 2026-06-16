@@ -49,6 +49,7 @@ export const FrequencySchema = z.enum([
   'MONTHLY',
   'QUARTERLY',
   'ANNUAL',
+  'HALF_YEARLY',
 ]);
 
 export const RepaymentFrequencySchema = z.enum([

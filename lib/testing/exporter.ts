@@ -25,7 +25,7 @@ import type {
 // FREQUENCY HELPERS
 // =============================================================================
 
-type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL';
+type Frequency = 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUAL' | 'HALF_YEARLY';
 
 function toMonthly(amount: number, frequency: Frequency): number {
   switch (frequency) {
@@ -37,6 +37,8 @@ function toMonthly(amount: number, frequency: Frequency): number {
       return amount;
     case 'QUARTERLY':
       return amount / 3;
+    case 'HALF_YEARLY':
+      return amount / 6;
     case 'ANNUAL':
       return amount / 12;
     default:
@@ -54,6 +56,8 @@ function toAnnual(amount: number, frequency: Frequency): number {
       return amount * 12;
     case 'QUARTERLY':
       return amount * 4;
+    case 'HALF_YEARLY':
+      return amount * 2;
     case 'ANNUAL':
       return amount;
     default:

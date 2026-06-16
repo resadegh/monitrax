@@ -191,7 +191,7 @@ const DEFAULT_INCOME_FIELDS: Record<string, FormFieldDefinition> = {
   frequency: {
     type: 'enum',
     label: 'Frequency',
-    options: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'],
+    options: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'ANNUAL'],
   },
 };
 

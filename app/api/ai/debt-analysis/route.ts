@@ -160,6 +160,7 @@ export const POST = withPermission('report.read', async (request, auth) => {
         case 'FORTNIGHTLY': return amount * 26 / 12;
         case 'MONTHLY': return amount;
         case 'QUARTERLY': return amount / 3;
+        case 'HALF_YEARLY': return amount / 6;
         case 'ANNUALLY': return amount / 12;
         default: return amount;
       }

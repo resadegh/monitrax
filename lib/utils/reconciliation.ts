@@ -154,6 +154,7 @@ export function getExpectedIntervalDays(frequency: Frequency): number {
     case 'FORTNIGHTLY': return 14;
     case 'MONTHLY': return 30;
     case 'QUARTERLY': return 91;
+    case 'HALF_YEARLY': return 182;
     case 'ANNUAL': return 365;
     default: return 30;
   }

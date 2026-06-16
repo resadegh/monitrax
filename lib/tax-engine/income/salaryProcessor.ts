@@ -29,6 +29,7 @@ function getFrequencyLabel(frequency: string): string {
     FORTNIGHTLY: 'per fortnight',
     MONTHLY: 'per month',
     QUARTERLY: 'per quarter',
+    HALF_YEARLY: 'per 6 months',
     ANNUALLY: 'per year',
   };
   return labels[frequency] || frequency;

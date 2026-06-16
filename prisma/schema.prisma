@@ -151,6 +151,7 @@ enum Frequency {
   MONTHLY
   QUARTERLY
   ANNUAL
+  HALF_YEARLY
 }
 
 enum TransactionDirection {
@@ -503,6 +504,7 @@ enum PayFrequency {
   MONTHLY
   QUARTERLY
   ANNUALLY
+  HALF_YEARLY
 }
 
 enum TaxCategory {

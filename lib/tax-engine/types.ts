@@ -266,9 +266,9 @@ export interface TaxYearReviewSchedule {
 export interface SalaryInput {
   amount: number;
   salaryType: 'GROSS' | 'NET';
-  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   salarySacrifice?: number;
-  salarySacrificeFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  salarySacrificeFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   hasTaxFreeThreshold?: boolean; // Default true
   hasHECSDebt?: boolean;
   hecsDebt?: number;
