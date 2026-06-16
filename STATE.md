@@ -7,7 +7,16 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `9cd51a8`+ (factory keyless-gate PR open) · **on:** 2026-06-16 · **by:** Code session (GCS keyless cutover — provisioning + factory-gate fix)
+**Last verified against HEAD:** `9cd51a8`+ (per-item-documents PR open) · **on:** 2026-06-16 · **by:** Code session (per-item Documents upload on wealth items + asset folder rule)
+
+> **OPEN THREADS (Code session 2026-06-16/17):** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
+> on Properties/Investments/Assets (Super deferred — needs `SUPER` LinkedEntityType + migration). (2) **Mobile scan
+> recognition BROKEN** — `/api/documents/analyze-for-form` 500s at the Vision OCR step; Vision API is *enabled* but
+> shows ZERO traffic → auth failing before the call. Vision authenticates via `GCS_SERVICE_ACCOUNT_KEY`
+> (`visionService.ts:69-91`) with NO keyless fallback → **do NOT delete that key** (breaks OCR) until Vision is made
+> keyless (WIF as `vercel-monitrax-db`). Next: make Vision keyless + get the exact `analyze-for-form` error.
+> (3) GCS keyless cutover: bucket + `vercel-monitrax-db` `objectUser` granted; factory gate fixed (#1127 merged);
+> key NOT yet deleted (and must not be until Vision is keyless).
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 

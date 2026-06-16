@@ -1,5 +1,50 @@
 # Changelog — 2026-06-16
 
+## Session: per-item-documents-upload-shk180 (per-item Documents — upload/scan ON the wealth items)
+
+### Why
+Reza (frustrated, rightly): *"I still don't have the option to upload any documents
+… I have asked 3 times already to enable the document/receipt upload option for all
+relevant items but still nothing is changed, why?"* Investigation confirmed it: upload
+existed only on the **My Vault** page + a few transaction dialogs — **Properties,
+Investments, Super and Assets had NO upload at all** (an earlier session explicitly
+deferred per-item upload to a never-built "Phase C"). This ships it.
+
+### Changes
+- **New reusable `components/documents/DocumentsSection.tsx`.** A glass-card
+  "Documents" panel for any wealth item: upload (drag/click) + **Take photo** (mobile
+  `capture="environment"`) + list/view/delete of attached docs. Uploads go to
+  `/api/documents/upload` with the entity link field (e.g. `assetId`), so the doc is
+  **linked to that item** AND filed under the right folder. **Deliberately does NOT
+  use the AI form-autofill path** — it works even while Vision OCR is down (the scan
+  fix is the separate next step).
+- **Mounted on the wealth items:** Properties detail, Investment-account detail (left
+  column, after Recent Activity), and the Assets detail dialog (new **Documents** tab).
+- **New `asset_path` storage rule** (`lib/documents/engine/rules/PathRules.ts`). Asset
+  docs now file under `${userId}/assets/${assetId}/${categoryFolder}/...` — before
+  this, asset-linked docs fell through to a generic category folder (the link was set,
+  the *folder* wasn't). Now an asset's paperwork lives together, like properties/loans.
+
+### Scope note
+- **Super accounts deferred to a fast-follow** — `LinkedEntityType` has no `SUPER`
+  value, so linking a doc to a super account needs a small enum + migration. Properties,
+  Investments and Assets (the three with existing link fields) ship now.
+
+### Files
+- `components/documents/DocumentsSection.tsx` (**new**), `components/documents/index.ts`
+- `lib/documents/engine/rules/PathRules.ts` (asset_path rule)
+- `app/dashboard/properties/[id]/page.tsx`, `app/dashboard/investments/accounts/[id]/page.tsx`, `app/dashboard/assets/page.tsx`
+- `tests/documents/assetPathRule.test.ts` (**new**, 3 tests)
+
+### Testing
+- [x] `npx vitest run tests/documents/` — 19/19 green (incl. the asset-folder rule)
+- [x] `npx tsc --noEmit` clean; `npm run build` + financial-surfaces gate green; lint clean (1 pre-existing `loadAssets` dep warning, unrelated)
+
+### Notes / boundaries
+- **§12.11/§12.12 N/A** — no destructive write, no schema change (asset link field already exists).
+- **§18.2.1:** reuses existing approved components + the existing Stitch reference (`.stitch/designs/asset-documents/asset-documents-dark.png`); full light/mobile Stitch variants to be backfilled.
+- **Next:** Super support (SUPER link type + migration); then the mobile-scan fix (keyless Vision).
+
 ## Session: gcs-factory-keyless-gate-shk180 (fix — factory GCS-detection must accept keyless)
 
 ### Why (root cause)

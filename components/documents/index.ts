@@ -4,6 +4,8 @@
 
 export { DocumentUploadDropzone } from './DocumentUploadDropzone';
 export { DocumentList } from './DocumentList';
+export { DocumentsSection } from './DocumentsSection';
+export type { DocumentsSectionProps } from './DocumentsSection';
 export { DocumentBadge } from './DocumentBadge';
 export { FolderTree } from './FolderTree';
 export { DocumentBreadcrumb } from './DocumentBreadcrumb';

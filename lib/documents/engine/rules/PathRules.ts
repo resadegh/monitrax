@@ -177,6 +177,22 @@ export const PathRules: PathRule[] = [
     },
   },
 
+  // Priority 63: Asset document (e.g. a vehicle's rego, insurance, receipt).
+  // Files under the asset's own folder so everything for that asset lives together.
+  {
+    name: 'asset_path',
+    priority: 63,
+    matches: (_ctx: UploadContext, links: EntityLink[]) =>
+      links.some(l => l.entityType === LinkedEntityType.ASSET) &&
+      !links.some(l => l.entityType === LinkedEntityType.EXPENSE),
+    generatePath: (ctx: UploadContext, links: EntityLink[]) => {
+      const assetLink = links.find(l => l.entityType === LinkedEntityType.ASSET)!;
+      const categoryFolder = CATEGORY_FOLDERS[ctx.userInput?.category || 'OTHER'] || 'documents';
+      const filename = generatePathFilename(ctx.filename);
+      return `${ctx.userId}/assets/${assetLink.entityId}/${categoryFolder}/${filename}`;
+    },
+  },
+
   // Priority 60: Investment holding document
   {
     name: 'investment_holding_path',
