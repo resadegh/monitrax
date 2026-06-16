@@ -18,3 +18,5 @@ export {
   DEFAULT_STORAGE_QUOTA_BYTES,
 } from './storageQuota';
 export type { StorageUsage } from './storageQuota';
+export { getDocumentReadUrl } from './readUrl';
+export type { ReadUrlResult } from './readUrl';

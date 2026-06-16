@@ -1,5 +1,53 @@
 # Changelog — 2026-06-16
 
+## Session: gcs-keyless-wif-shk180 (Phase B — keyless GCS auth + GCS-aware download)
+
+### Context
+Reza chose the keyless route (recommended) for GCS storage: no static
+service-account key — reuse the same Workload Identity Federation identity the
+database already uses. This makes the GCS provider usable on Vercel without a
+credential, and makes document reads work end-to-end for GCS-stored files.
+
+### Changes Made
+- **Keyless WIF auth for GCS.** New canonical `lib/gcp/wifAuthClient.ts` —
+  `buildGcpWifAuthClient()` returns a google-auth-library `external_account`
+  (`IdentityPoolClient`) that mints impersonated SA access tokens from the Vercel
+  OIDC token (byte-identical config to `lib/db.ts`'s inline Cloud SQL client; kept
+  as a separate helper to avoid touching CDR-critical DB auth). The GCS provider's
+  `initialize` now resolves auth in order: **key** (`GCS_SERVICE_ACCOUNT_KEY`, legacy)
+  → **keyless WIF** (env present) → **ADC** (local dev). No key needed in prod.
+- **GCS-aware download.** `/api/documents/download` rewritten to be provider-aware:
+  verify the (provider-agnostic) HMAC signature → look up the `Document` by
+  `storagePath` → **stream bytes from the right backend** (DB bytea or GCS). The
+  former route could only serve Monitrax DB files.
+- **Read-URL policy SSOT.** New `lib/documents/storage/readUrl.ts` →
+  `getDocumentReadUrl(provider, path)`: GCS+key → native v4 signed URL; **GCS keyless
+  → our HMAC streaming route** (keyless can't sign locally — and the bytes never
+  leave via a public URL, the better CDR posture); LOCAL_DRIVE → path; MONITRAX →
+  HMAC route. Wired into `documentService.uploadDocument` + `getDocumentDownloadUrl`
+  (replacing the inline per-provider branches).
+
+### Files Modified
+- `lib/gcp/wifAuthClient.ts` — **new** canonical keyless GCP auth client
+- `lib/documents/storage/readUrl.ts` — **new** read-URL policy SSOT
+- `lib/documents/storage/googleCloudStorageProvider.ts` — keyless `initialize`
+- `app/api/documents/download/route.ts` — provider-aware streaming
+- `lib/documents/documentService.ts` — use `getDocumentReadUrl`
+- `lib/documents/storage/index.ts` — barrel exports
+- `tests/documents/readUrl.test.ts` — **new**, 4 tests
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — keyless shipped + simplified 3-step provisioning checklist
+- `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` — keyless GCS env rows
+
+### Testing
+- [x] `npx vitest run tests/documents/readUrl.test.ts tests/documents/storageQuota.test.ts` — 11/11 green
+- [x] `npx tsc --noEmit` clean; `npm run build` + lint + financial-surfaces gate green
+
+### Notes / boundaries
+- **§12.11/§12.12 N/A** — no destructive write, no schema change.
+- **§13.6 honoured** — no static credential introduced; GCS reuses the DB's keyless WIF identity.
+- **Operator action still required** to go live: bucket + IAM grant + 2 non-secret env vars (PHASE_50 §B-storage).
+- The `/api/documents/analyze` 500 stays a **separate diagnostic** (not assumed fixed by GCS).
+
 ## Session: document-router-phase-b-shk180 (Phase B — per-user storage quota)
 
 ### Context

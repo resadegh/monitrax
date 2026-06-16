@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import { getStorageProvider, assertWithinQuota, StorageQuotaExceededError } from './storage';
+import { getStorageProvider, assertWithinQuota, StorageQuotaExceededError, getDocumentReadUrl } from './storage';
 import {
   DocumentMetadata,
   DocumentWithLinks,
@@ -214,13 +214,17 @@ export async function uploadDocument(
     // Fetch full document with links
     const fullDocument = await getDocumentById(document.id, userId);
 
-    // Generate signed URL for immediate preview
-    const signedUrlResult = await storage.getSignedUrl(uploadResult.storagePath);
+    // Generate a read URL for immediate preview (provider-aware: native GCS
+    // signed URL when a key is present, else our HMAC streaming route).
+    const readUrl = await getDocumentReadUrl(
+      fullDocument!.storageProvider,
+      uploadResult.storagePath,
+    );
 
     return {
       success: true,
       document: fullDocument!,
-      signedUrl: signedUrlResult.url,
+      signedUrl: readUrl.url,
     };
   } catch (error) {
     console.error('Document upload error:', error);
@@ -278,38 +282,18 @@ export async function getDocumentWithSignedUrl(
     return null;
   }
 
-  // Use the correct storage provider based on where the document is actually stored
-  const { getGoogleCloudStorageProvider } = await import('./storage/googleCloudStorageProvider');
-  const { getMonitraxStorageProvider } = await import('./storage/monitraxProvider');
+  // Provider-aware read URL (native GCS signed URL when a key is present,
+  // else our HMAC streaming route; local path for LOCAL_DRIVE). SSOT: readUrl.ts.
+  const readUrl = await getDocumentReadUrl(document.storageProvider, document.storagePath);
 
-  let signedUrlResult;
-
-  if (document.storageProvider === StorageProviderType.GOOGLE_CLOUD_STORAGE) {
-    // Document is in GCS - use GCS provider
-    const gcsProvider = getGoogleCloudStorageProvider();
-    await gcsProvider.initialize();
-    signedUrlResult = await gcsProvider.getSignedUrl(document.storagePath);
-  } else if (document.storageProvider === StorageProviderType.LOCAL_DRIVE) {
-    // Local drive - no signed URL needed, return path for client-side handling
-    return {
-      document,
-      signedUrl: document.storagePath, // Client will use File System Access API
-      expiresAt: new Date(Date.now() + 300000), // 5 minutes
-    };
-  } else {
-    // Default to Monitrax (database) provider
-    const monitraxProvider = getMonitraxStorageProvider();
-    signedUrlResult = await monitraxProvider.getSignedUrl(document.storagePath);
-  }
-
-  if (!signedUrlResult.success) {
+  if (!readUrl.success || !readUrl.url) {
     return null;
   }
 
   return {
     document,
-    signedUrl: signedUrlResult.url!,
-    expiresAt: signedUrlResult.expiresAt!,
+    signedUrl: readUrl.url,
+    expiresAt: readUrl.expiresAt ?? new Date(Date.now() + 300000),
   };
 }
 

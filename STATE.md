@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `654bc55` · **on:** 2026-06-16 · **by:** Code session (AI Document Router Phase A+B shipped; cursor refresh)
+**Last verified against HEAD:** `654bc55`+ (keyless-GCS PR open) · **on:** 2026-06-16 · **by:** Code session (AI Document Router Phase A+B; keyless GCS auth + GCS-aware download)
 **Freshness gate:** on session start, compare this HEAD to live `git rev-parse HEAD`. If they differ,
 the repo moved — re-verify the cursor below against the live plan BEFORE acting. Do not trust a stale cursor.
 
@@ -51,14 +51,16 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   Phase B slice 1 ✅ = the **per-user storage quota** (`lib/documents/storage/storageQuota.ts`, SSOT — drift-free,
   computed from `SUM(Document.size)`, default 2 GiB, backend-independent; enforced at the DME `processUpload`
   chokepoint + the legacy scan path; `/api/documents/upload` → 413 on breach).
-- **Active task + stop-point:** doc-sync sweep (this PR) — STATE.md + 00_INDEX + MASTER_BLUEPRINT + infra doc brought
-  current for Phase 50, per Reza's "keep all relevant docs updated as you go." No code in this PR.
+- **Active task + stop-point:** AI Document Router · Phase B storage track — **keyless GCS auth + GCS-aware download**
+  shipped this PR (`lib/gcp/wifAuthClient.ts`, provider-aware `/api/documents/download`, read-URL policy `readUrl.ts`).
+  Code is keyless-ready; only operator provisioning remains to make GCS live.
 - **Immediate next action:**
-  (1) **GCS provisioning — REZA/operator only** (the GCS cut-over is blocked on this): create bucket
-  `monitrax-documents` (`australia-southeast1`, uniform access, CMEK), grant the WIF-impersonated runtime SA
-  `roles/storage.objectAdmin` (prefer ADC, no key file per §13.6), set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` in Vercel
-  Production. The storage factory auto-switches once set; **likely also clears the residual `/api/documents/analyze` 500.**
-  (2) **Next code slice (unblocked, no Stitch):** GCS-aware `/api/documents/download` (DB-only today — breaks once GCS is active).
+  (1) **GCS provisioning — REZA/operator only** (the only thing left to make GCS live; code is keyless-ready):
+  create bucket `monitrax-documents` (`australia-southeast1`, uniform access, CMEK), grant the existing runtime SA
+  (`$GCP_SERVICE_ACCOUNT_EMAIL`) `roles/storage.objectAdmin` **on the bucket**, set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME`
+  in Vercel Production (**no key — keyless WIF reuses the DB identity**). Factory auto-switches once set.
+  (2) **`/api/documents/analyze` 500 — separate diagnostic** (Phase A traced it to the two-step analyze path, NOT
+  confirmed GCS-related): read live logs + fix directly; do NOT assume GCS provisioning resolves it.
   (3) **B-intelligence (needs Stitch per §18.2.1):** `ATTACH_TO_*` confirm actions + entity picker + scan-UI "attach vs create" branch.
 - **Open decisions / blockers:**
   - **GCS provisioning — pending Reza** (blocks the GCS cut-over; the quota + DB fallback work today regardless).
