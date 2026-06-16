@@ -1,5 +1,64 @@
 # Changelog — 2026-06-16
 
+## Session: asset-document-upload-shk180 (Phase A — AI document router foundation)
+
+### Context
+Reza's vision: every document/receipt should be (a) recognised by AI, (b)
+attached to the correct item/asset OR used to create a new item/expense, and
+(c) filed in the right Vault folder for future reporting/extraction. Building
+in 3 phases (A: foundation + fix the live scan bug; B: attach-to-existing /
+transaction-match intelligence; C: per-item Documents sections + Tax-pack).
+
+### Changes Made (Phase A)
+- **Fix: global "Scan a receipt" recognition (the live bug).** Reza scanned a
+  receipt and it "only stored to Vault without identifying it." Prod logs:
+  `POST /api/documents/analyze` returns **500** on a freshly-uploaded photo
+  (reaches OCR then throws — NOT storage-read, NOT Vision-config; both
+  eliminated via log queries). The scan's two-step path (upload → re-read
+  stored file → analyze) is unreliable in prod. **Rewired `GlobalScanReceipt`
+  to the proven single-step `/api/documents/analyze-for-form`** (the exact path
+  the expense/income forms already use successfully): it OCRs the in-hand
+  upload + Gemini-maps to expense fields + files the doc as a RECEIPT. The
+  result preview now renders vendor/amount/GST/date/category from the returned
+  `fieldMappings`; "Add expense" creates via `/api/expenses`.
+- **Feature: `ASSET` is now a linkable document type.** Previously documents
+  could link to property/loan/expense/income/accounts/investments/transactions
+  but NOT assets — so a receipt couldn't be tagged to a vehicle. Added `ASSET`
+  end-to-end: `LinkedEntityType` enum (schema + migration + TS mirror),
+  `EntityContext.assetId`, the upload route's entity map, the `useDocumentUpload`
+  hook's `LINK_FIELD_BY_ENTITY`, a new `asset_direct` rule in the DME
+  `LinkingRules`, and the `DocumentList` entity-label map. This is the
+  foundation Phase C's asset Documents section builds on.
+
+### Files Modified
+- `components/documents/GlobalScanReceipt.tsx` — rewired to analyze-for-form
+- `prisma/schema.prisma` + `prisma/migrations/20260616093000_add_asset_linked_entity_type/migration.sql`
+- `lib/documents/types.ts`, `lib/documents/engine/types.ts`,
+  `lib/documents/engine/rules/LinkingRules.ts`,
+  `app/api/documents/upload/route.ts`, `hooks/useDocumentUpload.ts`,
+  `components/documents/DocumentList.tsx`
+
+### Testing
+- [x] `npx tsc --noEmit` clean (only pre-existing tsconfig baseUrl warning)
+- [x] `npm run build` passes
+- [x] `npx next lint --file` on changed files — no errors (1 pre-existing
+  `<img>` warning in DocumentList, unrelated)
+
+### Notes / boundaries
+- **§12.11:** no destructive write — migration is additive
+  `ALTER TYPE "LinkedEntityType" ADD VALUE IF NOT EXISTS 'ASSET'`.
+- **§12.12:** schema change paired with the migration in the same commit.
+- **Completeness review delivered to Reza (gaps for Phase B/C):** iPhone HEIC
+  handling, duplicate-receipt detection, owning-legal-entity linking + multi-link,
+  ATO 5yr retention + Tax-pack export, renewal-date tie-in, per-item Documents
+  sections everywhere, security/PII (encryption, no-log, purge-on-deletion,
+  household access), storage-at-scale (GCS vs bytea), delete/unlink/version
+  lifecycle. Logged for sequencing.
+- **Q-SCAN-FREQ** still applies — the scan's "Add expense" defaults frequency
+  to MONTHLY (existing convention); Phase B's attach-or-create flow supersedes it.
+
+---
+
 ## Session: document-upload-camera-capture-shk180
 
 ### Changes Made

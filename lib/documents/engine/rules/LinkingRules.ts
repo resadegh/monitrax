@@ -224,6 +224,20 @@ export const LinkingRules: LinkingRule[] = [
       ];
     },
   },
+
+  // Priority 55: Asset link (vehicles, electronics, etc.). Phase A — lets a
+  // document/receipt be tagged to a specific asset (e.g. a CTP policy or rego
+  // notice on a vehicle).
+  {
+    name: 'asset_direct',
+    priority: 55,
+    matches: (ctx: UploadContext) => !!ctx.entities?.assetId,
+    getLinks: async (ctx: UploadContext): Promise<EntityLink[]> => {
+      return [
+        { entityType: LinkedEntityType.ASSET, entityId: ctx.entities.assetId! },
+      ];
+    },
+  },
 ];
 
 /**

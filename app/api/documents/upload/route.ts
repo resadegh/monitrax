@@ -70,6 +70,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
       investmentAccountId: (formData.get('investmentAccountId') as string) || undefined,
       investmentHoldingId: (formData.get('investmentHoldingId') as string) || undefined,
       transactionId: (formData.get('transactionId') as string) || undefined,
+      assetId: (formData.get('assetId') as string) || undefined,
     };
 
     // Remove undefined values

@@ -38,6 +38,7 @@ export enum LinkedEntityType {
   INVESTMENT_ACCOUNT = 'INVESTMENT_ACCOUNT',
   INVESTMENT_HOLDING = 'INVESTMENT_HOLDING',
   TRANSACTION = 'TRANSACTION',
+  ASSET = 'ASSET',
 }
 
 // ============================================================================

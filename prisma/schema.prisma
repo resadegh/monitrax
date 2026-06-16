@@ -3910,6 +3910,7 @@ enum LinkedEntityType {
   INVESTMENT_ACCOUNT
   INVESTMENT_HOLDING
   TRANSACTION
+  ASSET
 }
 
 // =============================================================================
