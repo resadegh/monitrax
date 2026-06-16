@@ -157,3 +157,62 @@ deletion), storage-at-scale (→ B-storage / GCS), delete/unlink/version lifecyc
 | 2026-06-16 | **Storage = GCS, with per-user quota** | Move bytes off the DB (bytea bloat), scale, and likely fix the analyze 500. Quota bounds growth on both backends. |
 | 2026-06-16 | **Household = shared finances incl. documents** | Multi-*user* household accounts don't exist yet. If/when added, all household finances (documents included) are shared — no per-document privacy. No work now; direction settled. |
 | 2026-06-16 | **Default quota = 2 GiB** | Generous for a personal receipt/statement vault while bounding unbounded bytea growth; per-user override hook deferred to paid-tier work. |
+| 2026-06-16 | **GCS auth = keyless WIF (drop the static key)** | Reuse the DB's passwordless identity (`vercel-monitrax-db`) — no static credential (§13.6). The legacy `monitrax-backend` key path stays supported as a fallback/rollback. |
+
+---
+
+## ⚠️ Storage backend — how it resolves, and how to roll back (READ BEFORE TOUCHING GCS ENV VARS)
+
+> Added 2026-06-16. The document storage backend is selected at runtime from env
+> vars + IAM. This section is the **operational reference** for the GCS cutover so
+> a future session (or 2am operator) can diagnose "why are uploads going to the
+> wrong place?" and roll back fast.
+
+### The two questions the code asks
+
+**1. Is GCS configured?** (`computeGcsConfigured`, `lib/documents/storage/factory.ts`)
+GCS is the default backend when **both**:
+- `GCS_PROJECT_ID` **and** `GCS_BUCKET_NAME` are set (WHERE), **and**
+- **either** `GCS_SERVICE_ACCOUNT_KEY` is set (key auth) **or**
+  `GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL` are set (keyless WIF — HOW).
+
+If not configured → the factory falls back to **Monitrax (Postgres bytea)**. No error; uploads just land in the DB.
+
+> **History/foot-gun:** before 2026-06-16 this check **required the key**, so
+> deleting the key to go keyless silently sent uploads back to the DB. Fixed so it
+> accepts keyless WIF. If you see uploads going to the DB after removing the key,
+> confirm you're on a build that includes `computeGcsConfigured` (this PR onward).
+
+**2. How does GCS authenticate?** (`GoogleCloudStorageProvider.initialize`)
+Resolution order:
+1. `GCS_SERVICE_ACCOUNT_KEY` present → **key** auth (impersonates `monitrax-backend`).
+2. else keyless WIF env present → **keyless** (`lib/gcp/wifAuthClient.ts`, impersonates `vercel-monitrax-db` — the DB's identity).
+3. else → **ADC** (local dev / gcloud).
+
+### IAM required per auth mode (on the `monitrax-documents` bucket)
+- **Keyless:** `vercel-monitrax-db@…` needs `roles/storage.objectUser` (object CRUD **+** `buckets.get` for the init preflight). Granted 2026-06-16.
+- **Key:** `monitrax-backend@…` has `roles/storage.objectAdmin` + `Storage Admin` (legacy, still in place).
+
+### The zero-downtime cutover sequence (key → keyless)
+1. Merge the `computeGcsConfigured` fix (this PR) — **no behaviour change** while the key is still set (key path wins).
+2. Grant `vercel-monitrax-db` → `roles/storage.objectUser` on the bucket. (Done 2026-06-16.)
+3. **Delete `GCS_SERVICE_ACCOUNT_KEY` from Vercel** → redeploy. Now `computeGcsConfigured` is still true (via WIF), and `initialize` takes the keyless branch.
+4. Verify (below).
+
+### Verify it worked (from prod logs)
+On the next upload/scan, look for in the runtime logs:
+- `[StorageFactory] GCS Configuration: … serviceAccountKey: 'NOT SET (keyless WIF used if available)', keylessWif: 'available', isConfigured: true`
+- `[GCS] Using keyless Workload Identity Federation auth`
+- the new `Document` row's `storageProvider = GOOGLE_CLOUD_STORAGE` (not `MONITRAX`).
+
+### Failure modes & fixes
+
+| Symptom | Likely cause | Fix / rollback |
+|---|---|---|
+| Uploads land in the **DB** after removing the key | Build predates `computeGcsConfigured`, OR a WIF env var missing | Confirm this PR is deployed; confirm `GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL` are set |
+| GCS upload/init **403 / permission denied** | `vercel-monitrax-db` missing `objectUser` on the bucket | Grant `roles/storage.objectUser` (Step 2) |
+| `Bucket … does not exist` on init | `GCS_BUCKET_NAME` wrong, or SA lacks `buckets.get` | Fix the var, or ensure the role is `objectUser` (includes `buckets.get`), not bare `objectAdmin` |
+| Keyless token errors (`OIDC token` / STS / impersonation) | WIF chain issue (same as the DB) | See `docs/operational/security/04_WIF_TROUBLESHOOTING.md` — identical mechanism |
+| **EMERGENCY ROLLBACK** — GCS broken, need it working NOW | any of the above | **Re-add `GCS_SERVICE_ACCOUNT_KEY`** (the `monitrax-backend` base64 key) in Vercel + redeploy → instantly reverts to the known-good key path. Then debug keyless offline. |
+
+> The key path is the **safety net**: re-adding `GCS_SERVICE_ACCOUNT_KEY` always restores the previously-working behaviour, because `initialize` checks the key first. Keep the `monitrax-backend` key recoverable until keyless is proven in prod.
