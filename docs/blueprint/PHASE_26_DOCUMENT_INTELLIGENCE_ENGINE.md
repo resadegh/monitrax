@@ -1180,7 +1180,61 @@ The analyze-for-form endpoint includes diagnostic logging:
 
 ---
 
-*Document Version: 1.2*
+## Phase 26.7 — Mobile Camera Capture + Global "Scan a Receipt" (2026-06-16)
+
+Surfaces the existing engine where mobile users live. **No new analysis or
+entity-creation logic** — both additions ride the canonical pipeline
+(upload → `/api/documents/analyze` → `/api/documents/analyze/confirm`).
+
+### 26.7.1 Camera capture in forms
+
+`components/documents/FormDocumentUpload.tsx` (the inline "Attach document to
+auto-fill" used by the Expense / Loan / Income / Balances / Transaction
+dialogs) gained a native **"Take photo"** button — a second hidden input with
+`accept="image/*" capture="environment"` — rendered only on touch devices
+(`window.matchMedia('(pointer: coarse)')`). The existing file / drop-zone
+upload is unchanged; every dialog now offers **both** snap-a-photo and
+pick-a-file. This lights up snap-to-recognise on the vehicle / asset-linked
+expense flow (the surface the user was on when they couldn't find an upload
+option). The pre-existing `Camera` icon was decorative; it now drives a real
+button.
+
+### 26.7.2 Global mobile "Scan a receipt"
+
+`components/documents/GlobalScanReceipt.tsx` (new) renders a sky→indigo camera
+**FAB** above the editorial bottom nav (mobile only, hidden during onboarding,
+mounted in `DashboardLayout`). It opens a glass bottom sheet:
+
+1. **Capture** — Take photo (`capture="environment"`) / Choose a file.
+2. **Analyze** — `useDocumentUpload()` uploads as `RECEIPT` (Phase 25 DME),
+   then `POST /api/documents/analyze` runs the DIE and **persists** the
+   `DocumentAnalysis`, so the receipt also appears in the My Vault Smart Inbox
+   if the user dismisses without confirming.
+3. **Result** — preview of vendor / amount / GST / date / category with a
+   confidence pill, derived from the top `suggestedAction.prefilled`.
+4. **Confirm** — `POST /api/documents/analyze/confirm` with the top action
+   (`CREATE_EXPENSE` for a receipt). Nothing is written until the user taps the
+   primary CTA.
+
+**Graceful degradation:** if Vision/AI is unavailable (503) or analysis fails,
+the receipt is still saved and the sheet shows a "Saved to your Vault" success —
+no data loss (behaviour-psychology lens).
+
+**Design (Stitch-first, §18.2.1):** in-app "My Wealth glass" vocabulary
+(§18.7.2). Bottom-sheet chrome mirrors `MoreSheet` (Esc + scroll-lock + ARIA +
+motion-safe slide-in; no framer-motion). Stitch project `1859462351962811110`;
+screens — capture light `895151e084d14c9aaa9dc410e0e3aaba` / dark
+`cbd9e77e175c4359a7d053dbdd3a5bc1`, result light
+`87ec42b8ba2f40ccbac4eb2c12d81eb6` / dark `f5a5e9a4068440df868464efca8e7332`.
+Artefacts under `.stitch/designs/phase49-scan-receipt/`.
+
+**Out of scope (deliberate, Reza decision 2026-06-16):** an Assets-page upload
+affordance and a My-Vault discoverability link were *not* built — the global
+scan serves the underlying need from any surface.
+
+---
+
+*Document Version: 1.3*
 *Created: 2025-12-10*
-*Updated: 2025-12-12*
-*Status: In Progress (Phase 26.6 Form Auto-Fill)*
+*Updated: 2026-06-16*
+*Status: In Progress (26.6 Form Auto-Fill); 26.7 Mobile Scan + Camera shipped*

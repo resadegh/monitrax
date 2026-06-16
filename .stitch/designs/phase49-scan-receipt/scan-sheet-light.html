@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Receipt Capture</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-error-container": "#93000a",
+                        "primary": "#006b2c",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "error-red": "#DC2626",
+                        "trail-indigo": "#6366F1",
+                        "on-background": "#171d16",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-surface": "#171d16",
+                        "trail-amber": "#F59E0B",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#62df7d",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-ivory": "#FAFAF7",
+                        "inverse-on-surface": "#ecf3e7",
+                        "trail-emerald": "#16A34A",
+                        "surface-tint": "#006e2d",
+                        "outline": "#6e7b6c",
+                        "on-tertiary-container": "#fdfcff",
+                        "outline-variant": "#bdcaba",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "trail-violet": "#8B5CF6",
+                        "on-secondary-fixed": "#151b2a",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "error-container": "#ffdad6",
+                        "background": "#f4fcf0",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-bright": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "secondary-container": "#d9dff4",
+                        "secondary": "#585e6f",
+                        "on-primary-container": "#f7fff2",
+                        "on-secondary-container": "#5c6274",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-high": "#e3eadf",
+                        "inverse-surface": "#2b322b",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-container": "#e9f0e5",
+                        "primary-container": "#00873a",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed": "#7ffc97",
+                        "surface": "#f4fcf0",
+                        "error": "#ba1a1a",
+                        "surface-container-highest": "#dde5d9",
+                        "trail-sky": "#0EA5E9",
+                        "surface-container-low": "#eff6ea",
+                        "on-primary-fixed": "#002109",
+                        "secondary-fixed": "#dce2f6",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-dim": "#d5dcd1",
+                        "tertiary": "#4d5d73",
+                        "on-primary": "#ffffff",
+                        "surface-variant": "#dde5d9",
+                        "tertiary-container": "#66768d"
+                    },
+                    "fontFamily": {
+                        "eyebrow": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-md": ["Inter"],
+                        "label-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "data-xl": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .mesh-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.1) 0%, rgba(99, 102, 241, 0.1) 100%);
+            filter: blur(40px);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .scrim-overlay {
+            background: rgba(11, 18, 32, 0.12);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory min-h-screen relative overflow-hidden">
+<!-- Faintly Visible Dashboard Background -->
+<main class="w-full max-w-md mx-auto p-6 space-y-8 opacity-40 blur-[2px] pointer-events-none">
+<header class="flex justify-between items-center">
+<h1 class="font-headline-md text-headline-md text-on-surface">Wealth</h1>
+<div class="w-10 h-10 rounded-full bg-surface-container-highest"></div>
+</header>
+<section class="bg-white rounded-xl p-6 shadow-sm border border-slate-100">
+<p class="font-eyebrow text-eyebrow text-outline mb-1">TOTAL BALANCE</p>
+<p class="font-data-xl text-data-xl text-on-background">$428,500.00</p>
+<div class="mt-4 h-32 w-full bg-slate-50 rounded-lg"></div>
+</section>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-white p-4 rounded-xl border border-slate-100">
+<p class="font-label-md text-label-md text-outline">Investments</p>
+<p class="font-headline-sm text-headline-sm mt-1">$312K</p>
+</div>
+<div class="bg-white p-4 rounded-xl border border-slate-100">
+<p class="font-label-md text-label-md text-outline">Savings</p>
+<p class="font-headline-sm text-headline-sm mt-1">$116K</p>
+</div>
+</div>
+</main>
+<!-- Scrim -->
+<div class="fixed inset-0 scrim-overlay z-10 backdrop-blur-[1px]"></div>
+<!-- Bottom Sheet Container -->
+<div class="fixed inset-x-0 bottom-0 z-20 flex flex-col items-center">
+<!-- The Sheet -->
+<div class="w-full max-w-lg bg-white/70 backdrop-blur-3xl rounded-t-[28px] border-t border-[#0EA5E91A] shadow-[0_-8px_40px_-12px_rgba(11,18,32,0.15)] overflow-hidden">
+<!-- Grabber -->
+<div class="flex justify-center pt-3 pb-6">
+<div class="w-9 h-1.5 bg-outline-slate/30 rounded-full"></div>
+</div>
+<!-- Content Container -->
+<div class="px-6 pb-12 flex flex-col items-center text-center">
+<!-- Icon Badge with Mesh Glow -->
+<div class="relative mb-4">
+<div class="absolute inset-0 mesh-glow scale-150"></div>
+<div class="relative w-11 h-11 gradient-bg rounded-[14px] flex items-center justify-center shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white text-[24px]" data-icon="photo_camera" style="font-variation-settings: 'FILL' 1;">photo_camera</span>
+</div>
+</div>
+<!-- Label -->
+<p class="font-eyebrow text-[10px] tracking-[0.2em] uppercase gradient-text mb-2">
+                    Quick Capture
+                </p>
+<!-- Title & Subtitle -->
+<h2 class="font-headline-md text-headline-md text-slate-900 tracking-tight mb-2">
+                    Scan a receipt
+                </h2>
+<p class="font-body-md text-body-md text-slate-500 max-w-[280px] leading-snug mb-8">
+                    Snap it and we'll read the vendor, date and amount for you.
+                </p>
+<!-- Action Buttons -->
+<div class="w-full space-y-3 mb-8">
+<!-- Primary -->
+<button class="w-full h-14 gradient-bg rounded-[14px] flex items-center justify-center gap-2 text-white font-label-md text-label-md shadow-xl shadow-trail-indigo/20 active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-[20px]" data-icon="camera">camera</span>
+                        Take photo
+                    </button>
+<!-- Secondary -->
+<button class="w-full h-14 bg-white/60 backdrop-blur-md rounded-[14px] flex items-center justify-center gap-2 text-slate-900 border border-slate-900/10 font-label-md text-label-md active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-[20px]" data-icon="upload">upload</span>
+                        Choose a file
+                    </button>
+</div>
+<!-- Gemini Pill -->
+<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/40 border border-[#6366F120] mb-8">
+<span class="material-symbols-outlined text-[16px] gradient-text" data-icon="auto_awesome" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-md text-[12px] text-slate-600">Powered by Gemini AI</span>
+</div>
+<!-- Footer -->
+<div class="flex items-center gap-2 text-slate-400">
+<span class="material-symbols-outlined text-[16px]" data-icon="shield">shield</span>
+<p class="font-body-sm text-[13px]">
+                        We'll show you what we found before anything is saved.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Navigation Mock (per Shared Components logic, suppressed for transactional focus but shown for context of "Dashboard faintly visible") -->
+<nav class="fixed bottom-0 w-full z-0 flex justify-around items-center px-4 py-3 pb-8 opacity-20 pointer-events-none">
+<div class="flex flex-col items-center text-primary">
+<span class="material-symbols-outlined" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="text-[10px] font-bold">Wealth</span>
+</div>
+<div class="flex flex-col items-center text-outline">
+<span class="material-symbols-outlined" data-icon="vaping_rooms">vaping_rooms</span>
+<span class="text-[10px] font-bold">Vault</span>
+</div>
+<div class="flex flex-col items-center text-outline">
+<span class="material-symbols-outlined" data-icon="document_scanner">document_scanner</span>
+<span class="text-[10px] font-bold">Scan</span>
+</div>
+<div class="flex flex-col items-center text-outline">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="text-[10px] font-bold">Activity</span>
+</div>
+</nav>
+<script>
+        // Simple micro-interaction for the sheet entry
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.querySelector('.fixed.bottom-0.z-20 > div');
+            sheet.style.transform = 'translateY(100%)';
+            sheet.style.transition = 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1)';
+            
+            setTimeout(() => {
+                sheet.style.transform = 'translateY(0)';
+            }, 100);
+        });
+    </script>
+</body></html>
