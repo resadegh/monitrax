@@ -1,16 +1,18 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Phase 4 · Layer 4 — Playwright UAT.
+ * Phase 4 · Layer 4 — Playwright UAT (Firebase Auth emulator mode).
  *
- * Real-human flows over the seeded archetypes (`npm run seed:lighthouse`).
- * The app needs a live Next server + Postgres + AUTH. There is no test-auth
- * bypass in the codebase (login is GCP/Firebase only), so the UAT specs are
- * gated: they run only when an authenticated storage-state is provided via
- * `E2E_STORAGE_STATE` (a path) — produced by `auth.setup.ts` from an injected
- * session — otherwise they SKIP with a clear annotation (so the job is wired
- * and green, and becomes a true gate once Reza wires the E2E auth secret).
- * See tests/e2e/README.md.
+ * Auth is handled WITHOUT any real Firebase project, stored credential, or
+ * manual login: CI runs the Firebase Auth emulator, seeds synthetic users
+ * (tests/e2e/seed-emulator.ts), and each spec signs in through the real
+ * /signin UI via the `loginAs` fixture (tests/e2e/auth.ts). No storage-state
+ * secret is used — Firebase persists the session in IndexedDB, which a
+ * programmatic per-context UI login populates reliably.
+ *
+ * The whole emulator wiring is gated behind FIREBASE_AUTH_EMULATOR_HOST /
+ * NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST, which are set ONLY in the CI job —
+ * never in prod/preview.
  */
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
@@ -27,20 +29,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
-  projects: [
-    { name: 'setup', testMatch: /auth\.setup\.ts/ },
-    {
-      name: 'uat',
-      dependencies: ['setup'],
-      use: {
-        ...devices['Desktop Chrome'],
-        // storageState is written by auth.setup.ts when auth is configured.
-        storageState: process.env.E2E_STORAGE_STATE ?? 'tests/e2e/.auth/state.json',
-      },
-    },
-  ],
-  // Only boot a server when no external target is supplied. CI builds first
-  // (`npm run build`) then this starts it; locally, `npm run dev` is reused.
+  projects: [{ name: 'uat', use: { ...devices['Desktop Chrome'] } }],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
