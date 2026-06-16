@@ -1072,6 +1072,36 @@ Phase 25 is complete when:
 
 ---
 
+## 13b. AI Document Router — Phase A (2026-06-16)
+
+Foundation for the AI Document Router (Reza's vision: every doc/receipt → AI
+recognises → attaches to the correct item/asset **or** creates a new
+item/expense → filed in the right Vault folder for reporting/extraction).
+Phased build; Phase A landed two foundational pieces:
+
+1. **`ASSET` linkable document type.** `LinkedEntityType` gained `ASSET` so a
+   document can be tagged to a specific asset (vehicle, electronics, etc.).
+   Wired through the upload route (`assetId`), the `useDocumentUpload` hook
+   (`LINK_FIELD_BY_ENTITY`), and a new `asset_direct` rule (priority 55) in
+   `lib/documents/engine/rules/LinkingRules.ts`. Migration
+   `20260616093000_add_asset_linked_entity_type` (additive `ADD VALUE`).
+2. **Scan recognition fix.** The global "Scan a receipt" was degrading to
+   "Saved to Vault" because `POST /api/documents/analyze` 500s in prod on a
+   freshly-uploaded photo (the two-step upload→re-read→analyze path). The scan
+   now uses the proven single-step `/api/documents/analyze-for-form` (the same
+   path the expense/income forms use) — OCRs the in-hand upload + Gemini-maps +
+   files as RECEIPT. (Root-causing the `/api/documents/analyze` 500 itself
+   remains a separate follow-up — it still powers the My Vault Smart Inbox.)
+
+**Phase B (next):** attach-to-existing-item / Phase 42 transaction-match,
+owning-legal-entity linking, multi-link, always-confirm. **Phase C:** per-item
+Documents sections (Stitch design under `.stitch/designs/asset-documents/`),
+Tax-pack export + ATO 5yr retention, renewal-date tie-in. See
+`CHANGELOG_2026_06_16.md` for the completeness review (HEIC, dedupe, security/PII,
+storage-at-scale, lifecycle).
+
+---
+
 ## 14. References
 
 - Phase 19: Document Management & Storage Layer

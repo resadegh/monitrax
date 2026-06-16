@@ -51,26 +51,22 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
-import { useDocumentUpload } from '@/hooks/useDocumentUpload';
-import { DocumentCategory } from '@/lib/documents/types';
 import { formatCurrency } from '@/lib/utils/formatters';
 
 type Stage = 'capture' | 'analyzing' | 'result' | 'success' | 'error';
 
-interface SuggestedAction {
-  action: string;
-  label: string;
-  description?: string;
-  prefilled: Record<string, unknown>;
+interface FieldMapping {
+  value: unknown;
   confidence: number;
+  source?: string;
 }
 
-interface Analysis {
-  id: string;
-  documentType: string;
+interface Recognition {
+  documentId?: string;
+  documentType?: string;
+  // Flattened {field: value} for the preview + the expense payload.
+  values: Record<string, unknown>;
   overallConfidence: number;
-  extractedData: Record<string, unknown>;
-  suggestedActions: SuggestedAction[];
 }
 
 const SUPPORTED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -104,12 +100,11 @@ function asNumber(v: unknown): number | undefined {
 export function GlobalScanReceipt() {
   const router = useRouter();
   const { token } = useAuth();
-  const { upload } = useDocumentUpload();
 
   const [open, setOpen] = useState(false);
   const [stage, setStage] = useState<Stage>('capture');
   const [canCapture, setCanCapture] = useState(false);
-  const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  const [recognition, setRecognition] = useState<Recognition | null>(null);
   const [savedDocId, setSavedDocId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -141,7 +136,7 @@ export function GlobalScanReceipt() {
 
   const reset = useCallback(() => {
     setStage('capture');
-    setAnalysis(null);
+    setRecognition(null);
     setSavedDocId(null);
     setErrorMsg(null);
     setSubmitting(false);
@@ -169,54 +164,58 @@ export function GlobalScanReceipt() {
       setStage('analyzing');
       setErrorMsg(null);
 
-      // 1. Upload through the canonical DME (lands in My Vault, tagged RECEIPT).
-      const uploadRes = await upload(file, {
-        category: DocumentCategory.RECEIPT,
-        description: 'Scanned receipt',
-        tags: ['mobile-scan'],
-      });
-
-      if (!uploadRes.success || !uploadRes.documentId) {
-        // Upload may have stored the file (e.g. local drive) without returning
-        // an id we can analyse. Treat as a soft success: it's safe in the Vault.
-        if (uploadRes.success) {
-          setSavedDocId(null);
-          setStage('success');
-          return;
-        }
-        setErrorMsg(uploadRes.error || 'We could not upload that. Please try again.');
-        setStage('error');
-        return;
-      }
-
-      setSavedDocId(uploadRes.documentId);
-
-      // 2. Analyze through the canonical Document Intelligence Engine.
+      // Recognise + store in ONE call via the proven form-autofill path
+      // (`/api/documents/analyze-for-form`). This endpoint OCRs the in-hand
+      // upload directly (Vision) + maps to expense fields with Gemini, then
+      // files the document in My Vault as a RECEIPT. We use it here instead of
+      // the upload→/analyze two-step because the latter 500s in prod when it
+      // re-reads the stored file (Phase A fix — see CHANGELOG 2026-06-16).
       try {
-        const res = await fetch('/api/documents/analyze', {
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('formType', 'expense');
+
+        const res = await fetch('/api/documents/analyze-for-form', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ documentId: uploadRes.documentId }),
+          headers: { Authorization: `Bearer ${token}` },
+          body: fd,
         });
         const json = await res.json();
 
-        if (!res.ok || !json.success || !json.analysis) {
-          // Vision/AI unavailable, or analysis failed — the receipt is still
-          // saved. Offer the Vault as the graceful fallback (no shame, no loss).
+        if (json?.documentId) setSavedDocId(json.documentId as string);
+
+        if (!res.ok || !json?.success || !json?.fieldMappings) {
+          // Recognition didn't return usable fields — but the document is
+          // typically still saved to the Vault. Degrade gracefully (no loss).
           setStage('success');
           return;
         }
 
-        setAnalysis(json.analysis as Analysis);
+        // Flatten {field: {value, confidence}} → {field: value} + overall confidence.
+        const fm = json.fieldMappings as Record<string, FieldMapping>;
+        const values: Record<string, unknown> = {};
+        for (const [k, m] of Object.entries(fm)) values[k] = m?.value;
+
+        const keyConf = ['vendor', 'amount', 'date']
+          .map((k) => fm[k]?.confidence)
+          .filter((c): c is number => typeof c === 'number');
+        const overallConfidence = keyConf.length
+          ? keyConf.reduce((a, b) => a + b, 0) / keyConf.length
+          : 0.6;
+
+        setRecognition({
+          documentId: json.documentId as string | undefined,
+          documentType: json.documentType as string | undefined,
+          values,
+          overallConfidence,
+        });
         setStage('result');
       } catch {
-        setStage('success');
+        setStage('error');
+        setErrorMsg('Something went wrong reading that. Please try again.');
       }
     },
-    [upload, token]
+    [token]
   );
 
   const onCameraChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,32 +229,19 @@ export function GlobalScanReceipt() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // The top actionable suggestion (CREATE_EXPENSE for a receipt). Used both to
-  // render the preview and as the payload for the primary confirm CTA.
-  const topAction = useMemo<SuggestedAction | undefined>(() => {
-    if (!analysis?.suggestedActions?.length) return undefined;
-    const creates = analysis.suggestedActions.filter((a) =>
-      ['CREATE_EXPENSE', 'CREATE_INCOME', 'CREATE_LOAN'].includes(a.action)
-    );
-    const pool = creates.length ? creates : analysis.suggestedActions;
-    return [...pool].sort((a, b) => (b.confidence ?? 0) - (a.confidence ?? 0))[0];
-  }, [analysis]);
-
   const preview = useMemo(() => {
-    if (!analysis) return null;
-    const pf = topAction?.prefilled;
-    const ex = analysis.extractedData || {};
+    if (!recognition) return null;
+    const v = recognition.values;
     const title =
-      (pick(['vendor', 'vendorName', 'payee', 'merchant', 'source', 'lender', 'name'], pf, ex) as string) ||
-      'Receipt';
-    const amount = asNumber(pick(['amount', 'total', 'totalAmount', 'amountDue'], pf, ex));
-    const gst = asNumber(pick(['gst', 'gstAmount', 'tax'], pf, ex));
-    const date = pick(['date', 'issueDate', 'transactionDate'], pf, ex) as string | undefined;
-    const category = pick(['category'], pf, ex) as string | undefined;
+      (pick(['vendor', 'vendorName', 'payee', 'merchant', 'name'], undefined, v) as string) || 'Receipt';
+    const amount = asNumber(pick(['amount', 'total', 'totalAmount', 'amountDue'], undefined, v));
+    const gst = asNumber(pick(['gst', 'gstAmount', 'tax'], undefined, v));
+    const date = pick(['date', 'issueDate', 'transactionDate'], undefined, v) as string | undefined;
+    const category = pick(['category'], undefined, v) as string | undefined;
     return { title, amount, gst, date, category };
-  }, [analysis, topAction]);
+  }, [recognition]);
 
-  const confidence = analysis?.overallConfidence ?? 0;
+  const confidence = recognition?.overallConfidence ?? 0;
   const confidenceLabel =
     confidence >= 0.9 ? 'High confidence' : confidence >= 0.7 ? 'Looks good — worth a check' : 'Please review';
   const confidenceTone =
@@ -265,37 +251,36 @@ export function GlobalScanReceipt() {
         ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300 ring-amber-500/25'
         : 'bg-slate-500/12 text-slate-600 dark:text-slate-300 ring-slate-500/25';
 
-  const primaryLabel = useMemo(() => {
-    if (!topAction) return 'Save to my Vault';
-    if (topAction.action === 'CREATE_EXPENSE') return 'Add expense';
-    if (topAction.action === 'CREATE_INCOME') return 'Add income';
-    if (topAction.action === 'CREATE_LOAN') return 'Add loan';
-    return topAction.label || 'Add';
-  }, [topAction]);
+  const primaryLabel = 'Add expense';
 
   const handleConfirm = useCallback(async () => {
-    if (!analysis || !topAction) {
-      // No actionable suggestion — the doc is already in the Vault.
+    if (!recognition || !preview) {
       setStage('success');
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetch('/api/documents/analyze/confirm', {
+      // Create the expense from the recognised fields. Frequency defaults to
+      // MONTHLY (the engine's existing receipt convention — tracked as the
+      // Q-SCAN-FREQ open question). Phase B replaces this with the
+      // attach-to-existing-item / transaction-match flow.
+      const v = recognition.values;
+      const res = await fetch('/api/expenses', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          analysisId: analysis.id,
-          action: topAction.action,
-          data: topAction.prefilled || analysis.extractedData,
+          name: preview.title,
+          vendorName: preview.title,
+          amount: preview.amount ?? 0,
+          frequency: 'MONTHLY',
+          category: typeof v.category === 'string' ? v.category : 'OTHER',
+          isTaxDeductible: v.taxDeductible === true,
+          sourceType: 'GENERAL',
         }),
       });
       const json = await res.json();
-      if (!res.ok || json.success === false) {
-        setErrorMsg(json.error || 'We could not save that. It is still in your Vault.');
+      if (!res.ok || json?.error) {
+        setErrorMsg(json?.error || 'We could not add that. It is still in your Vault.');
         setStage('error');
         return;
       }
@@ -306,7 +291,7 @@ export function GlobalScanReceipt() {
     } finally {
       setSubmitting(false);
     }
-  }, [analysis, topAction, token]);
+  }, [recognition, preview, token]);
 
   const goToVault = useCallback(() => {
     close();
@@ -539,11 +524,11 @@ export function GlobalScanReceipt() {
               <div className="flex flex-col items-center gap-3 py-10 text-center">
                 <CheckCircle2 className="h-10 w-10 text-emerald-500" />
                 <p className="text-[16px] font-semibold text-foreground">
-                  {analysis ? 'Done — added for you' : 'Saved to your Vault'}
+                  {recognition ? 'Done — added for you' : 'Saved to your Vault'}
                 </p>
                 <p className="max-w-[18rem] text-[13px] text-muted-foreground">
-                  {analysis
-                    ? 'Your receipt is filed in My Vault and linked to the entry.'
+                  {recognition
+                    ? 'Your receipt is filed in My Vault and the expense is added.'
                     : "It's safe in My Vault. You can review and file it any time."}
                 </p>
                 <div className="mt-2 flex w-full flex-col gap-2.5">

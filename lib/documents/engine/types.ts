@@ -42,6 +42,7 @@ export interface EntityContext {
   investmentAccountId?: string;
   investmentHoldingId?: string;
   transactionId?: string;
+  assetId?: string;
 }
 
 export interface UserInput {
