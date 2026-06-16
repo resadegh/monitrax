@@ -59,7 +59,7 @@ three env vars are present** — so the "switch" itself needs no code:
 
 What this track delivers in code (the parts that AREN'T just config):
 
-- [x] **Per-user storage quota (SSOT) — ✅ shipped this PR.**
+- [x] **Per-user storage quota (SSOT) — ✅ shipped (PR #1124).**
   `lib/documents/storage/storageQuota.ts`. Drift-free: usage is **computed** from
   `SUM(Document.size) WHERE deletedAt IS NULL`, never a maintained counter that
   could desync. Backend-independent (counts DB bytea + GCS the same). Default
@@ -69,30 +69,47 @@ What this track delivers in code (the parts that AREN'T just config):
   `documentService.uploadDocument` path (the scan), so no path bypasses it.
   `/api/documents/upload` maps the quota breach to **HTTP 413** (client
   condition), not a 500. 7 unit tests.
-- [ ] **GCS-aware download.** `/api/documents/download` is currently hardcoded to
-  the Monitrax (DB) provider — it can't serve GCS files, so preview/download
-  would break the moment GCS is the active backend. Make it provider-aware
-  (Monitrax HMAC path unchanged; GCS path → the provider's v4 signed URL).
+- [x] **Keyless WIF auth for GCS — ✅ shipped this PR.** New canonical
+  `lib/gcp/wifAuthClient.ts` mints impersonated SA access tokens from the Vercel
+  OIDC token (the same passwordless identity the DB uses — §13.6, no static
+  credential). The GCS provider's `initialize` now: key if `GCS_SERVICE_ACCOUNT_KEY`
+  is set (legacy) → else keyless WIF if the WIF env vars are present → else ADC
+  (local dev). **No service-account key needed in prod.**
+- [x] **GCS-aware download — ✅ shipped this PR.** `/api/documents/download` is now
+  provider-aware: it verifies the (provider-agnostic) HMAC signature, looks up the
+  `Document` by `storagePath`, and **streams the bytes from the right backend** (DB
+  bytea or GCS). Because keyless credentials can't sign a native v4 URL locally,
+  the read-URL policy (new SSOT `lib/documents/storage/readUrl.ts`) routes keyless
+  GCS reads through this streaming route — and the bytes never leave via a public
+  signed URL, which is the better CDR posture. A native GCS signed URL is still
+  used when a service-account key is present. 4 unit tests.
 - [ ] **(Optional) migrate existing inline docs.** Decide migrate-vs-leave for
   documents already stored as `fileContent` bytea. Leaning *leave* — the
   retrieval path (`getDocumentContent`) already branches on `storageProvider`, so
   old DB docs keep working while new uploads go to GCS. A backfill job is only
   needed to reclaim the bytea bloat, and can run later.
 
-> **⛔ BLOCKED on operator provisioning (Reza only — I can't from the session):**
-> 1. Create the GCS bucket (`monitrax-documents`, region `australia-southeast1`
->    to match Cloud SQL `syd1`, uniform bucket-level access, CMEK per §13.9 P1).
-> 2. Grant the runtime service account `roles/storage.objectAdmin` on the bucket
->    (the WIF-impersonated SA from `lib/db.ts` — prefer ADC over a key file so no
->    static credential exists, consistent with §13.6).
-> 3. Set the three env vars in Vercel (Production scope). With ADC, set
->    `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` and omit `GCS_SERVICE_ACCOUNT_KEY`.
+> **⛔ Operator provisioning (Reza only — I can't from the session). KEYLESS route
+> chosen — the code is keyless-ready, so this is now just THREE steps, no secrets:**
+> 1. **Create the bucket** — `monitrax-documents`, region `australia-southeast1`
+>    (matches Cloud SQL `syd1`), uniform bucket-level access, CMEK per §13.9 P1.
+>    `gcloud storage buckets create gs://monitrax-documents --location=australia-southeast1 --uniform-bucket-level-access --project=monitrax-479700`
+> 2. **Grant the existing runtime SA** (`$GCP_SERVICE_ACCOUNT_EMAIL`, already used
+>    by the DB) `roles/storage.objectAdmin` **on the bucket** (least privilege):
+>    `gcloud storage buckets add-iam-policy-binding gs://monitrax-documents --member="serviceAccount:<SA_EMAIL>" --role=roles/storage.objectAdmin`
+> 3. **Set 2 non-secret env vars** in Vercel (Production): `GCS_PROJECT_ID=monitrax-479700`,
+>    `GCS_BUCKET_NAME=monitrax-documents`. **Do NOT set `GCS_SERVICE_ACCOUNT_KEY`** —
+>    the keyless WIF env vars (`GCP_WORKLOAD_IDENTITY_PROVIDER` + `GCP_SERVICE_ACCOUNT_EMAIL`)
+>    are already set for the DB and the GCS client now reuses them.
 >
-> Once set, the factory switches new uploads to GCS automatically. This is also
-> the most likely fix for the residual `/api/documents/analyze` 500 (a
-> partial/mis-set GCS config makes `getDocumentContent`'s GCS branch throw).
-> **Doc-sync:** when provisioned, update `09_INFRASTRUCTURE_AND_DEPLOYMENT.md`,
-> `docs/operational/security/02_IAM_AND_PERMISSIONS.md`, and §13.9.
+> Once set, the factory switches new uploads to GCS automatically (no signing-IAM
+> needed — reads stream through `/api/documents/download`). The residual
+> `/api/documents/analyze` 500 is tracked as a **separate diagnostic** (Phase A
+> traced it to the two-step analyze path, not confirmed as a GCS issue) — to be
+> fixed from live logs, not assumed resolved by GCS.
+> **Doc-sync done in the keyless PR:** `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` updated.
+> When provisioned, also note the bucket + IAM binding in
+> `docs/operational/security/02_IAM_AND_PERMISSIONS.md` + §13.9.
 
 #### B-intelligence — attach-to-existing, not just create
 
