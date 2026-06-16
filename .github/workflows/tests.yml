@@ -71,10 +71,17 @@ jobs:
           cache: 'npm'
       - name: Install dependencies
         run: npm ci
-      - name: Prisma generate + migrate
+      - name: Prisma generate + push schema (fresh test DB)
+        # NOTE: `prisma migrate deploy` does NOT apply cleanly to an empty DB —
+        # migration 20260429140700_sync_user_preferences_columns assumes a
+        # `user_preferences` table that 0_init never creates (P3018 / 42P01).
+        # That migration-replay-from-scratch gap is a separate latent repo issue
+        # (recorded for a fix PR). For an EPHEMERAL test DB the correct tool is
+        # `prisma db push`, which materialises the current schema.prisma with no
+        # history replay.
         run: |
           npx prisma generate
-          npx prisma migrate deploy
+          npx prisma db push --skip-generate
       - name: Seed archetypes into Postgres (idempotent)
         run: npm run seed:lighthouse
         continue-on-error: true
