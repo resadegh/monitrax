@@ -84,7 +84,6 @@ jobs:
           npx prisma db push --skip-generate
       - name: Seed archetypes into Postgres (idempotent)
         run: npm run seed:lighthouse
-        continue-on-error: true
       - name: Install Playwright + firebase-tools (kept out of package.json so `npm ci` stays lockstep)
         run: |
           npm i -D @playwright/test@^1.49.0 --no-save
