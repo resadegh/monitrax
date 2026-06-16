@@ -463,6 +463,7 @@ export function CreateExpenseFromRecurring({
                 <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                 <SelectItem value="MONTHLY">Monthly</SelectItem>
                 <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
                 <SelectItem value="ANNUAL">Annually</SelectItem>
               </SelectContent>
             </Select>

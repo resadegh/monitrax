@@ -87,13 +87,13 @@ export const PUT = withPermission<RouteContext>('income.write', async (request, 
 
       // Helper to convert Frequency enum to PayFrequency enum (ANNUAL -> ANNUALLY)
       // PayFrequency values: WEEKLY, FORTNIGHTLY, MONTHLY, QUARTERLY, ANNUALLY
-      const toPayFrequency = (freq: string | undefined | null): 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | null | undefined => {
+      const toPayFrequency = (freq: string | undefined | null): 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY' | null | undefined => {
         if (freq === undefined) return undefined;
         if (freq === null) return null;
         // Map ANNUAL to ANNUALLY (Frequency uses ANNUAL, PayFrequency uses ANNUALLY)
         const mapped = freq === 'ANNUAL' ? 'ANNUALLY' : freq;
         // Validate it's a valid PayFrequency value
-        const validPayFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'] as const;
+        const validPayFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'HALF_YEARLY'] as const;
         if (validPayFrequencies.includes(mapped as typeof validPayFrequencies[number])) {
           return mapped as typeof validPayFrequencies[number];
         }

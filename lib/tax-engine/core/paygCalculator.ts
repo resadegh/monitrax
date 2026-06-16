@@ -94,7 +94,7 @@ export interface PAYGResult {
 
 export interface PAYGInput {
   grossIncome: number;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   hasTaxFreeThreshold?: boolean;
   hasHECSDebt?: boolean;
 }
@@ -112,6 +112,8 @@ function toWeeklyAmount(amount: number, frequency: string): number {
       return (amount * 12) / 52;
     case 'QUARTERLY':
       return (amount * 4) / 52;
+    case 'HALF_YEARLY':
+      return (amount * 2) / 52;
     case 'ANNUALLY':
       return amount / 52;
     default:
@@ -132,6 +134,8 @@ function fromWeeklyAmount(weeklyAmount: number, frequency: string): number {
       return (weeklyAmount * 52) / 12;
     case 'QUARTERLY':
       return (weeklyAmount * 52) / 4;
+    case 'HALF_YEARLY':
+      return (weeklyAmount * 52) / 2;
     case 'ANNUALLY':
       return weeklyAmount * 52;
     default:
@@ -232,7 +236,7 @@ export function calculatePAYG(input: PAYGInput): PAYGResult {
  */
 export function calculateGrossFromNet(
   netIncome: number,
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY',
   hasTaxFreeThreshold: boolean = true,
   config: TaxYearConfig = getCurrentTaxYearConfig()
 ): { gross: number; tax: number; iterations: number } {
@@ -313,7 +317,7 @@ export interface PAYGResultDecimal {
  */
 export interface PAYGInputDecimal {
   grossIncome: number | string | Decimal;
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   hasTaxFreeThreshold?: boolean;
   hasHECSDebt?: boolean;
 }
@@ -328,6 +332,8 @@ function toWeeklyAmountDecimal(amount: Decimal, frequency: string): Decimal {
       return amount.times(12).div(52);
     case 'QUARTERLY':
       return amount.times(4).div(52);
+    case 'HALF_YEARLY':
+      return amount.times(2).div(52);
     case 'ANNUALLY':
       return amount.div(52);
     default:
@@ -412,7 +418,7 @@ export function getPAYGSummary(
  */
 export function calculateGrossFromNetDecimal(
   netIncome: number | string | Decimal,
-  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+  frequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY',
   hasTaxFreeThreshold: boolean = true,
   config: TaxYearConfig = getCurrentTaxYearConfig(),
 ): { gross: Decimal; tax: Decimal; iterations: number } {
@@ -434,6 +440,8 @@ export function calculateGrossFromNetDecimal(
         return weekly.times(52).div(12);
       case 'QUARTERLY':
         return weekly.times(52).div(4);
+      case 'HALF_YEARLY':
+        return weekly.times(52).div(2);
       case 'ANNUALLY':
         return weekly.times(52);
     }

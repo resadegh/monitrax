@@ -259,6 +259,8 @@ export function toMonthly(amount: number, frequency: string): number {
       return amount * 26 / 12;
     case 'MONTHLY':
       return amount;
+    case 'HALF_YEARLY':
+      return amount / 6;
     case 'ANNUAL':
       return amount / 12;
     default:
@@ -277,6 +279,8 @@ export function toAnnual(amount: number, frequency: string): number {
       return amount * 26;
     case 'MONTHLY':
       return amount * 12;
+    case 'HALF_YEARLY':
+      return amount * 2;
     case 'ANNUAL':
       return amount;
     default:

@@ -258,7 +258,7 @@ category: "HOUSING" | "RATES" | "INSURANCE" | "MAINTENANCE" | "PERSONAL" | "UTIL
 customCategoryId?: string     // Reference to user-defined Category (takes precedence over category if set)
 sourceType: "GENERAL" | "PROPERTY" | "LOAN" | "INVESTMENT" | "ASSET"
 amount: number
-frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL"
+frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "ANNUAL"
 vendorName?: string
 isEssential: boolean          // Is this an essential expense? (default: true)
 isTaxDeductible: boolean      // Is this expense tax deductible? (default: false)
