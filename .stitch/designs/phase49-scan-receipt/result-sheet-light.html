@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "secondary-fixed-dim": "#cdc0e9",
+                    "inverse-surface": "#322f35",
+                    "on-secondary-fixed": "#1f1635",
+                    "background": "#fdf7ff",
+                    "on-surface-variant": "#494551",
+                    "secondary-fixed": "#e9ddff",
+                    "on-tertiary": "#ffffff",
+                    "on-tertiary-container": "#503d00",
+                    "surface-dim": "#ded8e0",
+                    "on-secondary-fixed-variant": "#4b4263",
+                    "surface-container-lowest": "#ffffff",
+                    "tertiary-fixed-dim": "#e7c365",
+                    "secondary": "#63597c",
+                    "inverse-on-surface": "#f5eff7",
+                    "on-secondary-container": "#645a7d",
+                    "on-tertiary-fixed-variant": "#594400",
+                    "surface-variant": "#e6e0e9",
+                    "on-error-container": "#93000a",
+                    "on-error": "#ffffff",
+                    "surface-bright": "#fdf7ff",
+                    "error-container": "#ffdad6",
+                    "primary-fixed": "#e9ddff",
+                    "surface-container": "#f2ecf4",
+                    "on-background": "#1d1b20",
+                    "on-secondary": "#ffffff",
+                    "tertiary": "#765b00",
+                    "primary": "#4f378a",
+                    "inverse-primary": "#cfbcff",
+                    "primary-fixed-dim": "#cfbcff",
+                    "tertiary-container": "#c9a74d",
+                    "surface-container-high": "#ece6ee",
+                    "on-primary": "#ffffff",
+                    "on-primary-container": "#e0d2ff",
+                    "surface-container-low": "#f8f2fa",
+                    "on-primary-fixed-variant": "#4f378a",
+                    "secondary-container": "#e1d4fd",
+                    "outline": "#7a7582",
+                    "surface": "#fdf7ff",
+                    "tertiary-fixed": "#ffdf93",
+                    "surface-tint": "#6750a4",
+                    "on-tertiary-fixed": "#241a00",
+                    "surface-container-highest": "#e6e0e9",
+                    "outline-variant": "#cbc4d2",
+                    "on-primary-fixed": "#22005d",
+                    "primary-container": "#6750a4",
+                    "error": "#ba1a1a",
+                    "on-surface": "#1d1b20"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-xs": "0.5rem",
+                    "gutter": "1.5rem",
+                    "stack-md": "1rem",
+                    "component-gap": "1rem",
+                    "section-padding": "3rem",
+                    "container-margin": "2rem"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "data-financial": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "body-lg": ["Inter"]
+            },
+            "fontSize": {
+                    "body-sm": ["14px", {"lineHeight": "1.5", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "data-financial": ["16px", {"lineHeight": "1", "fontWeight": "500"}],
+                    "display-lg": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                    "headline-md": ["24px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "display-lg-mobile": ["36px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                    "body-lg": ["16px", {"lineHeight": "1.6", "letterSpacing": "-0.01em", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .sky-indigo-bg {
+            background: linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%);
+        }
+        .glass-sheet {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(40px);
+            border-top: 1px solid transparent;
+            border-image: linear-gradient(to right, #0ea5e9, #4f46e5) 1;
+            box-shadow: 0 -10px 40px rgba(30, 41, 59, 0.1);
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 1.25rem;
+        }
+        .receipt-shadow {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-end">
+<!-- Mock Dashboard Background (Dimmed) -->
+<div class="fixed inset-0 z-0 bg-[#FAFAF7] p-gutter opacity-40 pointer-events-none">
+<div class="flex justify-between items-center mb-8">
+<div class="w-10 h-10 rounded-full bg-slate-200"></div>
+<div class="w-10 h-10 rounded-full bg-slate-200"></div>
+</div>
+<div class="space-y-6">
+<div class="h-40 w-full rounded-2xl bg-white/50 border border-slate-200"></div>
+<div class="h-64 w-full rounded-2xl bg-white/50 border border-slate-200"></div>
+</div>
+</div>
+<!-- Scrim Overlay -->
+<div class="fixed inset-0 z-10 bg-on-background/10 backdrop-blur-sm"></div>
+<!-- Bottom Sheet Container -->
+<div class="relative z-20 w-full max-w-lg mx-auto glass-sheet rounded-t-[28px] overflow-hidden flex flex-col transform transition-transform duration-500 ease-out translate-y-0" id="bottomSheet">
+<!-- Grabber Handle -->
+<div class="w-full flex justify-center pt-3 pb-2">
+<div class="w-10 h-1 w-10 bg-slate-300 rounded-full"></div>
+</div>
+<!-- Header Section -->
+<div class="px-gutter py-4 flex justify-between items-center">
+<h2 class="font-label-caps text-label-caps sky-indigo-gradient tracking-[0.15em] uppercase">WE FOUND THIS</h2>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+<span class="material-symbols-outlined text-emerald-600 !text-[14px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-caps text-[10px] text-emerald-700 uppercase tracking-wider font-bold">High confidence</span>
+</div>
+</div>
+<!-- Main Content Area -->
+<div class="px-gutter overflow-y-auto max-h-[75vh] pb-safe">
+<!-- Receipt Thumbnail & Title -->
+<div class="flex items-center gap-5 mt-2 mb-6">
+<div class="relative w-16 h-16 transform -rotate-6 transition-transform hover:rotate-0 duration-300">
+<img alt="Receipt Thumbnail" class="w-full h-full object-cover rounded-2xl receipt-shadow border border-white/50" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCpjGOyc6FLJY9peqDaD_rwEdFNVUo5WEdSSY4Zjfd4Sd-89MQ7Cx9DICEgFzNnO3USh3ySaynTdCLLHjfirSE2eGssCQatyeC4Lf8mGkvm-uoqvGHVOM_9YPCv374gjtDz5apGpxG_AMOwykBMcm6_Al_gsFgodZbnUT9xATKEycvq9irvUeP2wfYXOB-Mb4dBDSr4D6lMJV7f-X-I9EfSUkIVgQT5spOXcuXR00u9n3myLH8pANq5mZIWGvb2WQRBnbcbEfFSQ-Y"/>
+</div>
+<div class="flex-1">
+<h1 class="font-headline-md text-headline-md text-slate-900 leading-tight">Woolworths Metro</h1>
+<p class="font-body-sm text-body-sm text-slate-500">Receipt · 14 Jun 2026</p>
+</div>
+</div>
+<!-- Detail Panel -->
+<div class="bg-sky-50/30 rounded-[14px] border border-sky-100/50 p-5 space-y-4 mb-4">
+<!-- Amount Row -->
+<div class="flex justify-between items-end pb-3 border-b border-slate-100/50">
+<div class="space-y-0.5">
+<p class="font-label-caps text-[11px] text-slate-400 uppercase">Amount</p>
+<p class="font-display-lg-mobile text-display-lg-mobile sky-indigo-gradient tabular-nums">$42.80</p>
+</div>
+<span class="material-symbols-outlined text-emerald-500 mb-2" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<!-- Internal Rows Grid -->
+<div class="space-y-3.5 pt-1">
+<!-- GST -->
+<div class="flex justify-between items-center group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-slate-500">GST (included)</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-financial text-slate-900 tabular-nums">$3.89</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+<!-- Date -->
+<div class="flex justify-between items-center group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-slate-500">Date</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-data-financial text-slate-900 tabular-nums">14/06/2026</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+<!-- Category -->
+<div class="flex justify-between items-center group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-slate-500">Category</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 border border-amber-500/20 rounded-full">
+<span class="material-symbols-outlined text-amber-600 !text-[14px]">edit</span>
+<span class="font-label-caps text-[11px] text-amber-700">Groceries</span>
+</div>
+<div class="w-2 h-2 rounded-full bg-amber-500"></div>
+</div>
+</div>
+<!-- Paid From -->
+<div class="flex justify-between items-center group cursor-pointer">
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-slate-500">Paid from</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-body-sm text-slate-700">Everyday account</span>
+<div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Interaction Prompt -->
+<div class="flex flex-col items-center gap-1 mb-8 opacity-60">
+<p class="font-body-sm text-[13px] text-slate-500">Tap any field to edit</p>
+<span class="material-symbols-outlined text-slate-400 !text-[16px]">edit</span>
+</div>
+<!-- Action Buttons -->
+<div class="space-y-3 mb-6">
+<button class="w-full h-14 sky-indigo-bg text-white rounded-2xl flex items-center justify-center gap-2 font-headline-md text-[18px] shadow-lg shadow-indigo-500/20 active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined !text-[20px]">add</span>
+                    Add expense
+                </button>
+<button class="w-full h-14 bg-white/60 backdrop-blur-md border border-slate-200 text-slate-900 rounded-2xl flex items-center justify-center gap-2 font-body-lg font-semibold active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined !text-[20px]">archive</span>
+                    Save to Vault for later
+                </button>
+</div>
+<!-- Footer -->
+<div class="flex flex-col items-center gap-3 pb-8">
+<div class="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full">
+<span class="material-symbols-outlined text-indigo-500 !text-[14px]" style="font-variation-settings: 'FILL' 1;">temp_preferences_custom</span>
+<span class="font-label-caps text-[9px] text-slate-600 tracking-wider">POWERED BY GEMINI AI</span>
+</div>
+<p class="font-body-sm text-[12px] text-slate-500 text-center px-8">
+                    Nothing is saved until you tap <span class="font-semibold text-slate-700">Add expense</span>.
+                </p>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.getElementById('bottomSheet');
+            
+            // Subtle entrance animation
+            sheet.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                sheet.style.transform = 'translateY(0)';
+            }, 100);
+
+            // Add haptic-like scale effect to all buttons
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => {
+                btn.addEventListener('touchstart', () => {
+                    btn.classList.add('scale-95');
+                });
+                btn.addEventListener('touchend', () => {
+                    btn.classList.remove('scale-95');
+                });
+            });
+        });
+    </script>
+</body></html>

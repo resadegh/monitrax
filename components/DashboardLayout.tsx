@@ -25,6 +25,7 @@ import {
 // triggered from the editorial bottom nav's "More" cell.
 import { SectionTabsRow } from '@/components/shell/SectionTabsRow';
 import { MoreSheet } from '@/components/shell/MoreSheet';
+import { GlobalScanReceipt } from '@/components/documents/GlobalScanReceipt';
 import { ConsentMigrationModal } from '@/components/auth/ConsentMigrationModal';
 import { VerifyEmailBanner } from '@/components/auth/VerifyEmailBanner';
 // Phase R2b (2026-05-27) — Restrained Editorial shell. The sidebar +
@@ -435,6 +436,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <FeedbackButton />
         </div>
       )}
+
+      {/* Phase 49 — global mobile "Scan a receipt" quick-capture (camera FAB +
+          AI recognition sheet). Mobile-only; hidden during onboarding so it
+          doesn't overlap the wizard. Rides the canonical document-intelligence
+          pipeline (upload → analyze → confirm). */}
+      {!showWelcomeModal && !showWizard && <GlobalScanReceipt />}
 
       {/* Universal Search modal — wired to the editorial TopBar search
           pill via `setSearchOpen`. */}

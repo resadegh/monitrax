@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 1.25rem;
+        }
+        .bg-sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+        .text-sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-border-top {
+            border-top: 1px solid rgba(14, 165, 233, 0.2);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        @keyframes subtle-float {
+            0%, 100% { transform: translateY(0px) rotate(-3deg); }
+            50% { transform: translateY(-4px) rotate(-1deg); }
+        }
+        .float-receipt {
+            animation: subtle-float 6s ease-in-out infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "background": "#050913",
+                        "surface": "#0E1424",
+                        "primary": "#62df7d",
+                        "secondary": "#4de082",
+                        "on-background": "#dde5d9",
+                        "on-surface": "#dde5d9",
+                        "on-surface-variant": "#bdcaba",
+                        "outline-variant": "rgba(255, 255, 255, 0.08)",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "sheet": "28px",
+                        "panel": "14px",
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "label-caps": ["Inter"],
+                    }
+                }
+            }
+        };
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md overflow-hidden antialiased">
+<!-- Dashboard Background (Dimmed) -->
+<main class="relative min-h-screen w-full flex flex-col p-6 opacity-30 grayscale-[0.2]">
+<!-- Top App Bar Mock -->
+<header class="flex justify-between items-center mb-8">
+<div class="h-10 w-10 rounded-full bg-surface-container-high border border-outline-variant"></div>
+<div class="font-headline-md text-headline-md font-bold">Cashflow</div>
+<span class="material-symbols-outlined">menu</span>
+</header>
+<!-- Bento Grid Mock Content -->
+<div class="grid grid-cols-2 gap-4">
+<div class="col-span-2 h-48 rounded-lg bg-surface-container border border-outline-variant p-4">
+<div class="h-4 w-24 bg-white/10 rounded mb-4"></div>
+<div class="h-8 w-48 bg-white/20 rounded"></div>
+</div>
+<div class="h-32 rounded-lg bg-surface-container border border-outline-variant"></div>
+<div class="h-32 rounded-lg bg-surface-container border border-outline-variant"></div>
+</div>
+</main>
+<!-- Overlay / Backdrop -->
+<div class="fixed inset-0 bg-black/60 z-40 backdrop-blur-sm"></div>
+<!-- Bottom Sheet Result State -->
+<div class="fixed bottom-0 left-0 right-0 z-50 bg-surface/70 backdrop-blur-[40px] rounded-t-sheet glass-border-top max-w-md mx-auto shadow-2xl transition-transform duration-500 ease-out translate-y-0">
+<!-- Grabber Handle -->
+<div class="flex justify-center pt-3 pb-6">
+<div class="w-10 h-1 rounded-full bg-white/20"></div>
+</div>
+<div class="px-6 pb-8 space-y-6">
+<!-- Header Row -->
+<div class="flex justify-between items-center">
+<span class="text-sky-indigo-gradient font-label-caps text-label-caps tracking-[0.2em] uppercase">We Found This</span>
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+<span class="material-symbols-outlined text-[14px] text-emerald-500" data-weight="fill">check_circle</span>
+<span class="text-[11px] font-bold text-emerald-500 uppercase tracking-tight">High confidence</span>
+</div>
+</div>
+<!-- Title Block & Receipt Thumbnail -->
+<div class="flex items-center gap-5">
+<div class="relative w-16 h-20 bg-white/5 rounded-panel border border-white/10 overflow-hidden flex-shrink-0 float-receipt shadow-xl">
+<img alt="Thumbnail" class="w-full h-full object-cover opacity-40 mix-blend-overlay" data-alt="A close-up, high-fidelity digital rendering of a paper grocery receipt lying on a dark, textured slate surface. The receipt is slightly crumpled with crisp, legible black thermal ink printing. The lighting is cinematic with a focused cool-blue spotlight from the side, creating soft shadows and emphasizing the tactile paper texture. The overall aesthetic is premium and ultra-detailed, consistent with high-end financial app visual assets." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCo5xE76cvuSO2tleGJaT2x94z4NBPIPg9rmzvFlx_1_5ZdZKsge5bAHir7JOcyiizIFfIE2Ag0p-bfILn6kcB209JJlFuUi5FZPUgndxWDQNsmmg8TiI4JpZL0qymsekKAItZrR-p2CAPKE7aauOgednh_PTqDnwotf08dIVGYVQtIJkcZq_QktPbEtg06bKA7EW628BReoZKAr5dfder0HzgRxu1akEroLEi0uUzou1jxXBhbYyzJv19a8WmwYDuEtZvBVV6TWsc"/>
+<div class="absolute inset-0 bg-gradient-to-t from-surface/80 to-transparent"></div>
+</div>
+<div class="flex flex-col">
+<h1 class="font-headline-md text-headline-md font-bold tracking-tight text-white">Woolworths Metro</h1>
+<p class="text-on-surface-variant font-body-sm text-body-sm">Receipt · 14 Jun 2026</p>
+</div>
+</div>
+<!-- Detail Panel -->
+<div class="bg-black/20 rounded-panel border border-white/5 p-5 space-y-4">
+<!-- Amount -->
+<div class="flex justify-between items-end">
+<span class="text-on-surface-variant text-body-sm">Amount</span>
+<div class="flex items-center gap-2">
+<span class="text-sky-indigo-gradient font-bold text-[32px] leading-none tabular-nums">$42.80</span>
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_#10b981]"></div>
+</div>
+</div>
+<div class="h-px bg-white/5"></div>
+<!-- Secondary Details Grid -->
+<div class="grid grid-cols-1 gap-3.5">
+<!-- GST -->
+<div class="flex justify-between items-center group cursor-pointer">
+<span class="text-on-surface-variant text-body-sm">GST (included)</span>
+<div class="flex items-center gap-2">
+<span class="text-white font-body-md">$3.89</span>
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+<!-- Date -->
+<div class="flex justify-between items-center group cursor-pointer">
+<span class="text-on-surface-variant text-body-sm">Date</span>
+<div class="flex items-center gap-2">
+<span class="text-white font-body-md">14/06/2026</span>
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+<!-- Category -->
+<div class="flex justify-between items-center group cursor-pointer">
+<span class="text-on-surface-variant text-body-sm">Category</span>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-white text-body-sm">
+<span class="material-symbols-outlined text-[16px]">edit</span>
+<span>Groceries</span>
+</div>
+<div class="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_#f59e0b]"></div>
+</div>
+</div>
+<!-- Account -->
+<div class="flex justify-between items-center group cursor-pointer">
+<span class="text-on-surface-variant text-body-sm">Paid from</span>
+<div class="flex items-center gap-2">
+<span class="text-white font-body-md">Everyday account</span>
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Edit Hint -->
+<div class="flex items-center justify-center gap-1.5 text-on-surface-variant/60 text-body-sm">
+<span class="material-symbols-outlined text-[14px]">edit_square</span>
+<span>Tap any field to edit</span>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-3">
+<button class="h-[56px] w-full bg-sky-indigo-gradient rounded-panel flex items-center justify-center gap-2 shadow-lg shadow-sky-500/10 active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-white">add</span>
+<span class="text-white font-bold text-body-lg">Add expense</span>
+</button>
+<button class="h-[56px] w-full bg-white/5 rounded-panel flex items-center justify-center gap-2 border border-white/10 active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-on-surface-variant">archive</span>
+<span class="text-on-surface-variant font-semibold text-body-lg">Save to Vault for later</span>
+</button>
+</div>
+<!-- Footer -->
+<footer class="flex flex-col items-center gap-3">
+<div class="px-3 py-1 rounded-full bg-white/5 border border-white/5 flex items-center gap-1.5">
+<span class="text-[10px] font-semibold text-on-surface-variant/40 tracking-wider uppercase">Powered by Gemini AI</span>
+</div>
+<p class="text-[11px] text-on-surface-variant/40 text-center leading-relaxed">
+                    Nothing is saved until you tap Add expense.
+                </p>
+</footer>
+</div>
+</div>
+<!-- Navigation Shell Placeholder (Mobile Only - Hidden in this specific view but following instructions) -->
+<nav class="md:hidden">
+<!-- BottomNavBar component is logically suppressed as this is a focused Task-Focused state -->
+</nav>
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', () => {
+                btn.style.transform = 'scale(0.96)';
+            });
+            btn.addEventListener('touchend', () => {
+                btn.style.transform = 'scale(1)';
+            });
+        });
+    </script>
+</body></html>
