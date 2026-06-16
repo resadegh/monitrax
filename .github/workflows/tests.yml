@@ -83,7 +83,12 @@ jobs:
           npx prisma generate
           npx prisma db push --skip-generate
       - name: Seed archetypes into Postgres (idempotent)
-        run: npm run seed:lighthouse
+        # Invoke ts-node with explicit CommonJS compiler options (matching the
+        # repo's other seeds) — the `seed:lighthouse` npm script uses plain
+        # `npx ts-node`, which fails under Node 20 with ERR_UNKNOWN_FILE_EXTENSION
+        # (.ts via the ESM loader). Forcing commonjs avoids it.
+        run: |
+          npx ts-node --compiler-options '{"module":"commonjs","moduleResolution":"node"}' prisma/seed-lighthouse.ts
       - name: Install Playwright + firebase-tools (kept out of package.json so `npm ci` stays lockstep)
         run: |
           npm i -D @playwright/test@^1.49.0 --no-save
