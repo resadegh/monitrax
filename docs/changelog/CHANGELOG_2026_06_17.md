@@ -217,3 +217,24 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: doc-ai-autorename-shk180
+
+### Changes Made
+- **Type**: Feature
+- **Scope**: Per-item Documents — auto-rename on AI recognition
+- **Description**: Reza feedback (recognition now works): the uploaded file kept its
+  camera name ("IMG_6615.JPG"). On a successful `analyzeOnUpload` recognition,
+  `DocumentsSection` now auto-renames the document to a meaningful AI-derived name
+  — `"{vendor} - {date}.{ext}"` (e.g. "QBE Insurance - 2026-06-18.jpg"), falling
+  back to the document type when no vendor. Uses the existing `PATCH
+  /api/documents/[id]` `rename` action; best-effort (a rename failure never breaks
+  the upload). Helps the Vault file-storage structure organise by what the
+  document IS.
+
+### Files Modified
+- `components/documents/DocumentsSection.tsx` — `buildSuggestedName` + `prettyType` helpers; auto-rename after recognition; header note
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
