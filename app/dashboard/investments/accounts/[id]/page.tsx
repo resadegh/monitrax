@@ -490,6 +490,7 @@ export default function InvestmentAccountDetailPage() {
               entityType={LinkedEntityType.INVESTMENT_ACCOUNT}
               entityId={account.id}
               entityLabel={account.name}
+              analyzeOnUpload
             />
           </div>
 

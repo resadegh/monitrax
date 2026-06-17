@@ -215,16 +215,28 @@ export const POST = withPermission('expense.write', async (request, auth) => {
       // Dedup for receipt-driven creates (DocumentsSection "Add as expense"):
       // uploading several photos of the SAME receipt and adding each would
       // otherwise pile up duplicate expenses. When the caller opts in with
-      // `dedupeOnAsset` and there's an asset, return any existing expense with
-      // the same asset + amount + vendor/name instead of creating a duplicate.
-      // SSOT — the guard lives in the canonical API so no caller can bypass it;
-      // manual expense entry omits the flag and is unaffected.
-      if (body.dedupeOnAsset && assetId) {
+      // `dedupeReceipt` and the expense is tied to an entity (asset / property /
+      // loan / investment account), return any existing expense with the same
+      // entity + amount + vendor/name instead of creating a duplicate. SSOT —
+      // the guard lives in the canonical API so no caller can bypass it; manual
+      // expense entry omits the flag and is unaffected.
+      // `dedupeOnAsset` is accepted as a back-compat alias for the flag.
+      const dedupeRequested = body.dedupeReceipt || body.dedupeOnAsset;
+      const dedupeLink = assetId
+        ? { assetId }
+        : propertyId
+          ? { propertyId }
+          : loanId
+            ? { loanId }
+            : investmentAccountId
+              ? { investmentAccountId }
+              : null;
+      if (dedupeRequested && dedupeLink) {
         const matchName: string = vendorName || name;
         const existing = await prisma.expense.findFirst({
           where: {
             userId: auth.userId,
-            assetId,
+            ...dedupeLink,
             amount: parseFloat(amount),
             OR: [{ vendorName: matchName }, { name: matchName }],
           },
@@ -240,7 +252,7 @@ export const POST = withPermission('expense.write', async (request, auth) => {
         });
         if (existing) {
           // Already have this expense — hand it back so the client can say
-          // "already added" rather than creating a third QBE Insurance row.
+          // "already added" rather than creating a duplicate row.
           return NextResponse.json({ ...existing, duplicate: true }, { status: 200 });
         }
       }

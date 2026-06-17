@@ -509,6 +509,7 @@ export default function PropertyDetailPage() {
               entityType={LinkedEntityType.PROPERTY}
               entityId={property.id}
               entityLabel={property.name}
+              analyzeOnUpload
             />
           </div>
 

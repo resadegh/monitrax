@@ -143,8 +143,62 @@ first-class outcome alongside **create**, always with user confirmation.
   item's folder via the new `asset_path` rule; bypasses the AI path so it works while Vision is down).
   **Pulled forward from Phase C** after Reza flagged the gap (upload was missing on every wealth item).
   **Super deferred** — needs a `SUPER` `LinkedEntityType` + migration. Full light/mobile Stitch variants to backfill.
+- [x] **AI recognition on the per-item upload (`analyzeOnUpload`)** — runs OCR on upload, surfaces the
+  recognised vendor/amount/date inline, **auto-renames** the file to a meaningful name ("QBE Insurance -
+  2026-06-18.jpg"), and offers a one-tap **"Add as expense"** with **server-side dedup** (`dedupeReceipt`
+  — same entity+amount+vendor returns the existing expense, never a duplicate) + a **doc↔expense link**.
+  **Propagated to Assets, Properties, and Investment accounts** (2026-06-17). For investments the expense
+  action is hidden (no asset/property-style expense), but OCR + auto-rename still apply. Per-expense
+  **delete** added on the Assets Expenses tab; Properties/Investments don't yet render a per-expense list
+  on their detail pages (those expenses live in `/dashboard/expenses`) — list parity is a follow-up.
 - [ ] **Tax-pack export** + ATO 5-year retention.
 - [ ] Renewal-date tie-in (insurance/rego docs surface their renewal).
+
+---
+
+## Phase D — AI-powered Document Management Engine (DME 2.0 · "smarts layer")
+
+> **Driver (Reza, 2026-06-17):** *"There should be some level of ai and smarts for documents management engine to avoid such issues … maybe it's a good time to think and build it based on the app requirements."* Surfaced after duplicate expenses piled up from re-uploading the same receipt. The point is broader than dedup: the engine should **reason about documents**, not just route bytes.
+
+### D.0 What we already have (don't rebuild)
+
+| Layer | Today | File |
+|---|---|---|
+| **DME** (management) | Upload routing, storage-provider abstraction, per-entity `DocumentLink` creation with cascade, category assignment, deterministic path/folder rules, tag generation, quota | `lib/documents/engine/*` |
+| **DIE** (intelligence) | OCR (Vision, REST transport), document-type classification (keyword/regex/label + filename hint), pattern extraction (receipt/invoice) + AI extraction (Gemini), confidence + low-confidence flags, type-specific **suggested actions** (`CREATE_EXPENSE`, `CREATE_LOAN`, `SET_REMINDER`, …) | `lib/documents/intelligence/*` |
+| **Router (Phase 50)** | analyze→confirm pipeline, per-item Documents upload (`analyzeOnUpload`), auto-rename from recognition, receipt→expense with **server-side dedup** | `app/api/documents/*`, `components/documents/*`, `app/api/expenses` |
+
+**The gap is not OCR or extraction — it's _judgement_.** Neither engine asks: *"have I seen this document before? does this duplicate an existing record? am I confident enough to act, or should I ask? where does this truly belong?"* That judgement layer is DME 2.0.
+
+### D.1 The five intelligence capabilities (in priority order)
+
+1. **Duplicate detection (document-level).** Before storing, hash the file (SHA-256 of bytes) + compute a content fingerprint (vendor+amount+date from OCR). On a match, **don't create a second Document** — surface "you already uploaded this (filed under X on <date>)" and offer to link the existing one. *Today only the downstream `expense` is de-duped (Phase 50, this session); the document itself still stores twice.* SSOT: the hash check belongs in the DME `processUpload` chokepoint so every path (scan, per-item, drag-drop) inherits it.
+2. **Record reconciliation (cross-entity dedup).** Extend the receipt→expense dedup (shipped) into a general rule: a recognised document proposing a `CREATE_*` action checks for an existing matching record (expense / loan / income) on the target entity first. One canonical `reconcileSuggestedAction()` the confirm flow calls.
+3. **Confidence-gated autonomy.** Each suggested action carries a confidence. Define thresholds: **≥0.9 auto-apply** (with an undo toast), **0.7–0.9 one-tap confirm** (today's behaviour), **<0.7 ask / show the fields for edit**. Stage-matched to the user's TRAIL stage (don't auto-create for a Track-stage user still building trust). Behaviour-psychology lens: autonomy is earned, never assumed; every auto-action is reversible.
+4. **Smart routing + foldering.** The path rules are deterministic today; make them *learned*: if the user repeatedly files "NRMA" docs under the Landcruiser, infer the entity for the next NRMA doc. Start rules-based (vendor→entity map from existing links), add ML later only if it earns its keep (§12.7 — prefer the simple table over a model).
+5. **Lifecycle intelligence.** Renewal/expiry extraction (rego, insurance, lease end) → feed the reminder engine. Retention-clock awareness (ATO 5yr) → flag documents safe to archive. Stale-duplicate cleanup suggestions.
+
+### D.2 Architecture (where each piece lives — SSOT)
+
+- **Dedup + fingerprint:** new `lib/documents/engine/dedup/` (hash + fingerprint), called from `DocumentManagementEngine.processUpload()` **before** the storage write. Returns `{ duplicateOf?: documentId }`.
+- **Reconciliation:** `lib/documents/intelligence/reconcile/` — pure functions taking a suggested action + the user's existing records, returning `create | link-existing | ask`. No DB writes (engines stay pure, §6.4); the confirm route applies the verdict.
+- **Confidence policy:** a single `lib/documents/intelligence/confidencePolicy.ts` (thresholds + TRAIL-stage modifiers) — the ONE place the autonomy thresholds live, so they're tunable and testable.
+- **Routing memory:** a `VendorEntityHint` table (vendor → most-linked entity), updated on every confirmed link; read by `LinkingRules`. Migration required (§12.12).
+- **No new endpoint** — these slot into the existing upload/analyze/confirm routes (§12.4 API hygiene).
+
+### D.3 Phased build (each shippable, each behind the existing flow)
+
+| Step | Scope | Risk |
+|---|---|---|
+| **D.1** | Document-level dedup (hash + fingerprint) in `processUpload` — the direct answer to Reza's report | Low — read-before-write guard |
+| **D.2** | Generalise the receipt→expense dedup into `reconcileSuggestedAction()` (covers loan/income too) | Low — extends shipped logic |
+| **D.3** | `confidencePolicy.ts` + wire the analyze/confirm flow to it (auto / confirm / ask bands) | Medium — UX + tests |
+| **D.4** | `VendorEntityHint` learned routing (migration + LinkingRules read) | Medium — schema + heuristic |
+| **D.5** | Lifecycle (renewal extraction → reminders, retention clock) | Medium — ties to reminder engine |
+
+### D.4 Decision needed from Reza
+
+This is a multi-PR engine, not a one-shot. **Recommended start: D.1 (document-level dedup) next** — it's the smallest, highest-leverage piece and directly closes the "same receipt twice" class of problem at the source (not just the expense). D.2–D.5 sequence after. Awaiting go-ahead on the order, or a re-prioritisation.
 
 ---
 
