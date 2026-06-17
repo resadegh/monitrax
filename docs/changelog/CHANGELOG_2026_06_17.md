@@ -168,3 +168,27 @@
   bundle (pending PWA "Relaunch to update") OR used the expense-row paperclip
   (files-only). Server fix (analyzeOnUpload → analyze=true, DIE uses REST Vision)
   is correct + live. Resolution: relaunch the app, use Documents tab → Upload.
+
+## Session: asset-detail-overflow-fix-shk180
+
+### Changes Made
+- **Type**: Fix (mobile layout)
+- **Scope**: Asset detail + edit dialogs — horizontal overflow on mobile
+- **Root Cause**: The shadcn `DialogContent` is `display:grid`; its grid-item children
+  (the KPI grid, the Tabs) carry the default `min-width:auto`, which let them push the
+  dialog wider than the phone viewport — so the right KPI column + tabs ran off-screen
+  even after the #1138 redesign (the polished tiles rendered, proving the bundle was
+  fresh; the overflow was a real layout bug, not a cache issue — there is no service
+  worker in the app).
+- **Solution**: On both the detail dialog and the edit dialog, set an explicit
+  `w-[calc(100vw-1rem)]` (tailwind-merge overrides the base width) + `overflow-x-hidden`
+  + `[&>*]:min-w-0` (every direct grid child may shrink, so none can force the dialog
+  wide). Also fixed the edit form's vehicle-details row from `grid-cols-3` →
+  `grid-cols-1 sm:grid-cols-3` (3 cramped columns on mobile).
+
+### Files Modified
+- `app/dashboard/assets/page.tsx` — detail + edit DialogContent width/min-w guards; vehicle-details grid responsive
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
