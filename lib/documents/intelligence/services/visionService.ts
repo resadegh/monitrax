@@ -1,11 +1,19 @@
 /**
  * Phase 26: Google Cloud Vision API Integration
  *
- * Uses the same GCS service account credentials for Vision API access.
+ * Auth order (Phase 50, keyless): the Vision API authenticates with **keyless
+ * Workload Identity Federation** (the same `vercel-monitrax-db` identity the DB
+ * and keyless GCS use) when available, falling back to a service-account key,
+ * then ADC. Keyless is PREFERRED because the legacy `monitrax-backend` key was
+ * proven unable to reach the Vision API (enabled, but zero traffic). The
+ * impersonated SA must have permission to consume the Vision API
+ * (roles/serviceusage.serviceUsageConsumer on the project).
+ *
  * Provides OCR (text detection) and document type detection.
  */
 
 import { ImageAnnotatorClient } from '@google-cloud/vision';
+import { buildGcpWifAuthClient, isGcpWifConfigured } from '@/lib/gcp/wifAuthClient';
 
 // ============================================================================
 // Types
@@ -73,20 +81,29 @@ class VisionService {
         throw new Error('GCS_PROJECT_ID environment variable is not set');
       }
 
-      if (serviceAccountKey) {
-        // Parse base64-encoded service account key (same as GCS)
+      // Prefer keyless Workload Identity Federation (the monitrax-backend key
+      // proved unable to reach the Vision API). Cast: the AuthClient comes from
+      // a different copy of google-auth-library than the one @google-cloud/vision
+      // bundles — structurally the same client, distinct TS declarations.
+      const wifClient = await buildGcpWifAuthClient();
+      if (wifClient) {
+        console.log('[Vision] Using keyless Workload Identity Federation auth');
+        this.client = new ImageAnnotatorClient({
+          projectId,
+          authClient: wifClient,
+        } as unknown as ConstructorParameters<typeof ImageAnnotatorClient>[0]);
+      } else if (serviceAccountKey) {
+        // Legacy: a base64-encoded service-account key.
         const credentials = JSON.parse(
           Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
         );
-
         console.log('[Vision] Using service account:', credentials.client_email);
-
         this.client = new ImageAnnotatorClient({
           projectId,
           credentials,
         });
       } else {
-        // Fall back to default credentials
+        // Local dev / ADC.
         console.log('[Vision] Using default credentials');
         this.client = new ImageAnnotatorClient({
           projectId,
@@ -107,7 +124,9 @@ class VisionService {
   isAvailable(): boolean {
     const projectId = process.env.GCS_PROJECT_ID;
     const serviceAccountKey = process.env.GCS_SERVICE_ACCOUNT_KEY;
-    return !!(projectId && serviceAccountKey);
+    // Available with a project + EITHER a key OR keyless WIF (so removing the
+    // key for the keyless cutover doesn't disable OCR).
+    return !!(projectId && (serviceAccountKey || isGcpWifConfigured()));
   }
 
   /**
