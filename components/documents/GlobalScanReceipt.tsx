@@ -31,7 +31,16 @@
  *                    dark  `cbd9e77e175c4359a7d053dbdd3a5bc1`
  *   - result sheet   light `87ec42b8ba2f40ccbac4eb2c12d81eb6`
  *                    dark  `f5a5e9a4068440df868464efca8e7332`
+ *   - result + "What is this for?" selector band (asset/property attribution):
+ *                    `20c36c03c45c41ceaa6e3d070c40ba60`
+ *                    (§18.2.1 backfill — artefact `.stitch/designs/scan-link-asset/`)
  *   Artefacts: `.stitch/designs/phase49-scan-receipt/`.
+ *
+ * "What is this for?" (2026-06-17): the result screen lets the user attach the
+ * scanned receipt to one of their assets/properties. On confirm it (a) creates
+ * the expense with the chosen assetId/propertyId and (b) links the saved
+ * document to that entity via POST /api/documents/[id]/link, so both file under
+ * the item instead of generic Expenses. Default stays "Just an expense".
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -48,6 +57,8 @@ import {
   ArchiveRestore,
   Plus,
   Receipt,
+  Car,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
@@ -67,6 +78,13 @@ interface Recognition {
   // Flattened {field: value} for the preview + the expense payload.
   values: Record<string, unknown>;
   overallConfidence: number;
+}
+
+/** An asset or property the scanned receipt can be attached to. */
+interface LinkTarget {
+  type: 'ASSET' | 'PROPERTY';
+  id: string;
+  name: string;
 }
 
 const SUPPORTED_MIME = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'];
@@ -108,6 +126,10 @@ export function GlobalScanReceipt() {
   const [savedDocId, setSavedDocId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // "What is this for?" — link the receipt (expense + document) to an asset or
+  // property so it files under that item instead of generic Expenses.
+  const [linkTargets, setLinkTargets] = useState<LinkTarget[]>([]);
+  const [selectedTarget, setSelectedTarget] = useState<LinkTarget | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,12 +156,50 @@ export function GlobalScanReceipt() {
     };
   }, [open]);
 
+  // Load the user's assets + properties once the sheet opens, so the result
+  // screen can offer "What is this for?". Non-fatal: if it fails, the selector
+  // simply shows only "Just an expense" (today's behaviour).
+  useEffect(() => {
+    if (!open || !token) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/documents/entities', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          assets?: { id: string; name: string }[];
+          properties?: { id: string; name: string }[];
+        };
+        if (!active) return;
+        const assets: LinkTarget[] = (data.assets ?? []).map((a) => ({
+          type: 'ASSET',
+          id: a.id,
+          name: a.name,
+        }));
+        const properties: LinkTarget[] = (data.properties ?? []).map((p) => ({
+          type: 'PROPERTY',
+          id: p.id,
+          name: p.name,
+        }));
+        setLinkTargets([...assets, ...properties]);
+      } catch {
+        /* non-fatal — the selector falls back to "Just an expense" only */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [open, token]);
+
   const reset = useCallback(() => {
     setStage('capture');
     setRecognition(null);
     setSavedDocId(null);
     setErrorMsg(null);
     setSubmitting(false);
+    setSelectedTarget(null);
   }, []);
 
   const close = useCallback(() => {
@@ -276,6 +336,10 @@ export function GlobalScanReceipt() {
           category: typeof v.category === 'string' ? v.category : 'OTHER',
           isTaxDeductible: v.taxDeductible === true,
           sourceType: 'GENERAL',
+          // Attach the expense to the chosen asset/property (the API accepts
+          // assetId/propertyId and validates ownership).
+          ...(selectedTarget?.type === 'ASSET' ? { assetId: selectedTarget.id } : {}),
+          ...(selectedTarget?.type === 'PROPERTY' ? { propertyId: selectedTarget.id } : {}),
         }),
       });
       const json = await res.json();
@@ -284,6 +348,22 @@ export function GlobalScanReceipt() {
         setStage('error');
         return;
       }
+
+      // File the scanned document under the chosen asset/property too, so it
+      // lands in that item's Vault folder rather than generic Expenses.
+      // Best-effort: the expense already saved, so a link failure shouldn't
+      // block the success state (the doc is still safe in the Vault).
+      if (selectedTarget && savedDocId) {
+        try {
+          await fetch(`/api/documents/${savedDocId}/link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ entityType: selectedTarget.type, entityId: selectedTarget.id }),
+          });
+        } catch {
+          /* non-fatal — expense is linked; the doc just stays in its folder */
+        }
+      }
       setStage('success');
     } catch {
       setErrorMsg('Something went wrong. Your receipt is safe in your Vault.');
@@ -291,7 +371,7 @@ export function GlobalScanReceipt() {
     } finally {
       setSubmitting(false);
     }
-  }, [recognition, preview, token]);
+  }, [recognition, preview, token, selectedTarget, savedDocId]);
 
   const goToVault = useCallback(() => {
     close();
@@ -492,6 +572,39 @@ export function GlobalScanReceipt() {
                   )}
                 </dl>
 
+                {/* What is this for? — link the receipt to an asset/property so
+                    both the expense and the document file under that item. */}
+                {linkTargets.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-[12px] font-medium text-muted-foreground">
+                      What is this for?
+                    </p>
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <TargetPill
+                        active={selectedTarget === null}
+                        onClick={() => setSelectedTarget(null)}
+                        icon={<Receipt className="h-3.5 w-3.5" />}
+                        label="Just an expense"
+                      />
+                      {linkTargets.map((t) => (
+                        <TargetPill
+                          key={`${t.type}-${t.id}`}
+                          active={selectedTarget?.type === t.type && selectedTarget?.id === t.id}
+                          onClick={() => setSelectedTarget(t)}
+                          icon={
+                            t.type === 'ASSET' ? (
+                              <Car className="h-3.5 w-3.5" />
+                            ) : (
+                              <Building2 className="h-3.5 w-3.5" />
+                            )
+                          }
+                          label={t.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-4 space-y-2.5">
                   <button
                     type="button"
@@ -607,6 +720,37 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
       <dt className="text-[13px] text-muted-foreground">{label}</dt>
       <dd className="text-[14px] font-medium text-foreground">{children}</dd>
     </div>
+  );
+}
+
+/** Selectable chip for the "What is this for?" row. Selected = sky→indigo
+ * brand fill (matches the in-app glass vocabulary); unselected = quiet glass. */
+function TargetPill({
+  active,
+  onClick,
+  icon,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
+        active
+          ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm shadow-indigo-500/25'
+          : 'border border-foreground/10 bg-background/50 text-foreground backdrop-blur active:scale-[0.98]'
+      )}
+    >
+      {icon}
+      <span className="max-w-[10rem] truncate">{label}</span>
+    </button>
   );
 }
 

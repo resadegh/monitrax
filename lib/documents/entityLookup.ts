@@ -181,9 +181,23 @@ export async function lookupEntities(
     });
   }
 
+  // Fetch assets (Phase 21 — receipts/docs linked to an asset, e.g. a vehicle)
+  if (groupedLinks.ASSET?.length) {
+    const assets = await prisma.asset.findMany({
+      where: { id: { in: groupedLinks.ASSET }, userId },
+      select: { id: true, name: true, type: true },
+    });
+    assets.forEach((a: typeof assets[0]) => {
+      result[a.id] = {
+        id: a.id,
+        name: a.name || `${a.type || 'Asset'}`,
+        type: LinkedEntityType.ASSET,
+      };
+    });
+  }
+
   // Fetch investment accounts
-  if (groupedLinks.INVESTMENT_ACCOUNT?.length) {
-    const investmentAccounts = await prisma.investmentAccount.findMany({
+  if (groupedLinks.INVESTMENT_ACCOUNT?.length) {    const investmentAccounts = await prisma.investmentAccount.findMany({
       where: {
         id: { in: groupedLinks.INVESTMENT_ACCOUNT },
         userId,
@@ -249,8 +263,9 @@ export async function getAllUserEntities(userId: string): Promise<{
   income: EntityInfo[];
   accounts: EntityInfo[];
   investmentAccounts: EntityInfo[];
+  assets: EntityInfo[];
 }> {
-  const [properties, loans, expenses, income, accounts, investmentAccounts] = await Promise.all([
+  const [properties, loans, expenses, income, accounts, investmentAccounts, assets] = await Promise.all([
     prisma.property.findMany({
       where: { userId },
       select: { id: true, name: true, address: true },
@@ -296,6 +311,11 @@ export async function getAllUserEntities(userId: string): Promise<{
       select: { id: true, name: true, platform: true },
       orderBy: { name: 'asc' },
     }),
+    prisma.asset.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true },
+      orderBy: { name: 'asc' },
+    }),
   ]);
 
   return {
@@ -337,6 +357,11 @@ export async function getAllUserEntities(userId: string): Promise<{
       id: ia.id,
       name: ia.name || ia.platform || 'Investment Account',
       type: LinkedEntityType.INVESTMENT_ACCOUNT,
+    })),
+    assets: assets.map((a: typeof assets[0]) => ({
+      id: a.id,
+      name: a.name || `${a.type || 'Asset'}`,
+      type: LinkedEntityType.ASSET,
     })),
   };
 }
