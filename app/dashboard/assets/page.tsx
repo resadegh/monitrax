@@ -465,6 +465,24 @@ function AssetsPageContent() {
     }
   };
 
+  // Delete a single expense from the asset's Expenses tab. Manual, user-confirmed
+  // (Reza decision 2026-06-17 — no auto-cascade from document deletion); this is
+  // how duplicates get cleaned up. §12.11: single user-initiated delete by id.
+  const handleDeleteExpense = async (expenseId: string, expenseName: string) => {
+    if (!confirm(`Delete the expense "${expenseName}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/expenses/${expenseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok && selectedAsset) {
+        loadAssetDetail(selectedAsset.id);
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
+  };
+
   const resetExpenseForm = () => {
     setEditingExpenseId(null);
     setExpenseFormData({
@@ -1328,6 +1346,15 @@ function AssetsPageContent() {
                                 title={`Attach a document to ${expense.name}`}
                                 onUploaded={() => loadAssetDetail(selectedAsset.id)}
                               />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteExpense(expense.id, expense.name)}
+                                title={`Delete ${expense.name}`}
+                                className="text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         ))}

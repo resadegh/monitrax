@@ -238,3 +238,35 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: asset-expense-delete-doclink-shk180
+
+### Changes Made
+- **Type**: Fix (SSOT / data integrity) + Feature
+- **Scope**: Receipt → expense dedup + linkage + per-expense delete
+- **Root Cause (Reza)**: "Add as expense" created a standalone expense with no link
+  to the document and no dedup, so uploading several photos of the same receipt and
+  adding each made duplicate expense rows; deleting the duplicate documents then left
+  orphaned expenses (non-SSOT).
+- **Solution**:
+  1. **Server-side dedup (SSOT)** — `/api/expenses` POST gains an opt-in `dedupeOnAsset`
+     flag: when set with an `assetId`, it returns any existing expense with the same
+     asset + amount + vendor/name (`duplicate: true`) instead of creating another.
+     Manual entry omits the flag and is unaffected.
+  2. **Doc↔expense link** — `addExpenseFromRecognised` links the document to the created
+     (or existing) expense via `POST /api/documents/[id]/link`, so the receipt and the
+     expense are joined and traceable.
+  3. **Per-expense delete** on the asset Expenses tab (was edit+attach only) so duplicates
+     can be cleaned up. Manual, confirmed (Reza decision: no auto-cascade on doc delete).
+  4. **Frequency** — receipts default to `ANNUAL` not `MONTHLY` (MONTHLY 12×'d a one-off
+     in cashflow). True one-off support flagged as a follow-up (Frequency enum has no ONE_OFF).
+  5. Recognised banner shows "already exists — linked this receipt to it" on a dedup hit.
+
+### Files Modified
+- `app/api/expenses/route.ts` — `dedupeOnAsset` guard (findFirst → return existing)
+- `components/documents/DocumentsSection.tsx` — dedupeOnAsset + ANNUAL + doc→expense link + notice
+- `app/dashboard/assets/page.tsx` — per-expense delete button + handleDeleteExpense
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes

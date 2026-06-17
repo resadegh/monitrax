@@ -212,6 +212,39 @@ export const POST = withPermission('expense.write', async (request, auth) => {
 
       const ownerEntityId = await getDefaultLegalEntityId(auth.userId);
 
+      // Dedup for receipt-driven creates (DocumentsSection "Add as expense"):
+      // uploading several photos of the SAME receipt and adding each would
+      // otherwise pile up duplicate expenses. When the caller opts in with
+      // `dedupeOnAsset` and there's an asset, return any existing expense with
+      // the same asset + amount + vendor/name instead of creating a duplicate.
+      // SSOT — the guard lives in the canonical API so no caller can bypass it;
+      // manual expense entry omits the flag and is unaffected.
+      if (body.dedupeOnAsset && assetId) {
+        const matchName: string = vendorName || name;
+        const existing = await prisma.expense.findFirst({
+          where: {
+            userId: auth.userId,
+            assetId,
+            amount: parseFloat(amount),
+            OR: [{ vendorName: matchName }, { name: matchName }],
+          },
+          include: {
+            property: true,
+            loan: true,
+            investmentAccount: true,
+            asset: true,
+            customCategory: {
+              select: { id: true, name: true, code: true, color: true, icon: true },
+            },
+          },
+        });
+        if (existing) {
+          // Already have this expense — hand it back so the client can say
+          // "already added" rather than creating a third QBE Insurance row.
+          return NextResponse.json({ ...existing, duplicate: true }, { status: 200 });
+        }
+      }
+
       const expense = await prisma.expense.create({
         data: {
           userId: auth.userId,

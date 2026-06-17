@@ -179,6 +179,7 @@ export function DocumentsSection({
   const [cameraOpen, setCameraOpen] = useState(false);
   const [recognised, setRecognised] = useState<Recognised | null>(null);
   const [addingExpense, setAddingExpense] = useState(false);
+  const [addNotice, setAddNotice] = useState<string | null>(null);
   // Only assets + properties can carry a linked expense from this surface.
   const canAddExpense =
     entityType === LinkedEntityType.ASSET || entityType === LinkedEntityType.PROPERTY;
@@ -225,6 +226,7 @@ export function DocumentsSection({
       setUploading(true);
       setError(null);
       setRecognised(null);
+      setAddNotice(null);
       try {
         for (const file of files) {
           const fd = new FormData();
@@ -298,6 +300,10 @@ export function DocumentsSection({
   );
 
   // Create an expense from the recognised receipt, linked to this item.
+  // Dedup is enforced server-side (dedupeOnAsset) so uploading several photos of
+  // the same receipt can't create duplicate expenses. The created (or existing)
+  // expense is linked to the document so the receipt ↔ expense relationship is
+  // tracked (SSOT — no orphaned rows when a duplicate file is later deleted).
   const addExpenseFromRecognised = useCallback(async () => {
     if (!token || !recognised) return;
     setAddingExpense(true);
@@ -310,9 +316,13 @@ export function DocumentsSection({
           name: recognised.vendor || entityLabel,
           vendorName: recognised.vendor || entityLabel,
           amount: recognised.amount ?? 0,
-          frequency: 'MONTHLY',
+          // A scanned receipt is a one-off purchase. The Frequency enum has no
+          // ONE_OFF, so ANNUAL is the least-distorting default (MONTHLY would
+          // 12× the amount in cashflow). True one-off support is a follow-up.
+          frequency: 'ANNUAL',
           category: 'OTHER',
           sourceType: 'GENERAL',
+          dedupeOnAsset: true,
           ...(entityType === LinkedEntityType.ASSET ? { assetId: entityId } : {}),
           ...(entityType === LinkedEntityType.PROPERTY ? { propertyId: entityId } : {}),
         }),
@@ -321,6 +331,27 @@ export function DocumentsSection({
         const e = await res.json().catch(() => ({}));
         throw new Error(e.error || `Could not add expense (${res.status})`);
       }
+      const created = (await res.json().catch(() => ({}))) as { id?: string; duplicate?: boolean };
+
+      // Link the document to the (created or existing) expense, so the receipt
+      // and the expense are joined. Best-effort.
+      if (created?.id && recognised.documentId) {
+        try {
+          await fetch(`/api/documents/${recognised.documentId}/link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ entityType: 'EXPENSE', entityId: created.id }),
+          });
+        } catch {
+          /* non-fatal */
+        }
+      }
+
+      setAddNotice(
+        created?.duplicate
+          ? 'That expense already exists — linked this receipt to it (no duplicate created).'
+          : null,
+      );
       setRecognised(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not add expense');
@@ -484,6 +515,12 @@ export function DocumentsSection({
             </Button>
           )}
         </div>
+      )}
+
+      {addNotice && (
+        <p className="mb-3 rounded-lg border border-sky-400/25 bg-sky-500/[0.06] px-3 py-2 text-sm text-sky-700 dark:text-sky-300">
+          {addNotice}
+        </p>
       )}
 
       {error && <p className="mb-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>}
