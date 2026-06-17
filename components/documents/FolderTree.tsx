@@ -23,6 +23,7 @@ import {
   Files,
   Banknote,
   TrendingUp,
+  Car,
   Scale,
   CheckCircle2,
   XCircle,
@@ -57,6 +58,7 @@ export interface UserEntities {
   income: EntityInfo[];
   accounts: EntityInfo[];
   investmentAccounts: EntityInfo[];
+  assets?: EntityInfo[];
 }
 
 // Category to icon mapping
@@ -97,6 +99,7 @@ const ENTITY_ICONS: Record<string, React.ElementType> = {
   INCOME: PiggyBank,
   ACCOUNT: Banknote,
   INVESTMENT_ACCOUNT: TrendingUp,
+  ASSET: Car,
 };
 
 interface FolderTreeProps {
@@ -293,6 +296,17 @@ export function FolderTree({
       count: documentCounts[`entity:LOAN:${loan.id}`] || 0,
     }));
 
+    // Assets (Phase 21 — e.g. a vehicle). A scanned receipt linked to an asset
+    // files here instead of under generic Expenses.
+    const assetChildren: FolderNode[] = (entities.assets ?? []).map((asset) => ({
+      id: `asset-${asset.id}`,
+      name: asset.name,
+      path: `/entities/ASSET/${asset.id}`,
+      icon: Car,
+      type: 'entity-item' as const,
+      count: documentCounts[`entity:ASSET:${asset.id}`] || 0,
+    }));
+
     return {
       properties: propertyNodesWithNested,
       loans: standaloneLoanChildren,
@@ -300,6 +314,7 @@ export function FolderTree({
       income: incomeChildren,
       accounts: accountChildren,
       investments: investmentChildren,
+      assets: assetChildren,
     };
   }, [entities, documentCounts]);
 
@@ -394,6 +409,18 @@ export function FolderTree({
           type: 'entity' as const,
           count: documentCounts['entity:PROPERTY'] || 0,
           children: buildEntityChildren.properties,
+        });
+      }
+
+      if ((buildEntityChildren.assets?.length ?? 0) > 0) {
+        entityChildren.push({
+          id: 'entity-assets',
+          name: 'Assets',
+          path: '/entities/ASSET',
+          icon: Car,
+          type: 'entity' as const,
+          count: documentCounts['entity:ASSET'] || 0,
+          children: buildEntityChildren.assets,
         });
       }
 

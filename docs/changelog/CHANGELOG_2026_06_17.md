@@ -72,3 +72,36 @@
   fail the same way on Vercel even with the key restored. Restoring the key stopped
   the crash/no-op; making them actually FUNCTION needs the same REST transport
   (`fallback: true` / REST client) — tracked as the proper telemetry fix.
+
+## Session: scan-link-asset-property-shk180
+
+### Changes Made
+- **Type**: Feature
+- **Scope**: Scan-a-receipt → attach to an asset/property; Vault Assets folder
+- **Description**: The "Scan a receipt" result screen only offered "Add expense",
+  creating a standalone GENERAL expense with no entity link — so a receipt for
+  (e.g.) the Toyota Landcruiser asset couldn't be attached to it, and the document
+  filed under generic Expenses instead of the asset. Added a "What is this for?"
+  selector (assets + properties) to the result screen. On confirm it (a) creates
+  the expense with the chosen `assetId`/`propertyId` (the API already accepts these)
+  and (b) links the saved document to that entity via `POST /api/documents/[id]/link`,
+  so both file under the item. Also added the missing **Assets** branch to the Vault
+  FolderTree (issue #3) so the receipt is visible under the asset.
+
+### Files Modified
+- `components/documents/GlobalScanReceipt.tsx` — "What is this for?" selector + TargetPill + confirm wiring + JSDoc
+- `lib/documents/entityLookup.ts` — `getAllUserEntities` + `lookupEntities` now include assets
+- `components/documents/FolderTree.tsx` — `UserEntities.assets`, Car icon, Assets branch
+
+### Stitch (§18.2.1 backfill — code-first, Reza-approved)
+- Project 1859462351962811110, screen `20c36c03c45c41ceaa6e3d070c40ba60`
+- Artefact: `.stitch/designs/scan-link-asset/result-sheet-what-is-this-for.{html,png}`
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Notes
+- Document count + entity-path filtering in the documents page are generic
+  (`entity:<TYPE>:<id>`), so ASSET works with no page change.
+- v1 scope: assets + properties (Reza decision). Loans/investments deferred.
