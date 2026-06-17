@@ -31,7 +31,7 @@ import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 import { AssetsHero, type AssetsHeroSegment } from '@/components/assets/AssetsHero';
 import { AssetTile } from '@/components/assets/AssetTile';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
-import { DocumentsSection } from '@/components/documents';
+import { DocumentsSection, DocumentAttachButton } from '@/components/documents';
 import { LinkedEntityType, DocumentCategory } from '@/lib/documents/types';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import {
@@ -1257,9 +1257,19 @@ function AssetsPageContent() {
                               <p className="font-medium">{expense.name}</p>
                               <p className="text-sm text-muted-foreground">{expense.category}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">{formatCurrency(expense.amount)}</p>
-                              <p className="text-sm text-muted-foreground">{expense.frequency}</p>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <p className="font-medium">{formatCurrency(expense.amount)}</p>
+                                <p className="text-sm text-muted-foreground">{expense.frequency}</p>
+                              </div>
+                              <DocumentAttachButton
+                                links={[
+                                  { entityType: LinkedEntityType.EXPENSE, entityId: expense.id },
+                                  { entityType: LinkedEntityType.ASSET, entityId: selectedAsset.id },
+                                ]}
+                                title={`Attach a document to ${expense.name}`}
+                                onUploaded={() => loadAssetDetail(selectedAsset.id)}
+                              />
                             </div>
                           </div>
                         ))}

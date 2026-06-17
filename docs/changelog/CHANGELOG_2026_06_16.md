@@ -1,5 +1,54 @@
 # Changelog — 2026-06-16
 
+## Session: doc-rename-and-expense-attach-shk180 (rename a document + attach on each expense)
+
+### Why (Reza, after testing the per-item upload in prod — it works)
+Two follow-up asks: (1) *"there is no option to change name"* — rename an uploaded
+document; (2) *"have the document upload on the expense page for assets rather than
+only the documents tab … the upload icon on the expense should enable a direct
+document to the transaction upload"* — a per-expense attach affordance. (3) Keep
+the Documents tab for additional asset-level docs.
+
+### Changes
+- **Rename a document** (end-to-end). New canonical `renameDocument(documentId,
+  userId, newName)` service (updates `originalFilename`); a new `rename` action on
+  `PATCH /api/documents/[id]`; an optional `onRename` + a Pencil action in the
+  shared `DocumentList`; wired into `DocumentsSection`. **§12.11:** ownership is
+  verified (`findFirst` scoped to id + userId + not-deleted) before the update,
+  which is keyed by document id and only touches the display name.
+- **Per-expense attach.** New reusable `components/documents/DocumentAttachButton.tsx`
+  — a compact paperclip icon button that uploads a doc/photo and links it to one or
+  more entities. Added to **each expense row in the asset Expenses tab**; it links
+  the receipt to **both the expense AND the asset**, so the doc ties to that
+  transaction and is also visible in the asset's Documents tab. Plain store+link
+  (no AI dependency). The Documents tab is unchanged (additional asset-level docs).
+- **Camera "Take photo" everywhere** (Reza: *"camera photo should also be enabled,
+  currently only upload file is enabled"*). The Take-photo button was previously
+  hidden on non-touch (desktop). New `components/documents/CameraCaptureDialog.tsx`
+  opens the device camera via **getUserMedia** (desktop webcam AND mobile), live
+  preview → captures a JPEG `File` → uploads. `DocumentsSection` now **always**
+  shows Take-photo: touch devices use the native `capture` input (best mobile UX),
+  desktop opens the webcam dialog. Adds a `DialogDescription` (clears the a11y
+  aria-describedby console warning).
+
+### Files
+- `lib/documents/documentService.ts` (`renameDocument`), `lib/documents/index.ts`
+- `app/api/documents/[id]/route.ts` (rename action)
+- `components/documents/DocumentList.tsx` (onRename + Pencil), `DocumentsSection.tsx` (handleRename)
+- `components/documents/DocumentAttachButton.tsx` (**new**), `components/documents/index.ts`
+- `app/dashboard/assets/page.tsx` (attach button on expense rows)
+- `tests/documents/renameDocument.test.ts` (**new**, 3 tests)
+
+### Testing
+- [x] `npx vitest run tests/documents/` — green (incl. 3 rename tests)
+- [x] `npx tsc --noEmit` clean; `npm run build` + financial-surfaces gate green; lint clean (pre-existing `<img>` warning in DocumentList only)
+
+### Notes
+- **§12.12 N/A** (no schema change). **§12.11:** the rename update is the only
+  existing-row write — guarded by ownership + id key, touches only `originalFilename`.
+- Rename UX is a `window.prompt` for v1 (matches the existing delete-confirm pattern); an inline-edit polish can follow.
+- Next still open: **Super** per-item upload; **mobile-scan (keyless Vision)** fix.
+
 ## Session: per-item-documents-upload-shk180 (per-item Documents — upload/scan ON the wealth items)
 
 ### Why

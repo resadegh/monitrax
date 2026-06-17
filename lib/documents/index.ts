@@ -25,6 +25,7 @@ export {
   listDocuments,
   getDocumentsForEntity,
   deleteDocument,
+  renameDocument,
   addDocumentLink,
   removeDocumentLink,
   resolveAutoLinks,
