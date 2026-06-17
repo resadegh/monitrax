@@ -11,17 +11,19 @@
  * relevant items, not only in a separate Vault. This is the component that
  * delivers that.
  *
- * IMPORTANT — independent of the AI scan/recognition path. Uploads go straight
- * to `/api/documents/upload` with the entity link field (e.g. propertyId), which
- * stores the bytes + creates the DocumentLink. It does NOT pass `analyze=true`,
- * so it works even while Vision OCR is unavailable. AI recognition is a separate
- * enhancement (the global "Scan a receipt" flow).
+ * IMPORTANT — AI recognition is OPT-IN per surface via `analyzeOnUpload`.
+ * Uploads go to `/api/documents/upload` with the entity link field (e.g.
+ * assetId), which stores the bytes + creates the DocumentLink. When
+ * `analyzeOnUpload` is set, the upload also passes `analyze=true` so Vision OCR
+ * runs and the recognised vendor/amount/date are surfaced inline with a one-tap
+ * "Add as expense" (linked to this item). When unset it works even while Vision
+ * is unavailable — pure filing, no OCR.
  *
  * Glass vocabulary per §18.7.2 (sub-section card recipe). Stitch reference:
  * `.stitch/designs/asset-documents/asset-documents-dark.png` (full light/mobile
  * variants to be backfilled per §18.2.1).
  *
- * @see app/api/documents/upload/route.ts (entity-linked upload)
+ * @see app/api/documents/upload/route.ts (entity-linked upload + analyze)
  * @see app/api/documents/route.ts (GET list-by-entity)
  */
 
@@ -35,7 +37,8 @@ import {
   LinkedEntityType,
   SUPPORTED_MIME_TYPES,
 } from '@/lib/documents/types';
-import { Upload, Camera, Loader2, FolderOpen } from 'lucide-react';
+import { Upload, Camera, Loader2, FolderOpen, Sparkles, Plus, X } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils/formatters';
 import { cn } from '@/lib/utils';
 
 // The form field `/api/documents/upload` expects per linkable entity type.
@@ -76,16 +79,51 @@ export interface DocumentsSectionProps {
   entityLabel: string;
   /** Default category applied to uploads here. */
   defaultCategory?: DocumentCategory;
+  /**
+   * When true, uploads also run AI recognition (Vision OCR) and surface the
+   * recognised vendor/amount/date inline with a one-tap "Add as expense"
+   * (linked to this item). Off by default (pure filing).
+   */
+  analyzeOnUpload?: boolean;
   className?: string;
 }
 
 const ACCEPT = (SUPPORTED_MIME_TYPES as readonly string[]).join(',');
+
+/** A recognised receipt surfaced after an analyzed upload. */
+interface Recognised {
+  documentId: string;
+  vendor?: string;
+  amount?: number;
+  date?: string;
+  documentType?: string;
+  confidence?: number;
+}
+
+/** First present key from a loose extractedData bag (resilient to key drift). */
+function pickField(data: Record<string, unknown>, keys: string[]): unknown {
+  for (const k of keys) {
+    const v = data[k];
+    if (v != null && v !== '') return v;
+  }
+  return undefined;
+}
+
+function asNumber(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v.replace(/[^0-9.\-]/g, ''));
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
 
 export function DocumentsSection({
   entityType,
   entityId,
   entityLabel,
   defaultCategory = DocumentCategory.OTHER,
+  analyzeOnUpload = false,
   className,
 }: DocumentsSectionProps) {
   const { token } = useAuth();
@@ -95,6 +133,11 @@ export function DocumentsSection({
   const [error, setError] = useState<string | null>(null);
   const [isTouch, setIsTouch] = useState(false);
   const [cameraOpen, setCameraOpen] = useState(false);
+  const [recognised, setRecognised] = useState<Recognised | null>(null);
+  const [addingExpense, setAddingExpense] = useState(false);
+  // Only assets + properties can carry a linked expense from this surface.
+  const canAddExpense =
+    entityType === LinkedEntityType.ASSET || entityType === LinkedEntityType.PROPERTY;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -137,6 +180,7 @@ export function DocumentsSection({
       const field = LINK_FIELD[entityType];
       setUploading(true);
       setError(null);
+      setRecognised(null);
       try {
         for (const file of files) {
           const fd = new FormData();
@@ -145,6 +189,7 @@ export function DocumentsSection({
           fd.append('mimeType', file.type);
           fd.append('category', defaultCategory);
           if (field) fd.append(field, entityId);
+          if (analyzeOnUpload) fd.append('analyze', 'true');
 
           const res = await fetch('/api/documents/upload', {
             method: 'POST',
@@ -154,6 +199,27 @@ export function DocumentsSection({
           if (!res.ok) {
             const e = await res.json().catch(() => ({}));
             throw new Error(e.error || `Upload failed (${res.status})`);
+          }
+
+          // Surface the AI-recognised fields (last analyzed file wins — receipts
+          // are uploaded one at a time). The doc is already filed under this item.
+          if (analyzeOnUpload) {
+            const json = await res.json().catch(() => ({}));
+            const a = json?.analysis as
+              | { documentType?: string; overallConfidence?: number; extractedData?: Record<string, unknown> }
+              | null;
+            const docId = json?.document?.id as string | undefined;
+            if (a && docId) {
+              const ed = a.extractedData ?? {};
+              setRecognised({
+                documentId: docId,
+                vendor: (pickField(ed, ['vendor', 'vendorName', 'merchant', 'payee', 'name']) as string) || undefined,
+                amount: asNumber(pickField(ed, ['amount', 'total', 'totalAmount', 'amountDue'])),
+                date: (pickField(ed, ['date', 'issueDate', 'transactionDate']) as string) || undefined,
+                documentType: a.documentType,
+                confidence: a.overallConfidence,
+              });
+            }
           }
         }
         await fetchDocs();
@@ -165,8 +231,40 @@ export function DocumentsSection({
         if (cameraInputRef.current) cameraInputRef.current.value = '';
       }
     },
-    [token, entityType, entityId, defaultCategory, fetchDocs],
+    [token, entityType, entityId, defaultCategory, analyzeOnUpload, fetchDocs],
   );
+
+  // Create an expense from the recognised receipt, linked to this item.
+  const addExpenseFromRecognised = useCallback(async () => {
+    if (!token || !recognised) return;
+    setAddingExpense(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          name: recognised.vendor || entityLabel,
+          vendorName: recognised.vendor || entityLabel,
+          amount: recognised.amount ?? 0,
+          frequency: 'MONTHLY',
+          category: 'OTHER',
+          sourceType: 'GENERAL',
+          ...(entityType === LinkedEntityType.ASSET ? { assetId: entityId } : {}),
+          ...(entityType === LinkedEntityType.PROPERTY ? { propertyId: entityId } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({}));
+        throw new Error(e.error || `Could not add expense (${res.status})`);
+      }
+      setRecognised(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not add expense');
+    } finally {
+      setAddingExpense(false);
+    }
+  }, [token, recognised, entityType, entityId, entityLabel]);
 
   const handleView = useCallback(
     async (id: string) => {
@@ -234,7 +332,7 @@ export function DocumentsSection({
         </div>
       </div>
 
-      {/* Upload controls — plain store+link (no AI dependency) */}
+      {/* Upload controls — store+link; runs AI recognition when analyzeOnUpload */}
       <div className="mb-4 flex flex-wrap gap-2">
         <input
           ref={fileInputRef}
@@ -262,7 +360,7 @@ export function DocumentsSection({
           ) : (
             <Upload className="h-4 w-4" />
           )}
-          {uploading ? 'Uploading…' : 'Upload document'}
+          {uploading ? (analyzeOnUpload ? 'Reading…' : 'Uploading…') : 'Upload document'}
         </Button>
         <Button
           variant="outline"
@@ -276,6 +374,54 @@ export function DocumentsSection({
           Take photo
         </Button>
       </div>
+
+      {/* AI-recognised receipt — shown after an analyzed upload. */}
+      {recognised && (
+        <div className="mb-4 rounded-[14px] border border-sky-400/25 bg-sky-500/[0.06] p-3.5 backdrop-blur">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 text-white">
+                <Sparkles className="h-3.5 w-3.5" />
+              </span>
+              <p className="text-[12px] font-semibold uppercase tracking-[0.12em] bg-gradient-to-r from-sky-500 to-indigo-600 bg-clip-text text-transparent">
+                AI recognised this
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => setRecognised(null)}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            {recognised.vendor && (
+              <span className="text-[15px] font-semibold text-foreground">{recognised.vendor}</span>
+            )}
+            {recognised.amount != null && (
+              <span className="text-[15px] font-semibold tabular-nums text-foreground">
+                {formatCurrency(recognised.amount, { showCents: true })}
+              </span>
+            )}
+            {recognised.date && (
+              <span className="text-[12px] text-muted-foreground">{recognised.date}</span>
+            )}
+          </div>
+          {canAddExpense && (
+            <Button
+              onClick={addExpenseFromRecognised}
+              disabled={addingExpense}
+              size="sm"
+              className="mt-3 gap-1.5 bg-gradient-to-r from-sky-500 to-indigo-600 text-white"
+            >
+              {addingExpense ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+              Add as expense for {entityLabel}
+            </Button>
+          )}
+        </div>
+      )}
 
       {error && <p className="mb-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>}
 
