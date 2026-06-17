@@ -10,7 +10,7 @@
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:financial-surfaces": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' scripts/lint-financial-surfaces.ts",
     "postinstall": "prisma generate",
-    "test": "vitest run",
+    "test": "vitest run --no-file-parallelism",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:validation": "npm run seed:validation && vitest run --reporter=verbose",
