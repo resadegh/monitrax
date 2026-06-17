@@ -76,6 +76,27 @@ export function getGCPCredentials(): ParsedCredentials | null {
       }
     }
 
+    // Vercel keyless (no key, but Workload Identity Federation env present):
+    // the bare-ADC fall-through below would hand GCP client libraries a
+    // credential-less options object. They construct OK but fail ADC
+    // ASYNCHRONOUSLY (no metadata server on Vercel), throwing an
+    // uncaughtException ("Could not load the default credentials") that escapes
+    // the sinks' fire-and-forget `.catch()` and destabilises in-flight requests.
+    // (Same failure #1121 gated for the E2E emulator only — this extends the
+    // guard to prod keyless.) Return null so the SECONDARY GCP sinks (Cloud
+    // Logging / Monitoring / Error Reporting / Scheduler) no-op; the audit
+    // log's Postgres PRIMARY is unaffected. Making those sinks authenticate via
+    // keyless WIF is a follow-up.
+    if (
+      !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+      process.env.GCP_WORKLOAD_IDENTITY_PROVIDER &&
+      process.env.GCP_SERVICE_ACCOUNT_EMAIL
+    ) {
+      log.info('[GCP Credentials] No key + keyless WIF env — GCP client sinks no-op (avoids ADC uncaughtException)');
+      credentialsResolveFailed = true;
+      return null;
+    }
+
     // Fall back to Application Default Credentials (for local dev or GCP runtime)
     log.info('[GCP Credentials] Using Application Default Credentials');
     cachedCredentials = { projectId };
