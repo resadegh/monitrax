@@ -37,7 +37,13 @@ jobs:
       - name: Generate Prisma client
         run: npx prisma generate
       - name: Run vitest suite
-        run: npm run test
+        # The Prisma query-engine intermittently aborts at construction (native
+        # exit 134, "Failed to deserialize constructor options") under parallel
+        # test files — a CI-infra flake unrelated to test logic (hit 3× on
+        # 2026-06-16). It's a process-level crash, so vitest's own `retry` can't
+        # catch it; retry the WHOLE suite once instead. A real test failure is
+        # deterministic and still fails both runs, so this only absorbs the flake.
+        run: npm run test || (echo "::warning::vitest aborted (likely Prisma query-engine flake) — retrying the suite once" && npm run test)
 
   playwright:
     name: playwright (UAT)
