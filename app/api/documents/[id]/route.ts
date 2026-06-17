@@ -9,6 +9,7 @@ import { withPermission } from '@/lib/auth/guards';
 import {
   getDocumentWithSignedUrl,
   deleteDocument,
+  renameDocument,
   addDocumentLink,
   removeDocumentLink,
   LinkedEntityType,
@@ -96,7 +97,16 @@ export const PATCH = withPermission<RouteContext>('report.export', async (reques
     const { id: documentId } = await context!.params;
 
     const body = await request.json();
-    const { action, entityType, entityId } = body;
+    const { action, entityType, entityId, name } = body;
+
+    // Rename: update the document's display name. Needs only `name`.
+    if (action === 'rename') {
+      const renameResult = await renameDocument(documentId, userId, name);
+      if (!renameResult.success) {
+        return NextResponse.json({ error: renameResult.error }, { status: 400 });
+      }
+      return NextResponse.json({ success: true });
+    }
 
     if (!action || !entityType || !entityId) {
       return NextResponse.json(
@@ -107,7 +117,7 @@ export const PATCH = withPermission<RouteContext>('report.export', async (reques
 
     if (!['add', 'remove'].includes(action)) {
       return NextResponse.json(
-        { error: 'Action must be "add" or "remove"' },
+        { error: 'Action must be "add", "remove" or "rename"' },
         { status: 400 }
       );
     }

@@ -437,10 +437,49 @@ export async function deleteDocument(
   }
 }
 
+/**
+ * Rename a document's display name (originalFilename).
+ * §12.11: ownership is verified before the update, and the update is keyed by
+ * the document id — only the user's own document's display name is changed.
+ */
+export async function renameDocument(
+  documentId: string,
+  userId: string,
+  newName: string
+): Promise<{ success: boolean; error?: string }> {
+  const name = (newName ?? '').trim();
+  if (!name) {
+    return { success: false, error: 'Name cannot be empty' };
+  }
+
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, userId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!document) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { originalFilename: name.slice(0, 255) },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Document rename error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Rename failed',
+    };
+  }
+}
+
 // ============================================================================
 // Document Links
 // ============================================================================
-
 export async function addDocumentLink(
   documentId: string,
   userId: string,

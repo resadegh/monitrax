@@ -13,6 +13,7 @@ import {
   Table,
   Download,
   Trash2,
+  Pencil,
   Eye,
   ExternalLink,
   Link as LinkIcon,
@@ -49,6 +50,8 @@ interface DocumentListProps {
   documents: DocumentListItem[];
   onView: (id: string) => Promise<{ signedUrl: string } | null>;
   onDelete: (id: string) => Promise<void>;
+  /** Optional — when provided, a rename action appears on each document. */
+  onRename?: (id: string, newName: string) => Promise<void>;
   loading?: boolean;
   emptyMessage?: string;
   showEntityLinks?: boolean;
@@ -120,12 +123,27 @@ export function DocumentList({
   documents,
   onView,
   onDelete,
+  onRename,
   loading = false,
   emptyMessage = 'No documents found',
   showEntityLinks = true,
 }: DocumentListProps) {
   const [previewDoc, setPreviewDoc] = useState<{ url: string; doc: DocumentListItem } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+
+  const handleRename = async (doc: DocumentListItem) => {
+    if (!onRename) return;
+    const next = window.prompt('Rename document', doc.originalFilename);
+    const trimmed = next?.trim();
+    if (!trimmed || trimmed === doc.originalFilename) return;
+    setRenaming(doc.id);
+    try {
+      await onRename(doc.id, trimmed);
+    } finally {
+      setRenaming(null);
+    }
+  };
 
   const handleView = async (doc: DocumentListItem) => {
     const result = await onView(doc.id);
@@ -227,6 +245,17 @@ export function DocumentList({
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                        {onRename && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleRename(doc)}
+                            disabled={renaming === doc.id}
+                            title="Rename"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"

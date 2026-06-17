@@ -29,6 +29,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DocumentList } from './DocumentList';
+import { CameraCaptureDialog } from './CameraCaptureDialog';
 import {
   DocumentCategory,
   LinkedEntityType,
@@ -93,6 +94,7 @@ export function DocumentsSection({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isTouch, setIsTouch] = useState(false);
+  const [cameraOpen, setCameraOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,14 +131,14 @@ export function DocumentsSection({
     fetchDocs();
   }, [fetchDocs]);
 
-  const handleFiles = useCallback(
-    async (files: FileList | null) => {
+  const uploadFiles = useCallback(
+    async (files: File[]) => {
       if (!files || files.length === 0 || !token) return;
       const field = LINK_FIELD[entityType];
       setUploading(true);
       setError(null);
       try {
-        for (const file of Array.from(files)) {
+        for (const file of files) {
           const fd = new FormData();
           fd.append('file', file);
           // Send MIME explicitly — Vercel/Next can drop file.type.
@@ -191,6 +193,26 @@ export function DocumentsSection({
     [token],
   );
 
+  const handleRename = useCallback(
+    async (id: string, newName: string) => {
+      if (!token) return;
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'rename', name: newName }),
+      });
+      if (res.ok) {
+        setDocuments((docs) =>
+          docs.map((d) => (d.id === id ? { ...d, originalFilename: newName } : d)),
+        );
+      }
+    },
+    [token],
+  );
+
   return (
     <section
       className={cn(
@@ -220,7 +242,7 @@ export function DocumentsSection({
           multiple
           accept={ACCEPT}
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => uploadFiles(e.target.files ? Array.from(e.target.files) : [])}
         />
         <input
           ref={cameraInputRef}
@@ -228,7 +250,7 @@ export function DocumentsSection({
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={(e) => handleFiles(e.target.files)}
+          onChange={(e) => uploadFiles(e.target.files ? Array.from(e.target.files) : [])}
         />
         <Button
           onClick={() => fileInputRef.current?.click()}
@@ -242,17 +264,17 @@ export function DocumentsSection({
           )}
           {uploading ? 'Uploading…' : 'Upload document'}
         </Button>
-        {isTouch && (
-          <Button
-            variant="outline"
-            onClick={() => cameraInputRef.current?.click()}
-            disabled={uploading}
-            className="gap-2"
-          >
-            <Camera className="h-4 w-4" />
-            Take photo
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          // Touch devices: the native camera input is the best UX. Desktop (and
+          // anything non-touch): open the in-browser webcam capture dialog.
+          onClick={() => (isTouch ? cameraInputRef.current?.click() : setCameraOpen(true))}
+          disabled={uploading}
+          className="gap-2"
+        >
+          <Camera className="h-4 w-4" />
+          Take photo
+        </Button>
       </div>
 
       {error && <p className="mb-3 text-sm text-rose-600 dark:text-rose-400">{error}</p>}
@@ -261,8 +283,15 @@ export function DocumentsSection({
         documents={documents}
         onView={handleView}
         onDelete={handleDelete}
+        onRename={handleRename}
         loading={loading}
         emptyMessage={`No documents yet — upload a receipt, statement or contract for ${entityLabel}.`}
+      />
+
+      <CameraCaptureDialog
+        open={cameraOpen}
+        onOpenChange={setCameraOpen}
+        onCapture={(file) => uploadFiles([file])}
       />
     </section>
   );
