@@ -105,3 +105,34 @@
 - Document count + entity-path filtering in the documents page are generic
   (`entity:<TYPE>:<id>`), so ASSET works with no page change.
 - v1 scope: assets + properties (Reza decision). Loans/investments deferred.
+
+## Session: asset-docs-ai-and-mobile-frame-shk180
+
+### Changes Made
+- **Type**: Feature + Fix
+- **Scope**: Asset detail — Documents AI recognition + mobile framing
+- **Issue 1 (AI vision on asset upload)**: the per-item `DocumentsSection` uploaded
+  with no `analyze`, so the asset Documents "Upload document"/"Take photo" never
+  ran OCR. Added an opt-in `analyzeOnUpload` prop: when set, the upload passes
+  `analyze=true` (single upload, still linked to the asset) and surfaces the
+  AI-recognised vendor/amount/date inline with a one-tap "Add as expense for
+  <asset>" (creates an expense linked to the asset/property). Enabled on the asset
+  detail Documents tab.
+- **Issue 2 (mobile framing)**: the detail dialog's KPI tiles used `grid-cols-4`
+  (4 columns forced into mobile width → "Depreciation" clipped) and the 5-tab
+  `TabsList` overflowed. Fixed: KPI grid is now `grid-cols-2 sm:grid-cols-4`
+  (2×2 on mobile), TabsList is `flex w-full justify-start overflow-x-auto`
+  (horizontally scrollable). Responsive true-tweak (§18.2.1 code-first).
+
+### Files Modified
+- `components/documents/DocumentsSection.tsx` — `analyzeOnUpload` + recognised banner + add-expense
+- `app/dashboard/assets/page.tsx` — `analyzeOnUpload` on the asset Documents tab; KPI grid + TabsList responsive
+
+### Stitch (§18.2.1)
+- Recognised banner reuses the scan-result "AI recognised → Add expense" vocabulary
+  already designed in PR #1136 (project 1859462351962811110, screen
+  `20c36c03c45c41ceaa6e3d070c40ba60`). Framing fix is a responsive reflow (true tweak).
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes

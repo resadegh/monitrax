@@ -1170,7 +1170,7 @@ function AssetsPageContent() {
                   </div>
                 </DialogHeader>
 
-                <div className="grid grid-cols-4 gap-4 py-4">
+                <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-4 sm:gap-4">
                   <Card>
                     <CardContent className="pt-4">
                       <p className="text-sm text-muted-foreground">Purchase Price</p>
@@ -1223,7 +1223,7 @@ function AssetsPageContent() {
                 </div>
 
                 <Tabs defaultValue="expenses">
-                  <TabsList>
+                  <TabsList className="flex w-full justify-start overflow-x-auto">
                     <TabsTrigger value="expenses">
                       <Receipt className="h-4 w-4 mr-1" /> Expenses
                     </TabsTrigger>
@@ -1249,6 +1249,7 @@ function AssetsPageContent() {
                       entityId={selectedAsset.id}
                       entityLabel={selectedAsset.name}
                       defaultCategory={DocumentCategory.RECEIPT}
+                      analyzeOnUpload
                     />
                   </TabsContent>
 
