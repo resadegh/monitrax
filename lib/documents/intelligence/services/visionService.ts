@@ -1,13 +1,17 @@
 /**
  * Phase 26: Google Cloud Vision API Integration
  *
- * Auth order (Phase 50, keyless): the Vision API authenticates with **keyless
- * Workload Identity Federation** (the same `vercel-monitrax-db` identity the DB
- * and keyless GCS use) when available, falling back to a service-account key,
- * then ADC. Keyless is PREFERRED because the legacy `monitrax-backend` key was
- * proven unable to reach the Vision API (enabled, but zero traffic). The
- * impersonated SA must have permission to consume the Vision API
- * (roles/serviceusage.serviceUsageConsumer on the project).
+ * Auth order (Phase 50): **service-account key FIRST**, then keyless Workload
+ * Identity Federation, then ADC. This mirrors the storage provider
+ * (`googleCloudStorageProvider.ts`) and the telemetry sinks
+ * (`lib/gcp/credentials.ts`) — all three consume the key first when it is
+ * present, so a single `GCS_SERVICE_ACCOUNT_KEY` env var governs every GCP
+ * client consistently. (Earlier this file PREFERRED keyless on the theory that
+ * the `monitrax-backend` key couldn't reach the Vision API; the real cause of
+ * "no Vision traffic" was that the per-item upload path runs with `analyze:false`
+ * and never calls Vision at all. Keyless GCS itself then proved broken in prod
+ * — "Anonymous caller" — so key-first is the stable default until keyless is
+ * verified end-to-end.) Keyless remains as the fallback for when no key is set.
  *
  * Provides OCR (text detection) and document type detection.
  */
@@ -81,19 +85,10 @@ class VisionService {
         throw new Error('GCS_PROJECT_ID environment variable is not set');
       }
 
-      // Prefer keyless Workload Identity Federation (the monitrax-backend key
-      // proved unable to reach the Vision API). Cast: the AuthClient comes from
-      // a different copy of google-auth-library than the one @google-cloud/vision
-      // bundles — structurally the same client, distinct TS declarations.
-      const wifClient = await buildGcpWifAuthClient();
-      if (wifClient) {
-        console.log('[Vision] Using keyless Workload Identity Federation auth');
-        this.client = new ImageAnnotatorClient({
-          projectId,
-          authClient: wifClient,
-        } as unknown as ConstructorParameters<typeof ImageAnnotatorClient>[0]);
-      } else if (serviceAccountKey) {
-        // Legacy: a base64-encoded service-account key.
+      // Key-first (matches the storage provider + telemetry sinks): when a
+      // base64-encoded service-account key is present, use it. This is the
+      // stable, proven path; keyless is the fallback for when no key is set.
+      if (serviceAccountKey) {
         const credentials = JSON.parse(
           Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
         );
@@ -103,11 +98,24 @@ class VisionService {
           credentials,
         });
       } else {
-        // Local dev / ADC.
-        console.log('[Vision] Using default credentials');
-        this.client = new ImageAnnotatorClient({
-          projectId,
-        });
+        // No key: prefer keyless Workload Identity Federation, then ADC. Cast:
+        // the AuthClient comes from a different copy of google-auth-library than
+        // the one @google-cloud/vision bundles — structurally the same client,
+        // distinct TS declarations.
+        const wifClient = await buildGcpWifAuthClient();
+        if (wifClient) {
+          console.log('[Vision] Using keyless Workload Identity Federation auth');
+          this.client = new ImageAnnotatorClient({
+            projectId,
+            authClient: wifClient,
+          } as unknown as ConstructorParameters<typeof ImageAnnotatorClient>[0]);
+        } else {
+          // Local dev / ADC.
+          console.log('[Vision] Using default credentials');
+          this.client = new ImageAnnotatorClient({
+            projectId,
+          });
+        }
       }
 
       this.initialized = true;
