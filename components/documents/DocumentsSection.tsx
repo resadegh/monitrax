@@ -100,11 +100,19 @@ interface Recognised {
   confidence?: number;
 }
 
-/** First present key from a loose extractedData bag (resilient to key drift). */
+/** First present key from a loose extractedData bag (resilient to key drift).
+ * Unwraps the engine's `ExtractedField` shape — `{ value, confidence }` — to its
+ * `.value`, so callers never receive (and never render) a raw object. Without
+ * this, rendering a recognised field crashes with React error #31 ("Objects are
+ * not valid as a React child"). */
 function pickField(data: Record<string, unknown>, keys: string[]): unknown {
   for (const k of keys) {
-    const v = data[k];
-    if (v != null && v !== '') return v;
+    let v = data[k];
+    if (v != null && typeof v === 'object' && 'value' in (v as object)) {
+      v = (v as { value: unknown }).value;
+    }
+    // Never return an object/array — only primitives are safe to render.
+    if (v != null && v !== '' && typeof v !== 'object') return v;
   }
   return undefined;
 }

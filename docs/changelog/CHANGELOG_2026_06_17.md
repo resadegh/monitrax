@@ -192,3 +192,28 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: doc-recognise-crash-filename-shk180
+
+### Changes Made
+- **Type**: Fix (crash + mobile layout)
+- **Scope**: Per-item Documents — AI-recognised banner + document row
+- **Issue 1 (page crash, React error #31)**: clicking "Upload document" on the asset
+  Documents tab crashed the page ("Something went wrong"). Root cause: the upload
+  route's `analysis.extractedData` stores fields as the engine's `ExtractedField`
+  shape (`{ value, confidence }`); `pickField` returned the whole object, and the
+  recognised banner rendered it directly → "Objects are not valid as a React child".
+  Fix: `pickField` now unwraps `.value` and never returns an object/array (only
+  primitives are safe to render).
+- **Issue 2 (filename truncated to "I…")**: in `DocumentList` the filename shared one
+  row with the 4 action buttons, so on mobile it was squeezed to a single character.
+  Fix: the filename now gets its own full-width line; metadata + compact icon-buttons
+  (h-8 w-8) share the line below it.
+
+### Files Modified
+- `components/documents/DocumentsSection.tsx` — `pickField` unwraps ExtractedField + rejects objects
+- `components/documents/DocumentList.tsx` — filename on its own line; compact action buttons
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes

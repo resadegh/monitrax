@@ -217,21 +217,25 @@ export function DocumentList({
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{doc.originalFilename}</p>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                          <span>{formatFileSize(doc.size)}</span>
-                          <span>•</span>
-                          <span>{formatDate(doc.uploadedAt)}</span>
-                        </div>
+                    {/* Filename gets its OWN full-width line so it isn't squeezed
+                        to a single character by the action buttons on mobile. */}
+                    <p className="font-medium truncate" title={doc.originalFilename}>
+                      {doc.originalFilename}
+                    </p>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+                        <span className="shrink-0">{formatFileSize(doc.size)}</span>
+                        <span className="shrink-0">•</span>
+                        <span className="truncate">{formatDate(doc.uploadedAt)}</span>
                       </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
+                      {/* Actions — compact icon buttons so they share the
+                          metadata line without crowding out the filename. */}
+                      <div className="flex flex-shrink-0 items-center gap-0.5">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleView(doc)}
                           title="Preview"
                         >
@@ -239,7 +243,8 @@ export function DocumentList({
                         </Button>
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8"
                           onClick={() => handleDownload(doc)}
                           title="Download"
                         >
@@ -248,7 +253,8 @@ export function DocumentList({
                         {onRename && (
                           <Button
                             variant="ghost"
-                            size="sm"
+                            size="icon"
+                            className="h-8 w-8"
                             onClick={() => handleRename(doc)}
                             disabled={renaming === doc.id}
                             title="Rename"
@@ -258,11 +264,11 @@ export function DocumentList({
                         )}
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                           onClick={() => handleDelete(doc.id)}
                           disabled={deleting === doc.id}
                           title="Delete"
-                          className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
