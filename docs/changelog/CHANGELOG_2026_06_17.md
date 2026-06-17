@@ -136,3 +136,35 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: asset-detail-mobile-redesign-shk180
+
+### Changes Made
+- **Type**: UI/UX redesign (Stitch-first, Reza-approved)
+- **Scope**: Asset detail dialog — mobile framing
+- **Description**: The asset detail was a desktop `max-w-4xl` dialog that clipped on
+  mobile (KPI tiles + tabs overflowed). Reza directed it through Stitch (§18.2.1).
+  Generated + approved a mobile design (screen 770abf40f2584174b52db63a4310a34a),
+  then converted to React: DialogContent now `overflow-x-hidden p-4 sm:p-6`; the
+  header uses a gradient car badge + truncating title; KPI tiles are a new polished
+  `KpiTile` glass component (hairline + 3px gradient top-accent + tabular-nums +
+  min-w-0/truncate so long numbers never overflow), 2×2 on mobile / 4-across on sm+;
+  the TabsList is horizontally scrollable with hidden scrollbar.
+
+### Files Modified
+- `app/dashboard/assets/page.tsx` — DialogContent overflow guard, gradient header, KpiTile, scrollable tabs
+
+### Stitch (§18.2.1 — Stitch-first, approved before build)
+- Project 1859462351962811110, screen `770abf40f2584174b52db63a4310a34a`
+- Artefact: `.stitch/designs/asset-detail-mobile/asset-detail-mobile-dark.{html,png}`
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Related diagnosis (no code change here)
+- Reza's "AI still not picking uploads": prod logs showed the asset upload at
+  05:43 sent `analyze: false` on the #1137 deploy → the client ran a STALE cached
+  bundle (pending PWA "Relaunch to update") OR used the expense-row paperclip
+  (files-only). Server fix (analyzeOnUpload → analyze=true, DIE uses REST Vision)
+  is correct + live. Resolution: relaunch the app, use Documents tab → Upload.
