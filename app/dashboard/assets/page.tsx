@@ -22,7 +22,7 @@ import {
   Car, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   DollarSign, Calendar, Package, Laptop, Sofa, Wrench,
   Gem, LayoutGrid, List, Eye, Receipt, History, Settings,
-  Fuel, Shield, FileText, Zap, FolderOpen
+  Fuel, Shield, FileText, Zap, FolderOpen, Pencil
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -52,6 +52,7 @@ interface AssetExpense {
   amount: number;
   frequency: string;
   category: string;
+  isTaxDeductible?: boolean;
 }
 
 interface AssetValueHistory {
@@ -245,6 +246,7 @@ function AssetsPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expenseFormData, setExpenseFormData] = useState<ExpenseFormData>({
     name: '',
     category: 'OTHER',
@@ -429,6 +431,7 @@ function AssetsPageContent() {
   };
 
   const resetExpenseForm = () => {
+    setEditingExpenseId(null);
     setExpenseFormData({
       name: '',
       category: 'OTHER',
@@ -436,6 +439,19 @@ function AssetsPageContent() {
       frequency: 'MONTHLY',
       isTaxDeductible: false,
     });
+  };
+
+  /** Open the expense dialog pre-filled to edit an existing asset expense. */
+  const openEditExpense = (expense: AssetExpense) => {
+    setEditingExpenseId(expense.id);
+    setExpenseFormData({
+      name: expense.name,
+      category: expense.category,
+      amount: String(expense.amount),
+      frequency: expense.frequency,
+      isTaxDeductible: expense.isTaxDeductible ?? false,
+    });
+    setShowExpenseDialog(true);
   };
 
   const applyExpenseTemplate = (template: ExpenseTemplate) => {
@@ -453,23 +469,28 @@ function AssetsPageContent() {
     if (!selectedAsset) return;
 
     try {
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      // Edit an existing expense (PUT) or create a new one (POST).
+      const isEdit = !!editingExpenseId;
+      const response = await fetch(
+        isEdit ? `/api/expenses/${editingExpenseId}` : '/api/expenses',
+        {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: expenseFormData.name,
+            category: expenseFormData.category,
+            amount: parseFloat(expenseFormData.amount),
+            frequency: expenseFormData.frequency,
+            isTaxDeductible: expenseFormData.isTaxDeductible,
+            isEssential: true,
+            sourceType: 'ASSET',
+            assetId: selectedAsset.id,
+          }),
         },
-        body: JSON.stringify({
-          name: expenseFormData.name,
-          category: expenseFormData.category,
-          amount: parseFloat(expenseFormData.amount),
-          frequency: expenseFormData.frequency,
-          isTaxDeductible: expenseFormData.isTaxDeductible,
-          isEssential: true,
-          sourceType: 'ASSET',
-          assetId: selectedAsset.id,
-        }),
-      });
+      );
 
       if (response.ok) {
         // Reload asset details to show new expense
@@ -1262,6 +1283,14 @@ function AssetsPageContent() {
                                 <p className="font-medium">{formatCurrency(expense.amount)}</p>
                                 <p className="text-sm text-muted-foreground">{expense.frequency}</p>
                               </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditExpense(expense)}
+                                title={`Edit ${expense.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
                               <DocumentAttachButton
                                 links={[
                                   { entityType: LinkedEntityType.EXPENSE, entityId: expense.id },
@@ -1497,10 +1526,11 @@ function AssetsPageContent() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Receipt className="h-5 w-5" />
-                Add Expense
+                {editingExpenseId ? 'Edit Expense' : 'Add Expense'}
               </DialogTitle>
               <DialogDescription>
-                Add an expense linked to {selectedAsset?.name}
+                {editingExpenseId ? 'Update this expense for' : 'Add an expense linked to'}{' '}
+                {selectedAsset?.name}
               </DialogDescription>
             </DialogHeader>
 
@@ -1565,6 +1595,7 @@ function AssetsPageContent() {
                         <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                         <SelectItem value="MONTHLY">Monthly</SelectItem>
                         <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                        <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
                         <SelectItem value="ANNUAL">Annually</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1603,11 +1634,18 @@ function AssetsPageContent() {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowExpenseDialog(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowExpenseDialog(false);
+                      resetExpenseForm();
+                    }}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit">
-                    Add Expense
+                    {editingExpenseId ? 'Save changes' : 'Add Expense'}
                   </Button>
                 </div>
               </form>
