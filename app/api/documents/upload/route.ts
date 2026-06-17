@@ -151,9 +151,12 @@ export const POST = withPermission('report.export', async (request, auth) => {
       storagePath: result.storagePath,
     });
 
-    // Phase 26: Trigger analysis if requested
+    // Phase 26: Trigger analysis if requested.
+    // Phase 50 D.1: skip re-analysis on a duplicate — it's an already-stored
+    // document (the client shows "already uploaded" and won't re-create an
+    // expense), so re-running OCR would waste a Vision call.
     let analysis = null;
-    if (shouldAnalyze && result.document?.id) {
+    if (shouldAnalyze && result.document?.id && !result.duplicate) {
       console.log('[API/upload] Triggering document analysis...');
       const die = getDocumentIntelligenceEngine();
 
@@ -188,6 +191,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
       storagePath: result.storagePath,
       storageUrl: result.storageUrl,
       analysis,  // Phase 26: Include analysis result if available
+      duplicate: result.duplicate ?? false,  // Phase 50 D.1: already-stored file
     });
   } catch (error) {
     console.error('[API/upload] Error:', error);

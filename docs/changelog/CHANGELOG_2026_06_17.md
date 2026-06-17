@@ -304,3 +304,40 @@
 - Document-level dedup (hash) — the real fix at source; **recommended next (D.1)**.
 - Per-expense list parity on Properties/Investments detail pages.
 - Confidence-gated autonomy, learned routing, lifecycle intelligence (D.3–D.5).
+
+## Session: dme-d1-document-dedup-shk180
+
+### Changes Made
+- **Type**: Feature (DME intelligence — D.1) + Governance clarification
+- **Scope**: Document-level dedup at the single DME chokepoint
+- **Governance (Reza challenge)**: clarified there is ONE DME + ONE DIE (separate
+  concerns, not competing) — the "DME 2.0 / two engines" wording was misleading and
+  was corrected in `PHASE_50_AI_DOCUMENT_ROUTER.md` (Phase D now "extends the existing
+  single DME + DIE — NOT a new engine", with a §12.3/§6.4 compliance note).
+- **D.1 (document dedup)**: `DocumentManagementEngine.processUpload` now SHA-256-hashes
+  the file bytes and, BEFORE storing, looks up `(userId, contentHash)`. On a byte-identical
+  match it returns the existing document flagged `duplicate` (adding any new entity links
+  via `createMany … skipDuplicates`) instead of storing a second copy. The upload route
+  skips re-analysis on a duplicate; `DocumentsSection` shows "you already uploaded this —
+  linked it here". Single chokepoint = every per-item upload path inherits it.
+
+### Files Modified
+- `prisma/schema.prisma` — `Document.contentHash String?` + `@@index([userId, contentHash])`
+- `prisma/migrations/20260617150000_add_document_content_hash/migration.sql` — additive (ADD COLUMN + CREATE INDEX)
+- `lib/documents/engine/types.ts` — `EngineResult.duplicate?`
+- `lib/documents/engine/DocumentManagementEngine.ts` — hash + dedup + `toEngineDocument` mapper (DRY)
+- `app/api/documents/upload/route.ts` — surfaces `duplicate`, skips re-analysis on dup
+- `components/documents/DocumentsSection.tsx` — "already uploaded" notice, skips recognition on dup
+
+### Schema change (§12.12) + destructive-write (§12.11)
+- Matching migration present (`20260617150000_add_document_content_hash`). Additive,
+  nullable column + index — **no DROP / ALTER DROP / NOT NULL backfill**. Non-destructive.
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Deferred (D.1.1)
+- Funnel the legacy scan path (`documentService.uploadDocument`) through the DME (or a
+  shared `dedupeByHash()` helper) so the global "Scan a receipt" flow shares the ONE dedup.
+- Near-duplicate (content-fingerprint) detection on top of exact-hash.
