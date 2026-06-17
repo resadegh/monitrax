@@ -242,20 +242,28 @@ export function DocumentsSection({
             headers: { Authorization: `Bearer ${token}` },
             body: fd,
           });
+          const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
           if (!res.ok) {
-            const e = await res.json().catch(() => ({}));
-            throw new Error(e.error || `Upload failed (${res.status})`);
+            throw new Error((json?.error as string) || `Upload failed (${res.status})`);
+          }
+
+          // Phase 50 D.1: the DME de-duplicated this upload — a byte-identical
+          // file was already stored. Tell the user and skip recognition / rename
+          // / add-expense (there's no new document to act on).
+          if (json?.duplicate) {
+            setAddNotice('You already uploaded this document — linked it here (no duplicate created).');
+            continue;
           }
 
           // Surface the AI-recognised fields (last analyzed file wins — receipts
           // are uploaded one at a time). The doc is already filed under this item.
           if (analyzeOnUpload) {
-            const json = await res.json().catch(() => ({}));
             const a = json?.analysis as
               | { documentType?: string; overallConfidence?: number; extractedData?: Record<string, unknown> }
               | null;
-            const docId = json?.document?.id as string | undefined;
-            const originalFilename = (json?.document?.originalFilename as string) || file.name;
+            const doc = json?.document as { id?: string; originalFilename?: string } | undefined;
+            const docId = doc?.id;
+            const originalFilename = doc?.originalFilename || file.name;
             if (a && docId) {
               const ed = a.extractedData ?? {};
               const rec: Recognised = {

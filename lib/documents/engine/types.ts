@@ -189,6 +189,9 @@ export interface EngineResult {
   error?: string;
   /** Machine-readable failure reason (e.g. 'STORAGE_QUOTA_EXCEEDED') for precise HTTP mapping. */
   errorCode?: string;
+  /** Phase 50 D.1 — true when this upload matched an already-stored byte-identical
+   *  document; `document` is the existing one (no new row/bytes were created). */
+  duplicate?: boolean;
 }
 
 // ============================================================================

@@ -3,6 +3,7 @@
  * Central orchestrator for all document operations
  */
 
+import { createHash } from 'crypto';
 import { prisma } from '@/lib/db';
 import {
   UploadContext,
@@ -105,6 +106,43 @@ export class DocumentManagementEngine {
       // Step 2: Convert file to buffer
       const fileBuffer = await this.getFileBuffer(context.file);
 
+      // Step 2.5 (Phase 50 D.1): document-level dedup. If this user already has a
+      // byte-identical, non-deleted document, DON'T store it again — add any new
+      // entity links this upload resolved to the existing one and return it
+      // flagged `duplicate`. This is the SINGLE canonical place document dedup
+      // lives (inside the one DME chokepoint), so every path — scan, per-item,
+      // drag-drop — inherits it. Stops the "same receipt twice" at the source,
+      // not just the downstream expense.
+      const contentHash = createHash('sha256').update(fileBuffer).digest('hex');
+      const existingDoc = await prisma.document.findFirst({
+        where: { userId: context.userId, contentHash, deletedAt: null },
+        include: { links: true },
+      });
+      if (existingDoc) {
+        console.log('[DME] Duplicate upload — reusing existing document:', existingDoc.id);
+        if (config.links.length > 0) {
+          await prisma.documentLink.createMany({
+            data: config.links.map(link => ({
+              documentId: existingDoc.id,
+              entityType: link.entityType,
+              entityId: link.entityId,
+            })),
+            skipDuplicates: true,
+          });
+        }
+        const refreshed = await prisma.document.findUnique({
+          where: { id: existingDoc.id },
+          include: { links: true },
+        });
+        return {
+          success: true,
+          duplicate: true,
+          document: this.toEngineDocument(refreshed!),
+          storagePath: refreshed!.storagePath,
+          storageUrl: refreshed!.storageUrl,
+        };
+      }
+
       // Step 3: Handle LOCAL_DRIVE special case
       if (config.storageProvider === StorageProviderType.LOCAL_DRIVE) {
         return this.handleLocalDriveUpload(context, config, fileBuffer);
@@ -156,6 +194,7 @@ export class DocumentManagementEngine {
           storageUrl: uploadResult.storageUrl || null,
           description: context.userInput?.description || null,
           tags: config.suggestedTags,
+          contentHash, // Phase 50 D.1 — enables future dedup of this file
           // Only store file content in database for Monitrax provider
           fileContent: actualProvider === StorageProviderType.MONITRAX ? fileBuffer : null,
         },
@@ -189,25 +228,7 @@ export class DocumentManagementEngine {
 
       return {
         success: true,
-        document: {
-          id: completeDocument!.id,
-          filename: completeDocument!.filename,
-          originalFilename: completeDocument!.originalFilename,
-          mimeType: completeDocument!.mimeType,
-          size: completeDocument!.size,
-          category: completeDocument!.category as DocumentCategory,
-          storageProvider: completeDocument!.storageProvider as StorageProviderType,
-          storagePath: completeDocument!.storagePath,
-          storageUrl: completeDocument!.storageUrl,
-          description: completeDocument!.description,
-          tags: completeDocument!.tags,
-          uploadedAt: completeDocument!.uploadedAt,
-          links: (completeDocument!.links as DocumentLinkData[]).map((l: DocumentLinkData) => ({
-            id: l.id,
-            entityType: l.entityType as EntityLink['entityType'],
-            entityId: l.entityId,
-          })),
-        },
+        document: this.toEngineDocument(completeDocument!),
         storagePath: uploadResult.storagePath,
         storageUrl: uploadResult.storageUrl,
       };
@@ -225,6 +246,46 @@ export class DocumentManagementEngine {
         error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  /**
+   * Map a persisted Prisma document (with links) to the EngineResult shape.
+   * Single mapper used by both the normal and the dedup return paths (§12.1).
+   */
+  private toEngineDocument(doc: {
+    id: string;
+    filename: string;
+    originalFilename: string;
+    mimeType: string;
+    size: number;
+    category: string;
+    storageProvider: string;
+    storagePath: string;
+    storageUrl: string | null;
+    description: string | null;
+    tags: string[];
+    uploadedAt: Date;
+    links: DocumentLinkData[];
+  }): NonNullable<EngineResult['document']> {
+    return {
+      id: doc.id,
+      filename: doc.filename,
+      originalFilename: doc.originalFilename,
+      mimeType: doc.mimeType,
+      size: doc.size,
+      category: doc.category as DocumentCategory,
+      storageProvider: doc.storageProvider as StorageProviderType,
+      storagePath: doc.storagePath,
+      storageUrl: doc.storageUrl,
+      description: doc.description,
+      tags: doc.tags,
+      uploadedAt: doc.uploadedAt,
+      links: doc.links.map((l: DocumentLinkData) => ({
+        id: l.id,
+        entityType: l.entityType as EntityLink['entityType'],
+        entityId: l.entityId,
+      })),
+    };
   }
 
   /**

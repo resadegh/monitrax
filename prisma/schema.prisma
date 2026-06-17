@@ -3936,6 +3936,11 @@ model Document {
   storageUrl      String? // External URL for Google Drive etc.
   fileContent     Bytes? // File content for database storage (Monitrax provider)
 
+  // Phase 50 D.1 — document-level dedup. SHA-256 of the file bytes, set at
+  // upload. processUpload looks up (userId, contentHash) before storing so the
+  // same file isn't stored twice; nullable for documents created before D.1.
+  contentHash String?
+
   // User metadata
   description String?
   tags        String[]
@@ -3954,6 +3959,7 @@ model Document {
   @@index([category])
   @@index([storageProvider])
   @@index([deletedAt])
+  @@index([userId, contentHash])
   @@map("documents")
 }
 
