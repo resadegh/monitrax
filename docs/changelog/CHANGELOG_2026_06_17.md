@@ -39,3 +39,36 @@
 - Proper keyless: solve the cross-package `authClient` wiring (pass external_account
   config so the SDK's own google-auth-library builds the client), verify in prod
   with the key still present as fallback, then remove the key.
+
+## Session: vision-grpc-rest-fallback-shk180
+
+### Changes Made
+- **Type**: Fix (root cause)
+- **Scope**: Vision OCR transport
+- **Root Cause**: Live prod logs of a receipt scan showed Vision authenticating
+  fine with the key (`[Vision] Using service account: monitrax-backend@...`) but
+  the OCR call then threw `Error: undefined undefined: undefined` (`code: undefined`,
+  gax `note: 'Exception occurred in retry method that was not classified as
+  transient'`, stack in gRPC `onReceiveStatus`/`callErrorFromStatus`). This is the
+  **gRPC (HTTP/2) transport failing in Vercel's bundled serverless runtime** — the
+  request dies before reaching Google. It explains the long-standing "Vision API
+  enabled but ZERO traffic" symptom: every call failed at the transport layer
+  regardless of key vs keyless auth. NOT an auth/permission/billing problem.
+- **Solution**: Construct `ImageAnnotatorClient` with `fallback: true` (REST/HTTP
+  transport instead of gRPC) on all three auth branches. Standard fix for Google
+  client libraries on serverless.
+
+### Files Modified
+- `lib/documents/intelligence/services/visionService.ts` — `fallback: true` on all
+  three `new ImageAnnotatorClient(...)` calls + header/inline docs
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Follow-up (telemetry — issue #2 "fix properly")
+- The GCP **telemetry sinks** (Cloud Logging / Monitoring / Error Reporting /
+  Security Command Center / Cloud Scheduler) are ALSO gRPC clients, so they likely
+  fail the same way on Vercel even with the key restored. Restoring the key stopped
+  the crash/no-op; making them actually FUNCTION needs the same REST transport
+  (`fallback: true` / REST client) — tracked as the proper telemetry fix.
