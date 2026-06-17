@@ -13,6 +13,14 @@
  * — "Anonymous caller" — so key-first is the stable default until keyless is
  * verified end-to-end.) Keyless remains as the fallback for when no key is set.
  *
+ * Transport (Vercel serverless): the client is constructed with
+ * `fallback: true` so it uses the **REST/HTTP transport instead of gRPC**.
+ * gRPC (HTTP/2) does not work in Vercel's bundled serverless runtime — calls
+ * fail at the transport layer before reaching Google (empty status,
+ * `code: undefined`), which is why the Vision API previously showed zero
+ * traffic regardless of the credential used. This was the true root cause of
+ * "AI recognition not working", not the auth path.
+ *
  * Provides OCR (text detection) and document type detection.
  */
 
@@ -85,6 +93,17 @@ class VisionService {
         throw new Error('GCS_PROJECT_ID environment variable is not set');
       }
 
+      // CRITICAL (Vercel serverless): force the REST/HTTP transport via
+      // `fallback: true`. @google-cloud/vision defaults to gRPC (HTTP/2), whose
+      // native transport does NOT work in Vercel's bundled serverless runtime —
+      // every annotateImage call died at the gRPC layer BEFORE reaching Google
+      // with an empty status ("Error: undefined undefined: undefined",
+      // code: undefined, gax "not classified as transient"). That is why the
+      // Vision API showed ZERO traffic regardless of key vs keyless auth — the
+      // request never left the function. `fallback: true` uses HTTP/1.1 + REST,
+      // which works on serverless. Applied to all three auth branches.
+      const fallback = true;
+
       // Key-first (matches the storage provider + telemetry sinks): when a
       // base64-encoded service-account key is present, use it. This is the
       // stable, proven path; keyless is the fallback for when no key is set.
@@ -96,6 +115,7 @@ class VisionService {
         this.client = new ImageAnnotatorClient({
           projectId,
           credentials,
+          fallback,
         });
       } else {
         // No key: prefer keyless Workload Identity Federation, then ADC. Cast:
@@ -108,12 +128,14 @@ class VisionService {
           this.client = new ImageAnnotatorClient({
             projectId,
             authClient: wifClient,
+            fallback,
           } as unknown as ConstructorParameters<typeof ImageAnnotatorClient>[0]);
         } else {
           // Local dev / ADC.
           console.log('[Vision] Using default credentials');
           this.client = new ImageAnnotatorClient({
             projectId,
+            fallback,
           });
         }
       }
