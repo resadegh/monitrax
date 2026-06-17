@@ -453,6 +453,32 @@ export function DocumentsSection({
     [token],
   );
 
+  // Full edit (name + category) from the DocumentList edit dialog.
+  const handleUpdate = useCallback(
+    async (id: string, patch: { name?: string; category?: string }) => {
+      if (!token) return;
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', ...patch }),
+      });
+      if (res.ok) {
+        setDocuments((docs) =>
+          docs.map((d) =>
+            d.id === id
+              ? {
+                  ...d,
+                  ...(patch.name ? { originalFilename: patch.name } : {}),
+                  ...(patch.category ? { category: patch.category as DocumentCategory } : {}),
+                }
+              : d,
+          ),
+        );
+      }
+    },
+    [token],
+  );
+
   return (
     <section
       className={cn(
@@ -578,6 +604,7 @@ export function DocumentsSection({
         onView={handleView}
         onDelete={handleDelete}
         onRename={handleRename}
+        onUpdate={handleUpdate}
         onAddExpense={canAddExpense ? handleAddExpenseForDoc : undefined}
         loading={loading}
         emptyMessage={`No documents yet — upload a receipt, statement or contract for ${entityLabel}.`}

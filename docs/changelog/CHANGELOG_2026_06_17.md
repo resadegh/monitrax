@@ -374,3 +374,20 @@
   thumbnail of the receipt instead of a generic icon — then fix the right thing.
 - **Edit beyond rename (issue 3)**: a proper metadata edit (change category, etc.) is a
   follow-up — today the Pencil only renames (via a browser prompt).
+
+### Update (same PR) — issues #2 + #3-edit also shipped (Reza answers)
+- **Issue 2 (preview → real thumbnail)**: `DocumentList` now renders the actual image
+  as the row thumbnail for image documents (lazy signed URL via `onView`), falling back
+  to the file-type icon for PDF/other or on load error (`RowThumb`).
+- **Issue 3 (full edit dialog)**: the Pencil now opens an edit dialog (name + category)
+  instead of a browser rename prompt. New `updateDocumentMeta(id, {name?, category?})`
+  service (§12.11-guarded: ownership `findFirst` then update) + `action:'update'` on
+  `PATCH /api/documents/[id]` + barrel export. `DocumentsSection` passes `onUpdate`.
+- All three testing issues now resolved in this PR.
+
+### Files Modified (additional)
+- `lib/documents/documentService.ts` — `updateDocumentMeta`
+- `lib/documents/index.ts` — re-export `updateDocumentMeta`
+- `app/api/documents/[id]/route.ts` — `action:'update'`
+- `components/documents/DocumentList.tsx` — `RowThumb` thumbnail + edit dialog + `onUpdate`
+- `components/documents/DocumentsSection.tsx` — `handleUpdate` + passes `onUpdate`

@@ -10,6 +10,7 @@ import {
   getDocumentWithSignedUrl,
   deleteDocument,
   renameDocument,
+  updateDocumentMeta,
   addDocumentLink,
   removeDocumentLink,
   LinkedEntityType,
@@ -97,13 +98,22 @@ export const PATCH = withPermission<RouteContext>('report.export', async (reques
     const { id: documentId } = await context!.params;
 
     const body = await request.json();
-    const { action, entityType, entityId, name } = body;
+    const { action, entityType, entityId, name, category } = body;
 
     // Rename: update the document's display name. Needs only `name`.
     if (action === 'rename') {
       const renameResult = await renameDocument(documentId, userId, name);
       if (!renameResult.success) {
         return NextResponse.json({ error: renameResult.error }, { status: 400 });
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // Update: edit document metadata (name and/or category) from the edit dialog.
+    if (action === 'update') {
+      const updateResult = await updateDocumentMeta(documentId, userId, { name, category });
+      if (!updateResult.success) {
+        return NextResponse.json({ error: updateResult.error }, { status: 400 });
       }
       return NextResponse.json({ success: true });
     }
