@@ -322,7 +322,7 @@ export function DocumentsSection({
           frequency: 'ANNUAL',
           category: 'OTHER',
           sourceType: 'GENERAL',
-          dedupeOnAsset: true,
+          dedupeReceipt: true,
           ...(entityType === LinkedEntityType.ASSET ? { assetId: entityId } : {}),
           ...(entityType === LinkedEntityType.PROPERTY ? { propertyId: entityId } : {}),
         }),

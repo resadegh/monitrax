@@ -270,3 +270,37 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: dme-ai-propagate-dedup-shk180
+
+### Changes Made
+- **Type**: Feature (propagation) + Design doc
+- **Scope**: AI-on-upload propagated to Properties + Investments; generalised dedup; DME 2.0 design
+- **Propagation**: `analyzeOnUpload` is now on the Properties detail (`properties/[id]`)
+  and Investment-account detail (`investments/accounts/[id]`) Documents sections, not
+  just Assets — so uploads there OCR + auto-rename, and (properties) offer "Add as
+  expense" with dedup. Investments skip the expense action (no asset/property-style
+  expense) but still OCR + auto-rename.
+- **Dedup generalised**: `/api/expenses` dedup flag renamed to `dedupeReceipt`
+  (`dedupeOnAsset` kept as a back-compat alias) and now matches on whichever entity
+  link is present (asset / property / loan / investment account), not just asset.
+- **Design**: new **Phase D — AI-powered DME 2.0** section in `PHASE_50_AI_DOCUMENT_ROUTER.md`
+  — five intelligence capabilities (document-level dedup, record reconciliation,
+  confidence-gated autonomy, learned routing, lifecycle), architecture (SSOT placement),
+  and a phased build (D.1–D.5). Recommends starting with D.1 (document-level hash dedup).
+
+### Files Modified
+- `app/api/expenses/route.ts` — generalised dedup (`dedupeReceipt` + dynamic entity link)
+- `components/documents/DocumentsSection.tsx` — sends `dedupeReceipt`
+- `app/dashboard/properties/[id]/page.tsx` — `analyzeOnUpload`
+- `app/dashboard/investments/accounts/[id]/page.tsx` — `analyzeOnUpload`
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — Phase D design + Phase C update
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Deferred (documented in Phase D + Phase C)
+- Document-level dedup (hash) — the real fix at source; **recommended next (D.1)**.
+- Per-expense list parity on Properties/Investments detail pages.
+- Confidence-gated autonomy, learned routing, lifecycle intelligence (D.3–D.5).
