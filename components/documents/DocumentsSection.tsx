@@ -16,8 +16,11 @@
  * assetId), which stores the bytes + creates the DocumentLink. When
  * `analyzeOnUpload` is set, the upload also passes `analyze=true` so Vision OCR
  * runs and the recognised vendor/amount/date are surfaced inline with a one-tap
- * "Add as expense" (linked to this item). When unset it works even while Vision
- * is unavailable — pure filing, no OCR.
+ * "Add as expense" (linked to this item). On a successful recognition the file is
+ * also auto-renamed to a meaningful AI-derived name (e.g. "QBE Insurance -
+ * 2026-06-18.jpg") so the Vault is organised by what the document is, not
+ * "IMG_6615.JPG". When unset it works even while Vision is unavailable — pure
+ * filing, no OCR.
  *
  * Glass vocabulary per §18.7.2 (sub-section card recipe). Stitch reference:
  * `.stitch/designs/asset-documents/asset-documents-dark.png` (full light/mobile
@@ -126,6 +129,39 @@ function asNumber(v: unknown): number | undefined {
   return undefined;
 }
 
+/** Title-case a raw documentType enum (e.g. "TAX_RETURN" → "Tax Return"). */
+function prettyType(t?: string): string | undefined {
+  if (!t) return undefined;
+  return t
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Build a meaningful filename from the AI-recognised fields, e.g.
+ * "QBE Insurance - 2026-06-18.jpg" — so the Vault is organised by what the
+ * document IS, not "IMG_6615.JPG". Keeps the original extension; strips
+ * filesystem-illegal characters; returns null when there's nothing useful to
+ * name it (so we leave the original name alone).
+ */
+function buildSuggestedName(
+  r: { vendor?: string; date?: string; documentType?: string },
+  originalFilename: string,
+): string | null {
+  const dot = originalFilename.lastIndexOf('.');
+  const ext = dot > 0 ? originalFilename.slice(dot) : '';
+  const clean = (s: string) =>
+    s.replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim();
+
+  const parts: string[] = [];
+  const label = r.vendor ? clean(r.vendor).slice(0, 60) : prettyType(r.documentType);
+  if (label) parts.push(label);
+  if (r.date) parts.push(clean(r.date));
+  if (parts.length === 0) return null;
+  return parts.join(' - ') + ext;
+}
+
 export function DocumentsSection({
   entityType,
   entityId,
@@ -217,16 +253,35 @@ export function DocumentsSection({
               | { documentType?: string; overallConfidence?: number; extractedData?: Record<string, unknown> }
               | null;
             const docId = json?.document?.id as string | undefined;
+            const originalFilename = (json?.document?.originalFilename as string) || file.name;
             if (a && docId) {
               const ed = a.extractedData ?? {};
-              setRecognised({
+              const rec: Recognised = {
                 documentId: docId,
                 vendor: (pickField(ed, ['vendor', 'vendorName', 'merchant', 'payee', 'name']) as string) || undefined,
                 amount: asNumber(pickField(ed, ['amount', 'total', 'totalAmount', 'amountDue'])),
                 date: (pickField(ed, ['date', 'issueDate', 'transactionDate']) as string) || undefined,
                 documentType: a.documentType,
                 confidence: a.overallConfidence,
-              });
+              };
+              setRecognised(rec);
+
+              // Auto-rename the document to a meaningful, AI-derived name so the
+              // Vault is organised by what the document is (e.g. "QBE Insurance
+              // - 2026-06-18.jpg") instead of "IMG_6615.JPG". Best-effort: a
+              // rename failure must not break the upload.
+              const suggested = buildSuggestedName(rec, originalFilename);
+              if (suggested && suggested !== originalFilename) {
+                try {
+                  await fetch(`/api/documents/${docId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ action: 'rename', name: suggested }),
+                  });
+                } catch {
+                  /* non-fatal — the original filename stays */
+                }
+              }
             }
           }
         }
