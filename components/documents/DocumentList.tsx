@@ -17,6 +17,7 @@ import {
   Eye,
   ExternalLink,
   Link as LinkIcon,
+  DollarSign,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,9 +53,31 @@ interface DocumentListProps {
   onDelete: (id: string) => Promise<void>;
   /** Optional — when provided, a rename action appears on each document. */
   onRename?: (id: string, newName: string) => Promise<void>;
+  /** Optional — when provided, a "$ Add as expense" action appears on RECEIPT /
+   *  INVOICE documents (so a receipt can become an expense at any time, not only
+   *  in the fleeting post-upload banner). */
+  onAddExpense?: (id: string) => Promise<void>;
   loading?: boolean;
   emptyMessage?: string;
   showEntityLinks?: boolean;
+}
+
+/** Upload-source tags (UploadSource enum, `_`→`-`) — internal provenance, never
+ *  shown to the user. */
+const SOURCE_TAGS = new Set([
+  'documents-library', 'expense-form', 'expense-dialog', 'property-form',
+  'loan-form', 'income-form', 'bank-import', 'bulk-import', 'api-direct',
+  'scan', 'manual', 'onboarding',
+]);
+
+/** Tags worth showing: drop the auto-generated noise that just duplicates the
+ *  category badge, the linked-entity badges, or the upload source. */
+function visibleTags(doc: DocumentListItem): string[] {
+  const categoryTag = doc.category.toLowerCase().replace(/_/g, '-');
+  const entityTags = new Set(doc.links.map((l) => l.entityType.toLowerCase().replace(/_/g, '-')));
+  return doc.tags.filter(
+    (t) => t !== categoryTag && !entityTags.has(t) && !SOURCE_TAGS.has(t),
+  );
 }
 
 const CATEGORY_LABELS: Record<DocumentCategory, string> = {
@@ -124,6 +147,7 @@ export function DocumentList({
   onView,
   onDelete,
   onRename,
+  onAddExpense,
   loading = false,
   emptyMessage = 'No documents found',
   showEntityLinks = true,
@@ -131,6 +155,17 @@ export function DocumentList({
   const [previewDoc, setPreviewDoc] = useState<{ url: string; doc: DocumentListItem } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [addingExpense, setAddingExpense] = useState<string | null>(null);
+
+  const handleAddExpense = async (id: string) => {
+    if (!onAddExpense) return;
+    setAddingExpense(id);
+    try {
+      await onAddExpense(id);
+    } finally {
+      setAddingExpense(null);
+    }
+  };
 
   const handleRename = async (doc: DocumentListItem) => {
     if (!onRename) return;
@@ -250,6 +285,20 @@ export function DocumentList({
                         >
                           <Download className="h-4 w-4" />
                         </Button>
+                        {onAddExpense &&
+                          (doc.category === DocumentCategory.RECEIPT ||
+                            doc.category === DocumentCategory.INVOICE) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                              onClick={() => handleAddExpense(doc.id)}
+                              disabled={addingExpense === doc.id}
+                              title="Add as expense"
+                            >
+                              <DollarSign className="h-4 w-4" />
+                            </Button>
+                          )}
                         {onRename && (
                           <Button
                             variant="ghost"
@@ -287,7 +336,7 @@ export function DocumentList({
                       <Badge className={CATEGORY_COLORS[doc.category]}>
                         {CATEGORY_LABELS[doc.category]}
                       </Badge>
-                      {doc.tags.map((tag) => (
+                      {visibleTags(doc).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag}
                         </Badge>

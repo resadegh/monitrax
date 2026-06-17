@@ -341,3 +341,36 @@
 - Funnel the legacy scan path (`documentService.uploadDocument`) through the DME (or a
   shared `dedupeByHash()` helper) so the global "Scan a receipt" flow shares the ONE dedup.
 - Near-duplicate (content-fingerprint) detection on top of exact-hash.
+
+## Session: doc-addexpense-persist-tags-shk180
+
+### Changes Made
+- **Type**: Feature + UX fix
+- **Scope**: Documents — persistent "Add as expense" + tag de-clutter
+- **Issue 1 (add-as-expense lost on navigation)**: the recognised banner's "Add as
+  expense" was in-memory only — navigate away and the receipt could never become an
+  expense. Added a per-document **"$ Add as expense"** action (on RECEIPT/INVOICE docs)
+  that reads the document's SAVED analysis (`GET /api/documents/analyze?documentId`)
+  and creates the expense (dedup'd + doc-linked) — works any time, survives navigation.
+  Refactored the expense-creation into one shared `createExpenseFrom(rec)` used by both
+  the banner and the per-doc action (§12.1).
+- **Issue 3 (tag clutter)**: the doc row showed "Receipt" (category) AND "receipt" (tag)
+  plus technical tags ("api-direct", "asset"). `DocumentList` now hides auto-generated
+  tags that duplicate the category badge, the linked-entity badges, or the upload source
+  (`visibleTags()` + `SOURCE_TAGS` denylist). User-added tags still show.
+
+### Files Modified
+- `components/documents/DocumentList.tsx` — `onAddExpense` prop + "$" action; `visibleTags` filter
+- `components/documents/DocumentsSection.tsx` — `createExpenseFrom` (shared) + `handleAddExpenseForDoc`
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+
+### Deferred / needs clarification
+- **Issue 2 (preview)**: ambiguous — the row "logo" is the lucide file-type icon (by
+  design, not a broken image); the tap-to-open preview uses the signed URL. Need Reza to
+  confirm whether the ask is (a) the tap-preview image fails to load, or (b) show a real
+  thumbnail of the receipt instead of a generic icon — then fix the right thing.
+- **Edit beyond rename (issue 3)**: a proper metadata edit (change category, etc.) is a
+  follow-up — today the Pencil only renames (via a browser prompt).
