@@ -858,7 +858,7 @@ function AssetsPageContent() {
 
         {/* Add/Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
               <DialogDescription>
@@ -952,7 +952,7 @@ function AssetsPageContent() {
                   <h4 className="font-medium flex items-center gap-2">
                     <Car className="h-4 w-4" /> Vehicle Details
                   </h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="vehicleMake">Make</Label>
                       <Input
@@ -1180,7 +1180,7 @@ function AssetsPageContent() {
 
         {/* Detail Dialog */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 [&>*]:min-w-0">
             {selectedAsset && (
               <>
                 <DialogHeader>
