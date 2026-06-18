@@ -10,6 +10,10 @@
 'use client';
 
 import React from 'react';
+import {
+  CONFIDENCE_AUTO_THRESHOLD,
+  CONFIDENCE_CONFIRM_THRESHOLD,
+} from '@/lib/documents/intelligence/confidencePolicy';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -53,14 +57,14 @@ interface AnalysisPreviewCardProps {
 // ============================================================================
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.9) return 'text-green-600 dark:text-green-400';
-  if (confidence >= 0.7) return 'text-yellow-600 dark:text-yellow-400';
+  if (confidence >= CONFIDENCE_AUTO_THRESHOLD) return 'text-green-600 dark:text-green-400';
+  if (confidence >= CONFIDENCE_CONFIRM_THRESHOLD) return 'text-yellow-600 dark:text-yellow-400';
   return 'text-red-600 dark:text-red-400';
 }
 
 function getConfidenceBadge(confidence: number): { label: string; variant: 'default' | 'secondary' | 'destructive' } {
-  if (confidence >= 0.9) return { label: 'High', variant: 'default' };
-  if (confidence >= 0.7) return { label: 'Medium', variant: 'secondary' };
+  if (confidence >= CONFIDENCE_AUTO_THRESHOLD) return { label: 'High', variant: 'default' };
+  if (confidence >= CONFIDENCE_CONFIRM_THRESHOLD) return { label: 'Medium', variant: 'secondary' };
   return { label: 'Low', variant: 'destructive' };
 }
 

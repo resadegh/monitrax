@@ -63,6 +63,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { classifyConfidence } from '@/lib/documents/intelligence/confidencePolicy';
 
 type Stage = 'capture' | 'analyzing' | 'result' | 'success' | 'error';
 
@@ -302,12 +303,13 @@ export function GlobalScanReceipt() {
   }, [recognition]);
 
   const confidence = recognition?.overallConfidence ?? 0;
-  const confidenceLabel =
-    confidence >= 0.9 ? 'High confidence' : confidence >= 0.7 ? 'Looks good — worth a check' : 'Please review';
+  // D.3: confidence band + label come from the single confidencePolicy SSOT.
+  const confidenceVerdict = classifyConfidence(confidence);
+  const confidenceLabel = confidenceVerdict.label;
   const confidenceTone =
-    confidence >= 0.9
+    confidenceVerdict.tone === 'emerald'
       ? 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 ring-emerald-500/25'
-      : confidence >= 0.7
+      : confidenceVerdict.tone === 'amber'
         ? 'bg-amber-500/12 text-amber-700 dark:text-amber-300 ring-amber-500/25'
         : 'bg-slate-500/12 text-slate-600 dark:text-slate-300 ring-slate-500/25';
 

@@ -481,3 +481,31 @@
 - [x] tsc clean
 - [x] `npm run build` passes
 - [x] 7/7 reconcile tests pass
+
+## Session: dme-d3-confidence-policy-shk180
+
+### Changes Made
+- **Type**: Feature (DME D.3 — partial: policy SSOT)
+- **Scope**: Confidence policy SSOT + threshold unification
+- **Description**: New canonical `lib/documents/intelligence/confidencePolicy.ts` —
+  the ONE place for the document-intelligence confidence thresholds (AUTO ≥0.9,
+  CONFIRM ≥0.7, ASK <0.7) + the autonomy band + display label/tone, with an
+  earned-autonomy TRAIL-stage downgrade (Track/Reduce users never AUTO). Replaces
+  the 0.9/0.7 magic numbers duplicated across `GlobalScanReceipt`,
+  `AnalysisPreviewCard`, `ExtractionReviewForm` (§12.3). 6 unit tests.
+- **Deliberately deferred**: auto-EXECUTION (writing a financial record without
+  user confirmation when band===AUTO) is NOT wired — a §12.11 + financial-adviser
+  decision + a Stitch UX pass (undo affordance), pending Reza sign-off on the
+  thresholds. Today AUTO still routes through the one-tap confirm.
+
+### Files Modified
+- `lib/documents/intelligence/confidencePolicy.ts` — NEW SSOT
+- `components/documents/GlobalScanReceipt.tsx` — uses `classifyConfidence`
+- `components/documents/intelligence/AnalysisPreviewCard.tsx` — threshold constants
+- `components/documents/intelligence/ExtractionReviewForm.tsx` — threshold constants
+- `tests/documents/confidencePolicy.test.ts` — 6 tests
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+- [x] 6/6 confidence-policy tests pass

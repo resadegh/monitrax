@@ -22,7 +22,7 @@
   - [~] **Phase D — Engine intelligence (DME judgement layer, INSIDE the single DME/DIE):**
     - [x] **D.1 — document-level dedup** (SHA-256 hash at `processUpload`; #1144).
     - [x] **D.2 — record reconciliation** ✅ — canonical `reconcileSuggestedAction()` the confirm flow calls for expense/income/loan; on a match it links the doc to the existing record (`reconciled:true`) instead of duplicating + skips the receipt-matcher. 7 tests.
-    - [ ] **D.3 — confidence-gated autonomy** — ≥0.9 auto-apply (undo), 0.7–0.9 confirm, <0.7 ask; TRAIL-stage-matched; `confidencePolicy.ts` SSOT.
+    - [~] **D.3 — confidence-gated autonomy** — `confidencePolicy.ts` SSOT shipped (bands AUTO/CONFIRM/ASK + earned-autonomy TRAIL downgrade; unifies the scattered 0.9/0.7 thresholds; 6 tests). **Auto-EXECUTION deferred** pending Reza sign-off (financial write w/o confirm = §12.11 + Stitch UX).
     - [ ] **D.4 — learned routing** — `VendorEntityHint` (vendor→most-linked entity), read by `LinkingRules` (schema migration).
     - [ ] **D.5 — lifecycle** — renewal/expiry extraction → reminders; ATO retention clock.
     - [ ] **D.1.1 (follow-up)** — funnel the legacy scan path (`documentService.uploadDocument`) through the DME so it shares the one dedup.

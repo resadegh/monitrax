@@ -10,6 +10,10 @@
 
 import React, { useState, useMemo } from 'react';
 import {
+  CONFIDENCE_AUTO_THRESHOLD,
+  CONFIDENCE_CONFIRM_THRESHOLD,
+} from '@/lib/documents/intelligence/confidencePolicy';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -158,8 +162,8 @@ const DEFAULT_FIELD_CONFIG: FieldConfig = {
 // ============================================================================
 
 function getConfidenceColor(confidence: number): string {
-  if (confidence >= 0.9) return 'text-green-600 bg-green-50 border-green-200';
-  if (confidence >= 0.7) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+  if (confidence >= CONFIDENCE_AUTO_THRESHOLD) return 'text-green-600 bg-green-50 border-green-200';
+  if (confidence >= CONFIDENCE_CONFIRM_THRESHOLD) return 'text-yellow-600 bg-yellow-50 border-yellow-200';
   return 'text-red-600 bg-red-50 border-red-200';
 }
 
@@ -258,7 +262,7 @@ export function ExtractionReviewForm({
               variant="outline"
               className={cn('gap-1', getConfidenceColor(action.confidence))}
             >
-              {action.confidence >= 0.9 ? (
+              {action.confidence >= CONFIDENCE_AUTO_THRESHOLD ? (
                 <CheckCircle className="h-3 w-3" />
               ) : (
                 <AlertCircle className="h-3 w-3" />
