@@ -737,6 +737,33 @@ function ActivityPageContent() {
           </div>
         )}
 
+        {/* Phase 49 — "Your AI bookkeeper" confidence review card. Phase 49.15
+            (Reza 2026-06-18): the review cards sit ABOVE search + filters, and
+            search + filters sit directly above the transaction list — so the
+            page reads top-to-bottom as "here's what the AI did → here's how to
+            find a transaction → here are the transactions." Self-hides when tidy. */}
+        <ConfidenceReviewCard
+          refreshKey={confidenceRefresh}
+          onConfirmed={async () => {
+            // Phase 49.7 — no celebration toast here; the card shows its own
+            // inline receipt and the toast is reserved for clearing the pile.
+            await fetchTransactions();
+            fetchSummary();
+          }}
+          onReviewBand={(band) => setConfidenceBand(band)}
+        />
+
+        {/* Phase 49.11 — "Possible subscriptions" review card. The dedicated
+            surface behind the Home pending-actions count (UNMATCHED
+            RecurringPayment patterns); the ?filter=recurring deep link lands
+            the user right here. Self-hides when there's nothing to confirm. */}
+        <SubscriptionsReviewCard
+          refreshKey={confidenceRefresh}
+          onActioned={() => {
+            fetchSummary();
+          }}
+        />
+
         {/* "Uncategorised first" pill — calmer than the legacy amber alert */}
         {tileFilter === 'uncategorized' && (
           <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-100 text-sm text-amber-900 anim-fade-in">
@@ -879,32 +906,6 @@ function ActivityPageContent() {
             )}
           </div>
         )}
-
-        {/* Phase 49 — "Your AI bookkeeper" confidence review card. Phase 49.6
-            (Reza 2026-06-11): placed directly ABOVE the transaction list —
-            its actions act on transactions, so proximity wins over page-top
-            prominence. Self-hides when tidy. */}
-        <ConfidenceReviewCard
-          refreshKey={confidenceRefresh}
-          onConfirmed={async () => {
-            // Phase 49.7 — no celebration toast here; the card shows its own
-            // inline receipt and the toast is reserved for clearing the pile.
-            await fetchTransactions();
-            fetchSummary();
-          }}
-          onReviewBand={(band) => setConfidenceBand(band)}
-        />
-
-        {/* Phase 49.11 — "Possible subscriptions" review card. The dedicated
-            surface behind the Home pending-actions count (UNMATCHED
-            RecurringPayment patterns); the ?filter=recurring deep link lands
-            the user right here. Self-hides when there's nothing to confirm. */}
-        <SubscriptionsReviewCard
-          refreshKey={confidenceRefresh}
-          onActioned={() => {
-            fetchSummary();
-          }}
-        />
 
         {/* CONTENT */}
         {/* Phase 49.14 — when a band lens is active, show BOTH halves of the
