@@ -17,6 +17,10 @@ import {
 } from '@/lib/documents';
 import { lookupEntities } from '@/lib/documents/entityLookup';
 import { getDocumentIntelligenceEngine } from '@/lib/documents/intelligence';
+import {
+  computeRetentionStatus,
+  extractDocumentDate,
+} from '@/lib/documents/intelligence/retentionClock';
 
 // Type for document analysis data (matches Prisma schema)
 interface DocumentAnalysisData {
@@ -107,6 +111,11 @@ export const GET = withPermission('report.read', async (request, auth) => {
     return NextResponse.json({
       documents: result.documents.map(doc => {
         const analysis = analysisMap.get(doc.id);
+        // Phase 50 D.5b — retention clock (pure, advisory). Prefer the extracted
+        // document date; fall back to the upload date. Computed, never stored
+        // (SSOT — the engine is the one source for "is this safe to archive?").
+        const docDate = extractDocumentDate(analysis?.extractedData) ?? doc.uploadedAt;
+        const retention = computeRetentionStatus(docDate, doc.category);
         return {
           id: doc.id,
           filename: doc.filename,
@@ -118,6 +127,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
           tags: doc.tags,
           uploadedAt: doc.uploadedAt.toISOString(),
           storageProvider: doc.storageProvider,
+          // D.5b — advisory only: { status, label, reason, retainUntil? }.
+          // The UI surfaces ARCHIVE_SAFE as a quiet "Safe to archive" cue; the
+          // app never auto-archives (autonomy decision 2026-06-18).
+          retention,
           links: doc.links.map(link => ({
             entityType: link.entityType,
             entityId: link.entityId,

@@ -18,6 +18,7 @@ import {
   ExternalLink,
   Link as LinkIcon,
   DollarSign,
+  Archive,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,13 @@ interface DocumentListItem {
     entityId: string;
     entityName?: string;
   }[];
+  /** Phase 50 D.5b — retention clock (advisory). Surfaced as a quiet pill. */
+  retention?: {
+    status: 'RETAIN' | 'ARCHIVE_SAFE' | 'NO_CLOCK';
+    label: string;
+    reason: string;
+    retainUntil?: string;
+  };
 }
 
 interface DocumentListProps {
@@ -454,6 +462,19 @@ export function DocumentList({
                           {tag}
                         </Badge>
                       ))}
+                      {/* D.5b retention clock — only the actionable, calm cue
+                          ("Safe to archive") is surfaced; RETAIN/NO_CLOCK stay
+                          quiet to avoid noise. Advice only — never auto-archives. */}
+                      {doc.retention?.status === 'ARCHIVE_SAFE' && (
+                        <Badge
+                          variant="outline"
+                          title={doc.retention.reason}
+                          className="text-xs gap-1 border-slate-400/40 text-slate-500 dark:text-slate-400"
+                        >
+                          <Archive className="h-3 w-3" />
+                          {doc.retention.label}
+                        </Badge>
+                      )}
                     </div>
 
                     {/* Entity Links */}
