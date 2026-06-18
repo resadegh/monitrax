@@ -477,6 +477,53 @@ export async function renameDocument(
   }
 }
 
+/**
+ * Update editable document metadata (display name + category). §12.11: ownership
+ * is verified by `findFirst` on (id, userId, deletedAt:null) before the update,
+ * and only this user's own row is touched. Fields are optional — only provided
+ * keys are written.
+ */
+export async function updateDocumentMeta(
+  documentId: string,
+  userId: string,
+  patch: { name?: string; category?: string },
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!document) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    const data: { originalFilename?: string; category?: DocumentCategory } = {};
+    if (typeof patch.name === 'string') {
+      const name = patch.name.trim();
+      if (!name) return { success: false, error: 'Name cannot be empty' };
+      data.originalFilename = name.slice(0, 255);
+    }
+    if (typeof patch.category === 'string') {
+      if (!(Object.values(DocumentCategory) as string[]).includes(patch.category)) {
+        return { success: false, error: 'Invalid category' };
+      }
+      data.category = patch.category as DocumentCategory;
+    }
+    if (Object.keys(data).length === 0) {
+      return { success: false, error: 'Nothing to update' };
+    }
+
+    await prisma.document.update({ where: { id: documentId }, data });
+    return { success: true };
+  } catch (error) {
+    console.error('Document update error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Update failed',
+    };
+  }
+}
+
 // ============================================================================
 // Document Links
 // ============================================================================

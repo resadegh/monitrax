@@ -307,23 +307,22 @@ export function DocumentsSection({
     [token, entityType, entityId, defaultCategory, analyzeOnUpload, fetchDocs],
   );
 
-  // Create an expense from the recognised receipt, linked to this item.
-  // Dedup is enforced server-side (dedupeOnAsset) so uploading several photos of
-  // the same receipt can't create duplicate expenses. The created (or existing)
-  // expense is linked to the document so the receipt ↔ expense relationship is
-  // tracked (SSOT — no orphaned rows when a duplicate file is later deleted).
-  const addExpenseFromRecognised = useCallback(async () => {
-    if (!token || !recognised) return;
-    setAddingExpense(true);
-    setError(null);
-    try {
+  // Canonical "create an expense from a recognised receipt, linked to this item".
+  // Dedup is enforced server-side (dedupeReceipt) so several photos of the same
+  // receipt can't create duplicate expenses; the created (or existing) expense is
+  // linked to the document so the receipt ↔ expense relationship is tracked (SSOT).
+  // Shared by the post-upload banner AND the per-document "$" action (so a receipt
+  // can become an expense at any time, not just in the fleeting banner).
+  const createExpenseFrom = useCallback(
+    async (rec: Recognised) => {
+      if (!token) return;
       const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
-          name: recognised.vendor || entityLabel,
-          vendorName: recognised.vendor || entityLabel,
-          amount: recognised.amount ?? 0,
+          name: rec.vendor || entityLabel,
+          vendorName: rec.vendor || entityLabel,
+          amount: rec.amount ?? 0,
           // A scanned receipt is a one-off purchase. The Frequency enum has no
           // ONE_OFF, so ANNUAL is the least-distorting default (MONTHLY would
           // 12× the amount in cashflow). True one-off support is a follow-up.
@@ -337,15 +336,14 @@ export function DocumentsSection({
       });
       if (!res.ok) {
         const e = await res.json().catch(() => ({}));
-        throw new Error(e.error || `Could not add expense (${res.status})`);
+        throw new Error((e as { error?: string }).error || `Could not add expense (${res.status})`);
       }
       const created = (await res.json().catch(() => ({}))) as { id?: string; duplicate?: boolean };
 
-      // Link the document to the (created or existing) expense, so the receipt
-      // and the expense are joined. Best-effort.
-      if (created?.id && recognised.documentId) {
+      // Link the document to the (created or existing) expense. Best-effort.
+      if (created?.id && rec.documentId) {
         try {
-          await fetch(`/api/documents/${recognised.documentId}/link`, {
+          await fetch(`/api/documents/${rec.documentId}/link`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
             body: JSON.stringify({ entityType: 'EXPENSE', entityId: created.id }),
@@ -354,19 +352,61 @@ export function DocumentsSection({
           /* non-fatal */
         }
       }
-
       setAddNotice(
         created?.duplicate
           ? 'That expense already exists — linked this receipt to it (no duplicate created).'
-          : null,
+          : `Added "${rec.vendor || entityLabel}" as an expense for ${entityLabel}.`,
       );
+    },
+    [token, entityType, entityId, entityLabel],
+  );
+
+  const addExpenseFromRecognised = useCallback(async () => {
+    if (!token || !recognised) return;
+    setAddingExpense(true);
+    setError(null);
+    try {
+      await createExpenseFrom(recognised);
       setRecognised(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not add expense');
     } finally {
       setAddingExpense(false);
     }
-  }, [token, recognised, entityType, entityId, entityLabel]);
+  }, [token, recognised, createExpenseFrom]);
+
+  // Per-document "$ Add as expense" — works at any time by reading the document's
+  // saved analysis (DocumentAnalysis), so it survives leaving the post-upload
+  // banner. Only offered on assets/properties (canAddExpense).
+  const handleAddExpenseForDoc = useCallback(
+    async (docId: string) => {
+      if (!token) return;
+      setError(null);
+      try {
+        const res = await fetch(`/api/documents/analyze?documentId=${encodeURIComponent(docId)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const json = (await res.json().catch(() => ({}))) as {
+          analysis?: { extractedData?: Record<string, unknown> } | null;
+        };
+        const ed = json?.analysis?.extractedData;
+        if (!ed) {
+          setError("We couldn't read this document's details — open it and add the expense manually.");
+          return;
+        }
+        await createExpenseFrom({
+          documentId: docId,
+          vendor: (pickField(ed, ['vendor', 'vendorName', 'merchant', 'payee', 'name']) as string) || undefined,
+          amount: asNumber(pickField(ed, ['amount', 'total', 'totalAmount', 'amountDue'])),
+          date: (pickField(ed, ['date', 'issueDate', 'transactionDate']) as string) || undefined,
+        });
+        await fetchDocs();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not add expense');
+      }
+    },
+    [token, createExpenseFrom, fetchDocs],
+  );
 
   const handleView = useCallback(
     async (id: string) => {
@@ -407,6 +447,32 @@ export function DocumentsSection({
       if (res.ok) {
         setDocuments((docs) =>
           docs.map((d) => (d.id === id ? { ...d, originalFilename: newName } : d)),
+        );
+      }
+    },
+    [token],
+  );
+
+  // Full edit (name + category) from the DocumentList edit dialog.
+  const handleUpdate = useCallback(
+    async (id: string, patch: { name?: string; category?: string }) => {
+      if (!token) return;
+      const res = await fetch(`/api/documents/${id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'update', ...patch }),
+      });
+      if (res.ok) {
+        setDocuments((docs) =>
+          docs.map((d) =>
+            d.id === id
+              ? {
+                  ...d,
+                  ...(patch.name ? { originalFilename: patch.name } : {}),
+                  ...(patch.category ? { category: patch.category as DocumentCategory } : {}),
+                }
+              : d,
+          ),
         );
       }
     },
@@ -538,6 +604,8 @@ export function DocumentsSection({
         onView={handleView}
         onDelete={handleDelete}
         onRename={handleRename}
+        onUpdate={handleUpdate}
+        onAddExpense={canAddExpense ? handleAddExpenseForDoc : undefined}
         loading={loading}
         emptyMessage={`No documents yet — upload a receipt, statement or contract for ${entityLabel}.`}
       />

@@ -5,7 +5,7 @@
  * Displays a list of documents with preview, metadata, and linked entity chips
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   File,
@@ -17,6 +17,7 @@ import {
   Eye,
   ExternalLink,
   Link as LinkIcon,
+  DollarSign,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,9 +53,34 @@ interface DocumentListProps {
   onDelete: (id: string) => Promise<void>;
   /** Optional — when provided, a rename action appears on each document. */
   onRename?: (id: string, newName: string) => Promise<void>;
+  /** Optional — when provided, the edit action opens a full edit dialog (name +
+   *  category) instead of a bare rename prompt. */
+  onUpdate?: (id: string, patch: { name?: string; category?: string }) => Promise<void>;
+  /** Optional — when provided, a "$ Add as expense" action appears on RECEIPT /
+   *  INVOICE documents (so a receipt can become an expense at any time, not only
+   *  in the fleeting post-upload banner). */
+  onAddExpense?: (id: string) => Promise<void>;
   loading?: boolean;
   emptyMessage?: string;
   showEntityLinks?: boolean;
+}
+
+/** Upload-source tags (UploadSource enum, `_`→`-`) — internal provenance, never
+ *  shown to the user. */
+const SOURCE_TAGS = new Set([
+  'documents-library', 'expense-form', 'expense-dialog', 'property-form',
+  'loan-form', 'income-form', 'bank-import', 'bulk-import', 'api-direct',
+  'scan', 'manual', 'onboarding',
+]);
+
+/** Tags worth showing: drop the auto-generated noise that just duplicates the
+ *  category badge, the linked-entity badges, or the upload source. */
+function visibleTags(doc: DocumentListItem): string[] {
+  const categoryTag = doc.category.toLowerCase().replace(/_/g, '-');
+  const entityTags = new Set(doc.links.map((l) => l.entityType.toLowerCase().replace(/_/g, '-')));
+  return doc.tags.filter(
+    (t) => t !== categoryTag && !entityTags.has(t) && !SOURCE_TAGS.has(t),
+  );
 }
 
 const CATEGORY_LABELS: Record<DocumentCategory, string> = {
@@ -119,11 +145,64 @@ function formatDate(dateString: string): string {
   });
 }
 
+/**
+ * Row thumbnail — renders the actual image for image documents (a small preview
+ * of the receipt/statement), falling back to the file-type icon for PDFs/other
+ * or if the image can't load. The signed URL is fetched lazily via `onView`.
+ */
+function RowThumb({
+  doc,
+  onView,
+}: {
+  doc: DocumentListItem;
+  onView: (id: string) => Promise<{ signedUrl: string } | null>;
+}) {
+  const isImage = doc.mimeType.startsWith('image/');
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!isImage) return;
+    let active = true;
+    onView(doc.id)
+      .then((r) => {
+        if (active && r?.signedUrl) setUrl(r.signedUrl);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [doc.id, isImage, onView]);
+
+  if (isImage && url && !failed) {
+    // eslint-disable-next-line @next/next/no-img-element -- signed URLs are short-lived + auth-scoped; next/image can't optimise them
+    return (
+      <img
+        src={url}
+        alt={doc.originalFilename}
+        className="h-12 w-12 flex-shrink-0 rounded-lg border border-foreground/10 object-cover"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  const FileIcon = getFileIcon(doc.mimeType);
+  return (
+    <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-muted">
+      <FileIcon className="h-6 w-6 text-muted-foreground" />
+    </div>
+  );
+}
+
 export function DocumentList({
   documents,
   onView,
   onDelete,
   onRename,
+  onUpdate,
+  onAddExpense,
   loading = false,
   emptyMessage = 'No documents found',
   showEntityLinks = true,
@@ -131,6 +210,46 @@ export function DocumentList({
   const [previewDoc, setPreviewDoc] = useState<{ url: string; doc: DocumentListItem } | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
+  const [addingExpense, setAddingExpense] = useState<string | null>(null);
+  // Edit dialog (name + category).
+  const [editDoc, setEditDoc] = useState<DocumentListItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editCategory, setEditCategory] = useState<DocumentCategory>(DocumentCategory.OTHER);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openEdit = (doc: DocumentListItem) => {
+    setEditName(doc.originalFilename);
+    setEditCategory(doc.category);
+    setEditDoc(doc);
+  };
+
+  const saveEdit = async () => {
+    if (!editDoc) return;
+    setSavingEdit(true);
+    try {
+      const name = editName.trim();
+      const patch: { name?: string; category?: string } = {};
+      if (name && name !== editDoc.originalFilename) patch.name = name;
+      if (editCategory !== editDoc.category) patch.category = editCategory;
+      if (Object.keys(patch).length > 0) {
+        if (onUpdate) await onUpdate(editDoc.id, patch);
+        else if (onRename && patch.name) await onRename(editDoc.id, patch.name);
+      }
+      setEditDoc(null);
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleAddExpense = async (id: string) => {
+    if (!onAddExpense) return;
+    setAddingExpense(id);
+    try {
+      await onAddExpense(id);
+    } finally {
+      setAddingExpense(null);
+    }
+  };
 
   const handleRename = async (doc: DocumentListItem) => {
     if (!onRename) return;
@@ -204,16 +323,12 @@ export function DocumentList({
     <>
       <div className="space-y-3">
         {documents.map((doc) => {
-          const FileIcon = getFileIcon(doc.mimeType);
-
           return (
             <Card key={doc.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-start gap-4">
-                  {/* Icon */}
-                  <div className="flex-shrink-0 w-12 h-12 bg-muted rounded-lg flex items-center justify-center">
-                    <FileIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
+                  {/* Thumbnail (real image preview for image docs, icon otherwise) */}
+                  <RowThumb doc={doc} onView={onView} />
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
@@ -250,14 +365,28 @@ export function DocumentList({
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        {onRename && (
+                        {onAddExpense &&
+                          (doc.category === DocumentCategory.RECEIPT ||
+                            doc.category === DocumentCategory.INVOICE) && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                              onClick={() => handleAddExpense(doc.id)}
+                              disabled={addingExpense === doc.id}
+                              title="Add as expense"
+                            >
+                              <DollarSign className="h-4 w-4" />
+                            </Button>
+                          )}
+                        {(onUpdate || onRename) && (
                           <Button
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleRename(doc)}
+                            onClick={() => (onUpdate ? openEdit(doc) : handleRename(doc))}
                             disabled={renaming === doc.id}
-                            title="Rename"
+                            title={onUpdate ? 'Edit' : 'Rename'}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -287,7 +416,7 @@ export function DocumentList({
                       <Badge className={CATEGORY_COLORS[doc.category]}>
                         {CATEGORY_LABELS[doc.category]}
                       </Badge>
-                      {doc.tags.map((tag) => (
+                      {visibleTags(doc).map((tag) => (
                         <Badge key={tag} variant="outline" className="text-xs">
                           {tag}
                         </Badge>
@@ -367,6 +496,48 @@ export function DocumentList({
                 </Button>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog — name + category */}
+      <Dialog open={!!editDoc} onOpenChange={(open) => !open && setEditDoc(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit document</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-foreground">Name</label>
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-foreground">Category</label>
+              <select
+                value={editCategory}
+                onChange={(e) => setEditCategory(e.target.value as DocumentCategory)}
+                className="w-full rounded-lg border border-foreground/15 bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-400"
+              >
+                {Object.values(DocumentCategory).map((cat) => (
+                  <option key={cat} value={cat}>
+                    {CATEGORY_LABELS[cat]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditDoc(null)} disabled={savingEdit}>
+                Cancel
+              </Button>
+              <Button onClick={saveEdit} disabled={savingEdit}>
+                {savingEdit ? 'Saving…' : 'Save'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
