@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Smart Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .navy-shadow {
+            box-shadow: 0 4px 24px -4px rgba(11, 18, 32, 0.04);
+        }
+        .sticky-bottom-blur {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-lowest": "#ffffff",
+                      "primary-fixed": "#7ffc97",
+                      "surface-container-high": "#e3eadf",
+                      "on-tertiary": "#ffffff",
+                      "surface-dim": "#d5dcd1",
+                      "trail-emerald": "#16A34A",
+                      "trail-sky": "#0EA5E9",
+                      "tertiary": "#4d5d73",
+                      "surface-container-highest": "#dde5d9",
+                      "surface-tint": "#006e2d",
+                      "on-primary-fixed-variant": "#005320",
+                      "secondary-container": "#d9dff4",
+                      "surface-ivory": "#FAFAF7",
+                      "on-secondary-container": "#5c6274",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "surface-container-low": "#eff6ea",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "secondary-fixed": "#dce2f6",
+                      "outline": "#6e7b6c",
+                      "inverse-on-surface": "#ecf3e7",
+                      "trail-amber": "#F59E0B",
+                      "primary-container": "#00873a",
+                      "tertiary-container": "#66768d",
+                      "outline-slate": "#94A3B8",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-secondary-fixed-variant": "#404757",
+                      "background": "#f4fcf0",
+                      "on-error-container": "#93000a",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "on-secondary-fixed": "#151b2a",
+                      "surface": "#f4fcf0",
+                      "on-error": "#ffffff",
+                      "error-red": "#DC2626",
+                      "trail-indigo": "#6366F1",
+                      "surface-bright": "#f4fcf0",
+                      "on-primary-fixed": "#002109",
+                      "outline-variant": "#bdcaba",
+                      "surface-container": "#e9f0e5",
+                      "on-background": "#171d16",
+                      "secondary": "#585e6f",
+                      "on-primary": "#ffffff",
+                      "on-tertiary-container": "#fdfcff",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#f7fff2",
+                      "error": "#ba1a1a",
+                      "primary": "#006b2c",
+                      "inverse-surface": "#2b322b",
+                      "surface-variant": "#dde5d9",
+                      "inverse-primary": "#62df7d",
+                      "tertiary-fixed": "#d3e4fe",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#3e4a3d",
+                      "on-surface": "#171d16",
+                      "primary-fixed-dim": "#62df7d",
+                      "trail-violet": "#8B5CF6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "section-gap": "48px",
+                      "margin-desktop": "48px",
+                      "gutter": "24px",
+                      "edge-margin": "20px",
+                      "stack-md": "16px",
+                      "stack-lg": "32px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "data-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "headline-lg-mobile": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-sm": ["Inter"]
+              },
+              "fontSize": {
+                      "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+            },
+          },
+        }
+      </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory text-on-surface font-body-md min-h-screen">
+<!-- Top Navigation Header -->
+<header class="w-full h-auto sticky top-0 z-50 overflow-hidden">
+<!-- Atmospheric Glow Overlay -->
+<div class="absolute inset-0 bg-gradient-to-b from-trail-sky/10 to-transparent -z-10 h-64 pointer-events-none"></div>
+<div class="absolute -top-16 -right-16 w-64 h-64 bg-trail-indigo/5 blur-[80px] rounded-full pointer-events-none"></div>
+<div class="flex justify-between items-center px-edge-margin pt-edge-margin pb-stack-lg max-w-container-max mx-auto">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-md uppercase tracking-widest bg-gradient-to-r from-trail-sky to-trail-indigo bg-clip-text text-transparent font-bold">SMART INBOX</span>
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface">Review what we found</h1>
+</div>
+<div class="flex flex-col items-end gap-2">
+<div class="bg-trail-sky/10 px-3 py-1 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 bg-trail-sky rounded-full animate-pulse"></span>
+<span class="text-[10px] font-bold text-trail-sky tracking-widest uppercase">TRACK</span>
+</div>
+</div>
+</div>
+<!-- Sticky Headline Subtext and Progress Pill Cluster -->
+<div class="px-edge-margin pb-stack-md flex flex-col gap-4">
+<p class="text-on-surface-variant font-body-sm leading-relaxed max-w-[280px]">
+                We've pre-selected the confident ones — edit any, then approve.
+            </p>
+<!-- Filters: Horizontal Confidence Chips -->
+<div class="flex gap-3 overflow-x-auto pb-2 -mx-edge-margin px-edge-margin no-scrollbar">
+<button class="flex-shrink-0 flex items-center gap-2 bg-trail-emerald/10 border border-trail-emerald/20 px-4 py-2 rounded-full transition-all active:scale-95">
+<span class="font-bold text-trail-emerald font-data-lg text-[14px]">8</span>
+<span class="text-trail-emerald font-label-md">high</span>
+</button>
+<button class="flex-shrink-0 flex items-center gap-2 bg-trail-amber/10 border border-trail-amber/20 px-4 py-2 rounded-full transition-all active:scale-95">
+<span class="font-bold text-trail-amber font-data-lg text-[14px]">3</span>
+<span class="text-trail-amber font-label-md">check</span>
+</button>
+<button class="flex-shrink-0 flex items-center gap-2 bg-tertiary/10 border border-tertiary/20 px-4 py-2 rounded-full transition-all active:scale-95">
+<span class="font-bold text-tertiary font-data-lg text-[14px]">1</span>
+<span class="text-tertiary font-label-md">review</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Document List Canvas -->
+<main class="px-edge-margin pb-40 space-y-4">
+<!-- Item 1: Coles -->
+<div class="glass-card navy-shadow border border-outline-variant/30 rounded-[22px] p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md border-2 border-trail-emerald bg-trail-emerald flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[18px] font-bold">check</span>
+</div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-emerald/20 to-trail-emerald/5 flex items-center justify-center border border-trail-emerald/10">
+<span class="material-symbols-outlined text-trail-emerald">receipt_long</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-on-surface">Coles Supermarkets</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">High</span>
+</div>
+<span class="text-on-surface-variant font-body-sm tabular-nums">Add as expense · $142.50 · 18 Jun</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/20 pt-3">
+<div class="bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">trending_flat</span>
+<span class="text-on-surface-variant text-[12px] font-medium">Just an expense</span>
+</div>
+<button class="text-primary font-medium text-body-sm hover:underline">Edit</button>
+</div>
+</div>
+<!-- Item 2: Apple -->
+<div class="glass-card navy-shadow border border-outline-variant/30 rounded-[22px] p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md border-2 border-trail-emerald bg-trail-emerald flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[18px] font-bold">check</span>
+</div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-sky/20 to-trail-sky/5 flex items-center justify-center border border-trail-sky/10">
+<span class="material-symbols-outlined text-trail-sky">cloud</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-on-surface">Apple Services</span>
+<span class="bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">High</span>
+</div>
+<span class="text-on-surface-variant font-body-sm tabular-nums">Add as expense · $14.99 · 11 Oct</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/20 pt-3">
+<div class="bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">trending_flat</span>
+<span class="text-on-surface-variant text-[12px] font-medium">Just an expense</span>
+</div>
+<button class="text-primary font-medium text-body-sm hover:underline">Edit</button>
+</div>
+</div>
+<!-- Item 3: QBE Insurance -->
+<div class="glass-card navy-shadow border border-outline-variant/30 rounded-[22px] p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md border-2 border-outline-variant bg-transparent"></div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-amber/20 to-trail-amber/5 flex items-center justify-center border border-trail-amber/10">
+<span class="material-symbols-outlined text-trail-amber">shield</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-on-surface">QBE Insurance</span>
+<span class="bg-trail-amber/10 text-trail-amber text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Check</span>
+</div>
+<span class="text-on-surface-variant font-body-sm tabular-nums">Add as expense · $215.59 · 14 Jun</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/20 pt-3">
+<div class="bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/10 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">trending_flat</span>
+<span class="text-on-surface-variant text-[12px] font-medium">Landcruiser</span>
+</div>
+<button class="text-primary font-medium text-body-sm hover:underline">Edit</button>
+</div>
+</div>
+<!-- Item 4: Bunnings (EXPANDED EDIT STATE) -->
+<div class="glass-card navy-shadow border border-trail-sky/40 bg-trail-sky/[0.02] rounded-[22px] p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md border-2 border-outline-variant bg-transparent flex items-center justify-center">
+<!-- Unchecked -->
+</div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-trail-sky/20 to-trail-sky/5 flex items-center justify-center border border-trail-sky/10">
+<span class="material-symbols-outlined text-trail-sky">home_repair_service</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-on-surface">Bunnings Warehouse</span>
+<span class="bg-trail-sky/10 text-trail-sky text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Editing</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Expanded Edit Sub-Panel -->
+<div class="bg-trail-sky/5 border border-trail-sky/10 rounded-xl p-4 flex flex-col gap-4">
+<div class="space-y-3">
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-on-surface-variant text-[11px] uppercase tracking-wider">Vendor</label>
+<input class="bg-white/50 border-outline-variant/20 rounded-lg text-body-sm px-3 py-2 w-full focus:ring-1 focus:ring-trail-sky outline-none" type="text" value="Bunnings Warehouse"/>
+</div>
+<div class="grid grid-cols-2 gap-3">
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-on-surface-variant text-[11px] uppercase tracking-wider">Amount</label>
+<input class="bg-white/50 border-outline-variant/20 rounded-lg text-body-sm px-3 py-2 w-full tabular-nums focus:ring-1 focus:ring-trail-sky outline-none" type="text" value="$128.40"/>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-on-surface-variant text-[11px] uppercase tracking-wider">Date</label>
+<input class="bg-white/50 border-outline-variant/20 rounded-lg text-body-sm px-3 py-2 w-full tabular-nums focus:ring-1 focus:ring-trail-sky outline-none" type="text" value="09 Oct 2023"/>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-on-surface-variant text-[11px] uppercase tracking-wider">Category</label>
+<div class="bg-white/50 border border-outline-variant/20 rounded-lg text-body-sm px-3 py-2 flex items-center justify-between">
+<span>Repairs &amp; Maintenance</span>
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="font-label-md text-on-surface-variant text-[11px] uppercase tracking-wider">What is this for?</label>
+<div class="bg-white/50 border border-outline-variant/20 rounded-lg text-body-sm px-3 py-2 flex items-center gap-2 text-trail-sky font-medium">
+<span class="material-symbols-outlined text-[16px]">trending_flat</span>
+<span>Landcruiser</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-end gap-6 pt-2">
+<button class="text-on-surface-variant font-medium text-body-sm">Cancel</button>
+<button class="text-trail-sky font-bold text-body-sm">Save</button>
+</div>
+</div>
+</div>
+<!-- Item 5: Unknown Vendor -->
+<div class="glass-card navy-shadow border border-outline-variant/30 rounded-[22px] p-4 flex flex-col gap-4">
+<div class="flex items-start justify-between gap-3">
+<div class="flex items-center gap-3">
+<div class="w-6 h-6 rounded-md border-2 border-outline-variant bg-transparent"></div>
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-tertiary/20 to-tertiary/5 flex items-center justify-center border border-tertiary/10">
+<span class="material-symbols-outlined text-tertiary">help_outline</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-on-surface">Unknown Vendor</span>
+<span class="bg-tertiary/10 text-tertiary text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-tighter">Review</span>
+</div>
+<span class="text-on-surface-variant font-body-sm tabular-nums">Add as expense · $42.00 · 07 Oct</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between border-t border-outline-variant/20 pt-3">
+<div class="bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant/10 flex items-center gap-2 italic text-on-surface-variant/60">
+<span class="material-symbols-outlined text-[14px]">trending_flat</span>
+<span class="text-[12px]">Please select</span>
+</div>
+<button class="text-primary font-medium text-body-sm hover:underline">Edit</button>
+</div>
+</div>
+</main>
+<!-- Sticky Bottom Approval Bar -->
+<nav class="fixed bottom-0 left-0 w-full z-50">
+<div class="absolute inset-0 bg-white/70 sticky-bottom-blur -z-10"></div>
+<div class="p-edge-margin space-y-4 max-w-container-max mx-auto">
+<div class="flex flex-col gap-3">
+<div class="flex justify-between items-center px-1">
+<span class="text-on-surface-variant font-label-md flex items-center gap-2">
+<span class="w-2 h-2 bg-trail-emerald rounded-full"></span>
+                        8 selected
+                    </span>
+<span class="text-on-surface-variant/40 text-[11px] font-label-md uppercase tracking-wide">Nothing is saved until you approve.</span>
+</div>
+<button class="w-full bg-gradient-to-r from-trail-sky to-trail-indigo py-4 rounded-xl text-white font-bold text-body-lg shadow-lg shadow-trail-sky/20 transition-all active:scale-95 flex items-center justify-center gap-3">
+<span>Approve 8 selected</span>
+<span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- Navigation Background Script for micro-interactions -->
+<script>
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('touchstart', function() {
+                this.classList.add('opacity-80');
+            });
+            button.addEventListener('touchend', function() {
+                this.classList.remove('opacity-80');
+            });
+        });
+    </script>
+</body></html>
