@@ -143,3 +143,70 @@
   documented in the Phase 50 doc (the feature's canonical spec). No schema, no
   infra, no identity/deploy/security surface. Component change is a true tweak
   (§18.2.1) — a pill on an existing row, not a new section composition.
+
+---
+
+## Session: dme-d6-bulk-approve-inbox-shk180
+
+### Changes Made
+- **Type**: Feature (Phase 50 D.6 — bulk-approve Smart Inbox), Stitch-first.
+- **Scope**: My Vault / Documents — the AI-review surface.
+- **Why**: The sanctioned autonomy convenience from the 2026-06-18 decision —
+  with always-confirm, a user who trusts the AI needs a fast path to approve
+  many recognised documents at once, while every item stays explicit + editable
+  (no silent writes). Reza: *"the user can always have the option to bulk approve
+  … but the confirmation and the option for user to edit the ai findings should
+  always be there."*
+- **Solution**: replaced the existing inline Smart Inbox (Phase 38 PR2,
+  one-tap-per-row) — per §12.1, NOT a duplicate — with a dedicated
+  `components/documents/SmartInbox.tsx`: (1) multi-select with the D.3 **AUTO
+  band pre-selected**; (2) per-row **inline edit** of vendor/amount/date/category;
+  (3) **"Approve N selected"** looping the SAME SSOT confirm path
+  (`handleConfirmAnalysis` → `POST /api/documents/analyze/confirm`) once per item
+  (D.2 reconcile + receipt-match per item; no batch shortcut, no background
+  writes); (4) the approved Track glass design. No new endpoint (§12.4).
+
+### Files Modified / Added
+- `components/documents/SmartInbox.tsx` (NEW) — the bulk-approve component;
+  bands via `confidencePolicy` (D.3 SSOT); JSDoc carries the autonomy contract +
+  Stitch screen IDs.
+- `app/dashboard/documents/page.tsx` — mount `<SmartInbox>`; remove the inline
+  inbox JSX + the now-dead `summariseExtractedData` / `confidenceTone` /
+  `formatActionLabel` helpers + orphaned imports (§12.1).
+- `tests/components/SmartInbox.test.tsx` (NEW) — 6 tests pinning the autonomy
+  contract (D.3 reuse, AUTO-only pre-select, reassurance copy, per-item confirm,
+  edits-win).
+- `.stitch/designs/phase50-smart-inbox/` (NEW) — 4-variant matrix HTML+PNG
+  (desktop/mobile × light/dark).
+
+### Docs Updated
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — D.6 capability + Stitch IDs +
+  status line.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — 0·DOC D.6 row.
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run build` passes
+- [x] `next lint` clean on changed files (pre-existing warnings only)
+- [x] `vitest run tests/components/SmartInbox.test.tsx` — 6/6 pass
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- None. No Prisma writes in this PR — the component calls the existing confirm
+  endpoint (whose own writes were checklisted in their PRs). No schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — UI surface; no tax-engine file, no financial calc, no schema column on
+  `Property`/`Investment`/`LegalEntity`, no AI tool, no per-asset tax UI.
+
+### Stitch / §18.2.1 + §18.7.2
+- New in-app section composition → Stitch-first. Design approved by Reza before
+  React. Full 4-variant matrix generated + committed (desktop/mobile × light/dark)
+  per §18.7.2 dark-mode enforcement. Screen IDs:
+  `ded7fd42483e4944978eaec88e2d283e` (desktop light),
+  `939521f984694b55984d3c423c28003a` (desktop dark),
+  `6ae7b7cb73874bae82e5d1d751d284b2` (mobile light),
+  `da7e1e4903c34517b0b26e79a32f74e8` (mobile dark). Prompts seeded with the
+  §18.7.2 in-app glass vocabulary (not Stitch defaults). No new design primitive
+  (token/palette/glyph) — composition over existing primitives, so no
+  06_/08_ token entry required; JSDoc on the component carries the design rules.

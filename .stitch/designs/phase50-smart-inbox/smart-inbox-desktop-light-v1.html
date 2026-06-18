@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Smart Inbox | Track</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "background": "#f9f9f6",
+                "tertiary-fixed": "#7ffc97",
+                "surface-variant": "#e2e3e0",
+                "secondary-fixed-dim": "#89ceff",
+                "surface-bright": "#f9f9f6",
+                "inverse-surface": "#2f312f",
+                "inverse-on-surface": "#f1f1ee",
+                "primary": "#3525cd",
+                "secondary": "#006591",
+                "on-primary-container": "#dad7ff",
+                "on-tertiary-fixed": "#002109",
+                "error": "#ba1a1a",
+                "surface-dim": "#dadad7",
+                "outline": "#777587",
+                "surface-tint": "#4d44e3",
+                "tertiary": "#005522",
+                "on-secondary-fixed": "#001e2f",
+                "on-error-container": "#93000a",
+                "on-tertiary-container": "#78f591",
+                "on-tertiary": "#ffffff",
+                "surface-container": "#eeeeeb",
+                "on-primary-fixed": "#0f0069",
+                "on-surface": "#1a1c1b",
+                "on-tertiary-fixed-variant": "#005320",
+                "surface-container-high": "#e8e8e5",
+                "secondary-fixed": "#c9e6ff",
+                "inverse-primary": "#c3c0ff",
+                "on-primary": "#ffffff",
+                "surface-container-lowest": "#ffffff",
+                "surface": "#f9f9f6",
+                "on-primary-fixed-variant": "#3323cc",
+                "outline-variant": "#c7c4d8",
+                "tertiary-container": "#00702f",
+                "on-background": "#1a1c1b",
+                "on-surface-variant": "#464555",
+                "on-secondary-fixed-variant": "#004c6e",
+                "secondary-container": "#39b8fd",
+                "on-error": "#ffffff",
+                "error-container": "#ffdad6",
+                "surface-container-low": "#f4f4f1",
+                "primary-fixed": "#e2dfff",
+                "primary-fixed-dim": "#c3c0ff",
+                "on-secondary": "#ffffff",
+                "tertiary-fixed-dim": "#62df7d",
+                "surface-container-highest": "#e2e3e0",
+                "primary-container": "#4f46e5",
+                "on-secondary-container": "#004666"
+            },
+            "borderRadius": {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "2xl": "1.375rem",
+                "full": "9999px"
+            },
+            "spacing": {
+                "section-gap": "64px",
+                "stack-sm": "8px",
+                "gutter": "24px",
+                "stack-lg": "32px",
+                "stack-md": "16px",
+                "container-max": "1280px",
+                "edge-margin": "32px"
+            },
+            "fontFamily": {
+                "label-caps": ["Inter"],
+                "display-lg": ["Inter"],
+                "headline-md": ["Inter"],
+                "data-sm": ["Inter"],
+                "body-lg": ["Inter"],
+                "headline-sm": ["Inter"],
+                "body-sm": ["Inter"],
+                "data-lg": ["Inter"]
+            },
+            "fontSize": {
+                "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                "data-sm": ["13px", {"lineHeight": "18px", "fontWeight": "500"}],
+                "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "500"}],
+                "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                "data-lg": ["18px", {"lineHeight": "24px", "fontWeight": "600"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+      body {
+        background-color: #FAFAF7;
+        font-family: 'Inter', sans-serif;
+        color: #1a1c1b;
+      }
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(24px);
+        border: 1px solid rgba(226, 232, 240, 0.2);
+        box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.06);
+      }
+      .mesh-glow {
+        background: radial-gradient(at top right, #38bdf8 0%, transparent 50%),
+                    radial-gradient(at top left, #4f46e5 0%, transparent 50%);
+        opacity: 0.08;
+      }
+      .tabular-nums {
+        font-variant-numeric: tabular-nums;
+      }
+      .brand-gradient {
+        background: linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%);
+      }
+      .text-brand-gradient {
+        background: linear-gradient(135deg, #0ea5e9 0%, #4f46e5 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+      }
+    </style>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen w-64 border-r border-outline-variant/20 bg-surface/70 backdrop-blur-3xl shadow-[0_4px_24px_rgba(15,23,42,0.06)] sticky top-0 py-edge-margin gap-stack-md z-50">
+<div class="px-6 mb-8 flex items-center gap-3">
+<div class="w-8 h-8 rounded-lg brand-gradient flex items-center justify-center text-white">
+<span class="material-symbols-outlined !text-[20px]">account_balance</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary leading-none">Monitrax</h1>
+<p class="text-[10px] font-label-caps tracking-wider text-on-surface-variant uppercase mt-0.5">Wealth Management</p>
+</div>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">home</span>
+<span class="font-body-sm text-body-sm">Home</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">group</span>
+<span class="font-body-sm text-body-sm">Household</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">account_balance</span>
+<span class="font-body-sm text-body-sm">Accounts</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">payments</span>
+<span class="font-body-sm text-body-sm">Budget</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">umbrella</span>
+<span class="font-body-sm text-body-sm">Safety Net</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">monitoring</span>
+<span class="font-body-sm text-body-sm">Wealth</span>
+</a>
+<!-- Active Link Mapping to Review screen logic (Guide/Inbox) -->
+<a class="flex items-center gap-3 px-3 py-2 text-primary font-bold bg-primary-container/10 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-body-sm text-body-sm">Guide</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-on-surface-variant hover:bg-surface-container-high/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined group-hover:text-primary">description</span>
+<span class="font-body-sm text-body-sm">Reports</span>
+</a>
+</nav>
+<div class="mt-auto px-6 py-4 flex items-center gap-3 border-t border-outline-variant/10">
+<div class="w-9 h-9 rounded-full overflow-hidden bg-surface-container">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a mature woman in a bright, modern office setting. She has a warm, confident expression and is dressed in professional attire. The lighting is soft and airy, matching a high-end financial app aesthetic with a warm ivory background and clean minimalist surroundings." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDWgj2MFvnfz-id95D6tbyTYxgPVx3VltOmw9j8xHtfYzbl4oZzh_UhGvrQZTFWnYvCFp-JCt8Jcz7tbXon1zDFfCO4YuycwLBJMS4i1dcrHXpgSthA0sYm0NFC3dMKulycfxPd2I8i2GqUqrZSBzRp_gfWuBNwgs4d4Yj4Hu90e-JJKqLE0zg4QlEi07n04zkFqv983T8ohwY9eia2P8Z4vJednx8JYBpapuX8Lakph3nghXISiQiRoYYZGgsGvvORiSgVqx1OTKI"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-sm font-semibold text-on-surface">Alex Chen</span>
+<span class="text-[11px] text-on-surface-variant">Family Office</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 relative pb-40">
+<div class="absolute inset-x-0 top-0 h-[400px] pointer-events-none overflow-hidden">
+<div class="mesh-glow absolute inset-0"></div>
+</div>
+<!-- TopAppBar Large -->
+<header class="relative z-10 max-w-container-max mx-auto px-edge-margin pt-edge-margin pb-stack-lg">
+<div class="flex justify-between items-start mb-stack-md">
+<div class="space-y-1">
+<p class="font-label-caps text-label-caps uppercase tracking-widest text-brand-gradient">SMART INBOX</p>
+<h2 class="font-headline-md text-4xl text-on-surface">Review what we found</h2>
+</div>
+<div class="flex flex-col items-end gap-3">
+<div class="px-3 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-600 font-label-caps text-[10px] tracking-widest">TRACK</div>
+<button class="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-all font-body-sm">
+<span class="material-symbols-outlined !text-[20px]">search</span>
+</button>
+</div>
+</div>
+<p class="font-body-lg text-on-surface-variant max-w-2xl">
+        12 documents the AI recognised. We've pre-selected the confident ones — edit any, then approve. Nothing is saved until you do.
+      </p>
+<!-- Glass Stat Chips -->
+<div class="flex flex-wrap gap-stack-sm mt-stack-lg">
+<div class="flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 font-body-sm font-medium">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+          8 high confidence
+        </div>
+<div class="flex items-center gap-2 px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 font-body-sm font-medium">
+<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+          3 worth a check
+        </div>
+<div class="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-700 font-body-sm font-medium">
+<span class="w-2 h-2 rounded-full bg-slate-500"></span>
+          1 needs review
+        </div>
+</div>
+</header>
+<!-- Main List Card -->
+<section class="max-w-container-max mx-auto px-edge-margin relative z-10">
+<div class="glass-card rounded-2xl overflow-hidden">
+<div class="divide-y divide-outline-variant/10">
+<!-- Row 1: High Confidence -->
+<div class="group flex items-center justify-between p-6 hover:bg-white/40 transition-colors">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary/70">
+<span class="material-symbols-outlined !text-[24px]">receipt_long</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">Coles Supermarkets</h4>
+<p class="font-body-sm text-on-surface-variant tabular-nums">Add as expense · $142.50 · 18 Jun 2026</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="px-3 py-1 rounded-lg bg-surface-container-low text-on-surface-variant font-body-sm text-[12px]">→ Just an expense</span>
+<span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-label-caps text-[10px]">High confidence</span>
+<button class="material-symbols-outlined text-outline-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">edit</button>
+</div>
+</div>
+<!-- Row 2: High Confidence -->
+<div class="group flex items-center justify-between p-6 hover:bg-white/40 transition-colors">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary/70">
+<span class="material-symbols-outlined !text-[24px]">service_toolbox</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">Apple Services</h4>
+<p class="font-body-sm text-on-surface-variant tabular-nums">$14.99 · 15 Jun 2026</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="px-3 py-1 rounded-lg bg-surface-container-low text-on-surface-variant font-body-sm text-[12px]">→ Just an expense</span>
+<span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-label-caps text-[10px]">High confidence</span>
+<button class="material-symbols-outlined text-outline-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">edit</button>
+</div>
+</div>
+<!-- Row 3: Worth a Check -->
+<div class="group flex items-center justify-between p-6 hover:bg-white/40 transition-colors">
+<div class="flex items-center gap-6">
+<input class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined !text-[24px]">shield</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">QBE Insurance</h4>
+<p class="font-body-sm text-on-surface-variant tabular-nums">$215.59 · 14 Jun 2026</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="px-3 py-1 rounded-lg bg-surface-container-low text-on-surface-variant font-body-sm text-[12px]">→ Landcruiser</span>
+<span class="px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-600 font-label-caps text-[10px]">Worth a check</span>
+<button class="material-symbols-outlined text-outline-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">edit</button>
+</div>
+</div>
+<!-- Row 4: Expanded Edit State -->
+<div class="relative bg-sky-50/40 p-6 space-y-4">
+<div class="flex items-start justify-between">
+<div class="flex items-center gap-6">
+<div class="w-5 h-5 rounded-md border-outline-variant border-2"></div>
+<div class="w-10 h-10 rounded-xl bg-sky-100/50 flex items-center justify-center text-sky-600">
+<span class="material-symbols-outlined !text-[24px]">hardware</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">Bunnings Warehouse</h4>
+<p class="font-body-sm text-on-surface-variant">Review required for classification</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="px-4 py-1.5 rounded-lg text-on-surface-variant hover:bg-surface-container font-body-sm transition-colors">Cancel</button>
+<button class="px-4 py-1.5 rounded-lg bg-white shadow-sm border border-outline-variant/30 text-primary font-semibold font-body-sm">Save</button>
+</div>
+</div>
+<!-- Sub-panel Edit Fields -->
+<div class="ml-24 grid grid-cols-2 lg:grid-cols-4 gap-4 p-5 bg-white/60 rounded-xl border border-sky-100">
+<div class="space-y-1.5">
+<label class="text-[11px] font-label-caps text-on-surface-variant/80">VENDOR</label>
+<input class="w-full bg-background border-outline-variant/30 rounded-lg text-body-sm px-3 py-2 focus:ring-primary focus:border-primary" type="text" value="Bunnings"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-label-caps text-on-surface-variant/80">AMOUNT</label>
+<input class="w-full bg-background border-outline-variant/30 rounded-lg text-body-sm px-3 py-2 tabular-nums" type="text" value="$128.40"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-label-caps text-on-surface-variant/80">CATEGORY</label>
+<select class="w-full bg-background border-outline-variant/30 rounded-lg text-body-sm px-3 py-2">
+<option>Hardware</option>
+<option>Maintenance</option>
+<option>Gifts</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="text-[11px] font-label-caps text-on-surface-variant/80">ALLOCATION</label>
+<select class="w-full bg-background border-outline-variant/30 rounded-lg text-body-sm px-3 py-2">
+<option>→ Landcruiser</option>
+<option>→ Principal Residence</option>
+<option>→ General Expense</option>
+</select>
+</div>
+</div>
+</div>
+<!-- Row 5: High Confidence -->
+<div class="group flex items-center justify-between p-6 hover:bg-white/40 transition-colors">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-primary/70">
+<span class="material-symbols-outlined !text-[24px]">call</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">Telstra Mobile</h4>
+<p class="font-body-sm text-on-surface-variant tabular-nums">$85.00 · 12 Jun 2026</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="px-3 py-1 rounded-lg bg-surface-container-low text-on-surface-variant font-body-sm text-[12px]">→ Just an expense</span>
+<span class="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-600 font-label-caps text-[10px]">High confidence</span>
+<button class="material-symbols-outlined text-outline-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">edit</button>
+</div>
+</div>
+<!-- Row 6: Needs Review -->
+<div class="group flex items-center justify-between p-6 hover:bg-white/40 transition-colors">
+<div class="flex items-center gap-6">
+<input class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary/20 cursor-pointer" type="checkbox"/>
+<div class="w-10 h-10 rounded-xl bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined !text-[24px]">help</span>
+</div>
+<div>
+<h4 class="font-body-lg font-semibold text-on-surface">Unknown Vendor</h4>
+<p class="font-body-sm text-on-surface-variant tabular-nums">$42.00 · 10 Jun 2026</p>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="px-3 py-1 rounded-lg bg-error-container/20 text-error/70 font-body-sm text-[12px]">→ Please select</span>
+<span class="px-2.5 py-1 rounded-full bg-slate-500/10 text-slate-600 font-label-caps text-[10px]">Please review</span>
+<button class="material-symbols-outlined text-outline-variant hover:text-primary transition-colors opacity-0 group-hover:opacity-100">edit</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- BottomNavBar (Action Shell) -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[calc(100%-64px)] max-w-2xl z-50">
+<div class="bg-white/70 backdrop-blur-3xl border border-outline-variant/20 rounded-xl shadow-[0_8px_32px_rgba(15,23,42,0.08)] p-gutter flex flex-col gap-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="flex gap-4">
+<button class="font-body-sm text-primary hover:underline transition-all">Select all</button>
+<button class="font-body-sm text-on-surface-variant hover:text-on-surface transition-all">Clear</button>
+</div>
+<div class="h-4 w-px bg-outline-variant/30"></div>
+<span class="font-body-sm font-semibold text-on-surface">8 selected</span>
+</div>
+<div class="flex items-center gap-stack-md">
+<button class="font-body-lg text-on-surface-variant hover:text-primary transition-all px-4 py-2">
+              Approve &amp; edit each
+            </button>
+<button class="brand-gradient text-on-primary font-body-lg font-bold rounded-xl px-8 py-3 shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 duration-150 transition-all">
+              Approve 8 selected
+            </button>
+</div>
+</div>
+<div class="text-center">
+<p class="text-[11px] text-on-surface-variant/60 font-body-sm italic">Each item is saved as you approve — you stay in control.</p>
+</div>
+</div>
+</div>
+</main>
+<script>
+    // Micro-interactions and state management
+    document.addEventListener('DOMContentLoaded', () => {
+      const rows = document.querySelectorAll('.divide-y > div');
+      
+      rows.forEach(row => {
+        row.addEventListener('click', (e) => {
+          if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'BUTTON' && e.target.tagName !== 'SELECT') {
+            // Logic for row selection/expansion could go here
+            console.log('Row clicked');
+          }
+        });
+      });
+
+      // Simple parallax for mesh glow
+      window.addEventListener('mousemove', (e) => {
+        const glow = document.querySelector('.mesh-glow');
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        glow.style.transform = `translate(${x * 10}px, ${y * 10}px)`;
+      });
+    });
+  </script>
+</body></html>

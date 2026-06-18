@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Smart Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 200, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .glow-header {
+            background: radial-gradient(circle at 50% -20%, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.08) 40%, transparent 70%);
+        }
+        .checkbox-custom:checked {
+            background-color: #62df7d;
+            border-color: #62df7d;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "background": "#050913",
+                        "surface-container": "#1b211a",
+                        "secondary-container": "#00b55d",
+                        "on-primary": "#003914",
+                        "inverse-surface": "#dde5d9",
+                        "on-secondary-container": "#003e1c",
+                        "secondary": "#4de082",
+                        "primary-fixed": "#7ffc97",
+                        "surface-dim": "#0e150f",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-container-low": "#171d16",
+                        "on-tertiary-container": "#5a0022",
+                        "tertiary-fixed": "#ffd9de",
+                        "surface-container-lowest": "#09100a",
+                        "on-secondary": "#003919",
+                        "surface": "#0e150f",
+                        "secondary-fixed": "#6dfe9c",
+                        "surface-variant": "#30372f",
+                        "primary-container": "#1ca64d",
+                        "on-background": "#dde5d9",
+                        "on-tertiary": "#660027",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "on-surface-variant": "#bdcaba",
+                        "error": "#ffb4ab",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-primary-fixed": "#002109",
+                        "inverse-primary": "#006e2d",
+                        "tertiary": "#ffb2bf",
+                        "tertiary-container": "#ec6284",
+                        "primary": "#62df7d",
+                        "outline-variant": "#3e4a3d",
+                        "on-primary-container": "#003111",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-tertiary-fixed": "#3f0016",
+                        "on-error": "#690005",
+                        "inverse-on-surface": "#2b322b",
+                        "surface-container-highest": "#30372f",
+                        "outline": "#879485",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#252c24",
+                        "on-surface": "#dde5d9",
+                        "on-secondary-fixed-variant": "#005227",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed": "#00210c",
+                        "surface-bright": "#343b33",
+                        "surface-tint": "#62df7d"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "64px",
+                        "container-max": "1440px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "stack-lg": "48px",
+                        "stack-md": "24px",
+                        "edge-margin": "64px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Inter"],
+                        "display-hero": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "1.3", "fontWeight": "600" }],
+                        "display-hero": ["96px", { "lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "body-sm": ["14px", { "lineHeight": "1.5", "fontWeight": "400" }],
+                        "body-lg": ["18px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "label-caps": ["12px", { "lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface min-h-screen selection:bg-primary/30">
+<!-- Sidebar Integration (SideNav Anchor) -->
+<aside class="fixed left-0 top-0 h-screen w-64 border-r border-outline-variant/10 bg-background/70 backdrop-blur-3xl z-40 hidden md:flex flex-col py-12 gap-8 shadow-[0_4px_24px_rgba(15,23,42,0.06)]">
+<div class="px-6">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Monitrax</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-semibold">Wealth Management</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-sm text-body-sm">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-sm text-body-sm">Household</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-primary font-bold bg-surface-container-high/30" href="#">
+<span class="material-symbols-outlined">account_balance</span>
+<span class="font-body-sm text-body-sm">Accounts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-body-sm text-body-sm">Budget</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">umbrella</span>
+<span class="font-body-sm text-body-sm">Safety Net</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-body-sm text-body-sm">Wealth</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-body-sm text-body-sm">Guide</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-colors" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-sm text-body-sm">Reports</span>
+</a>
+</nav>
+<div class="px-6 flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest border border-outline-variant/20 flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A cinematic, high-resolution portrait of a professional wealth manager with a confident and serene expression. The lighting is moody and low-key with subtle emerald highlights. The background is a minimalist, dark architectural space, emphasizing a sense of high-end financial services and trustworthiness." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBjxsyjCNr_nfL8kQ1fCXs8WMS9GEGAoxiPr6oaePdcCWlbAissu7AzZ3_4q1xBP1IVXxy0LjzR6v0zwgdLiAhxN8GlGmQ6zbSKQQzttvC-M_Z8xfCO6wmGcLuPzWxtP39WxSVQ6a_PMKNTj-9cQNvZMyVVoiQNgmxYGD3W70AKvfse2VxmDVMW4QMPhHzaehu1jidK0QZL6hmneBCaqdzEVCvLXxULT-Yvuh-E4qBe8bYEm8QTr8LEGy_8OyYtJ7PuyRs6RU1JN2Y"/>
+</div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-on-surface">Alex Mercer</span>
+<span class="text-[10px] text-on-surface-variant">Premium Member</span>
+</div>
+</div>
+</aside>
+<main class="md:ml-64 pb-32">
+<!-- TopAppBar Anchor -->
+<header class="w-full h-auto sticky top-0 z-30 glow-header">
+<div class="flex justify-between items-center px-12 pt-8 pb-12 max-w-container-max mx-auto">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps uppercase tracking-[0.2em] text-secondary/70 mb-2">SMART INBOX</span>
+<h2 class="font-headline-lg text-headline-lg text-[#FAFAF7] tracking-tight">Review what we found</h2>
+</div>
+<div class="flex items-center gap-6">
+<div class="hidden md:flex gap-8">
+<a class="text-primary font-medium border-b-2 border-primary pb-1 font-body-sm text-body-sm" href="#">Review what we found</a>
+</div>
+<button class="px-5 py-2 bg-primary/10 border border-primary/20 rounded-full text-primary font-bold tracking-widest text-[11px] hover:bg-primary hover:text-on-primary transition-all duration-300">TRACK</button>
+</div>
+</div>
+</header>
+<section class="px-12 max-w-container-max mx-auto">
+<div class="max-w-4xl">
+<p class="font-body-lg text-body-lg text-[#94A3B8] mb-8 leading-relaxed max-w-2xl">
+                    12 documents the AI recognised. We've pre-selected the confident ones — edit any, then approve. Nothing is saved until you do.
+                </p>
+<!-- Summary Chips -->
+<div class="flex flex-wrap gap-3 mb-10">
+<div class="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full">
+<span class="w-2 h-2 rounded-full bg-[#22C55E]"></span>
+<span class="text-emerald-300 text-sm font-medium">8 high confidence</span>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-amber-500/10 border border-amber-500/20 rounded-full">
+<span class="w-2 h-2 rounded-full bg-[#FBBF24]"></span>
+<span class="text-amber-200 text-sm font-medium">3 worth a check</span>
+</div>
+<div class="flex items-center gap-2 px-4 py-2 bg-slate-500/10 border border-slate-500/20 rounded-full">
+<span class="w-2 h-2 rounded-full bg-[#94A3B8]"></span>
+<span class="text-slate-300 text-sm font-medium">1 needs review</span>
+</div>
+</div>
+<!-- Transaction List -->
+<div class="glass-card rounded-[22px] overflow-hidden">
+<!-- Row 1 -->
+<div class="flex items-center gap-6 px-8 py-6 border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors group">
+<input checked="" class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">shopping_bag</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">Coles Supermarkets</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $142.50 · 12 Oct 2023</p>
+</div>
+<div class="px-3 py-1 bg-emerald-500/14 rounded-full">
+<span class="text-emerald-300 text-[11px] font-bold uppercase tracking-wider">High Confidence</span>
+</div>
+<button class="text-on-surface-variant/40 group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center gap-6 px-8 py-6 border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors group">
+<input checked="" class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-sky-500/20 to-sky-500/5 border border-sky-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-sky-400">cloud</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">Apple Services</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $14.99 · 11 Oct 2023</p>
+</div>
+<div class="px-3 py-1 bg-emerald-500/14 rounded-full">
+<span class="text-emerald-300 text-[11px] font-bold uppercase tracking-wider">High Confidence</span>
+</div>
+<button class="text-on-surface-variant/40 group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center gap-6 px-8 py-6 border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors group">
+<input class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-500/5 border border-amber-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-amber-400">shield</span>
+</div>
+<div class="flex-1 flex items-center gap-4">
+<div>
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">QBE Insurance</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $215.59 · 10 Oct 2023</p>
+</div>
+<div class="ml-auto flex items-center gap-2 px-3 py-1 bg-white/[0.05] border border-white/[0.08] rounded-full">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant">arrow_forward</span>
+<span class="text-on-surface-variant text-[11px] font-medium">Landcruiser</span>
+</div>
+</div>
+<div class="px-3 py-1 bg-amber-500/14 rounded-full">
+<span class="text-amber-300 text-[11px] font-bold uppercase tracking-wider">Worth a Check</span>
+</div>
+<button class="text-on-surface-variant/40 group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<!-- Row 4 (EXPANDED EDIT STATE) -->
+<div class="bg-surface-container-high/20 border-b border-outline-variant/10">
+<div class="flex items-center gap-6 px-8 py-6 group">
+<input checked="" class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">hardware</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">Bunnings Warehouse</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $128.40 · 09 Oct 2023</p>
+</div>
+<div class="px-3 py-1 bg-emerald-500/14 rounded-full">
+<span class="text-emerald-300 text-[11px] font-bold uppercase tracking-wider">High Confidence</span>
+</div>
+<button class="text-primary">
+<span class="material-symbols-outlined">keyboard_arrow_up</span>
+</button>
+</div>
+<div class="px-8 pb-8 pt-2 grid grid-cols-1 md:grid-cols-3 gap-6 animate-in slide-in-from-top-4 duration-300">
+<div class="space-y-4">
+<div>
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-2 block">Vendor</label>
+<input class="w-full bg-[#05050A] border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface text-sm focus:border-primary/50 focus:ring-0 transition-all" type="text" value="Bunnings Warehouse"/>
+</div>
+<div>
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-2 block">Amount</label>
+<input class="w-full bg-[#05050A] border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface text-sm focus:border-primary/50 focus:ring-0 transition-all" type="text" value="$128.40"/>
+</div>
+</div>
+<div class="space-y-4">
+<div>
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-2 block">Date</label>
+<input class="w-full bg-[#05050A] border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface text-sm focus:border-primary/50 focus:ring-0 transition-all" type="text" value="09 Oct 2023"/>
+</div>
+<div>
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-2 block">Category</label>
+<div class="relative">
+<select class="w-full bg-[#05050A] border border-outline-variant/30 rounded-lg py-2.5 px-4 text-on-surface text-sm focus:border-primary/50 focus:ring-0 appearance-none transition-all">
+<option>Repairs &amp; Maintenance</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-2.5 text-on-surface-variant/60 text-sm">expand_more</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col justify-between">
+<div>
+<label class="text-[10px] uppercase tracking-widest text-on-surface-variant/60 font-bold mb-2 block">What is this for?</label>
+<div class="flex items-center gap-2 px-4 py-2.5 bg-primary/10 border border-primary/20 rounded-lg">
+<span class="material-symbols-outlined text-[14px] text-primary">directions_car</span>
+<span class="text-primary text-sm font-medium">Landcruiser</span>
+</div>
+</div>
+<div class="flex items-center gap-4 mt-6">
+<button class="flex-1 py-2 text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors">Cancel</button>
+<button class="flex-1 py-2 bg-primary/10 border border-primary/30 rounded-full text-primary text-sm font-bold hover:bg-primary/20 transition-all">Save Changes</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Row 5 -->
+<div class="flex items-center gap-6 px-8 py-6 border-b border-outline-variant/10 hover:bg-white/[0.02] transition-colors group">
+<input checked="" class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500/20 to-indigo-500/5 border border-indigo-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-indigo-400">cell_tower</span>
+</div>
+<div class="flex-1">
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">Telstra Mobile</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $85.00 · 08 Oct 2023</p>
+</div>
+<div class="px-3 py-1 bg-emerald-500/14 rounded-full">
+<span class="text-emerald-300 text-[11px] font-bold uppercase tracking-wider">High Confidence</span>
+</div>
+<button class="text-on-surface-variant/40 group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+<!-- Row 6 -->
+<div class="flex items-center gap-6 px-8 py-6 hover:bg-white/[0.02] transition-colors group">
+<input class="w-5 h-5 rounded-md bg-transparent border-outline-variant/40 text-primary focus:ring-0 focus:ring-offset-0 transition-all cursor-pointer" type="checkbox"/>
+<div class="w-11 h-11 rounded-xl bg-gradient-to-br from-slate-500/20 to-slate-500/5 border border-slate-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-slate-400">help_center</span>
+</div>
+<div class="flex-1 flex items-center gap-4">
+<div>
+<h4 class="text-[#FAFAF7] font-semibold text-body-md">Unknown Vendor</h4>
+<p class="text-[#94A3B8] text-sm tabular-nums">Add as expense · $42.00 · 07 Oct 2023</p>
+</div>
+<div class="ml-auto flex items-center gap-2 px-3 py-1 bg-white/[0.03] border border-dashed border-outline-variant/40 rounded-full">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/40">add</span>
+<span class="text-on-surface-variant/60 text-[11px] font-medium">Please select</span>
+</div>
+</div>
+<div class="px-3 py-1 bg-slate-500/14 rounded-full">
+<span class="text-slate-300 text-[11px] font-bold uppercase tracking-wider">Please Review</span>
+</div>
+<button class="text-on-surface-variant/40 group-hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">edit</span>
+</button>
+</div>
+</div>
+<!-- Bottom Sticky Bar Anchor -->
+<div class="fixed bottom-8 left-1/2 -translate-x-1/2 w-[calc(100%-64px)] max-w-4xl z-50">
+<div class="bg-surface/70 backdrop-blur-3xl border border-outline-variant/20 rounded-[22px] px-8 py-5 flex items-center justify-between shadow-[0_20px_50px_rgba(0,0,0,0.4)]">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-3">
+<button class="text-on-surface-variant hover:text-on-surface text-sm font-semibold transition-colors">Select all</button>
+<span class="w-1 h-1 rounded-full bg-outline-variant"></span>
+<button class="text-on-surface-variant hover:text-on-surface text-sm font-semibold transition-colors">Clear</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center text-[11px] font-bold">8</span>
+<span class="text-[#FAFAF7] text-sm font-medium">items selected</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="px-5 py-3 text-sm font-bold text-[#FAFAF7] hover:text-white transition-colors">Approve &amp; edit each</button>
+<button class="px-8 py-3 bg-gradient-to-r from-sky-500 to-indigo-600 rounded-xl text-white font-bold text-sm shadow-[0_4px_15px_rgba(14,165,233,0.3)] hover:scale-[1.02] active:scale-95 transition-all">
+                                Approve 8 selected
+                            </button>
+</div>
+</div>
+<p class="text-center text-[11px] text-[#94A3B8]/60 mt-4 font-medium uppercase tracking-[0.1em]">
+                        Each item is saved as you approve — you stay in control.
+                    </p>
+</div>
+</div>
+</section>
+</main>
+<!-- Background Decoration -->
+<div class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-40">
+
+</div>
+<script>
+        // Micro-interaction for checkboxes and list highlighting
+        document.querySelectorAll('input[type="checkbox"]').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const row = this.closest('.flex');
+                if (this.checked) {
+                    row.classList.add('bg-primary/5');
+                } else {
+                    row.classList.remove('bg-primary/5');
+                }
+            });
+        });
+    </script>
+</body></html>

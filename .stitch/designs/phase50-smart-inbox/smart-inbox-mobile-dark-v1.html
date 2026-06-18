@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Smart Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-fixed": "#ffd9de",
+                        "on-secondary-container": "#003e1c",
+                        "secondary-fixed-dim": "#4de082",
+                        "on-error-container": "#ffdad6",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "surface-container-high": "#252c24",
+                        "secondary": "#4de082",
+                        "primary": "#62df7d",
+                        "surface-container-lowest": "#09100a",
+                        "on-primary-container": "#003111",
+                        "error": "#ffb4ab",
+                        "on-surface": "#dde5d9",
+                        "inverse-surface": "#dde5d9",
+                        "on-tertiary": "#660027",
+                        "on-primary-fixed": "#002109",
+                        "surface-container-low": "#171d16",
+                        "outline": "#879485",
+                        "on-tertiary-fixed": "#3f0016",
+                        "tertiary-container": "#ec6284",
+                        "secondary-fixed": "#6dfe9c",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary": "#003919",
+                        "on-primary": "#003914",
+                        "outline-variant": "#3e4a3d",
+                        "inverse-primary": "#006e2d",
+                        "on-secondary-fixed-variant": "#005227",
+                        "surface-variant": "#30372f",
+                        "on-error": "#690005",
+                        "on-background": "#dde5d9",
+                        "on-secondary-fixed": "#00210c",
+                        "surface-tint": "#62df7d",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "surface-dim": "#0e150f",
+                        "surface-container-highest": "#30372f",
+                        "primary-fixed": "#7ffc97",
+                        "on-primary-fixed-variant": "#005320",
+                        "background": "#050913", // Overridden by prompt: deep navy
+                        "on-tertiary-container": "#5a0022",
+                        "surface-bright": "#343b33",
+                        "error-container": "#93000a",
+                        "tertiary": "#ffb2bf",
+                        "secondary-container": "#00b55d",
+                        "primary-container": "#1ca64d",
+                        "inverse-on-surface": "#2b322b",
+                        "on-surface-variant": "#bdcaba",
+                        "surface": "#050913",
+                        "surface-container": "#1b211a"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "margin-desktop": "64px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    fontFamily: {
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-hero": ["Inter"],
+                        "display-hero-mobile": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    fontSize: {
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .brand-gradient-text {
+            background: linear-gradient(to right, #0EA5E9, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .brand-gradient-bg {
+            background: linear-gradient(to right, #0EA5E9, #6366F1);
+        }
+        .mesh-glow {
+            background: radial-gradient(circle at center, rgba(14, 165, 233, 0.4) 0%, transparent 70%);
+            filter: blur(24px);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .custom-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen pb-40">
+<!-- Top AppBar (Mobile Responsive) -->
+<header class="sticky top-0 z-50 w-full bg-gradient-to-b from-[#050913]/90 to-transparent backdrop-blur-md">
+<div class="flex justify-between items-start px-5 pt-8 pb-4 max-w-container-max mx-auto">
+<div class="flex flex-col gap-1">
+<span class="font-label-caps text-label-caps uppercase tracking-widest brand-gradient-text">SMART INBOX</span>
+<h1 class="font-headline-md text-headline-md text-[#FAFAF7] leading-tight">Review what we found</h1>
+</div>
+<div class="relative">
+<div class="absolute inset-0 mesh-glow scale-150"></div>
+<button class="relative px-5 py-2 rounded-full border border-sky-400/30 bg-sky-950/20 text-sky-300 font-label-caps text-label-caps tracking-widest">
+                    TRACK
+                </button>
+</div>
+</div>
+<div class="px-5 pb-6">
+<p class="font-body-sm text-body-sm text-[#94A3B8] max-w-[80%]">
+                We've pre-selected the confident ones — edit any, then approve.
+            </p>
+</div>
+</header>
+<main class="px-5 space-y-8">
+<!-- Filter Strip -->
+<section class="flex overflow-x-auto custom-scrollbar gap-3 -mx-5 px-5">
+<button class="glass-card flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+<span class="font-body-sm text-body-sm text-emerald-500 font-medium">8 high</span>
+</button>
+<button class="glass-card flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+<span class="font-body-sm text-body-sm text-amber-500 font-medium">3 check</span>
+</button>
+<button class="glass-card flex items-center gap-2 px-4 py-2.5 rounded-full whitespace-nowrap">
+<span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+<span class="font-body-sm text-body-sm text-slate-400 font-medium">1 review</span>
+</button>
+</section>
+<!-- Document Feed -->
+<section class="space-y-4">
+<!-- Card 1: Coles -->
+<div class="glass-card rounded-2xl p-5 flex items-center justify-between group transition-all active:scale-[0.98]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A clean, minimalist abstract geometric logo representation for a retail giant, professional flat design, monochrome palette on a dark tech background, high quality vector feel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA2VxUOJoCyc4eBF6nFDHtuvwkYFFRNPTvRj87aD-bby74MoQjP6I-HJbXrnxJRD36aDWbyJDkU9hVYh4fLP4GN2BGsd6bIG6S4BcVyYkcaSJgUG34AAhDg7PCR7I9y3cdn32Z7jJeMaaHTGSz-dIdpGQmYw_UAWqBxz4TYDCJ8Dx_AXha9THWjElKZKMBq5wWPUJ7h3Udhy_ebutQsWTU03IIVK63BRh9DsU9ccPGfWQp8W0eL0atrCGXN-ce25iT4kYbC_OcFttw"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Coles Supermarkets</span>
+<div class="flex items-center gap-2">
+<span class="text-[10px] uppercase tracking-wider font-bold text-emerald-500">High confidence</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md tabular-nums font-medium text-[#FAFAF7]">$142.50</span>
+<div class="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-[#050913] font-bold">check</span>
+</div>
+</div>
+</div>
+<!-- Card 2: Apple -->
+<div class="glass-card rounded-2xl p-5 flex items-center justify-between group transition-all active:scale-[0.98]">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Sleek technology brand symbol, minimalist icon on a dark premium background, soft lighting effects, modern glassmorphic aesthetic, silver and black tones, professional UI design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSMzu1IEw8HET80pV7Mj7sj5W6_jB67Q2zEUb74HOiHy9qa5E5GrsQVgZlEvreY4hatS0Gklc9Hl3WS9F5L07SsWeqkYcgLfyaY7mPj_N9ZPkXTbYCktd4b6k3VqkRAF3HU4WKP0gmJwNVuTIJ0oPnuadstJRkAGtcEHWJAvPhLD3L7JhKfq-f1v2I31IokpmV8fZh4agKe_njAqcvQu8BRkwempCYK-w2sJNqu0aLQrxPJ9iscwqg7BvJqZPh2mhUd0t9mzYs1-g"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Apple Services</span>
+<div class="flex items-center gap-2">
+<span class="text-[10px] uppercase tracking-wider font-bold text-emerald-500">High confidence</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md tabular-nums font-medium text-[#FAFAF7]">$14.99</span>
+<div class="w-6 h-6 rounded bg-emerald-500 flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px] text-[#050913] font-bold">check</span>
+</div>
+</div>
+</div>
+<!-- Card 3: QBE -->
+<div class="glass-card rounded-2xl p-5 space-y-4 transition-all active:scale-[0.98]">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Insurance corporate logo mark, sophisticated professional icon, deep navy and white color scheme, minimalist corporate branding, high-end financial app aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAH2SpRnKSDciFiTrGcCGrpBZoEyg_pADJd0u8A7GgmtISe7NeVTExXtXJIZ12pHYveY6qAJE-H4d-v4IZMW5ZPEcgS42OJDjqZXKs93UXaeQZFfi9LELwBqjlRpJAfsWkPLI8alN5K8mhuphJsScvUB5o-UE43OeWcXJMBBmKPbx7raQ8rVfOhKw9qv_o_BpuF7MxHek025jvOUomUwSd_wwHf3zqQGkuAFMhqTwVoPHTGmPkeCGN5-0CHXQCK_i9YII6Hr9y4cY"/>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#FAFAF7] font-semibold">QBE Insurance</span>
+<div class="flex items-center gap-2">
+<span class="text-[10px] uppercase tracking-wider font-bold text-amber-500">Check</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md tabular-nums font-medium text-[#FAFAF7]">$215.59</span>
+<div class="w-6 h-6 rounded border border-white/20"></div>
+</div>
+</div>
+<div class="flex">
+<span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-body-sm text-body-sm text-[#94A3B8]">
+                        → Landcruiser
+                    </span>
+</div>
+</div>
+<!-- Card 4: Bunnings (EXPANDED EDIT STATE) -->
+<div class="rounded-2xl border border-sky-500/30 overflow-hidden shadow-2xl shadow-sky-900/20">
+<!-- Header part -->
+<div class="bg-[#0E1424]/90 backdrop-blur-xl p-5 flex items-center justify-between border-b border-white/5">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Hardware store retail logo, industrial modern symbol, minimalist brand mark on a dark background, dark green and white professional aesthetic, tech-forward retail UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5qNiUaxF6qjXJ14MPistVh7b475d534fmb88BnCsfFJLHPzpHVVU2eAY3LxNgQ7cVAi6BfkTaah7_UfYpNeeW8UWjq6Fp8XalLhLBhHHWfHTBbrHaZyLhF_9UK9851SVu_N2dfZmi3sJ2_0ST98k1VEcmMfOTsgvogodENBlJD8E1eyJxk31pPzQ_8-qaREZF_PawVoqV83vtS6PwhULdK2Wiy0S3UdWTnQBlf3igUYtlm5IkIB4hVMKdCIZhVv3JylLjca-ezHM"/>
+</div>
+<span class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Bunnings Warehouse</span>
+</div>
+<span class="font-body-md text-body-md tabular-nums font-bold text-sky-400">$128.40</span>
+</div>
+<!-- Edit Fields -->
+<div class="bg-[#0E1424]/95 backdrop-blur-2xl p-5 space-y-4">
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest text-[#94A3B8] font-bold">Vendor</label>
+<input class="w-full bg-black/40 border-white/10 rounded-lg text-body-sm font-medium focus:ring-sky-500 focus:border-sky-500 text-[#FAFAF7]" type="text" value="Bunnings"/>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest text-[#94A3B8] font-bold">Date</label>
+<input class="w-full bg-black/40 border-white/10 rounded-lg text-body-sm font-medium focus:ring-sky-500 focus:border-sky-500 text-[#FAFAF7]" type="text" value="09 Oct 2023"/>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest text-[#94A3B8] font-bold">Category</label>
+<div class="relative">
+<select class="w-full bg-black/40 border-white/10 rounded-lg text-body-sm font-medium appearance-none focus:ring-sky-500 focus:border-sky-500 text-[#FAFAF7] pr-10">
+<option>Repairs &amp; Maintenance</option>
+<option>Hardware</option>
+<option>Garden</option>
+</select>
+<span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-widest text-[#94A3B8] font-bold">Project / Tag</label>
+<div class="flex items-center gap-2 text-sky-400 font-medium px-1">
+<span class="material-symbols-outlined text-[18px]">subdirectory_arrow_right</span>
+<span class="text-body-sm">Landcruiser</span>
+</div>
+</div>
+<div class="flex gap-3 pt-2">
+<button class="flex-1 py-3 rounded-xl bg-sky-500 text-[#050913] font-bold text-body-sm active:scale-95 transition-transform">Save</button>
+<button class="flex-1 py-3 rounded-xl border border-white/10 text-[#FAFAF7] font-bold text-body-sm active:scale-95 transition-transform">Cancel</button>
+</div>
+</div>
+</div>
+<!-- Card 5: Unknown -->
+<div class="glass-card rounded-2xl p-5 space-y-4 transition-all active:scale-[0.98]">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+<span class="material-symbols-outlined text-[#94A3B8]">question_mark</span>
+</div>
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-[#FAFAF7] font-semibold">Unknown Vendor</span>
+<div class="flex items-center gap-2">
+<span class="text-[10px] uppercase tracking-wider font-bold text-slate-400">Review</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<span class="font-body-md text-body-md tabular-nums font-medium text-[#FAFAF7]">$42.00</span>
+<div class="w-6 h-6 rounded border border-white/20"></div>
+</div>
+</div>
+<div class="flex">
+<span class="px-3 py-1 rounded-full bg-white/5 border border-white/10 font-body-sm text-body-sm text-sky-400 flex items-center gap-1 italic">
+                        → Please select
+                    </span>
+</div>
+</div>
+</section>
+</main>
+<!-- Sticky Footer -->
+<footer class="fixed bottom-0 left-0 right-0 z-50 p-6">
+<div class="max-w-2xl mx-auto glass-card rounded-3xl p-5 shadow-2xl space-y-4">
+<div class="flex items-center justify-between mb-1">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+<span class="font-body-sm text-body-sm text-[#FAFAF7] font-medium">8 selected</span>
+</div>
+</div>
+<button class="w-full py-4 rounded-2xl brand-gradient-bg text-[#050913] font-headline-md text-headline-md tracking-tight shadow-[0_8px_30px_rgba(14,165,233,0.3)] active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+<span>Approve 8 selected</span>
+<span class="material-symbols-outlined text-[24px]">verified</span>
+</button>
+<div class="text-center">
+<p class="font-body-sm text-[12px] text-[#94A3B8] opacity-60">Nothing is saved until you approve.</p>
+</div>
+</div>
+</footer>
+<!-- Atmosphere micro-interaction script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.glass-card');
+            cards.forEach(card => {
+                card.addEventListener('touchstart', () => {
+                    card.style.borderColor = 'rgba(14, 165, 233, 0.4)';
+                    card.style.backgroundColor = 'rgba(14, 20, 36, 0.85)';
+                });
+                card.addEventListener('touchend', () => {
+                    card.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                    card.style.backgroundColor = 'rgba(14, 20, 36, 0.7)';
+                });
+            });
+        });
+    </script>
+</body></html>
