@@ -433,3 +433,79 @@ describe('Phase 47 E2 — per-entity tax status pass-through', () => {
     expect(result.nodes.find(n => n.id === 'you')!.taxStatus).toBeUndefined();
   });
 });
+
+describe('Level-1 balanced orbit (Phase 47 universe recomposition, 2026-06-18)', () => {
+  // A dense, mixed structure like Reza's Renew group: 1 person + 2 trusts +
+  // 1 SMSF + 4 companies = 8 entities. The old zone-scatter overlapped at
+  // this size; the orbit must place every tile cleanly around YOU.
+  const denseSnapshot = () =>
+    snapshot({
+      entities: [
+        entity('you', 'PERSONAL_NAME'),
+        entity('t1', 'DISCRETIONARY_TRUST'),
+        entity('t2', 'UNIT_TRUST'),
+        entity('smsf', 'SMSF'),
+        entity('c1', 'COMPANY'),
+        entity('c2', 'COMPANY'),
+        entity('c3', 'COMPANY'),
+        entity('c4', 'COMPANY'),
+      ],
+      // one asset each so every entity carries a summary (and is rendered)
+      assets: [
+        asset('a1', 'property', 't1', 500_000),
+        asset('a2', 'property', 't2', 400_000),
+        asset('a3', 'investment-account', 'smsf', 300_000),
+        asset('a4', 'property', 'c1', 200_000),
+        asset('a5', 'property', 'c2', 200_000),
+        asset('a6', 'property', 'c3', 200_000),
+        asset('a7', 'property', 'you', 600_000),
+      ],
+    });
+
+  function entityNodes(result: ReturnType<typeof layoutWealthExplorer>) {
+    return result.nodes.filter(n => n.tier === 'entity' || n.tier === 'individual');
+  }
+
+  function assertNoOverlap(result: ReturnType<typeof layoutWealthExplorer>) {
+    const tiles = entityNodes(result);
+    for (let i = 0; i < tiles.length; i++) {
+      for (let j = i + 1; j < tiles.length; j++) {
+        const a = tiles[i], b = tiles[j];
+        const dist = Math.hypot(
+          a.position.x - b.position.x,
+          a.position.y - b.position.y,
+        );
+        // Center-to-center separation in canvas-% must exceed the tiles'
+        // combined radii (size px → % at 0.1). A small slack absorbs
+        // edge-clamping. The bug was tiles stacking (dist ≈ 0).
+        const minSep = ((a.size + b.size) / 2) * 0.1 * 0.8;
+        expect(dist).toBeGreaterThan(minSep);
+      }
+    }
+  }
+
+  it('desktop: YOU is the centred anchor and no entity tiles overlap', () => {
+    const result = layoutWealthExplorer(denseSnapshot(), { viewport: 'desktop' });
+    const you = result.nodes.find(n => n.id === 'you')!;
+    expect(you.isAnchor).toBe(true);
+    expect(you.position).toEqual({ x: 50, y: 48 });
+    expect(entityNodes(result).length).toBe(8);
+    assertNoOverlap(result);
+  });
+
+  it('mobile: YOU is anchored low and the entities fan above it, no overlap', () => {
+    const result = layoutWealthExplorer(denseSnapshot(), { viewport: 'mobile' });
+    const you = result.nodes.find(n => n.id === 'you')!;
+    expect(you.position).toEqual({ x: 50, y: 64 });
+    // every orbiting entity sits above the low anchor
+    const orbit = entityNodes(result).filter(n => n.id !== 'you');
+    expect(orbit.length).toBe(7);
+    expect(orbit.every(n => n.position.y < you.position.y)).toBe(true);
+    assertNoOverlap(result);
+  });
+
+  it('defaults to the desktop orbit when no viewport is given', () => {
+    const result = layoutWealthExplorer(denseSnapshot());
+    expect(result.nodes.find(n => n.id === 'you')!.position).toEqual({ x: 50, y: 48 });
+  });
+});

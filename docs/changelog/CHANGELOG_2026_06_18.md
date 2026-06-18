@@ -38,6 +38,59 @@ primitive) — true tweak, code-first permitted; no Stitch pass required.
 
 ---
 
+## Session: Wealth Universe (My Structure) — Level-1 balanced-orbit recomposition
+
+### Changes Made
+- **Type**: UI / layout (Stitch-first design change per §18.2.1)
+- **Scope**: `lib/data/wealthExplorerLayout.ts` (Level-1 universe placement),
+  consumed by desktop + mobile canvases + the dashboard widget.
+- **Problem (Reza, 2026-06-18)**: with a real multi-entity structure (his Renew
+  group: 1 person + 2 trusts + 1 SMSF + 4 companies) the Level-1 canvas looked
+  "messy / scattered" — tiles overlapped and piled top-left. Root cause: the
+  layout bucketed entities into fixed per-type `ZONES`, dumping all trusts +
+  companies into one small ellipse; the 8-iteration collision pass couldn't
+  separate ~6 crammed tiles.
+- **Decision (Reza)**: proper **Stitch recomposition** (not a code tweak), applied
+  to **both desktop + mobile**. Approved variant: "Radial Constellation" — YOU is
+  the gravitational centre with entities in an evenly-spaced orbit grouped by
+  family sector.
+- **Solution**: new `computeOrbit()` places entities in a balanced orbit around the
+  YOU anchor, ordered by family (co-owners → trusts → SMSF → companies →
+  partnerships → sole traders) so each family reads as a contiguous angular
+  sector. Desktop = full ellipse around a centred YOU (50,48); mobile = a fan arc
+  above a low-anchored YOU (50,64), since the bottom sheet owns the lower canvas
+  (passed via the new `LayoutOptions.viewport`). Radii grow gently with entity
+  count; `relaxCollisions` stays as a safety net. Retired the now-dead `ZONES` map
+  + `distributeInZone` (§12.1).
+
+### Files Modified
+- `lib/data/wealthExplorerLayout.ts` — `computeOrbit()` + orbit placement;
+  `LayoutOptions.viewport`; removed `ZONES` / `distributeInZone`; SoT header.
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — passes `viewport: 'mobile'`.
+- `tests/wealth-explorer/semanticZoomLayout.test.ts` — +3 orbit tests (anchor
+  position desktop/mobile + no-overlap at 8 entities).
+
+### Stitch artefacts (§18.4)
+- `.stitch/designs/phase47-universe-layout/universe-level1-orbit-desktop-dark.{html,png}`
+  — screen `888c0ee9a63b488183f7a23fe02e6d2f` (project `1859462351962811110`).
+- `.stitch/designs/phase47-universe-layout/universe-level1-orbit-mobile-dark.{html,png}`
+  — screen `9a64992b97a848fd96312cd4d6afd617`.
+- `.stitch/designs/phase47-universe-layout/universe-level1-sector-desktop-dark.png`
+  — the alternative "sector clustering" direction (variant B, not chosen).
+
+### Build Status
+- [x] `tsc --noEmit` — clean
+- [x] eslint (changed files) — 0 warnings
+- [x] `tests/wealth-explorer` + `tests/entity-graph` — 95/95 (incl. Renew golden test)
+
+### Notes
+- Same workstream/PR as the detail-panel close fix below (both "My Structure" issues
+  Reza reported in the same message).
+- STATE.md RESUME CURSOR intentionally NOT repointed — a concurrent session owns the
+  active cursor (AI Document Router / GCS keyless).
+
+---
+
 ## Session: Wealth Universe (My Structure) — detail-panel close no longer ejects to Level 1
 
 ### Changes Made

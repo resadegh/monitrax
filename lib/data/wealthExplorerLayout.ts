@@ -47,6 +47,12 @@
  *     when applicable).
  *
  * SoT: Stitch screen `a3b43b9164d74f1c8ec53bc20f319cbd`.
+ * Level-1 BALANCED-ORBIT recomposition (2026-06-18, Reza-approved variant
+ * "Radial Constellation") SoT: desktop `888c0ee9a63b488183f7a23fe02e6d2f` +
+ * mobile `9a64992b97a848fd96312cd4d6afd617` —
+ * `.stitch/designs/phase47-universe-layout/universe-level1-orbit-*.{html,png}`.
+ * See `computeOrbit` below. Replaces the retired per-type `ZONES` scatter
+ * (overlapped at ~6+ entities).
  * Semantic-zoom SoT: screens `770687a1c73c42f0b4fd5686782bf5f3` (L1
  * desktop), `068403f1296440508b601c2fc32d5e20` (L2 desktop),
  * `e5ecb8d170cc4fbdbc336413cd9948d2` (L1 mobile),
@@ -86,6 +92,15 @@ export interface LayoutOptions {
    * should unfold at Level 2. Ignored when `assetDetail` is 'all'.
    */
   expandedEntityIds?: ReadonlyArray<string>;
+  /**
+   * Viewport hint for the Level-1 balanced-orbit composition (Phase 47
+   * universe recomposition, 2026-06-18). `'desktop'` (default) centres YOU
+   * with a full elliptical orbit; `'mobile'` anchors YOU low and fans the
+   * entities in an arc above it (the bottom sheet owns the lower canvas).
+   * Only affects the Level-1 universe layout — the focused scene + cluster
+   * paths are viewport-independent.
+   */
+  viewport?: 'desktop' | 'mobile';
 }
 
 export interface LayoutResult {
@@ -158,29 +173,10 @@ function sizeForAsset(): number {
   return 52;
 }
 
-const ZONES = {
-  corporate: { cx: 28, cy: 30, rx: 22, ry: 16 },
-  smsf: { cx: 78, cy: 28, rx: 14, ry: 16 },
-  joint: { cx: 16, cy: 50, rx: 8, ry: 10 },
-  soleTrader: { cx: 84, cy: 50, rx: 8, ry: 10 },
-  individuals: { cx: 50, cy: 74, rx: 14, ry: 4 },
-};
-
-function distributeInZone(
-  zone: typeof ZONES.corporate,
-  count: number,
-  index: number,
-): { x: number; y: number } {
-  if (count === 1) return { x: zone.cx, y: zone.cy };
-  const startAngle = -Math.PI * 0.75;
-  const endAngle = Math.PI * 0.05;
-  const t = count > 1 ? index / (count - 1) : 0.5;
-  const angle = startAngle + (endAngle - startAngle) * t;
-  return {
-    x: zone.cx + zone.rx * Math.cos(angle),
-    y: zone.cy + zone.ry * Math.sin(angle),
-  };
-}
+// (Phase 47 universe recomposition 2026-06-18) — the per-type `ZONES` map
+// + `distributeInZone` were retired with the zone-scatter Level-1 layout;
+// the balanced orbit (`computeOrbit`, below) replaces them. The focused
+// scene + cluster paths place relative to a computed centre, not zones.
 
 /** Spread N points across the lower arc below a parent. */
 function arcBelow(
@@ -245,6 +241,52 @@ function ringAround(
       y: parent.y + radiusPct * Math.sin(angle),
     };
   });
+}
+
+/**
+ * Level-1 BALANCED ORBIT (Phase 47 universe recomposition, 2026-06-18).
+ * Evenly spaces `count` entity tiles around the YOU anchor so the canvas
+ * reads as a clean constellation at any structure size, instead of the old
+ * per-type zone scatter that overlapped beyond ~6 entities.
+ *
+ *  - desktop: a FULL ellipse around a centred YOU, first slot at the top
+ *    (-90°) so families read clockwise; radii grow gently with `count` so
+ *    spacing stays generous (the canvas is wider than tall → rx > ry).
+ *  - mobile: a FAN arc ABOVE a low-anchored YOU (lower-left → top →
+ *    lower-right), because the bottom sheet owns the lower half of the
+ *    phone canvas.
+ *
+ * `relaxCollisions` still runs afterwards as a safety net for very dense
+ * structures. Pure.
+ */
+function computeOrbit(
+  center: { x: number; y: number },
+  count: number,
+  viewport: 'desktop' | 'mobile',
+): Array<{ x: number; y: number }> {
+  if (count === 0) return [];
+  const positions: Array<{ x: number; y: number }> = [];
+  if (viewport === 'mobile') {
+    const rx = Math.min(40, 30 + count * 1.4);
+    const ry = Math.min(40, 26 + count * 1.6);
+    // Upper dome: angles from just-below-left, over the top, to just-below-right.
+    const start = Math.PI * 1.08;
+    const end = Math.PI * 1.92;
+    for (let i = 0; i < count; i++) {
+      const t = count === 1 ? 0.5 : i / (count - 1);
+      const a = start + (end - start) * t;
+      positions.push({ x: center.x + rx * Math.cos(a), y: center.y + ry * Math.sin(a) });
+    }
+    return positions;
+  }
+  // Desktop full ellipse.
+  const rx = Math.min(38, 26 + count * 1.4);
+  const ry = Math.min(30, 19 + count * 1.3);
+  for (let i = 0; i < count; i++) {
+    const a = -Math.PI / 2 + (2 * Math.PI * i) / count;
+    positions.push({ x: center.x + rx * Math.cos(a), y: center.y + ry * Math.sin(a) });
+  }
+  return positions;
 }
 
 /** Satellites per ring before the constellation spills outward. */
@@ -671,37 +713,51 @@ export function layoutWealthExplorer(
     nodePositionById.set(e.id, pos);
   }
 
-  personal.forEach((e, idx) => {
-    const nodeType = classifyEntity(e);
-    const isAnchor = idx === 0;
-    const pos = personal.length === 1
-      ? { x: ZONES.individuals.cx, y: ZONES.individuals.cy }
-      : distributeInZone(ZONES.individuals, personal.length, idx);
-    pushEntity(e, nodeType, pos, isAnchor);
-  });
+  // ---- Level-1 BALANCED ORBIT (Phase 47 universe recomposition,
+  // 2026-06-18). Reza-approved Stitch variant "Radial Constellation":
+  // YOU is the gravitational centre; every entity orbits it in an
+  // evenly-spaced ring, grouped by family sector (trusts together,
+  // companies together, …), so the canvas stays clean + balanced as the
+  // structure grows. Replaces the old per-type zone scatter, which
+  // overcrowded a single small ellipse and overlapped at ~6+ entities.
+  // Desktop = full ellipse around a centred YOU; mobile = a fan arc ABOVE
+  // a low-anchored YOU (the bottom sheet owns the lower canvas).
+  // SoT: .stitch/designs/phase47-universe-layout/universe-level1-orbit-*.
+  const viewport = options.viewport ?? 'desktop';
+  const anchorPos = viewport === 'mobile' ? { x: 50, y: 64 } : { x: 50, y: 48 };
 
-  corporate.forEach((e, idx) => {
-    let nodeType = classifyEntity(e);
-    if (nodeType === 'trustee-company' && smsfParentIds.has(e.id)) {
-      nodeType = 'smsf-trustee-company';
-    }
-    const pos = distributeInZone(ZONES.corporate, corporate.length, idx);
-    pushEntity(e, nodeType, pos, false);
-  });
+  // YOU anchors; any INDIVIDUAL co-owners are people too — they join the
+  // orbit as their own family sector beside YOU.
+  const anchorEntity = personal[0];
+  const coOwners = personal.slice(1);
 
-  smsfs.forEach((e, idx) => {
-    const pos = distributeInZone(ZONES.smsf, smsfs.length, idx);
-    pushEntity(e, 'smsf', pos, false);
-  });
+  // Split the `corporate` bucket into trust-family vs company-family by the
+  // canvas vocabulary so each reads as a contiguous angular sector.
+  const trustFamily = corporate.filter(e => classifyEntity(e) === 'trust');
+  const companyFamily = corporate.filter(e => classifyEntity(e) !== 'trust');
 
-  joint.forEach((e, idx) => {
-    const pos = distributeInZone(ZONES.joint, joint.length, idx);
-    pushEntity(e, 'other-company', pos, false);
-  });
+  // Order the orbit by family — adjacent slots share a sector.
+  const orbitItems: { e: WealthGraphEntity; nodeType: WealthNodeType }[] = [
+    ...coOwners.map(e => ({ e, nodeType: classifyEntity(e) })),
+    ...trustFamily.map(e => ({ e, nodeType: classifyEntity(e) })),
+    ...smsfs.map(e => ({ e, nodeType: 'smsf' as WealthNodeType })),
+    ...companyFamily.map(e => {
+      let nodeType = classifyEntity(e);
+      if (nodeType === 'trustee-company' && smsfParentIds.has(e.id)) {
+        nodeType = 'smsf-trustee-company';
+      }
+      return { e, nodeType };
+    }),
+    ...joint.map(e => ({ e, nodeType: 'other-company' as WealthNodeType })),
+    ...soleTraders.map(e => ({ e, nodeType: 'other-company' as WealthNodeType })),
+  ];
 
-  soleTraders.forEach((e, idx) => {
-    const pos = distributeInZone(ZONES.soleTrader, soleTraders.length, idx);
-    pushEntity(e, 'other-company', pos, false);
+  if (anchorEntity) {
+    pushEntity(anchorEntity, classifyEntity(anchorEntity), anchorPos, true);
+  }
+  const orbitPositions = computeOrbit(anchorPos, orbitItems.length, viewport);
+  orbitItems.forEach((item, idx) => {
+    pushEntity(item.e, item.nodeType, orbitPositions[idx], false);
   });
 
   // ---- Joint ownership groups (synthetic nodes between members)
