@@ -21,6 +21,10 @@ import {
   linkReceiptToTransaction,
   type ReceiptMatchVerdict,
 } from '@/lib/bookkeeping/receiptMatcher';
+import {
+  reconcileSuggestedAction,
+  type ReconcileRecordType,
+} from '@/lib/documents/intelligence/reconcile/reconcileSuggestedAction';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -98,7 +102,10 @@ export const POST = withPermission('report.export', async (request, auth) => {
     switch (action) {
       case 'CREATE_EXPENSE':
         entity = await createExpenseFromAnalysis(userId, analysis.document.id, data);
-        if (entity) {
+        // Skip receipt-matching when the expense was reconciled to an existing
+        // one (D.2) — it already has its transaction; re-running would risk a
+        // duplicate RECEIPT row.
+        if (entity && entity.data?.duplicate !== true) {
           receiptMatch = await applyReceiptMatch(
             userId,
             analysis.document.id,
@@ -164,6 +171,10 @@ export const POST = withPermission('report.export', async (request, auth) => {
     return NextResponse.json({
       success: true,
       entity,
+      // Phase 50 D.2 — true when we linked the document to an EXISTING record
+      // instead of creating a duplicate (the confirm UI can say "linked to your
+      // existing <vendor> expense" rather than "created").
+      reconciled: entity.data?.duplicate === true,
       // Phase 42 PR3 — only present for CREATE_EXPENSE on a receipt;
       // tells the client whether we auto-linked, want it to prompt,
       // or created a fresh RECEIPT-sourced tx.
@@ -281,6 +292,46 @@ async function applyReceiptMatch(
 }
 
 // ============================================================================
+// Phase 50 D.2 — record reconciliation helpers
+// ============================================================================
+
+/** Link a document to an entity, ignoring the unique-constraint if already
+ *  linked (the existing record may already carry this doc). */
+async function linkDocIfMissing(
+  documentId: string,
+  entityType: 'EXPENSE' | 'INCOME' | 'LOAN' | 'PROPERTY',
+  entityId: string,
+): Promise<void> {
+  await prisma.documentLink.createMany({
+    data: [{ documentId, entityType, entityId }],
+    skipDuplicates: true,
+  });
+}
+
+/**
+ * D.2: before a CREATE_* writes a new record, check whether the document's
+ * action duplicates an existing one. If so, link the document to the existing
+ * record and return it (flagged `duplicate`) so the confirm flow doesn't write a
+ * second copy. Returns null when there's no duplicate (caller creates as normal).
+ */
+async function reconcileOrNull(
+  userId: string,
+  documentId: string,
+  type: ReconcileRecordType,
+  data: Record<string, unknown>,
+): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
+  const verdict = await reconcileSuggestedAction(userId, type, data);
+  if (!verdict.duplicate || !verdict.existingId) return null;
+  await linkDocIfMissing(documentId, type, verdict.existingId);
+  console.log('[Confirm] D.2 reconcile — linked document to existing', type, verdict.existingId);
+  return {
+    type,
+    id: verdict.existingId,
+    data: { id: verdict.existingId, duplicate: true },
+  };
+}
+
+// ============================================================================
 // Entity Creation Functions
 // ============================================================================
 
@@ -290,6 +341,10 @@ async function createExpenseFromAnalysis(
   data: Record<string, unknown>
 ): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
   try {
+    // D.2: reuse an existing matching expense instead of creating a duplicate.
+    const reconciled = await reconcileOrNull(userId, documentId, 'EXPENSE', data);
+    if (reconciled) return reconciled;
+
     // Map category string to enum
     const categoryMap: Record<string, ExpenseCategory> = {
       HOUSING: 'HOUSING',
@@ -366,6 +421,10 @@ async function createIncomeFromAnalysis(
   data: Record<string, unknown>
 ): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
   try {
+    // D.2: reuse an existing matching income instead of creating a duplicate.
+    const reconciled = await reconcileOrNull(userId, documentId, 'INCOME', data);
+    if (reconciled) return reconciled;
+
     // Map income type
     const typeMap: Record<string, IncomeType> = {
       SALARY: 'SALARY',
@@ -428,6 +487,10 @@ async function createLoanFromAnalysis(
   data: Record<string, unknown>
 ): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
   try {
+    // D.2: reuse an existing matching loan instead of creating a duplicate.
+    const reconciled = await reconcileOrNull(userId, documentId, 'LOAN', data);
+    if (reconciled) return reconciled;
+
     const ownerEntityId = await getDefaultLegalEntityId(userId);
     const loan = await prisma.loan.create({
       data: {

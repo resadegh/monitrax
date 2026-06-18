@@ -10,20 +10,26 @@
 
 ### 0·DOC. AI Document Router (recognise → attach-or-create → file)
 
-- **Status:** 🟡 ACTIVE — **Phase A ✅ shipped & live (PR #1123, prod verified 2026-06-16).** Phase B IN PROGRESS (this PR = the per-user storage quota slice of the storage track). Phase C queued.
+- **Status:** 🟡 ACTIVE — **Phases A–C shipped & live; Phase D (engine intelligence) IN PROGRESS.** The end-to-end document workflow is live in prod: recognise (Vision OCR via REST transport) → attach to the right asset/property OR create a linked expense (dedup'd) → file in the right Vault folder → auto-name → thumbnail → edit/add-as-expense any time. **D.1 (document-level dedup) ✅ shipped (PR #1144).** D.2–D.5 are the remaining engine-intelligence steps (Reza go-ahead 2026-06-17).
 - **Started:** 2026-06-16 (Reza vision: *"every document/receipt should be recognised by AI, attached to the correct item/asset OR used to create a new item/expense, and filed in the right Vault folder for reporting/extraction."*)
 - **Owner:** Reza (direction + Stitch sign-off + GCS provisioning) + Claude (build).
-- **Last touched:** 2026-06-16 — **B-storage keyless GCS + GCS-aware download ✅ (this PR):** `lib/gcp/wifAuthClient.ts` (keyless WIF auth — no static key, reuses the DB's identity), provider-aware `/api/documents/download` streaming, read-URL policy SSOT `readUrl.ts`; 4 tests. Prior (PR #1124): per-user storage quota (`storageQuota.ts`, 413 on breach). Prior (PR #1123): Phase A — scan recognition fix + `ASSET` linkable type.
-- **Spec:** `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
+- **Last touched:** 2026-06-18 — **The full doc workflow shipped & prod-verified across PRs #1135–#1148:** Vision OCR fixed (gRPC→REST, #1135); scan→asset/property link + Vault Assets folder (#1136); per-item AI-on-upload (#1137); mobile asset-detail Stitch redesign + overflow/crash fixes (#1138–#1140); auto-rename (#1141); expense dedup + per-expense delete + doc↔expense link (#1142); propagation to Properties/Investments + DME 2.0 design (#1143); **D.1 document-level dedup at the `processUpload` chokepoint (#1144)**; real thumbnails + persistent add-as-expense (any category) + full edit dialog + tag de-clutter (#1145–#1146); asset deep-link from a doc's Asset badge (#1147); instant Expenses-tab refresh after add-as-expense (#1148). **Single-engine clarification (Reza challenge):** ONE DME (filing) + ONE DIE (reading), separate concerns — Phase D *extends* them, not a new engine.
+- **Spec:** `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` (Phase D §159+ = the engine-intelligence roadmap).
 - **Phases:**
-  - [x] **Phase A — Foundation + fix the live scan bug (PR #1123)** — recognition fix + `ASSET` linkable type.
-  - [~] **Phase B — Intelligence + storage (IN PROGRESS)** — two tracks:
-    - **B-storage (GCS + quota):** [x] per-user storage quota (PR #1124); [x] **keyless WIF auth for GCS** (this PR — `lib/gcp/wifAuthClient.ts`, no static key, reuses the DB's WIF identity); [x] **GCS-aware `/api/documents/download`** (this PR — provider-aware streaming + read-URL policy SSOT `readUrl.ts`); [ ] (optional) migrate existing inline bytea docs. **The GCS switch needs no further code.** **⛔ Operator provisioning to go live (now 3 steps, no secret):** bucket + SA `objectAdmin` grant + 2 non-secret env vars (`GCS_PROJECT_ID`/`GCS_BUCKET_NAME`) — see spec §B-storage.
-    - **B-intelligence (attach-or-create):** [ ] `ATTACH_TO_*` confirm actions (confirm flow has only `CREATE_*` today); [ ] entity-picker endpoint scoped by `ownerEntityId`; [ ] owning-legal-entity linking; [ ] scan-UI "attach vs create" branch (**§18.2.1 STRICT — Stitch FIRST**); [ ] always-confirm `PICK_FROM`. The Phase 42 receipt-matcher already exists and is live — this surfaces it.
-  - [ ] **Phase C — Per-item Documents + Tax-pack** — per-item Documents sections (Stitch design already generated under `.stitch/designs/asset-documents/`), Tax-pack export + ATO 5yr retention, renewal-date tie-in.
-- **Risk:** Low for the quota slice (additive, no schema change, computed-not-counted so no drift, §12.11 N/A). Medium for GCS cut-over (operator-provisioned; mitigated by the factory's auto-fallback to DB if GCS init fails).
-- **Blocking:** **GCS provisioning (Reza/operator only):** (1) create bucket `monitrax-documents` (`australia-southeast1`, uniform access, CMEK); (2) grant the WIF-impersonated runtime SA `roles/storage.objectAdmin` on it (prefer ADC, no key file per §13.6); (3) set `GCS_PROJECT_ID` + `GCS_BUCKET_NAME` (+ omit `GCS_SERVICE_ACCOUNT_KEY` under ADC) in Vercel Production. Likely also clears the residual `/api/documents/analyze` 500.
-- **Why this matters:** the Vault is passive today — a scanned receipt lands as an unfiled blob. The router makes intake active: one photo → recognised → routed to the right item/asset (or a new expense) → filed for tax-time reporting. It's the difference between "a folder of photos" and "my finances understand my paperwork."
+  - [x] **Phase A — Foundation + fix the live scan bug (PR #1123).**
+  - [x] **Phase B — Intelligence + storage** — Vision OCR live (REST transport, the real fix #1135); keyless GCS auth + GCS-aware download; per-user quota.
+  - [x] **Phase C — Per-item Documents** — `DocumentsSection` on Assets/Properties/Investments; AI-on-upload; auto-rename; thumbnails; edit dialog. (Tax-pack export + ATO retention still queued under Phase C.)
+  - [~] **Phase D — Engine intelligence (DME judgement layer, INSIDE the single DME/DIE):**
+    - [x] **D.1 — document-level dedup** (SHA-256 hash at `processUpload`; #1144).
+    - [x] **D.2 — record reconciliation** ✅ — canonical `reconcileSuggestedAction()` the confirm flow calls for expense/income/loan; on a match it links the doc to the existing record (`reconciled:true`) instead of duplicating + skips the receipt-matcher. 7 tests.
+    - [ ] **D.3 — confidence-gated autonomy** — ≥0.9 auto-apply (undo), 0.7–0.9 confirm, <0.7 ask; TRAIL-stage-matched; `confidencePolicy.ts` SSOT.
+    - [ ] **D.4 — learned routing** — `VendorEntityHint` (vendor→most-linked entity), read by `LinkingRules` (schema migration).
+    - [ ] **D.5 — lifecycle** — renewal/expiry extraction → reminders; ATO retention clock.
+    - [ ] **D.1.1 (follow-up)** — funnel the legacy scan path (`documentService.uploadDocument`) through the DME so it shares the one dedup.
+  - [ ] **Tax-pack export** + ATO 5-year retention (carried from Phase C).
+- **Risk:** Low — Phase D steps are additive, behind the existing confirm/upload flow; engines stay pure (§6.4).
+- **Blocking:** none (GCS provisioning done; key restored as the stable storage/telemetry credential).
+- **Why this matters:** the Vault is no longer a folder of photos — a scanned receipt is recognised, routed to the right asset, turned into an expense, de-duplicated, and filed. Phase D adds the *judgement* (reconcile, confidence-gate, learn, lifecycle) that makes it feel like the app understands the paperwork.
 
 ### 0·CONT. Continuity System (cross-session memory — STATE.md + SYSTEM_MAP + gate)
 
