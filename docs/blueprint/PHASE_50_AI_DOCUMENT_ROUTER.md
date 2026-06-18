@@ -203,7 +203,11 @@ first-class outcome alongside **create**, always with user confirmation.
 
 ### D.4/D.5 status
 
-D.1 ✅, D.2 ✅, D.3 ✅ (SSOT; auto-exec rejected per autonomy decision), **D.4 ✅ (suggest-only learned routing)**, **D.5b ✅ (retention clock — advisory)**, **D.6 ✅ (bulk-approve Smart Inbox)**. Remaining: **D.5a** (renewal/expiry extraction → write entity date so the reminder engine lights up — Stitch-first, suggest→confirm per autonomy) and **D.1.1** (funnel the legacy scan path through `processUpload` so it shares the one dedup).
+D.1 ✅, D.1.1 ✅ (scan/form path now funnels through the DME dedup chokepoint), D.2 ✅, D.3 ✅ (SSOT; auto-exec rejected per autonomy decision), **D.4 ✅ (suggest-only learned routing)**, **D.5b ✅ (retention clock — advisory)**, **D.6 ✅ (bulk-approve Smart Inbox)**. Remaining: **D.5a** (renewal/expiry extraction → write entity date so the reminder engine lights up — Stitch-first, suggest→confirm per autonomy).
+
+### D.1.1 — scan/form path funnelled through the DME dedup chokepoint ✅ (2026-06-18)
+
+`/api/documents/analyze-for-form` (the global "Scan a receipt" + form-autofill upload path) called the **legacy** `documentService.uploadDocument()`, which has no content-hash dedup — so scanning the same receipt twice stored a duplicate, bypassing the D.1 chokepoint. Rewired that one call to the canonical **`DocumentManagementEngine.processUpload()`** (via `createUploadContext`, `source` mapped from the form type → `EXPENSE_FORM`/`INCOME_FORM`/`LOAN_FORM`/`PROPERTY_FORM`). The scan path now inherits the `(userId, contentHash)` dedup + the per-user storage-quota enforcement for free; a byte-identical re-scan returns the existing document. Only `documentId` is consumed downstream (the unused `signedUrl`→`storageUrl` swap is inert). No schema change (migration `20260617150000` already added `contentHash`). The other legacy caller (`/api/documents` POST, deprecated since Phase 38 PR2.5) is left as-is — out of scope, low traffic.
 
 ### D.6 — bulk-approve Smart Inbox ✅ (Stitch-first, 2026-06-18)
 
