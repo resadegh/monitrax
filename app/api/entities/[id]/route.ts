@@ -33,27 +33,29 @@ import {
   isValidAcn,
   isValidTfnFormat,
 } from '@/lib/utils/auValidators';
-import type { LegalEntityType, LegalEntityRole } from '@prisma/client';
+import type { LegalEntityType, LegalEntityRole, CompanySubtype } from '@prisma/client';
+import {
+  ALL_ENTITY_TYPES,
+  ALL_ENTITY_ROLES,
+  COMPANY_SUBTYPE_OPTIONS,
+  ESTATE_STATUS_OPTIONS,
+  PARTNERSHIP_SUBTYPE_OPTIONS,
+} from '@/lib/entities/entityTypeCatalog';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-const VALID_TYPES: LegalEntityType[] = [
-  'PERSONAL_NAME',
-  'COMPANY',
-  'DISCRETIONARY_TRUST',
-  'UNIT_TRUST',
-  'SMSF',
-  'PARTNERSHIP',
-  'SOLE_TRADER',
-];
-
-const VALID_ROLES: LegalEntityRole[] = [
-  'PERSONAL',
-  'HOLDING',
-  'OPERATING',
-  'INVESTMENT',
-  'SUPERANNUATION',
-];
+// Phase 47 F1 — the full Phase 44 grammar (catalog = SSOT).
+const VALID_TYPES: readonly LegalEntityType[] = ALL_ENTITY_TYPES;
+const VALID_ROLES: readonly LegalEntityRole[] = ALL_ENTITY_ROLES;
+const VALID_COMPANY_SUBTYPES: ReadonlySet<string> = new Set(
+  COMPANY_SUBTYPE_OPTIONS.map(o => o.value),
+);
+const VALID_ESTATE_STATUSES: ReadonlySet<string> = new Set(
+  ESTATE_STATUS_OPTIONS.map(o => o.value),
+);
+const VALID_PARTNERSHIP_SUBTYPES: ReadonlySet<string> = new Set(
+  PARTNERSHIP_SUBTYPE_OPTIONS.map(o => o.value),
+);
 
 export const GET = withPermission<RouteContext>(
   'entity.read',
@@ -91,6 +93,23 @@ interface UpdateEntityRequestBody {
   parentEntityId?: unknown; // null disconnects, undefined leaves untouched
   trustType?: unknown;      // Phase 41E.3 — Measure 3 dispatch input
   isForeignResident?: unknown; // Phase 41E.3 — Measure 4 dispatch input
+  // Phase 47 F1 — extended-grammar detail fields.
+  companySubtype?: unknown;
+  dateOfBirth?: unknown;
+  vestingDate?: unknown;
+  deedDate?: unknown;
+  estateAdministrationStatus?: unknown;
+  partnershipSubtype?: unknown;
+}
+
+/** Phase 47 F1 — optional ISO date field: undefined absent, null clears. */
+function parseOptionalDateField(value: unknown, field: string): string | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  if (typeof value !== 'string' || isNaN(new Date(value).getTime())) {
+    throw new Error(`${field} must be an ISO date string.`);
+  }
+  return value;
 }
 
 export const PUT = withPermission<RouteContext>(
@@ -162,6 +181,7 @@ export const PUT = withPermission<RouteContext>(
       }
 
       // Phase 41E.3 — validate trustType against the closed enum.
+      // Phase 47 F1 adds HYBRID + TESTAMENTARY (the Phase 44 additions).
       if (body.trustType !== undefined && body.trustType !== null && body.trustType !== '') {
         const VALID_TRUST_TYPES = [
           'DISCRETIONARY',
@@ -172,6 +192,8 @@ export const PUT = withPermission<RouteContext>(
           'DECEASED_ESTATE',
           'SPECIAL_DISABILITY',
           'OTHER',
+          'HYBRID',
+          'TESTAMENTARY',
         ];
         if (typeof body.trustType !== 'string' || !VALID_TRUST_TYPES.includes(body.trustType)) {
           return NextResponse.json(
@@ -191,6 +213,61 @@ export const PUT = withPermission<RouteContext>(
             { status: 400 },
           );
         }
+      }
+
+      // Phase 47 F1 — validate the extended detail fields.
+      if (
+        body.companySubtype !== undefined &&
+        body.companySubtype !== null &&
+        body.companySubtype !== '' &&
+        (typeof body.companySubtype !== 'string' ||
+          !VALID_COMPANY_SUBTYPES.has(body.companySubtype))
+      ) {
+        return NextResponse.json(
+          { error: `companySubtype must be one of: ${[...VALID_COMPANY_SUBTYPES].join(', ')}` },
+          { status: 400 },
+        );
+      }
+      if (
+        body.estateAdministrationStatus !== undefined &&
+        body.estateAdministrationStatus !== null &&
+        body.estateAdministrationStatus !== '' &&
+        (typeof body.estateAdministrationStatus !== 'string' ||
+          !VALID_ESTATE_STATUSES.has(body.estateAdministrationStatus))
+      ) {
+        return NextResponse.json(
+          {
+            error: `estateAdministrationStatus must be one of: ${[...VALID_ESTATE_STATUSES].join(', ')}`,
+          },
+          { status: 400 },
+        );
+      }
+      if (
+        body.partnershipSubtype !== undefined &&
+        body.partnershipSubtype !== null &&
+        body.partnershipSubtype !== '' &&
+        (typeof body.partnershipSubtype !== 'string' ||
+          !VALID_PARTNERSHIP_SUBTYPES.has(body.partnershipSubtype))
+      ) {
+        return NextResponse.json(
+          {
+            error: `partnershipSubtype must be one of: ${[...VALID_PARTNERSHIP_SUBTYPES].join(', ')}`,
+          },
+          { status: 400 },
+        );
+      }
+      let dateOfBirthField: string | null | undefined;
+      let vestingDateField: string | null | undefined;
+      let deedDateField: string | null | undefined;
+      try {
+        dateOfBirthField = parseOptionalDateField(body.dateOfBirth, 'dateOfBirth');
+        vestingDateField = parseOptionalDateField(body.vestingDate, 'vestingDate');
+        deedDateField = parseOptionalDateField(body.deedDate, 'deedDate');
+      } catch (e) {
+        return NextResponse.json(
+          { error: e instanceof Error ? e.message : 'Invalid date field.' },
+          { status: 400 },
+        );
       }
 
       // Build the partial-update input (preserve undefined for "leave alone").
@@ -231,19 +308,33 @@ export const PUT = withPermission<RouteContext>(
           trustType:
             body.trustType === null || body.trustType === ''
               ? null
-              : (body.trustType as
-                  | 'DISCRETIONARY'
-                  | 'FIXED'
-                  | 'UNIT'
-                  | 'TESTAMENTARY_FIXED'
-                  | 'CHARITABLE'
-                  | 'DECEASED_ESTATE'
-                  | 'SPECIAL_DISABILITY'
-                  | 'OTHER'),
+              : (body.trustType as import('@prisma/client').TrustType),
         }),
         ...(body.isForeignResident !== undefined && {
           isForeignResident:
             body.isForeignResident === null ? null : Boolean(body.isForeignResident),
+        }),
+        // Phase 47 F1 — extended detail fields (partial-update semantics).
+        ...(body.companySubtype !== undefined && {
+          companySubtype:
+            body.companySubtype === null || body.companySubtype === ''
+              ? null
+              : (body.companySubtype as CompanySubtype),
+        }),
+        ...(dateOfBirthField !== undefined && { dateOfBirth: dateOfBirthField }),
+        ...(vestingDateField !== undefined && { vestingDate: vestingDateField }),
+        ...(deedDateField !== undefined && { deedDate: deedDateField }),
+        ...(body.estateAdministrationStatus !== undefined && {
+          estateAdministrationStatus:
+            body.estateAdministrationStatus === null || body.estateAdministrationStatus === ''
+              ? null
+              : (body.estateAdministrationStatus as string),
+        }),
+        ...(body.partnershipSubtype !== undefined && {
+          partnershipSubtype:
+            body.partnershipSubtype === null || body.partnershipSubtype === ''
+              ? null
+              : (body.partnershipSubtype as string),
         }),
       });
 

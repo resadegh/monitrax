@@ -1018,16 +1018,22 @@ ADMIN_SUPPORT_TOOLS=true
 - Feature flag infrastructure
 
 ### Phase 33.2: Organization Management
-- Organization list and search
-- Organization detail view
-- License management
-- Activity logs
+- ✅ Organization list and search (real data)
+- ✅ Organization detail view (real data — fixed 2026-06-12; was mock scaffold)
+- ✅ License management (plan/limits/notes + suspend/reactivate; suspension
+  blocks the firm's portal access to client data via
+  `lib/portal/licenseGuard.ts` — members keep their personal accounts)
+- Activity logs (not yet — API exposes no per-org activity; the mock
+  activity feed was removed rather than faked)
 
 ### Phase 33.3: User Management
-- User list and search
-- User detail view
-- Subscription management
-- Activity logs
+- ✅ User list and search (real data)
+- ✅ User detail view (real data — fixed 2026-06-12; was mock scaffold)
+- ✅ Subscription management (tier change + suspend/reactivate; suspension
+  enforced via GCP Identity Platform `accounts:update {disableUser}` —
+  see `docs/operational/security/01_AUTHENTICATION.md` § User Suspension)
+- ✅ Activity logs (real since 2026-06-12 PR 3 — `lastLoginAt` from
+  `LoginAttempt` + last-10 `AuditLog` events, metadata excluded per CDR §13.3)
 
 ### Phase 33.4: Billing Dashboard
 - Revenue overview

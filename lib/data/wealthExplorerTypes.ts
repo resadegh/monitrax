@@ -85,6 +85,15 @@ export interface WealthNode {
    * `assetSummary` (which also powers totals and stays set).
    */
   isExpandable?: boolean;
+  /**
+   * Phase 47 Stage E2 — per-entity tax-position status, carried through
+   * from `WealthGraphEntity.taxStatus`. Drives the Money-Flow-lens tax
+   * pip on entity tiles (emerald = computed with no caveats; amber =
+   * `caveatCount` items pending/assumed). Status only — never a tax
+   * dollar. Undefined for asset/group/cluster nodes and for entities
+   * whose position couldn't be assembled.
+   */
+  taxStatus?: { computed: boolean; caveatCount: number };
 }
 
 export type RelationshipType =

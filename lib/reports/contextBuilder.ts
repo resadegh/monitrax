@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/db';
+import { sumHoldingsMarketValue, sumLoanBalances } from '@/lib/calculations/assetValuation';
 import type {
   ReportContext,
   ReportType,
@@ -14,7 +15,15 @@ import type {
   IncomeReportData,
   ExpenseReportData,
   DepreciationReportData,
+  EntityReportData,
 } from './types';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { UNATTRIBUTED_ENTITY_ID } from '@/lib/calculations/entityBreakdown';
+import { ENTITY_TYPE_LABELS } from '@/lib/entities/entityTypeCatalog';
+import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
+import { calculateEntityTaxPositionDecimal } from '@/lib/tax-engine/entity/entityTaxRouter';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import type { LegalEntityType } from '@prisma/client';
 
 // ============================================================================
 // Context Builder
@@ -76,6 +85,8 @@ export async function buildReportContext(
       context.loans = await fetchLoanData(userId);
       context.accounts = await fetchAccountData(userId);
       context.investments = await fetchInvestmentData(userId);
+      // Phase 47 E1 — per-entity breakdown (with tax status).
+      context.entityBreakdown = await fetchEntityBreakdown(userId);
       break;
 
     case 'income-expense':
@@ -101,10 +112,61 @@ export async function buildReportContext(
       context.expenses = await fetchExpenseData(userId);
       context.properties = await fetchPropertyData(userId);
       context.depreciationSchedules = await fetchDepreciationData(userId);
+      // Phase 47 E1 — per-entity breakdown (with tax status).
+      context.entityBreakdown = await fetchEntityBreakdown(userId);
       break;
   }
 
   return context;
+}
+
+// ============================================================================
+// Per-Entity Breakdown (Phase 47 Stage E1)
+// ============================================================================
+
+/**
+ * Build the per-entity report rows. Net position comes from the canonical
+ * master snapshot `byEntity` (SSOT — same engines the dashboard uses); the
+ * tax status comes from the per-entity tax engine and surfaces honest
+ * caveats (`uncomputed` + assembler notes, incl. AD-2 ownership flags),
+ * never a fabricated tax dollar. Entities without holdings are already
+ * omitted by `byEntity`. The unattributed sentinel bucket is skipped — it
+ * has no entity to compute a tax position for.
+ */
+async function fetchEntityBreakdown(userId: string): Promise<EntityReportData[]> {
+  const snapshot = await getMasterFinancialSnapshot(userId);
+  const positions = snapshot.byEntity.filter((p) => p.entityId !== UNATTRIBUTED_ENTITY_ID);
+  if (positions.length === 0) return [];
+
+  const fyConfig = getCurrentTaxYearConfig();
+  const fy = { financialYear: fyConfig.financialYear, label: fyConfig.label };
+
+  return Promise.all(
+    positions.map(async (p): Promise<EntityReportData> => {
+      const facts = await assembleEntityTaxFacts(userId, p.entityId, fy);
+      let tax: EntityReportData['tax'] = null;
+      if (facts) {
+        const position = calculateEntityTaxPositionDecimal(facts);
+        tax = {
+          computed: position.uncomputed.length === 0,
+          caveats: position.uncomputed.map((u) => ({ id: u.id, rationale: u.rationale })),
+        };
+      }
+      return {
+        entityId: p.entityId,
+        entityName: p.entityName,
+        entityType: p.entityType,
+        entityTypeLabel:
+          ENTITY_TYPE_LABELS[p.entityType as LegalEntityType] ?? p.entityType,
+        netWorth: p.netWorth,
+        assets: p.assets,
+        liabilities: p.liabilities,
+        monthlyCashflow: p.monthlyCashflow,
+        holdingsCount: p.counts.holdings,
+        tax,
+      };
+    }),
+  );
 }
 
 // ============================================================================
@@ -128,7 +190,7 @@ async function calculateFinancialSummary(userId: string) {
     }),
     prisma.investmentAccount.findMany({
       where: { userId },
-      include: { holdings: { select: { units: true, averagePrice: true } } },
+      include: { holdings: { select: { units: true, currentPrice: true, averagePrice: true } } },
     }),
   ]);
 
@@ -143,19 +205,18 @@ async function calculateFinancialSummary(userId: string) {
     accountBalances += a.currentBalance || 0;
   }
 
+  // Phase 3 fix PR1 (audit L1-2): value holdings by the canonical net-worth
+  // basis (units × live price) via the shared helper, not cost basis.
   let investmentValue = 0;
   for (const acc of investmentAccounts) {
-    for (const h of acc.holdings) {
-      investmentValue += h.averagePrice * h.units;
-    }
+    investmentValue += sumHoldingsMarketValue(acc.holdings);
   }
 
   const totalAssets = propertyValue + accountBalances + investmentValue;
 
-  let totalLiabilities = 0;
-  for (const l of loans) {
-    totalLiabilities += l.principal || 0;
-  }
+  // Phase 3 fix PR1 (audit L1-2): canonical loan-balance basis (`Loan.principal`
+  // is the current balance) via the shared helper.
+  const totalLiabilities = sumLoanBalances(loans);
   const netWorth = totalAssets - totalLiabilities;
 
   // Simple cashflow runway calculation (months of expenses covered by liquid assets)
@@ -198,6 +259,8 @@ function convertToMonthly(amount: number, frequency: string): number {
       return amount;
     case 'QUARTERLY':
       return amount / 3;
+    case 'HALF_YEARLY':
+      return amount / 6;
     case 'ANNUALLY':
     case 'YEARLY':
       return amount / 12;
@@ -486,6 +549,8 @@ function calculateAnnualAmount(amount: number, frequency: string): number {
       return amount * 12;
     case 'QUARTERLY':
       return amount * 4;
+    case 'HALF_YEARLY':
+      return amount * 2;
     case 'ANNUALLY':
     case 'YEARLY':
       return amount;

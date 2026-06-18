@@ -306,6 +306,7 @@ function getFrequencyMultiplier(frequency: string): number {
     FORTNIGHTLY: 26,
     MONTHLY: 12,
     QUARTERLY: 4,
+    HALF_YEARLY: 2,
     ANNUAL: 1,
     ANNUALLY: 1,
   };

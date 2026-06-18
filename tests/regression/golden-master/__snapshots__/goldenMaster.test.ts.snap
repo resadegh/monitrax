@@ -1,0 +1,1032 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`golden-master regression — canonical engine outputs per archetype > company — Company (bucket/trading) > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": 39864,
+  "annualExpenses": 50400,
+  "annualGrossIncome": 162000,
+  "annualIncome": 132264,
+  "annualLoanRepayments": 42000,
+  "annualNetIncome": 132264,
+  "annualPaygWithholding": 29736,
+  "annualSurplus": 39864,
+  "debtServiceRatio": 31.75,
+  "discretionaryExpenses": 0,
+  "essentialExpenses": 4200,
+  "expenseRatio": 38.11,
+  "expensesByCategory": {
+    "LIVING": 4200,
+  },
+  "incomeByType": {
+    "RENT": 4000,
+    "SALARY": 7022,
+  },
+  "monthlyCashflow": 3322,
+  "monthlyExpenses": 4200,
+  "monthlyGrossIncome": 13500,
+  "monthlyIncome": 11022,
+  "monthlyLoanRepayments": 3500,
+  "monthlyNetIncome": 11022,
+  "monthlyPaygWithholding": 2478,
+  "monthlySurplus": 3322,
+  "savingsRate": 30.14,
+  "taxDeductibleExpenses": 0,
+  "taxableIncome": 162000,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > company — Company (bucket/trading) > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 18000,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 0,
+        "superannuation": 160000,
+        "total": 178000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 0,
+        "personalLoans": 0,
+        "total": 0,
+      },
+      "netWorth": 178000,
+    },
+    {
+      "assets": {
+        "accounts": 120000,
+        "investments": 110000,
+        "personalAssets": 0,
+        "properties": 1100000,
+        "superannuation": 0,
+        "total": 1330000,
+      },
+      "entityId": "co",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 600000,
+        "personalLoans": 0,
+        "total": 600000,
+      },
+      "netWorth": 730000,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 138000,
+      "investments": 110000,
+      "personalAssets": 0,
+      "properties": 1100000,
+      "superannuation": 160000,
+      "total": 1508000,
+    },
+    "breakdown": {
+      "investmentAssets": 270000,
+      "liquidAssets": 138000,
+      "propertyEquity": 500000,
+    },
+    "liabilities": {
+      "creditCards": 0,
+      "mortgages": 600000,
+      "personalLoans": 0,
+      "total": 600000,
+    },
+    "netWorth": 908000,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > company — Company (bucket/trading) > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 800000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0,
+      "entityId": "co",
+      "entityType": "COMPANY",
+      "estimatedTax": null,
+      "isYou": false,
+      "metHoldingPeriod": true,
+      "name": "Renew Holdings Pty Ltd",
+      "nominalGainShare": 572000,
+      "reason": "No discount — companies are not eligible (ITAA 1997 s115-10).",
+      "taxableGain": 572000,
+      "weight": 1,
+    },
+  ],
+  "totalNominalGain": 572000,
+  "totalTaxableGain": 572000,
+  "yourEstimatedTax": 0,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > company — Company (bucket/trading) > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 1330000,
+    "counts": {
+      "holdings": 4,
+    },
+    "entityId": "co",
+    "entityName": "Renew Holdings Pty Ltd",
+    "entityType": "COMPANY",
+    "liabilities": 600000,
+    "monthlyCashflow": 4000,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 4000,
+    "netWorth": 730000,
+  },
+  {
+    "assets": 178000,
+    "counts": {
+      "holdings": 2,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 0,
+    "monthlyCashflow": 5300,
+    "monthlyExpenses": 4200,
+    "monthlyIncome": 9500,
+    "netWorth": 178000,
+  },
+]
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > couple-50-50 — Couple, joint tenants 50/50 > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": 20464,
+  "annualExpenses": 60000,
+  "annualGrossIncome": 156000,
+  "annualIncome": 121264,
+  "annualLoanRepayments": 40800,
+  "annualNetIncome": 121264,
+  "annualPaygWithholding": 34736,
+  "annualSurplus": 20464,
+  "debtServiceRatio": 33.65,
+  "discretionaryExpenses": 0,
+  "essentialExpenses": 5000,
+  "expenseRatio": 49.48,
+  "expensesByCategory": {
+    "LIVING": 5000,
+  },
+  "incomeByType": {
+    "SALARY": 10105.333333333332,
+  },
+  "monthlyCashflow": 1705.33,
+  "monthlyExpenses": 5000,
+  "monthlyGrossIncome": 13000,
+  "monthlyIncome": 10105.33,
+  "monthlyLoanRepayments": 3400,
+  "monthlyNetIncome": 10105.33,
+  "monthlyPaygWithholding": 2894.67,
+  "monthlySurplus": 1705.33,
+  "savingsRate": 16.88,
+  "taxDeductibleExpenses": 0,
+  "taxableIncome": 156000,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > couple-50-50 — Couple, joint tenants 50/50 > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 30000,
+        "investments": 25000,
+        "personalAssets": 0,
+        "properties": 600000,
+        "superannuation": 150000,
+        "total": 805000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 300000,
+        "personalLoans": 0,
+        "total": 300000,
+      },
+      "netWorth": 505000,
+    },
+    {
+      "assets": {
+        "accounts": 30000,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 600000,
+        "superannuation": 120000,
+        "total": 750000,
+      },
+      "entityId": "spouse",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 300000,
+        "personalLoans": 0,
+        "total": 300000,
+      },
+      "netWorth": 450000,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 60000,
+      "investments": 25000,
+      "personalAssets": 0,
+      "properties": 1200000,
+      "superannuation": 270000,
+      "total": 1555000,
+    },
+    "breakdown": {
+      "investmentAssets": 295000,
+      "liquidAssets": 60000,
+      "propertyEquity": 600000,
+    },
+    "liabilities": {
+      "creditCards": 0,
+      "mortgages": 600000,
+      "personalLoans": 0,
+      "total": 600000,
+    },
+    "netWorth": 955000,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > couple-50-50 — Couple, joint tenants 50/50 > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 700000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0.5,
+      "entityId": "you",
+      "entityType": "PERSONAL_NAME",
+      "estimatedTax": 44030,
+      "isYou": true,
+      "metHoldingPeriod": true,
+      "name": "You",
+      "nominalGainShare": 238000,
+      "reason": "50% discount per ITAA 1997 s115-25 — individual.",
+      "taxableGain": 119000,
+      "weight": 0.5,
+    },
+    {
+      "discountRate": 0.5,
+      "entityId": "spouse",
+      "entityType": "PERSONAL_NAME",
+      "estimatedTax": null,
+      "isYou": false,
+      "metHoldingPeriod": true,
+      "name": "Sarah",
+      "nominalGainShare": 238000,
+      "reason": "50% discount per ITAA 1997 s115-25 — individual.",
+      "taxableGain": 119000,
+      "weight": 0.5,
+    },
+  ],
+  "totalNominalGain": 476000,
+  "totalTaxableGain": 238000,
+  "yourEstimatedTax": 44030,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > couple-50-50 — Couple, joint tenants 50/50 > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 805000,
+    "counts": {
+      "holdings": 5,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 300000,
+    "monthlyCashflow": 2000,
+    "monthlyExpenses": 5000,
+    "monthlyIncome": 7000,
+    "netWorth": 505000,
+  },
+  {
+    "assets": 750000,
+    "counts": {
+      "holdings": 4,
+    },
+    "entityId": "spouse",
+    "entityName": "Sarah",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 300000,
+    "monthlyCashflow": 6000,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 6000,
+    "netWorth": 450000,
+  },
+]
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > discretionary-trust — Discretionary (family) trust > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": 26004,
+  "annualExpenses": 61200,
+  "annualGrossIncome": 140400,
+  "annualIncome": 114804,
+  "annualLoanRepayments": 27600,
+  "annualNetIncome": 114804,
+  "annualPaygWithholding": 25596,
+  "annualSurplus": 26004,
+  "debtServiceRatio": 24.04,
+  "discretionaryExpenses": 0,
+  "essentialExpenses": 5100,
+  "expenseRatio": 53.31,
+  "expensesByCategory": {
+    "LIVING": 4000,
+    "PROPERTY": 1100,
+  },
+  "incomeByType": {
+    "RENT": 3200,
+    "SALARY": 6367,
+  },
+  "monthlyCashflow": 2167,
+  "monthlyExpenses": 5100,
+  "monthlyGrossIncome": 11700,
+  "monthlyIncome": 9567,
+  "monthlyLoanRepayments": 2300,
+  "monthlyNetIncome": 9567,
+  "monthlyPaygWithholding": 2133,
+  "monthlySurplus": 2167,
+  "savingsRate": 22.65,
+  "taxDeductibleExpenses": 13200,
+  "taxableIncome": 140400,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > discretionary-trust — Discretionary (family) trust > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 20000,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 0,
+        "superannuation": 210000,
+        "total": 230000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 0,
+        "personalLoans": 0,
+        "total": 0,
+      },
+      "netWorth": 230000,
+    },
+    {
+      "assets": {
+        "accounts": 55000,
+        "investments": 60000,
+        "personalAssets": 0,
+        "properties": 750000,
+        "superannuation": 0,
+        "total": 865000,
+      },
+      "entityId": "trust",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 400000,
+        "personalLoans": 0,
+        "total": 400000,
+      },
+      "netWorth": 465000,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 75000,
+      "investments": 60000,
+      "personalAssets": 0,
+      "properties": 750000,
+      "superannuation": 210000,
+      "total": 1095000,
+    },
+    "breakdown": {
+      "investmentAssets": 270000,
+      "liquidAssets": 75000,
+      "propertyEquity": 350000,
+    },
+    "liabilities": {
+      "creditCards": 0,
+      "mortgages": 400000,
+      "personalLoans": 0,
+      "total": 400000,
+    },
+    "netWorth": 695000,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > discretionary-trust — Discretionary (family) trust > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 500000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0.5,
+      "entityId": "trust",
+      "entityType": "DISCRETIONARY_TRUST",
+      "estimatedTax": null,
+      "isYou": false,
+      "metHoldingPeriod": true,
+      "name": "Smith Family Trust",
+      "nominalGainShare": 382000,
+      "reason": "50% discount per ITAA 1997 s115-25 — flows to beneficiary on streamed distribution.",
+      "taxableGain": 191000,
+      "weight": 1,
+    },
+  ],
+  "totalNominalGain": 382000,
+  "totalTaxableGain": 191000,
+  "yourEstimatedTax": 0,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > discretionary-trust — Discretionary (family) trust > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 865000,
+    "counts": {
+      "holdings": 4,
+    },
+    "entityId": "trust",
+    "entityName": "Smith Family Trust",
+    "entityType": "DISCRETIONARY_TRUST",
+    "liabilities": 400000,
+    "monthlyCashflow": 2100,
+    "monthlyExpenses": 1100,
+    "monthlyIncome": 3200,
+    "netWorth": 465000,
+  },
+  {
+    "assets": 230000,
+    "counts": {
+      "holdings": 2,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 0,
+    "monthlyCashflow": 4500,
+    "monthlyExpenses": 4000,
+    "monthlyIncome": 8500,
+    "netWorth": 230000,
+  },
+]
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > mixed-portfolio — Mixed entity portfolio > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": 40364,
+  "annualExpenses": 90000,
+  "annualGrossIncome": 246000,
+  "annualIncome": 192764,
+  "annualLoanRepayments": 62400,
+  "annualNetIncome": 192764,
+  "annualPaygWithholding": 53236,
+  "annualSurplus": 40364,
+  "debtServiceRatio": 32.37,
+  "discretionaryExpenses": 1500,
+  "essentialExpenses": 6000,
+  "expenseRatio": 46.69,
+  "expensesByCategory": {
+    "LIFESTYLE": 1500,
+    "LIVING": 6000,
+  },
+  "incomeByType": {
+    "RENT": 3000,
+    "SALARY": 13063.666666666668,
+  },
+  "monthlyCashflow": 3363.67,
+  "monthlyExpenses": 7500,
+  "monthlyGrossIncome": 20500,
+  "monthlyIncome": 16063.67,
+  "monthlyLoanRepayments": 5200,
+  "monthlyNetIncome": 16063.67,
+  "monthlyPaygWithholding": 4436.33,
+  "monthlySurplus": 3363.67,
+  "savingsRate": 20.94,
+  "taxDeductibleExpenses": 0,
+  "taxableIncome": 246000,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > mixed-portfolio — Mixed entity portfolio > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 57000,
+        "investments": 0,
+        "personalAssets": 45000,
+        "properties": 900000,
+        "superannuation": 175000,
+        "total": 1177000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 12000,
+        "mortgages": 480000,
+        "personalLoans": 0,
+        "total": 492000,
+      },
+      "netWorth": 685000,
+    },
+    {
+      "assets": {
+        "accounts": 0,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 0,
+        "superannuation": 0,
+        "total": 0,
+      },
+      "entityId": "spouse",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 0,
+        "personalLoans": 0,
+        "total": 0,
+      },
+      "netWorth": 0,
+    },
+    {
+      "assets": {
+        "accounts": 60000,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 700000,
+        "superannuation": 0,
+        "total": 760000,
+      },
+      "entityId": "trust",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 420000,
+        "personalLoans": 0,
+        "total": 420000,
+      },
+      "netWorth": 340000,
+    },
+    {
+      "assets": {
+        "accounts": 140000,
+        "investments": 57000,
+        "personalAssets": 0,
+        "properties": 0,
+        "superannuation": 0,
+        "total": 197000,
+      },
+      "entityId": "co",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 0,
+        "personalLoans": 0,
+        "total": 0,
+      },
+      "netWorth": 197000,
+    },
+    {
+      "assets": {
+        "accounts": 80000,
+        "investments": 102500,
+        "personalAssets": 0,
+        "properties": 650000,
+        "superannuation": 0,
+        "total": 832500,
+      },
+      "entityId": "smsf",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 300000,
+        "personalLoans": 0,
+        "total": 300000,
+      },
+      "netWorth": 532500,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 337000,
+      "investments": 159500,
+      "personalAssets": 45000,
+      "properties": 2250000,
+      "superannuation": 175000,
+      "total": 2966500,
+    },
+    "breakdown": {
+      "investmentAssets": 334500,
+      "liquidAssets": 315000,
+      "propertyEquity": 1050000,
+    },
+    "liabilities": {
+      "creditCards": 12000,
+      "mortgages": 1200000,
+      "personalLoans": 0,
+      "total": 1212000,
+    },
+    "netWorth": 1754500,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > mixed-portfolio — Mixed entity portfolio > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 540000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0.5,
+      "entityId": "trust",
+      "entityType": "DISCRETIONARY_TRUST",
+      "estimatedTax": null,
+      "isYou": false,
+      "metHoldingPeriod": true,
+      "name": "Smith Family Trust",
+      "nominalGainShare": 420400,
+      "reason": "50% discount per ITAA 1997 s115-25 — flows to beneficiary on streamed distribution.",
+      "taxableGain": 210200,
+      "weight": 1,
+    },
+  ],
+  "totalNominalGain": 420400,
+  "totalTaxableGain": 210200,
+  "yourEstimatedTax": 0,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > mixed-portfolio — Mixed entity portfolio > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 1177000,
+    "counts": {
+      "holdings": 7,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 492000,
+    "monthlyCashflow": 5000,
+    "monthlyExpenses": 6000,
+    "monthlyIncome": 11000,
+    "netWorth": 685000,
+  },
+  {
+    "assets": 832500,
+    "counts": {
+      "holdings": 5,
+    },
+    "entityId": "smsf",
+    "entityName": "Reza SMSF",
+    "entityType": "SMSF",
+    "liabilities": 300000,
+    "monthlyCashflow": 0,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 0,
+    "netWorth": 532500,
+  },
+  {
+    "assets": 760000,
+    "counts": {
+      "holdings": 3,
+    },
+    "entityId": "trust",
+    "entityName": "Smith Family Trust",
+    "entityType": "DISCRETIONARY_TRUST",
+    "liabilities": 420000,
+    "monthlyCashflow": 3000,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 3000,
+    "netWorth": 340000,
+  },
+  {
+    "assets": 197000,
+    "counts": {
+      "holdings": 2,
+    },
+    "entityId": "co",
+    "entityName": "Renew Holdings Pty Ltd",
+    "entityType": "COMPANY",
+    "liabilities": 0,
+    "monthlyCashflow": 0,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 0,
+    "netWorth": 197000,
+  },
+  {
+    "assets": 0,
+    "counts": {
+      "holdings": 0,
+    },
+    "entityId": "spouse",
+    "entityName": "Sarah",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 0,
+    "monthlyCashflow": 5000,
+    "monthlyExpenses": 1500,
+    "monthlyIncome": 6500,
+    "netWorth": 0,
+  },
+]
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > smsf — SMSF (self-managed super fund) > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": 10220,
+  "annualExpenses": 54000,
+  "annualGrossIncome": 120000,
+  "annualIncome": 88220,
+  "annualLoanRepayments": 24000,
+  "annualNetIncome": 88220,
+  "annualPaygWithholding": 31780,
+  "annualSurplus": 10220,
+  "debtServiceRatio": 27.2,
+  "discretionaryExpenses": 0,
+  "essentialExpenses": 4500,
+  "expenseRatio": 61.21,
+  "expensesByCategory": {
+    "LIVING": 4500,
+  },
+  "incomeByType": {
+    "SALARY": 7351.666666666667,
+  },
+  "monthlyCashflow": 851.67,
+  "monthlyExpenses": 4500,
+  "monthlyGrossIncome": 10000,
+  "monthlyIncome": 7351.67,
+  "monthlyLoanRepayments": 2000,
+  "monthlyNetIncome": 7351.67,
+  "monthlyPaygWithholding": 2648.33,
+  "monthlySurplus": 851.67,
+  "savingsRate": 11.58,
+  "taxDeductibleExpenses": 0,
+  "taxableIncome": 120000,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > smsf — SMSF (self-managed super fund) > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 25000,
+        "investments": 0,
+        "personalAssets": 0,
+        "properties": 0,
+        "superannuation": 0,
+        "total": 25000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 0,
+        "personalLoans": 0,
+        "total": 0,
+      },
+      "netWorth": 25000,
+    },
+    {
+      "assets": {
+        "accounts": 90000,
+        "investments": 120000,
+        "personalAssets": 0,
+        "properties": 680000,
+        "superannuation": 0,
+        "total": 890000,
+      },
+      "entityId": "smsf",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 350000,
+        "personalLoans": 0,
+        "total": 350000,
+      },
+      "netWorth": 540000,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 115000,
+      "investments": 120000,
+      "personalAssets": 0,
+      "properties": 680000,
+      "superannuation": 0,
+      "total": 915000,
+    },
+    "breakdown": {
+      "investmentAssets": 120000,
+      "liquidAssets": 115000,
+      "propertyEquity": 330000,
+    },
+    "liabilities": {
+      "creditCards": 0,
+      "mortgages": 350000,
+      "personalLoans": 0,
+      "total": 350000,
+    },
+    "netWorth": 565000,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > smsf — SMSF (self-managed super fund) > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 480000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0.3333333333333333,
+      "entityId": "smsf",
+      "entityType": "SMSF",
+      "estimatedTax": null,
+      "isYou": false,
+      "metHoldingPeriod": true,
+      "name": "Reza SMSF",
+      "nominalGainShare": 324000,
+      "reason": "33⅓% discount per ITAA 1997 s115-100 — complying superannuation fund.",
+      "taxableGain": 216000,
+      "weight": 1,
+    },
+  ],
+  "totalNominalGain": 324000,
+  "totalTaxableGain": 216000,
+  "yourEstimatedTax": 0,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > smsf — SMSF (self-managed super fund) > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 890000,
+    "counts": {
+      "holdings": 5,
+    },
+    "entityId": "smsf",
+    "entityName": "Reza SMSF",
+    "entityType": "SMSF",
+    "liabilities": 350000,
+    "monthlyCashflow": 0,
+    "monthlyExpenses": 0,
+    "monthlyIncome": 0,
+    "netWorth": 540000,
+  },
+  {
+    "assets": 25000,
+    "counts": {
+      "holdings": 1,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 0,
+    "monthlyCashflow": 5500,
+    "monthlyExpenses": 4500,
+    "monthlyIncome": 10000,
+    "netWorth": 25000,
+  },
+]
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > sole-owner — Sole owner (single individual) > cashflow matches the golden master 1`] = `
+{
+  "annualCashflow": -6040,
+  "annualExpenses": 51600,
+  "annualGrossIncome": 108000,
+  "annualIncome": 80360,
+  "annualLoanRepayments": 34800,
+  "annualNetIncome": 80360,
+  "annualPaygWithholding": 27640,
+  "annualSurplus": -6040,
+  "debtServiceRatio": 43.31,
+  "discretionaryExpenses": 800,
+  "essentialExpenses": 3500,
+  "expenseRatio": 64.21,
+  "expensesByCategory": {
+    "LIFESTYLE": 800,
+    "LIVING": 3500,
+  },
+  "incomeByType": {
+    "SALARY": 6696.666666666667,
+  },
+  "monthlyCashflow": -503.33,
+  "monthlyExpenses": 4300,
+  "monthlyGrossIncome": 9000,
+  "monthlyIncome": 6696.67,
+  "monthlyLoanRepayments": 2900,
+  "monthlyNetIncome": 6696.67,
+  "monthlyPaygWithholding": 2303.33,
+  "monthlySurplus": -503.33,
+  "savingsRate": -7.52,
+  "taxDeductibleExpenses": 0,
+  "taxableIncome": 108000,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > sole-owner — Sole owner (single individual) > net worth (household + per-entity) matches the golden master 1`] = `
+{
+  "perEntity": [
+    {
+      "assets": {
+        "accounts": 55000,
+        "investments": 35000,
+        "personalAssets": 25000,
+        "properties": 850000,
+        "superannuation": 180000,
+        "total": 1145000,
+      },
+      "entityId": "you",
+      "liabilities": {
+        "creditCards": 0,
+        "mortgages": 520000,
+        "personalLoans": 0,
+        "total": 520000,
+      },
+      "netWorth": 625000,
+    },
+  ],
+  "whole": {
+    "assets": {
+      "accounts": 55000,
+      "investments": 35000,
+      "personalAssets": 25000,
+      "properties": 850000,
+      "superannuation": 180000,
+      "total": 1145000,
+    },
+    "breakdown": {
+      "investmentAssets": 215000,
+      "liquidAssets": 40000,
+      "propertyEquity": 330000,
+    },
+    "liabilities": {
+      "creditCards": 0,
+      "mortgages": 520000,
+      "personalLoans": 0,
+      "total": 520000,
+    },
+    "netWorth": 625000,
+  },
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > sole-owner — Sole owner (single individual) > per-entity CGT split matches the golden master 1`] = `
+{
+  "costBase": 600000,
+  "flags": [],
+  "isCapitalLoss": false,
+  "owners": [
+    {
+      "discountRate": 0.5,
+      "entityId": "you",
+      "entityType": "PERSONAL_NAME",
+      "estimatedTax": 74100,
+      "isYou": true,
+      "metHoldingPeriod": true,
+      "name": "You",
+      "nominalGainShare": 380000,
+      "reason": "50% discount per ITAA 1997 s115-25 — individual.",
+      "taxableGain": 190000,
+      "weight": 1,
+    },
+  ],
+  "totalNominalGain": 380000,
+  "totalTaxableGain": 190000,
+  "yourEstimatedTax": 74100,
+}
+`;
+
+exports[`golden-master regression — canonical engine outputs per archetype > sole-owner — Sole owner (single individual) > per-entity breakdown matches the golden master 1`] = `
+[
+  {
+    "assets": 1145000,
+    "counts": {
+      "holdings": 7,
+    },
+    "entityId": "you",
+    "entityName": "You",
+    "entityType": "PERSONAL_NAME",
+    "liabilities": 520000,
+    "monthlyCashflow": 4700,
+    "monthlyExpenses": 4300,
+    "monthlyIncome": 9000,
+    "netWorth": 625000,
+  },
+]
+`;

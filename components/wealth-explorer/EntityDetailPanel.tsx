@@ -45,6 +45,8 @@ import { useAuth } from '@/lib/context/AuthContext';
 import type { WealthNode } from '@/lib/data/wealthExplorerTypes';
 import { NODE_ACCENT, assetHrefFor, assetCtaLabelFor } from '@/lib/data/wealthExplorerTypes';
 import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
+import RolesAndPeopleSection from './RolesAndPeopleSection';
+import type { LegalEntityType } from '@prisma/client';
 
 interface EntityDetail {
   id: string;
@@ -316,6 +318,17 @@ export default function EntityDetailPanel({
                       </div>
                     </Section>
                   )}
+
+                  {/* Phase 47 F2 — the Entity File: type-aware role rows
+                      (directors / trustees / beneficiaries…), the
+                      "actually held for" overrides, and the completeness
+                      chip. Full editor — add, end-date, validity preview. */}
+                  <RolesAndPeopleSection
+                    entityId={detail.id}
+                    entityType={detail.type as LegalEntityType}
+                    entityName={detail.name}
+                    assets={assets}
+                  />
 
                   {/* Asset counts */}
                   <Section title="Holds">

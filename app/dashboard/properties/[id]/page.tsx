@@ -64,6 +64,8 @@ import {
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
 import ChangePhotoDialog from '@/components/properties/ChangePhotoDialog';
+import { DocumentsSection } from '@/components/documents';
+import { LinkedEntityType } from '@/lib/documents/types';
 
 // =============================================================================
 // TYPES
@@ -503,6 +505,12 @@ export default function PropertyDetailPage() {
           <div className="flex flex-col gap-5 lg:col-span-2">
             <LinkedEntitiesCard property={property} />
             <RecentActivityCard property={property} />
+            <DocumentsSection
+              entityType={LinkedEntityType.PROPERTY}
+              entityId={property.id}
+              entityLabel={property.name}
+              analyzeOnUpload
+            />
           </div>
 
           {/* RIGHT column (1/3 width) */}

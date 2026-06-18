@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Wealth OS - Ownership Management</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#585e6f",
+                        "error": "#ba1a1a",
+                        "tertiary-container": "#66768d",
+                        "on-tertiary-container": "#fdfcff",
+                        "trail-sky": "#0EA5E9",
+                        "surface-container": "#e9f0e5",
+                        "on-tertiary": "#ffffff",
+                        "surface-dim": "#F1EFE8",
+                        "outline-variant": "#bdcaba",
+                        "on-secondary-container": "#5c6274",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-background": "#171d16",
+                        "outline": "#6e7b6c",
+                        "primary-container": "#00873a",
+                        "inverse-on-surface": "#ecf3e7",
+                        "on-primary-container": "#f7fff2",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-error": "#ffffff",
+                        "tertiary": "#4d5d73",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-container-low": "#eff6ea",
+                        "trail-violet": "#8B5CF6",
+                        "outline-slate": "#94A3B8",
+                        "secondary-fixed": "#dce2f6",
+                        "on-surface": "#171d16",
+                        "on-primary-fixed": "#002109",
+                        "inverse-surface": "#2b322b",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-bright": "#f4fcf0",
+                        "on-primary": "#ffffff",
+                        "inverse-primary": "#62df7d",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "primary-fixed": "#7ffc97",
+                        "surface-variant": "#dde5d9",
+                        "error-container": "#ffdad6",
+                        "secondary-container": "#d9dff4",
+                        "primary-fixed-dim": "#62df7d",
+                        "primary": "#006b2c",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "surface-tint": "#006e2d",
+                        "surface": "#f4fcf0",
+                        "error-red": "#DC2626",
+                        "trail-emerald": "#16A34A",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-amber": "#F59E0B",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "on-error-container": "#93000a",
+                        "trail-indigo": "#6366F1",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#e3eadf",
+                        "background": "#f4fcf0",
+                        "navy-deep": "#0B1220"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "container-max": "1280px"
+                    },
+                    "fontFamily": {
+                        "headline-lg-mobile": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF7;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .sheet-divider {
+            height: 1px;
+            background: linear-gradient(to right, transparent, #E2E8F0, transparent);
+            margin: 32px 0;
+        }
+        .shadow-subtle {
+            box-shadow: 0 1px 4px 0 rgba(11, 18, 32, 0.04);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface-ivory pb-20">
+<!-- Top Navigation Placeholder (Hidden per Mobile Rule but for Context) -->
+<header class="h-16 flex items-center px-5 justify-between bg-surface-ivory">
+<span class="font-headline-sm text-headline-sm text-navy-deep font-semibold">Wealth OS</span>
+<div class="w-8 h-8 rounded-full bg-surface-container-high"></div>
+</header>
+<main class="max-w-md mx-auto px-5 py-6 space-y-12">
+<!-- SECTION 1: Who owns this? -->
+<section class="animate-in fade-in slide-in-from-bottom-4 duration-500" id="ownership-picker">
+<header class="mb-6">
+<h2 class="font-eyebrow text-eyebrow text-navy-deep uppercase tracking-widest mb-4">WHO OWNS THIS?</h2>
+</header>
+<div class="space-y-3">
+<!-- Selected Card -->
+<button class="w-full h-[56px] flex items-center justify-between px-4 rounded-xl border-[1.5px] border-trail-emerald bg-trail-emerald/[0.08] text-left transition-all active:scale-[0.98]">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-navy-deep font-semibold">Just me</span>
+<span class="text-[11px] text-secondary">In your own name</span>
+</div>
+<span class="material-symbols-outlined text-trail-emerald" data-icon="check_circle" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<!-- Default Cards -->
+<button class="w-full h-[56px] flex items-center justify-between px-4 rounded-xl border-[1.5px] border-[#E2E8F0] bg-white text-left transition-all active:scale-[0.98] hover:border-outline-slate">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-navy-deep font-semibold">Joint — with someone</span>
+<span class="text-[11px] text-secondary">Equal shares, survivorship</span>
+</div>
+<span class="material-symbols-outlined text-outline-slate" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full h-[56px] flex items-center justify-between px-4 rounded-xl border-[1.5px] border-[#E2E8F0] bg-white text-left transition-all active:scale-[0.98] hover:border-outline-slate">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-navy-deep font-semibold">Shared — set percentages</span>
+<span class="text-[11px] text-secondary">Fixed splits, e.g. 70/30</span>
+</div>
+<span class="material-symbols-outlined text-outline-slate" data-icon="chevron_right">chevron_right</span>
+</button>
+<button class="w-full h-[56px] flex items-center justify-between px-4 rounded-xl border-[1.5px] border-[#E2E8F0] bg-white text-left transition-all active:scale-[0.98] hover:border-outline-slate">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-navy-deep font-semibold">An entity</span>
+<span class="text-[11px] text-secondary">A trust, company or SMSF</span>
+</div>
+<span class="material-symbols-outlined text-outline-slate" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+<!-- Person Chips -->
+<div class="flex flex-wrap gap-2 mt-6">
+<div class="flex items-center gap-2 bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200">
+<span class="text-xs font-medium text-slate-700">Newsha</span>
+</div>
+<button class="flex items-center gap-1.5 bg-slate-100 px-4 py-1.5 rounded-full border border-slate-200 active:bg-slate-200 transition-colors">
+<span class="material-symbols-outlined text-[16px] text-slate-700" data-icon="add">add</span>
+<span class="text-xs font-medium text-slate-700">Someone new</span>
+</button>
+</div>
+<!-- Hint Row -->
+<div class="mt-8 pt-4 border-t border-dashed border-slate-200">
+<p class="text-[11px] leading-relaxed text-slate-500">
+                    Purchased through a trust or company? Add it in My Structure first
+                </p>
+</div>
+</section>
+<!-- Divider -->
+<div class="sheet-divider"></div>
+<!-- SECTION 2: Correct ownership record -->
+<section class="animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100" id="correction-dialog">
+<header class="mb-6">
+<h2 class="font-headline-sm text-headline-sm text-navy-deep font-semibold">Correct ownership record</h2>
+</header>
+<!-- Amber Notice Card -->
+<div class="bg-[#FFFBEB] border-[1.5px] border-[#FDE68A] rounded-xl p-4 mb-8 flex gap-3">
+<span class="material-symbols-outlined text-trail-amber shrink-0" data-icon="warning" style="font-variation-settings: 'opsz' 20;">warning</span>
+<p class="text-[12px] leading-relaxed text-amber-900">
+                    This corrects the record — it does not transfer the asset. Real transfers have tax consequences.
+                </p>
+</div>
+<!-- Input Fields -->
+<div class="space-y-6">
+<div>
+<label class="block font-eyebrow text-eyebrow text-navy-deep uppercase tracking-widest mb-2">OWNED BY</label>
+<div class="relative">
+<select class="w-full h-12 bg-white border-[1.5px] border-[#E2E8F0] rounded-xl px-4 appearance-none focus:outline-none focus:border-trail-emerald font-body-md text-body-md text-navy-deep">
+<option>Renew Investment Family Trust</option>
+<option>John Citizen</option>
+<option>Joint Account</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-3 text-secondary pointer-events-none" data-icon="unfold_more">unfold_more</span>
+</div>
+</div>
+<div>
+<label class="block font-eyebrow text-eyebrow text-navy-deep uppercase tracking-widest mb-2">WHY ARE YOU CORRECTING THIS?</label>
+<textarea class="w-full bg-white border-[1.5px] border-[#E2E8F0] rounded-xl p-4 min-h-[100px] focus:outline-none focus:border-trail-emerald font-body-md text-body-md text-navy-deep placeholder:text-slate-400" placeholder="e.g. The trust has always been on the title"></textarea>
+</div>
+</div>
+<!-- Footer Buttons -->
+<div class="mt-10 space-y-3">
+<button class="w-full h-12 bg-trail-emerald text-white font-label-md text-label-md rounded-xl font-semibold shadow-sm active:scale-[0.98] transition-transform">
+                    Correct the record
+                </button>
+<button class="w-full h-12 bg-transparent text-navy-deep font-label-md text-label-md rounded-xl font-medium active:bg-slate-100 transition-colors">
+                    Cancel
+                </button>
+</div>
+</section>
+</main>
+<!-- Shared Bottom Nav from JSON (Dashboard Active) -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 py-3 pb-safe bg-surface-container-lowest shadow-[0_-1px_4px_0_rgba(11,18,32,0.04)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center bg-primary-container/10 text-primary rounded-xl px-3 py-1 duration-150 ease-in-out active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span class="font-label-md text-label-md mt-1">Dashboard</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="domain">domain</span>
+<span class="font-label-md text-label-md mt-1">Property</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md mt-1">Insights</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-secondary-container px-3 py-1 hover:bg-surface-container-high transition-all active:scale-95" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-md text-label-md mt-1">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for selection
+        document.querySelectorAll('#ownership-picker button').forEach(button => {
+            button.addEventListener('click', function() {
+                // Reset all
+                document.querySelectorAll('#ownership-picker button').forEach(btn => {
+                    btn.classList.remove('border-trail-emerald', 'bg-trail-emerald/[0.08]');
+                    btn.classList.add('border-[#E2E8F0]', 'bg-white');
+                    const icon = btn.querySelector('.material-symbols-outlined');
+                    if (icon) {
+                        icon.innerText = 'chevron_right';
+                        icon.classList.remove('text-trail-emerald');
+                        icon.classList.add('text-outline-slate');
+                        icon.style.fontVariationSettings = "'FILL' 0";
+                    }
+                });
+                
+                // Set active
+                this.classList.remove('border-[#E2E8F0]', 'bg-white');
+                this.classList.add('border-trail-emerald', 'bg-trail-emerald/[0.08]');
+                const icon = this.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.innerText = 'check_circle';
+                    icon.classList.remove('text-outline-slate');
+                    icon.classList.add('text-trail-emerald');
+                    icon.style.fontVariationSettings = "'FILL' 1";
+                }
+            });
+        });
+    </script>
+</body></html>

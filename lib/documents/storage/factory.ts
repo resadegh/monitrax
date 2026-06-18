@@ -9,12 +9,23 @@ import { StorageProviderType } from '../types';
 import { getMonitraxStorageProvider, MonitraxStorageProvider } from './monitraxProvider';
 import { getGoogleCloudStorageProvider, GoogleCloudStorageProvider } from './googleCloudStorageProvider';
 
-// Check if GCS is fully configured (has ALL required env vars including service account key)
-const isGCSConfigured = !!(
-  process.env.GCS_PROJECT_ID &&
-  process.env.GCS_BUCKET_NAME &&
-  process.env.GCS_SERVICE_ACCOUNT_KEY
-);
+// GCS is "configured" when we know WHERE the bucket is (project + bucket) AND
+// HOW to authenticate to it — EITHER a service-account key OR the keyless
+// Workload Identity Federation env (GCP_WORKLOAD_IDENTITY_PROVIDER +
+// GCP_SERVICE_ACCOUNT_EMAIL, already present in prod for the DB). Pure (takes
+// env) so it is unit-testable. This is what lets us drop the static key and run
+// keyless without the factory silently falling back to DB storage.
+export function computeGcsConfigured(env: NodeJS.ProcessEnv = process.env): boolean {
+  const hasLocation = !!(env.GCS_PROJECT_ID && env.GCS_BUCKET_NAME);
+  const hasKey = !!env.GCS_SERVICE_ACCOUNT_KEY;
+  const hasKeylessWif = !!(
+    env.GCP_WORKLOAD_IDENTITY_PROVIDER && env.GCP_SERVICE_ACCOUNT_EMAIL
+  );
+  return hasLocation && (hasKey || hasKeylessWif);
+}
+
+// Check if GCS is fully configured (key OR keyless WIF — see computeGcsConfigured)
+const isGCSConfigured = computeGcsConfigured();
 
 // Log GCS configuration status at startup (server-side only)
 if (typeof window === 'undefined') {
@@ -23,8 +34,12 @@ if (typeof window === 'undefined') {
     bucketName: process.env.GCS_BUCKET_NAME || 'NOT SET',
     serviceAccountKey: process.env.GCS_SERVICE_ACCOUNT_KEY
       ? `set (length: ${process.env.GCS_SERVICE_ACCOUNT_KEY.length})`
-      : 'NOT SET',
-    isFullyConfigured: isGCSConfigured,
+      : 'NOT SET (keyless WIF used if available)',
+    keylessWif:
+      process.env.GCP_WORKLOAD_IDENTITY_PROVIDER && process.env.GCP_SERVICE_ACCOUNT_EMAIL
+        ? 'available'
+        : 'NOT available',
+    isConfigured: isGCSConfigured,
   });
 }
 

@@ -79,7 +79,8 @@ export const ADMIN_API_ROUTES = {
   USER: (userId: string) => `/api/admin/users/${userId}`,
   USER_SUBSCRIPTION: (userId: string) => `/api/admin/users/${userId}/subscription`,
   USER_ACTIVITY: (userId: string) => `/api/admin/users/${userId}/activity`,
-  USER_IMPERSONATE: (userId: string) => `/api/admin/users/${userId}/impersonate`,
+  // USER_IMPERSONATE removed 2026-06-12 — the endpoint was never built and the
+  // UI that called it 404'd. Re-add when impersonation ships (IMPLEMENTATION_PLAN § Up Next).
 
   // Billing
   BILLING_OVERVIEW: '/api/admin/billing/overview',

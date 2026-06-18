@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -22,7 +23,7 @@ import {
   Car, Plus, Edit2, Trash2, TrendingUp, TrendingDown,
   DollarSign, Calendar, Package, Laptop, Sofa, Wrench,
   Gem, LayoutGrid, List, Eye, Receipt, History, Settings,
-  Fuel, Shield, FileText, Zap
+  Fuel, Shield, FileText, Zap, FolderOpen, Pencil
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { toAnnual } from '@/lib/utils/frequencies';
@@ -31,6 +32,8 @@ import { ListFilter, assetFilterConfigs } from '@/components/ListFilter';
 import { AssetsHero, type AssetsHeroSegment } from '@/components/assets/AssetsHero';
 import { AssetTile } from '@/components/assets/AssetTile';
 import { RenewalsCard } from '@/components/reminders/RenewalsCard';
+import { DocumentsSection, DocumentAttachButton } from '@/components/documents';
+import { LinkedEntityType, DocumentCategory } from '@/lib/documents/types';
 import { RenewalChip } from '@/components/reminders/RenewalChip';
 import {
   computeAssetRenewals,
@@ -38,6 +41,41 @@ import {
   mostUrgentForEntity,
   type RenewalReminder,
 } from '@/lib/reminders/reminderEngine';
+import { cn } from '@/lib/utils';
+
+/**
+ * Polished glass KPI tile for the asset detail (Stitch redesign screen
+ * 770abf40f2584174b52db63a4310a34a). §18.7.2 recipe: glass + hairline + 3px
+ * gradient top-accent + tabular-nums value. `min-w-0` + `truncate` keep long
+ * numbers inside the tile so the 2×2 mobile grid never overflows the dialog.
+ */
+function KpiTile({
+  label,
+  value,
+  sub,
+  accent,
+  valueIcon,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent: string;
+  valueIcon?: React.ReactNode;
+}) {
+  return (
+    <div className="relative min-w-0 overflow-hidden rounded-[14px] border border-foreground/10 bg-card/70 p-3.5 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+      <span className={cn('absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r', accent)} />
+      <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        {label}
+      </p>
+      <p className="mt-1 flex items-center gap-1 truncate text-[20px] font-semibold tabular-nums text-foreground">
+        {valueIcon}
+        <span className="truncate">{value}</span>
+      </p>
+      {sub && <p className="truncate text-[11px] text-muted-foreground">{sub}</p>}
+    </div>
+  );
+}
 
 type AssetType = 'VEHICLE' | 'ELECTRONICS' | 'FURNITURE' | 'EQUIPMENT' | 'COLLECTIBLE' | 'OTHER';
 type AssetStatus = 'ACTIVE' | 'SOLD' | 'WRITTEN_OFF';
@@ -50,6 +88,7 @@ interface AssetExpense {
   amount: number;
   frequency: string;
   category: string;
+  isTaxDeductible?: boolean;
 }
 
 interface AssetValueHistory {
@@ -243,6 +282,7 @@ function AssetsPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('tiles');
   const [filteredAssets, setFilteredAssets] = useState<Asset[]>([]);
   const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
   const [expenseFormData, setExpenseFormData] = useState<ExpenseFormData>({
     name: '',
     category: 'OTHER',
@@ -321,6 +361,19 @@ function AssetsPageContent() {
     await loadAssetDetail(asset.id);
     setShowDetailDialog(true);
   };
+
+  // Deep-link: `/dashboard/assets?view=<assetId>` opens that asset's detail
+  // dialog directly. Assets have no per-id route (list + dialog), so this is how
+  // a document's "Asset" link (and any other deep link) lands on the RIGHT asset
+  // instead of the generic list. Runs once token + the param are available.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (token && viewId) {
+      loadAssetDetail(viewId).then(() => setShowDetailDialog(true));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, searchParams]);
 
   const resetForm = () => {
     setOwnership({ mode: 'sole' });
@@ -426,7 +479,26 @@ function AssetsPageContent() {
     }
   };
 
+  // Delete a single expense from the asset's Expenses tab. Manual, user-confirmed
+  // (Reza decision 2026-06-17 — no auto-cascade from document deletion); this is
+  // how duplicates get cleaned up. §12.11: single user-initiated delete by id.
+  const handleDeleteExpense = async (expenseId: string, expenseName: string) => {
+    if (!confirm(`Delete the expense "${expenseName}"? This cannot be undone.`)) return;
+    try {
+      const res = await fetch(`/api/expenses/${expenseId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok && selectedAsset) {
+        loadAssetDetail(selectedAsset.id);
+      }
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+    }
+  };
+
   const resetExpenseForm = () => {
+    setEditingExpenseId(null);
     setExpenseFormData({
       name: '',
       category: 'OTHER',
@@ -434,6 +506,19 @@ function AssetsPageContent() {
       frequency: 'MONTHLY',
       isTaxDeductible: false,
     });
+  };
+
+  /** Open the expense dialog pre-filled to edit an existing asset expense. */
+  const openEditExpense = (expense: AssetExpense) => {
+    setEditingExpenseId(expense.id);
+    setExpenseFormData({
+      name: expense.name,
+      category: expense.category,
+      amount: String(expense.amount),
+      frequency: expense.frequency,
+      isTaxDeductible: expense.isTaxDeductible ?? false,
+    });
+    setShowExpenseDialog(true);
   };
 
   const applyExpenseTemplate = (template: ExpenseTemplate) => {
@@ -451,23 +536,28 @@ function AssetsPageContent() {
     if (!selectedAsset) return;
 
     try {
-      const response = await fetch('/api/expenses', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
+      // Edit an existing expense (PUT) or create a new one (POST).
+      const isEdit = !!editingExpenseId;
+      const response = await fetch(
+        isEdit ? `/api/expenses/${editingExpenseId}` : '/api/expenses',
+        {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: expenseFormData.name,
+            category: expenseFormData.category,
+            amount: parseFloat(expenseFormData.amount),
+            frequency: expenseFormData.frequency,
+            isTaxDeductible: expenseFormData.isTaxDeductible,
+            isEssential: true,
+            sourceType: 'ASSET',
+            assetId: selectedAsset.id,
+          }),
         },
-        body: JSON.stringify({
-          name: expenseFormData.name,
-          category: expenseFormData.category,
-          amount: parseFloat(expenseFormData.amount),
-          frequency: expenseFormData.frequency,
-          isTaxDeductible: expenseFormData.isTaxDeductible,
-          isEssential: true,
-          sourceType: 'ASSET',
-          assetId: selectedAsset.id,
-        }),
-      });
+      );
 
       if (response.ok) {
         // Reload asset details to show new expense
@@ -800,7 +890,7 @@ function AssetsPageContent() {
 
         {/* Add/Edit Dialog */}
         <Dialog open={showDialog} onOpenChange={setShowDialog}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-2xl max-h-[90vh] overflow-y-auto overflow-x-hidden [&>*]:min-w-0">
             <DialogHeader>
               <DialogTitle>{editingId ? 'Edit Asset' : 'Add New Asset'}</DialogTitle>
               <DialogDescription>
@@ -894,7 +984,7 @@ function AssetsPageContent() {
                   <h4 className="font-medium flex items-center gap-2">
                     <Car className="h-4 w-4" /> Vehicle Details
                   </h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div className="space-y-2">
                       <Label htmlFor="vehicleMake">Make</Label>
                       <Input
@@ -1122,85 +1212,78 @@ function AssetsPageContent() {
 
         {/* Detail Dialog */}
         <Dialog open={showDetailDialog} onOpenChange={setShowDetailDialog}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="w-[calc(100vw-1rem)] max-w-4xl max-h-[90vh] overflow-y-auto overflow-x-hidden p-4 sm:p-6 [&>*]:min-w-0">
             {selectedAsset && (
               <>
                 <DialogHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="p-3 rounded-lg bg-primary/10 text-primary">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-sky-500 to-indigo-600 text-white shadow-md shadow-indigo-500/25">
                         {assetTypeIcons[selectedAsset.type]}
                       </div>
-                      <div>
-                        <DialogTitle className="text-xl">{selectedAsset.name}</DialogTitle>
-                        <DialogDescription>
+                      <div className="min-w-0">
+                        <DialogTitle className="truncate text-xl">{selectedAsset.name}</DialogTitle>
+                        <DialogDescription className="truncate">
                           {assetTypeLabels[selectedAsset.type]}
                           {selectedAsset.type === 'VEHICLE' && selectedAsset.vehicleMake && (
-                            <> - {selectedAsset.vehicleMake} {selectedAsset.vehicleModel} {selectedAsset.vehicleYear}</>
+                            <> · {selectedAsset.vehicleMake} {selectedAsset.vehicleModel} {selectedAsset.vehicleYear}</>
                           )}
                         </DialogDescription>
                       </div>
                     </div>
-                    <Badge className={statusColors[selectedAsset.status]}>
+                    <Badge className={cn('shrink-0', statusColors[selectedAsset.status])}>
                       {selectedAsset.status}
                     </Badge>
                   </div>
                 </DialogHeader>
 
-                <div className="grid grid-cols-4 gap-4 py-4">
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Purchase Price</p>
-                      <p className="text-xl font-bold">
-                        {formatCurrency(selectedAsset.purchasePrice)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(selectedAsset.purchaseDate)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Current Value</p>
-                      <p className="text-xl font-bold">
-                        {formatCurrency(selectedAsset.currentValue)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(selectedAsset.valuationDate)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Depreciation</p>
-                      <p className="text-xl font-bold flex items-center gap-1">
-                        {(selectedAsset._computed?.depreciation || 0) > 0 ? (
-                          <TrendingDown className="h-4 w-4 text-red-500" />
-                        ) : (
-                          <TrendingUp className="h-4 w-4 text-green-500" />
-                        )}
-                        {formatCurrency(Math.abs(selectedAsset._computed?.depreciation || 0))}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {(selectedAsset._computed?.depreciationPercent || 0).toFixed(1)}%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="pt-4">
-                      <p className="text-sm text-muted-foreground">Total Cost</p>
-                      <p className="text-xl font-bold">
-                        {formatCurrency(selectedAsset._computed?.totalCostOfOwnership || 0)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatCurrency(selectedAsset._computed?.annualExpenses || 0)}/year
-                      </p>
-                    </CardContent>
-                  </Card>
+                {/* Polished glass KPI tiles — 2×2 on mobile, 4-across on sm+.
+                    min-w-0 + truncate so long numbers never overflow the dialog
+                    (Stitch redesign screen 770abf40f2584174b52db63a4310a34a). */}
+                <div className="grid grid-cols-2 gap-3 py-4 sm:grid-cols-4 sm:gap-4">
+                  {(() => {
+                    const dep = selectedAsset._computed?.depreciation || 0;
+                    const gained = dep <= 0; // currentValue ≥ purchase → asset gained
+                    return (
+                      <>
+                        <KpiTile
+                          accent="from-sky-400 to-indigo-500"
+                          label="Purchase Price"
+                          value={formatCurrency(selectedAsset.purchasePrice)}
+                          sub={formatDate(selectedAsset.purchaseDate)}
+                        />
+                        <KpiTile
+                          accent="from-sky-400 to-indigo-500"
+                          label="Current Value"
+                          value={formatCurrency(selectedAsset.currentValue)}
+                          sub={formatDate(selectedAsset.valuationDate)}
+                        />
+                        <KpiTile
+                          accent={gained ? 'from-emerald-400 to-teal-500' : 'from-rose-400 to-orange-500'}
+                          label="Depreciation"
+                          value={formatCurrency(Math.abs(dep))}
+                          valueIcon={
+                            gained ? (
+                              <TrendingUp className="h-4 w-4 shrink-0 text-emerald-500" />
+                            ) : (
+                              <TrendingDown className="h-4 w-4 shrink-0 text-rose-500" />
+                            )
+                          }
+                          sub={`${(selectedAsset._computed?.depreciationPercent || 0).toFixed(1)}%`}
+                        />
+                        <KpiTile
+                          accent="from-violet-400 to-indigo-500"
+                          label="Total Cost"
+                          value={formatCurrency(selectedAsset._computed?.totalCostOfOwnership || 0)}
+                          sub={`${formatCurrency(selectedAsset._computed?.annualExpenses || 0)}/year`}
+                        />
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <Tabs defaultValue="expenses">
-                  <TabsList>
+                  <TabsList className="flex w-full justify-start overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <TabsTrigger value="expenses">
                       <Receipt className="h-4 w-4 mr-1" /> Expenses
                     </TabsTrigger>
@@ -1215,7 +1298,21 @@ function AssetsPageContent() {
                     <TabsTrigger value="details">
                       <Settings className="h-4 w-4 mr-1" /> Details
                     </TabsTrigger>
+                    <TabsTrigger value="documents">
+                      <FolderOpen className="h-4 w-4 mr-1" /> Documents
+                    </TabsTrigger>
                   </TabsList>
+
+                  <TabsContent value="documents" className="mt-4">
+                    <DocumentsSection
+                      entityType={LinkedEntityType.ASSET}
+                      entityId={selectedAsset.id}
+                      entityLabel={selectedAsset.name}
+                      defaultCategory={DocumentCategory.RECEIPT}
+                      analyzeOnUpload
+                      onExpenseAdded={() => loadAssetDetail(selectedAsset.id)}
+                    />
+                  </TabsContent>
 
                   <TabsContent value="expenses" className="mt-4">
                     <div className="flex justify-between items-center mb-4">
@@ -1243,9 +1340,36 @@ function AssetsPageContent() {
                               <p className="font-medium">{expense.name}</p>
                               <p className="text-sm text-muted-foreground">{expense.category}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium">{formatCurrency(expense.amount)}</p>
-                              <p className="text-sm text-muted-foreground">{expense.frequency}</p>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <p className="font-medium">{formatCurrency(expense.amount)}</p>
+                                <p className="text-sm text-muted-foreground">{expense.frequency}</p>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditExpense(expense)}
+                                title={`Edit ${expense.name}`}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <DocumentAttachButton
+                                links={[
+                                  { entityType: LinkedEntityType.EXPENSE, entityId: expense.id },
+                                  { entityType: LinkedEntityType.ASSET, entityId: selectedAsset.id },
+                                ]}
+                                title={`Attach a document to ${expense.name}`}
+                                onUploaded={() => loadAssetDetail(selectedAsset.id)}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeleteExpense(expense.id, expense.name)}
+                                title={`Delete ${expense.name}`}
+                                className="text-red-500 hover:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -1473,10 +1597,11 @@ function AssetsPageContent() {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Receipt className="h-5 w-5" />
-                Add Expense
+                {editingExpenseId ? 'Edit Expense' : 'Add Expense'}
               </DialogTitle>
               <DialogDescription>
-                Add an expense linked to {selectedAsset?.name}
+                {editingExpenseId ? 'Update this expense for' : 'Add an expense linked to'}{' '}
+                {selectedAsset?.name}
               </DialogDescription>
             </DialogHeader>
 
@@ -1541,6 +1666,7 @@ function AssetsPageContent() {
                         <SelectItem value="FORTNIGHTLY">Fortnightly</SelectItem>
                         <SelectItem value="MONTHLY">Monthly</SelectItem>
                         <SelectItem value="QUARTERLY">Quarterly</SelectItem>
+                        <SelectItem value="HALF_YEARLY">Half-yearly</SelectItem>
                         <SelectItem value="ANNUAL">Annually</SelectItem>
                       </SelectContent>
                     </Select>
@@ -1579,11 +1705,18 @@ function AssetsPageContent() {
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setShowExpenseDialog(false)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowExpenseDialog(false);
+                      resetExpenseForm();
+                    }}
+                  >
                     Cancel
                   </Button>
                   <Button type="submit">
-                    Add Expense
+                    {editingExpenseId ? 'Save changes' : 'Add Expense'}
                   </Button>
                 </div>
               </form>

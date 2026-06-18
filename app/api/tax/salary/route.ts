@@ -40,7 +40,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
     }
 
     // Validate pay frequency
-    const validFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY'];
+    const validFrequencies = ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUALLY', 'HALF_YEARLY'];
     if (!validFrequencies.includes(payFrequency)) {
       return NextResponse.json(
         { error: `Invalid payFrequency. Must be one of: ${validFrequencies.join(', ')}` },
@@ -61,7 +61,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
       {
         amount,
         salaryType: salaryType as 'GROSS' | 'NET',
-        payFrequency: payFrequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+        payFrequency: payFrequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY',
         salarySacrifice,
         salarySacrificeFrequency: salarySacrificeFrequency || payFrequency,
         hasTaxFreeThreshold,
@@ -73,7 +73,7 @@ export const POST = withPermission('income.write', async (request, auth) => {
       {
         amount,
         salaryType: salaryType as 'GROSS' | 'NET',
-        payFrequency: payFrequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY',
+        payFrequency: payFrequency as 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY',
         salarySacrifice,
         salarySacrificeFrequency: salarySacrificeFrequency || payFrequency,
         hasTaxFreeThreshold,

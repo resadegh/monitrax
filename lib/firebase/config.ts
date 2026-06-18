@@ -13,7 +13,7 @@
  */
 
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '',
@@ -63,6 +63,17 @@ export function getFirebaseAuth(): Auth | null {
 
   if (!authInstance) {
     authInstance = getAuth(firebaseApp);
+
+    // E2E ONLY: point the client Auth SDK at the local Firebase Auth emulator
+    // when NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST is set. This env var is set
+    // ONLY in the Playwright CI job (see .github/workflows/tests.yml) and is
+    // NEVER present in prod or Vercel preview, so this is a strict no-op there.
+    const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+    if (emulatorHost) {
+      connectAuthEmulator(authInstance, `http://${emulatorHost}`, {
+        disableWarnings: true,
+      });
+    }
   }
   return authInstance;
 }

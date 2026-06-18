@@ -7,7 +7,7 @@
  * using AI-powered document analysis.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useAuth } from '@/lib/context/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -89,6 +89,11 @@ export function FormDocumentUpload({
 }: FormDocumentUploadProps) {
   const { token } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  // Show the dedicated "Take photo" affordance only on touch devices (phones/
+  // tablets) where `capture` opens the native camera. On desktop the attribute
+  // is ignored and the button would be confusing, so we hide it there.
+  const [canCapture, setCanCapture] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<'idle' | 'uploading' | 'analyzing' | 'done' | 'error'>('idle');
   const [attachedDocument, setAttachedDocument] = useState<{
@@ -98,6 +103,12 @@ export function FormDocumentUpload({
   } | null>(null);
   const [extractedFieldsCount, setExtractedFieldsCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+      setCanCapture(window.matchMedia('(pointer: coarse)').matches);
+    }
+  }, []);
 
   const handleFileSelect = useCallback(async (file: File) => {
     console.log('[FormDocumentUpload] handleFileSelect called', { fileName: file.name, fileType: file.type, fileSize: file.size });
@@ -221,6 +232,17 @@ export function FormDocumentUpload({
     }
   };
 
+  const handleCameraChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+    // Reset so the same photo can be retaken if needed
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+    }
+  };
+
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
     console.log('[FormDocumentUpload] handleDrop triggered');
@@ -256,6 +278,15 @@ export function FormDocumentUpload({
           className="hidden"
           disabled={disabled || isUploading}
         />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={handleCameraChange}
+          className="hidden"
+          disabled={disabled || isUploading}
+        />
 
         {attachedDocument ? (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-md">
@@ -275,29 +306,56 @@ export function FormDocumentUpload({
           </div>
         ) : (
           <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={disabled || isUploading}
-                >
-                  {isUploading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-1" />
-                      Scan Document
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Upload a receipt or invoice to auto-fill the form</p>
-              </TooltipContent>
-            </Tooltip>
+            <div className="flex items-center gap-2">
+              {canCapture && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => cameraInputRef.current?.click()}
+                      disabled={disabled || isUploading}
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <Camera className="h-4 w-4 mr-1" />
+                          Take Photo
+                        </>
+                      )}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Snap a receipt with your camera to auto-fill the form</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={disabled || isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4 mr-1" />
+                        Scan Document
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Upload a receipt or invoice to auto-fill the form</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
           </TooltipProvider>
         )}
       </div>
@@ -312,6 +370,15 @@ export function FormDocumentUpload({
         type="file"
         accept="application/pdf,image/*"
         onChange={handleInputChange}
+        className="hidden"
+        disabled={disabled || isUploading}
+      />
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleCameraChange}
         className="hidden"
         disabled={disabled || isUploading}
       />
@@ -411,13 +478,39 @@ export function FormDocumentUpload({
                   Attach document to auto-fill
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Drop a receipt, invoice, or statement here
+                  {canCapture
+                    ? 'Snap a photo or choose a receipt, invoice, or statement'
+                    : 'Drop a receipt, invoice, or statement here'}
                 </p>
               </div>
-              <Button type="button" variant="secondary" size="sm" className="mt-2">
-                <Upload className="h-4 w-4 mr-2" />
-                Choose File
-              </Button>
+              <div className="mt-2 flex items-center gap-2">
+                {canCapture && (
+                  <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      cameraInputRef.current?.click();
+                    }}
+                  >
+                    <Camera className="h-4 w-4 mr-2" />
+                    Take Photo
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Choose File
+                </Button>
+              </div>
               <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground mt-1">
                 <Sparkles className="h-2.5 w-2.5" />
                 Powered by Gemini AI

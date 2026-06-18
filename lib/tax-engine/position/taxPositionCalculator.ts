@@ -126,6 +126,7 @@ export function calculateTaxPosition(
       propertyId: income.propertyId,
       investmentAccountId: income.investmentAccountId,
       frankingPercentage: income.frankingPercentage,
+      frankingCredits: income.frankingCredits,
     });
 
     // Add to appropriate category
@@ -622,6 +623,7 @@ export function calculateTaxPositionDecimal(
       propertyId: income.propertyId,
       investmentAccountId: income.investmentAccountId,
       frankingPercentage: income.frankingPercentage,
+      frankingCredits: income.frankingCredits,
     });
 
     const incomeType = income.type?.toUpperCase();

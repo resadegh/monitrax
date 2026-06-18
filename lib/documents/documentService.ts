@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '@/lib/db';
-import { getStorageProvider } from './storage';
+import { getStorageProvider, assertWithinQuota, StorageQuotaExceededError, getDocumentReadUrl } from './storage';
 import {
   DocumentMetadata,
   DocumentWithLinks,
@@ -82,6 +82,23 @@ export async function uploadDocument(
       // Handle Web API File/Blob type
       const blob = request.file as Blob;
       fileBuffer = Buffer.from(await blob.arrayBuffer());
+    }
+
+    // Enforce the per-user storage quota for server-backed providers (SSOT:
+    // storageQuota.ts). LOCAL_DRIVE keeps bytes on the user's own machine, so
+    // it does not count against server storage.
+    if (request.storageProvider !== 'LOCAL_DRIVE') {
+      try {
+        await assertWithinQuota(userId, fileBuffer.length);
+      } catch (quotaError) {
+        if (quotaError instanceof StorageQuotaExceededError) {
+          return {
+            success: false,
+            error: 'Storage limit reached. Free up space by deleting documents you no longer need.',
+          };
+        }
+        throw quotaError;
+      }
     }
 
     // Check if this is a LOCAL_DRIVE upload (file already saved on client)
@@ -197,13 +214,17 @@ export async function uploadDocument(
     // Fetch full document with links
     const fullDocument = await getDocumentById(document.id, userId);
 
-    // Generate signed URL for immediate preview
-    const signedUrlResult = await storage.getSignedUrl(uploadResult.storagePath);
+    // Generate a read URL for immediate preview (provider-aware: native GCS
+    // signed URL when a key is present, else our HMAC streaming route).
+    const readUrl = await getDocumentReadUrl(
+      fullDocument!.storageProvider,
+      uploadResult.storagePath,
+    );
 
     return {
       success: true,
       document: fullDocument!,
-      signedUrl: signedUrlResult.url,
+      signedUrl: readUrl.url,
     };
   } catch (error) {
     console.error('Document upload error:', error);
@@ -261,38 +282,18 @@ export async function getDocumentWithSignedUrl(
     return null;
   }
 
-  // Use the correct storage provider based on where the document is actually stored
-  const { getGoogleCloudStorageProvider } = await import('./storage/googleCloudStorageProvider');
-  const { getMonitraxStorageProvider } = await import('./storage/monitraxProvider');
+  // Provider-aware read URL (native GCS signed URL when a key is present,
+  // else our HMAC streaming route; local path for LOCAL_DRIVE). SSOT: readUrl.ts.
+  const readUrl = await getDocumentReadUrl(document.storageProvider, document.storagePath);
 
-  let signedUrlResult;
-
-  if (document.storageProvider === StorageProviderType.GOOGLE_CLOUD_STORAGE) {
-    // Document is in GCS - use GCS provider
-    const gcsProvider = getGoogleCloudStorageProvider();
-    await gcsProvider.initialize();
-    signedUrlResult = await gcsProvider.getSignedUrl(document.storagePath);
-  } else if (document.storageProvider === StorageProviderType.LOCAL_DRIVE) {
-    // Local drive - no signed URL needed, return path for client-side handling
-    return {
-      document,
-      signedUrl: document.storagePath, // Client will use File System Access API
-      expiresAt: new Date(Date.now() + 300000), // 5 minutes
-    };
-  } else {
-    // Default to Monitrax (database) provider
-    const monitraxProvider = getMonitraxStorageProvider();
-    signedUrlResult = await monitraxProvider.getSignedUrl(document.storagePath);
-  }
-
-  if (!signedUrlResult.success) {
+  if (!readUrl.success || !readUrl.url) {
     return null;
   }
 
   return {
     document,
-    signedUrl: signedUrlResult.url!,
-    expiresAt: signedUrlResult.expiresAt!,
+    signedUrl: readUrl.url,
+    expiresAt: readUrl.expiresAt ?? new Date(Date.now() + 300000),
   };
 }
 
@@ -436,10 +437,96 @@ export async function deleteDocument(
   }
 }
 
+/**
+ * Rename a document's display name (originalFilename).
+ * §12.11: ownership is verified before the update, and the update is keyed by
+ * the document id — only the user's own document's display name is changed.
+ */
+export async function renameDocument(
+  documentId: string,
+  userId: string,
+  newName: string
+): Promise<{ success: boolean; error?: string }> {
+  const name = (newName ?? '').trim();
+  if (!name) {
+    return { success: false, error: 'Name cannot be empty' };
+  }
+
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, userId, deletedAt: null },
+      select: { id: true },
+    });
+
+    if (!document) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    await prisma.document.update({
+      where: { id: documentId },
+      data: { originalFilename: name.slice(0, 255) },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error('Document rename error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Rename failed',
+    };
+  }
+}
+
+/**
+ * Update editable document metadata (display name + category). §12.11: ownership
+ * is verified by `findFirst` on (id, userId, deletedAt:null) before the update,
+ * and only this user's own row is touched. Fields are optional — only provided
+ * keys are written.
+ */
+export async function updateDocumentMeta(
+  documentId: string,
+  userId: string,
+  patch: { name?: string; category?: string },
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const document = await prisma.document.findFirst({
+      where: { id: documentId, userId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!document) {
+      return { success: false, error: 'Document not found' };
+    }
+
+    const data: { originalFilename?: string; category?: DocumentCategory } = {};
+    if (typeof patch.name === 'string') {
+      const name = patch.name.trim();
+      if (!name) return { success: false, error: 'Name cannot be empty' };
+      data.originalFilename = name.slice(0, 255);
+    }
+    if (typeof patch.category === 'string') {
+      if (!(Object.values(DocumentCategory) as string[]).includes(patch.category)) {
+        return { success: false, error: 'Invalid category' };
+      }
+      data.category = patch.category as DocumentCategory;
+    }
+    if (Object.keys(data).length === 0) {
+      return { success: false, error: 'Nothing to update' };
+    }
+
+    await prisma.document.update({ where: { id: documentId }, data });
+    return { success: true };
+  } catch (error) {
+    console.error('Document update error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Update failed',
+    };
+  }
+}
+
 // ============================================================================
 // Document Links
 // ============================================================================
-
 export async function addDocumentLink(
   documentId: string,
   userId: string,

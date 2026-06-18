@@ -14,7 +14,11 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { getVisionService } from '@/lib/documents/intelligence/services/visionService';
-import { uploadDocument } from '@/lib/documents';
+import {
+  getDocumentManagementEngine,
+  createUploadContext,
+  UploadSource,
+} from '@/lib/documents/engine';
 import { DocumentCategory, SUPPORTED_MIME_TYPES, MAX_FILE_SIZE } from '@/lib/documents/types';
 import { isGeminiConfigured, generateGeminiJSONCompletion, truncateToTokenLimit } from '@/lib/ai';
 import { listAvailableModels, testGeminiDirectAPI } from '@/lib/ai/gemini';
@@ -191,7 +195,7 @@ const DEFAULT_INCOME_FIELDS: Record<string, FormFieldDefinition> = {
   frequency: {
     type: 'enum',
     label: 'Frequency',
-    options: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'ANNUAL'],
+    options: ['WEEKLY', 'FORTNIGHTLY', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'ANNUAL'],
   },
 };
 
@@ -395,19 +399,40 @@ export const POST = withPermission('report.export', async (request, auth) => {
         loan: DocumentCategory.MORTGAGE,
         property: DocumentCategory.VALUATION,
       };
+      // Map form type to the canonical upload source (drives the DME's
+      // rule engine + analytics).
+      const sourceMap: Record<FormType, UploadSource> = {
+        expense: UploadSource.EXPENSE_FORM,
+        income: UploadSource.INCOME_FORM,
+        loan: UploadSource.LOAN_FORM,
+        property: UploadSource.PROPERTY_FORM,
+      };
 
-      const uploadResult = await uploadDocument(userId, {
-        file,
-        filename: file.name,
-        mimeType: file.type,
-        category: categoryMap[formType] || DocumentCategory.OTHER,
-        description: `Auto-uploaded for ${formType} form`,
-        tags: ['form-autofill', formType],
-      });
+      // Phase 50 D.1.1 — funnel the scan/form path through the DME
+      // chokepoint (was the legacy `uploadDocument`, which bypassed the
+      // D.1 content-hash dedup). Scanning the same receipt twice now
+      // returns the existing document instead of storing a duplicate.
+      const dme = getDocumentManagementEngine();
+      const uploadResult = await dme.processUpload(
+        createUploadContext({
+          source: sourceMap[formType] || UploadSource.API_DIRECT,
+          file,
+          filename: file.name,
+          mimeType: file.type,
+          size: file.size,
+          userInput: {
+            category: categoryMap[formType] || DocumentCategory.OTHER,
+            description: `Auto-uploaded for ${formType} form`,
+            tags: ['form-autofill', formType],
+          },
+          userId,
+          timestamp: new Date(),
+        })
+      );
 
       if (uploadResult.success && uploadResult.document) {
         documentId = uploadResult.document.id;
-        storageUrl = uploadResult.signedUrl;
+        storageUrl = uploadResult.storageUrl ?? undefined;
       }
     } catch (uploadError) {
       console.error('[Form Auto-Fill] Document upload failed:', uploadError);

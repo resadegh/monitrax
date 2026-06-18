@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Start Fresh Confirmation - Monitrax</title>
+<!-- Tailwind CSS v3 CDN -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts: Inter -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            surface: '#FAFAF7',
+            'surface-dim': '#F1EFE8',
+            'surface-bright': '#FFFFFF',
+          },
+          borderRadius: {
+            'custom-sheet': '28px',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="custom-layout">
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #e5e7eb; /* Fallback background */
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Gradient accent bar for the content section */
+    .accent-bar {
+      height: 3px;
+      width: 100%;
+      background: linear-gradient(to right, #f43f5e, #fbbf24); /* rose to amber */
+    }
+
+    /* Grab handle for bottom sheet */
+    .grab-handle {
+      width: 36px;
+      height: 5px;
+      background-color: #D1D1CB;
+      border-radius: 99px;
+      margin: 12px auto;
+    }
+
+    /* Glass effect for the sheet */
+    .glass-sheet {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+
+    /* Blurred background content */
+    .background-blur {
+      filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="flex items-end justify-center min-h-screen">
+<!-- BEGIN: Blurred Background (Settings Page Representation) -->
+<div class="fixed inset-0 w-full h-full p-6 background-blur pointer-events-none" data-purpose="background-mockup">
+<div class="flex justify-between items-center mb-8">
+<div class="w-24 h-6 bg-gray-300 rounded"></div>
+<div class="flex space-x-2">
+<div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+<div class="w-8 h-8 bg-gray-300 rounded-full"></div>
+</div>
+</div>
+<div class="space-y-4">
+<div class="h-10 w-3/4 bg-gray-200 rounded"></div>
+<div class="h-24 w-full bg-white rounded-lg shadow-sm"></div>
+<div class="h-24 w-full bg-white rounded-lg shadow-sm"></div>
+<div class="h-24 w-full bg-white rounded-lg shadow-sm"></div>
+</div>
+</div>
+<!-- END: Blurred Background -->
+<!-- BEGIN: Dim Overlay -->
+<div class="fixed inset-0 bg-black/20" data-purpose="overlay"></div>
+<!-- END: Dim Overlay -->
+<!-- BEGIN: Bottom Sheet -->
+<section class="relative w-full max-w-[390px] bg-surface/95 glass-sheet rounded-t-custom-sheet shadow-2xl flex flex-col z-10" data-purpose="bottom-sheet">
+<!-- Grab Handle Container -->
+<div class="w-full">
+<div class="grab-handle"></div>
+</div>
+<!-- Accent Top Strip -->
+<div class="accent-bar"></div>
+<!-- Main Content Area -->
+<div class="px-6 pt-8 pb-10 overflow-y-auto max-h-[85vh]">
+<!-- BEGIN: Header Section -->
+<header class="flex flex-col items-center text-center mb-8" data-purpose="modal-header">
+<div class="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg mb-4">
+<!-- Refresh Icon -->
+<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</div>
+<h1 class="text-2xl font-bold text-gray-900 mb-2">Start fresh</h1>
+<p class="text-sm text-gray-500">A clean slate — your login stays, your data goes.</p>
+</header>
+<!-- END: Header Section -->
+<!-- BEGIN: Comparison Cards (Stacked for Mobile) -->
+<div class="space-y-4 mb-6">
+<!-- What Goes -->
+<div class="bg-rose-50/40 border border-rose-100 rounded-xl p-5" data-purpose="data-loss-info">
+<h2 class="text-[11px] font-bold tracking-widest text-rose-600 uppercase mb-4">What goes</h2>
+<ul class="space-y-3">
+<li class="flex items-center text-sm text-rose-900/80">
+<svg class="w-4 h-4 mr-3 text-rose-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Properties &amp; loans
+            </li>
+<li class="flex items-center text-sm text-rose-900/80">
+<svg class="w-4 h-4 mr-3 text-rose-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Accounts &amp; transactions
+            </li>
+<li class="flex items-center text-sm text-rose-900/80">
+<svg class="w-4 h-4 mr-3 text-rose-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Income &amp; spending
+            </li>
+<li class="flex items-center text-sm text-rose-900/80">
+<svg class="w-4 h-4 mr-3 text-rose-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Investments &amp; super
+            </li>
+<li class="flex items-center text-sm text-rose-900/80">
+<svg class="w-4 h-4 mr-3 text-rose-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Budgets &amp; insights
+            </li>
+</ul>
+</div>
+<!-- What Stays -->
+<div class="bg-emerald-50/40 border border-emerald-100 rounded-xl p-5" data-purpose="data-retention-info">
+<h2 class="text-[11px] font-bold tracking-widest text-emerald-600 uppercase mb-4">What stays</h2>
+<ul class="space-y-3">
+<li class="flex items-center text-sm text-emerald-900/80">
+<svg class="w-4 h-4 mr-3 text-emerald-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Login &amp; security
+            </li>
+<li class="flex items-center text-sm text-emerald-900/80">
+<svg class="w-4 h-4 mr-3 text-emerald-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Legal consents
+            </li>
+<li class="flex items-center text-sm text-emerald-900/80">
+<svg class="w-4 h-4 mr-3 text-emerald-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              Billing
+            </li>
+<li class="flex items-center text-sm text-emerald-900/80">
+<svg class="w-4 h-4 mr-3 text-emerald-500" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+              App preferences
+            </li>
+</ul>
+</div>
+</div>
+<!-- END: Comparison Cards -->
+<!-- BEGIN: Download Nudge -->
+<button class="w-full bg-sky-50 border border-sky-100 rounded-xl p-4 flex items-center justify-between group mb-8" data-purpose="download-nudge">
+<div class="flex items-center">
+<svg class="w-5 h-5 text-sky-600 mr-3" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+<span class="text-sm font-medium text-sky-700">Want a copy first? Download your data as JSON</span>
+</div>
+<svg class="w-4 h-4 text-sky-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+<path d="M9 5l7 7-7 7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+</svg>
+</button>
+<!-- END: Download Nudge -->
+<!-- BEGIN: Confirmation Input -->
+<div class="space-y-4 mb-8">
+<input class="w-full h-14 bg-white/50 border-gray-200 rounded-xl px-4 text-gray-900 placeholder-gray-400 focus:ring-rose-500 focus:border-rose-500 text-center" data-purpose="reset-confirmation-input" placeholder="Type RESET to confirm" type="text"/>
+<p class="text-xs text-center text-gray-500">
+          This can't be undone. Your data is erased immediately.
+        </p>
+</div>
+<!-- END: Confirmation Input -->
+<!-- BEGIN: Action Buttons -->
+<div class="flex flex-col space-y-3" data-purpose="footer-actions">
+<button class="w-full h-14 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-2xl transition-colors shadow-lg active:scale-[0.98]">
+          Erase everything &amp; start fresh
+        </button>
+<button class="w-full h-14 bg-transparent text-gray-500 font-medium rounded-2xl hover:bg-gray-100 transition-colors active:scale-[0.98]">
+          Cancel
+        </button>
+</div>
+<!-- END: Action Buttons -->
+</div>
+</section>
+<!-- END: Bottom Sheet -->
+</body></html>

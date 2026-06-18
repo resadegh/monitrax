@@ -62,6 +62,8 @@ import {
   type WealthRelationship,
 } from '@/lib/data/wealthExplorerTypes';
 import { useWealthExplorerData } from '@/lib/hooks/useWealthExplorerData';
+import RolesAndPeopleSection from './RolesAndPeopleSection';
+import type { LegalEntityType } from '@prisma/client';
 import Link from 'next/link';
 import type { WealthGraphAsset } from '@/lib/services/wealthGraphService';
 
@@ -1326,6 +1328,15 @@ function SelectedEntityCard({
               </div>
             </Section>
           )}
+
+          {/* Phase 47 F2 — the Entity File roles editor (shared with
+              the desktop panel; same dark vocabulary). */}
+          <RolesAndPeopleSection
+            entityId={detail.id}
+            entityType={detail.type as LegalEntityType}
+            entityName={detail.name}
+            assets={assets}
+          />
 
           {/* Asset counts */}
           <Section title="Holds">

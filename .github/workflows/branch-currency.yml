@@ -1,0 +1,48 @@
+name: Branch Currency
+
+# Continuity rail (Reza directive 2026-06-15): a PR branch must be up to date
+# with its base (main) before merge — so what CI validated is what lands, and
+# stale branches can't silently reintroduce reverted work or miss a hotfix.
+#
+# PREFERRED CONTROL is GitHub native branch protection (no CI needed):
+#   Settings → Branches → Branch protection rules → rule for `main` →
+#     ☑ Require status checks to pass before merging
+#       ☑ Require branches to be up to date before merging
+#   (requires repo-admin; this is the authoritative gate once enabled.)
+#
+# This workflow is the CI backstop until that setting is enabled, and a visible
+# signal afterwards. SOFT-LAUNCH: warns only (exit 0). To ARM later: change the
+# `else` branch to `exit 1` and add this check as required.
+
+on:
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  up-to-date:
+    name: Branch up to date with base
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fail when the PR branch is behind its base
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          git fetch --no-tags --prune origin \
+            "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+          BASE_HEAD="$(git rev-parse "refs/remotes/origin/${BASE_REF}")"
+          echo "base (${BASE_REF}) head: ${BASE_HEAD}"
+          echo "PR head:               ${HEAD_SHA}"
+          # Make sure the PR head commit is in local history (it is a parent of
+          # the checked-out merge ref, but fetch defensively just in case).
+          git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null \
+            || git fetch --no-tags origin "${HEAD_SHA}"
+          if git merge-base --is-ancestor "${BASE_HEAD}" "${HEAD_SHA}"; then
+            echo "OK — branch contains ${BASE_REF} HEAD; it is up to date."
+          else
+            behind="$(git rev-list --count "${HEAD_SHA}..${BASE_HEAD}")"
+            echo "::warning::Branch is BEHIND ${BASE_REF} by ${behind} commit(s). Rebase or merge ${BASE_REF} before merging so CI validates the post-merge state. (Soft-launch — will become blocking once armed / once 'Require branches to be up to date' is enabled in branch protection.)"
+          fi

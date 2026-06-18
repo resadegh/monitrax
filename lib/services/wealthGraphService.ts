@@ -28,10 +28,13 @@
  */
 
 import { prisma } from '@/lib/db';
+import { sumHoldingsMarketValue } from '@/lib/calculations/assetValuation';
 import {
   isPostCommencementFy,
 } from '@/lib/tax-engine/config/reformConstants';
 import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { assembleEntityTaxFacts } from '@/lib/services/entityTaxFactsAssembler';
+import { calculateEntityTaxPositionDecimal } from '@/lib/tax-engine/entity/entityTaxRouter';
 import type {
   LegalEntityType,
   LegalEntityRole,
@@ -105,6 +108,24 @@ export interface WealthGraphEntity {
     investmentAccounts: number;
     assets: number;
   };
+  /**
+   * Phase 47 Stage E2 — per-entity tax-position status for the Money
+   * Flow lens overlay. `computed` is true when the per-entity tax engine
+   * produced a position with ZERO caveats; `caveatCount` counts the
+   * engine's `uncomputed` + assembler notes (incl. AD-2 ownership flags).
+   * Null when no position could be assembled (entity not found / no FY
+   * config). Status only — NO tax dollar crosses the boundary (the
+   * engine's `result` is type-varied; quoting it would risk false
+   * precision — §0.3 financial-adviser lens). Surfaced as an honest
+   * emerald (computed) / amber (caveats) pip on the entity tile.
+   */
+  taxStatus: EntityTaxStatusSummary | null;
+}
+
+/** Phase 47 E2 — minimal, honest per-entity tax-position status. */
+export interface EntityTaxStatusSummary {
+  computed: boolean;
+  caveatCount: number;
 }
 
 export type WealthGraphAssetKind =
@@ -140,6 +161,12 @@ export interface WealthGraphEdge {
   // Optional typed metadata copied through (subset)
   beneficiaryClass: string | null;
   ownershipPercent: number | null;
+  /**
+   * Phase 47 F3 — for SHAREHOLDER_OF / UNITHOLDER_OF edges with active
+   * `ShareParcel` rows: a short display summary like "500 ORD" (sum of
+   * active quantities + the dominant class). Null when no parcels.
+   */
+  equitySummary?: string | null;
 }
 
 export interface WealthGraphOwnershipGroup {
@@ -316,7 +343,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         currency: true,
         // Aggregate current value from holdings
         holdings: {
-          select: { currentValue: true, units: true, averagePrice: true },
+          select: { units: true, currentPrice: true, averagePrice: true },
         },
       },
     }),
@@ -361,6 +388,11 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
         accountantVerified: true,
         beneficiaryClass: true,
         partnerInterestPct: true,
+        // Phase 47 F3 — active parcels summarise on the edge ("500 ORD")
+        shareParcels: {
+          where: { disposedAt: null },
+          select: { quantity: true, shareClass: true },
+        },
       },
     }),
     prisma.ownershipGroup.findMany({
@@ -441,6 +473,27 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
   ]);
 
   // --- entities mapping
+  // --- Phase 47 E2 — per-entity tax-position status (Money Flow overlay).
+  // Net position is structural (this service); the tax STATUS reuses the
+  // same per-entity engine the reports + per-entity tax page use, so the
+  // canvas badge and those surfaces never disagree. Status-only: we keep
+  // the engine's `result` (a tax dollar) server-side. Computed in parallel
+  // — typical households have a handful of entities (§12.10).
+  const fyCfg = getTaxYearConfig(currentFy);
+  const fyRef = { financialYear: fyCfg.financialYear, label: fyCfg.label };
+  const taxStatusByEntityId = new Map<string, EntityTaxStatusSummary>();
+  await Promise.all(
+    entitiesRaw.map(async e => {
+      const facts = await assembleEntityTaxFacts(userId, e.id, fyRef);
+      if (!facts) return;
+      const position = calculateEntityTaxPositionDecimal(facts);
+      taxStatusByEntityId.set(e.id, {
+        computed: position.uncomputed.length === 0,
+        caveatCount: position.uncomputed.length,
+      });
+    }),
+  );
+
   const entities: WealthGraphEntity[] = entitiesRaw.map(e => ({
     id: e.id,
     type: e.type,
@@ -458,6 +511,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
       investmentAccounts: e._count.investmentAccounts,
       assets: e._count.assets,
     },
+    taxStatus: taxStatusByEntityId.get(e.id) ?? null,
   }));
 
   // --- assets mapping (all 5 kinds → uniform shape)
@@ -541,6 +595,7 @@ export async function getWealthGraphSnapshot(userId: string): Promise<WealthGrap
     accountantVerified: r.accountantVerified,
     beneficiaryClass: r.beneficiaryClass,
     ownershipPercent: r.partnerInterestPct ? Number(r.partnerInterestPct) : null,
+    equitySummary: summariseParcels(r.shareParcels),
   }));
 
   // Build a set of (from,to) pairs already covered by explicit edges, so we
@@ -726,13 +781,13 @@ export function classifyDistributionRegime(
 // helpers
 // ===========================================================================
 
+// Phase 3 fix PR1 (audit L1-1): value holdings by the canonical net-worth basis
+// (`units × (currentPrice || averagePrice)`) via the shared helper — NOT the
+// denormalized `currentValue` cache, which drifts from the dashboard when stale.
 function sumHoldingsValue(
-  holdings: Array<{ currentValue: number | null; units: number; averagePrice: number }>,
+  holdings: Array<{ units: number; currentPrice: number | null; averagePrice: number }>,
 ): number {
-  return holdings.reduce((sum, h) => {
-    if (h.currentValue != null) return sum + h.currentValue;
-    return sum + h.units * h.averagePrice;
-  }, 0);
+  return sumHoldingsMarketValue(holdings);
 }
 
 function prettyPropertyType(t: string | null): string | null {
@@ -763,4 +818,35 @@ function currentFinancialYear(d: Date): string {
   const month = d.getMonth(); // 0-indexed; July = 6
   const lead = month >= 6 ? year : year - 1;
   return `${lead}-${String(lead + 1).slice(-2)}`;
+}
+
+/**
+ * Phase 47 F3 — "[500 ORD]" style summary of an edge's ACTIVE parcels.
+ * Sums quantities; shows the class when uniform, "mixed" otherwise.
+ */
+function summariseParcels(
+  parcels: Array<{ quantity: unknown; shareClass: string }> | undefined,
+): string | null {
+  if (!parcels || parcels.length === 0) return null;
+  const total = parcels.reduce((s, p) => s + Number(p.quantity), 0);
+  if (!(total > 0)) return null;
+  const classes = new Set(parcels.map(p => p.shareClass));
+  const cls =
+    classes.size === 1
+      ? shortClass([...classes][0])
+      : 'mixed';
+  const qty = total >= 1000 ? `${(total / 1000).toFixed(total % 1000 === 0 ? 0 : 1)}k` : `${total}`;
+  return `${qty} ${cls}`;
+}
+
+function shortClass(c: string): string {
+  switch (c) {
+    case 'ORDINARY': return 'ORD';
+    case 'PREFERENCE': return 'PREF';
+    case 'REDEEMABLE_PREFERENCE': return 'RPREF';
+    case 'A_CLASS': return 'A';
+    case 'B_CLASS': return 'B';
+    case 'C_CLASS': return 'C';
+    default: return 'units';
+  }
 }

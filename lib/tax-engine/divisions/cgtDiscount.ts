@@ -8,7 +8,7 @@
  * AU primary authority:
  *   - ITAA 1997 s115-25 — basic 50% discount for individuals + trusts
  *   - ITAA 1997 s115-100 — discount percentage table
- *   - ITAA 1997 s115-280 — companies are NOT eligible for the discount
+ *   - ITAA 1997 s115-10 — companies are NOT eligible for the discount
  *   - ITAA 1997 Subdiv 115-A — 12-month holding period rule
  *   - ITAA 1997 s295-105 — SMSF complying-fund discount (1/3 = 33⅓%)
  *
@@ -141,7 +141,7 @@ const PER_ENTITY_REASON: Record<CgtEligibleEntityType, string> = {
   PERSONAL_NAME: '50% discount per ITAA 1997 s115-25 — individual.',
   SOLE_TRADER: '50% discount per ITAA 1997 s115-25 — sole trader (taxed as individual).',
   PARTNERSHIP: '50% discount per ITAA 1997 s115-25 — applied at the partner level (s115-30).',
-  COMPANY: 'No discount — companies are not eligible (ITAA 1997 s115-280).',
+  COMPANY: 'No discount — companies are not eligible (ITAA 1997 s115-10).',
   DISCRETIONARY_TRUST: '50% discount per ITAA 1997 s115-25 — flows to beneficiary on streamed distribution.',
   UNIT_TRUST: '50% discount per ITAA 1997 s115-25 — flows pro-rata to unit-holders.',
   SMSF: '33⅓% discount per ITAA 1997 s115-100 — complying superannuation fund.',
@@ -273,12 +273,12 @@ export function calculateCgtDiscount(input: CgtDiscountInput): CgtDiscountResult
   const discountedGain = nominalGain - discountAmount;
   const reason = PER_ENTITY_REASON[entityType];
 
-  // Add the carve-out citation for COMPANY (s115-280) so the boundary
+  // Add the carve-out citation for COMPANY (s115-10) so the boundary
   // footer can show users exactly why no discount applied.
   if (entityType === 'COMPANY') {
     citations.push({
       kind: 'ITAA_1997',
-      reference: 's115-280',
+      reference: 's115-10',
       lastReviewed: '2026-05-05',
     });
   }
@@ -430,7 +430,7 @@ export function calculateCgtDiscountDecimal(input: CgtDiscountInputDecimal): Cgt
   if (entityType === 'COMPANY') {
     citations.push({
       kind: 'ITAA_1997',
-      reference: 's115-280',
+      reference: 's115-10',
       lastReviewed: '2026-05-05',
     });
   }

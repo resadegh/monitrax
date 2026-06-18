@@ -149,6 +149,48 @@ export interface ReportContext {
   expenses?: ExpenseReportData[];
   depreciationSchedules?: DepreciationReportData[];
   transactions?: TransactionReportData[];
+
+  // Phase 47 Stage E1 — per-entity breakdown (Entity Ownership Fabric).
+  // Present on financial-overview + tax-time when the user has ≥1 entity
+  // holding assets. Net position is SSOT (master snapshot `byEntity`);
+  // the tax status comes from the per-entity tax engine (honest caveats,
+  // never a fabricated number).
+  entityBreakdown?: EntityReportData[];
+}
+
+// ============================================================================
+// Entity Breakdown (Phase 47 Stage E1)
+// ============================================================================
+
+/**
+ * Honest per-entity tax status for a report. We never quote a tax dollar
+ * from the engine's `result` (it is type-varied `unknown` — extracting a
+ * headline number by guessing field names would risk false precision).
+ * Instead we report whether the engine produced a position with NO
+ * caveats, and surface every caveat (`uncomputed` + assembler notes,
+ * which include AD-2's TR 93/32 split / beneficial-redirect flags).
+ */
+export interface EntityTaxStatus {
+  /** True when the engine produced a position with zero caveats. */
+  computed: boolean;
+  /** Plain-English caveats (uncomputed flags + assembler notes). */
+  caveats: Array<{ id: string; rationale: string }>;
+}
+
+export interface EntityReportData {
+  entityId: string;
+  entityName: string;
+  /** Raw `LegalEntityType` value. */
+  entityType: string;
+  /** Warm one-line label (e.g. "Family trust", "Company") for the badge. */
+  entityTypeLabel: string;
+  netWorth: number;
+  assets: number;
+  liabilities: number;
+  monthlyCashflow: number;
+  holdingsCount: number;
+  /** Per-entity tax status; null when not loaded (report didn't request tax). */
+  tax: EntityTaxStatus | null;
 }
 
 // ============================================================================

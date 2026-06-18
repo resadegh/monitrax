@@ -17,6 +17,7 @@ const CORPORATE_TAX_RATE = 0.30;
  */
 export function determineTaxability(context: IncomeContext): TaxabilityResult {
   const { incomeType, amount, frankingPercentage = 0 } = context;
+  const explicitFrankingCredits = context.frankingCredits;
 
   switch (incomeType.toUpperCase()) {
     // ==========================================================================
@@ -62,9 +63,16 @@ export function determineTaxability(context: IncomeContext): TaxabilityResult {
 
     case 'DIVIDEND':
     case 'INVESTMENT':
-      if (frankingPercentage > 0) {
-        // Franked dividends - gross up and add franking credits
-        const frankingCredits = calculateFrankingCredits(amount, frankingPercentage);
+      if (frankingPercentage > 0 || (explicitFrankingCredits ?? 0) > 0) {
+        // Conformance fix (audit 2026-06-12, finding 2) — prefer the
+        // EXPLICIT credits on the row (set at the paying company's
+        // actual corporate rate, s202-60: 25% base-rate / 30%
+        // otherwise); the 30/70 recomputation is only a fallback and
+        // overstates base-rate-entity credits by ~28.6%.
+        const frankingCredits =
+          explicitFrankingCredits !== undefined && explicitFrankingCredits > 0
+            ? explicitFrankingCredits
+            : calculateFrankingCredits(amount, frankingPercentage);
         const grossedUpAmount = amount + frankingCredits;
 
         return {
@@ -328,6 +336,8 @@ export interface IncomeContextDecimal {
   propertyId?: string;
   investmentAccountId?: string;
   frankingPercentage?: number;
+  /** Audit fix 2026-06-12 (finding 2) — explicit credits win over the 30/70 recomputation. */
+  frankingCredits?: number | string | Decimal;
   paymentType?: string;
 }
 
@@ -393,8 +403,14 @@ export function determineTaxabilityDecimal(context: IncomeContextDecimal): Taxab
   switch (incomeType.toUpperCase()) {
     case 'DIVIDEND':
     case 'INVESTMENT': {
-      if (frankingPercentage > 0) {
-        const frankingCredits = calculateFrankingCreditsDecimal(amountDec, frankingPercentage);
+      const explicitDec = toDecimal(context.frankingCredits ?? null);
+      if (frankingPercentage > 0 || (explicitDec && explicitDec.gt(0))) {
+        // Conformance fix (audit 2026-06-12, finding 2) — same explicit-
+        // credits preference as the Float path.
+        const frankingCredits =
+          explicitDec && explicitDec.gt(0)
+            ? explicitDec
+            : calculateFrankingCreditsDecimal(amountDec, frankingPercentage);
         const grossedUpAmount = amountDec.plus(frankingCredits);
         return {
           category: floatResult.category,

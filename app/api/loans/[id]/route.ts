@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { verifyOwnership, verifyRelatedOwnership } from '@/lib/utils/ownership';
 import { createAuditLog } from '@/lib/security/auditLog';
+import { cleanupAssetOwnership } from '@/lib/services/assetOwnershipCleanup';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -142,8 +143,14 @@ export const DELETE = withPermission<RouteContext>('loan.delete', async (request
       const ownershipResult = verifyOwnership(existing, auth.userId, 'Loan');
       if (!ownershipResult.success) return ownershipResult.response;
 
-      await prisma.loan.delete({
-        where: { id },
+      // Delete the loan AND its polymorphic ownership rows atomically (audit L2-2).
+      const cleanup = await prisma.$transaction(async (tx) => {
+        await tx.loan.delete({ where: { id } });
+        return cleanupAssetOwnership(tx, {
+          userId: auth.userId,
+          ownedObjectType: 'loan',
+          ownedObjectId: id,
+        });
       });
 
       // Audit every state-changing write (CLAUDE.md §12.5 / §13.3).
@@ -153,6 +160,10 @@ export const DELETE = withPermission<RouteContext>('loan.delete', async (request
         status: 'SUCCESS',
         entityType: 'Loan',
         entityId: id,
+        metadata: {
+          ownershipGroupsDeleted: cleanup.ownershipGroupsDeleted,
+          beneficialOverridesDeleted: cleanup.beneficialOverridesDeleted,
+        },
       });
 
       return NextResponse.json({ message: 'Loan deleted successfully' });

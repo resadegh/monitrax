@@ -9,8 +9,9 @@
  * - CDN integration for faster delivery
  */
 
-import { Storage, Bucket } from '@google-cloud/storage';
+import { Storage, Bucket, type StorageOptions } from '@google-cloud/storage';
 import { IStorageProvider } from './interface';
+import { buildGcpWifAuthClient } from '@/lib/gcp/wifAuthClient';
 import {
   StorageUploadParams,
   StorageUploadResult,
@@ -59,7 +60,7 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
       }
 
       if (serviceAccountKey) {
-        // Parse base64-encoded service account key
+        // Legacy/explicit: a base64-encoded service-account key was provided.
         console.log('[GCS] Parsing service account key...');
         const credentials = JSON.parse(
           Buffer.from(serviceAccountKey, 'base64').toString('utf-8')
@@ -71,11 +72,20 @@ export class GoogleCloudStorageProvider implements IStorageProvider {
           credentials,
         });
       } else {
-        console.log('[GCS] No service account key, using default credentials');
-        // Fall back to default credentials (for local development with gcloud CLI)
-        this.storage = new Storage({
-          projectId,
-        });
+        // Keyless: prefer Workload Identity Federation (no static credential) —
+        // the same passwordless identity the DB uses (CLAUDE.md §13.6). Falls
+        // back to Application Default Credentials for local dev (gcloud CLI).
+        const wifClient = await buildGcpWifAuthClient();
+        if (wifClient) {
+          console.log('[GCS] Using keyless Workload Identity Federation auth');
+          // Cast: the AuthClient comes from a second copy of google-auth-library
+          // (ours vs the one bundled by @google-cloud/storage) — structurally the
+          // same client, distinct TS declarations. Runtime resolves to one class.
+          this.storage = new Storage({ projectId, authClient: wifClient } as unknown as StorageOptions);
+        } else {
+          console.log('[GCS] No key + no WIF env — using Application Default Credentials');
+          this.storage = new Storage({ projectId });
+        }
       }
 
       this.bucket = this.storage.bucket(this.bucketName);

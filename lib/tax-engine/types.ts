@@ -266,9 +266,9 @@ export interface TaxYearReviewSchedule {
 export interface SalaryInput {
   amount: number;
   salaryType: 'GROSS' | 'NET';
-  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  payFrequency: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   salarySacrifice?: number;
-  salarySacrificeFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY';
+  salarySacrificeFrequency?: 'WEEKLY' | 'FORTNIGHTLY' | 'MONTHLY' | 'QUARTERLY' | 'ANNUALLY' | 'HALF_YEARLY';
   hasTaxFreeThreshold?: boolean; // Default true
   hasHECSDebt?: boolean;
   hecsDebt?: number;
@@ -346,6 +346,15 @@ export interface IncomeContext {
   propertyId?: string;
   investmentAccountId?: string;
   frankingPercentage?: number;
+  /**
+   * Conformance fix (audit 2026-06-12, finding 2) — the EXPLICIT
+   * franking credits attached to the dividend (s202-60: the credit is
+   * set at the paying company's corporate tax rate for imputation —
+   * 25% for base-rate entities, 30% otherwise). When present it is
+   * authoritative; recomputing from `frankingPercentage` at a
+   * hard-coded 30/70 overstates base-rate-entity credits by ~28.6%.
+   */
+  frankingCredits?: number;
   isFromTrust?: boolean;
   isGovernmentPayment?: boolean;
   paymentType?: string;
@@ -721,6 +730,14 @@ export interface EntityTaxFacts {
     /** Phase 41e.4 — ISO date trustee passed streaming resolution. */
     streamingResolutionAt?: string;
     /**
+     * Stage D PR-1 (AD-3 honesty hardening, 2026-06-12) — true when the
+     * assembler STRIPPED streaming amounts because no STREAMING_POWER
+     * `TrustDeedRule` exists for the trust (§4.1 F4: streaming is only
+     * valid if the deed permits it). The router surfaces
+     * `UC-DIV-6E-STREAMING` so the omission is visible, never silent.
+     */
+    streamingSuppressed?: boolean;
+    /**
      * Phase 41e.5 — `true` if testamentary trust / deceased estate.
      * Drives WHITE-zone classification per PCG 2022/2 ¶13.
      */
@@ -771,6 +788,26 @@ export interface EntityTaxFacts {
   smsfIsComplying?: boolean;
   /** Subdiv 115-D foreign-resident flag — surfaces UNCOMPUTED. */
   isForeignResident?: boolean;
+  /**
+   * Stage D PR-1 (AD-1, 2026-06-12) — `LegalEntity.partnershipSubtype`
+   * passed through for PARTNERSHIP entities. Corporate limited
+   * partnerships (LIMITED / INCORPORATED_LIMITED) are taxed AS
+   * COMPANIES (Div 5A ITAA36); VCLP / ESVCLP are flow-through but carry
+   * Phase 41E Measure 7 treatment (§12.14). The router dispatches an
+   * honest, subtype-specific UNCOMPUTED — never transparent-partnership
+   * math for a CLP.
+   */
+  partnershipSubtype?: string;
+  /**
+   * Stage D PR-2 (2026-06-12) — caveats the ASSEMBLER attaches to the
+   * facts it built (e.g. "CGT parcels matched FIFO", "dividends fed
+   * from the register — remove manual duplicates"). The router merges
+   * them into every position's `uncomputed` array so an assembly
+   * assumption is never silent. Same `UncomputedFlag` shape — these are
+   * "computed WITH a stated assumption" notes, the no-false-silence
+   * channel for the data layer.
+   */
+  assemblerNotes?: ReadonlyArray<UncomputedFlag>;
   /**
    * Phase 41e.2 — SMSF contribution caps. When provided for an SMSF
    * entity, the router runs the existing `capTracker.trackContributionCaps`

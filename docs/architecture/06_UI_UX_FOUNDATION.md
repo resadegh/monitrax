@@ -1954,3 +1954,41 @@ A reviewer MUST reject any new single-asset detail page that doesn't
 follow Asset Spotlight, OR re-invents the Cremorne-Wide / scrim / halo
 / polished-tile cues when the template already covers them. Full
 rules in CLAUDE.md §18.7.5.
+
+---
+
+## Mobile Quick-Capture Sheet + Camera Affordance (Phase 26.7, 2026-06-16)
+
+The "Scan a receipt" pattern brings the AI document engine to where mobile
+users actually are — a one-tap capture from anywhere in the app.
+
+### Camera affordance in upload components
+
+Any upload surface that accepts a receipt/photo SHOULD expose a dedicated
+**"Take photo"** control on touch devices, in addition to the file picker —
+not replacing it. Implementation:
+
+- A second hidden `<input type="file" accept="image/*" capture="environment">`
+  alongside the normal file input (the rear camera opens directly).
+- Gate the visible button on `window.matchMedia('(pointer: coarse)').matches`
+  so desktop (where `capture` is ignored) doesn't show a misleading button.
+- Canonical reference: `components/documents/FormDocumentUpload.tsx`.
+
+### Global scan FAB + bottom sheet
+
+- **FAB:** mobile-only (`md:hidden`), `fixed right-4`, circular 56px, brand
+  sky→indigo gradient, sitting `calc(4rem + env(safe-area-inset-bottom) +
+  0.75rem)` above the editorial bottom nav so it clears it.
+- **Sheet:** reuses the `MoreSheet` bottom-sheet chrome (06 §15.3) — backdrop
+  `bg-black/40 backdrop-blur-sm`, `rounded-t-[28px]`, `bg-card/95
+  backdrop-blur-xl`, grabber handle, Esc + body-scroll lock, ARIA dialog,
+  Tailwind `motion-safe` slide-in. In-app "My Wealth glass" vocabulary
+  (CLAUDE.md §18.7.2): sky→indigo gradient for the icon badge + primary CTA,
+  emerald reserved for the confidence cue, `tabular-nums` for money.
+- **States:** capture → analyzing → result (vendor/amount/GST/date/category +
+  confidence pill) → success / error. Nothing is written until the user
+  confirms; AI-unavailable degrades to "Saved to your Vault" (never a dead
+  end, never data loss).
+- Canonical reference: `components/documents/GlobalScanReceipt.tsx`. Stitch
+  artefacts: `.stitch/designs/phase49-scan-receipt/` (capture + result, light
+  + dark).

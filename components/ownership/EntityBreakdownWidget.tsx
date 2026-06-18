@@ -122,9 +122,17 @@ export default function EntityBreakdownWidget() {
         ))}
       </div>
 
+      {/* L2-1 (Option B): "Entity Value" is computed by LEGAL TITLE (binary
+          ownerEntityId) — a factual basis. Ownership-share + beneficial-owner
+          effects are applied in the per-entity Tax view, so this value and the
+          tax position can differ for a co-owned asset. The note names the basis
+          and points to Tax; it does not assert a beneficial-ownership conclusion
+          (AFSL boundary). */}
       <div className="mt-3 text-[10px] leading-relaxed text-muted-foreground/70">
-        Positions follow the names on each title — joint and shared items sit with the
-        recorded legal owner for now.
+        Values are by <span className="font-medium">legal title</span> — joint and shared
+        assets sit with the recorded legal owner. Ownership-share and beneficial-owner
+        effects are applied in each entity&rsquo;s <span className="font-medium">Tax</span> view,
+        so a co-owned asset&rsquo;s value here can differ from its tax position.
       </div>
     </div>
   );

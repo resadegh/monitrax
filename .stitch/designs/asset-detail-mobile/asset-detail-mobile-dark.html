@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Asset Detail - Toyota Landcruiser</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050913; /* Overriding with specified Deep Navy */
+    }
+    .glass {
+      background: rgba(22, 22, 30, 0.7);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .gradient-border-top {
+      position: relative;
+    }
+    .gradient-border-top::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #0EA5E9, #6366F1);
+      border-radius: 14px 14px 0 0;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    .text-tabular {
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "tertiary-fixed-dim": "#ffb2bf",
+                  "on-tertiary": "#660027",
+                  "on-background": "#dde5d9",
+                  "tertiary-container": "#ec6284",
+                  "outline": "#879485",
+                  "primary-fixed-dim": "#62df7d",
+                  "primary": "#62df7d",
+                  "on-secondary": "#003919",
+                  "surface-dim": "#0e150f",
+                  "surface-container-highest": "#30372f",
+                  "on-surface": "#dde5d9",
+                  "surface-tint": "#62df7d",
+                  "surface-bright": "#343b33",
+                  "on-tertiary-fixed": "#3f0016",
+                  "on-primary-fixed-variant": "#005320",
+                  "on-primary-container": "#003111",
+                  "inverse-surface": "#dde5d9",
+                  "on-tertiary-container": "#5a0022",
+                  "on-secondary-fixed": "#00210c",
+                  "surface-container-low": "#171d16",
+                  "outline-variant": "#3e4a3d",
+                  "on-tertiary-fixed-variant": "#8a143c",
+                  "on-secondary-container": "#003e1c",
+                  "surface-variant": "#30372f",
+                  "secondary-fixed-dim": "#4de082",
+                  "on-secondary-fixed-variant": "#005227",
+                  "primary-container": "#1ca64d",
+                  "on-surface-variant": "#bdcaba",
+                  "surface-container-lowest": "#09100a",
+                  "secondary-container": "#00b55d",
+                  "inverse-primary": "#006e2d",
+                  "on-primary": "#003914",
+                  "error": "#ffb4ab",
+                  "tertiary-fixed": "#ffd9de",
+                  "surface-container-high": "#252c24",
+                  "background": "#050913",
+                  "on-error-container": "#ffdad6",
+                  "on-error": "#690005",
+                  "tertiary": "#ffb2bf",
+                  "primary-fixed": "#7ffc97",
+                  "surface-container": "#1b211a",
+                  "surface": "#0e150f",
+                  "on-primary-fixed": "#002109",
+                  "inverse-on-surface": "#2b322b",
+                  "secondary-fixed": "#6dfe9c",
+                  "secondary": "#4de082",
+                  "error-container": "#93000a"
+          },
+          "borderRadius": {
+                  "DEFAULT": "1rem",
+                  "lg": "2rem",
+                  "xl": "3rem",
+                  "full": "9999px"
+          },
+          "spacing": {
+                  "margin-desktop": "64px",
+                  "unit": "4px",
+                  "margin-mobile": "20px",
+                  "gutter": "24px",
+                  "container-max": "1440px"
+          },
+          "fontFamily": {
+                  "display-hero": ["Inter"],
+                  "body-md": ["Inter"],
+                  "headline-md": ["Inter"],
+                  "display-hero-mobile": ["Inter"],
+                  "body-sm": ["Inter"],
+                  "label-caps": ["Inter"],
+                  "headline-lg": ["Inter"],
+                  "body-lg": ["Inter"]
+          },
+          "fontSize": {
+                  "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                  "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                  "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                  "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                  "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                  "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                  "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                  "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-background selection:bg-primary/30 min-h-screen">
+<!-- Header -->
+<header class="sticky top-0 z-50 glass px-gutter py-4 flex items-center justify-between border-b border-white/5">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined text-[24px]">directions_car</span>
+</div>
+<div>
+<h1 class="font-headline-md text-headline-md text-white leading-tight">Toyota Landcruiser</h1>
+<div class="flex items-center gap-2">
+<p class="font-body-sm text-body-sm text-outline">Vehicle · 2019</p>
+<span class="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-[10px] font-bold tracking-wider">ACTIVE</span>
+</div>
+</div>
+</div>
+<button class="w-10 h-10 rounded-full glass flex items-center justify-center text-white/70 active:scale-95 transition-all">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<main class="px-4 pt-6 pb-24 space-y-6 max-w-[390px] mx-auto overflow-x-hidden">
+<!-- KPI Grid -->
+<div class="grid grid-cols-2 gap-3">
+<!-- Purchase Price -->
+<div class="glass gradient-border-top rounded-[14px] p-4 flex flex-col justify-between min-h-[110px]">
+<p class="font-label-caps text-label-caps text-outline uppercase">Purchase Price</p>
+<div>
+<p class="font-headline-md text-headline-md text-white text-tabular">$15,000</p>
+<p class="text-[10px] text-outline">16 Jun 2024</p>
+</div>
+</div>
+<!-- Current Value -->
+<div class="glass gradient-border-top rounded-[14px] p-4 flex flex-col justify-between min-h-[110px]">
+<p class="font-label-caps text-label-caps text-outline uppercase">Current Value</p>
+<div>
+<p class="font-headline-md text-headline-md text-white text-tabular">$25,000</p>
+<p class="text-[10px] text-outline">16 Jun 2026</p>
+</div>
+</div>
+<!-- Depreciation -->
+<div class="glass gradient-border-top rounded-[14px] p-4 flex flex-col justify-between min-h-[110px]">
+<p class="font-label-caps text-label-caps text-outline uppercase">Depreciation</p>
+<div>
+<div class="flex items-center gap-1">
+<p class="font-headline-md text-headline-md text-primary text-tabular">+$10,000</p>
+<span class="material-symbols-outlined text-primary text-sm">north_east</span>
+</div>
+<p class="text-[10px] text-primary">+66.7%</p>
+</div>
+</div>
+<!-- Total Cost -->
+<div class="glass gradient-border-top rounded-[14px] p-4 flex flex-col justify-between min-h-[110px]">
+<p class="font-label-caps text-label-caps text-outline uppercase">Total Cost</p>
+<div>
+<p class="font-headline-md text-headline-md text-white text-tabular">$15,216</p>
+<p class="text-[10px] text-outline">$216/yr</p>
+</div>
+</div>
+</div>
+<!-- Tab Row -->
+<div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-2 -mx-4 px-4">
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass text-sm font-medium text-outline">Expenses</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass text-sm font-medium text-outline">Services</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass text-sm font-medium text-outline">Value History</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full glass text-sm font-medium text-outline">Details</button>
+<button class="whitespace-nowrap px-4 py-2 rounded-full bg-white text-black text-sm font-semibold">Documents</button>
+</div>
+<!-- Tab Content (Documents) -->
+<section class="space-y-4">
+<div class="glass rounded-lg p-5 space-y-5">
+<div class="space-y-1">
+<h2 class="font-headline-md text-headline-md text-white leading-tight">Receipts, statements &amp; paperwork</h2>
+<p class="text-sm text-outline">Organize all files for Toyota Landcruiser in one place.</p>
+</div>
+<!-- Actions -->
+<div class="space-y-3">
+<button class="w-full py-3.5 rounded-full bg-gradient-to-r from-sky-400 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-sky-500/10 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">upload_file</span>
+            Upload document
+          </button>
+<button class="w-full py-3.5 rounded-full glass text-white font-semibold text-sm border border-white/10 active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[20px]">photo_camera</span>
+            Take photo
+          </button>
+</div>
+<!-- AI Result Card -->
+<div class="bg-sky-500/10 border border-sky-400/20 rounded-xl p-4 space-y-3">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-md bg-sky-400 flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-white" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+</div>
+<span class="text-[11px] font-bold text-sky-400 tracking-widest uppercase">AI Insights</span>
+</div>
+<p class="text-sm text-white/90 leading-relaxed">
+            AI recognised this: <span class="font-bold">QBE Insurance · $215.59 · 2026-06-18</span>
+</p>
+<button class="flex items-center gap-1 text-xs font-bold text-sky-400 hover:text-sky-300">
+            Add as expense for Toyota Landcruiser
+            <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+</button>
+</div>
+<!-- Document List -->
+<div class="border-t border-white/5 pt-4">
+<div class="flex items-center gap-3">
+<div class="w-12 h-12 rounded-lg bg-surface-container-highest overflow-hidden border border-white/10 flex-shrink-0">
+<img class="w-full h-full object-cover" data-alt="A macro close-up of a financial document or receipt with blurry text and numerical figures. The lighting is cold and clinical, focused on the textures of the high-quality paper. The aesthetic matches a premium dark-themed wealth management app with deep blacks and subtle blue-tinted highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5OeL9y1vqUTNZmUVQSDxTWXBf4CltFpC5OBZ5o_J5wS3YlLRG3ymo9NvuN9ucBd5tVmY5Vs0MBWFzxam5QWvQ62PvB9o5F56CSA1GMzA92THZEQ5sTUptZ7jzTP-SZW7Aaena53TUp5b-ID9EeUlK1oygtD63EL1ze9xEzL6v8r64a8lx-DhigyQt0oRtNQEJlaTa6M17o8-GXix4ira_l_vn79F-LbyensYCvJYS7WAZcl-En7yEF8pbFzpN8VRIkS2YudLwwqM"/>
+</div>
+<div class="flex-grow min-w-0">
+<p class="text-sm font-semibold text-white truncate">IMG_6615.JPG</p>
+<p class="text-xs text-outline">2.2 MB</p>
+</div>
+<div class="flex items-center gap-1 text-outline">
+<button class="p-2 active:scale-90 transition-transform"><span class="material-symbols-outlined text-[20px]">visibility</span></button>
+<button class="p-2 active:scale-90 transition-transform"><span class="material-symbols-outlined text-[20px]">edit</span></button>
+<button class="p-2 active:scale-90 transition-transform"><span class="material-symbols-outlined text-[20px] text-error/70">delete</span></button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Action -->
+<div class="pt-8 flex flex-col items-center">
+<button class="group flex items-center gap-2 px-6 py-3 rounded-full border border-error/20 bg-transparent text-error font-medium text-sm transition-all active:bg-error/10">
+<span class="material-symbols-outlined text-[18px]">delete</span>
+        Delete asset
+      </button>
+</div>
+</main>
+<!-- Bottom Navigation (Hidden on focused pages according to rules, but kept for context if needed by shell logic) -->
+<nav class="fixed bottom-0 w-full z-50 glass flex justify-around items-center px-4 py-3 pb-safe border-t border-white/5">
+<div class="flex flex-col items-center justify-center text-primary bg-secondary-container/20 rounded-full px-4 py-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance_wallet</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Wealth</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline">
+<span class="material-symbols-outlined">vaping_rooms</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Vault</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline">
+<span class="material-symbols-outlined">document_scanner</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Scan</span>
+</div>
+<div class="flex flex-col items-center justify-center text-outline">
+<span class="material-symbols-outlined">analytics</span>
+<span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Activity</span>
+</div>
+</nav>
+<script>
+    // Micro-interaction for tabs
+    document.querySelectorAll('.overflow-x-auto button').forEach(button => {
+      button.addEventListener('click', function() {
+        document.querySelectorAll('.overflow-x-auto button').forEach(b => {
+          b.classList.remove('bg-white', 'text-black');
+          b.classList.add('glass', 'text-outline');
+        });
+        this.classList.remove('glass', 'text-outline');
+        this.classList.add('bg-white', 'text-black');
+      });
+    });
+  </script>
+</body></html>

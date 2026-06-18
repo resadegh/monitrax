@@ -1,0 +1,126 @@
+name: Tests
+
+# Test-runner rail (Phase 4).
+#   - vitest    (Layer 1) — full unit/integration suite on every PR/push.
+#                REQUIRED check on the `main` ruleset: vitest
+#   - playwright (UAT)     — Layer 4 end-to-end flows, run under the Firebase
+#                AUTH EMULATOR (no real Firebase project, no stored credential,
+#                no manual login). NON-required until proven green.
+#
+# Emulator wiring is gated behind FIREBASE_AUTH_EMULATOR_HOST /
+# NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST, which are set ONLY here — never in
+# prod or Vercel preview. See tests/e2e/README.md.
+
+on:
+  pull_request:
+    branches: [main, master]
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  vitest:
+    name: vitest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Run vitest suite
+        # The Prisma query-engine intermittently aborts at construction (native
+        # exit 134, "Failed to deserialize constructor options") — a CI-infra
+        # flake unrelated to test logic. ROOT CAUSE: it is triggered by
+        # CONCURRENT PrismaClient/N-API engine construction across vitest's
+        # default parallel fork pool. PRIMARY FIX: `npm test` now runs
+        # `vitest run --no-file-parallelism` (test files execute sequentially),
+        # which removes the concurrent-construction race that fires the panic.
+        # (A single retry once proved insufficient — on 2026-06-17 the flake hit
+        # BOTH parallel runs.) The whole-suite retry below is kept as cheap
+        # insurance: it's a process-level crash that vitest's own `retry` can't
+        # catch, and a real test failure is deterministic so it still fails both
+        # runs — the retry only ever absorbs residual flake.
+        run: npm run test || (echo "::warning::vitest aborted (likely Prisma query-engine flake) — retrying the suite once" && npm run test)
+
+  playwright:
+    name: playwright (UAT)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: monitrax
+          POSTGRES_PASSWORD: monitrax
+          POSTGRES_DB: monitrax_e2e
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://monitrax:monitrax@localhost:5432/monitrax_e2e?schema=public
+      JWT_SECRET: e2e-placeholder-secret
+      # Firebase Auth emulator wiring (E2E ONLY — never set in prod/preview).
+      GCP_PROJECT_ID: monitrax-e2e
+      NEXT_PUBLIC_GCP_PROJECT_ID: monitrax-e2e
+      NEXT_PUBLIC_FIREBASE_API_KEY: fake-e2e-api-key
+      NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci
+      - name: Prisma generate + push schema (fresh test DB)
+        # NOTE: `prisma migrate deploy` does NOT apply cleanly to an empty DB —
+        # migration 20260429140700_sync_user_preferences_columns assumes a
+        # `user_preferences` table that 0_init never creates (P3018 / 42P01).
+        # That migration-replay-from-scratch gap is a separate latent repo issue
+        # (recorded for a fix PR). For an EPHEMERAL test DB the correct tool is
+        # `prisma db push`, which materialises the current schema.prisma with no
+        # history replay.
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
+      - name: Seed archetypes into Postgres (idempotent)
+        # Invoke ts-node with explicit CommonJS compiler options (matching the
+        # repo's other seeds) — the `seed:lighthouse` npm script uses plain
+        # `npx ts-node`, which fails under Node 20 with ERR_UNKNOWN_FILE_EXTENSION
+        # (.ts via the ESM loader). Forcing commonjs avoids it.
+        run: |
+          npx ts-node --compiler-options '{"module":"commonjs","moduleResolution":"node"}' prisma/seed-lighthouse.ts
+      - name: Install Playwright + firebase-tools (kept out of package.json so `npm ci` stays lockstep)
+        run: |
+          npm i -D @playwright/test@^1.49.0 --no-save
+          npm i -g firebase-tools@^13
+          npx playwright install --with-deps chromium
+      - name: Build (NEXT_PUBLIC_* emulator flags are inlined here)
+        run: npm run build
+      - name: Run UAT under the Firebase Auth emulator
+        # emulators:exec starts the auth emulator (firebase.json → :9099), runs
+        # the command, then shuts it down. The seed creates synthetic users +
+        # links them to the seeded Postgres archetypes; Playwright then signs in
+        # through the real /signin UI. No secret, no manual login.
+        run: |
+          firebase emulators:exec --project monitrax-e2e --only auth \
+            "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' tests/e2e/seed-emulator.ts && npx playwright test"
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+          if-no-files-found: ignore

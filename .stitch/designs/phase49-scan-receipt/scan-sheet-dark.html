@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Wealth OS - Receipt Scanner</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#62df7d",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "on-secondary-fixed": "#00210c",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface-dim": "#0e150f",
+                        "on-error-container": "#ffdad6",
+                        "surface": "#0e150f",
+                        "outline-variant": "#3e4a3d",
+                        "on-background": "#dde5d9",
+                        "on-tertiary-fixed": "#3f0016",
+                        "secondary-fixed": "#6dfe9c",
+                        "outline": "#879485",
+                        "secondary": "#4de082",
+                        "surface-container-high": "#252c24",
+                        "primary-container": "#1ca64d",
+                        "background": "#0e150f",
+                        "inverse-primary": "#006e2d",
+                        "on-surface-variant": "#bdcaba",
+                        "error": "#ffb4ab",
+                        "error-container": "#93000a",
+                        "on-secondary-fixed-variant": "#005227",
+                        "tertiary": "#ffb2bf",
+                        "surface-bright": "#343b33",
+                        "on-primary-container": "#003111",
+                        "inverse-on-surface": "#2b322b",
+                        "secondary-container": "#00b55d",
+                        "on-surface": "#dde5d9",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-tertiary-container": "#5a0022",
+                        "surface-container": "#1b211a",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary": "#003919",
+                        "on-tertiary": "#660027",
+                        "tertiary-container": "#ec6284",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "surface-container-highest": "#30372f",
+                        "tertiary-fixed": "#ffd9de",
+                        "surface-container-low": "#171d16",
+                        "primary-fixed": "#7ffc97",
+                        "secondary-fixed-dim": "#4de082",
+                        "surface-container-lowest": "#09100a",
+                        "surface-variant": "#30372f",
+                        "on-secondary-container": "#003e1c",
+                        "on-error": "#690005",
+                        "surface-tint": "#62df7d",
+                        "on-primary": "#003914",
+                        "inverse-surface": "#dde5d9",
+                        "brand-sky": "#0ea5e9",
+                        "brand-indigo": "#4f46e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "margin-desktop": "64px",
+                        "margin-mobile": "20px",
+                        "container-max": "1440px",
+                        "unit": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-lg": ["Inter"],
+                        "label-caps": ["Inter"],
+                        "display-hero": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "display-hero-mobile": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+                        "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                        "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-sheet {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(40px) saturate(180%);
+            -webkit-backdrop-filter: blur(40px) saturate(180%);
+            border-top: 1px solid rgba(14, 165, 233, 0.15);
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0ea5e9, #4f46e5);
+        }
+        .sky-indigo-text {
+            background: linear-gradient(135deg, #0ea5e9, #4f46e5);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .halo-glow {
+            filter: blur(40px);
+            opacity: 0.3;
+            background: radial-gradient(circle, rgba(14, 165, 233, 0.8), rgba(79, 70, 229, 0.8));
+        }
+        .ios-drag-handle {
+            width: 36px;
+            height: 5px;
+            background-color: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+        }
+        .gemini-pill {
+            border: 1px solid rgba(14, 165, 233, 0.3);
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .dashboard-dim {
+            filter: brightness(0.4) blur(2px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col items-center justify-end h-screen w-screen relative">
+<!-- Dashboard Hint (Background) -->
+<div class="absolute inset-0 w-full h-full dashboard-dim px-margin-mobile pt-16 flex flex-col gap-6">
+<div class="flex justify-between items-center">
+<div class="w-32 h-8 bg-surface-container-high rounded-lg"></div>
+<div class="w-10 h-10 bg-surface-container-high rounded-full"></div>
+</div>
+<div class="w-full h-48 bg-surface-container rounded-lg"></div>
+<div class="grid grid-cols-2 gap-4">
+<div class="h-32 bg-surface-container-low rounded-lg"></div>
+<div class="h-32 bg-surface-container-low rounded-lg"></div>
+</div>
+<!-- FAB visible in background -->
+<div class="absolute bottom-28 right-6 w-14 h-14 sky-indigo-gradient rounded-full shadow-lg flex items-center justify-center opacity-60">
+<span class="material-symbols-outlined text-white" style="font-variation-settings: 'FILL' 1;">add</span>
+</div>
+</div>
+<!-- The Bottom Sheet Content Wrapper -->
+<div class="relative w-full max-w-md mx-auto h-auto flex flex-col items-center z-20">
+<!-- Sheet Body -->
+<div class="glass-sheet w-full rounded-t-[28px] px-6 pb-12 pt-4 flex flex-col items-center animate-slide-up">
+<!-- Drag Handle -->
+<div class="ios-drag-handle mb-8"></div>
+<!-- Content Vertical Stack -->
+<div class="w-full flex flex-col items-center space-y-6">
+<!-- Icon & Halo -->
+<div class="relative flex items-center justify-center mb-2">
+<div class="absolute halo-glow w-24 h-24 rounded-full"></div>
+<div class="relative w-[44px] h-[44px] sky-indigo-gradient rounded-[14px] flex items-center justify-center shadow-lg">
+<span class="material-symbols-outlined text-white text-[24px]">camera</span>
+</div>
+</div>
+<!-- Labels -->
+<div class="text-center space-y-2">
+<span class="sky-indigo-text font-label-caps text-label-caps uppercase tracking-[0.15em]">QUICK CAPTURE</span>
+<h1 class="text-on-surface font-headline-lg text-headline-lg-mobile tracking-tight">Scan a receipt</h1>
+<p class="text-on-surface-variant font-body-md text-body-md max-w-[280px] mx-auto leading-relaxed">
+                        Snap it and we'll read the vendor, date and amount for you.
+                    </p>
+</div>
+<!-- Primary Action -->
+<button class="w-full h-14 sky-indigo-gradient rounded-[14px] flex items-center justify-center gap-3 active:scale-[0.98] transition-transform duration-100 shadow-[0_10px_30px_rgba(79,70,229,0.3)]">
+<span class="material-symbols-outlined text-white">photo_camera</span>
+<span class="text-white font-headline-md text-body-lg font-semibold">Take photo</span>
+</button>
+<!-- Secondary Action -->
+<button class="w-full h-14 bg-white/5 border border-white/10 backdrop-blur-md rounded-[14px] flex items-center justify-center gap-3 active:scale-[0.98] transition-transform duration-100">
+<span class="material-symbols-outlined text-on-surface-variant">upload_file</span>
+<span class="text-on-surface font-headline-md text-body-lg font-semibold">Choose a file</span>
+</button>
+<!-- AI Branding -->
+<div class="gemini-pill px-4 py-1.5 rounded-full flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] sky-indigo-text" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="text-on-surface-variant font-label-caps text-[11px] font-medium">Powered by Gemini AI</span>
+</div>
+<!-- Reassurance -->
+<div class="flex items-center gap-2 pt-2">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">verified_user</span>
+<p class="text-on-surface-variant/70 font-body-sm text-[13px] text-center">
+                        We'll show you what we found before saving.
+                    </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Shadow Overlay for background dimming -->
+<div class="fixed inset-0 bg-black/40 z-10 pointer-events-none"></div>
+<script>
+        // Simple entry animation
+        document.addEventListener('DOMContentLoaded', () => {
+            const sheet = document.querySelector('.animate-slide-up');
+            sheet.style.transform = 'translateY(100%)';
+            setTimeout(() => {
+                sheet.style.transition = 'transform 0.6s cubic-bezier(0.22, 1, 0.36, 1)';
+                sheet.style.transform = 'translateY(0)';
+            }, 100);
+        });
+
+        // Haptic feedback simulation on buttons
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.addEventListener('touchstart', () => {
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(10);
+                }
+            });
+        });
+    </script>
+<style>
+        @keyframes slide-up {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .animate-slide-up {
+            animation: slide-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+        
+        /* Material symbols weight adjustments */
+        .material-symbols-outlined {
+            font-variation-settings: 'wght' 500;
+        }
+    </style>
+</body></html>

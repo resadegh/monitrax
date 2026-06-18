@@ -67,11 +67,15 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   },
 
   // Medicare Levy Surcharge (no private health insurance)
+  // Conformance fix (audit 2026-06-12, finding 3): FY24-25 singles
+  // tiers are $97,000 / $113,000 / $151,000 (the previous values were
+  // FY23-24's). Family tiers are double; single-only modelled — family
+  // MLS is a documented gap, not a wrong number.
   medicareSurchargeThresholds: [
-    { min: 0, max: 93000, rate: 0 },
-    { min: 93001, max: 108000, rate: 0.01 },
-    { min: 108001, max: 144000, rate: 0.0125 },
-    { min: 144001, max: null, rate: 0.015 },
+    { min: 0, max: 97000, rate: 0 },
+    { min: 97001, max: 113000, rate: 0.01 },
+    { min: 113001, max: 151000, rate: 0.0125 },
+    { min: 151001, max: null, rate: 0.015 },
   ],
 
   // Low Income Tax Offset (LITO) - ATO two-tier phase out
@@ -98,7 +102,7 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
 
   // Superannuation
   superGuaranteeRate: 0.115, // 11.5% for 2024-25
-  superGuaranteeQuarterlyCap: 62500, // ATO maximum super contribution base FY24-25
+  superGuaranteeQuarterlyCap: 65070, // ATO maximum super contribution base FY24-25 (audit fix 2026-06-12: was FY25-26's value)
   concessionalCap: 30000, // Increased from $27,500 to $30,000 for 2024-25
   nonConcessionalCap: 120000, // Increased for 2024-25
   division293Threshold: 250000,
@@ -116,7 +120,7 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
   cgtDiscountMonths: 12, // Must hold for 12+ months
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
@@ -151,7 +155,16 @@ export const TAX_YEAR_2024_25: TaxYearConfig = {
  *  - SG quarterly cap recalculated for the new SG rate (ATO publishes
  *    annually; using preliminary $65,250).
  *  - All other thresholds: review and update with confirmed ATO data
- *    by `reviewSchedule.nextReviewBy` (2026-06-15) before FY commences.
+ *    by `reviewSchedule.nextReviewBy`.
+ *
+ * FY26-27 review checkpoint (2026-06-15) — DEFERRED to Basiq prep (Reza
+ * decision 2026-06-15). FY2026-27 has at least one legislated change (lowest
+ * resident bracket 16% → 15% from 1 Jul 2026, 2025 Budget) plus indexed items
+ * (super caps via AWOTE, Medicare thresholds) that need confirmed ATO + a
+ * registered-tax-agent pass before they can be trusted. Until a FY26-27 config
+ * is added, `getCurrentTaxYearConfig()` resolves the post-1-Jul-2026 "current"
+ * FY to the LATEST available config (FY25-26) — see `getTaxYearConfig` fallback.
+ * Tracked: `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md`.
  */
 export const TAX_YEAR_2025_26: TaxYearConfig = {
   financialYear: '2025-26',
@@ -173,29 +186,35 @@ export const TAX_YEAR_2025_26: TaxYearConfig = {
 
   // Super — SG rises to 12%
   superGuaranteeRate: 0.12,
-  superGuaranteeQuarterlyCap: 65250, // preliminary; verify against ATO May 2026
+  superGuaranteeQuarterlyCap: 62500, // FY25-26 (cap falls as SG hits 12% — derived from the concessional cap; audit fix 2026-06-12)
   concessionalCap: 30000,
   nonConcessionalCap: 120000,
   division293Threshold: 250000,
   superContributionsTaxRate: 0.15,
   coContributionIncomeThreshold: 60400, // verify against ATO indexation May 2026
   carryForwardTsbThreshold: 500000,
+  // Conformance fix (audit 2026-06-12, finding 4): the general
+  // transfer balance cap indexed to $2.0M from 1 Jul 2025 (Dec-2024
+  // CPI); the bring-forward TSB tiers move with it (s292-85(3)-(4):
+  // none = general TBC; reduced = TBC − 1×NCC; full = TBC − 2×NCC).
   bringForwardThresholds: {
-    full: 1660000,
-    reduced: 1780000,
-    none: 1900000,
+    full: 1760000,
+    reduced: 1880000,
+    none: 2000000,
   },
 
   cgtDiscount: 0.5,
   cgtDiscountMonths: 12,
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15', // before FY26-27 commences
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
-  // Phase 41e.3 — high-balance super tax (FY25-26 projections)
-  transferBalanceCap: 1900000, // unchanged unless ATO indexes
+  // Phase 41e.3 — high-balance super tax
+  // Conformance fix (audit 2026-06-12, finding 4): indexed to $2.0M
+  // from 1 Jul 2025.
+  transferBalanceCap: 2000000,
   div296CommencementVerified: false, // verify status before each FY
   div296TsbThreshold: 3000000,
   div296Rate: 0.15,
@@ -243,11 +262,14 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
     shadeOutMultiplier: 1.25,
   },
 
+  // Conformance fix (audit 2026-06-12, finding 3): FY23-24 singles
+  // tiers are $93,000 / $108,000 / $144,000 (the first indexed year;
+  // the previous values were FY22-23's frozen tiers).
   medicareSurchargeThresholds: [
-    { min: 0, max: 90000, rate: 0 },
-    { min: 90001, max: 105000, rate: 0.01 },
-    { min: 105001, max: 140000, rate: 0.0125 },
-    { min: 140001, max: null, rate: 0.015 },
+    { min: 0, max: 93000, rate: 0 },
+    { min: 93001, max: 108000, rate: 0.01 },
+    { min: 108001, max: 144000, rate: 0.0125 },
+    { min: 144001, max: null, rate: 0.015 },
   ],
 
   // Low Income Tax Offset (LITO) - ATO two-tier phase out
@@ -276,9 +298,12 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   superContributionsTaxRate: 0.15,
   coContributionIncomeThreshold: 58445, // FY23-24 phase-out upper
   carryForwardTsbThreshold: 500000,
+  // Conformance fix (audit 2026-06-12, finding 12): FY23-24 tiers
+  // derive from the $1.9M TBC and $110k NCC (none = 1.9M; reduced =
+  // 1.79M; full = 1.68M). The previous values were $1.7M-TBC-era.
   bringForwardThresholds: {
-    full: 1480000, // FY23-24 tier
-    reduced: 1590000,
+    full: 1680000,
+    reduced: 1790000,
     none: 1900000,
   },
 
@@ -286,7 +311,7 @@ export const TAX_YEAR_2023_24: TaxYearConfig = {
   cgtDiscountMonths: 12,
 
   reviewSchedule: {
-    nextReviewBy: '2026-06-15',
+    nextReviewBy: '2026-09-30', // extended from 2026-06-15 — FY26-27 config review deferred to Basiq prep (see CHANGELOG_2026_06_15)
     reviewers: ['Reza', 'tax-engine-owner'],
   },
 
@@ -326,9 +351,15 @@ const TAX_YEAR_CONFIGS: Record<string, TaxYearConfig> = {
 export function getTaxYearConfig(financialYear: string): TaxYearConfig {
   const config = TAX_YEAR_CONFIGS[financialYear];
   if (!config) {
-    // Default to current year if not found
-    console.warn(`Tax config not found for ${financialYear}, using 2024-25`);
-    return TAX_YEAR_2024_25;
+    // Fall back to the LATEST available config (not a hard-coded year) so a
+    // not-yet-configured FY — e.g. FY26-27 from 1 Jul 2026 until its config is
+    // added (deferred to Basiq prep, Reza 2026-06-15) — resolves to the most
+    // recent known year rather than a two-years-stale one. Honest-stale, not
+    // wrong-stale.
+    const latest = getAvailableTaxYears()[0];
+    const fallback = latest ? TAX_YEAR_CONFIGS[latest] : TAX_YEAR_2024_25;
+    console.warn(`Tax config not found for ${financialYear}, using latest available (${fallback.financialYear})`);
+    return fallback;
   }
   return config;
 }

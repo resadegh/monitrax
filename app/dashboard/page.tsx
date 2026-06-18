@@ -987,7 +987,7 @@ export default function DashboardPage() {
                     }`
                   : undefined
               }
-              sub="Net value owned by each legal entity"
+              sub="Net value by legal title — ownership-share & beneficial-owner tax effects are in each entity's Tax view"
             >
               <EditorialEntityBars data={charts?.entityComparison ?? []} />
             </EditorialChartCard>

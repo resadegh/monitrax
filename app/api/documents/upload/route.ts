@@ -70,6 +70,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
       investmentAccountId: (formData.get('investmentAccountId') as string) || undefined,
       investmentHoldingId: (formData.get('investmentHoldingId') as string) || undefined,
       transactionId: (formData.get('transactionId') as string) || undefined,
+      assetId: (formData.get('assetId') as string) || undefined,
     };
 
     // Remove undefined values
@@ -137,9 +138,11 @@ export const POST = withPermission('report.export', async (request, auth) => {
 
     if (!result.success) {
       console.error('[API/upload] Engine upload failed:', result.error);
+      // Quota exhaustion is a client condition (413), not a server error (500).
+      const status = result.errorCode === 'STORAGE_QUOTA_EXCEEDED' ? 413 : 500;
       return NextResponse.json(
-        { error: result.error || 'Upload failed' },
-        { status: 500 }
+        { error: result.error || 'Upload failed', code: result.errorCode },
+        { status }
       );
     }
 
@@ -148,9 +151,12 @@ export const POST = withPermission('report.export', async (request, auth) => {
       storagePath: result.storagePath,
     });
 
-    // Phase 26: Trigger analysis if requested
+    // Phase 26: Trigger analysis if requested.
+    // Phase 50 D.1: skip re-analysis on a duplicate — it's an already-stored
+    // document (the client shows "already uploaded" and won't re-create an
+    // expense), so re-running OCR would waste a Vision call.
     let analysis = null;
-    if (shouldAnalyze && result.document?.id) {
+    if (shouldAnalyze && result.document?.id && !result.duplicate) {
       console.log('[API/upload] Triggering document analysis...');
       const die = getDocumentIntelligenceEngine();
 
@@ -185,6 +191,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
       storagePath: result.storagePath,
       storageUrl: result.storageUrl,
       analysis,  // Phase 26: Include analysis result if available
+      duplicate: result.duplicate ?? false,  // Phase 50 D.1: already-stored file
     });
   } catch (error) {
     console.error('[API/upload] Error:', error);

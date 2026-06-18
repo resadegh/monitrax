@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Wealth Universe - Distributions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .glass-panel {
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 18px;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface font-body-md antialiased min-h-screen pb-32">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#0e150f",
+                      "inverse-primary": "#006e2d",
+                      "on-primary-fixed-variant": "#005320",
+                      "error": "#ffb4ab",
+                      "on-tertiary-fixed-variant": "#8a143c",
+                      "tertiary-container": "#ec6284",
+                      "surface-tint": "#62df7d",
+                      "primary-fixed-dim": "#62df7d",
+                      "on-surface-variant": "#bdcaba",
+                      "on-tertiary-fixed": "#3f0016",
+                      "on-secondary-fixed-variant": "#005227",
+                      "on-error": "#690005",
+                      "surface-container": "#1b211a",
+                      "primary-fixed": "#7ffc97",
+                      "tertiary-fixed-dim": "#ffb2bf",
+                      "on-primary": "#003914",
+                      "background": "#0e150f",
+                      "outline": "#879485",
+                      "outline-variant": "#3e4a3d",
+                      "on-secondary-container": "#003e1c",
+                      "inverse-surface": "#dde5d9",
+                      "tertiary-fixed": "#ffd9de",
+                      "error-container": "#93000a",
+                      "surface-container-low": "#171d16",
+                      "secondary-fixed": "#6dfe9c",
+                      "surface-dim": "#0e150f",
+                      "secondary-container": "#00b55d",
+                      "surface-container-lowest": "#09100a",
+                      "on-primary-container": "#003111",
+                      "secondary-fixed-dim": "#4de082",
+                      "surface-variant": "#30372f",
+                      "on-surface": "#dde5d9",
+                      "on-background": "#dde5d9",
+                      "surface-container-highest": "#30372f",
+                      "secondary": "#4de082",
+                      "on-error-container": "#ffdad6",
+                      "primary": "#62df7d",
+                      "surface-container-high": "#252c24",
+                      "on-secondary": "#003919",
+                      "surface-bright": "#343b33",
+                      "tertiary": "#ffb2bf",
+                      "inverse-on-surface": "#2b322b",
+                      "on-tertiary": "#660027",
+                      "on-secondary-fixed": "#00210c",
+                      "primary-container": "#1ca64d",
+                      "on-primary-fixed": "#002109",
+                      "on-tertiary-container": "#5a0022"
+              },
+              "borderRadius": {
+                      "DEFAULT": "1rem",
+                      "lg": "2rem",
+                      "xl": "3rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "container-max": "1440px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "gutter": "24px",
+                      "margin-desktop": "64px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "display-hero-mobile": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-caps": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-hero": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+              }
+            },
+          },
+        }
+    </script>
+<!-- Top Navigation Anchor -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-5 py-4 bg-surface/80 dark:bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-white/10">
+<img alt="Reza" class="w-full h-full object-cover" data-alt="A professional, clean-cut portrait of a middle-eastern male executive in a minimalist studio setting. The lighting is soft and cinematic with subtle emerald rim lights reflecting the brand palette. The background is a deep, dark navy with a slight blur, emphasizing a premium wealth-management persona." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAe6D_4UOcJzIpVk17N0KFOAhtyQkfoN97zl2WDf9Aw-Sdj_yalk-mIjAjWi5GwijZqsMCFXIYOjBnEnhn_o-tdhcZF4NsmtgUUcuf0DlKbnsYKl4yQNXREZ_c6vDl5i8ULfkSBGHjqx3yCUV3T1PVVuwSQW0JCwsY0eIJUjoFLn0OyI0Kjxz_-KVYcG7rmVhbgYqlfgF273jLewAN9OF0zqw9UxrXEej2CLR-k24-eRbv670EOZppDvW3UW1lueRfTJR80eVqNf2c"/>
+</div>
+<span class="font-headline-md text-[18px] font-bold text-on-surface">Welcome back, Reza</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/5 transition-colors active:scale-95 duration-100">
+<span class="material-symbols-outlined text-primary">chat_bubble</span>
+</button>
+</header>
+<main class="pt-24 px-5 space-y-8 max-w-[480px] mx-auto">
+<!-- COMPOSITION 1: Entity File Sheet -->
+<section class="relative overflow-hidden rounded-[24px] bg-[#0d1220]/96 glass-panel border border-white/10 shadow-2xl p-6">
+<div class="space-y-6">
+<!-- Beneficiaries Section -->
+<div>
+<div class="flex items-center gap-2 mb-3">
+<span class="text-[10px] uppercase tracking-wider text-white/40 font-semibold">Beneficiaries</span>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="px-4 py-1.5 rounded-full bg-white/5 border border-sky-400/30 flex items-center gap-2">
+<span class="text-[13px] text-white/90">You (Reza)</span>
+</div>
+<div class="px-4 py-1.5 rounded-full bg-white/5 border border-sky-400/30 flex items-center gap-2">
+<span class="text-[13px] text-white/90">Newsha</span>
+</div>
+</div>
+<p class="mt-3 text-[11px] leading-relaxed text-white/45">
+                        Beneficiaries don’t hold fixed shares in a family trust — the trustee decides each year’s split. Record it under Distributions.
+                    </p>
+</div>
+<div class="h-px bg-white/5"></div>
+<!-- Distributions Section -->
+<div class="space-y-4">
+<span class="text-[10px] uppercase tracking-wider text-white/40 font-semibold">Distributions</span>
+<!-- Resolution Card -->
+<div class="rounded-[12px] bg-white/[0.03] p-4 border border-white/[0.05]">
+<div class="flex justify-between items-center mb-2">
+<span class="text-[12px] font-medium text-white/90">FY 2025-26</span>
+<span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-semibold border border-primary/20">Confirmed</span>
+</div>
+<div class="flex items-center gap-2 mb-1">
+<span class="text-[11px] text-white/60">Reza 50% · Newsha 50%</span>
+</div>
+<div class="text-[11px] font-mono text-white/45 tabular-nums">
+                            $100,000 net income
+                        </div>
+</div>
+<!-- Action Invitation -->
+<button class="w-full py-4 border border-dashed border-white/15 rounded-[12px] flex items-center justify-center gap-2 hover:bg-white/5 transition-all group">
+<span class="material-symbols-outlined text-white/40 group-hover:text-white/70">add_circle</span>
+<span class="text-[11px] text-white/45 group-hover:text-white/70 font-medium">Record this year’s split</span>
+</button>
+</div>
+</div>
+</section>
+<!-- COMPOSITION 2: Record Split Dialog -->
+<section class="rounded-[16px] bg-[#0E1424] glass-panel border border-white/10 shadow-2xl overflow-hidden">
+<div class="p-6 pb-4">
+<header class="mb-6">
+<h2 class="text-[15px] font-semibold text-white mb-1">Record this year’s split</h2>
+<p class="text-[11px] text-white/50 leading-relaxed">
+                        The trustee’s distribution resolution — who is presently entitled to what share.
+                    </p>
+</header>
+<div class="space-y-5">
+<!-- Form Fields -->
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-wider text-white/30 font-semibold">Financial year</label>
+<div class="h-10 flex items-center px-3 bg-white/5 border border-white/10 rounded-[8px] text-[13px] text-white/90">
+                                2025-26
+                            </div>
+</div>
+<div class="space-y-1.5">
+<label class="text-[10px] uppercase tracking-wider text-white/30 font-semibold">Net income (est.)</label>
+<div class="h-10 flex items-center px-3 bg-white/5 border border-white/10 rounded-[8px] text-[13px] text-white/90 tabular-nums">
+                                $100,000
+                            </div>
+</div>
+</div>
+<div class="space-y-3 pt-2">
+<label class="text-[10px] uppercase tracking-wider text-white/30 font-semibold">Beneficiary allocation</label>
+<!-- Reza Row -->
+<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-[10px] border border-white/5">
+<span class="text-[13px] text-white/80">You (Reza)</span>
+<div class="flex items-center gap-2">
+<input class="w-16 h-8 text-right bg-transparent border-none focus:ring-0 text-[13px] text-primary font-medium p-0" type="text" value="50%"/>
+</div>
+</div>
+<!-- Newsha Row -->
+<div class="flex items-center justify-between p-3 bg-white/[0.02] rounded-[10px] border border-white/5">
+<span class="text-[13px] text-white/80">Newsha</span>
+<div class="flex items-center gap-2">
+<input class="w-16 h-8 text-right bg-transparent border-none focus:ring-0 text-[13px] text-primary font-medium p-0" type="text" value="50%"/>
+</div>
+</div>
+<!-- Sum Line -->
+<div class="flex justify-between items-center px-3 py-1">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary !text-[16px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="text-[11px] text-white/40">Total entitlement</span>
+</div>
+<span class="text-[12px] font-semibold text-primary">100%</span>
+</div>
+</div>
+<!-- Status Toggle -->
+<div class="pt-2 border-t border-white/5 space-y-3">
+<div class="flex items-start justify-between">
+<div class="space-y-0.5">
+<span class="text-[12px] text-white/90 block">Resolution signed before 30 June</span>
+<p class="text-[10px] text-white/40 leading-tight pr-4">Confirmed resolutions drive your tax numbers; drafts don’t.</p>
+</div>
+<div class="relative inline-flex items-center h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none bg-primary">
+<span class="translate-x-4 pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<footer class="p-4 bg-white/[0.02] border-t border-white/5 flex gap-3">
+<button class="flex-1 py-3 text-[13px] font-medium text-white/60 hover:text-white transition-colors">Cancel</button>
+<button class="flex-[1.5] py-3 bg-primary text-on-primary rounded-[10px] text-[13px] font-bold shadow-[0px_10px_30px_rgba(22,163,74,0.2)] active:scale-95 transition-all">Record</button>
+</footer>
+</section>
+</main>
+<!-- Bottom Navigation Shell -->
+<nav class="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-surface-container/80 dark:bg-surface-container/80 backdrop-blur-xl border-t border-white/10 shadow-[0_-4px_24px_rgba(0,0,0,0.4)] rounded-t-xl">
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-label-md text-[11px] mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-fixed bg-primary/10 rounded-xl px-3 py-1 shadow-[0_0_15px_rgba(98,223,125,0.15)] active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-label-md text-[11px] mt-1">Accounts</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-label-md text-[11px] mt-1">Wealth</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-label-md text-[11px] mt-1">Guide</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:text-primary transition-all active:scale-90 duration-200" href="#">
+<span class="material-symbols-outlined">more_horiz</span>
+<span class="font-label-md text-[11px] mt-1">More</span>
+</a>
+</nav>
+<script>
+        // Micro-interaction for toggle
+        const toggle = document.querySelector('.relative.inline-flex.items-center');
+        const toggleThumb = toggle.querySelector('span');
+        
+        toggle.addEventListener('click', () => {
+            const isActive = toggle.classList.contains('bg-primary');
+            if (isActive) {
+                toggle.classList.remove('bg-primary');
+                toggle.classList.add('bg-white/10');
+                toggleThumb.classList.remove('translate-x-4');
+                toggleThumb.classList.add('translate-x-0');
+            } else {
+                toggle.classList.add('bg-primary');
+                toggle.classList.remove('bg-white/10');
+                toggleThumb.classList.add('translate-x-4');
+                toggleThumb.classList.remove('translate-x-0');
+            }
+        });
+    </script>
+</body></html>

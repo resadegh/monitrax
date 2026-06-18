@@ -258,7 +258,7 @@ category: "HOUSING" | "RATES" | "INSURANCE" | "MAINTENANCE" | "PERSONAL" | "UTIL
 customCategoryId?: string     // Reference to user-defined Category (takes precedence over category if set)
 sourceType: "GENERAL" | "PROPERTY" | "LOAN" | "INVESTMENT" | "ASSET"
 amount: number
-frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "ANNUAL"
+frequency: "WEEKLY" | "FORTNIGHTLY" | "MONTHLY" | "QUARTERLY" | "HALF_YEARLY" | "ANNUAL"
 vendorName?: string
 isEssential: boolean          // Is this an essential expense? (default: true)
 isTaxDeductible: boolean      // Is this expense tax deductible? (default: false)
@@ -576,7 +576,7 @@ Phase 41 (§10) modelled entity *types*. Phase 44 adds the *relationship* layer 
 
 ### `LegalEntity` additions
 
-`LegalEntityType` gains 12 values (`INDIVIDUAL`, `FIXED_TRUST`, `HYBRID_TRUST`, `BARE_TRUST`, `TESTAMENTARY_TRUST`, `DECEASED_ESTATE`, `FOREIGN_COMPANY`, `INCORPORATED_ASSOCIATION`, `CO_OPERATIVE`, `STRATA_BODY_CORPORATE`, `CUSTODIAN_PLATFORM`, `OTHER`); `LegalEntityRole` gains `CORPORATE_TRUSTEE`; `TrustType` gains `HYBRID` + `TESTAMENTARY`. Plus 22 additive columns — `companySubtype`, `dateOfBirth`, `directorIdEncrypted` (encrypted, same treatment as TFN), the legal-title/beneficial/control capability flags, the residency + jurisdiction blocks, trust + estate metadata, `regulatoryStatus`, `structuralState`, `accountantVerified`.
+`LegalEntityType` gains 12 values (`INDIVIDUAL`, `FIXED_TRUST`, `HYBRID_TRUST`, `BARE_TRUST`, `TESTAMENTARY_TRUST`, `DECEASED_ESTATE`, `FOREIGN_COMPANY`, `INCORPORATED_ASSOCIATION`, `CO_OPERATIVE`, `STRATA_BODY_CORPORATE`, `CUSTODIAN_PLATFORM`, `OTHER`); `LegalEntityRole` gains `CORPORATE_TRUSTEE`; `TrustType` gains `HYBRID` + `TESTAMENTARY`. Plus 22 additive columns — `companySubtype`, `dateOfBirth`, `directorIdEncrypted` (encrypted, same treatment as TFN), the legal-title/beneficial/control capability flags, the residency + jurisdiction blocks, trust + estate metadata, `regulatoryStatus`, `structuralState`, `accountantVerified`. **Phase 47 F4 (2026-06-12)** adds `partnershipSubtype String?` (GENERAL / LIMITED / INCORPORATED_LIMITED / VCLP / ESVCLP — corporate limited partnerships are taxed as companies per Div 5A ITAA36; VCLP/ESVCLP carry Phase 41E Measure 7 treatment; migration `20260612120000_add_partnership_subtype`).
 
 ### Migration note
 
@@ -3202,6 +3202,10 @@ unified_transactions.matchedDocumentId  TEXT (nullable)
 
 Direct pointer for "show me the receipt for this transaction." Set by the DME `analyze/confirm` flow on AUTO_LINK or NO_MATCH paths. Complements the existing many-to-many `DocumentLink` table (which still serves general document↔entity relations).
 
+> **`LinkedEntityType` (DocumentLink) — 2026-06-16 (AI Document Router, Phase A):** the polymorphic document-link enum is `PROPERTY · LOAN · EXPENSE · INCOME · ACCOUNT · OFFSET_ACCOUNT · INVESTMENT_ACCOUNT · INVESTMENT_HOLDING · TRANSACTION · ASSET`. **`ASSET`** was added so a document/receipt can be tagged to a specific asset (e.g. a CTP policy or rego notice on a vehicle). Wired through the DME upload route (`assetId`), the `useDocumentUpload` hook, and a new `asset_direct` rule in `lib/documents/engine/rules/LinkingRules.ts`. Additive enum migration `20260616093000_add_asset_linked_entity_type`.
+
+> **`VendorEntityHint` — 2026-06-18 (AI Document Router, Phase 50 D.4 — learned routing, suggest-only):** a per-user routing-memory table recording which entity a user files a vendor's documents under, so the next document from that vendor can **pre-select** the same entity. Columns: `(userId, vendorKey, entityType: LinkedEntityType, entityId, count, createdAt, lastUsedAt)`; `@@unique([userId, vendorKey, entityType, entityId])` + `@@index([userId, vendorKey])`; maps to `vendor_entity_hints`. `vendorKey` is the normalized vendor (lowercase, alphanumerics only — `normalizeVendorKey`). Written at the document-link chokepoints (`/api/documents/[id]/link` + `analyze/confirm`) via the canonical `lib/documents/intelligence/learnedRouting.ts`; read via `GET /api/documents/vendor-hint`. **Suggestion layer only** — per the 2026-06-18 autonomy decision it never writes a financial record or applies a link on its own; the user always confirms. Additive migration `20260618090000_add_vendor_entity_hints`. Routable entity types (worth a routing memory): `ASSET · PROPERTY · LOAN · INVESTMENT_ACCOUNT · INVESTMENT_HOLDING · OFFSET_ACCOUNT · ACCOUNT` — not generic `EXPENSE`/`INCOME` (those are the record the document creates, not the asset it belongs to).
+
 ### Service surface (`lib/bookkeeping/`)
 
 | Module | Exports | Used by |
@@ -4002,6 +4006,12 @@ passes it uncast — an action code missing from the enum is a compile
 error repo-wide from now on. The dead parallel audit system in
 `lib/audit/logger.ts` (zero callers) was deleted at the same time so
 audit writes have exactly one canonical source (§12.2).
+
+**Addendum (2026-06-12):** `USER_DATA_RESET` added (migration
+`20260615000000_add_user_data_reset_audit_action`) — fired once per
+completed "Start fresh" account data reset by
+`lib/services/accountReset.ts` (see `07_API_STANDARDS.md` →
+`POST /api/account/reset`). Metadata carries row counts + booleans only.
 
 ---
 

@@ -14,6 +14,12 @@
 
 import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import type { Decimal } from '@/lib/decimal';
+import type { TaxYearConfig } from '@/lib/tax-engine/types';
+import type { PropertyOwner } from './propertyDisposalCgt';
+import type {
+  OwnershipGroupLite,
+  BeneficialOverrideLite,
+} from '@/lib/services/ownershipAttribution';
 
 export type ScenarioType =
   | 'sellProperty'
@@ -90,6 +96,51 @@ export interface ScenarioContext {
    * when this is absent (back-compat for users with no SMSF).
    */
   superAccounts?: SuperAccountView[];
+  /**
+   * Phase 47 Stage D · D6 — per-property CGT + ownership facts so the
+   * `sellProperty` lever can compute capital gains tax split across the
+   * property's legal owners with the correct per-entity discount (TR 93/32 +
+   * Div 115), instead of the old single-taxpayer "CGT may apply" flag.
+   *
+   * Populated by `/api/cfo/scenarios/run` from Prisma (the property row + its
+   * `OwnershipGroup` / `BeneficialOwnershipOverride` + each owner's entity
+   * type + the user's marginal rate). Absent for the AI-advisor tool path and
+   * for users with no entity structure — when absent, the lever falls back to
+   * the prior CGT-flag behaviour (no behaviour change).
+   */
+  propertyTaxContexts?: PropertyTaxContext[];
+  /** Resolved tax-year config (reform commencement flags) — for the CGT gate. */
+  taxConfig?: TaxYearConfig;
+  /** Disposal FY string (e.g. "2026-27") — drives the §12.14 CGT reform gate. */
+  currentFy?: string;
+  /** The user's current marginal rate (0..1) — basis of the "your share" CGT estimate. */
+  userMarginalRate?: number;
+}
+
+/**
+ * Phase 47 Stage D · D6 — the per-property tax facts the `sellProperty` lever
+ * needs to compute CGT. The CGT decision itself lives in
+ * `lib/cfo/scenarios/propertyDisposalCgt.ts`; this is the data the route
+ * hands in. `owners` are the candidate legal owners (legal owner + stake
+ * holders + beneficial owner); `ownershipGroup` / `beneficialOverride` are the
+ * AD-2 context that weights them.
+ */
+export interface PropertyTaxContext {
+  propertyId: string;
+  /** Acquisition cost base proxy — the property's recorded purchase price. */
+  costBase: number;
+  /** Acquisition date (contract date preferred — CGT event A1), ISO string. */
+  acquisitionDate: string;
+  /** The legal-title owner stamped on the row. */
+  legalOwnerEntityId: string;
+  /** Candidate owners + their entity facts (CGT-eligible type, isYou, etc). */
+  owners: PropertyOwner[];
+  /** The `OwnershipGroup` covering the property, if any (AD-2 weighting). */
+  ownershipGroup?: OwnershipGroupLite;
+  /** The `BeneficialOwnershipOverride` on the property, if any. */
+  beneficialOverride?: BeneficialOverrideLite;
+  /** True when a co-owner's entity type was approximated (exotic type). */
+  hasApproximatedOwnerType?: boolean;
 }
 
 /**

@@ -151,6 +151,7 @@ enum Frequency {
   MONTHLY
   QUARTERLY
   ANNUAL
+  HALF_YEARLY
 }
 
 enum TransactionDirection {
@@ -475,6 +476,11 @@ enum AuditAction {
 
   // Phase 44.2 — SMSF annual-return workbook save.
   SMSF_RETURN_SAVED
+
+  // 2026-06-12 — "Start fresh" account data reset (wipe financial data,
+  // keep account). Fired once per completed reset by
+  // lib/services/accountReset.ts. Metadata: row counts + booleans only.
+  USER_DATA_RESET
 }
 
 enum AuditStatus {
@@ -498,6 +504,7 @@ enum PayFrequency {
   MONTHLY
   QUARTERLY
   ANNUALLY
+  HALF_YEARLY
 }
 
 enum TaxCategory {
@@ -672,6 +679,7 @@ model LegalEntity {
   lastVariationDate                     DateTime? // trusts
   trustProperLawJurisdiction            String? // trusts
   estateAdministrationStatus            String? // DECEASED_ESTATE only — EARLY / PARTLY / FULLY_ADMINISTERED / FINAL_DISTRIBUTION_COMPLETE
+  partnershipSubtype                    String? // Phase 47 F4 (F-LAW review) — PARTNERSHIP only: GENERAL / LIMITED / INCORPORATED_LIMITED / VCLP / ESVCLP. Corporate limited partnerships are taxed as companies (Div 5A ITAA36); VCLP/ESVCLP carry Phase 41E Measure 7 treatment.
   regulatoryStatus                      String[] // ACNC_REGISTERED_CHARITY / DGR / INCOME_TAX_EXEMPT / NFP / REGISTERED_FOREIGN_BODY / AFSL_HOLDER / RESPONSIBLE_ENTITY
   unsupportedStructure                  Boolean         @default(false) // true when type = OTHER
   structuralState                       StructuralState @default(VALID) // §6.1 three-state classification
@@ -1264,6 +1272,7 @@ model User {
   // Phase 19: Document Management
   documents             Document[]
   storageProviderConfig StorageProviderConfig?
+  vendorEntityHints     VendorEntityHint[] // Phase 50 D.4: learned routing (suggest-only)
 
   // Phase 20: Australian Tax Intelligence Engine
   superannuationAccounts SuperannuationAccount[]
@@ -3904,6 +3913,7 @@ enum LinkedEntityType {
   INVESTMENT_ACCOUNT
   INVESTMENT_HOLDING
   TRANSACTION
+  ASSET
 }
 
 // =============================================================================
@@ -3927,6 +3937,11 @@ model Document {
   storageUrl      String? // External URL for Google Drive etc.
   fileContent     Bytes? // File content for database storage (Monitrax provider)
 
+  // Phase 50 D.1 — document-level dedup. SHA-256 of the file bytes, set at
+  // upload. processUpload looks up (userId, contentHash) before storing so the
+  // same file isn't stored twice; nullable for documents created before D.1.
+  contentHash String?
+
   // User metadata
   description String?
   tags        String[]
@@ -3945,7 +3960,40 @@ model Document {
   @@index([category])
   @@index([storageProvider])
   @@index([deletedAt])
+  @@index([userId, contentHash])
   @@map("documents")
+}
+
+// =============================================================================
+// PHASE 50 D.4: LEARNED ROUTING (suggest-only)
+// =============================================================================
+//
+// Remembers which entity (asset / property / loan / investment account) a user
+// chose for documents from a given vendor, so the next document from that
+// vendor can PRE-SELECT the same entity. This is a SUGGESTION layer only — the
+// user always confirms (and can change the selection) in the existing confirm
+// flow. Nothing here ever writes a financial record or applies a link on its
+// own (Reza autonomy decision 2026-06-18: AI suggests, user always confirms).
+//
+// `vendorKey` is the normalized vendor string (lowercase, alphanumerics only)
+// so "Bunnings Warehouse" and "BUNNINGS WAREHOUSE #123" collapse to one key.
+// `count` is incremented each time the user reaffirms the routing, so the most
+// frequently-chosen entity wins when a vendor maps to several over time.
+model VendorEntityHint {
+  id         String           @id @default(uuid())
+  userId     String
+  vendorKey  String // Normalized vendor (see normalizeVendorKey)
+  entityType LinkedEntityType
+  entityId   String
+  count      Int              @default(1) // Times the user chose this routing
+  createdAt  DateTime         @default(now())
+  lastUsedAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorKey, entityType, entityId])
+  @@index([userId, vendorKey])
+  @@map("vendor_entity_hints")
 }
 
 // =============================================================================

@@ -37,6 +37,22 @@ export function getGCPCredentials(): ParsedCredentials | null {
   if (credentialsResolveFailed) return null;
   if (cachedCredentials) return cachedCredentials;
 
+  // E2E ONLY (Phase 4 L4): under the Firebase Auth emulator there are no real
+  // GCP credentials. `GCP_PROJECT_ID` is set to a synthetic value
+  // (`monitrax-e2e`), which would otherwise make us hand back a credential-less
+  // options object (the ADC fall-through below). GCP client libraries
+  // (e.g. the Cloud Logging audit sink) then construct successfully but fail
+  // ADC resolution ASYNCHRONOUSLY, surfacing an `uncaughtException`
+  // ("Could not load the default credentials") that escapes the sink's
+  // fire-and-forget `.catch()` and aborts the in-flight request. Treating the
+  // emulator env as "no GCP" means no GCP client is ever constructed in E2E.
+  // This var is set ONLY in the Playwright CI job — never in prod or Vercel
+  // preview — so this is a strict no-op there.
+  if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+    credentialsResolveFailed = true;
+    return null;
+  }
+
   try {
     // Get project ID
     const projectId = process.env.GCP_PROJECT_ID || process.env.GCS_PROJECT_ID;
@@ -58,6 +74,27 @@ export function getGCPCredentials(): ParsedCredentials | null {
       } catch (parseError) {
         log.error('[GCP Credentials] Failed to parse GCS_SERVICE_ACCOUNT_KEY', parseError as Error);
       }
+    }
+
+    // Vercel keyless (no key, but Workload Identity Federation env present):
+    // the bare-ADC fall-through below would hand GCP client libraries a
+    // credential-less options object. They construct OK but fail ADC
+    // ASYNCHRONOUSLY (no metadata server on Vercel), throwing an
+    // uncaughtException ("Could not load the default credentials") that escapes
+    // the sinks' fire-and-forget `.catch()` and destabilises in-flight requests.
+    // (Same failure #1121 gated for the E2E emulator only — this extends the
+    // guard to prod keyless.) Return null so the SECONDARY GCP sinks (Cloud
+    // Logging / Monitoring / Error Reporting / Scheduler) no-op; the audit
+    // log's Postgres PRIMARY is unaffected. Making those sinks authenticate via
+    // keyless WIF is a follow-up.
+    if (
+      !process.env.GOOGLE_APPLICATION_CREDENTIALS &&
+      process.env.GCP_WORKLOAD_IDENTITY_PROVIDER &&
+      process.env.GCP_SERVICE_ACCOUNT_EMAIL
+    ) {
+      log.info('[GCP Credentials] No key + keyless WIF env — GCP client sinks no-op (avoids ADC uncaughtException)');
+      credentialsResolveFailed = true;
+      return null;
     }
 
     // Fall back to Application Default Credentials (for local dev or GCP runtime)

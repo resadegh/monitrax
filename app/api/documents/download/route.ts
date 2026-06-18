@@ -1,13 +1,25 @@
 /**
- * Phase 19: Document Download API
- * GET /api/documents/download - Serve files via signed URL
+ * Phase 19 / Phase 50: Document Download API
+ * GET /api/documents/download - Serve files via an HMAC-signed URL.
  *
- * This endpoint validates the signature and expiry, then streams the file.
- * In production, this would typically be handled by S3/CloudFront directly.
+ * Validates our own HMAC signature + expiry, then streams the bytes from
+ * whichever backend actually holds them:
+ *   - MONITRAX  → read the bytea from Postgres.
+ *   - GCS       → download via the storage provider (keyless WIF or key).
+ *
+ * The HMAC signature (issued by `getDocumentReadUrl` / the Monitrax signer) is
+ * the access capability and is provider-agnostic — it authorises a `storagePath`
+ * regardless of where the bytes live. GCS documents are routed here (rather than
+ * to a native GCS signed URL) when we authenticate keyless, because keyless
+ * credentials cannot sign a v4 URL locally — and streaming through our own route
+ * keeps every read mediated (the better CDR posture).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/db';
 import { getMonitraxStorageProvider } from '@/lib/documents/storage';
+import { getGoogleCloudStorageProvider } from '@/lib/documents/storage/googleCloudStorageProvider';
+import { StorageProviderType } from '@/lib/documents/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -42,10 +54,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify signature
-    const storage = getMonitraxStorageProvider();
-    const isValid = storage.verifySignature(path, expires, signature);
-
+    // Verify the HMAC signature (provider-agnostic — authorises this path).
+    const monitrax = getMonitraxStorageProvider();
+    const isValid = monitrax.verifySignature(path, expires, signature);
     if (!isValid) {
       return NextResponse.json(
         { error: 'Invalid signature' },
@@ -53,41 +64,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if file exists
-    const exists = await storage.exists(path);
-    if (!exists) {
+    // Resolve which backend holds the bytes (and the content metadata) from the
+    // Document row keyed by storagePath.
+    const document = await prisma.document.findFirst({
+      where: { storagePath: path, deletedAt: null },
+      select: {
+        storageProvider: true,
+        mimeType: true,
+        size: true,
+        originalFilename: true,
+      },
+    });
+
+    if (!document) {
       return NextResponse.json(
         { error: 'File not found' },
         { status: 404 }
       );
     }
 
-    // Get file metadata
-    const metadata = await storage.getMetadata(path);
-    if (!metadata) {
-      return NextResponse.json(
-        { error: 'Failed to get file metadata' },
-        { status: 500 }
-      );
+    // Stream the bytes from the correct provider.
+    let fileBuffer: Buffer;
+    if (document.storageProvider === StorageProviderType.GOOGLE_CLOUD_STORAGE) {
+      const gcs = getGoogleCloudStorageProvider();
+      await gcs.initialize();
+      const result = await gcs.download(path);
+      if (!result.success || !result.data) {
+        return NextResponse.json(
+          { error: 'File not found' },
+          { status: 404 }
+        );
+      }
+      fileBuffer = result.data;
+    } else {
+      // MONITRAX (DB bytea). LOCAL_DRIVE files are never served here (the client
+      // reads them locally), so a missing file is a genuine 404.
+      const exists = await monitrax.exists(path);
+      if (!exists) {
+        return NextResponse.json(
+          { error: 'File not found' },
+          { status: 404 }
+        );
+      }
+      fileBuffer = await monitrax.readFile(path);
     }
 
-    // Read and stream the file
-    const fileBuffer = await storage.readFile(path);
+    const filename = document.originalFilename || path.split('/').pop() || 'download';
 
-    // Determine filename from path
-    const filename = path.split('/').pop() || 'download';
-
-    // Set appropriate headers
     const headers = new Headers();
-    headers.set('Content-Type', metadata.contentType);
-    headers.set('Content-Length', metadata.size.toString());
+    headers.set('Content-Type', document.mimeType || 'application/octet-stream');
+    headers.set('Content-Length', String(document.size ?? fileBuffer.length));
     headers.set('Content-Disposition', `inline; filename="${filename}"`);
-    headers.set('Cache-Control', 'private, max-age=300'); // Cache for 5 minutes
+    headers.set('Cache-Control', 'private, max-age=300'); // 5 minutes
 
-    // Convert Buffer to Uint8Array for NextResponse compatibility
-    const uint8Array = new Uint8Array(fileBuffer);
-
-    return new NextResponse(uint8Array, {
+    return new NextResponse(new Uint8Array(fileBuffer), {
       status: 200,
       headers,
     });

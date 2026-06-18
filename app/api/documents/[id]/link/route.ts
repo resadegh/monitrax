@@ -12,6 +12,7 @@ import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { LinkedEntityType } from '@/lib/documents/types';
+import { recordHintFromDocument } from '@/lib/documents/intelligence/learnedRouting';
 
 interface LinkRequest {
   entityType: string;
@@ -90,6 +91,10 @@ export const POST = withPermission<RouteContext>('report.export', async (request
         entityId,
       },
     });
+
+    // Phase 50 D.4 — learn this vendor→entity routing (suggest-only). Fire-and-
+    // forget: a routing memory is a convenience, never block the link on it.
+    void recordHintFromDocument(userId, documentId, entityType, entityId);
 
     return NextResponse.json({
       success: true,

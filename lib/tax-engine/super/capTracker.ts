@@ -155,26 +155,34 @@ export function calculateBringForward(
   reason: string;
 } {
   const baseCap = config.nonConcessionalCap;
+  // Conformance fix (audit 2026-06-12, finding 1) — s292-85(2)-(5)
+  // ITAA97. Thresholds come from the FY config (indexed with the
+  // general transfer balance cap); the module constant is only a
+  // fallback for configs predating the field.
+  const thresholds = config.bringForwardThresholds ?? BRING_FORWARD_THRESHOLDS;
 
-  if (totalSuperBalance >= BRING_FORWARD_THRESHOLDS.none) {
+  if (totalSuperBalance >= thresholds.none) {
+    // TSB at or above the general transfer balance cap: the
+    // non-concessional cap is NIL (s292-85(2)) — not the standard cap.
+    return {
+      yearsAvailable: 0,
+      totalCap: 0,
+      eligible: false,
+      reason: `Total super balance ($${totalSuperBalance.toLocaleString()}) is at or above the general transfer balance cap ($${thresholds.none.toLocaleString()}) — the non-concessional cap is nil this year.`,
+    };
+  }
+
+  if (totalSuperBalance >= thresholds.reduced) {
+    // One year only — the standard annual cap, no bring-forward.
     return {
       yearsAvailable: 1,
       totalCap: baseCap,
       eligible: false,
-      reason: `Total super balance ($${totalSuperBalance.toLocaleString()}) exceeds $${BRING_FORWARD_THRESHOLDS.none.toLocaleString()}. No bring-forward available.`,
+      reason: `Standard annual cap only: $${baseCap.toLocaleString()} (total super balance is in the no-bring-forward band).`,
     };
   }
 
-  if (totalSuperBalance >= BRING_FORWARD_THRESHOLDS.reduced) {
-    return {
-      yearsAvailable: 2,
-      totalCap: baseCap * 2,
-      eligible: true,
-      reason: `Can bring forward 2 years: $${(baseCap * 2).toLocaleString()} total cap`,
-    };
-  }
-
-  if (totalSuperBalance >= BRING_FORWARD_THRESHOLDS.full) {
+  if (totalSuperBalance >= thresholds.full) {
     return {
       yearsAvailable: 2,
       totalCap: baseCap * 2,
@@ -459,11 +467,17 @@ export function calculateBringForwardDecimal(
 ): { yearsAvailable: number; totalCap: Decimal; eligible: boolean } {
   const tsbDec = toDecimal(totalSuperBalance) ?? new Decimal(0);
   const baseCap = new Decimal(config.nonConcessionalCap);
+  // Conformance fix (audit 2026-06-12, finding 1) — mirrors the number
+  // path: nil cap at/above the general TBC; 1 year in the reduced band.
+  const thresholds = config.bringForwardThresholds ?? BRING_FORWARD_THRESHOLDS;
 
-  if (tsbDec.gte(BRING_FORWARD_THRESHOLDS.none)) {
+  if (tsbDec.gte(thresholds.none)) {
+    return { yearsAvailable: 0, totalCap: new Decimal(0), eligible: false };
+  }
+  if (tsbDec.gte(thresholds.reduced)) {
     return { yearsAvailable: 1, totalCap: baseCap, eligible: false };
   }
-  if (tsbDec.gte(BRING_FORWARD_THRESHOLDS.reduced) || tsbDec.gte(BRING_FORWARD_THRESHOLDS.full)) {
+  if (tsbDec.gte(thresholds.full)) {
     return { yearsAvailable: 2, totalCap: baseCap.times(2), eligible: true };
   }
   return { yearsAvailable: 3, totalCap: baseCap.times(3), eligible: true };

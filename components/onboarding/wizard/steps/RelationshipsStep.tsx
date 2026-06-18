@@ -43,6 +43,7 @@ import {
   WizardData,
   EntityInput,
   LegalEntityType,
+  LegalEntityRole,
   WizardRelationshipType,
   RelationshipInput,
   LEGAL_ENTITY_TYPE_LABELS,
@@ -52,13 +53,15 @@ import {
 import { WizardStepShell } from '../primitives';
 import { isPersistedId } from '@/lib/onboarding/entitiesSync';
 import { syncRelationships } from '@/lib/onboarding/relationshipsSync';
+import { roleTemplateFor } from '@/lib/entity-graph/roleTemplates';
 import '@/styles/wizard-animations.css';
 
 // =============================================================================
 // ROLE CONFIG — the load-bearing edges per entity type
 // =============================================================================
 
-const isIndividualType = (t: LegalEntityType): boolean => t === 'PERSONAL_NAME';
+const isIndividualType = (t: LegalEntityType): boolean =>
+  t === 'PERSONAL_NAME' || t === 'INDIVIDUAL';
 const isCompanyType = (t: LegalEntityType): boolean => t === 'COMPANY';
 
 interface RoleDef {
@@ -69,102 +72,73 @@ interface RoleDef {
   candidate: (t: LegalEntityType) => boolean;
   /** Plain-English hint shown under the role. */
   hint: string;
+  /** Phase 47 F4 — optional roles sit behind the "More detail" disclosure. */
+  optional: boolean;
 }
 
-/** The load-bearing roles to capture for a given structure type (§6.2). */
+const isCompanyFamilyType = (t: LegalEntityType): boolean =>
+  t === 'COMPANY' || t === 'FOREIGN_COMPANY';
+const isPersonOrCompany = (t: LegalEntityType): boolean =>
+  isIndividualType(t) || isCompanyFamilyType(t);
+
+/** Per-edge-type candidate predicates + warm hints (wizard-presentation
+ * concerns layered over the canonical templates). */
+const ROLE_PRESENTATION: Partial<
+  Record<WizardRelationshipType, { singular: string; candidate: (t: LegalEntityType) => boolean; hint: string }>
+> = {
+  DIRECTOR_OF: { singular: 'director', candidate: isIndividualType, hint: 'The people who run it.' },
+  SHAREHOLDER_OF: { singular: 'shareholder', candidate: () => true, hint: 'Who holds the shares — a person or another entity.' },
+  SECRETARY_OF: { singular: 'secretary', candidate: isIndividualType, hint: 'The company secretary, if appointed.' },
+  TRUSTEE_OF: { singular: 'trustee', candidate: isPersonOrCompany, hint: 'Who holds and administers it — a person or a company.' },
+  BENEFICIARY_OF: { singular: 'beneficiary', candidate: () => true, hint: 'Who may receive distributions or benefits.' },
+  UNITHOLDER_OF: { singular: 'unitholder', candidate: () => true, hint: 'Who holds the units.' },
+  MEMBER_OF: { singular: 'member', candidate: isIndividualType, hint: 'The members.' },
+  PARTNER_OF: { singular: 'partner', candidate: () => true, hint: 'The partners — people or entities.' },
+  OPERATES_AS_SOLE_TRADER: { singular: 'owner', candidate: isIndividualType, hint: 'The person operating under this ABN.' },
+  SETTLOR_OF: { singular: 'settlor', candidate: isIndividualType, hint: 'Who settled the trust (then arm\u2019s-length).' },
+  APPOINTOR_OF: { singular: 'appointor', candidate: isPersonOrCompany, hint: 'Can usually appoint or remove the trustee.' },
+  GUARDIAN_OF: { singular: 'guardian', candidate: isPersonOrCompany, hint: 'Consent required for certain trustee actions.' },
+  EXECUTOR_OF: { singular: 'executor', candidate: isPersonOrCompany, hint: 'Administers the estate under the will.' },
+  ADMINISTRATOR_OF: { singular: 'administrator', candidate: isPersonOrCompany, hint: 'Administers an intestate estate.' },
+};
+
+const WIZARD_EDGE_TYPES = new Set<string>([
+  'TRUSTEE_OF', 'DIRECTOR_OF', 'SHAREHOLDER_OF', 'BENEFICIARY_OF',
+  'UNITHOLDER_OF', 'MEMBER_OF', 'PARTNER_OF', 'OPERATES_AS_SOLE_TRADER',
+  'SECRETARY_OF', 'SETTLOR_OF', 'APPOINTOR_OF', 'GUARDIAN_OF',
+  'EXECUTOR_OF', 'ADMINISTRATOR_OF',
+]);
+
+/**
+ * Phase 47 F4 — the load-bearing roles come from the canonical F2a
+ * templates (`lib/entity-graph/roleTemplates.ts`), so the wizard and
+ * the My Structure Entity File can never drift (§12.2). Required +
+ * expected rows are the skeleton; `optional` rows render behind the
+ * per-entity "More detail" disclosure. Roles outside the wizard's
+ * capture set (e.g. POWER_HOLDER_OF) stay My-Structure-only.
+ */
 function rolesForEntityType(type: LegalEntityType): RoleDef[] {
-  switch (type) {
-    case 'COMPANY':
-      return [
-        {
-          type: 'DIRECTOR_OF',
-          label: 'Directors',
-          singular: 'director',
-          candidate: isIndividualType,
-          hint: 'The people who run the company.',
-        },
-        {
-          type: 'SHAREHOLDER_OF',
-          label: 'Shareholders',
-          singular: 'shareholder',
-          candidate: () => true,
-          hint: 'Who holds the shares — a person or another entity.',
-        },
-      ];
-    case 'DISCRETIONARY_TRUST':
-      return [
-        {
-          type: 'TRUSTEE_OF',
-          label: 'Trustee',
-          singular: 'trustee',
-          candidate: (t) => isIndividualType(t) || isCompanyType(t),
-          hint: 'Who holds and administers the trust — a person or a company.',
-        },
-        {
-          type: 'BENEFICIARY_OF',
-          label: 'Beneficiaries',
-          singular: 'beneficiary',
-          candidate: () => true,
-          hint: 'Who may receive distributions from the trust.',
-        },
-      ];
-    case 'UNIT_TRUST':
-      return [
-        {
-          type: 'TRUSTEE_OF',
-          label: 'Trustee',
-          singular: 'trustee',
-          candidate: (t) => isIndividualType(t) || isCompanyType(t),
-          hint: 'Who holds and administers the trust.',
-        },
-        {
-          type: 'UNITHOLDER_OF',
-          label: 'Unitholders',
-          singular: 'unitholder',
-          candidate: () => true,
-          hint: 'Who holds the units.',
-        },
-      ];
-    case 'SMSF':
-      return [
-        {
-          type: 'MEMBER_OF',
-          label: 'Members',
-          singular: 'member',
-          candidate: isIndividualType,
-          hint: 'The fund members (1–6).',
-        },
-        {
-          type: 'TRUSTEE_OF',
-          label: 'Trustee',
-          singular: 'trustee',
-          candidate: (t) => isIndividualType(t) || isCompanyType(t),
-          hint: 'The corporate trustee, or the individual trustees.',
-        },
-      ];
-    case 'PARTNERSHIP':
-      return [
-        {
-          type: 'PARTNER_OF',
-          label: 'Partners',
-          singular: 'partner',
-          candidate: () => true,
-          hint: 'The partners — people or entities.',
-        },
-      ];
-    case 'SOLE_TRADER':
-      return [
-        {
-          type: 'OPERATES_AS_SOLE_TRADER',
-          label: 'Operated by',
-          singular: 'owner',
-          candidate: isIndividualType,
-          hint: 'The person operating under this ABN.',
-        },
-      ];
-    default:
-      return [];
+  const defs: RoleDef[] = [];
+  for (const row of roleTemplateFor(type)) {
+    for (const t of row.anyOf) {
+      if (!WIZARD_EDGE_TYPES.has(t)) continue;
+      const pres = ROLE_PRESENTATION[t as WizardRelationshipType];
+      if (!pres) continue;
+      defs.push({
+        type: t as WizardRelationshipType,
+        label: row.anyOf.length > 1 ? relationLabel(t) : row.label,
+        singular: pres.singular,
+        candidate: pres.candidate,
+        hint: pres.hint,
+        optional: row.requirement === 'optional',
+      });
+    }
   }
+  return defs;
+}
+
+function relationLabel(t: string): string {
+  return t.replace(/_OF$|_FOR$/, '').replace(/_/g, ' ').toLowerCase().replace(/^./, c => c.toUpperCase()) + 's';
 }
 
 function entityTypeIcon(type: LegalEntityType) {
@@ -205,6 +179,15 @@ function EntityWiringCard({
   const roles = useMemo(() => rolesForEntityType(entity.type), [entity.type]);
   const edgesForEntity = relationships.filter((r) => r.toEntityTempId === entity.id);
   const [expanded, setExpanded] = useState(false);
+  // Phase 47 F4 — optional roles (secretary / settlor / appointor /
+  // guardian) sit behind "More detail" so the default flow stays the
+  // light skeleton. Auto-opens if any optional role already has edges.
+  const primaryRoles = roles.filter((r) => !r.optional);
+  const optionalRoles = roles.filter((r) => r.optional);
+  const optionalHasEdges = optionalRoles.some((role) =>
+    edgesForEntity.some((r) => r.type === role.type),
+  );
+  const [moreDetail, setMoreDetail] = useState(optionalHasEdges);
 
   // Collapsed summary — "1 trustee · 3 beneficiaries" or "Not wired yet".
   const summary = roles
@@ -247,7 +230,7 @@ function EntityWiringCard({
 
       {expanded && (
         <div className="mt-3 space-y-3 border-t border-slate-200/70 pt-3 dark:border-slate-700/50">
-          {roles.map((role) => {
+          {[...primaryRoles, ...(moreDetail ? optionalRoles : [])].map((role) => {
             const candidates = allEntities.filter(
               (e) => e.id !== entity.id && role.candidate(e.type),
             );
@@ -293,6 +276,17 @@ function EntityWiringCard({
               </div>
             );
           })}
+          {/* Phase 47 F4 — optional roles behind one quiet tap.
+              "Fine-tune anytime in My Structure" is the contract. */}
+          {optionalRoles.length > 0 && !moreDetail && (
+            <button
+              type="button"
+              onClick={() => setMoreDetail(true)}
+              className="text-xs font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+            >
+              More detail — secretary, settlor, appointor…
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -324,6 +318,79 @@ export function RelationshipsStep({
     () => data.entities.filter((e) => e.type !== 'PERSONAL_NAME'),
     [data.entities],
   );
+
+  // Reza spot-check fix (2026-06-13): PEOPLE must be pickable for roles
+  // — he couldn't nominate himself or Newsha as beneficiaries because
+  // the wizard's candidate pool only carried structure entities. The
+  // user's PERSONAL_NAME entity ("You") + any INDIVIDUAL entities are
+  // fetched with their REAL ids (auto-created server-side at signup /
+  // by the ownership picker), so the relationship sync persists edges
+  // directly. A quick "Add a person" creates an INDIVIDUAL on the spot.
+  const [people, setPeople] = useState<EntityInput[]>([]);
+  const [newPersonName, setNewPersonName] = useState('');
+  const [addingPerson, setAddingPerson] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/api/entities', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const json = (await res.json()) as {
+          data?: Array<{ id: string; name: string; type: LegalEntityType }>;
+        };
+        if (cancelled) return;
+        setPeople(
+          (json.data ?? [])
+            .filter((r) => r.type === 'PERSONAL_NAME' || r.type === 'INDIVIDUAL')
+            .map((r) => ({
+              id: r.id,
+              name: r.type === 'PERSONAL_NAME' ? `You (${r.name})` : r.name,
+              type: r.type,
+              role: 'PERSONAL' as LegalEntityRole,
+            })),
+        );
+      } catch {
+        // People stay empty — the chips simply don't render.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  async function addPerson() {
+    const name = newPersonName.trim();
+    if (!token || !name) return;
+    setAddingPerson(true);
+    try {
+      const res = await fetch('/api/entities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, type: 'INDIVIDUAL', role: 'PERSONAL' }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { data?: { id?: string; name?: string } };
+      const created = json.data;
+      if (res.ok && created?.id) {
+        setPeople((prev) => [
+          ...prev,
+          { id: created.id!, name: created.name ?? name, type: 'INDIVIDUAL', role: 'PERSONAL' as LegalEntityRole },
+        ]);
+        setNewPersonName('');
+      }
+    } finally {
+      setAddingPerson(false);
+    }
+  }
+
+  // The candidate pool every wiring card picks from: wizard entities +
+  // persisted people (deduped by id).
+  const candidatePool = useMemo(() => {
+    const seen = new Set(data.entities.map((e) => e.id));
+    return [...data.entities, ...people.filter((p) => !seen.has(p.id))];
+  }, [data.entities, people]);
 
   // Pre-seed TRUSTEE_OF edges from the trustee links the user already set
   // in the entity step (`parentEntityTempId`) — no double entry. Runs once.
@@ -420,11 +487,28 @@ export function RelationshipsStep({
               <EntityWiringCard
                 key={entity.id}
                 entity={entity}
-                allEntities={data.entities}
+                allEntities={candidatePool}
                 relationships={data.relationships}
                 onToggle={toggle}
               />
             ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              value={newPersonName}
+              onChange={(e) => setNewPersonName(e.target.value)}
+              placeholder="Add a person (e.g. your spouse) so you can pick them above"
+              className="h-9 flex-1 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-800 outline-none placeholder:text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            />
+            <button
+              type="button"
+              onClick={() => void addPerson()}
+              disabled={addingPerson || newPersonName.trim().length === 0}
+              className="h-9 rounded-lg bg-indigo-600 px-3 text-xs font-medium text-white disabled:opacity-40"
+            >
+              {addingPerson ? 'Adding…' : 'Add person'}
+            </button>
           </div>
 
           <p className="text-center text-xs text-slate-500 dark:text-slate-400">

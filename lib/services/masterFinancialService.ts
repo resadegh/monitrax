@@ -38,6 +38,7 @@ import { Frequency, LIQUID_ACCOUNT_TYPES } from '@/lib/types/prisma-enums';
 import { toMonthly, toAnnual } from '@/lib/utils/frequencies';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+import { isOrgLicenseSuspended } from '@/lib/portal/licenseGuard';
 import type { DataAccessScope } from '@prisma/client';
 
 // Import existing calculation engines
@@ -1342,6 +1343,10 @@ async function loadOrganizationClient(
     select: { organizationId: true, isActive: true },
   });
   if (!member || !member.isActive) return null;
+
+  // A suspended org loses client-data access (2026-06-12 — see
+  // lib/portal/licenseGuard.ts for the suspension-semantics rationale).
+  if (await isOrgLicenseSuspended(member.organizationId)) return null;
 
   const client = await prisma.organizationClient.findFirst({
     where: {

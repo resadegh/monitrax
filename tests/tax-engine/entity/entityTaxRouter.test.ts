@@ -280,8 +280,8 @@ describe('Phase 41e.1 slice D-2 — cgtEvents wired into router', () => {
     };
     expect(cgt.assessableNetCapitalGain).toBe(200000); // 0% discount → full gain
     expect(cgt.discountResult?.discountRate).toBe(0);
-    // Citations include s115-280 (the COMPANY carve-out)
-    expect(result.citations.some((c) => c.reference === 's115-280')).toBe(true);
+    // Citations include s115-280 (the COMPANY carve-out — audit-corrected citation)
+    expect(result.citations.some((c) => c.reference === 's115-10')).toBe(true);
   });
 
   it('SMSF with cgtEvents → 33⅓% discount on cgtResult', () => {
@@ -508,5 +508,157 @@ describe('Phase 41e.2 — SMSF contribution caps wired into router', () => {
     // cgtResult has the 33⅓% disposal
     const cgt = result.cgtResult as { discountResult: { discountRate: number } };
     expect(cgt.discountResult.discountRate).toBeCloseTo(1 / 3, 6);
+  });
+});
+
+// =============================================================================
+// Stage D PR-1 — honesty hardening (AD-1, AD-3, AD-4; approved 2026-06-12)
+// =============================================================================
+
+describe('Stage D PR-1 — extended entity types never fall through silently (AD-4)', () => {
+  const EXTENDED: EntityTaxFacts['entityType'][] = [
+    'INDIVIDUAL',
+    'FIXED_TRUST',
+    'HYBRID_TRUST',
+    'BARE_TRUST',
+    'TESTAMENTARY_TRUST',
+    'DECEASED_ESTATE',
+    'FOREIGN_COMPANY',
+    'INCORPORATED_ASSOCIATION',
+    'CO_OPERATIVE',
+    'STRATA_BODY_CORPORATE',
+    'CUSTODIAN_PLATFORM',
+    'OTHER',
+  ];
+  it.each(EXTENDED)('%s returns an explicit UNCOMPUTED flag — no false silence', (type) => {
+    const result = calculateEntityTaxPosition(baseFacts({ entityType: type }));
+    expect(result.result).toBeNull();
+    expect(result.uncomputed.length).toBeGreaterThan(0);
+    expect(result.uncomputed[0].rationale.length).toBeGreaterThan(20);
+  });
+
+  it('deceased estate cites the s99/s99A administration gate', () => {
+    const result = calculateEntityTaxPosition(baseFacts({ entityType: 'DECEASED_ESTATE' }));
+    expect(result.uncomputed[0].id).toBe('UC-ENTITY-DECEASED-ESTATE');
+    expect(result.uncomputed[0].rationale).toContain('s99');
+  });
+});
+
+describe('Stage D PR-1 — Div 5A partnership subtype dispatch (AD-1)', () => {
+  it('a corporate limited partnership is NEVER computed as transparent', () => {
+    for (const subtype of ['LIMITED', 'INCORPORATED_LIMITED']) {
+      const result = calculateEntityTaxPosition(
+        baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: subtype }),
+      );
+      expect(result.result).toBeNull();
+      expect(result.uncomputed[0].id).toBe('UC-ENTITY-CLP');
+      expect(result.uncomputed[0].citation?.reference).toBe('Div 5A');
+    }
+  });
+
+  it('VCLP / ESVCLP carry the Measure 7 flag (§12.14 — no post-reform math)', () => {
+    for (const subtype of ['VCLP', 'ESVCLP']) {
+      const result = calculateEntityTaxPosition(
+        baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: subtype }),
+      );
+      expect(result.uncomputed[0].id).toBe('UC-ENTITY-VCLP');
+      expect(result.uncomputed[0].rationale).toContain('Measure 7');
+    }
+  });
+
+  it('a general partnership keeps the generic transparent-partnership flag', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PARTNERSHIP', partnershipSubtype: 'GENERAL' }),
+    );
+    expect(result.uncomputed[0].id).toBe('UC-ENTITY-PARTNERSHIP');
+  });
+});
+
+describe('Stage D PR-1 — suppressed streaming surfaces UC-DIV-6E-STREAMING (AD-3)', () => {
+  it('flags the stripped stream while still computing the proportionate allocation', () => {
+    const result = calculateEntityTaxPosition(
+      baseFacts({
+        entityType: 'DISCRETIONARY_TRUST',
+        trustDistribution: {
+          trustNetIncome: 100_000,
+          beneficiaries: [
+            { id: 'b1', name: 'Reza', presentlyEntitledShare: 0.5 },
+            { id: 'b2', name: 'Newsha', presentlyEntitledShare: 0.5 },
+          ],
+          streamingSuppressed: true,
+        },
+      }),
+    );
+    expect(result.result).not.toBeNull(); // proportionate allocation computed
+    expect(result.uncomputed.some((u) => u.id === 'UC-DIV-6E-STREAMING')).toBe(true);
+  });
+});
+
+describe('Stage D PR-2 — assembler notes surface on every branch', () => {
+  it('merges assemblerNotes into uncomputed (de-duped)', () => {
+    const note = {
+      id: 'UC-CGT-PARCEL-ID',
+      rationale: 'Capital gains were matched first-in-first-out.',
+    };
+    const result = calculateEntityTaxPosition(
+      baseFacts({ entityType: 'PERSONAL_NAME', assemblerNotes: [note, note] }),
+    );
+    expect(result.uncomputed.filter((u) => u.id === 'UC-CGT-PARCEL-ID')).toHaveLength(1);
+  });
+});
+
+// =============================================================================
+// Conformance audit fixes (2026-06-12) — regression pins
+// =============================================================================
+
+import { calculateBringForward } from '@/lib/tax-engine/super/capTracker';
+import { getTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { determineTaxability } from '@/lib/tax-engine/income/taxabilityRules';
+
+describe('Audit fix 1 — bring-forward bands (s292-85)', () => {
+  const fy25 = getTaxYearConfig('2024-25'); // NCC $120k, TBC $1.9M tiers
+  it('TSB ≥ general TBC → NIL cap (never the standard cap)', () => {
+    const r = calculateBringForward(1_950_000, fy25);
+    expect(r.yearsAvailable).toBe(0);
+    expect(r.totalCap).toBe(0);
+    expect(r.eligible).toBe(false);
+  });
+  it('reduced band ($1.78M–<$1.9M) → ONE year, standard cap (never $240k)', () => {
+    const r = calculateBringForward(1_850_000, fy25);
+    expect(r.yearsAvailable).toBe(1);
+    expect(r.totalCap).toBe(120_000);
+  });
+  it('middle band → 2 years; low TSB → 3 years', () => {
+    expect(calculateBringForward(1_700_000, fy25).totalCap).toBe(240_000);
+    expect(calculateBringForward(1_000_000, fy25).totalCap).toBe(360_000);
+  });
+  it('FY25-26 tiers index with the $2.0M TBC', () => {
+    const fy26 = getTaxYearConfig('2025-26');
+    expect(calculateBringForward(1_990_000, fy26).totalCap).toBe(120_000); // reduced band under $2.0M TBC
+    expect(calculateBringForward(2_000_000, fy26).totalCap).toBe(0);
+  });
+});
+
+describe('Audit fix 2 — explicit franking credits win over 30/70 recompute (s202-60)', () => {
+  it('a base-rate-entity dividend keeps its 25%-rate credits', () => {
+    // $7,500 dividend fully franked at 25% → credits $2,500 (not $3,214 at 30/70).
+    const r = determineTaxability({
+      incomeType: 'DIVIDEND',
+      amount: 7500,
+      frequency: 'ANNUALLY',
+      frankingPercentage: 100,
+      frankingCredits: 2500,
+    });
+    expect(r.frankingCredits).toBe(2500);
+    expect(r.taxableAmount).toBe(10000);
+  });
+  it('falls back to the 30/70 recompute when no explicit credits exist', () => {
+    const r = determineTaxability({
+      incomeType: 'DIVIDEND',
+      amount: 7000,
+      frequency: 'ANNUALLY',
+      frankingPercentage: 100,
+    });
+    expect(r.frankingCredits).toBeCloseTo(3000, 0);
   });
 });

@@ -96,7 +96,12 @@ describe('§14.1 Test 1 — single-member SMSF, two-director corporate trustee',
   it('is NON_COMPLIANT_BUT_RECORDED when the second director has no permitted basis', () => {
     const g = buildFund(false);
     const result = classifyEntity(g, g.nodes[0], ASOF);
-    expect(result.state).toBe('NON_COMPLIANT_BUT_RECORDED');
+    // Audit fix 2026-06-12 (finding 7) — s17A(2)(a)(iii): the second
+    // director may be ANY person provided the member is not their
+    // employee. Without employment modelling this is an INFO prompt,
+    // not non-compliance.
+    expect(result.state).toBe('VALID');
+    expect(result.issues.some((i) => i.code === 'SMSF_SECOND_DIRECTOR_BASIS')).toBe(true);
     expect(result.issues.some((i) => i.code === 'SMSF_SECOND_DIRECTOR_BASIS')).toBe(true);
   });
 });

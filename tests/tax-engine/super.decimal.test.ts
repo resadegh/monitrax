@@ -128,11 +128,14 @@ describe('Decimal contracts', () => {
     expect(r.totalCap.equals(new Decimal(config.nonConcessionalCap).times(3))).toBe(true);
   });
 
-  it('calculateBringForwardDecimal: high TSB → 1 year only', () => {
+  // Conformance fix (audit 2026-06-12, finding 1) — s292-85(2): TSB at
+  // or above the general transfer balance cap means the NCC cap is NIL,
+  // not the standard cap. The previous expectation pinned the drift.
+  it('calculateBringForwardDecimal: TSB ≥ general TBC → nil cap', () => {
     const r = calculateBringForwardDecimal(2000000, config);
-    expect(r.yearsAvailable).toBe(1);
+    expect(r.yearsAvailable).toBe(0);
     expect(r.eligible).toBe(false);
-    expect(r.totalCap.equals(new Decimal(config.nonConcessionalCap))).toBe(true);
+    expect(r.totalCap.equals(new Decimal(0))).toBe(true);
   });
 
   it('calculateDivision293TaxDecimal: below threshold returns 0', () => {

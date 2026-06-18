@@ -22,9 +22,25 @@ export function middleware(request: NextRequest) {
   // CSP — includes Firebase/GCP Identity Platform domains for authentication
   // 'self' in frame-src is required because Firebase SDK loads a hidden iframe
   // at /__/auth/iframe on the same domain for popup auth communication.
+  const connectSrc = [
+    "'self'",
+    'https://*.googleapis.com',
+    'https://*.firebaseauth.com',
+    'https://securetoken.googleapis.com',
+    'https://identitytoolkit.googleapis.com',
+  ];
+  // E2E ONLY: when the Firebase Auth emulator is configured, allow its local
+  // origin in connect-src so the client SDK can reach it without a CSP
+  // violation. NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST is inlined at build and
+  // is set ONLY in the Playwright CI job (see .github/workflows/tests.yml) —
+  // never in prod or Vercel preview, so the production CSP is unchanged.
+  const emulatorHost = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
+  if (emulatorHost) {
+    connectSrc.push(`http://${emulatorHost}`, 'http://127.0.0.1:9099', 'http://localhost:9099');
+  }
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://*.googleapis.com https://*.firebaseauth.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com; frame-src 'self' https://*.firebaseapp.com https://*.google.com https://accounts.google.com; frame-ancestors 'none'"
+    `default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src ${connectSrc.join(' ')}; frame-src 'self' https://*.firebaseapp.com https://*.google.com https://accounts.google.com; frame-ancestors 'none'`
   );
 
   // Allow popup-based auth flows (e.g. signInWithPopup) to communicate back

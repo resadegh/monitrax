@@ -114,7 +114,7 @@ These GCP IAM roles are required for infrastructure operations:
 | `roles/monitoring.viewer` | On-call engineers | Read Cloud Monitoring |
 | `roles/secretmanager.secretAccessor` | Application service account | Access secrets |
 | `roles/storage.objectViewer` | Application service account | Read GCS buckets |
-| `roles/firebaseauth.admin` | WIF SA (`vercel-monitrax-db@…`) | **Account-deletion executor** — delete Firebase Auth identities via the Identity Platform Admin REST API (`accounts:lookup` + `accounts:delete`). See below. |
+| `roles/firebaseauth.admin` | WIF SA (`vercel-monitrax-db@…`) | **Account-deletion executor** — delete Firebase Auth identities via the Identity Platform Admin REST API (`accounts:lookup` + `accounts:delete`). **Also covers admin user suspension** (2026-06-12 — `accounts:update {disableUser}` from the admin subscription route; same SA, no new grant). See below. |
 
 ### Account-deletion executor (right-to-erasure)
 
@@ -136,8 +136,10 @@ account that authenticates Cloud SQL (`GCP_SERVICE_ACCOUNT_EMAIL`).
     --role="roles/firebaseauth.admin"
   ```
 - **Least-privilege alternative:** a custom role containing only
-  `firebaseauth.users.get` + `firebaseauth.users.delete` is sufficient
-  and preferred for a tightly-scoped production posture.
+  `firebaseauth.users.get` + `firebaseauth.users.delete` +
+  `firebaseauth.users.update` (the last added 2026-06-12 for admin
+  suspension's `accounts:update {disableUser}`) is sufficient and
+  preferred for a tightly-scoped production posture.
 - **Operational runbook:** `docs/operational/runbooks/05_RETENTION_SCHEDULERS.md`
   §4a (the job) + §6b (this grant). Code: `lib/auth/identityPlatformAdmin.ts`.
 
