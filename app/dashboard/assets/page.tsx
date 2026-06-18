@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { PageHeader } from '@/components/PageHeader';
@@ -360,6 +361,19 @@ function AssetsPageContent() {
     await loadAssetDetail(asset.id);
     setShowDetailDialog(true);
   };
+
+  // Deep-link: `/dashboard/assets?view=<assetId>` opens that asset's detail
+  // dialog directly. Assets have no per-id route (list + dialog), so this is how
+  // a document's "Asset" link (and any other deep link) lands on the RIGHT asset
+  // instead of the generic list. Runs once token + the param are available.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const viewId = searchParams.get('view');
+    if (token && viewId) {
+      loadAssetDetail(viewId).then(() => setShowDetailDialog(true));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, searchParams]);
 
   const resetForm = () => {
     setOwnership({ mode: 'sole' });

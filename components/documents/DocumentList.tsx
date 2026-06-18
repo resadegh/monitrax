@@ -127,7 +127,9 @@ function entityHref(entityType: LinkedEntityType, entityId: string): string {
     case LinkedEntityType.INVESTMENT_ACCOUNT:
       return `/dashboard/investments/accounts/${entityId}`;
     case LinkedEntityType.ASSET:
-      return '/dashboard/assets';
+      // Assets have no per-id route — deep-link the list page to open the
+      // detail dialog for this specific asset (handled in assets/page.tsx).
+      return `/dashboard/assets?view=${entityId}`;
     case LinkedEntityType.EXPENSE:
       return '/dashboard/expenses';
     case LinkedEntityType.INCOME:
