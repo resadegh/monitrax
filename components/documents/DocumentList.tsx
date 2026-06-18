@@ -111,6 +111,39 @@ const CATEGORY_COLORS: Record<DocumentCategory, string> = {
   OTHER: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
 };
 
+/**
+ * Map a linked entity to a real dashboard route. Only PROPERTY, LOAN and
+ * INVESTMENT_ACCOUNT have per-id detail pages; everything else (ASSET, EXPENSE,
+ * INCOME, ACCOUNT, …) routes to its LIST page — assets in particular have NO
+ * per-id route (they use a list + dialog), which is what produced the 404 when
+ * the old code blindly built `/dashboard/asset/<id>`.
+ */
+function entityHref(entityType: LinkedEntityType, entityId: string): string {
+  switch (entityType) {
+    case LinkedEntityType.PROPERTY:
+      return `/dashboard/properties/${entityId}`;
+    case LinkedEntityType.LOAN:
+      return `/dashboard/loans/${entityId}`;
+    case LinkedEntityType.INVESTMENT_ACCOUNT:
+      return `/dashboard/investments/accounts/${entityId}`;
+    case LinkedEntityType.ASSET:
+      return '/dashboard/assets';
+    case LinkedEntityType.EXPENSE:
+      return '/dashboard/expenses';
+    case LinkedEntityType.INCOME:
+      return '/dashboard/income';
+    case LinkedEntityType.ACCOUNT:
+    case LinkedEntityType.OFFSET_ACCOUNT:
+      return '/dashboard/accounts';
+    case LinkedEntityType.INVESTMENT_HOLDING:
+      return '/dashboard/investments';
+    case LinkedEntityType.TRANSACTION:
+      return '/dashboard/activity';
+    default:
+      return '/dashboard';
+  }
+}
+
 const ENTITY_TYPE_LABELS: Record<LinkedEntityType, string> = {
   PROPERTY: 'Property',
   LOAN: 'Loan',
@@ -365,20 +398,18 @@ export function DocumentList({
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        {onAddExpense &&
-                          (doc.category === DocumentCategory.RECEIPT ||
-                            doc.category === DocumentCategory.INVOICE) && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
-                              onClick={() => handleAddExpense(doc.id)}
-                              disabled={addingExpense === doc.id}
-                              title="Add as expense"
-                            >
-                              <DollarSign className="h-4 w-4" />
-                            </Button>
-                          )}
+                        {onAddExpense && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                            onClick={() => handleAddExpense(doc.id)}
+                            disabled={addingExpense === doc.id}
+                            title="Add as expense"
+                          >
+                            <DollarSign className="h-4 w-4" />
+                          </Button>
+                        )}
                         {(onUpdate || onRename) && (
                           <Button
                             variant="ghost"
@@ -433,9 +464,7 @@ export function DocumentList({
                             variant="secondary"
                             className="text-xs cursor-pointer hover:bg-muted"
                             onClick={() => {
-                              // Navigate to entity
-                              const basePath = link.entityType.toLowerCase().replace('_', '-');
-                              window.location.href = `/dashboard/${basePath}/${link.entityId}`;
+                              window.location.href = entityHref(link.entityType, link.entityId);
                             }}
                           >
                             {ENTITY_TYPE_LABELS[link.entityType]}
