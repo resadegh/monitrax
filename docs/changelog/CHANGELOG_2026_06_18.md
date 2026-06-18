@@ -41,6 +41,11 @@
 - `components/documents/GlobalScanReceipt.tsx` — pre-select the suggested target
   (suggest-only) + "Suggested for you" cue + sky-ring on the suggested pill.
 - `tests/documents/learnedRouting.test.ts` (NEW) — 14 unit tests.
+- `lib/services/accountReset.ts` — classify `VendorEntityHint` in
+  `RESET_DELETE_MODELS` (CI guard `accountReset.classification.test.ts` requires
+  every user-owned model be classified). A "Start fresh" reset wipes the routing
+  memory — it references assets/properties the reset also deletes, so keeping it
+  would dangle. Not CDR-lifecycle-owned, not identity → delete.
 
 ### Docs Updated
 - `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — Decisions log (autonomy
