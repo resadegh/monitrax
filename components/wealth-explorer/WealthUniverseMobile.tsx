@@ -160,7 +160,7 @@ export default function WealthUniverseMobile() {
   const canvasLayout = useMemo(
     () =>
       snapshot
-        ? layoutWealthExplorer(snapshot, { expandedEntityIds: expandedIds })
+        ? layoutWealthExplorer(snapshot, { expandedEntityIds: expandedIds, viewport: 'mobile' })
         : baseLayout,
     [snapshot, expandedIds, baseLayout],
   );

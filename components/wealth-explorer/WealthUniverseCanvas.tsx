@@ -648,6 +648,17 @@ export default function WealthUniverseCanvas() {
     setSelectedId(null);
     setExpandedIds([]);
   }
+  // Closing the entity file (the right-hand detail panel) must NOT fold
+  // the focused scene back to Level 1 (Reza 2026-06-18: "when I close the
+  // window it takes me back to layer 1"). Clear ONLY the panel selection;
+  // keep `expandedIds` so you stay inside the layer you opened — the
+  // breadcrumb "‹ Universe" (rendered whenever `expandedIds.length > 0`)
+  // remains the way back out, and tapping the centred bubble zooms out.
+  // When nothing is expanded (a non-expandable tile at Level 1), this just
+  // closes the panel and you're already at Level 1.
+  function closeDetailPanel() {
+    setSelectedId(null);
+  }
   function handleNodeClick(node: WealthNode) {
     if (node.tier === 'asset') {
       // Selecting a satellite keeps its constellation open.
@@ -1327,7 +1338,7 @@ export default function WealthUniverseCanvas() {
         // Cluster tiles (Phase WX.4.1) are pure canvas aggregates — they
         // expand in place but have no entity file to open.
         node={selectedNode?.tier === 'cluster' ? null : selectedNode}
-        onClose={clearSelection}
+        onClose={closeDetailPanel}
         assets={
           selectedNode && selectedNode.tier !== 'cluster' && snapshot
             ? selectedNode.tier === 'group'
