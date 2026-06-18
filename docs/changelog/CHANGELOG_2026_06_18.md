@@ -146,6 +146,56 @@
 
 ---
 
+## Session: dme-d1.1-scan-dedup-shk180
+
+### Changes Made
+- **Type**: Fix / hygiene (Phase 50 D.1.1 — close the dedup bypass on the scan path).
+- **Scope**: Document Intelligence — the global "Scan a receipt" + form-autofill upload.
+- **Root Cause**: `/api/documents/analyze-for-form` called the **legacy**
+  `documentService.uploadDocument()`, which has no content-hash dedup. The D.1
+  dedup (SHA-256 `(userId, contentHash)` lookup) lives in the DME
+  `processUpload()` chokepoint — so the scan path bypassed it and a re-scan of
+  the same receipt stored a duplicate.
+- **Solution**: rewired that one call to `DocumentManagementEngine.processUpload()`
+  via `createUploadContext`, with `source` mapped from the form type
+  (`EXPENSE_FORM`/`INCOME_FORM`/`LOAN_FORM`/`PROPERTY_FORM`). The scan path now
+  inherits the dedup + per-user storage-quota enforcement for free; a
+  byte-identical re-scan returns the existing document. Only `documentId` is
+  consumed downstream (the `signedUrl`→`storageUrl` field swap is inert — the
+  client never read it). Left the other legacy caller (`/api/documents` POST,
+  deprecated since Phase 38 PR2.5) as-is (out of scope, low traffic).
+
+### Files Modified
+- `app/api/documents/analyze-for-form/route.ts` — swap legacy `uploadDocument`
+  → DME `processUpload`; import the engine helpers; map form type → source.
+
+### Docs Updated
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — D.1.1 capability + status.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — 0·DOC D.1.1 row.
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run build` passes
+- [x] `vitest run tests/documents/` — 59/59 pass
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- None. No new Prisma write/delete — `processUpload`'s own writes (create +
+  dedup-link `createMany skipDuplicates`) were checklisted in the D.1 PR. No
+  schema change (D.1's `contentHash` migration already deployed).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — document-upload plumbing; no tax-engine file, no financial calc, no
+  schema column on `Property`/`Investment`/`LegalEntity`, no AI tool, no
+  per-asset tax UI.
+
+### Doc-sync (CLAUDE.md §16)
+- No covered surface changed: not a visual/design, config, infra, identity,
+  deploy, or security-posture change. API behaviour is hardened (dedup now
+  applies) but the contract is unchanged — documented in the Phase 50 doc.
+
+---
+
 ## Session: dme-d6-bulk-approve-inbox-shk180
 
 ### Changes Made
