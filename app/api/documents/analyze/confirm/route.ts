@@ -25,6 +25,7 @@ import {
   reconcileSuggestedAction,
   type ReconcileRecordType,
 } from '@/lib/documents/intelligence/reconcile/reconcileSuggestedAction';
+import { recordVendorEntityHint } from '@/lib/documents/intelligence/learnedRouting';
 
 // Types defined locally to avoid dependency on Prisma client regeneration timing
 type ExpenseCategory =
@@ -128,7 +129,7 @@ export const POST = withPermission('report.export', async (request, auth) => {
         break;
 
       case 'LINK_TO_PROPERTY':
-        entity = await linkDocumentToProperty(analysis.document.id, data);
+        entity = await linkDocumentToProperty(userId, analysis.document.id, data);
         break;
 
       default:
@@ -404,6 +405,13 @@ async function createExpenseFromAnalysis(
       },
     });
 
+    // Phase 50 D.4 — learn the vendor→asset/property/loan routing (suggest-only)
+    // when the user attributed this expense to one. Fire-and-forget.
+    const vendor = data.vendor ?? data.name;
+    if (data.propertyId) void recordVendorEntityHint(userId, vendor, 'PROPERTY', String(data.propertyId));
+    if (data.loanId) void recordVendorEntityHint(userId, vendor, 'LOAN', String(data.loanId));
+    if (data.assetId) void recordVendorEntityHint(userId, vendor, 'ASSET', String(data.assetId));
+
     return {
       type: 'EXPENSE',
       id: expense.id,
@@ -565,6 +573,7 @@ async function updateLoanFromAnalysis(
 }
 
 async function linkDocumentToProperty(
+  userId: string,
   documentId: string,
   data: Record<string, unknown>
 ): Promise<{ type: string; id: string; data: Record<string, unknown> } | null> {
@@ -579,6 +588,9 @@ async function linkDocumentToProperty(
         entityId: propertyId,
       },
     });
+
+    // Phase 50 D.4 — learn vendor→property routing (suggest-only).
+    void recordVendorEntityHint(userId, data.vendor ?? data.name, 'PROPERTY', propertyId);
 
     return {
       type: 'DOCUMENT_LINK',
