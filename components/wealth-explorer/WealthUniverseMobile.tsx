@@ -283,16 +283,21 @@ export default function WealthUniverseMobile() {
     // unfolds its own. Cluster tiles (WX.4.1) exist only on the canvas
     // layout, so resolve there first.
     const node = nodesById[id] ?? listNodesById[id];
+    const activeFocus = expandedIds[expandedIds.length - 1];
     if (node?.tier === 'asset') {
       // Assets open the detail card — the one case the sheet rises.
       setSelectedId(id);
-      if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
+      if (expandedIds.length === 0 && node.parentNodeId) setExpandedIds([node.parentNodeId]);
       if (snap === 'peek') setSnap('half');
       return;
     }
-    // Tapping the bubble you're already inside zooms back out (WX.5.1).
-    if (expandedIds[0] === id) {
-      zoomOut();
+    // WX.6 — tapping the centred bubble you're inside POPS one layer
+    // (Level 3 → Level 2 → Universe), mirroring desktop. The "Universe"
+    // pill jumps straight to the root.
+    if (id === activeFocus) {
+      setCameraDirection('out');
+      setSelectedId(null);
+      setExpandedIds(expandedIds.slice(0, -1));
       return;
     }
     setSelectedId(id);
@@ -306,7 +311,13 @@ export default function WealthUniverseMobile() {
       // the page").
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
-      setExpandedIds([id]);
+      // WX.6 — descend one layer: a class bundle inside the focused
+      // entity PUSHES; a fresh top-level tap starts a new stack.
+      if (node.parentNodeId && node.parentNodeId === activeFocus) {
+        setExpandedIds([...expandedIds, id]);
+      } else {
+        setExpandedIds([id]);
+      }
     } else {
       // No scene to unfold — the card IS the response. Raise the sheet
       // so the tap visibly lands (same contract as asset taps).
@@ -410,7 +421,7 @@ export default function WealthUniverseMobile() {
             layer sharpens in. Back = reversed. */}
         <AnimatePresence mode="sync" initial={false}>
           <motion.div
-            key={expandedIds[0] ?? 'universe'}
+            key={expandedIds[expandedIds.length - 1] ?? 'universe'}
             className="absolute inset-0"
             style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
             initial={
@@ -471,12 +482,18 @@ export default function WealthUniverseMobile() {
           should always be available in each layer"). */}
       {expandedIds.length > 0 && (() => {
         const sceneParent = nodes.find(n => n.tier !== 'asset' && n.isExpanded);
-        const trail = sceneParent
-          ? sceneParent.tier === 'cluster' && sceneParent.subtitle
-            ? `${sceneParent.subtitle} › ${sceneParent.shortName}`
-            : sceneParent.tier === 'group'
-              ? `${sceneParent.shortName} · ${sceneParent.subtitle ?? ''}`
-              : sceneParent.shortName
+        const depth = expandedIds.length;
+        // WX.6 — the current (deepest) crumb label. At Level 3 the entity
+        // name is broken out into its own tappable crumb (below), so the
+        // current crumb is just the class label.
+        const currentLabel = sceneParent
+          ? depth >= 2
+            ? sceneParent.shortName
+            : sceneParent.tier === 'cluster' && sceneParent.subtitle
+              ? `${sceneParent.subtitle} › ${sceneParent.shortName}`
+              : sceneParent.tier === 'group'
+                ? `${sceneParent.shortName} · ${sceneParent.subtitle ?? ''}`
+                : sceneParent.shortName
           : '';
         return (
           <div className="absolute left-4 right-4 top-4 z-30 flex items-center gap-2">
@@ -494,7 +511,25 @@ export default function WealthUniverseMobile() {
               <ChevronRight size={13} className="rotate-180" strokeWidth={2} />
               Universe
             </button>
-            {trail && (
+            {depth >= 2 && sceneParent?.subtitle && (
+              <button
+                type="button"
+                onClick={() => {
+                  setCameraDirection('out');
+                  setSelectedId(null);
+                  setExpandedIds(expandedIds.slice(0, 1));
+                }}
+                className="shrink-0 truncate rounded-full px-3 py-2 text-[11px] font-medium text-white/75 active:scale-95"
+                style={{
+                  background: 'rgba(19, 26, 46, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  backdropFilter: 'blur(12px)',
+                }}
+              >
+                {sceneParent.subtitle}
+              </button>
+            )}
+            {currentLabel && (
               <span
                 className="truncate rounded-full px-3 py-2 text-[11px] font-medium text-white/60"
                 style={{
@@ -503,7 +538,7 @@ export default function WealthUniverseMobile() {
                   backdropFilter: 'blur(12px)',
                 }}
               >
-                {trail}
+                {currentLabel}
               </span>
             )}
           </div>

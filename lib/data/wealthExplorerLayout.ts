@@ -29,13 +29,23 @@
  *      "Level 1 · Universe": asset satellites are NOT emitted — each
  *      entity/group node instead carries an `assetSummary` (count +
  *      non-loan total) that the canvas renders as a count badge and a
- *      "$X held" line. Passing `expandedEntityIds` unfolds the
- *      satellites of just those entities ("Level 2 · constellation"),
- *      in one arc for ≤5 assets or two concentric rings beyond that.
- *      `assetDetail: 'all'` restores the pre-WX.4 fully-expanded graph
- *      (used by the mobile bottom-sheet list, which enumerates assets).
- *      A final deterministic collision-relaxation pass keeps visible
- *      tiles from overlapping as structures grow.
+ *      "$X held" line. `assetDetail: 'all'` restores the pre-WX.4
+ *      fully-expanded graph (used by the mobile bottom-sheet list, which
+ *      enumerates assets). A final deterministic collision-relaxation
+ *      pass keeps visible tiles from overlapping as structures grow.
+ *   8. ENTITY → CLASS → ASSET ZOOM (Phase WX.6, 2026-06-18). Reza:
+ *      "each entity or asset class should be bundled up into 1 bubble …
+ *      then click to zoom into the next layer." `expandedEntityIds` is
+ *      a navigation STACK; the LAST id is the active focus:
+ *        - []                          → Level 1 · Universe (entities)
+ *        - [entityId]                  → Level 2 · inside an entity —
+ *          the entity's holdings GROUPED into per-class bundle bubbles
+ *          ("6 Properties · $4.0M"); a class with a single asset renders
+ *          that asset directly (a "1 Property" bundle is noise).
+ *        - [entityId, cluster-<e>-<k>] → Level 3 · inside a class — the
+ *          individual assets of that class (the existing cluster focus
+ *          scene). Multi-entity analogue of cluster mode (≤2 entities),
+ *          where the same bundles live one layer up on the universe.
  *
  * Ribbons:
  *   - `EntityRelationship` rows drive typed edges
@@ -58,6 +68,11 @@
  * `e5ecb8d170cc4fbdbc336413cd9948d2` (L1 mobile),
  * `80c21d51c38242d883bec3d6875fabe6` (widget) —
  * `.stitch/designs/wealth-universe-zoom/*.{html,png}`.
+ * WX.6 Level-2 asset-class BUNDLES SoT (2026-06-18): screens
+ * `24620f695c144a0b91ce43ac70a2497b` (desktop-dark) +
+ * `4bcd4f111f504ffc8d601ddb2219eca4` (mobile-dark), project
+ * `1859462351962811110` —
+ * `.stitch/designs/wealth-universe-l2-bundles/*.{html,png}`.
  */
 
 import type {
@@ -452,7 +467,13 @@ export function layoutWealthExplorer(
 
   // ---- Semantic zoom (Phase WX.4)
   const detail = options.assetDetail ?? 'collapsed';
-  const expandedIds = new Set(options.expandedEntityIds ?? []);
+  // WX.6 (2026-06-18) — `expandedEntityIds` is a navigation STACK, not a
+  // single id: [entityId] = Level 2 "inside an entity"; [entityId,
+  // clusterId] = Level 3 "inside a class". The keep-order array drives
+  // the focus + breadcrumb; the Set is retained for the `.has()` unfold
+  // checks used by the 'all' (mobile-list) detail mode.
+  const expandedArr = options.expandedEntityIds ?? [];
+  const expandedIds = new Set(expandedArr);
   const isUnfolded = (parentNodeId: string): boolean =>
     detail === 'all' || expandedIds.has(parentNodeId);
   // Phase WX.5 (Reza 2026-06-10: "the camera moves to the next layer and
@@ -462,8 +483,13 @@ export function layoutWealthExplorer(
   // other node leaves the stage (you are INSIDE the bubble now — the
   // breadcrumb is the way back). The canvas animates between scenes with
   // a camera zoom; this function just returns each layer's composition.
+  // The ACTIVE focus is always the LAST id on the stack, so each tap
+  // descends one layer and each back step pops one (was `size === 1`,
+  // which only ever supported a single focus layer).
   const focusId =
-    detail === 'collapsed' && expandedIds.size === 1 ? [...expandedIds][0] : null;
+    detail === 'collapsed' && expandedArr.length >= 1
+      ? expandedArr[expandedArr.length - 1]
+      : null;
 
   // Cluster level (Phase WX.4.1) — entity-level collapse only works
   // when there ARE entities to collapse into. A single-entity universe
@@ -596,28 +622,122 @@ export function layoutWealthExplorer(
         };
       }
     } else {
-      // WX.5.3 (Reza 2026-06-11: "the first layer can be removed") — in
-      // cluster mode the universe already splits this entity's holdings
-      // into per-type clusters, so the entity-level all-holdings scene
-      // is a redundant, overcrowded middle layer (15 mixed satellites
-      // at once). Skip it: fall through to the universe and let the
-      // tap open the entity card instead. The scene still exists for
-      // multi-entity universes where it's the only way in.
+      // WX.6 (2026-06-18) — Level 2 "inside an entity". Reza: "each
+      // entity or asset class should be bundled up into 1 bubble … then
+      // click to zoom into the next layer." Instead of dumping every
+      // raw asset of the entity at once (the "messy" 25-tile scene), we
+      // group the entity's holdings into per-CLASS bundle bubbles:
+      //   - a class with ≥2 assets → an expandable bundle ("6
+      //     Properties · $4.0M") that zooms into its assets at Level 3
+      //     (the `cluster-<entityId>-<kind>` focus scene, above);
+      //   - a class with a single asset → that asset directly (a "1
+      //     Property" bundle is noise — psychology lens).
+      // Loans carry "$X owing" and are excluded from the held total
+      // (debt is not held wealth — financial-adviser lens). This is the
+      // multi-entity analogue of cluster mode (≤2 entities), where the
+      // same bundles live one layer up on the universe itself.
       const e = entities.find(x => x.id === focusId);
-      sceneAssets = ownedAssetsByEntity.get(focusId) ?? [];
-      if (e && sceneAssets.length > 0 && !clusterMode) {
+      const entityAssets = ownedAssetsByEntity.get(focusId) ?? [];
+      if (e && entityAssets.length > 0 && !clusterMode) {
         const nodeType = classifyEntity(e);
-        parentNode = {
+        const centreNode: WealthNode = {
           id: e.id,
           type: nodeType,
           name: e.name,
           shortName: shortenName(e.name),
           subtitle: subtitleFor(nodeType, e),
           position: CENTRE,
-          size: Math.min(110, sizeForEntity(nodeType, sceneAssets.length, false) * 1.3),
+          size: Math.min(110, sizeForEntity(nodeType, entityAssets.length, false) * 1.3),
           tier: nodeType === 'individual' ? 'individual' : 'entity',
-          assetSummary: summarize(sceneAssets),
+          assetSummary: summarize(entityAssets),
           isExpanded: true,
+        };
+
+        // Group the entity's holdings by raw kind — the same key the
+        // Level-3 `cluster-<entityId>-<kind>` focus scene splits on.
+        const byKind = new Map<WealthGraphAssetKind, WealthGraphAsset[]>();
+        for (const a of entityAssets) {
+          const arr = byKind.get(a.kind) ?? [];
+          arr.push(a);
+          byKind.set(a.kind, arr);
+        }
+        const kinds = [...byKind.keys()];
+        const bundlePositions =
+          kinds.length <= 8
+            ? ringAround(CENTRE, kinds.length, 24)
+            : [
+                ...ringAround(CENTRE, 8, 19),
+                ...ringAround(CENTRE, kinds.length - 8, 32),
+              ];
+
+        const sceneNodes: WealthNode[] = [centreNode];
+        const sceneRibbons: WealthRelationship[] = [];
+        kinds.forEach((kind, i) => {
+          const kindAssets = byKind.get(kind)!;
+          const pos = bundlePositions[i];
+          if (kindAssets.length === 1) {
+            const a = kindAssets[0];
+            sceneNodes.push({
+              id: a.id,
+              type: classifyAsset(a.kind),
+              name: a.name,
+              shortName: shortenName(a.name, 16),
+              subtitle: a.subtype ?? a.context ?? undefined,
+              value: formatValue(a.value),
+              position: pos,
+              size: 56,
+              ownerEntityId: a.ownerEntityId,
+              tier: 'asset',
+              parentNodeId: e.id,
+            });
+            sceneRibbons.push({
+              id: `scene-holds-${a.id}`,
+              from: e.id,
+              to: a.id,
+              type: 'holds',
+              label: '',
+            });
+            return;
+          }
+          const clusterId = `cluster-${e.id}-${kind}`;
+          const totalValue = kindAssets.reduce(
+            (s, a) => s + (isFinite(a.value) ? a.value : 0),
+            0,
+          );
+          sceneNodes.push({
+            id: clusterId,
+            type: classifyAsset(kind),
+            name: clusterLabel(kind, kindAssets.length),
+            shortName: clusterShortLabel(kind),
+            subtitle: 'Tap to open',
+            value:
+              totalValue > 0
+                ? `${formatValue(totalValue)}${kind === 'loan' ? ' owing' : ''}`
+                : undefined,
+            position: pos,
+            size: 60,
+            ownerEntityId: e.id,
+            tier: 'cluster',
+            parentNodeId: e.id,
+            assetSummary: { count: kindAssets.length, totalValue },
+            isExpanded: false,
+            isExpandable: true,
+          });
+          sceneRibbons.push({
+            id: `scene-bundle-${clusterId}`,
+            from: e.id,
+            to: clusterId,
+            type: 'holds',
+            label: 'Holds',
+          });
+        });
+
+        return {
+          nodes: sceneNodes,
+          relationships: sceneRibbons,
+          isEmpty: false,
+          moneyFlowFy,
+          moneyFlowFyOptions,
         };
       }
     }

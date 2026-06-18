@@ -151,10 +151,11 @@ describe('Phase WX.4 — semantic zoom layout', () => {
   });
 
   describe('two-ring satellites', () => {
-    it('places >6 satellites in two rings (outer ring further from the parent)', () => {
+    it('places >8 assets of one class in two rings at Level 3 (outer ring further out)', () => {
+      // WX.6 — focusing the ENTITY now bundles by class, so the
+      // many-of-one-class spill happens one layer deeper: inside the
+      // class bundle (Level 3 `cluster-<entity>-<kind>` focus scene).
       const many = snapshot({
-        // 3 entities so the layout stays on entity-level collapse
-        // (≤2 entities would switch to the WX.4.1 cluster level).
         entities: [
           entity('you', 'PERSONAL_NAME'),
           entity('trust', 'DISCRETIONARY_TRUST'),
@@ -164,15 +165,17 @@ describe('Phase WX.4 — semantic zoom layout', () => {
           asset(`a-${i}`, 'account', 'trust', 10_000),
         ),
       });
-      const result = layoutWealthExplorer(many, { expandedEntityIds: ['trust'] });
-      const trust = result.nodes.find(n => n.id === 'trust')!;
+      // Focus the class bundle directly (the L3 scene the bundle opens).
+      const result = layoutWealthExplorer(many, {
+        expandedEntityIds: ['cluster-trust-account'],
+      });
+      const parent = result.nodes.find(n => n.id === 'cluster-trust-account')!;
       const sats = result.nodes.filter(n => n.tier === 'asset');
       expect(sats).toHaveLength(9);
       const dists = sats.map(s =>
-        Math.hypot(s.position.x - trust.position.x, s.position.y - trust.position.y),
+        Math.hypot(s.position.x - parent.position.x, s.position.y - parent.position.y),
       );
-      // After collision relaxation the exact radii shift, but the outer
-      // ring must remain meaningfully further out than the inner ring.
+      // The outer ring must remain meaningfully further out than the inner.
       const sorted = [...dists].sort((a, b) => a - b);
       expect(sorted[sorted.length - 1]).toBeGreaterThan(sorted[0] * 1.3);
     });
@@ -408,6 +411,124 @@ describe('Phase WX.4 — semantic zoom layout', () => {
         b.nodes.map(n => ({ id: n.id, ...n.position })),
       );
     });
+  });
+});
+
+describe('Phase WX.6 — Level 2 asset-class bundles (2026-06-18)', () => {
+  // Reza's case: a multi-entity universe (so NOT cluster mode) where one
+  // entity holds many assets across classes. Focusing it used to dump
+  // every raw tile at once ("messy"); now it groups them into per-class
+  // bundle bubbles that zoom into their assets at Level 3.
+  const bundleSnapshot = () =>
+    snapshot({
+      entities: [
+        entity('you', 'PERSONAL_NAME'),
+        entity('trust', 'DISCRETIONARY_TRUST'),
+        entity('smsf', 'SMSF'),
+      ],
+      assets: [
+        // YOU holds a mixed bag: 3 properties, 2 loans, 2 investments,
+        // 1 vehicle, 1 cash account.
+        asset('prop-1', 'property', 'you', 500_000),
+        asset('prop-2', 'property', 'you', 400_000),
+        asset('prop-3', 'property', 'you', 300_000),
+        asset('loan-1', 'loan', 'you', 200_000),
+        asset('loan-2', 'loan', 'you', 100_000),
+        asset('inv-1', 'investment-account', 'you', 150_000),
+        asset('inv-2', 'investment-account', 'you', 100_000),
+        asset('car-1', 'asset', 'you', 80_000),
+        asset('cash-1', 'account', 'you', 20_000),
+        // the other entities just need a holding so they render at L1.
+        asset('t-prop', 'property', 'trust', 900_000),
+        asset('s-inv', 'investment-account', 'smsf', 250_000),
+      ],
+    });
+
+  it('focusing an entity groups its holdings into per-class bundles, not raw tiles', () => {
+    const result = layoutWealthExplorer(bundleSnapshot(), { expandedEntityIds: ['you'] });
+    const bundles = result.nodes.filter(n => n.tier === 'cluster');
+    expect(bundles.map(n => n.id).sort()).toEqual([
+      'cluster-you-investment-account',
+      'cluster-you-loan',
+      'cluster-you-property',
+    ]);
+    expect(bundles.every(n => n.isExpandable && n.parentNodeId === 'you')).toBe(true);
+    const props = bundles.find(n => n.id === 'cluster-you-property')!;
+    expect(props.assetSummary).toEqual({ count: 3, totalValue: 1_200_000 });
+    expect(props.shortName).toBe('Properties');
+    expect(props.value).toBe('$1.2M');
+    // The focused entity re-centres and nothing else is on stage.
+    const centre = result.nodes.find(n => n.id === 'you')!;
+    expect(centre.isExpanded).toBe(true);
+    expect(centre.position).toEqual({ x: 50, y: 52 });
+    expect(result.nodes.find(n => n.id === 'trust')).toBeUndefined();
+    expect(result.nodes.find(n => n.id === 'smsf')).toBeUndefined();
+  });
+
+  it('renders single-asset classes directly — a "1 Vehicle" bundle is noise', () => {
+    const result = layoutWealthExplorer(bundleSnapshot(), { expandedEntityIds: ['you'] });
+    // car (1 'asset') + cash (1 'account') render as their own tiles…
+    expect(result.nodes.find(n => n.id === 'car-1')?.tier).toBe('asset');
+    expect(result.nodes.find(n => n.id === 'cash-1')?.tier).toBe('asset');
+    // …not as bundles.
+    expect(result.nodes.find(n => n.id === 'cluster-you-asset')).toBeUndefined();
+    expect(result.nodes.find(n => n.id === 'cluster-you-account')).toBeUndefined();
+  });
+
+  it('loans bundle reads "owing" and never counts toward the held total', () => {
+    const result = layoutWealthExplorer(bundleSnapshot(), { expandedEntityIds: ['you'] });
+    const loans = result.nodes.find(n => n.id === 'cluster-you-loan')!;
+    expect(loans.value).toBe('$300K owing');
+    // held total on the centre excludes loan principal:
+    // props 1.2M + invs 250K + car 80K + cash 20K = 1.55M
+    const centre = result.nodes.find(n => n.id === 'you')!;
+    expect(centre.assetSummary).toEqual({ count: 9, totalValue: 1_550_000 });
+  });
+
+  it('emits bundle "holds" ribbons from the entity to each bundle / direct asset', () => {
+    const result = layoutWealthExplorer(bundleSnapshot(), { expandedEntityIds: ['you'] });
+    const bundleRibbons = result.relationships.filter(r => r.id.startsWith('scene-bundle-'));
+    expect(bundleRibbons).toHaveLength(3); // property, loan, investment bundles
+    expect(bundleRibbons.every(r => r.from === 'you')).toBe(true);
+    const directRibbons = result.relationships.filter(r => r.id.startsWith('scene-holds-'));
+    expect(directRibbons.map(r => r.to).sort()).toEqual(['car-1', 'cash-1']);
+  });
+
+  it('Level 3: the focus STACK descends — [entity, bundle] opens the class scene', () => {
+    const result = layoutWealthExplorer(bundleSnapshot(), {
+      expandedEntityIds: ['you', 'cluster-you-property'],
+    });
+    // The LAST stack id is the active focus → the property class scene.
+    const parent = result.nodes.find(n => n.id === 'cluster-you-property')!;
+    expect(parent.isExpanded).toBe(true);
+    expect(parent.position).toEqual({ x: 50, y: 52 });
+    // Breadcrumb support: the cluster scene carries the entity name on
+    // its subtitle so the canvas can render "Universe ‹ you ‹ Properties".
+    expect(parent.subtitle).toBe('you');
+    const propAssets = result.nodes.filter(
+      n => n.tier === 'asset' && n.parentNodeId === 'cluster-you-property',
+    );
+    expect(propAssets.map(n => n.id).sort()).toEqual(['prop-1', 'prop-2', 'prop-3']);
+    // Nothing from the entity layer leaks in.
+    expect(result.nodes.find(n => n.id === 'cluster-you-loan')).toBeUndefined();
+    expect(result.nodes.find(n => n.id === 'car-1')).toBeUndefined();
+  });
+
+  it('cluster mode (≤2 entities) is unaffected — bundles still live on the universe', () => {
+    // A single-entity universe keeps the WX.4.1 behaviour: clusters on
+    // L1, no entity-focus bundle scene.
+    const single = snapshot({
+      entities: [entity('you', 'PERSONAL_NAME')],
+      assets: [
+        asset('p1', 'property', 'you', 500_000),
+        asset('p2', 'property', 'you', 400_000),
+      ],
+    });
+    const focused = layoutWealthExplorer(single, { expandedEntityIds: ['you'] });
+    // Entity focus falls through to the universe (clusters present), it
+    // does NOT build the WX.6 bundle scene.
+    expect(focused.relationships.some(r => r.id.startsWith('scene-bundle-'))).toBe(false);
+    expect(focused.nodes.filter(n => n.tier === 'cluster').length).toBeGreaterThan(0);
   });
 });
 
