@@ -391,3 +391,25 @@
 - `app/api/documents/[id]/route.ts` — `action:'update'`
 - `components/documents/DocumentList.tsx` — `RowThumb` thumbnail + edit dialog + `onUpdate`
 - `components/documents/DocumentsSection.tsx` — `handleUpdate` + passes `onUpdate`
+
+## Session: doc-entitylink-addexpense-fix-shk180
+
+### Changes Made
+- **Type**: Fix
+- **Scope**: Documents — entity-link 404 + "Add as expense" visibility
+- **Issue A (404)**: clicking a document's entity-link badge (e.g. "Asset") navigated
+  to `/dashboard/asset/<id>` — wrong plural AND assets have no per-id route (list +
+  dialog), so 404. Added `entityHref()` mapping each LinkedEntityType to a REAL route:
+  PROPERTY/LOAN/INVESTMENT_ACCOUNT → their detail pages; ASSET/EXPENSE/INCOME/ACCOUNT/
+  etc. → their list pages.
+- **Issue B (no "$ Add as expense" on an insurance receipt)**: the "$" only showed for
+  RECEIPT/INVOICE categories; the QBE receipt was auto-classified INSURANCE, so it was
+  hidden. Now the "$" shows for ANY document when `onAddExpense` is provided (the asset/
+  property Documents tab) — insurance, rego, service docs are all expense-able.
+
+### Files Modified
+- `components/documents/DocumentList.tsx` — `entityHref()` route map; drop the category gate on the "$" action
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
