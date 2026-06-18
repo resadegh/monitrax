@@ -1,5 +1,70 @@
 # Changelog - 2026-06-18
 
+## Session: Wealth Universe — Phase WX.6 (entity → class → asset zoom, Level-2 asset-class bundles)
+
+### Changes Made
+- **Type**: Feature (UI / layout) — Stitch-first per §18.2.1
+- **Scope**: `lib/data/wealthExplorerLayout.ts` + `WealthUniverseCanvas.tsx` +
+  `WealthUniverseMobile.tsx`.
+- **Problem (Reza, 2026-06-18 prod screenshot, 8-entity Renew structure)**:
+  focusing an entity that holds many assets dumped ~25 raw tiles at once —
+  *"the first layer is messy … each entity or asset class should be bundled
+  up into 1 bubble and after I click … it can zoom in to the next layer."*
+- **Decision (Reza, AskUserQuestion)**: the **Entity → class → asset** 3-level
+  model.
+- **Solution**:
+  - **Layout**: the focused-entity scene now groups the entity's holdings by
+    asset class into **bundle bubbles** (`tier: 'cluster'`,
+    `cluster-<entityId>-<kind>`, expandable) — count + class total; a class
+    with a single asset renders directly (a "1 Property" bundle is noise);
+    loans read "$X owing" + are excluded from the held total. The existing
+    L3 `cluster-<entityId>-<kind>` focus scene renders that class's assets.
+    This is the multi-entity analogue of cluster mode (≤2 entities), where
+    the same bundles live one layer up on the universe.
+  - **Navigation**: `expandedEntityIds` is now a STACK; the LAST id is the
+    active focus (`[] → [entityId] → [entityId, cluster-<e>-<k>]`). Tapping a
+    bundle PUSHES; tapping the centred bubble POPS one layer; the breadcrumb
+    renders every layer as a tappable crumb (`Universe ‹ Reza ‹ Properties`),
+    with "‹ Universe" jumping to root. Applied to BOTH canvases.
+
+### Files Modified
+- `lib/data/wealthExplorerLayout.ts` — focus = last stack id; L2 bundle
+  scene builder; header SoT + WX.6 strategy note.
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — stack push/pop nav,
+  stacked breadcrumb, layer-key = active focus.
+- `components/wealth-explorer/WealthUniverseMobile.tsx` — same nav + breadcrumb.
+- `tests/wealth-explorer/semanticZoomLayout.test.ts` — +6 WX.6 tests; updated
+  the two-ring test to focus the class (L3).
+
+### Stitch artefacts (§18.4 / §18.7.2 — dark-only surface)
+- `.stitch/designs/wealth-universe-l2-bundles/universe-level2-bundles-desktop-dark.{html,png}`
+  — screen `24620f695c144a0b91ce43ac70a2497b`.
+- `.stitch/designs/wealth-universe-l2-bundles/universe-level2-bundles-mobile-dark.{html,png}`
+  — screen `4bcd4f111f504ffc8d601ddb2219eca4` (project `1859462351962811110`).
+
+### Docs Updated
+- `docs/architecture/06_UI_UX_FOUNDATION.md` — semantic-zoom table (L2 bundles
+  + L3 + nav-stack rules + WX.6 Stitch SoT).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — §0·WX Phase WX.6 + Last touched.
+- `docs/IMPLEMENTATION_PLAN.md` + `docs/implementation/04_RECENTLY_COMPLETED.md`.
+
+### Build Status
+- [x] `tsc --noEmit` — clean
+- [x] `tests/wealth-explorer` + `tests/entity-graph` — 101/101
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern → `06_UI_UX_FOUNDATION.md` + Stitch artefacts
+- [ ] config / infra / identity / deployment / security / strategic decision — none
+
+### Notes
+- Pure-presentation + pure-layout — no schema, no migration, no calc-engine
+  touch (§12.2/§12.3 honoured). Dark-only surface (documented §18.7.2 deviation).
+- Design-spike PR #1157 (artefact only) was merged first; this PR is the
+  implementation per Reza's "build it in a new PR".
+
+---
+
 ## Session: serene-goodall-6smazx — Phase 49.15 (Activity layout: search + filters under the AI bookkeeper tile)
 
 Reza (live test 2026-06-18, screenshot): *"search and filters should move under the AI

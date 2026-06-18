@@ -1493,7 +1493,8 @@ the universe doesn't render every bank account at universe level.
 |---|---|---|
 | **Level 1 · Universe** (default, ≥3 entities) | Entity + ownership-group tiles ONLY. Each carries a **count badge** (glass pill docked bottom-right, number of holdings) and a **"$X held" line** (accent-coloured aggregate under the name). ~6 large legible tiles instead of 20+ tiny ones. | `layoutWealthExplorer(snapshot)` — default `assetDetail: 'collapsed'` emits no asset nodes; entities carry `assetSummary { count, totalValue }`. |
 | **Level 1 · Cluster level** (default, ≤2 entities — Phase WX.4.1) | A single-entity universe (most users pre-trust) cannot collapse into entities — that yields ONE tile with a badge (the 2026-06-10 mobile regression). Instead each entity's holdings cluster **by type** into aggregate tiles ("3 Properties · $2.1M" / "2 Loans · $600K owing"), fanned in the upper arc above the anchor. Singleton kinds render the real asset directly (a cluster of one is noise). Tapping a cluster unfolds that type's assets; clusters never open the entity detail panel. | Same call — the layout auto-dispatches on `entities.length ≤ 2`. Cluster nodes: `tier: 'cluster'`, id `cluster-<entityId>-<kind>`, expandable via `expandedEntityIds`. |
-| **Level 2 · Constellation** | The selected entity's assets unfold as satellites (one arc ≤ 6, two concentric rings beyond) with a staggered pop-in; everything else recedes via the existing ecosystem dim. Selecting the entity again (or back-chevron / panel close) folds it back. | `layoutWealthExplorer(snapshot, { expandedEntityIds: [id] })` recomputed in a `useMemo` on selection. |
+| **Level 2 · Inside an entity** (≥3 entities — Phase WX.6, 2026-06-18) | Tapping an entity re-centres it and unfolds its holdings GROUPED into **per-class bundle bubbles** ("6 Properties · $4.0M", "5 Loans · $2.0M owing") — NOT raw asset tiles. This is the multi-entity analogue of the cluster level: it stops the "messy" 25-tile dump Reza reported. A class with a single asset renders that asset directly (a "1 Property" bundle is noise). Reza 2026-06-18: "each entity or asset class should be bundled up into 1 bubble." | `layoutWealthExplorer(snapshot, { expandedEntityIds: [entityId] })`. Bundle nodes reuse `tier: 'cluster'`, id `cluster-<entityId>-<kind>`, `isExpandable`. |
+| **Level 3 · Inside a class** | Tapping a bundle re-centres it and rings its individual assets (one arc ≤ 8, two rings beyond). The breadcrumb is a tappable stack — `Universe ‹ Reza ‹ Properties` — and tapping the centred bubble (or the parent crumb) pops ONE layer, not all the way out. | `expandedEntityIds` is a NAV STACK; the LAST id is the active focus: `[entityId, cluster-<e>-<k>]`. |
 | **List surfaces** (mobile bottom sheet) | Unchanged full enumeration — granular browsing lives in the list, not the canvas. | `layoutWealthExplorer(snapshot, { assetDetail: 'all' })`. |
 
 Load-bearing rules:
@@ -1518,20 +1519,31 @@ Load-bearing rules:
    canvas's own empty state.
 5. **The canvas always targets the 3–9 tile sweet spot.** The layout
    picks the aggregation level that achieves it: entity collapse at
-   ≥3 entities, type clusters at ≤2 (WX.4.1). Loan clusters read
+   ≥3 entities, type clusters at ≤2 (WX.4.1), and per-class bundles
+   inside a focused entity at ≥3 entities (WX.6). Loan bundles read
    "$X owing", never "held".
-6. **Reviewer-reject:** any future change that reintroduces per-asset
-   tiles at Level 1, adds zoom chrome without working handlers, or
-   collapses a ≤2-entity universe into bare entity tiles (the
-   single-tile-with-badge regression), reverts this fix and must be
-   rejected.
+6. **`expandedEntityIds` is a navigation STACK (WX.6).** The LAST id is
+   the active focus, so each tap descends one layer (`[] → [entityId] →
+   [entityId, cluster-<e>-<k>]`) and each back step pops one. The
+   breadcrumb renders every layer above as a tappable crumb; the
+   centred bubble pops, the "‹ Universe" crumb jumps to root.
+7. **Reviewer-reject:** any future change that reintroduces per-asset
+   tiles at Level 1, dumps every raw asset at once when a multi-asset
+   entity is focused (the WX.6 "messy 25-tile" regression), adds zoom
+   chrome without working handlers, or collapses a ≤2-entity universe
+   into bare entity tiles (the single-tile-with-badge regression),
+   reverts this fix and must be rejected.
 
 Stitch SoT (project `1859462351962811110`): L1 desktop
 `770687a1c73c42f0b4fd5686782bf5f3`, L2 desktop
 `068403f1296440508b601c2fc32d5e20`, L1 mobile
 `e5ecb8d170cc4fbdbc336413cd9948d2`, widget
 `80c21d51c38242d883bec3d6875fabe6` — artefacts at
-`.stitch/designs/wealth-universe-zoom/*.{html,png}`. This surface is
+`.stitch/designs/wealth-universe-zoom/*.{html,png}`. WX.6 Level-2
+asset-class bundles (2026-06-18): desktop-dark
+`24620f695c144a0b91ce43ac70a2497b` + mobile-dark
+`4bcd4f111f504ffc8d601ddb2219eca4` — artefacts at
+`.stitch/designs/wealth-universe-l2-bundles/*.{html,png}`. This surface is
 dark-only by design (documented "premium-moment break" from the
 light-mode dashboard), so no light variants exist — a deliberate,
 documented deviation from the §18.7.2 light+dark matrix.

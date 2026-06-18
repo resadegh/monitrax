@@ -660,15 +660,24 @@ export default function WealthUniverseCanvas() {
     setSelectedId(null);
   }
   function handleNodeClick(node: WealthNode) {
+    const activeFocus = expandedIds[expandedIds.length - 1];
     if (node.tier === 'asset') {
-      // Selecting a satellite keeps its constellation open.
+      // Selecting a satellite keeps its constellation open. (Deep-link
+      // safety: if no scene is open yet, open its parent.)
       setSelectedId(node.id);
-      if (node.parentNodeId) setExpandedIds([node.parentNodeId]);
+      if (expandedIds.length === 0 && node.parentNodeId) {
+        setExpandedIds([node.parentNodeId]);
+      }
       return;
     }
-    if (selectedId === node.id || expandedIds[0] === node.id) {
-      // Clicking the bubble you're inside zooms back out to the universe.
-      clearSelection();
+    if (node.id === activeFocus) {
+      // WX.6 — tapping the centred bubble you're inside POPS one layer
+      // (Level 3 → Level 2 → Universe), not all the way out. The
+      // "‹ Universe" breadcrumb is the jump-to-root.
+      setCameraDirection('out');
+      setCameraOrigin({ x: node.position.x, y: node.position.y });
+      setSelectedId(null);
+      setExpandedIds(expandedIds.slice(0, -1));
       return;
     }
     setSelectedId(node.id);
@@ -678,7 +687,14 @@ export default function WealthUniverseCanvas() {
     if (node.isExpandable) {
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
-      setExpandedIds([node.id]);
+      // WX.6 — descend one layer. A bubble whose parent is the current
+      // focus (a class bundle inside the focused entity) PUSHES onto the
+      // stack; a fresh top-level tap starts a new stack.
+      if (node.parentNodeId && node.parentNodeId === activeFocus) {
+        setExpandedIds([...expandedIds, node.id]);
+      } else {
+        setExpandedIds([node.id]);
+      }
     } else {
       setExpandedIds([]);
     }
@@ -1187,16 +1203,22 @@ export default function WealthUniverseCanvas() {
         >
           {(selectedNode || expandedIds.length > 0) ? (
             (() => {
-              // WX.5.1 — the ownership trail: the layer's OWNER is always
-              // visible so asset ownership is trackable at every depth.
+              // WX.5.1 / WX.6 — the ownership trail: every layer above is
+              // visible AND tappable, so the user can hop back to any
+              // depth (Universe ‹ Reza ‹ Properties), not only out to the
+              // root. The intermediate entity name at Level 3 lives on the
+              // cluster scene's `subtitle`.
               const sceneParent = nodes.find(n => n.tier !== 'asset' && n.isExpanded);
               const trailNode = sceneParent ?? selectedNode!;
-              const trail =
-                trailNode.tier === 'cluster' && trailNode.subtitle
-                  ? `${trailNode.subtitle} › ${trailNode.shortName}`
-                  : trailNode.tier === 'group'
-                    ? `${trailNode.shortName} · ${trailNode.subtitle ?? ''}`
-                    : trailNode.shortName ?? trailNode.name;
+              const depth = expandedIds.length;
+              const currentLabel =
+                depth >= 2
+                  ? trailNode.shortName ?? trailNode.name
+                  : trailNode.tier === 'cluster' && trailNode.subtitle
+                    ? `${trailNode.subtitle} › ${trailNode.shortName}`
+                    : trailNode.tier === 'group'
+                      ? `${trailNode.shortName} · ${trailNode.subtitle ?? ''}`
+                      : trailNode.shortName ?? trailNode.name;
               return (
                 <>
                   <button
@@ -1208,12 +1230,28 @@ export default function WealthUniverseCanvas() {
                     <ChevronLeft size={11} strokeWidth={1.5} />
                     Universe
                   </button>
+                  {depth >= 2 && trailNode.subtitle && (
+                    <>
+                      <span className="h-1 w-1 rounded-full bg-white/15" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCameraDirection('out');
+                          setSelectedId(null);
+                          setExpandedIds(expandedIds.slice(0, 1));
+                        }}
+                        className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/55 hover:text-white/90"
+                      >
+                        {trailNode.subtitle}
+                      </button>
+                    </>
+                  )}
                   <span className="h-1 w-1 rounded-full bg-white/15" />
                   <span
                     className="text-[10px] font-medium uppercase tracking-[0.16em] text-white/90"
                     style={{ color: NODE_ACCENT[trailNode.type] }}
                   >
-                    {trail}
+                    {currentLabel}
                   </span>
                 </>
               );
@@ -1238,7 +1276,7 @@ export default function WealthUniverseCanvas() {
           focus; the new layer sharpens in. Zooming OUT: reversed. */}
       <AnimatePresence mode="sync" initial={false}>
         <motion.div
-          key={expandedIds[0] ?? 'universe'}
+          key={expandedIds[expandedIds.length - 1] ?? 'universe'}
           className="absolute inset-0"
           style={{ transformOrigin: `${cameraOrigin.x}% ${cameraOrigin.y}%` }}
           initial={

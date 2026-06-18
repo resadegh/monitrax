@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax Wealth | Universe</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050913; /* Overriding base theme for the requested "Universe" dark canvas */
+            overflow: hidden;
+            margin: 0;
+        }
+
+        .universe-canvas {
+            background: radial-gradient(circle at center, rgba(14, 165, 233, 0.15) 0%, rgba(99, 102, 241, 0.05) 40%, rgba(5, 9, 19, 1) 100%);
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .glass-pill {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
+        }
+
+        .glass-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 60px -15px rgba(0, 0, 0, 0.7);
+        }
+
+        .ribbon-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .ribbon-line {
+            fill: none;
+            stroke: rgba(125, 211, 252, 0.15);
+            stroke-width: 1.5;
+            stroke-dasharray: 4 4;
+            animation: flow 30s linear infinite;
+        }
+
+        @keyframes flow {
+            from { stroke-dashoffset: 200; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .floating {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "primary-container": "#00873a",
+                "on-surface": "#171d16",
+                "on-background": "#171d16",
+                "primary": "#006b2c",
+                "primary-fixed": "#7ffc97",
+                "secondary-container": "#d9dff4",
+                "on-primary": "#ffffff",
+                "inverse-primary": "#62df7d",
+                "secondary-fixed": "#dce2f6",
+                "on-tertiary-fixed": "#0b1c30",
+                "tertiary-fixed": "#d3e4fe",
+                "on-error": "#ffffff",
+                "outline-slate": "#94A3B8",
+                "on-secondary-fixed-variant": "#404757",
+                "tertiary-container": "#66768d",
+                "on-secondary-fixed": "#151b2a",
+                "on-primary-fixed": "#002109",
+                "on-secondary": "#ffffff",
+                "surface-dim": "#d5dcd1",
+                "surface-bright": "#f4fcf0",
+                "error-container": "#ffdad6",
+                "error": "#ba1a1a",
+                "on-surface-variant": "#3e4a3d",
+                "surface-container-low": "#eff6ea",
+                "primary-fixed-dim": "#62df7d",
+                "on-primary-container": "#f7fff2",
+                "outline-variant": "#bdcaba",
+                "inverse-on-surface": "#ecf3e7",
+                "surface-ivory": "#FAFAF7",
+                "on-tertiary": "#ffffff",
+                "trail-amber": "#F59E0B",
+                "trail-violet": "#8B5CF6",
+                "on-secondary-container": "#5c6274",
+                "surface-container": "#e9f0e5",
+                "secondary-fixed-dim": "#c0c6da",
+                "on-tertiary-container": "#fdfcff",
+                "surface-container-lowest": "#ffffff",
+                "secondary": "#585e6f",
+                "error-red": "#DC2626",
+                "trail-indigo": "#6366F1",
+                "surface-container-high": "#e3eadf",
+                "on-primary-fixed-variant": "#005320",
+                "background": "#f4fcf0",
+                "surface": "#f4fcf0",
+                "on-tertiary-fixed-variant": "#38485d",
+                "inverse-surface": "#2b322b",
+                "outline": "#6e7b6c",
+                "tertiary": "#4d5d73",
+                "surface-variant": "#dde5d9",
+                "on-error-container": "#93000a",
+                "surface-tint": "#006e2d",
+                "trail-sky": "#0EA5E9",
+                "trail-emerald": "#16A34A",
+                "tertiary-fixed-dim": "#b7c8e1",
+                "surface-container-highest": "#dde5d9"
+            },
+            "fontFamily": {
+                "headline-sm": ["Inter"],
+                "eyebrow": ["Inter"],
+                "body-sm": ["Inter"],
+                "data-lg": ["Inter"],
+                "headline-md": ["Inter"],
+                "body-md": ["Inter"],
+                "label-md": ["Inter"],
+                "headline-lg": ["Inter"],
+                "data-xl": ["Inter"],
+                "body-lg": ["Inter"],
+                "display-lg": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="antialiased">
+<!-- Sidebar (Shared Component) -->
+<nav class="fixed left-0 top-0 h-full w-64 border-r border-white/10 bg-surface-container-low/95 backdrop-blur-xl flex flex-col py-8 gap-8 z-50">
+<div class="px-6 mb-4">
+<h1 class="font-headline-lg text-headline-lg text-primary tracking-tighter">Monitrax</h1>
+<p class="text-on-surface-variant text-body-sm opacity-60">Phase 47 E2</p>
+</div>
+<div class="flex flex-col gap-1 flex-1">
+<a class="flex items-center gap-4 py-3 px-5 text-primary font-bold border-l-4 border-primary bg-primary/5" href="#">
+<span class="material-symbols-outlined">language</span>
+<span class="font-body-lg text-body-lg">Universe</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-5 text-on-surface-variant hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">account_tree</span>
+<span class="font-body-lg text-body-lg">Structure</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-5 text-on-surface-variant hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">swap_calls</span>
+<span class="font-body-lg text-body-lg">Money Flow</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-5 text-on-surface-variant hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">account_balance_wallet</span>
+<span class="font-body-lg text-body-lg">Tax Strategy</span>
+</a>
+<a class="flex items-center gap-4 py-3 px-5 text-on-surface-variant hover:bg-white/5 transition-all" href="#">
+<span class="material-symbols-outlined">description</span>
+<span class="font-body-lg text-body-lg">Reports</span>
+</a>
+</div>
+<div class="px-6 mt-auto">
+<button class="w-full bg-primary text-on-primary py-3 px-4 rounded-xl font-medium hover:scale-95 transition-transform">
+                Optimize Tax
+            </button>
+</div>
+</nav>
+<!-- Top App Bar (Shared Component) -->
+<header class="fixed top-0 left-64 right-0 h-20 z-40 flex justify-between items-center px-12 bg-transparent">
+<div class="flex-1 max-w-md">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/50">search</span>
+<input class="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-12 pr-4 text-white text-body-sm focus:outline-none focus:ring-1 focus:ring-primary/50" placeholder="Search wealth entities..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-white/70 hover:text-primary cursor-pointer transition-colors">notifications</span>
+<span class="material-symbols-outlined text-white/70 hover:text-primary cursor-pointer transition-colors">settings</span>
+<div class="w-10 h-10 rounded-full border-2 border-primary/30 overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Professional studio portrait of a high-net-worth individual for a wealth management avatar, soft rim lighting, minimalist dark background, professional and trustworthy aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-buzg5jvVsEVWShh4njsgNjengoiHuvdIMuw4NHST6hl0wq6Jmtp149ZKGOO-bddYyBGqDq7tDIIOvex91-wpJM1A-dfm8dNOpjb76SLNVPJBaT9zMIYRMQ2bVuy0V0xG8RgqLDf98STrxbv8e0klj_vLZ3bQl82q937UpteFhijXd0vmM735unygojZP3JaZPe43vO-PyjR4vxao6o61OmlDXISPGyrFKyON0dIvDzUlOrHKIQiR68WLbIeMWmJBHk8A_g97AEQ"/>
+</div>
+</div>
+</header>
+<main class="ml-64 h-screen universe-canvas overflow-hidden">
+<!-- Breadcrumb Pill -->
+<div class="absolute top-10 left-1/2 -translate-x-1/2 z-30">
+<div class="glass-pill px-5 py-2 rounded-full flex items-center gap-2">
+<span class="text-[10px] font-bold tracking-[0.2em] text-white/40 uppercase">‹ UNIVERSE ›</span>
+<span class="text-[10px] font-extrabold tracking-[0.2em] text-trail-sky uppercase">REZA</span>
+</div>
+</div>
+<!-- Connection Ribbons SVG -->
+<svg class="ribbon-svg">
+<!-- Center point is 50% 50% relative to the main canvas -->
+<!-- We'll use a script to adjust paths based on card locations if needed, but for now, static paths oriented to the elliptical layout -->
+<path class="ribbon-line" d="M 50% 50% Q 40% 30%, 30% 25%" id="path-properties"></path>
+<path class="ribbon-line" d="M 50% 50% Q 65% 35%, 75% 30%" id="path-loans"></path>
+<path class="ribbon-line" d="M 50% 50% Q 30% 60%, 25% 75%" id="path-vehicles"></path>
+<path class="ribbon-line" d="M 50% 50% Q 70% 65%, 80% 70%" id="path-shares"></path>
+<path class="ribbon-line" d="M 50% 50% L 50% 80%" id="path-cash"></path>
+</svg>
+<!-- Center Entity -->
+<div class="relative z-20 group">
+<div class="w-32 h-32 rounded-3xl glass-card flex flex-col items-center justify-center border-sky-400/20 shadow-[0_0_50px_rgba(14,165,233,0.2)]">
+<div class="w-12 h-12 bg-gradient-to-br from-trail-sky to-trail-indigo rounded-xl flex items-center justify-center mb-2">
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'FILL' 1;">person</span>
+</div>
+<div class="text-center">
+<h2 class="text-white font-headline-sm text-headline-sm">Reza</h2>
+<p class="text-white/40 text-[10px] font-medium tracking-wider uppercase">$5.1M held</p>
+</div>
+</div>
+<!-- Glow background -->
+<div class="absolute inset-0 bg-trail-sky/20 blur-[80px] -z-10 animate-pulse"></div>
+</div>
+<!-- Orbital Bundles (Absolute Positions for Elliptical Layout) -->
+<!-- 1. Properties (Top Left) -->
+<div class="absolute left-[15%] top-[15%] z-10 floating" style="animation-delay: 0s;">
+<div class="w-64 glass-card rounded-[22px] p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-sky to-trail-indigo"></div>
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 bg-gradient-to-br from-trail-sky to-trail-indigo rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-trail-sky/20">
+<span class="material-symbols-outlined text-white">home</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-widest text-trail-sky uppercase">6 PROPERTIES</span>
+<h3 class="text-white text-body-lg font-medium">Properties</h3>
+<div class="text-white/90 font-bold text-headline-sm tracking-tight tabular-nums mt-1">$4.0M</div>
+</div>
+</div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -bottom-6 -right-6 text-[100px] text-white opacity-[0.03] rotate-12 pointer-events-none group-hover:opacity-10 transition-opacity">home</span>
+</div>
+</div>
+<!-- 2. Loans (Top Right) -->
+<div class="absolute right-[15%] top-[20%] z-10 floating" style="animation-delay: 1.5s;">
+<div class="w-64 glass-card rounded-[22px] p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-amber to-orange-400"></div>
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 bg-trail-amber rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-trail-amber/20">
+<span class="material-symbols-outlined text-white">bluenote</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-widest text-trail-amber uppercase">5 LOANS</span>
+<h3 class="text-white text-body-lg font-medium">Loans</h3>
+<div class="text-white/90 font-bold text-headline-sm tracking-tight tabular-nums mt-1">$2.0M <span class="text-xs font-normal text-white/50">owing</span></div>
+</div>
+</div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -bottom-6 -right-6 text-[100px] text-white opacity-[0.03] -rotate-12 pointer-events-none group-hover:opacity-10 transition-opacity">payments</span>
+</div>
+</div>
+<!-- 3. Vehicles (Bottom Left) -->
+<div class="absolute left-[12%] bottom-[18%] z-10 floating" style="animation-delay: 3s;">
+<div class="w-64 glass-card rounded-[22px] p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-teal-400 to-trail-sky"></div>
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 bg-gradient-to-br from-teal-400 to-trail-sky rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-teal-400/20">
+<span class="material-symbols-outlined text-white">directions_car</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-widest text-teal-400 uppercase">5 VEHICLES</span>
+<h3 class="text-white text-body-lg font-medium">Vehicles</h3>
+<div class="text-white/90 font-bold text-headline-sm tracking-tight tabular-nums mt-1">$102K</div>
+</div>
+</div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -bottom-6 -right-6 text-[100px] text-white opacity-[0.03] rotate-45 pointer-events-none group-hover:opacity-10 transition-opacity">directions_car</span>
+</div>
+</div>
+<!-- 4. Shares (Bottom Right) -->
+<div class="absolute right-[10%] bottom-[25%] z-10 floating" style="animation-delay: 4.5s;">
+<div class="w-64 glass-card rounded-[22px] p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-trail-indigo to-trail-violet"></div>
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 bg-gradient-to-br from-trail-indigo to-trail-violet rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-trail-indigo/20">
+<span class="material-symbols-outlined text-white">show_chart</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-widest text-trail-violet uppercase">7 ACCOUNTS</span>
+<h3 class="text-white text-body-lg font-medium">Shares</h3>
+<div class="text-white/90 font-bold text-headline-sm tracking-tight tabular-nums mt-1">$526K</div>
+</div>
+</div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -bottom-6 -right-6 text-[100px] text-white opacity-[0.03] pointer-events-none group-hover:opacity-10 transition-opacity">monitoring</span>
+</div>
+</div>
+<!-- 5. Cash (Bottom Center-ish) -->
+<div class="absolute left-[45%] bottom-[12%] -translate-x-1/2 z-10 floating" style="animation-delay: 2.2s;">
+<div class="w-64 glass-card rounded-[22px] p-6 relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-trail-emerald"></div>
+<div class="flex items-start gap-4">
+<div class="w-11 h-11 bg-trail-emerald rounded-[14px] flex items-center justify-center shrink-0 shadow-lg shadow-trail-emerald/20">
+<span class="material-symbols-outlined text-white">account_balance</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-widest text-trail-emerald uppercase">CASH</span>
+<h3 class="text-white text-body-lg font-medium">Cash Accounts</h3>
+<div class="text-white/90 font-bold text-headline-sm tracking-tight tabular-nums mt-1">$0</div>
+</div>
+</div>
+<!-- Watermark -->
+<span class="material-symbols-outlined absolute -bottom-6 -right-6 text-[100px] text-white opacity-[0.03] pointer-events-none group-hover:opacity-10 transition-opacity">savings</span>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation (Mobile Only Shell) -->
+<footer class="md:hidden fixed bottom-0 left-0 w-full z-50 rounded-t-xl bg-surface-container-highest/80 backdrop-blur-20 border-t border-white/10 flex justify-around items-center h-16 px-6">
+<a class="flex flex-col items-center justify-center bg-primary-container/20 text-primary rounded-xl px-4 py-2" href="#">
+<span class="material-symbols-outlined">grain</span>
+<span class="text-[10px] font-bold">Constellation</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">info</span>
+<span class="text-[10px] font-bold">Legend</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">calendar_today</span>
+<span class="text-[10px] font-bold">Fiscal Year</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">history</span>
+<span class="text-[10px] font-bold">History</span>
+</a>
+</footer>
+<script>
+        // Simple script to keep the connecting lines dynamic if needed, 
+        // though static Q-paths in CSS/SVG often work well for a fixed layout.
+        window.addEventListener('resize', () => {
+            // Logic to update SVG path data if positions were truly fluid
+        });
+
+        // Initialize micro-interactions
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.style.transform = 'scale(0.98) translateY(-4px)';
+            });
+            card.addEventListener('mouseup', () => {
+                card.style.transform = 'scale(1.02) translateY(-8px)';
+            });
+        });
+    </script>
+</body></html>

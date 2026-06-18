@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "primary": "#62df7d",
+                    "on-tertiary": "#660027",
+                    "surface-container": "#1b211a",
+                    "secondary-fixed": "#6dfe9c",
+                    "primary-fixed-dim": "#62df7d",
+                    "on-secondary-fixed-variant": "#005227",
+                    "surface-container-low": "#171d16",
+                    "on-error-container": "#ffdad6",
+                    "tertiary": "#ffb2bf",
+                    "primary-container": "#1ca64d",
+                    "surface": "#0e150f",
+                    "inverse-on-surface": "#2b322b",
+                    "tertiary-fixed-dim": "#ffb2bf",
+                    "on-surface-variant": "#bdcaba",
+                    "outline": "#879485",
+                    "on-surface": "#dde5d9",
+                    "inverse-primary": "#006e2d",
+                    "inverse-surface": "#dde5d9",
+                    "on-secondary-fixed": "#00210c",
+                    "surface-bright": "#343b33",
+                    "on-primary-fixed-variant": "#005320",
+                    "on-primary": "#003914",
+                    "on-primary-container": "#003111",
+                    "on-tertiary-fixed": "#3f0016",
+                    "error": "#ffb4ab",
+                    "secondary-container": "#00b55d",
+                    "surface-variant": "#30372f",
+                    "tertiary-fixed": "#ffd9de",
+                    "surface-container-lowest": "#09100a",
+                    "on-primary-fixed": "#002109",
+                    "error-container": "#93000a",
+                    "secondary-fixed-dim": "#4de082",
+                    "on-background": "#dde5d9",
+                    "on-tertiary-container": "#5a0022",
+                    "surface-dim": "#0e150f",
+                    "outline-variant": "#3e4a3d",
+                    "on-secondary": "#003919",
+                    "tertiary-container": "#ec6284",
+                    "on-error": "#690005",
+                    "surface-tint": "#62df7d",
+                    "surface-container-highest": "#30372f",
+                    "surface-container-high": "#252c24",
+                    "on-tertiary-fixed-variant": "#8a143c",
+                    "secondary": "#4de082",
+                    "primary-fixed": "#7ffc97",
+                    "background": "#0e150f",
+                    "on-secondary-container": "#003e1c"
+            },
+            "borderRadius": {
+                    "DEFAULT": "1rem",
+                    "lg": "2rem",
+                    "xl": "3rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "margin-mobile": "20px",
+                    "container-max": "1440px",
+                    "unit": "4px",
+                    "margin-desktop": "64px"
+            },
+            "fontFamily": {
+                    "display-hero-mobile": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "label-caps": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-hero": ["Inter"]
+            },
+            "fontSize": {
+                    "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}],
+                    "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                    "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                    "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+                    "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        .mesh-glow {
+            background: radial-gradient(circle at 50% 50%, rgba(14, 165, 233, 0.15) 0%, rgba(79, 70, 229, 0.05) 50%, transparent 100%);
+            filter: blur(80px);
+        }
+        .glass-card {
+            background: rgba(27, 33, 26, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .filament {
+            position: absolute;
+            height: 1px;
+            background: linear-gradient(90deg, rgba(98, 223, 125, 0) 0%, rgba(98, 223, 125, 0.4) 50%, rgba(98, 223, 125, 0) 100%);
+            transform-origin: left center;
+            pointer-events: none;
+        }
+        .tabular { font-variant-numeric: tabular-nums; }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="text-on-surface select-none">
+<!-- Background Layer -->
+<div class="fixed inset-0 z-0">
+
+<div class="mesh-glow absolute bottom-[-10%] left-1/2 -translate-x-1/2 w-[800px] h-[600px]"></div>
+</div>
+<!-- UI Overlay: Top Navigation -->
+<nav class="fixed top-8 left-8 z-50 flex items-center gap-3">
+<button class="glass-card px-4 py-2 rounded-full flex items-center gap-2 hover:bg-white/10 transition-all active:scale-95 group">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant group-hover:text-primary" data-icon="chevron_left">chevron_left</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">UNIVERSE</span>
+</button>
+<div class="glass-card px-4 py-2 rounded-full opacity-50">
+<span class="font-label-caps text-label-caps text-on-surface">REZA</span>
+</div>
+</nav>
+<!-- Main Content: Graph Area -->
+<main class="relative h-screen w-full flex flex-col items-center justify-center p-container-padding-mobile md:p-margin-desktop overflow-hidden">
+<!-- Connections Layer -->
+<div class="absolute inset-0 z-10 overflow-hidden pointer-events-none" id="filament-container"></div>
+<!-- Orbiting Bundle Tiles -->
+<div class="relative z-20 w-full max-w-[1000px] h-[400px] flex justify-between items-end mb-32">
+<!-- Properties -->
+<div class="bundle-tile group animate-float" style="animation-delay: 0s;">
+<div class="glass-card w-[160px] p-4 rounded-[16px] relative overflow-hidden transition-transform duration-300 hover:scale-105">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-sky-400 to-indigo-500"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-sky-400 to-indigo-600 flex items-center justify-center shadow-[0_0_15px_rgba(56,189,248,0.4)]">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="home">home</span>
+</div>
+<div class="text-center">
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">6 ENTITIES</p>
+<h3 class="font-headline-md text-[18px] text-on-surface">Properties</h3>
+</div>
+<p class="tabular font-body-md text-sky-400 font-bold">$4.0M</p>
+</div>
+</div>
+</div>
+<!-- Loans -->
+<div class="bundle-tile group animate-float" style="animation-delay: 0.5s;">
+<div class="glass-card w-[160px] p-4 rounded-[16px] relative overflow-hidden transition-transform duration-300 hover:scale-105">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-amber-500"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.4)]">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="payments">payments</span>
+</div>
+<div class="text-center">
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">5 ENTITIES</p>
+<h3 class="font-headline-md text-[18px] text-on-surface">Loans</h3>
+</div>
+<p class="tabular font-body-md text-amber-500 font-bold">$2.0M owing</p>
+</div>
+</div>
+</div>
+<!-- Vehicles -->
+<div class="bundle-tile group animate-float" style="animation-delay: 1s;">
+<div class="glass-card w-[160px] p-4 rounded-[16px] relative overflow-hidden transition-transform duration-300 hover:scale-105">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-teal-400 to-cyan-500"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center shadow-[0_0_15px_rgba(45,212,191,0.4)]">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="directions_car">directions_car</span>
+</div>
+<div class="text-center">
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">5 ENTITIES</p>
+<h3 class="font-headline-md text-[18px] text-on-surface">Vehicles</h3>
+</div>
+<p class="tabular font-body-md text-teal-400 font-bold">$102K</p>
+</div>
+</div>
+</div>
+<!-- Shares -->
+<div class="bundle-tile group animate-float" style="animation-delay: 1.5s;">
+<div class="glass-card w-[160px] p-4 rounded-[16px] relative overflow-hidden transition-transform duration-300 hover:scale-105">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-700 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="show_chart">show_chart</span>
+</div>
+<div class="text-center">
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">7 ENTITIES</p>
+<h3 class="font-headline-md text-[18px] text-on-surface">Shares</h3>
+</div>
+<p class="tabular font-body-md text-indigo-400 font-bold">$526K</p>
+</div>
+</div>
+</div>
+<!-- Cash -->
+<div class="bundle-tile group animate-float" style="animation-delay: 2s;">
+<div class="glass-card w-[160px] p-4 rounded-[16px] relative overflow-hidden transition-transform duration-300 hover:scale-105">
+<div class="absolute top-0 left-0 w-full h-[3px] bg-emerald-500"></div>
+<div class="flex flex-col items-center gap-2">
+<div class="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+<span class="material-symbols-outlined text-white text-[20px]" data-icon="monetization_on">monetization_on</span>
+</div>
+<div class="text-center">
+<p class="font-label-caps text-[10px] text-on-surface-variant uppercase tracking-widest">—</p>
+<h3 class="font-headline-md text-[18px] text-on-surface">Cash</h3>
+</div>
+<p class="tabular font-body-md text-emerald-400 font-bold">$0</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Central Focal Entity: Reza -->
+<div class="relative z-30 flex flex-col items-center gap-4" id="central-entity">
+<div class="w-24 h-24 glass-card rounded-full p-1 border-sky-400/50 shadow-[0_0_40px_rgba(56,189,248,0.2)] flex items-center justify-center active:scale-90 transition-transform">
+<div class="w-full h-full rounded-full bg-gradient-to-b from-sky-400/20 to-indigo-500/20 flex items-center justify-center">
+<span class="material-symbols-outlined text-[48px] text-sky-300" data-icon="person" style="font-variation-settings: 'FILL' 1">person</span>
+</div>
+</div>
+<div class="text-center">
+<h2 class="font-headline-md text-headline-md text-on-surface">Reza</h2>
+<div class="glass-card px-3 py-1 rounded-full border-primary/20 mt-1">
+<span class="tabular font-body-sm text-primary font-bold">$5.1M held</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Draggable Bottom Sheet Handle -->
+<footer class="fixed bottom-0 left-0 w-full z-50">
+<div class="h-16 w-full bg-surface-container/60 backdrop-blur-xl border-t border-white/5 rounded-t-[32px] flex items-start justify-center pt-3 cursor-grab active:cursor-grabbing">
+<div class="w-12 h-1.5 bg-on-surface-variant/30 rounded-full"></div>
+</div>
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('filament-container');
+            const central = document.getElementById('central-entity');
+            const bundles = document.querySelectorAll('.bundle-tile');
+
+            function drawFilaments() {
+                container.innerHTML = '';
+                const cRect = central.getBoundingClientRect();
+                const cX = cRect.left + cRect.width / 2;
+                const cY = cRect.top + cRect.height / 2;
+
+                bundles.forEach(bundle => {
+                    const bRect = bundle.getBoundingClientRect();
+                    const bX = bRect.left + bRect.width / 2;
+                    const bY = bRect.top + bRect.height / 2;
+
+                    const length = Math.sqrt(Math.pow(bX - cX, 2) + Math.pow(bY - cY, 2));
+                    const angle = Math.atan2(bY - cY, bX - cX) * 180 / Math.PI;
+
+                    const filament = document.createElement('div');
+                    filament.className = 'filament';
+                    filament.style.width = `${length}px`;
+                    filament.style.left = `${cX}px`;
+                    filament.style.top = `${cY}px`;
+                    filament.style.transform = `rotate(${angle}deg)`;
+                    
+                    container.appendChild(filament);
+                });
+            }
+
+            // Initial draw
+            drawFilaments();
+
+            // Redraw on window resize
+            window.addEventListener('resize', drawFilaments);
+
+            // Re-draw on animation frames to keep linked to floating elements
+            function animate() {
+                drawFilaments();
+                requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+        });
+    </script>
+</footer>
+</body></html>
