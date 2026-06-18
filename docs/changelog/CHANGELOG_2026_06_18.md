@@ -36,6 +36,42 @@ primitive) — true tweak, code-first permitted; no Stitch pass required.
 - Production deploy `dpl_3dm44TVqCiizgriBa2KbxqZg8f9e` reached `READY`; runtime logs clean
   (only pre-existing DEP0169 noise).
 
+---
+
+## Session: Wealth Universe (My Structure) — detail-panel close no longer ejects to Level 1
+
+### Changes Made
+- **Type**: Fix (UI — single component)
+- **Scope**: `components/wealth-explorer/WealthUniverseCanvas.tsx` (desktop canvas)
+- **Root Cause**: On desktop, the `EntityDetailPanel`'s `onClose` was wired to
+  `clearSelection()`, which clears BOTH `selectedId` (the panel) AND `expandedIds`
+  (the focused scene). So clicking an entity (e.g. YOU) opened the focused-scene
+  constellation **and** the right-hand detail panel together, but closing the panel
+  folded the whole scene back to Level 1 — the user was ejected a layer instead of
+  staying in the constellation they opened. The mobile canvas already did the right
+  thing (WX.5.1 contract: "closing details must not eject the user from the bubble");
+  the desktop path had regressed that contract.
+- **Solution**: New `closeDetailPanel()` handler clears ONLY `selectedId`, preserving
+  `expandedIds`, so closing the panel keeps you inside the focused scene. The
+  breadcrumb "‹ Universe" (rendered whenever `expandedIds.length > 0`) remains the
+  way back to Level 1; tapping the centred bubble still zooms out. Restores
+  desktop↔mobile parity.
+
+### Files Modified
+- `components/wealth-explorer/WealthUniverseCanvas.tsx` — `closeDetailPanel()` +
+  `EntityDetailPanel onClose` rewire.
+
+### Build Status
+- [x] `tsc --noEmit` — clean (0 errors after `prisma generate`)
+
+### Notes
+- Companion issue (Level-1 layout overlap / scatter) is being handled separately via
+  a Stitch recomposition pass (Reza decision 2026-06-18) — not in this PR.
+- STATE.md RESUME CURSOR intentionally NOT repointed: a concurrent session owns the
+  active cursor (AI Document Router / GCS keyless). This is an isolated UI bug fix.
+
+---
+
 ## Session: dme-d4-learned-routing-shk180
 
 ### Changes Made
