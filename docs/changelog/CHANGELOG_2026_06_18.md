@@ -82,3 +82,64 @@
 - No new section-level composition. The "Suggested for you" cue is a true tweak
   *within* the already-approved "What is this for?" selector (a cue + a
   pre-selection state on existing pills) — code-first is permitted.
+
+---
+
+## Session: dme-d5-retention-clock-shk180
+
+### Changes Made
+- **Type**: Feature (Phase 50 D.5b — lifecycle intelligence, retention clock)
+- **Scope**: Document Intelligence Engine — ATO retention-clock advisory.
+- **Why**: D.5 lifecycle. The retention half ("which documents are safe to
+  archive?") is pure, read-only advice — autonomy-safe and shippable now. The
+  renewal-extraction half (D.5a — writing an expiry date onto a user's asset so
+  the existing reminder engine lights up) writes to a user row, so per the
+  autonomy decision it must be suggest→confirm = a new UI surface = Stitch-first;
+  deferred.
+- **Solution**: new pure `lib/documents/intelligence/retentionClock.ts`:
+  `computeRetentionStatus(date, category)` applies the ATO 5-year rule — 5 years
+  after the END of the document's financial year (conservative; errs toward
+  RETAIN) — to tax-substantiation categories only (RECEIPT/INVOICE/TAX/
+  STATEMENT). Returns `RETAIN | ARCHIVE_SAFE | NO_CLOCK` + warm label +
+  `retainUntil`. Contracts/leases/insurance/PDS/valuations get `NO_CLOCK` (they
+  have ongoing legal/reference value — never nudge binning them). Surfaced
+  computed (not stored — SSOT) on `/api/documents`; `DocumentList` shows a quiet
+  "Safe to archive" pill on `ARCHIVE_SAFE` docs only. **Advice only — the app
+  never auto-archives** (autonomy decision + financial-adviser lens).
+
+### Files Modified / Added
+- `lib/documents/intelligence/retentionClock.ts` (NEW) — pure engine:
+  `computeRetentionStatus`, `extractDocumentDate`, `ATO_RETENTION_YEARS`.
+- `app/api/documents/route.ts` — compute + add `retention` to each list item
+  (additive, advisory).
+- `components/documents/DocumentList.tsx` — `retention` on the item type + a
+  quiet "Safe to archive" pill (true tweak — a cue on an existing row).
+- `tests/documents/retentionClock.test.ts` (NEW) — 10 unit tests.
+
+### Docs Updated
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — D.5 capability (D.5b shipped,
+  D.5a deferred Stitch-first), status line.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — 0·DOC D.5 row + Last touched.
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run build` passes
+- [x] `next lint` clean on changed files (pre-existing `<img>` warnings only)
+- [x] `vitest run tests/documents/retentionClock.test.ts` — 10/10 pass
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- None. The retention clock is pure + read-only — no Prisma writes, no schema
+  change, no deletion (it only *advises* "safe to archive"; the user acts).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — not a tax-engine file (no CGT/neg-gear/trust/FBT/PAYG calc); the ATO
+  5-year record-retention rule is administrative, not a reform-affected tax
+  computation. No `Property`/`Investment`/`LegalEntity` column, no AI tool, no
+  per-asset tax position UI.
+
+### Doc-sync (CLAUDE.md §16)
+- API contract: `/api/documents` gains an additive advisory `retention` field —
+  documented in the Phase 50 doc (the feature's canonical spec). No schema, no
+  infra, no identity/deploy/security surface. Component change is a true tweak
+  (§18.2.1) — a pill on an existing row, not a new section composition.
