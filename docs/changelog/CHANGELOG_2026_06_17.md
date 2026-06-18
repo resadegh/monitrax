@@ -455,3 +455,29 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: dme-d2-record-reconciliation-shk180
+
+### Changes Made
+- **Type**: Feature (DME D.2)
+- **Scope**: Document-confirm flow — record reconciliation (cross-entity dedup)
+- **Description**: The `/api/documents/analyze/confirm` create functions wrote new
+  Expense/Income/Loan rows with NO dedup, so confirming the same document twice (or
+  two docs for one bill) duplicated records. New canonical
+  `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts` — before a
+  CREATE_* writes, it checks for an existing matching record (expense: user+amount+
+  vendor/name scoped to linked property/loan/asset; income: +type; loan: name+
+  principal). On a match the confirm route links the document to the EXISTING record
+  (`reconciled:true`) instead of duplicating, and skips the receipt-matcher so no
+  duplicate transaction is synthesised. SSOT — one place decides "already in the
+  system?". Generalises D.1's record-level sibling (`/api/expenses` `dedupeReceipt`).
+
+### Files Modified
+- `lib/documents/intelligence/reconcile/reconcileSuggestedAction.ts` — NEW canonical reconciler
+- `app/api/documents/analyze/confirm/route.ts` — reconcile before create (expense/income/loan) + `reconciled` flag + skip receipt-match on duplicate
+- `tests/documents/reconcileSuggestedAction.test.ts` — 7 unit tests
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
+- [x] 7/7 reconcile tests pass
