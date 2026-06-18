@@ -413,3 +413,23 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: asset-deeplink-view-shk180
+
+### Changes Made
+- **Type**: Fix (deep-link)
+- **Scope**: Document "Asset" link → opens the specific asset, not the list
+- **Issue**: a document's "Asset" link badge routed to `/dashboard/assets` (the list),
+  not the linked asset (e.g. the Landcruiser) — because assets have no per-id route.
+- **Fix**: the assets page now reads `?view=<assetId>` and opens that asset's detail
+  dialog directly (`useSearchParams` + effect calling `loadAssetDetail` →
+  `setShowDetailDialog`). `DocumentList.entityHref` routes ASSET →
+  `/dashboard/assets?view=<id>`. So the link lands on the right asset.
+
+### Files Modified
+- `app/dashboard/assets/page.tsx` — `?view=<id>` deep-link opens the detail dialog
+- `components/documents/DocumentList.tsx` — ASSET → `/dashboard/assets?view=<id>`
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes
