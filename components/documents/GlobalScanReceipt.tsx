@@ -131,6 +131,11 @@ export function GlobalScanReceipt() {
   // property so it files under that item instead of generic Expenses.
   const [linkTargets, setLinkTargets] = useState<LinkTarget[]>([]);
   const [selectedTarget, setSelectedTarget] = useState<LinkTarget | null>(null);
+  // D.4 learned routing (suggest-only): when the AI recognises a vendor we've
+  // filed before, we PRE-SELECT the entity the user usually picks. `suggested`
+  // marks it so the UI can show a quiet "Suggested" cue. The user always
+  // confirms and can change the selection — this is a hint, never an auto-apply.
+  const [suggestedTargetId, setSuggestedTargetId] = useState<string | null>(null);
 
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -194,6 +199,46 @@ export function GlobalScanReceipt() {
     };
   }, [open, token]);
 
+  // D.4 — once we have a recognised vendor AND the user's link targets loaded,
+  // ask the learned-routing service which entity they usually pick for this
+  // vendor and PRE-SELECT it (suggest-only — the confirm button + the pills
+  // still let them change or clear it). No-op when there's no memory.
+  useEffect(() => {
+    if (stage !== 'result' || !recognition || !token || linkTargets.length === 0) return;
+    const vendor = pick(
+      ['vendor', 'vendorName', 'payee', 'merchant', 'name'],
+      undefined,
+      recognition.values
+    );
+    if (typeof vendor !== 'string' || !vendor.trim()) return;
+
+    let active = true;
+    (async () => {
+      try {
+        const res = await fetch(`/api/documents/vendor-hint?vendor=${encodeURIComponent(vendor)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          hint?: { entityType: string; entityId: string } | null;
+        };
+        if (!active || !data.hint) return;
+        const match = linkTargets.find(
+          (t) => t.type === data.hint!.entityType && t.id === data.hint!.entityId
+        );
+        if (!match) return;
+        setSuggestedTargetId(match.id);
+        // Pre-select only if the user hasn't already picked something.
+        setSelectedTarget((current) => current ?? match);
+      } catch {
+        /* non-fatal — no suggestion, the selector just defaults to "Just an expense" */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [stage, recognition, token, linkTargets]);
+
   const reset = useCallback(() => {
     setStage('capture');
     setRecognition(null);
@@ -201,6 +246,7 @@ export function GlobalScanReceipt() {
     setErrorMsg(null);
     setSubmitting(false);
     setSelectedTarget(null);
+    setSuggestedTargetId(null);
   }, []);
 
   const close = useCallback(() => {
@@ -578,8 +624,14 @@ export function GlobalScanReceipt() {
                     both the expense and the document file under that item. */}
                 {linkTargets.length > 0 && (
                   <div className="mt-4">
-                    <p className="mb-2 text-[12px] font-medium text-muted-foreground">
+                    <p className="mb-2 flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground">
                       What is this for?
+                      {suggestedTargetId && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-600 dark:text-sky-300">
+                          <Sparkles className="h-2.5 w-2.5" />
+                          Suggested for you
+                        </span>
+                      )}
                     </p>
                     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       <TargetPill
@@ -592,6 +644,7 @@ export function GlobalScanReceipt() {
                         <TargetPill
                           key={`${t.type}-${t.id}`}
                           active={selectedTarget?.type === t.type && selectedTarget?.id === t.id}
+                          suggested={suggestedTargetId === t.id}
                           onClick={() => setSelectedTarget(t)}
                           icon={
                             t.type === 'ASSET' ? (
@@ -726,14 +779,18 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 /** Selectable chip for the "What is this for?" row. Selected = sky→indigo
- * brand fill (matches the in-app glass vocabulary); unselected = quiet glass. */
+ * brand fill (matches the in-app glass vocabulary); unselected = quiet glass.
+ * `suggested` (D.4 learned routing) gives an unselected pill a sky ring so the
+ * AI's pre-selection reads as a gentle hint, not a commitment. */
 function TargetPill({
   active,
+  suggested = false,
   onClick,
   icon,
   label,
 }: {
   active: boolean;
+  suggested?: boolean;
   onClick: () => void;
   icon: React.ReactNode;
   label: string;
@@ -747,7 +804,9 @@ function TargetPill({
         'inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-medium transition-colors',
         active
           ? 'bg-gradient-to-r from-sky-500 to-indigo-600 text-white shadow-sm shadow-indigo-500/25'
-          : 'border border-foreground/10 bg-background/50 text-foreground backdrop-blur active:scale-[0.98]'
+          : suggested
+            ? 'border border-sky-400/40 bg-sky-500/[0.06] text-foreground ring-1 ring-sky-400/30 backdrop-blur active:scale-[0.98]'
+            : 'border border-foreground/10 bg-background/50 text-foreground backdrop-blur active:scale-[0.98]'
       )}
     >
       {icon}

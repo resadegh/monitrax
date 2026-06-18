@@ -1272,6 +1272,7 @@ model User {
   // Phase 19: Document Management
   documents             Document[]
   storageProviderConfig StorageProviderConfig?
+  vendorEntityHints     VendorEntityHint[] // Phase 50 D.4: learned routing (suggest-only)
 
   // Phase 20: Australian Tax Intelligence Engine
   superannuationAccounts SuperannuationAccount[]
@@ -3961,6 +3962,38 @@ model Document {
   @@index([deletedAt])
   @@index([userId, contentHash])
   @@map("documents")
+}
+
+// =============================================================================
+// PHASE 50 D.4: LEARNED ROUTING (suggest-only)
+// =============================================================================
+//
+// Remembers which entity (asset / property / loan / investment account) a user
+// chose for documents from a given vendor, so the next document from that
+// vendor can PRE-SELECT the same entity. This is a SUGGESTION layer only — the
+// user always confirms (and can change the selection) in the existing confirm
+// flow. Nothing here ever writes a financial record or applies a link on its
+// own (Reza autonomy decision 2026-06-18: AI suggests, user always confirms).
+//
+// `vendorKey` is the normalized vendor string (lowercase, alphanumerics only)
+// so "Bunnings Warehouse" and "BUNNINGS WAREHOUSE #123" collapse to one key.
+// `count` is incremented each time the user reaffirms the routing, so the most
+// frequently-chosen entity wins when a vendor maps to several over time.
+model VendorEntityHint {
+  id         String           @id @default(uuid())
+  userId     String
+  vendorKey  String // Normalized vendor (see normalizeVendorKey)
+  entityType LinkedEntityType
+  entityId   String
+  count      Int              @default(1) // Times the user chose this routing
+  createdAt  DateTime         @default(now())
+  lastUsedAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, vendorKey, entityType, entityId])
+  @@index([userId, vendorKey])
+  @@map("vendor_entity_hints")
 }
 
 // =============================================================================

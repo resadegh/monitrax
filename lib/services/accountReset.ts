@@ -133,6 +133,7 @@ export const RESET_DELETE_MODELS = [
   'BudgetTarget',
   'CashflowStrategy',
   'Document',
+  'VendorEntityHint', // Phase 50 D.4 — learned-routing memory; references wiped entities, so delete on reset
   'SuperannuationAccount',
   'SmsfAnnualReturn',
   'TaxPosition',
