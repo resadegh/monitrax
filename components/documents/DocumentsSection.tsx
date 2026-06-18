@@ -88,6 +88,10 @@ export interface DocumentsSectionProps {
    * (linked to this item). Off by default (pure filing).
    */
   analyzeOnUpload?: boolean;
+  /** Called after an expense is created from a recognised receipt, so the parent
+   *  (e.g. the asset detail) can refresh its Expenses list — otherwise the new
+   *  expense doesn't show until the page is reloaded. */
+  onExpenseAdded?: () => void;
   className?: string;
 }
 
@@ -168,6 +172,7 @@ export function DocumentsSection({
   entityLabel,
   defaultCategory = DocumentCategory.OTHER,
   analyzeOnUpload = false,
+  onExpenseAdded,
   className,
 }: DocumentsSectionProps) {
   const { token } = useAuth();
@@ -357,8 +362,10 @@ export function DocumentsSection({
           ? 'That expense already exists — linked this receipt to it (no duplicate created).'
           : `Added "${rec.vendor || entityLabel}" as an expense for ${entityLabel}.`,
       );
+      // Let the parent refresh its Expenses list so the new expense shows now.
+      onExpenseAdded?.();
     },
-    [token, entityType, entityId, entityLabel],
+    [token, entityType, entityId, entityLabel, onExpenseAdded],
   );
 
   const addExpenseFromRecognised = useCallback(async () => {

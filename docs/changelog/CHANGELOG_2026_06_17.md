@@ -433,3 +433,25 @@
 ### Build Status
 - [x] tsc clean
 - [x] `npm run build` passes
+
+## Session: asset-expense-refresh-shk180
+
+### Changes Made
+- **Type**: Fix (stale UI)
+- **Scope**: "Add as expense" → asset Expenses tab refresh
+- **Issue**: Reza tapped "Add as expense" on a recognised receipt; prod logs confirm
+  the expense was CREATED (`POST /api/expenses → 201`) and linked to the asset — but
+  the asset detail dialog's Expenses tab still showed "0 expenses linked" because it
+  rendered `selectedAsset.expenses` loaded when the dialog opened and never refreshed.
+- **Fix**: `DocumentsSection` gains an `onExpenseAdded?` callback fired after a
+  successful add (banner or per-doc); the asset page passes
+  `onExpenseAdded={() => loadAssetDetail(selectedAsset.id)}` so the Expenses tab
+  updates immediately. (The dedup already prevents a double-add.)
+
+### Files Modified
+- `components/documents/DocumentsSection.tsx` — `onExpenseAdded` prop + fire on success
+- `app/dashboard/assets/page.tsx` — pass `onExpenseAdded` → `loadAssetDetail`
+
+### Build Status
+- [x] tsc clean
+- [x] `npm run build` passes

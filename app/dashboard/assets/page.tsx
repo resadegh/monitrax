@@ -1310,6 +1310,7 @@ function AssetsPageContent() {
                       entityLabel={selectedAsset.name}
                       defaultCategory={DocumentCategory.RECEIPT}
                       analyzeOnUpload
+                      onExpenseAdded={() => loadAssetDetail(selectedAsset.id)}
                     />
                   </TabsContent>
 
