@@ -662,8 +662,7 @@ export default function WealthUniverseCanvas() {
   function handleNodeClick(node: WealthNode) {
     const activeFocus = expandedIds[expandedIds.length - 1];
     if (node.tier === 'asset') {
-      // Selecting a satellite keeps its constellation open. (Deep-link
-      // safety: if no scene is open yet, open its parent.)
+      // Leaf asset → open its detail file (nothing to zoom into below it).
       setSelectedId(node.id);
       if (expandedIds.length === 0 && node.parentNodeId) {
         setExpandedIds([node.parentNodeId]);
@@ -671,20 +670,26 @@ export default function WealthUniverseCanvas() {
       return;
     }
     if (node.id === activeFocus) {
-      // WX.6 — tapping the centred bubble you're inside POPS one layer
-      // (Level 3 → Level 2 → Universe), not all the way out. The
-      // "‹ Universe" breadcrumb is the jump-to-root.
-      setCameraDirection('out');
-      setCameraOrigin({ x: node.position.x, y: node.position.y });
-      setSelectedId(null);
-      setExpandedIds(expandedIds.slice(0, -1));
+      // WX.6.1 (Reza 2026-06-19: "first click only zoom in, second click
+      // opens the node details") — the SECOND tap on the centred bubble.
+      // Entities / groups have a detail file → open it. Clusters have no
+      // file → the second tap zooms back out instead (the breadcrumb is
+      // the other way back).
+      if (node.tier === 'cluster') {
+        setCameraDirection('out');
+        setCameraOrigin({ x: node.position.x, y: node.position.y });
+        setSelectedId(null);
+        setExpandedIds(expandedIds.slice(0, -1));
+      } else {
+        setSelectedId(node.id);
+      }
       return;
     }
-    setSelectedId(node.id);
-    // WX.5.3 — expandability is the layout's call (`isExpandable`), not
-    // "has assets": in cluster mode tapping the entity opens the card
-    // over the universe instead of the removed all-holdings layer.
     if (node.isExpandable) {
+      // FIRST tap on an expandable node → zoom in ONLY. The detail file
+      // does NOT open on the way in (it was covering the universe the
+      // user just zoomed into). Selection clears so no panel shows.
+      setSelectedId(null);
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       // WX.6 — descend one layer. A bubble whose parent is the current
@@ -696,6 +701,8 @@ export default function WealthUniverseCanvas() {
         setExpandedIds([node.id]);
       }
     } else {
+      // No layer to zoom into → the file IS the response.
+      setSelectedId(node.id);
       setExpandedIds([]);
     }
   }
@@ -716,8 +723,14 @@ export default function WealthUniverseCanvas() {
     focusAppliedRef.current = true;
     const node = nodes.find(n => n.id === focus);
     if (!node) return;
-    setSelectedId(focus);
-    if (node.tier !== 'asset' && node.isExpandable) setExpandedIds([focus]);
+    // WX.6.1 — a deep-link "zoom into this bubble" mirrors a manual first
+    // tap: zoom in WITHOUT opening the detail file. Leaf assets (no zoom
+    // layer) still open their file.
+    if (node.tier !== 'asset' && node.isExpandable) {
+      setExpandedIds([focus]);
+    } else {
+      setSelectedId(focus);
+    }
   }, [searchParams, nodes]);
 
   // Stagger for the satellite pop-in when a constellation unfolds.
