@@ -185,6 +185,13 @@ const DEFAULT_EXPENSE_FIELDS: Record<string, FormFieldDefinition> = {
   description: { type: 'string', label: 'Description' },
   taxDeductible: { type: 'boolean', label: 'Is Tax Deductible' },
   gst: { type: 'number', label: 'GST Amount (AUD)' },
+  // Phase 50 D.5a — a renewal/expiry date, present ONLY on policy-type docs
+  // (insurance, registration, CTP, warranty, membership). Null for ordinary
+  // receipts. Surfaced to the scan flow's RenewalReminderCard (suggest→confirm).
+  expiryDate: {
+    type: 'date',
+    label: 'Renewal or expiry date (YYYY-MM-DD) — ONLY if this document is an insurance policy, vehicle registration, CTP, warranty, or membership that expires or renews; otherwise leave blank',
+  },
 };
 
 const DEFAULT_INCOME_FIELDS: Record<string, FormFieldDefinition> = {

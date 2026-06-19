@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#62df7d",
+                        "surface": "#0e150f",
+                        "background": "#050913", // Custom override for the specific deep navy background
+                        "on-surface": "#FAFAF7",
+                        "on-surface-variant": "#94A3B8",
+                        "outline-variant": "rgba(255, 255, 255, 0.08)",
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "card": "22px",
+                        "inner": "12px",
+                        "badge": "14px",
+                    },
+                    fontFamily: {
+                        "body-lg": ["Inter", "sans-serif"],
+                        "headline-md": ["Inter", "sans-serif"],
+                        "label-caps": ["Inter", "sans-serif"],
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.8);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 20px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #0EA5E9 0%, #14B8A6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #0EA5E9 0%, #14B8A6 100%);
+        }
+        .badge-glow {
+            filter: blur(20px);
+            background: linear-gradient(135deg, #0EA5E9 0%, #14B8A6 100%);
+            opacity: 0.4;
+        }
+        .tabular {
+            font-variant-numeric: tabular-nums;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6 bg-[#050913]">
+<div class="relative w-full max-w-[420px]">
+<!-- Glass Card Container -->
+<div class="glass-card rounded-card p-8 flex flex-col items-center text-center">
+<!-- 1. Top Center Badge -->
+<div class="relative mb-8">
+<div class="badge-glow absolute inset-0 rounded-badge"></div>
+<div class="relative w-12 h-12 rounded-badge gradient-bg flex items-center justify-center text-white shadow-lg">
+<span class="material-symbols-outlined" style="font-size: 24px;">calendar_today</span>
+</div>
+</div>
+<!-- 2. Content -->
+<div class="space-y-2 mb-8">
+<span class="gradient-text font-bold text-[12px] tracking-[0.1em] uppercase">Renewal Found</span>
+<h1 class="text-on-surface font-semibold text-[22px] leading-tight px-4">
+                    Want a heads-up before this expires?
+                </h1>
+<p class="text-on-surface-variant text-[15px] leading-relaxed px-2">
+                    We spotted a renewal date on this document. Set a reminder and we'll nudge you in time.
+                </p>
+</div>
+<!-- 3. Detail Box -->
+<div class="w-full bg-white/[0.03] border border-white/[0.05] rounded-inner p-5 mb-6 text-left">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h4 class="text-on-surface font-medium text-[16px]">Comprehensive car insurance</h4>
+<p class="text-on-surface-variant text-[14px]">NRMA</p>
+</div>
+</div>
+<div class="pt-4 border-t border-white/[0.05]">
+<p class="text-on-surface-variant text-[11px] font-semibold tracking-wider mb-1">RENEWS ON</p>
+<div class="flex items-center justify-between">
+<span class="text-on-surface text-[20px] font-medium tabular">12 March 2027</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-on-surface transition-colors">edit</span>
+</div>
+</div>
+</div>
+<!-- 4. Entity Row -->
+<div class="w-full text-left mb-6">
+<p class="text-on-surface-variant text-[11px] font-semibold tracking-wider mb-3">REMIND ME ABOUT</p>
+<div class="flex items-center gap-3 bg-white/[0.05] border border-white/[0.08] rounded-full py-2 px-4 w-fit cursor-pointer hover:bg-white/[0.08] transition-all group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface">directions_car</span>
+<span class="text-on-surface text-[14px] font-medium">Toyota Camry</span>
+<span class="material-symbols-outlined text-on-surface-variant text-[16px]">expand_more</span>
+</div>
+<p class="text-on-surface-variant text-[12px] mt-2 italic opacity-80">Saves as this vehicle's insurance renewal</p>
+</div>
+<!-- 5. Reassurance -->
+<div class="flex items-center gap-2 mb-8 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<p class="text-[13px]">We'll remind you 30 days before — one less thing to carry.</p>
+</div>
+<!-- 6. Primary Action -->
+<button class="w-full gradient-bg hover:opacity-90 active:scale-[0.98] transition-all py-4 rounded-full flex items-center justify-center gap-2 text-white font-semibold text-[16px] shadow-xl shadow-sky-500/10 mb-3">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">notifications</span>
+                Set reminder
+            </button>
+<!-- 7. Secondary Action -->
+<button class="w-full py-2 text-on-surface-variant hover:text-on-surface transition-colors font-medium text-[15px]">
+                Not now
+            </button>
+</div>
+</div>
+<!-- Background Decorative elements for depth -->
+<div class="fixed top-[-10%] right-[-10%] w-[40%] h-[40%] bg-sky-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+<div class="fixed bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-teal-900/10 rounded-full blur-[120px] pointer-events-none"></div>
+<script>
+        // Micro-interaction for the button
+        const btn = document.querySelector('button');
+        btn.addEventListener('mouseenter', () => {
+            btn.style.boxShadow = '0 15px 40px -5px rgba(14, 165, 233, 0.3)';
+        });
+        btn.addEventListener('mouseleave', () => {
+            btn.style.boxShadow = '0 20px 50px -12px rgba(0, 0, 0, 0.5)';
+        });
+    </script>
+</body></html>

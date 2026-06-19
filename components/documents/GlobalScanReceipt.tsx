@@ -64,8 +64,9 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/lib/context/AuthContext';
 import { formatCurrency } from '@/lib/utils/formatters';
 import { classifyConfidence } from '@/lib/documents/intelligence/confidencePolicy';
+import { RenewalReminderCard } from '@/components/documents/RenewalReminderCard';
 
-type Stage = 'capture' | 'analyzing' | 'result' | 'success' | 'error';
+type Stage = 'capture' | 'analyzing' | 'result' | 'renewal' | 'success' | 'error';
 
 interface FieldMapping {
   value: unknown;
@@ -114,6 +115,11 @@ function asNumber(v: unknown): number | undefined {
     return Number.isFinite(n) ? n : undefined;
   }
   return undefined;
+}
+
+/** D.5a — a usable ISO `YYYY-MM-DD` the AI returned for a renewal/expiry date. */
+function isIsoDate(v: unknown): v is string {
+  return typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !Number.isNaN(Date.parse(v));
 }
 
 export function GlobalScanReceipt() {
@@ -345,7 +351,14 @@ export function GlobalScanReceipt() {
     const gst = asNumber(pick(['gst', 'gstAmount', 'tax'], undefined, v));
     const date = pick(['date', 'issueDate', 'transactionDate'], undefined, v) as string | undefined;
     const category = pick(['category'], undefined, v) as string | undefined;
-    return { title, amount, gst, date, category };
+    // D.5a — a renewal/expiry date the AI found on a policy/registration/warranty
+    // (distinct from the document `date`). Drives the RenewalReminderCard.
+    const renewalDate = pick(
+      ['expiryDate', 'policyEnd', 'renewalDate', 'expiry'],
+      undefined,
+      v
+    ) as string | undefined;
+    return { title, amount, gst, date, category, renewalDate };
   }, [recognition]);
 
   const confidence = recognition?.overallConfidence ?? 0;
@@ -412,7 +425,9 @@ export function GlobalScanReceipt() {
           /* non-fatal — expense is linked; the doc just stays in its folder */
         }
       }
-      setStage('success');
+      // D.5a — if the AI also found a renewal/expiry date (policy/rego/warranty),
+      // offer a reminder before finishing. Otherwise we're done.
+      setStage(isIsoDate(preview.renewalDate) ? 'renewal' : 'success');
     } catch {
       setErrorMsg('Something went wrong. Your receipt is safe in your Vault.');
       setStage('error');
@@ -420,6 +435,40 @@ export function GlobalScanReceipt() {
       setSubmitting(false);
     }
   }, [recognition, preview, token, selectedTarget, savedDocId]);
+
+  // D.5a — create a custom reminder from the (possibly user-edited) renewal
+  // date. CREATE-only via the existing /api/reminders/custom endpoint — no
+  // existing row is mutated (§12.11-safe). The reminder engine surfaces it.
+  const handleSetReminder = useCallback(
+    async (dateISO: string) => {
+      if (!isIsoDate(dateISO)) {
+        setStage('success');
+        return;
+      }
+      setSubmitting(true);
+      try {
+        const subject = preview?.title || 'Policy';
+        const title = selectedTarget
+          ? `${selectedTarget.name} — renewal`.slice(0, 120)
+          : `${subject} renewal`.slice(0, 120);
+        await fetch('/api/reminders/custom', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({
+            title,
+            dueDate: new Date(`${dateISO}T00:00:00`).toISOString(),
+            note: `Spotted on a scanned document${subject ? ` (${subject})` : ''}.`.slice(0, 500),
+          }),
+        });
+      } catch {
+        /* non-fatal — the document is safe; the user can add a reminder manually */
+      } finally {
+        setSubmitting(false);
+        setStage('success');
+      }
+    },
+    [preview, selectedTarget, token]
+  );
 
   const goToVault = useCallback(() => {
     close();
@@ -684,6 +733,20 @@ export function GlobalScanReceipt() {
                 <p className="mt-3 text-center text-[11px] text-muted-foreground">
                   Nothing is saved until you tap {primaryLabel}.
                 </p>
+              </div>
+            )}
+
+            {/* ---- RENEWAL (D.5a) ---- */}
+            {stage === 'renewal' && preview && isIsoDate(preview.renewalDate) && (
+              <div className="py-2">
+                <RenewalReminderCard
+                  renewalDate={preview.renewalDate}
+                  subjectLabel={preview.title}
+                  entityName={selectedTarget?.name ?? null}
+                  submitting={submitting}
+                  onConfirm={handleSetReminder}
+                  onSkip={() => setStage('success')}
+                />
               </div>
             )}
 
