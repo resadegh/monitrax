@@ -199,11 +199,14 @@ export default function WealthUniverseMobile() {
     focusAppliedRef.current = true;
     const node = nodesById[focus] ?? listNodesById[focus];
     if (!node) return;
-    setSelectedId(focus);
+    // WX.6.1 — a deep-link "zoom into this bubble" mirrors a manual first
+    // tap: zoom in WITHOUT opening the card. Leaf assets open their card.
     if (node.tier !== 'asset' && node.isExpandable) {
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       setExpandedIds([focus]);
+    } else {
+      setSelectedId(focus);
     }
     // Sheet stays at peek — the arrival zoom is the moment; details on demand.
   }, [searchParams, nodes, nodesById, listNodesById]);
@@ -285,30 +288,30 @@ export default function WealthUniverseMobile() {
     const node = nodesById[id] ?? listNodesById[id];
     const activeFocus = expandedIds[expandedIds.length - 1];
     if (node?.tier === 'asset') {
-      // Assets open the detail card — the one case the sheet rises.
+      // Leaf asset → open its detail card (the one case the sheet rises).
       setSelectedId(id);
       if (expandedIds.length === 0 && node.parentNodeId) setExpandedIds([node.parentNodeId]);
       if (snap === 'peek') setSnap('half');
       return;
     }
-    // WX.6 — tapping the centred bubble you're inside POPS one layer
-    // (Level 3 → Level 2 → Universe), mirroring desktop. The "Universe"
-    // pill jumps straight to the root.
+    // WX.6.1 (Reza 2026-06-19: "first click only zoom in, second click
+    // opens the node details") — the SECOND tap on the centred bubble.
+    // Entities / groups open their card; clusters (no card) zoom back out.
     if (id === activeFocus) {
-      setCameraDirection('out');
-      setSelectedId(null);
-      setExpandedIds(expandedIds.slice(0, -1));
+      if (node?.tier === 'cluster') {
+        setCameraDirection('out');
+        setSelectedId(null);
+        setExpandedIds(expandedIds.slice(0, -1));
+      } else {
+        setSelectedId(id);
+        if (snap === 'peek') setSnap('half');
+      }
       return;
     }
-    setSelectedId(id);
-    // WX.5.3 — expandability is the layout's call (`isExpandable`):
-    // in cluster mode tapping the entity opens its card, not the
-    // removed all-holdings layer (too busy on a phone — Reza
-    // 2026-06-11).
     if (node?.isExpandable) {
-      // Zooming IN keeps the canvas dominant — the sheet stays put
-      // (Reza 2026-06-10: "the list keeps coming up and takes most of
-      // the page").
+      // FIRST tap → zoom in ONLY, no card (Reza: the card was covering
+      // the map you just zoomed into). The sheet stays put.
+      setSelectedId(null);
       setCameraOrigin({ x: node.position.x, y: node.position.y });
       setCameraDirection('in');
       // WX.6 — descend one layer: a class bundle inside the focused
@@ -319,8 +322,9 @@ export default function WealthUniverseMobile() {
         setExpandedIds([id]);
       }
     } else {
-      // No scene to unfold — the card IS the response. Raise the sheet
-      // so the tap visibly lands (same contract as asset taps).
+      // No layer to zoom into → the card IS the response. Raise the
+      // sheet so the tap visibly lands (same contract as asset taps).
+      setSelectedId(id);
       setExpandedIds([]);
       if (snap === 'peek') setSnap('half');
     }

@@ -1524,15 +1524,27 @@ Load-bearing rules:
    "$X owing", never "held".
 6. **`expandedEntityIds` is a navigation STACK (WX.6).** The LAST id is
    the active focus, so each tap descends one layer (`[] → [entityId] →
-   [entityId, cluster-<e>-<k>]`) and each back step pops one. The
-   breadcrumb renders every layer above as a tappable crumb; the
-   centred bubble pops, the "‹ Universe" crumb jumps to root.
-7. **Reviewer-reject:** any future change that reintroduces per-asset
+   [entityId, cluster-<e>-<k>]`). The breadcrumb renders every layer
+   above as a tappable crumb; the "‹ Universe" crumb jumps to root, an
+   intermediate crumb pops to that depth.
+7. **Tap semantics — zoom first, details second (WX.6.1, Reza
+   2026-06-19: "first click only zoom in, second click opens the node
+   details").** A FIRST tap on an expandable bubble **zooms in only** —
+   it does NOT open the detail file (the panel was covering the universe
+   the user had just zoomed into). The detail file opens on the **second
+   tap of the centred bubble** (an entity/group has a file). A **cluster**
+   bubble has no file, so its second tap zooms back out instead. A leaf
+   asset (or a holding-less entity — nothing to zoom into) opens its file
+   on the first tap. Closing the file (panel `×`) keeps the current layer
+   (`closeDetailPanel` clears only `selectedId`, never `expandedIds`).
+8. **Reviewer-reject:** any future change that reintroduces per-asset
    tiles at Level 1, dumps every raw asset at once when a multi-asset
-   entity is focused (the WX.6 "messy 25-tile" regression), adds zoom
-   chrome without working handlers, or collapses a ≤2-entity universe
-   into bare entity tiles (the single-tile-with-badge regression),
-   reverts this fix and must be rejected.
+   entity is focused (the WX.6 "messy 25-tile" regression), opens the
+   detail file on a FIRST/zoom-in tap (the WX.6.1 "panel covers the
+   universe" regression), adds zoom chrome without working handlers, or
+   collapses a ≤2-entity universe into bare entity tiles (the
+   single-tile-with-badge regression), reverts this fix and must be
+   rejected.
 
 Stitch SoT (project `1859462351962811110`): L1 desktop
 `770687a1c73c42f0b4fd5686782bf5f3`, L2 desktop
