@@ -237,3 +237,53 @@ Surfaces changed:
   permitted; no Stitch pass required.
 - Pure-presentation — no schema, no migration, no calc-engine touch.
 - Follow-up to WX.6 (PR #1158, merged); fixes the panel-on-zoom-in interaction.
+
+---
+
+## Session: mobile-governance-scaffolding (0·MOB)
+
+### Changes Made
+- **Type**: Governance scaffolding + continuity-cursor refresh (docs/CI only — no code, schema, or calc surface).
+- **Scope**: Implementation-plan spokes + hub, STATE.md cursor, continuity-gate workflow.
+- **Why**: Stand up live tracking for the mobile companion workstream (`0·MOB`) and
+  refresh the stale STATE.md web cursor (pinned at `654bc55`/2026-06-16 while the repo
+  had advanced to `a0eb95e`/#1162). Governing principle encoded: **one repo = one
+  STATE.md = one live-status SSOT**; spec docs separate by topic (`docs/mobile/*`),
+  the continuity cursor separates by repo. The RN app (`monitrax-mobile`) gets its own
+  STATE/CLAUDE/continuity-gate when stood up — this PR does NOT fork a second cursor
+  inside `resadegh/monitrax`.
+
+### Files Modified
+- `docs/implementation/05_MOBILE_WORKSTREAM.md` — **NEW** spoke: the `0·MOB` live tracker
+  (scope boundary, phase checklist, decision log D1–D5, open-for-Reza items incl. the D4
+  notification-copy compliance blocker, cross-references to the `docs/mobile/*` spec tree).
+- `docs/IMPLEMENTATION_PLAN.md` — added the 📱 Mobile Workstream row to the spoke table;
+  bumped `Last updated` note (workstream registered + cursor refreshed).
+- `STATE.md` — re-pinned "Last verified against HEAD" + Section C re-pin line to live HEAD
+  `a0eb95e` (#1162), summarised what landed since `654bc55` (Phase 50 Phase D complete /
+  0·DOC feature-complete / WX.6 / accountant tax-pack / Vault preview fix); added the
+  `0·MOB` design-phase sub-cursor (additive, alongside the active web cursor).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — registered `0·MOB` at the top with the
+  standard fields, detail pointed at `05_MOBILE_WORKSTREAM.md` to avoid bloating the
+  over-budget (~289 KB) spoke (§15.5).
+- `.github/workflows/continuity-gate.yml` — additive: added
+  `docs/implementation/05_MOBILE_WORKSTREAM.md` to the substantive-paths watch so a PR
+  changing the mobile tracker must also update STATE.md + the plan in the same PR. YAML
+  validated; workflow not restructured.
+
+### Build Status
+- [x] YAML parse — `continuity-gate.yml` valid (`yaml.safe_load`).
+- [x] `scripts/check-plan-freshness.sh` — OK (header 2026-06-19 ≥ newest RC 2026-06-19).
+- [x] No `docs/mobile/*` file modified (tracking scaffolding only — acceptance criterion).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] strategic decision (workstream `0·MOB` registered) → `docs/implementation/05_MOBILE_WORKSTREAM.md`,
+  `docs/implementation/01_ACTIVE_WORKSTREAMS.md`, `docs/IMPLEMENTATION_PLAN.md`, `STATE.md`,
+  `.github/workflows/continuity-gate.yml`
+- [ ] visual design system / config / infra / identity / deployment / security / operational procedure — none
+
+### Notes
+- No Stitch pass required: this PR ships no UI/UX surface (§18.2 — docs/CI scaffolding only).
+  The mobile design realignment (Stitch-first, §18.7) is the NEXT step, tracked in the new spoke.
+- No destructive Prisma write (§12.11) and no schema change (§12.12).
