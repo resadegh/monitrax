@@ -68,6 +68,53 @@
 
 ---
 
+## Session: Document Vault — fix "This content is blocked" preview (same-origin reads)
+
+### Changes Made
+- **Type**: Fix (document preview / read-URL policy)
+- **Scope**: `lib/documents/storage/readUrl.ts` (the read-URL SSOT).
+- **Problem (Reza, 2026-06-19 prod screenshots ×2)**: in My Vault, viewing a
+  document showed Chrome's *"This content is blocked. Contact the site owner to
+  fix the issue."* and the card image wouldn't render.
+- **Root cause**: with a GCS service-account key present, `getDocumentReadUrl`
+  handed the browser a **native cross-origin `storage.googleapis.com` v4 signed
+  URL**. The preview frames it in an `<iframe>`, which Chrome blocks for a
+  cross-origin resource (`ERR_BLOCKED_BY_RESPONSE`), and GCS serves the object
+  with its own stored content-type, so an `<img>` of an `octet-stream` object
+  renders broken. (The URL was valid — `getSignedUrl` only issues it after
+  `file.exists()` — so the bytes were reachable; it was purely a browser
+  cross-origin rendering block.)
+- **Solution**: route **every** server-backed read (MONITRAX and GCS, key OR
+  keyless) through our own same-origin streaming route `/api/documents/download`,
+  which already downloads GCS bytes server-side and sets `Content-Type` from the
+  authoritative DB `mimeType` + `Content-Disposition: inline`. Dropped the
+  native-GCS-signed-URL branch (+ the now-unused `gcsHasSigningKey` helper and
+  GCS import, §12.1). This is also the documented CDR-preferred posture (every
+  read mediated, no public signed URL).
+
+### Files Modified
+- `lib/documents/storage/readUrl.ts` — always mediate; removed native-GCS branch.
+- `tests/documents/readUrl.test.ts` — pin the new contract (GCS + key → our route,
+  never a native URL). 4/4 pass.
+
+### Build Status
+- [x] `tsc --noEmit` — clean
+- [x] `npm run build` — passes
+- [x] `tests/documents` — green
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] security / CDR posture (reads now always mediated) → `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` §B-storage
+- [ ] config / infra / identity / deployment — none (no env/infra change; the GCS
+      key may stay set, it's just no longer used to mint browser URLs)
+
+### Notes
+- Pure read-path change — no schema, no migration, no calc-engine touch. The
+  download route already supported server-side GCS download (key + keyless), so
+  no new server capability was needed.
+
+---
+
 ## Session: dme-d5a-renewal-reminder-shk180
 
 ### Changes Made

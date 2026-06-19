@@ -78,11 +78,17 @@ What this track delivers in code (the parts that AREN'T just config):
 - [x] **GCS-aware download — ✅ shipped this PR.** `/api/documents/download` is now
   provider-aware: it verifies the (provider-agnostic) HMAC signature, looks up the
   `Document` by `storagePath`, and **streams the bytes from the right backend** (DB
-  bytea or GCS). Because keyless credentials can't sign a native v4 URL locally,
-  the read-URL policy (new SSOT `lib/documents/storage/readUrl.ts`) routes keyless
-  GCS reads through this streaming route — and the bytes never leave via a public
-  signed URL, which is the better CDR posture. A native GCS signed URL is still
-  used when a service-account key is present. 4 unit tests.
+  bytea or GCS). The read-URL policy (SSOT `lib/documents/storage/readUrl.ts`)
+  routes **every** server-backed read (MONITRAX and GCS, key OR keyless) through
+  this same-origin streaming route — the bytes never leave via a public signed URL
+  (the better CDR posture). 4 unit tests. **Native GCS v4 signed URLs are NOT
+  handed to the browser (2026-06-19, Reza prod report — My Vault preview showed
+  Chrome's "This content is blocked").** A native signed URL is a cross-origin
+  `storage.googleapis.com` link: the browser blocks it when it's framed for
+  preview (`<iframe>` → `ERR_BLOCKED_BY_RESPONSE`), and GCS serves the object with
+  its own stored content-type so an `<img>` thumbnail of an `octet-stream` object
+  renders broken. Streaming through our route sets `Content-Type` from the DB
+  `mimeType` + `Content-Disposition: inline`, same-origin, fixing both.
 - [ ] **(Optional) migrate existing inline docs.** Decide migrate-vs-leave for
   documents already stored as `fileContent` bytea. Leaning *leave* — the
   retrieval path (`getDocumentContent`) already branches on `storageProvider`, so

@@ -2,19 +2,25 @@
  * Canonical read-URL policy for stored documents (provider-aware).
  *
  * Produces the browser-fetchable URL a client uses to view/download a document.
- * The policy depends on where the bytes live AND how we authenticate to GCS:
+ * Every server-backed read is mediated through our own same-origin streaming
+ * route (`/api/documents/download`), regardless of where the bytes live:
  *
- *   - MONITRAX (DB bytea) → an HMAC-signed URL to our own streaming route
- *     (`/api/documents/download`).
- *   - GCS + a service-account KEY present → a native v4 signed URL (the browser
- *     fetches directly from GCS; signing needs the key's private material).
- *   - GCS KEYLESS (Workload Identity Federation / ADC, no key) → an HMAC URL to
- *     our streaming route. Keyless credentials cannot sign a v4 URL locally (no
- *     private key), so we stream the bytes through our own authenticated route
- *     instead. This is also the better CDR posture: the bytes never leave via a
- *     public signed URL — every read is mediated by our route.
+ *   - MONITRAX (DB bytea) → HMAC-signed URL to `/api/documents/download`.
+ *   - GCS (key OR keyless) → HMAC-signed URL to `/api/documents/download`
+ *     (the route downloads the bytes from GCS server-side and re-streams them).
  *   - LOCAL_DRIVE → the local path (client handles it via the File System Access
  *     API; nothing is stored server-side).
+ *
+ * **Why we no longer hand out native GCS v4 signed URLs (2026-06-19, Reza prod
+ * report — My Vault preview showed Chrome's "This content is blocked"):** a
+ * native signed URL is a cross-origin `storage.googleapis.com` link. The browser
+ * blocks it when it's framed for preview (`<iframe>` → ERR_BLOCKED_BY_RESPONSE),
+ * and GCS serves the object with its own stored content-type, so an `<img>`
+ * thumbnail of an `application/octet-stream` object renders broken. Streaming
+ * through our route fixes both: it sets `Content-Type` from the authoritative DB
+ * `mimeType` and `Content-Disposition: inline`, and the bytes are same-origin.
+ * It is also the better CDR posture — every read is mediated, the bytes never
+ * leave via a public signed URL.
  *
  * SSOT for "how do I get a viewable URL for a document?" — used by both the
  * upload responses and `getDocumentDownloadUrl`.
@@ -25,7 +31,6 @@
 
 import { StorageProviderType } from '../types';
 import { getMonitraxStorageProvider } from './monitraxProvider';
-import { getGoogleCloudStorageProvider } from './googleCloudStorageProvider';
 
 export interface ReadUrlResult {
   success: boolean;
@@ -34,30 +39,21 @@ export interface ReadUrlResult {
   error?: string;
 }
 
-/** True when a GCS service-account key is configured (native signed URLs work). */
-function gcsHasSigningKey(): boolean {
-  return !!process.env.GCS_SERVICE_ACCOUNT_KEY;
-}
-
 export async function getDocumentReadUrl(
   storageProvider: StorageProviderType | string,
   storagePath: string,
 ): Promise<ReadUrlResult> {
-  // GCS with a signing key → native v4 signed URL (direct to GCS).
-  if (storageProvider === StorageProviderType.GOOGLE_CLOUD_STORAGE && gcsHasSigningKey()) {
-    const gcs = getGoogleCloudStorageProvider();
-    await gcs.initialize();
-    const r = await gcs.getSignedUrl(storagePath);
-    return { success: r.success, url: r.url, expiresAt: r.expiresAt, error: r.error };
-  }
-
   // LOCAL_DRIVE → the client opens the local path itself.
   if (storageProvider === StorageProviderType.LOCAL_DRIVE) {
     return { success: true, url: storagePath, expiresAt: new Date(Date.now() + 300_000) };
   }
 
-  // MONITRAX or keyless GCS → our HMAC-signed streaming route. The Monitrax
-  // provider owns the (provider-agnostic) HMAC signer for `/api/documents/download`.
+  // MONITRAX or GCS (key OR keyless) → our HMAC-signed same-origin streaming
+  // route. We deliberately do NOT return native GCS signed URLs (see the file
+  // header) — they are cross-origin and the browser blocks them when framed for
+  // preview. The Monitrax provider owns the (provider-agnostic) HMAC signer; the
+  // `/api/documents/download` route resolves the backend from the Document row
+  // and streams GCS bytes server-side when needed.
   const r = await getMonitraxStorageProvider().getSignedUrl(storagePath);
   return { success: r.success, url: r.url, expiresAt: r.expiresAt, error: r.error };
 }
