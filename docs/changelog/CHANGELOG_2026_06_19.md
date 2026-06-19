@@ -1,5 +1,73 @@
 # Changelog - 2026-06-19
 
+## Session: tax-accountant-pack-shk180
+
+### Changes Made
+- **Type**: Feature (Unified Accountant Pack) + doc maintenance.
+- **Scope**: tax-pack export (`/api/bookkeeping/tax-pack/export`) + the
+  `TaxPackExportButton` on Reports.
+- **Why**: Reza picked "Unified Accountant Pack" from the scoping question. The
+  FY tax-pack export already shipped (Phase 42) — summary (PDF/XLSX/CSV/JSON) and
+  receipts (`format=zip`) as **separate** downloads. The gap: combine them so the
+  user forwards ONE file. **Per §10/§12.1 I confirmed the existing surface first
+  and did NOT rebuild** — this is an orchestration layer over the canonical
+  builders.
+- **Solution**:
+  - **`format=pack`** — new export format producing ONE ZIP:
+    `Summary/Tax-Summary-FY….pdf` + `…xlsx`, plus `Receipts/` `Invoices/`
+    `Tax_Documents/` and a `README.txt`.
+  - **`lib/bookkeeping/taxPack/accountantPackBuilder.ts`** (NEW, orchestration
+    only): reuses `buildTaxPackSummary` + `buildTaxPackPdf`/`buildTaxPackXlsx`
+    (same exporters) + `addReceiptDocuments`.
+  - **`zipBundleBuilder.ts`**: extracted the receipt-foldering loop into a shared
+    `addReceiptDocuments(root, userId, window)` helper (§12.2 SSOT) — both the
+    standalone receipt bundle and the new pack use it; behaviour byte-identical.
+  - **`TaxPackExportButton`**: "Complete pack — summary + receipts" option, now
+    the default.
+
+### Files Modified / Added
+- `lib/bookkeeping/taxPack/accountantPackBuilder.ts` (NEW) — `buildAccountantPack`
+  + `buildAccountantPackForFy` + `suggestedPackFilename`.
+- `lib/bookkeeping/taxPack/zipBundleBuilder.ts` — extracted `addReceiptDocuments`.
+- `app/api/bookkeeping/tax-pack/export/route.ts` — `format=pack` branch.
+- `components/bookkeeping/TaxPackExportButton.tsx` — pack option + default.
+- `tests/bookkeeping/accountantPack.test.ts` (NEW) — 6 tests (ZIP assembly +
+  counts + README disclaimer; deps mocked, no DB fixture).
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 50 status refreshed (Phase D
+  complete; tax-pack surfacing noted) — the §3.4 phase-status sync that was
+  stale.
+
+### Docs Updated
+- `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md` — Tax-pack (Accountant Pack)
+  shipped; renewal tie-in ticked (D.5a); status line.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 50 row.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Tax-pack row; 0·DOC complete.
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+
+### Build Status
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run build` passes
+- [x] `vitest run tests/bookkeeping/accountantPack.test.ts tests/bookkeeping/taxPackSummary.test.ts` — 15/15 pass
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- **None.** Read-only export — no Prisma write/delete, no schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — export/bundling of existing summaries; no tax-engine file modified, no
+  new financial calc (reuses `buildTaxPackSummary`), no schema column, no AI tool,
+  no per-asset tax UI.
+
+### Stitch / §18.2.1
+- No new section-level composition — the only UI change is **one option added to
+  an existing approved selector** (`TaxPackExportButton`), a true tweak →
+  code-first permitted. The bundle itself is a server-side ZIP (no UI surface).
+
+### Doc-sync (CLAUDE.md §16)
+- API contract: the export route gains a `pack` format value (additive) —
+  documented in the Phase 50 doc. No schema/infra/identity/deploy/security change.
+
+---
+
 ## Session: dme-d5a-renewal-reminder-shk180
 
 ### Changes Made

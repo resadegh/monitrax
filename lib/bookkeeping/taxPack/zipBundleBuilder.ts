@@ -58,20 +58,30 @@ export interface ReceiptBundleResult {
   missingCount: number;
 }
 
+/** Counts from adding the FY's receipt documents into a JSZip folder. */
+export interface ReceiptGatherResult {
+  /** Documents found in the FY window (before missing-content filtering). */
+  total: number;
+  /** Per-folder count. Always 3 keys (Receipts / Invoices / Tax_Documents). */
+  countByFolder: Record<string, number>;
+  /** Documents that existed in the DB but had no fetchable content. */
+  missingCount: number;
+}
+
 /**
- * Build a receipt ZIP bundle for the given user + FY window.
+ * Add every RECEIPT/INVOICE/TAX document in the FY window into `root`,
+ * foldered by category (`Receipts/`, `Invoices/`, `Tax_Documents/`) with a
+ * date-prefixed, de-duplicated, filesystem-safe filename.
  *
- * Returns `bytes` (Uint8Array) plus diagnostic counts the caller can
- * surface in response headers (`X-Monitrax-Doc-Count`, etc.).
- *
- * Throws only on storage-fetch failures that suggest a misconfigured
- * provider — individual missing-bytes documents are tolerated and
- * reported via `missingCount`, the bundle still ships with the rest.
+ * Phase 50 (accountant pack): extracted so BOTH the standalone receipt bundle
+ * and the unified accountant pack share ONE receipt-foldering implementation
+ * (§12.2 SSOT). Behaviour is byte-identical to the previous inline loop.
  */
-export async function buildReceiptZipBundle(
+export async function addReceiptDocuments(
+  root: JSZip,
   userId: string,
   window: TaxPackWindow
-): Promise<ReceiptBundleResult> {
+): Promise<ReceiptGatherResult> {
   const documents = await prisma.document.findMany({
     where: {
       userId,
@@ -81,12 +91,6 @@ export async function buildReceiptZipBundle(
     },
     orderBy: { uploadedAt: 'asc' },
   });
-
-  const zip = new JSZip();
-  const root = zip.folder(`monitrax-receipts-${window.label.toLowerCase()}`);
-  if (!root) {
-    throw new Error('Failed to create root folder in ZIP archive');
-  }
 
   const storage = await getStorageProvider(userId);
   const usedPaths = new Set<string>();
@@ -130,7 +134,32 @@ export async function buildReceiptZipBundle(
     countByFolder[folder] = (countByFolder[folder] ?? 0) + 1;
   }
 
-  root.file('MANIFEST.txt', buildManifest(window, documents.length, countByFolder, missingCount));
+  return { total: documents.length, countByFolder, missingCount };
+}
+
+/**
+ * Build a receipt ZIP bundle for the given user + FY window.
+ *
+ * Returns `bytes` (Uint8Array) plus diagnostic counts the caller can
+ * surface in response headers (`X-Monitrax-Doc-Count`, etc.).
+ *
+ * Throws only on storage-fetch failures that suggest a misconfigured
+ * provider — individual missing-bytes documents are tolerated and
+ * reported via `missingCount`, the bundle still ships with the rest.
+ */
+export async function buildReceiptZipBundle(
+  userId: string,
+  window: TaxPackWindow
+): Promise<ReceiptBundleResult> {
+  const zip = new JSZip();
+  const root = zip.folder(`monitrax-receipts-${window.label.toLowerCase()}`);
+  if (!root) {
+    throw new Error('Failed to create root folder in ZIP archive');
+  }
+
+  const { total, countByFolder, missingCount } = await addReceiptDocuments(root, userId, window);
+
+  root.file('MANIFEST.txt', buildManifest(window, total, countByFolder, missingCount));
 
   const bytes = await zip.generateAsync({
     type: 'uint8array',
@@ -140,7 +169,7 @@ export async function buildReceiptZipBundle(
 
   return {
     bytes,
-    documentCount: documents.length - missingCount,
+    documentCount: total - missingCount,
     countByFolder,
     missingCount,
   };
