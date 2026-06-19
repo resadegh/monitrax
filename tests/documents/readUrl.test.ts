@@ -1,10 +1,12 @@
 /**
- * Read-URL policy (provider-aware) — the decision that makes keyless GCS work.
+ * Read-URL policy (provider-aware) — every server-backed read is mediated
+ * through our own same-origin streaming route.
  *
- * Pins:
- *   - GCS + a service-account KEY present → native v4 signed URL (GCS provider).
- *   - GCS KEYLESS (no key) → our HMAC streaming route (Monitrax signer), because
- *     keyless WIF credentials cannot sign a v4 URL locally.
+ * Pins (2026-06-19 — after the My Vault "content is blocked" preview fix):
+ *   - GCS + a service-account KEY present → our HMAC streaming route (NOT a
+ *     native cross-origin GCS signed URL — the browser blocks those when framed
+ *     for preview).
+ *   - GCS KEYLESS (no key) → our HMAC streaming route.
  *   - LOCAL_DRIVE → the local path verbatim.
  *   - MONITRAX → our HMAC streaming route.
  */
@@ -40,15 +42,18 @@ beforeEach(() => {
 });
 
 describe('getDocumentReadUrl', () => {
-  it('GCS + key present → native GCS signed URL', async () => {
+  it('GCS + key present → our HMAC streaming route, NOT a native GCS URL', async () => {
+    // Even with a signing key we mediate the read through our route: a native
+    // GCS signed URL is cross-origin and the browser blocks it when framed for
+    // preview (the My Vault "content is blocked" regression, 2026-06-19).
     process.env[KEY_ENV] = 'base64key';
-    gcsGetSignedUrl.mockResolvedValue({ success: true, url: 'https://storage.googleapis.com/signed', expiresAt: new Date() });
+    monitraxGetSignedUrl.mockResolvedValue({ success: true, url: '/api/documents/download?path=x&signature=y', expiresAt: new Date() });
 
     const r = await getDocumentReadUrl(StorageProviderType.GOOGLE_CLOUD_STORAGE, 'users/u1/doc.pdf');
 
-    expect(r.url).toBe('https://storage.googleapis.com/signed');
-    expect(gcsGetSignedUrl).toHaveBeenCalledWith('users/u1/doc.pdf');
-    expect(monitraxGetSignedUrl).not.toHaveBeenCalled();
+    expect(r.url).toContain('/api/documents/download');
+    expect(monitraxGetSignedUrl).toHaveBeenCalledWith('users/u1/doc.pdf');
+    expect(gcsGetSignedUrl).not.toHaveBeenCalled();
   });
 
   it('GCS keyless (no key) → our HMAC streaming route, NOT a native GCS URL', async () => {
