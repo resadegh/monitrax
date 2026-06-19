@@ -151,8 +151,8 @@ first-class outcome alongside **create**, always with user confirmation.
   action is hidden (no asset/property-style expense), but OCR + auto-rename still apply. Per-expense
   **delete** added on the Assets Expenses tab; Properties/Investments don't yet render a per-expense list
   on their detail pages (those expenses live in `/dashboard/expenses`) — list parity is a follow-up.
-- [ ] **Tax-pack export** + ATO 5-year retention.
-- [ ] Renewal-date tie-in (insurance/rego docs surface their renewal).
+- [x] **Tax-pack export — Unified Accountant Pack ✅ (2026-06-19).** The FY tax-pack export (Phase 42: `GET /api/bookkeeping/tax-pack/export?fy=…&format=…`) already shipped the summary (PDF/XLSX/CSV/JSON) and the receipts (`format=zip`) as **separate** downloads. Added `format=pack` — the **Unified Accountant Pack**: ONE ZIP combining the PDF + XLSX summary (`Summary/`) **and** every FY receipt/invoice/tax doc (`Receipts/`, `Invoices/`, `Tax_Documents/`) + a `README.txt`. New `lib/bookkeeping/taxPack/accountantPackBuilder.ts` is an **orchestration layer only** (§12.1/§12.2/§12.7): reuses `buildTaxPackSummary` + `buildTaxPackPdf`/`buildTaxPackXlsx` (the same exporters) + a `addReceiptDocuments` helper **extracted** from `zipBundleBuilder` so receipt-foldering lives in one place. `TaxPackExportButton` gains a "Complete pack — summary + receipts" option (now the default). 6 tests. ATO 5-year retention is covered by the **D.5b retention clock** ("Safe to archive" advisory).
+- [x] Renewal-date tie-in (insurance/rego docs surface their renewal) — ✅ shipped as **D.5a** (renewal → reminder).
 
 ---
 
@@ -203,7 +203,7 @@ first-class outcome alongside **create**, always with user confirmation.
 
 ### D.4/D.5 status
 
-D.1 ✅, D.1.1 ✅ (scan/form path now funnels through the DME dedup chokepoint), D.2 ✅, D.3 ✅ (SSOT; auto-exec rejected per autonomy decision), **D.4 ✅ (suggest-only learned routing)**, **D.5b ✅ (retention clock — advisory)**, **D.6 ✅ (bulk-approve Smart Inbox)**, **D.5a ✅ (renewal → reminder, Stitch-first)**. The Phase D engine-intelligence layer is complete. Remaining (lower-priority, carried): Tax-pack export + ATO retention (Phase C), and the D.5a v2 (typed entity-column write, once a safe partial-update endpoint exists).
+D.1 ✅, D.1.1 ✅ (scan/form path now funnels through the DME dedup chokepoint), D.2 ✅, D.3 ✅ (SSOT; auto-exec rejected per autonomy decision), **D.4 ✅ (suggest-only learned routing)**, **D.5b ✅ (retention clock — advisory)**, **D.6 ✅ (bulk-approve Smart Inbox)**, **D.5a ✅ (renewal → reminder, Stitch-first)**. The Phase D engine-intelligence layer is complete. **Tax-pack export ✅ — the Unified Accountant Pack (`format=pack`) shipped 2026-06-19** (summary + receipts in one ZIP; see Phase C list). Remaining (lower-priority): the D.5a v2 (typed entity-column write, once a safe partial-update endpoint exists), and per-property/investment expense-list parity.
 
 ### D.1.1 — scan/form path funnelled through the DME dedup chokepoint ✅ (2026-06-18)
 

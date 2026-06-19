@@ -48,10 +48,14 @@ import {
   buildReceiptZipBundle,
   suggestedZipFilename,
 } from '@/lib/bookkeeping/taxPack/zipBundleBuilder';
+import {
+  buildAccountantPack,
+  suggestedPackFilename,
+} from '@/lib/bookkeeping/taxPack/accountantPackBuilder';
 
-type Format = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
+type Format = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip' | 'pack';
 
-const SUPPORTED: Format[] = ['csv', 'xlsx', 'json', 'pdf', 'zip'];
+const SUPPORTED: Format[] = ['csv', 'xlsx', 'json', 'pdf', 'zip', 'pack'];
 
 export const GET = withPermission('transaction.read', async (request: NextRequest, auth) => {
   const url = new URL(request.url);
@@ -98,6 +102,26 @@ export const GET = withPermission('transaction.read', async (request: NextReques
         'Content-Disposition': `attachment; filename="${suggestedXeroFilename().replace('.csv', `-${window.label.toLowerCase()}.csv`)}"`,
         'X-Monitrax-FY': window.label,
         'X-Monitrax-Tx-Count': String(transactions.length),
+      },
+    });
+  }
+
+  // PACK path — the unified accountant pack: summary (PDF + XLSX) + the
+  // receipt documents in ONE ZIP. Reuses the canonical builders (§12.1).
+  if (format === 'pack') {
+    const pack = await buildAccountantPack(auth.userId, window);
+    const ab = new ArrayBuffer(pack.bytes.byteLength);
+    new Uint8Array(ab).set(pack.bytes);
+    const blob = new Blob([ab], { type: 'application/zip' });
+    return new NextResponse(blob, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/zip',
+        'Content-Disposition': `attachment; filename="${suggestedPackFilename(window.label)}"`,
+        'X-Monitrax-FY': window.label,
+        'X-Monitrax-Doc-Count': String(pack.documentCount),
+        'X-Monitrax-Doc-Missing': String(pack.missingCount),
+        'X-Monitrax-Property-Count': String(pack.propertyCount),
       },
     });
   }

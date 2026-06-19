@@ -9,6 +9,8 @@
  * download.
  *
  * Format support:
+ *   - pack — Unified accountant pack (Phase 50): ONE ZIP combining the
+ *            PDF + XLSX summary AND the FY's receipt documents. Default.
  *   - csv  — Xero bank-statement-import format (load-bearing)
  *   - xlsx — Per-property P&L workbook + ATO labels + summary
  *   - json — Full structured summary
@@ -25,7 +27,7 @@ import { useState } from 'react';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
-type TaxPackFormat = 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
+type TaxPackFormat = 'pack' | 'csv' | 'xlsx' | 'json' | 'pdf' | 'zip';
 
 interface FormatOption {
   value: TaxPackFormat;
@@ -34,6 +36,7 @@ interface FormatOption {
 }
 
 const FORMAT_OPTIONS: ReadonlyArray<FormatOption> = [
+  { value: 'pack', label: 'Complete pack — summary + receipts', description: 'One ZIP: PDF + XLSX summary AND every receipt for the FY' },
   { value: 'pdf', label: 'PDF — printable summary', description: 'Human-readable handoff for your accountant' },
   { value: 'xlsx', label: 'XLSX — Per-property workbook', description: 'P&L per property + ATO labels + summary' },
   { value: 'csv', label: 'CSV — Xero import', description: 'Bank-statement-import format' },
@@ -42,6 +45,7 @@ const FORMAT_OPTIONS: ReadonlyArray<FormatOption> = [
 ];
 
 const EXTENSION_BY_FORMAT: Record<TaxPackFormat, string> = {
+  pack: 'zip',
   csv: 'csv',
   xlsx: 'xlsx',
   json: 'json',
@@ -50,6 +54,7 @@ const EXTENSION_BY_FORMAT: Record<TaxPackFormat, string> = {
 };
 
 const DOWNLOAD_BASENAME_BY_FORMAT: Record<TaxPackFormat, string> = {
+  pack: 'monitrax-tax-pack',
   csv: 'monitrax-tax-pack',
   xlsx: 'monitrax-tax-pack',
   json: 'monitrax-tax-pack',
@@ -76,7 +81,7 @@ export function TaxPackExportButton() {
   const { token } = useAuth();
   const fyOptions = buildFyOptions();
   const [fy, setFy] = useState<string>(fyOptions[0]);
-  const [format, setFormat] = useState<TaxPackFormat>('pdf');
+  const [format, setFormat] = useState<TaxPackFormat>('pack');
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -127,7 +132,7 @@ export function TaxPackExportButton() {
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tax Pack export</h3>
           <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-            Categorised P&amp;L + ATO labels + per-property breakdown. Hand to your accountant.
+            Summary + receipts in one pack. Categorised P&amp;L + ATO labels + per-property breakdown.
           </p>
         </div>
       </div>
