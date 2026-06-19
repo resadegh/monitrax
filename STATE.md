@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `9cd51a8`+ (per-item-documents PR open) · **on:** 2026-06-16 · **by:** Code session (per-item Documents upload on wealth items + asset folder rule)
+**Last verified against HEAD:** `a0eb95e` (merge of #1162) · **on:** 2026-06-19 · **by:** Code session (mobile workstream `0·MOB` governance scaffolding + STATE cursor refresh)
 
 > **OPEN THREADS (Code session 2026-06-16/17):** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
 > on Properties/Investments/Assets (Super deferred — needs `SUPER` LinkedEntityType + migration). (2) **Mobile scan
@@ -48,10 +48,13 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 
 ## C. RESUME CURSOR  (regenerated at every session END — the live "where we are")
 
-> Re-pinned 2026-06-16 (Code) at HEAD `654bc55` = merge of #1124.
-> **AI Document Router (workstream `0·DOC`) is the active line of work.** Three PRs merged & prod-verified this
-> session: **#1122** (HALF_YEARLY frequency everywhere) · **#1123** (Doc Router Phase A — scan recognition fix +
-> `ASSET` linkable type) · **#1124** (Doc Router Phase B — per-user storage quota). Spec: `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
+> Re-pinned 2026-06-19 (Code) at live HEAD `a0eb95e` = merge of #1162 (was stale at `654bc55`).
+> **Landed since `654bc55` (#1149–#1162):** Phase 50 **Phase D** engine-intelligence layer is COMPLETE (D.2 reconcile,
+> D.3 confidence policy SSOT, D.4 learned routing suggest-only, D.5a renewal→reminder + D.5b retention clock, D.6
+> bulk-approve Smart Inbox, D.1.1 scan-path dedup) — **`0·DOC` is now feature-complete**; **Wealth Universe WX.6 / WX.6.1**
+> (entity → class → asset zoom + tap-to-zoom-first); **unified accountant tax-pack** (`format=pack` — one ZIP: PDF +
+> XLSX + receipts); **Document Vault preview fix** (same-origin streaming kills "This content is blocked").
+> **AI Document Router (workstream `0·DOC`) was the active line of work; now feature-complete.** Spec: `docs/blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md`.
 
 - **Current focus:** **AI Document Router — Phase B in progress.** Vision (Reza): every receipt → AI recognises →
   attaches to the correct item/asset OR creates a new expense → filed in the Vault for tax-time. Phase A ✅ shipped
@@ -88,6 +91,12 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   - **Q-GTM-3 (first aggregator) — STILL OPEN.** Claude rec = Finsure first, Connective second (a rec, not a ruling).
 - **Verified-live this session:** #1122/#1123/#1124 each built + merged; prod deploys reached READY on monitrax.com.au
   (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.
+
+- **0·MOB (Mobile companion app) — design phase, NEW 2026-06-19.** Live tracker:
+  docs/implementation/05_MOBILE_WORKSTREAM.md. Current: realign the mobile design system to the
+  §18.7 glass vocabulary (Stitch-first), then produce the MVP screen set. Next: author Monitrax
+  Mobile DESIGN.md → Stitch design system → Daily Pulse spike. Blocker: D4 notification-copy
+  compliance sign-off (content only, not the visual design). RN app = future monitrax-mobile repo.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 

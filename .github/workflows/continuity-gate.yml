@@ -35,8 +35,12 @@ jobs:
                | grep -q '\[skip-state\]'; then
             echo "Bypass [skip-state] present — gate skipped."; exit 0
           fi
+          # docs/implementation/05_MOBILE_WORKSTREAM.md is watched explicitly: the
+          # mobile companion live tracker must keep STATE.md + the plan in lock-step
+          # (registered 2026-06-19, workstream 0·MOB). Additive — does not change the
+          # existing path set.
           substantive="$(echo "$changed" \
-            | grep -E '^(app/|lib/|components/|contexts/|hooks/|prisma/|mobile-app/|docs/(marketing|architecture|compliance)/)' \
+            | grep -E '^(app/|lib/|components/|contexts/|hooks/|prisma/|mobile-app/|docs/(marketing|architecture|compliance)/|docs/implementation/05_MOBILE_WORKSTREAM\.md)' \
             || true)"
           if [ -z "$substantive" ]; then
             echo "No substantive workstream files changed — gate not required."; exit 0

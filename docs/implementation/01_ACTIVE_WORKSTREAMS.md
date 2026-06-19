@@ -8,6 +8,18 @@
 
 ## 🟡 Active Workstreams
 
+### 0·MOB. Mobile Companion App (Phase 15)
+
+- **Status:** 🟡 ACTIVE — **design phase.** Realign the mobile design system to the §18.7 glass vocabulary (Stitch-first) before any RN build, then produce the MVP screen set.
+- **Started:** 2026-06-19.
+- **Owner:** Reza + Claude (chat = PM + Stitch design direction · Code = repo writes · future `monitrax-mobile` = RN build).
+- **Last touched:** 2026-06-19 — governance scaffolding (this PR): stood up the `05_MOBILE_WORKSTREAM.md` spoke, STATE.md sub-cursor, continuity-gate watch.
+- **Detail:** **lives in [`05_MOBILE_WORKSTREAM.md`](05_MOBILE_WORKSTREAM.md)** (phase checklist, decision log D1–D5, open-for-Reza items, cross-references). This entry is the registry pointer only — to keep this over-budget spoke (§15.5) from growing, the live detail is in the dedicated spoke.
+- **Scope boundary:** this workstream is the **main-repo half** (design docs + Stitch artefacts, the `/api/v1/mobile/*` backend, the `@monitrax/core` shared package). The **React Native app** is a **separate `monitrax-mobile` repo** (blueprint §3.4) that gets its OWN STATE/CLAUDE/continuity-gate when stood up — this PR does NOT fork a second cursor inside `resadegh/monitrax`.
+- **Risk:** Low — design-phase docs + Stitch only; no code/schema/calc surface yet.
+- **Blocking:** D4 notification-copy compliance sign-off (content only — does NOT block the visual design work); the *build* gates on Basiq accredited+live + §15.1 P0 backend pre-reqs (API versioning, Cloud Armor, FCM).
+- **Why this matters:** the mobile design-system + blueprint §13 visual sections predate the §18.7 glass vocabulary (2026-06-01) and the Phase 45 glass migration — the documented mobile look has drifted from the current web app. Realigning it Stitch-first is the design-phase goal before any RN build.
+
 ### 0·DOC. AI Document Router (recognise → attach-or-create → file)
 
 - **Status:** 🟡 ACTIVE — **Phases A–C shipped & live; Phase D (engine intelligence) IN PROGRESS.** The end-to-end document workflow is live in prod: recognise (Vision OCR via REST transport) → attach to the right asset/property OR create a linked expense (dedup'd) → file in the right Vault folder → auto-name → thumbnail → edit/add-as-expense any time. **D.1 (document-level dedup) ✅ shipped (PR #1144).** D.2–D.5 are the remaining engine-intelligence steps (Reza go-ahead 2026-06-17).
