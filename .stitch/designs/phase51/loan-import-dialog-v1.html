@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-low": "#eff6ea",
+                        "on-secondary-fixed-variant": "#404757",
+                        "outline": "#6e7b6c",
+                        "error-container": "#ffdad6",
+                        "tertiary-container": "#66768d",
+                        "on-primary-container": "#f7fff2",
+                        "surface-dim": "#d5dcd1",
+                        "trail-emerald": "#16A34A",
+                        "primary": "#006b2c",
+                        "surface-ivory": "#FAFAF7",
+                        "surface-container-high": "#e3eadf",
+                        "on-background": "#171d16",
+                        "on-primary-fixed-variant": "#005320",
+                        "tertiary-fixed": "#d3e4fe",
+                        "inverse-surface": "#2b322b",
+                        "surface-container-highest": "#dde5d9",
+                        "on-secondary": "#ffffff",
+                        "background": "#f4fcf0",
+                        "secondary": "#585e6f",
+                        "on-tertiary": "#ffffff",
+                        "primary-container": "#00873a",
+                        "on-error-container": "#93000a",
+                        "surface-variant": "#dde5d9",
+                        "surface-container": "#e9f0e5",
+                        "on-primary": "#ffffff",
+                        "trail-amber": "#F59E0B",
+                        "trail-rose": "#F43F5E",
+                        "on-surface": "#171d16",
+                        "on-primary-fixed": "#002109",
+                        "outline-variant": "#bdcaba",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f4fcf0",
+                        "primary-fixed-dim": "#62df7d",
+                        "inverse-primary": "#62df7d",
+                        "inverse-on-surface": "#ecf3e7",
+                        "surface-tint": "#006e2d",
+                        "error-red": "#DC2626",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "secondary-fixed": "#dce2f6",
+                        "trail-violet": "#8B5CF6",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "trail-indigo": "#6366F1",
+                        "on-error": "#ffffff",
+                        "surface": "#f4fcf0",
+                        "outline-slate": "#94A3B8",
+                        "error": "#ba1a1a",
+                        "trail-sky": "#0EA5E9",
+                        "primary-fixed": "#7ffc97",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-secondary-fixed": "#151b2a",
+                        "on-secondary-container": "#5c6274",
+                        "tertiary": "#4d5d73",
+                        "secondary-container": "#d9dff4",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "on-tertiary-container": "#fdfcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "xxl": "28px",
+                        "radius-14": "14px",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "label-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .modal-shadow {
+            box-shadow: 
+                0 4px 6px -1px rgba(11, 18, 32, 0.04),
+                0 10px 15px -3px rgba(11, 18, 32, 0.04),
+                0 20px 25px -5px rgba(11, 18, 32, 0.06);
+        }
+        .gradient-border-amber-rose {
+            background: linear-gradient(to right, #F59E0B, #F43F5E);
+        }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-6 overflow-hidden">
+<!-- Background Decoration for Context -->
+<div class="absolute inset-0 z-0 pointer-events-none opacity-20">
+
+</div>
+<!-- Main View Under Modal (Dimmed State Simulation) -->
+<main class="max-w-container-max w-full blur-sm opacity-40 select-none">
+<div class="flex gap-gutter">
+<div class="w-64 h-[819px] bg-white rounded-xl"></div>
+<div class="flex-1 space-y-gutter">
+<div class="h-48 bg-white rounded-xl"></div>
+<div class="grid grid-cols-2 gap-gutter">
+<div class="h-64 bg-white rounded-xl"></div>
+<div class="h-64 bg-white rounded-xl"></div>
+</div>
+</div>
+</div>
+</main>
+<!-- Premium Modal Backdrop Overlay -->
+<div class="fixed inset-0 bg-[#FAFAF7]/60 backdrop-blur-[2px] z-40 flex items-center justify-center p-4">
+<!-- Apple-Tier Modal -->
+<section class="relative w-full max-w-[560px] bg-white/70 backdrop-blur-3xl rounded-xxl border border-white/40 modal-shadow overflow-hidden flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95">
+<!-- Amber-Rose Gradient Accent Strip -->
+<div class="h-[3px] w-full gradient-border-amber-rose absolute top-0 left-0"></div>
+<!-- Modal Content Padding -->
+<div class="p-8 pt-10 md:p-12 md:pt-14 space-y-10">
+<!-- Top Section: Icon & Header -->
+<header class="flex flex-col items-center text-center space-y-6">
+<div class="relative">
+<div class="w-11 h-11 rounded-radius-14 gradient-border-amber-rose flex items-center justify-center text-white ring-4 ring-white/30">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">upload_file</span>
+</div>
+</div>
+<div class="space-y-3">
+<p class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.18em]">LOAN STATEMENT</p>
+<h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Import statement</h1>
+<p class="font-body-md text-body-md text-secondary/80 max-w-[400px] mx-auto">
+                            Upload this loan's transactions so we match repayments and capture the exact interest for tax.
+                        </p>
+</div>
+</header>
+<!-- Middle Section: Upload Zone -->
+<div class="space-y-6">
+<label class="group relative flex flex-col items-center justify-center w-full min-h-[200px] border-2 border-dashed border-trail-amber/30 rounded-radius-14 bg-surface-ivory/40 hover:bg-white/80 hover:border-trail-amber/60 transition-all cursor-pointer" for="file-upload">
+<input class="hidden" id="file-upload" type="file"/>
+<div class="flex flex-col items-center space-y-4 py-8">
+<span class="material-symbols-outlined text-trail-amber text-3xl group-hover:scale-110 transition-transform duration-300">cloud_upload</span>
+<div class="text-center">
+<p class="font-body-md text-on-surface font-medium">Drag a QIF or CSV file here, or <span class="text-trail-amber underline underline-offset-4">browse</span></p>
+<p class="font-body-sm text-secondary/60 mt-1 tabular-nums">Your bank's loan account export — QIF, CSV, or OFX</p>
+</div>
+</div>
+</label>
+<!-- Reassurance Note -->
+<div class="bg-surface-ivory/50 rounded-lg p-4 flex items-start gap-4 border border-white/60">
+<span class="material-symbols-outlined text-secondary/40 text-xl">info</span>
+<p class="font-body-sm text-secondary/80 italic leading-snug">
+                            These transactions stay on the loan — they won't clutter your spending or categories.
+                        </p>
+</div>
+</div>
+<!-- Footer Section: CTAs -->
+<footer class="flex items-center justify-between gap-4 pt-4 border-t border-secondary/5">
+<button class="px-8 py-3.5 font-label-md text-label-md text-secondary hover:text-on-surface hover:bg-black/5 rounded-xl transition-all duration-200">
+                        Cancel
+                    </button>
+<button class="relative group px-10 py-3.5 rounded-xl overflow-hidden">
+<div class="absolute inset-0 gradient-border-amber-rose group-hover:opacity-90 transition-opacity"></div>
+<span class="relative font-label-md text-label-md text-white font-semibold flex items-center gap-2">
+                            Import
+                            <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</span>
+</button>
+</footer>
+</div>
+</section>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const uploadZone = document.getElementById('file-upload').parentElement;
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadZone.classList.add('border-trail-rose', 'bg-white/90');
+                }, false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                uploadZone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    uploadZone.classList.remove('border-trail-rose', 'bg-white/90');
+                }, false);
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if(files.length) {
+                    console.log('File dropped:', files[0].name);
+                    // Simulate processing
+                }
+            });
+        });
+    </script>
+</body></html>
