@@ -8,6 +8,22 @@
 
 ## 🟡 Active Workstreams
 
+### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
+
+- **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
+- **Started:** 2026-06-21.
+- **Owner:** Reza (decisions) + Claude (research, design direction, build).
+- **Last touched:** 2026-06-21 — scoped from a deep-research pass (5 cited streams + codebase audit); Phase doc written.
+- **Phase checklist:**
+  - [x] Deep research (categorisation UX · transfer detection · loan modelling · AU tax · CDR/Basiq) + codebase audit.
+  - [x] Phase doc + recommendation ([`PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md`](../blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md)).
+  - [ ] **51.1 (now, QIF):** Stitch designs (loan-scoped import dialog · Repayments tab · "Awaiting confirmation" queue) → loan ledger (quarantined) + actual-vs-actual matching + interest/principal split.
+  - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.
+  - [ ] **51.3 (CDR):** swap ingestion to Basiq; TR 2000/2 mixed-purpose apportionment.
+- **Risk:** tax correctness (offset vs redraw; never show estimated interest as a tax figure); §12.14 reform gate on negative-gearing projections.
+- **Blocking:** Stitch designs awaiting generation/Reza nod; confirm the two-records transfer model (§7 recommended).
+- **Why this matters:** directly fixes Reza's two stated pains — "which loan is this repayment?" (all loans paid from one offset, same payee) and "categorisation is overwhelming." Builds the CDR destination now, hand-fed by QIF until Basiq.
+
 ### 0·MOB. Mobile Companion App (Phase 15)
 
 - **Status:** 🟡 ACTIVE — **design phase.** Realign the mobile design system to the §18.7 glass vocabulary (Stitch-first) before any RN build, then produce the MVP screen set.
