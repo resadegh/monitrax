@@ -22,7 +22,7 @@
   - [ ] **51.1 design (remaining):** create-page handoff + full light/dark × desktop/mobile variant matrix (§18.7.2).
   - [x] **51.1 build #1 — schema foundation:** `LoanTransaction` ledger (quarantined) + `LoanTransactionKind`/`LoanMatchStatus` enums + `Loan.deductibleFraction` + migration `20260621000000_add_loan_ledger` (additive). Build green.
   - [x] **51.1 build #2 — loan-scoped import:** `importLoanStatement()` (QIF/CSV → quarantined `LoanTransaction`; keyword+direction kind classification; dedup by contentHash) + `POST /api/loans/[id]/ledger/import` + 13 tests. Build green.
-  - [ ] **51.1 build #3:** actual-vs-actual matching engine + confirm path.
+  - [x] **51.1 build #3 — matching engine:** `matchLoanRepayments()` (actual-vs-actual; amount+date+direction; confidence tiers; ambiguous → review, never auto-applied) + `suggestMatchesForLoan()`/`resolveRepaymentMatch()` (LINKED sets offset `isTransfer`) + `POST`/`PATCH /api/loans/[id]/ledger/match` + 8 tests. Build green.
   - [ ] **51.1 build #4:** Repayments tab + confirm-queue React + create-page handoff + tests.
   - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.
   - [ ] **51.3 (CDR):** swap ingestion to Basiq; TR 2000/2 mixed-purpose apportionment.

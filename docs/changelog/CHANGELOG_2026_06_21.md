@@ -1,5 +1,47 @@
 # Changelog - 2026-06-21
 
+## Session: loan-matching-shk180 (Phase 51.1 — build increment 3: matching engine)
+
+### Changes Made
+- **Type**: Feature (Phase 51.1 build #3) — the offset↔loan repayment matching engine.
+- **Scope**: `lib/bookkeeping/loanLedger/matchRepayments.ts` (new), `app/api/loans/[id]/ledger/match/route.ts` (new).
+
+### Solution
+- **`matchLoanRepayments()`** (pure) — actual-vs-actual: pairs each loan `REPAYMENT_RECEIVED`
+  to its best unused offset `UnifiedTransaction` OUT-flow by **amount + date proximity**
+  (PocketSmith-style small window). Confidence tiers: exact+same-day 0.98; exact+within-window
+  0.9−0.06·days; near amount (≤$5, e.g. IO variance) 0.5 "needs a look"; beyond → **no match**.
+  Ambiguous (≥2 exact candidates) capped at 0.6 for review. **Never auto-applies** — weak/ambiguous
+  matches are surfaced, not silently linked. 1:1 (each outflow used once).
+- **`suggestMatchesForLoan()`** — fetches unmatched repayments + the loan's offset-account
+  unmatched OUT-flows, runs the matcher, persists SUGGESTED (§12.11-guarded: only rows still
+  UNMATCHED). **`resolveRepaymentMatch()`** — accept → LINKED + offset `isTransfer=true` (principal
+  out of spending); reject → DISMISSED. Both guarded to the user's own SUGGESTED rows.
+- **`POST`/`PATCH /api/loans/[id]/ledger/match`** — thin wrappers (suggest / resolve), ownership-checked.
+
+### Files Added
+- `lib/bookkeeping/loanLedger/matchRepayments.ts`
+- `app/api/loans/[id]/ledger/match/route.ts`
+- `tests/bookkeeping/loanRepaymentMatching.test.ts` (8 tests — tiers, unmatched, IO-variance, ambiguity, 1:1, date disambiguation)
+
+### Build Status
+- [x] `tsc --noEmit` clean · `npm run build` passes · 8/8 matcher tests green
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- `loanTransaction.updateMany` (SUGGESTED) — guarded `where matchStatus: 'UNMATCHED'` (never clobbers LINKED/DISMISSED).
+- `loanTransaction.update` (LINKED/DISMISSED) — only after verifying the row is the user's own SUGGESTED row.
+- `unifiedTransaction.updateMany` (isTransfer=true) — scoped to the matched id + userId; sets a single boolean to exclude the principal from spending (intended).
+- All writes touch rows this feature created/owns; no user-entered financial values overwritten.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — matching/linking only; no tax-engine function, no financial calc, no per-asset tax UI. (Interest/principal split surfaces in the Repayments tab, increment 4.)
+
+### Doc-sync (CLAUDE.md §16)
+- [x] API contract (match suggest/resolve endpoints) → Phase 51 doc.
+- [ ] infra / identity / deploy / security / design — none.
+
+---
+
 ## Session: loan-import-shk180 (Phase 51.1 — build increment 2: loan-statement import)
 
 ### Changes Made
