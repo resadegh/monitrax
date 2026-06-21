@@ -198,7 +198,7 @@ All seed the §18.7.2 in-app glass vocabulary; light + dark × desktop + mobile 
 |---|---|---|---|
 | Repayments tab (inline import + ledger + split) | ✅ **APPROVED** (Reza, 2026-06-21 "looks good, ship it") | `309e4b0c5df54b38936fb07af5ed140b` (dark) | `.stitch/designs/phase51/loan-repayments-tab-v1-dark.{png,html}` |
 | Loan-import affordance (drop-zone panel, reused inside the Repayments tab) | ✅ approved (folded in) | `f160bad2d6ab4479910341150060eb8d` (light) | `.stitch/designs/phase51/loan-import-dialog-v1.{png,html}` |
-| "Awaiting confirmation" review queue | ⬜ to design | — | — |
+| "Awaiting confirmation" review queue | ✅ **APPROVED** (Reza, 2026-06-21 "design confirmed") | `ea91d6e3732b4c52be037e6b24488a81` (dark) | `.stitch/designs/phase51/loan-match-queue-v1-dark.{png,html}` |
 | Create-page post-create "import transactions too?" handoff | ⬜ to design (small addition) | — | — |
 
 **Still owed before build sign-off:** the confirmation-queue design + the full

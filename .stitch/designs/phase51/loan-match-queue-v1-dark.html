@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "outline": "#879485",
+            "background": "#050913",
+            "outline-variant": "rgba(255, 255, 255, 0.08)",
+            "on-secondary-container": "#003e1c",
+            "surface-dim": "#0e150f",
+            "error-container": "#93000a",
+            "surface-bright": "#343b33",
+            "surface-container-highest": "#30372f",
+            "tertiary-container": "#ec6284",
+            "on-tertiary": "#660027",
+            "surface-variant": "#30372f",
+            "on-primary": "#003914",
+            "primary-container": "#1ca64d",
+            "secondary-fixed": "#6dfe9c",
+            "inverse-surface": "#dde5d9",
+            "on-surface-variant": "#bdcaba",
+            "tertiary": "#ffb2bf",
+            "surface-container-lowest": "#09100a",
+            "surface-container": "#1b211a",
+            "on-background": "#dde5d9",
+            "tertiary-fixed": "#ffd9de",
+            "on-primary-fixed": "#002109",
+            "on-error": "#690005",
+            "surface": "#0e150f",
+            "secondary-container": "#00b55d",
+            "on-secondary-fixed-variant": "#005227",
+            "primary-fixed-dim": "#62df7d",
+            "on-tertiary-fixed-variant": "#8a143c",
+            "inverse-on-surface": "#2b322b",
+            "surface-tint": "#62df7d",
+            "on-surface": "#dde5d9",
+            "inverse-primary": "#006e2d",
+            "on-primary-fixed-variant": "#005320",
+            "primary-fixed": "#7ffc97",
+            "on-primary-container": "#003111",
+            "on-secondary-fixed": "#00210c",
+            "tertiary-fixed-dim": "#ffb2bf",
+            "on-secondary": "#003919",
+            "on-error-container": "#ffdad6",
+            "on-tertiary-container": "#5a0022",
+            "surface-container-high": "#252c24",
+            "secondary": "#4de082",
+            "on-tertiary-fixed": "#3f0016",
+            "surface-container-low": "#171d16",
+            "primary": "#62df7d",
+            "secondary-fixed-dim": "#4de082",
+            "error": "#ffb4ab"
+          },
+          "borderRadius": {
+            "DEFAULT": "22px",
+            "lg": "22px",
+            "xl": "32px",
+            "control": "14px",
+            "full": "9999px"
+          },
+          "spacing": {
+            "unit": "4px",
+            "margin-mobile": "20px",
+            "gutter": "24px",
+            "container-max": "1440px",
+            "margin-desktop": "64px"
+          },
+          "fontFamily": {
+            "display-hero": ["Inter", "sans-serif"],
+            "body-sm": ["Inter", "sans-serif"],
+            "headline-md": ["Inter", "sans-serif"],
+            "body-md": ["Inter", "sans-serif"],
+            "body-lg": ["Inter", "sans-serif"],
+            "label-caps": ["Inter", "sans-serif"],
+            "headline-lg": ["Inter", "sans-serif"]
+          },
+          "fontSize": {
+            "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+            "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+            "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+            "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+            "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+            "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.08em", "fontWeight": "600"}],
+            "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body {
+      background-color: #050913;
+      font-family: 'Inter', sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #dde5d9;
+    }
+
+    .glass-card {
+      background-color: rgba(14, 20, 36, 0.7);
+      backdrop-filter: blur(20px);
+      border: 1.5px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+      border-radius: 22px;
+    }
+
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+      vertical-align: middle;
+    }
+
+    .custom-checkbox {
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border: 1.5px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .custom-checkbox:checked {
+      background: #62df7d;
+      border-color: #62df7d;
+    }
+
+    .custom-checkbox:checked::after {
+      content: 'check';
+      font-family: 'Material Symbols Outlined';
+      font-size: 14px;
+      color: #003914;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-weight: bold;
+    }
+
+    .amber-rose-gradient {
+      background: linear-gradient(135deg, #F59E0B 0%, #E11D48 100%);
+    }
+
+    .amber-rose-dot {
+      background: linear-gradient(135deg, #F59E0B 0%, #E11D48 100%);
+    }
+
+    .selection-row {
+      transition: background-color 0.2s;
+    }
+
+    .selection-row:hover {
+      background-color: rgba(255, 255, 255, 0.03);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex items-start justify-center pt-24 px-6 overflow-x-hidden">
+<!-- Side Navigation Shell (from JSON Guidance) -->
+<aside class="fixed left-0 top-0 h-screen w-64 border-r border-outline-variant/20 bg-surface/70 backdrop-blur-3xl flex flex-col py-8 gap-6 z-50">
+<div class="px-8">
+<h1 class="font-headline-md text-headline-md font-bold text-primary dark:text-inverse-primary tracking-tight">Monitrax</h1>
+<p class="text-[11px] font-label-caps uppercase tracking-widest text-on-surface-variant/60 mt-1">Wealth Management</p>
+</div>
+<nav class="flex-1 px-4 space-y-1">
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container-high/50 transition-colors text-on-surface-variant cursor-pointer group">
+<span class="material-symbols-outlined text-[20px]">home</span>
+<span class="font-body-sm">Home</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl text-primary font-bold bg-primary/10 transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">account_balance</span>
+<span class="font-body-sm">Accounts</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container-high/50 transition-colors text-on-surface-variant cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">payments</span>
+<span class="font-body-sm">Budget</span>
+</div>
+<div class="flex items-center gap-4 px-4 py-3 rounded-xl hover:bg-surface-container-high/50 transition-colors text-on-surface-variant cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">umbrella</span>
+<span class="font-body-sm">Safety Net</span>
+</div>
+</nav>
+</aside>
+<!-- Main Canvas -->
+<main class="w-full max-w-5xl ml-64 flex flex-col gap-8 pb-32">
+<!-- Top Bar Shell -->
+<header class="flex justify-between items-end px-2">
+<div class="space-y-1">
+<span class="text-label-caps font-label-caps uppercase tracking-[0.15em] text-secondary/80 block">Loan Repayments</span>
+<h2 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Confirm these matches</h2>
+<p class="text-body-md text-on-surface-variant/70">8 payments were found across your connected accounts from the last month.</p>
+</div>
+<div class="flex items-center gap-2 px-4 py-1.5 bg-sky-500/10 border border-sky-500/20 rounded-full">
+<span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span>
+<span class="text-sky-400 text-label-caps font-bold">8 TO REVIEW</span>
+</div>
+</header>
+<!-- Review Content -->
+<section class="flex flex-col gap-4">
+<!-- Bulk Action Bar -->
+<div class="glass-card flex items-center justify-between p-5 px-6">
+<div class="flex items-center gap-4">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<span class="text-body-md font-medium text-on-surface">Select all</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-6 py-2.5 text-on-surface-variant hover:text-on-surface font-medium transition-colors text-body-md">Dismiss</button>
+<button class="amber-rose-gradient px-8 py-2.5 rounded-[14px] text-white font-semibold shadow-lg shadow-amber-900/20 hover:scale-[1.02] active:scale-95 transition-all text-body-md">
+            Confirm 6 selected
+          </button>
+</div>
+</div>
+<!-- Match Cards List -->
+<div class="flex flex-col gap-3">
+<!-- Row 1: Exact Match -->
+<div class="glass-card selection-row p-6 flex items-center group">
+<div class="flex-1 flex items-center justify-between gap-12">
+<!-- Left Side: Source -->
+<div class="w-1/3 space-y-1">
+<p class="text-body-sm font-medium text-on-surface-variant/60">Guildford Offset</p>
+<h3 class="text-headline-md tabular-nums font-bold text-on-surface tracking-tight">$1,271.34</h3>
+<p class="text-[13px] text-on-surface-variant/40">15 May 2026</p>
+</div>
+<!-- Middle: Link Logic -->
+<div class="flex flex-col items-center gap-1.5 min-w-[140px]">
+<div class="w-10 h-10 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</div>
+<span class="text-[12px] font-medium text-sky-400/80">Exact match · same day</span>
+</div>
+<!-- Right Side: Destination -->
+<div class="w-1/3 flex flex-col items-start gap-3">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full amber-rose-dot shadow-[0_0_8px_rgba(245,158,11,0.4)]"></div>
+<p class="text-body-md font-semibold text-on-surface">Bankwest Investment Loan</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Interest <span class="text-on-surface font-medium">$842.10</span></span>
+<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Deductible</span>
+</div>
+<div class="px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Principal <span class="text-on-surface font-medium">$429.24</span></span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-12">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<button class="text-on-surface-variant/40 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 2: Standard Match -->
+<div class="glass-card selection-row p-6 flex items-center group">
+<div class="flex-1 flex items-center justify-between gap-12">
+<div class="w-1/3 space-y-1">
+<p class="text-body-sm font-medium text-on-surface-variant/60">Guildford Offset</p>
+<h3 class="text-headline-md tabular-nums font-bold text-on-surface tracking-tight">$1,271.34</h3>
+<p class="text-[13px] text-on-surface-variant/40">15 May 2026</p>
+</div>
+<div class="flex flex-col items-center gap-1.5 min-w-[140px]">
+<div class="w-10 h-10 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</div>
+<span class="text-[12px] font-medium text-sky-400/80">Exact match · same day</span>
+</div>
+<div class="w-1/3 flex flex-col items-start gap-3">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full amber-rose-dot"></div>
+<p class="text-body-md font-semibold text-on-surface">Bankwest Investment Loan</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Interest <span class="text-on-surface font-medium">$842.10</span></span>
+<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Deductible</span>
+</div>
+<div class="px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Principal <span class="text-on-surface font-medium">$429.24</span></span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-12">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<button class="text-on-surface-variant/40 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 3: Standard Match -->
+<div class="glass-card selection-row p-6 flex items-center group">
+<div class="flex-1 flex items-center justify-between gap-12">
+<div class="w-1/3 space-y-1">
+<p class="text-body-sm font-medium text-on-surface-variant/60">Guildford Offset</p>
+<h3 class="text-headline-md tabular-nums font-bold text-on-surface tracking-tight">$1,271.34</h3>
+<p class="text-[13px] text-on-surface-variant/40">15 May 2026</p>
+</div>
+<div class="flex flex-col items-center gap-1.5 min-w-[140px]">
+<div class="w-10 h-10 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-400 border border-sky-500/20">
+<span class="material-symbols-outlined text-[20px]">link</span>
+</div>
+<span class="text-[12px] font-medium text-sky-400/80">Exact match · same day</span>
+</div>
+<div class="w-1/3 flex flex-col items-start gap-3">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full amber-rose-dot"></div>
+<p class="text-body-md font-semibold text-on-surface">Bankwest Investment Loan</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Interest <span class="text-on-surface font-medium">$842.10</span></span>
+<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Deductible</span>
+</div>
+<div class="px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Principal <span class="text-on-surface font-medium">$429.24</span></span>
+</div>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-12">
+<input checked="" class="custom-checkbox" type="checkbox"/>
+<button class="text-on-surface-variant/40 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+<!-- Row 4: Low-confidence Variant -->
+<div class="glass-card selection-row p-6 flex items-start group border-amber-500/30 bg-amber-500/5">
+<div class="flex-1 flex flex-col gap-4">
+<div class="flex items-center justify-between gap-12">
+<!-- Left Side -->
+<div class="w-1/3 space-y-1">
+<p class="text-body-sm font-medium text-on-surface-variant/60">Guildford Offset</p>
+<h3 class="text-headline-md tabular-nums font-bold text-on-surface tracking-tight">$1,275.34</h3>
+<p class="text-[13px] text-on-surface-variant/40">15 May 2026</p>
+</div>
+<!-- Middle: Warning State -->
+<div class="flex flex-col items-center gap-1.5 min-w-[140px]">
+<div class="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400 border border-amber-500/20">
+<span class="material-symbols-outlined text-[20px]">warning</span>
+</div>
+<span class="text-[12px] font-bold text-amber-500 uppercase tracking-wide">Needs a look</span>
+</div>
+<!-- Right Side -->
+<div class="w-1/3 flex flex-col items-start gap-3 opacity-80">
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full amber-rose-dot"></div>
+<p class="text-body-md font-semibold text-on-surface">Bankwest Investment Loan</p>
+</div>
+<div class="flex flex-wrap gap-2">
+<div class="flex items-center gap-1.5 px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Interest <span class="text-on-surface font-medium">$842.10</span></span>
+<span class="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Deductible</span>
+</div>
+<div class="px-3 py-1 bg-surface-container rounded-full border border-outline-variant/30">
+<span class="text-on-surface-variant text-[13px] tabular-nums">Principal <span class="text-on-surface font-medium">$429.24</span></span>
+</div>
+</div>
+</div>
+</div>
+<!-- Warning Hint -->
+<div class="flex items-center gap-3 py-2 px-4 bg-amber-500/10 rounded-[14px] border border-amber-500/20">
+<span class="material-symbols-outlined text-[18px] text-amber-400">info</span>
+<p class="text-[13px] text-amber-200/80">Amount differs by $4 — interest-only repayment varies</p>
+</div>
+</div>
+<div class="flex items-center gap-6 ml-12 pt-1">
+<input class="custom-checkbox" type="checkbox"/>
+<button class="text-on-surface-variant/40 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">more_vert</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="pt-8 pb-12 border-t border-outline-variant/10 text-center">
+<p class="text-[11px] text-on-surface-variant/40 max-w-lg mx-auto leading-relaxed">
+        Our matching engine uses historical payment patterns, beneficiary names, and timestamp correlation. Matches with high confidence are auto-selected. Always verify tax-deductible splits.
+      </p>
+</footer>
+</main>
+<!-- Interactive script for checkboxes -->
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const checkboxes = document.querySelectorAll('.custom-checkbox');
+      const confirmBtn = document.querySelector('.amber-rose-gradient');
+      
+      const updateCount = () => {
+        const checkedCount = document.querySelectorAll('.custom-checkbox:checked').length;
+        // Update button text if it exists (ignoring the select all checkbox if desired, let's just count total for simplicity)
+        if (confirmBtn) {
+          confirmBtn.textContent = `Confirm ${checkedCount} selected`;
+        }
+      };
+
+      checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateCount);
+      });
+    });
+  </script>
+</body></html>
