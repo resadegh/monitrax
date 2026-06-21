@@ -113,6 +113,7 @@ export const RESET_DELETE_MODELS = [
   'Transaction',
   'DebtPlan',
   'UnifiedTransaction',
+  'LoanTransaction', // Phase 51 — loan ledger; user financial data, wiped on "Start fresh" (cascades from Loan/User anyway)
   'CanonicalCategoryRegistry',
   'BookkeepingPeriod',
   'EngagementState',
