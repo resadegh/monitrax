@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #050913; /* Deep Navy background as per prompt */
+      color: #dde5d9;
+      -webkit-font-smoothing: antialiased;
+    }
+    .tabular-nums {
+      font-variant-numeric: tabular-nums;
+    }
+    .glass-card {
+      background: rgba(14, 20, 36, 0.7);
+      backdrop-filter: blur(24px);
+      border: 1.5px solid transparent;
+      border-image: linear-gradient(to bottom right, #fbbf24, #fb7185) 1; /* Amber to Rose tinted border */
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    }
+    /* Fixing border radius with border-image is tricky, using pseudo-element instead */
+    .glass-card-radius {
+      position: relative;
+      background: rgba(14, 20, 36, 0.7);
+      backdrop-filter: blur(24px);
+      border-radius: 22px;
+      box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+    }
+    .glass-card-radius::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 22px;
+      padding: 1.5px;
+      background: linear-gradient(to bottom right, rgba(251, 191, 36, 0.4), rgba(251, 113, 133, 0.4));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    .amber-rose-gradient {
+      background: linear-gradient(135deg, #fbbf24 0%, #fb7185 100%);
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-highest": "#30372f",
+            "on-secondary-fixed-variant": "#005227",
+            "surface-variant": "#30372f",
+            "surface-dim": "#0e150f",
+            "on-error-container": "#ffdad6",
+            "inverse-primary": "#006e2d",
+            "primary": "#62df7d",
+            "on-tertiary-fixed": "#3f0016",
+            "secondary-fixed-dim": "#4de082",
+            "on-background": "#dde5d9",
+            "background": "#0e150f",
+            "secondary": "#4de082",
+            "tertiary-container": "#ec6284",
+            "on-primary": "#003914",
+            "surface-tint": "#62df7d",
+            "outline-variant": "#3e4a3d",
+            "error": "#ffb4ab",
+            "on-primary-fixed": "#002109",
+            "error-container": "#93000a",
+            "on-tertiary": "#660027",
+            "surface-container": "#1b211a",
+            "primary-container": "#1ca64d",
+            "on-tertiary-fixed-variant": "#8a143c",
+            "tertiary-fixed-dim": "#ffb2bf",
+            "on-error": "#690005",
+            "tertiary-fixed": "#ffd9de",
+            "on-surface-variant": "#bdcaba",
+            "on-secondary-fixed": "#00210c",
+            "tertiary": "#ffb2bf",
+            "surface-container-low": "#171d16",
+            "surface-bright": "#343b33",
+            "surface": "#0e150f",
+            "secondary-fixed": "#6dfe9c",
+            "surface-container-high": "#252c24",
+            "primary-fixed-dim": "#62df7d",
+            "outline": "#879485",
+            "surface-container-lowest": "#09100a",
+            "on-tertiary-container": "#5a0022",
+            "on-primary-container": "#003111",
+            "primary-fixed": "#7ffc97",
+            "on-primary-fixed-variant": "#005320",
+            "inverse-surface": "#dde5d9",
+            "secondary-container": "#00b55d",
+            "on-secondary": "#003919",
+            "inverse-on-surface": "#2b322b",
+            "on-surface": "#dde5d9",
+            "on-secondary-container": "#003e1c"
+          },
+          "borderRadius": {
+            "DEFAULT": "1rem",
+            "lg": "2rem",
+            "xl": "3rem",
+            "full": "9999px"
+          },
+          "spacing": {
+            "container-max": "1440px",
+            "unit": "4px",
+            "margin-desktop": "64px",
+            "gutter": "24px",
+            "margin-mobile": "20px"
+          },
+          "fontFamily": {
+            "body-lg": ["Inter"],
+            "headline-md": ["Inter"],
+            "headline-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "label-caps": ["Inter"],
+            "display-hero": ["Inter"],
+            "body-sm": ["Inter"],
+            "display-hero-mobile": ["Inter"]
+          },
+          "fontSize": {
+            "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+            "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "600"}],
+            "headline-lg": ["32px", {"lineHeight": "1.2", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+            "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+            "label-caps": ["12px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "600"}],
+            "display-hero": ["96px", {"lineHeight": "1.1", "letterSpacing": "-0.04em", "fontWeight": "700"}],
+            "body-sm": ["14px", {"lineHeight": "1.5", "fontWeight": "400"}],
+            "display-hero-mobile": ["48px", {"lineHeight": "1.1", "letterSpacing": "-0.03em", "fontWeight": "700"}]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col items-center justify-center p-6">
+<!-- Main Content Container (Simulating a Dialog Tab Content) -->
+<div class="w-full max-w-4xl space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+<!-- Header/Navigation Context (Minimal) -->
+<div class="flex items-center justify-between px-2 mb-2">
+<h2 class="font-headline-md text-headline-md tracking-tight text-on-surface">Repayments</h2>
+<div class="flex space-x-1">
+<span class="w-2 h-2 rounded-full bg-primary/40"></span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="w-2 h-2 rounded-full bg-primary/40"></span>
+</div>
+</div>
+<!-- Section 1: Inline Import Affordance -->
+<section class="glass-card-radius p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+<div class="flex items-center gap-4 flex-1">
+<div class="w-10 h-10 rounded-xl amber-rose-gradient flex items-center justify-center flex-shrink-0 shadow-lg">
+<span class="material-symbols-outlined text-white" data-icon="upload">upload</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-lg font-semibold tracking-tight text-on-surface">Import this loan's statement</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">QIF, CSV or OFX — interest + repayments</p>
+</div>
+</div>
+<div class="flex flex-col items-end gap-2 w-full md:w-auto">
+<button class="amber-rose-gradient text-white px-6 py-2.5 rounded-[14px] font-label-md text-sm font-bold shadow-xl hover:scale-[1.02] active:scale-95 transition-transform">
+          Choose file
+        </button>
+</div>
+<div class="w-full md:hidden pt-2 border-t border-white/5">
+<p class="text-[11px] text-on-surface-variant/60 italic">These stay on the loan — out of your spending and categories.</p>
+</div>
+<div class="hidden md:block absolute -bottom-6 left-16">
+<p class="text-[11px] text-on-surface-variant/60 italic">These stay on the loan — out of your spending and categories.</p>
+</div>
+</section>
+<!-- Section 2: Summary Strip -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-gutter">
+<!-- Tile 1: Interest -->
+<div class="glass-card-radius p-6 flex flex-col justify-between min-h-[120px]">
+<div class="flex justify-between items-start">
+<span class="text-label-caps uppercase text-on-surface-variant tracking-wider">Interest this FY</span>
+<span class="bg-emerald-500/10 text-[#22C55E] px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase flex items-center gap-1">
+<span class="material-symbols-outlined text-[12px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+            Deductible
+          </span>
+</div>
+<div class="mt-4">
+<span class="text-headline-lg font-headline-lg tabular-nums text-on-surface">$14,282.40</span>
+</div>
+</div>
+<!-- Tile 2: Principal Paid -->
+<div class="glass-card-radius p-6 flex flex-col justify-between min-h-[120px]">
+<div class="flex flex-col">
+<span class="text-label-caps uppercase text-on-surface-variant tracking-wider">Principal paid</span>
+<span class="mt-4 text-headline-lg font-headline-lg tabular-nums text-on-surface">$7,820.12</span>
+</div>
+<div class="mt-2 text-body-sm text-on-surface-variant/70 italic">reduces balance</div>
+</div>
+<!-- Tile 3: Current Balance -->
+<div class="glass-card-radius p-6 flex flex-col justify-between min-h-[120px]">
+<div class="flex flex-col">
+<span class="text-label-caps uppercase text-on-surface-variant tracking-wider">Current balance</span>
+<span class="mt-4 text-headline-lg font-headline-lg tabular-nums text-on-surface">$482,104.55</span>
+</div>
+<div class="mt-2 flex items-center gap-2">
+<div class="h-1.5 flex-1 bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary/60 w-[35%] rounded-full"></div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Repayments Ledger -->
+<section class="glass-card-radius overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-white/5">
+<th class="px-6 py-5 text-label-caps uppercase text-on-surface-variant/60 font-black tracking-[0.1em]">Date</th>
+<th class="px-6 py-5 text-label-caps uppercase text-on-surface-variant/60 font-black tracking-[0.1em] text-right">Amount</th>
+<th class="px-6 py-5 text-label-caps uppercase text-on-surface-variant/60 font-black tracking-[0.1em] text-right">Interest</th>
+<th class="px-6 py-5 text-label-caps uppercase text-on-surface-variant/60 font-black tracking-[0.1em] text-right">Principal</th>
+<th class="px-6 py-5 text-label-caps uppercase text-on-surface-variant/60 font-black tracking-[0.1em] text-center">Status</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-white/5">
+<!-- Row 1 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 May 2026</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$1,271.34</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$429.24</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">Linked</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 Apr 2026</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$1,271.34</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$429.24</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">Linked</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 Mar 2026</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$1,271.34</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$429.24</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 ring-1 ring-inset ring-amber-500/20 cursor-pointer hover:bg-amber-500/20 transition-all">Confirm</span>
+</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 Feb 2026</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right font-bold text-amber-200/90">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface-variant/40 text-right">$0 (—)</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">Linked</span>
+</td>
+</tr>
+<!-- Row 5 (Repetition for ledger effect) -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 Jan 2026</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$1,271.34</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$429.24</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">Linked</span>
+</td>
+</tr>
+<!-- Row 6 -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4 font-body-sm text-on-surface">15 Dec 2025</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$1,271.34</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$842.10</td>
+<td class="px-6 py-4 font-body-sm tabular-nums text-on-surface text-right">$429.24</td>
+<td class="px-6 py-4 text-center">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-500/10 text-sky-400 ring-1 ring-inset ring-sky-500/20">Linked</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Footer -->
+<footer class="flex items-center justify-between pt-2 border-t border-white/5">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant/40">info</span>
+<p class="text-[11px] text-on-surface-variant/60 font-body-sm">
+          Interest shown is the actual amount charged on your statement — the figure your accountant uses.
+        </p>
+</div>
+<div class="flex items-center gap-4">
+<button class="text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Export Report</button>
+<button class="text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Settings</button>
+</div>
+</footer>
+</div>
+<!-- Decorative subtle background glow -->
+<div class="fixed top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -z-10 pointer-events-none"></div>
+<div class="fixed bottom-0 left-0 w-[500px] h-[500px] bg-tertiary/5 blur-[120px] rounded-full -z-10 pointer-events-none"></div>
+<script>
+    // Micro-interactions
+    document.querySelectorAll('tr').forEach(row => {
+      row.addEventListener('click', () => {
+        // Mock highlighting
+        row.classList.add('bg-white/[0.05]');
+        setTimeout(() => row.classList.remove('bg-white/[0.05]'), 500);
+      });
+    });
+
+    document.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        if (!btn.classList.contains('amber-rose-gradient')) {
+          btn.style.textShadow = '0 0 10px rgba(255,255,255,0.2)';
+        }
+      });
+      btn.addEventListener('mouseleave', () => {
+        btn.style.textShadow = 'none';
+      });
+    });
+  </script>
+</body></html>

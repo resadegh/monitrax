@@ -170,8 +170,26 @@ each category to an **ATO label behind the scenes**.
 - Split loans → schema must not assume 1 account = 1 loan.
 
 ## 9. Stitch surfaces to design (Phase 51.1)
-1. **Loan-scoped import dialog** (on `LoanDetailDialog`) — import this loan's statement (QIF/CSV).
-2. **Repayments tab** — matched repayments, interest/principal split, running balance.
-3. **"Awaiting confirmation" review queue** — suggested offset↔loan matches, one-tap confirm/bulk.
+
+**DECIDED (Reza, 2026-06-21): fold the statement upload into the EXISTING surfaces — NO
+standalone import dialog** (§12.1 reuse / §18.2.1). The two existing entry points do different
+jobs with the same file:
+- **Loan create page** already has *"Attach document to auto-fill"* (Gemini → fills
+  rate/principal/repayment). Keep it; it's **field auto-fill**. The transaction *ledger* can't
+  import here (no loan ID until save) — so after create, offer a one-tap *"also found N
+  transactions — import them?"* handoff into the ledger path.
+- **Loan detail page → new "Repayments" tab** is the home for the **transaction-ledger import**
+  (inline affordance in the tab's empty/header state — the v1 standalone-dialog content is
+  repurposed here, not discarded).
+
+Surfaces to design:
+1. **Repayments tab** (on `LoanDetailDialog`) — matched repayments, interest/principal split,
+   running balance, **+ inline "import statement" affordance** (drop zone + "stays on the loan"
+   reassurance).
+2. **"Awaiting confirmation" review queue** — suggested offset↔loan matches, one-tap confirm/bulk.
+3. **Create-page handoff** — the post-create "import the transactions too?" prompt (small
+   addition to the existing create flow, not a new composition).
 
 All seed the §18.7.2 in-app glass vocabulary; light + dark × desktop + mobile per §18.7.2.
+~~Standalone import dialog (Stitch `f160bad2`)~~ — superseded by this decision; its drop-zone
+panel is reused inside surface #1.
