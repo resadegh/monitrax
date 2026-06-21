@@ -76,6 +76,25 @@ enum RepaymentFrequency {
   MONTHLY
 }
 
+// Phase 51 — the loan's own ledger. A loan statement (QIF/CSV now → Basiq CDR
+// loan-interest/loan-repayment later) carries these kinds of rows.
+enum LoanTransactionKind {
+  INTEREST_CHARGED // interest debited to the loan — the tax-deductible figure (actual charged)
+  REPAYMENT_RECEIVED // a repayment credited to the loan
+  FEE // account / other fee charged to the loan
+  REDRAW // money drawn back out of the loan — a purpose-classification event (offset ≠ redraw, TR 2000/2)
+  OTHER
+}
+
+// Phase 51 — status of matching a loan REPAYMENT_RECEIVED row to the funding
+// offset-account payment (a UnifiedTransaction outflow).
+enum LoanMatchStatus {
+  UNMATCHED // no candidate offset payment found yet
+  SUGGESTED // engine proposed a match — awaiting user confirmation
+  LINKED // user confirmed the offset ↔ loan match
+  DISMISSED // user rejected the suggested match
+}
+
 enum AccountType {
   OFFSET
   SAVINGS
@@ -1258,6 +1277,7 @@ model User {
   // Phase 13: Transactional Intelligence
   unifiedTransactions UnifiedTransaction[]
   recurringPayments   RecurringPayment[]
+  loanTransactions    LoanTransaction[] // Phase 51 — loan ledger
   spendingProfile     SpendingProfile?
 
   // Phase 14: Cashflow Optimisation Engine
@@ -1592,18 +1612,25 @@ model Loan {
   minRepayment        Float // Current required payment
   repaymentFrequency  RepaymentFrequency
   extraRepaymentCap   Float? // Annual cap for extra repayments on fixed loans
+  // Phase 51 — deductible fraction of interest (mixed-purpose apportionment,
+  // ATO TR 2000/2). Default 1.0 = fully deductible (back-compat / single-purpose
+  // investment loan). A private redraw can lower this; the apportionment engine
+  // is a later increment — this column is the additive foundation. Reform note
+  // (CLAUDE.md §12.14): default keeps PRE_REFORM_GRANDFATHERED behaviour.
+  deductibleFraction  Float              @default(1.0)
   createdAt           DateTime           @default(now())
   updatedAt           DateTime           @updatedAt
 
   // Relationships
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ownerEntity   LegalEntity    @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
-  property      Property?      @relation(fields: [propertyId], references: [id], onDelete: SetNull)
-  offsetAccount Account?       @relation(fields: [offsetAccountId], references: [id], onDelete: SetNull)
-  linkedAsset   Asset?         @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
-  linkedAccount Account?       @relation("LoanLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
-  expenses      Expense[]
-  debtPlanLoans DebtPlanLoan[]
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ownerEntity      LegalEntity       @relation(fields: [ownerEntityId], references: [id], onDelete: Restrict)
+  property         Property?         @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  offsetAccount    Account?          @relation(fields: [offsetAccountId], references: [id], onDelete: SetNull)
+  linkedAsset      Asset?            @relation(fields: [linkedAssetId], references: [id], onDelete: SetNull)
+  linkedAccount    Account?          @relation("LoanLinkedAccount", fields: [linkedAccountId], references: [id], onDelete: SetNull)
+  expenses         Expense[]
+  debtPlanLoans    DebtPlanLoan[]
+  loanTransactions LoanTransaction[] // Phase 51 — the loan's own ledger
 
   @@index([userId])
   @@index([ownerEntityId])
@@ -2752,14 +2779,20 @@ model UnifiedTransaction {
   processedAt DateTime? // When TIE last processed this
 
   // Relationships
-  user    User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  account Account            @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account              Account            @relation("UnifiedTransactions", fields: [accountId], references: [id], onDelete: Cascade)
   // Phase 42 PR2 — Splits. The parent transaction's `categoryLevel*`
   // fields remain populated for backwards-compat (= the dominant split's
   // category, computed deterministically); per-line categories live on
   // `TransactionSplit` rows. Sum-of-splits MUST equal `amount` ± $0.01
   // — enforced by `lib/bookkeeping/splits.ts` at every mutation path.
-  splits  TransactionSplit[]
+  splits               TransactionSplit[]
+  // Phase 51 — when this row is an offset-account outflow that funds a loan
+  // repayment, it links 1:1 to the loan's REPAYMENT_RECEIVED ledger row. The FK
+  // lives on LoanTransaction; on confirm we also set isTransfer=true here so the
+  // principal is excluded from spending (interest is recorded as a deductible
+  // expense). Back-relation only.
+  matchedLoanRepayment LoanTransaction?   @relation("LoanRepaymentMatch")
 
   @@index([userId])
   @@index([accountId])
@@ -2779,6 +2812,66 @@ model UnifiedTransaction {
   // could fail the migration on production data without the audit pass).
   @@index([accountId, date, amount, normalisedDescriptionHash], name: "ut_dedup_qif_csv_ofx")
   @@map("unified_transactions")
+}
+
+// =============================================================================
+// PHASE 51: LOAN LEDGER (the loan's own transactions — quarantined)
+// =============================================================================
+
+/// Phase 51 — the loan's own transaction ledger (interest charged + repayments
+/// received), imported from a loan statement (QIF/CSV now → Basiq CDR
+/// `loan-interest`/`loan-repayment` later). DELIBERATELY a separate table from
+/// `UnifiedTransaction`: it is quarantined from categorisation AND the spending
+/// view by construction (those operate on `UnifiedTransaction` only — a loan row
+/// can never leak into "what did I spend?"). The matching engine bridges an
+/// offset-account `UnifiedTransaction` outflow to a `REPAYMENT_RECEIVED` row
+/// here; interest is taken from the actual `INTEREST_CHARGED` figure (offset
+/// makes a rate × balance estimate wrong — ATO). See
+/// docs/blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md.
+model LoanTransaction {
+  id     String @id @default(uuid())
+  userId String
+  loanId String
+
+  date         DateTime
+  postDate     DateTime?
+  amount       Float
+  direction    TransactionDirection
+  kind         LoanTransactionKind
+  description  String?
+  balanceAfter Float? // loan balance after this row, when the statement provides it
+
+  // Interest / principal split for a REPAYMENT_RECEIVED row, when known from the
+  // statement. Interest is the tax-deductible figure (actual amount charged).
+  interestPortion  Float?
+  principalPortion Float?
+
+  // Matching to the funding offset-account payment (a UnifiedTransaction outflow).
+  matchStatus          LoanMatchStatus @default(UNMATCHED)
+  matchConfidence      Float? // 0-1, from the actual-vs-actual matcher
+  matchedTransactionId String?         @unique // the offset UnifiedTransaction this repayment was paid by
+
+  // Source / dedup — mirrors UnifiedTransaction so the Basiq swap is drop-in
+  // (only the ingestion source changes; same store + same matcher).
+  source             TransactionSource @default(QIF)
+  externalId         String?
+  basiqTransactionId String?           @unique
+  importBatchId      String?
+  contentHash        String? // hash(loanId + normDate + amount + normDesc) — re-import dedup
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loan               Loan                @relation(fields: [loanId], references: [id], onDelete: Cascade)
+  matchedTransaction UnifiedTransaction? @relation("LoanRepaymentMatch", fields: [matchedTransactionId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([loanId])
+  @@index([date])
+  @@index([matchStatus])
+  @@index([loanId, date, amount, contentHash], name: "loan_tx_dedup")
+  @@map("loan_transactions")
 }
 
 // =============================================================================

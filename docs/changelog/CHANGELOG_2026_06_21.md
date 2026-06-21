@@ -1,5 +1,53 @@
 # Changelog - 2026-06-21
 
+## Session: loan-ledger-build-shk180 (Phase 51.1 — build increment 1: schema foundation)
+
+### Changes Made
+- **Type**: Feature (Phase 51.1 build) — schema foundation + completed design set.
+- **Scope**: `prisma/schema.prisma` (loan ledger) + Stitch designs.
+
+### Designs (all 3 core 51.1 surfaces approved by Reza)
+- Repayments tab `309e4b0c` · import affordance `f160bad2` · **matching confirmation queue
+  `ea91d6e3732b4c52be037e6b24488a81`** (this increment) — artefacts under `.stitch/designs/phase51/`.
+
+### Schema (build increment 1)
+- New model **`LoanTransaction`** (`loan_transactions`) — the loan's own ledger
+  (INTEREST_CHARGED / REPAYMENT_RECEIVED / FEE / REDRAW / OTHER), **deliberately separate from
+  `UnifiedTransaction`** so it is quarantined from categorisation + the spending view by
+  construction. Carries interest/principal split, match status/confidence, the 1:1 link to the
+  funding offset `UnifiedTransaction`, and source/dedup fields (`contentHash`, `basiqTransactionId`)
+  that mirror UnifiedTransaction so the Basiq swap is drop-in.
+- New enums **`LoanTransactionKind`**, **`LoanMatchStatus`**.
+- `Loan.deductibleFraction Float @default(1.0)` — mixed-purpose apportionment foundation
+  (TR 2000/2); default = fully deductible (back-compat).
+- `UnifiedTransaction.matchedLoanRepayment` back-relation (FK on `LoanTransaction`).
+- Migration `prisma/migrations/20260621000000_add_loan_ledger/migration.sql` — **additive only**.
+
+### Build Status
+- [x] `prisma validate` — valid · `prisma generate` — client has `LoanTransaction`
+- [x] `tsc --noEmit` clean · `npm run build` passes
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- **None.** Additive only — new enum types, one new column (default 1.0), one new table. No
+  UPDATE/DELETE/DROP, no `db push`. Migration file present (§12.12).
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- New column `Loan.deductibleFraction` (default 1.0) is the additive foundation for mixed-purpose
+  apportionment; **no tax-engine function modified**, no post-reform math applied. Default keeps
+  PRE_REFORM_GRANDFATHERED behaviour. Note: §12.14 FW-3 lists Property/Investment/LegalEntity;
+  Loan is not listed, but flagged here for completeness — no grandfathering interaction at this layer.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] data model change → schema + matching migration (§12.12); Phase 51 doc already describes it.
+
+### Remaining 51.1 build increments
+- Loan-scoped statement import (reuse QIF/CSV parser → `LoanTransaction`, quarantined).
+- Actual-vs-actual matching engine (offset outflow ↔ REPAYMENT_RECEIVED) + confirm path.
+- Repayments tab + confirmation-queue React (from the approved Stitch screens; canonical navy
+  dark tokens) + create-page handoff. Variant matrix. Tests.
+
+---
+
 ## Session: loan-ledger-tracking-shk180
 
 ### Changes Made
