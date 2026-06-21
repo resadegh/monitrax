@@ -23,7 +23,9 @@
   - [x] **51.1 build #1 — schema foundation:** `LoanTransaction` ledger (quarantined) + `LoanTransactionKind`/`LoanMatchStatus` enums + `Loan.deductibleFraction` + migration `20260621000000_add_loan_ledger` (additive). Build green.
   - [x] **51.1 build #2 — loan-scoped import:** `importLoanStatement()` (QIF/CSV → quarantined `LoanTransaction`; keyword+direction kind classification; dedup by contentHash) + `POST /api/loans/[id]/ledger/import` + 13 tests. Build green.
   - [x] **51.1 build #3 — matching engine:** `matchLoanRepayments()` (actual-vs-actual; amount+date+direction; confidence tiers; ambiguous → review, never auto-applied) + `suggestMatchesForLoan()`/`resolveRepaymentMatch()` (LINKED sets offset `isTransfer`) + `POST`/`PATCH /api/loans/[id]/ledger/match` + 8 tests. Build green.
-  - [ ] **51.1 build #4:** Repayments tab + confirm-queue React + create-page handoff + tests.
+  - [x] **51.1 build #4 — Repayments tab UI:** `GET /api/loans/[id]/ledger` (rows + FY summary; interest from actual INTEREST_CHARGED) + `LoanRepaymentsTab` (inline import + summary strip + ledger with Linked/Confirm/Unmatched + inline one-tap confirm) wired into `LoanDetailDialog` (7 tabs). Semantic tokens → light+dark. Build green.
+  - [ ] **51.1 polish (4b, optional):** standalone "Awaiting confirmation" queue in My Accounts (`ea91d6e3`) + create-page "import transactions too?" handoff + variant matrix.
+  - **51.1 is functionally complete** — import → match → confirm → tax-correct interest/principal, all live behind the loan's Repayments tab.
   - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.
   - [ ] **51.3 (CDR):** swap ingestion to Basiq; TR 2000/2 mixed-purpose apportionment.
 - **Risk:** tax correctness (offset vs redraw; never show estimated interest as a tax figure); §12.14 reform gate on negative-gearing projections.

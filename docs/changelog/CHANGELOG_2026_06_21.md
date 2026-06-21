@@ -1,5 +1,50 @@
 # Changelog - 2026-06-21
 
+## Session: loan-repayments-tab-shk180 (Phase 51.1 — build increment 4: Repayments tab UI)
+
+### Changes Made
+- **Type**: Feature (Phase 51.1 build #4) — the user-facing Repayments tab; wires the approved
+  design to the import/match/ledger backend. **Phase 51.1 is now functionally complete.**
+- **Scope**: `app/api/loans/[id]/ledger/route.ts` (GET, new), `components/loans/LoanRepaymentsTab.tsx`
+  (new), `components/loans/LoanDetailDialog.tsx` (+1 tab).
+
+### Solution
+- **`GET /api/loans/[id]/ledger`** — rows + FY summary (interest from the actual `INTEREST_CHARGED`
+  rows = the deductible figure, never an estimate; principal paid = repaid − interest; current
+  balance = latest `balanceAfter`). Ownership-checked, read-only.
+- **`LoanRepaymentsTab`** — faithful to the approved Stitch screens (`309e4b0c` tab + `f160bad2`
+  import affordance): inline import (no separate dialog), 3-tile summary strip (Interest this FY +
+  emerald Deductible chip / Principal paid / Current balance), and the ledger table with per-row
+  status — sky **Linked**, amber **Confirm** (one-tap accept / dismiss inline), or **Unmatched**.
+  IO rows show full interest / — principal. "Find offset matches" triggers the matcher. Imports
+  auto-run matching. Uses semantic tokens (`bg-card`/`foreground`/`muted`) → renders light + dark.
+- Wired into `LoanDetailDialog` as a 7th tab ("Repayments", between Offset and Expenses).
+
+### Files Added / Modified
+- `app/api/loans/[id]/ledger/route.ts` (NEW) · `components/loans/LoanRepaymentsTab.tsx` (NEW)
+- `components/loans/LoanDetailDialog.tsx` — tab trigger + content + import.
+
+### Build Status
+- [x] `tsc --noEmit` clean · `npm run build` passes. (Backend it calls is unit-tested in #1167–#1169;
+  this increment is presentational wiring — manual verification on the preview.)
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- **None.** GET endpoint is read-only; the component calls the already-guarded import/match endpoints.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- Surfaces a per-loan tax position (interest = deductible). No tax-engine function modified; interest
+  is the actual charged figure (not a reform-sensitive computation). No negative-gearing projection here.
+
+### Stitch / §18.2.1
+- New section composition (Repayments tab) — designed Stitch-first (`309e4b0c`, approved) before this
+  code; screen IDs in the component JSDoc. Built with semantic tokens (light+dark). 4b (standalone
+  confirm queue `ea91d6e3` + variant matrix) tracked as optional polish.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] API contract (ledger GET) + UI (new tab) → Phase 51 doc §9.1; component JSDoc carries screen IDs.
+
+---
+
 ## Session: loan-matching-shk180 (Phase 51.1 — build increment 3: matching engine)
 
 ### Changes Made
