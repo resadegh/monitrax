@@ -1,11 +1,11 @@
 # Monitrax Mobile — Screen Specifications
 
-**Date:** 2026-06-21 | **Version:** 1.0 | **Status:** ACTIVE
+**Date:** 2026-06-21 | **Version:** 1.1 | **Status:** ACTIVE
 **Owner:** Reza + Claude (design direction)
 **Design system:** `docs/mobile/design/01_DESIGN_SYSTEM.md` (rich-glass v3 — realignment in progress) · CLAUDE.md §18.7.2
 **Tracker:** `docs/implementation/05_MOBILE_WORKSTREAM.md` (0·MOB)
 
-> Source of record for the RN/Expo build of the 5 locked screens (light + dark).
+> Source of record for the RN/Expo build of the 7 locked screens (light + dark).
 > Figures shown are placeholders; **all real values come from the single calc engine**
 > (`lib/calculations/*`, `lib/services/masterFinancialService.ts`) — never hand-derived.
 > Canonical mock figures: net worth **$1,284,200**, change **+$4,830 (0.4%)**.
@@ -46,6 +46,18 @@
 **Interaction (depicted in mock):** hero chart scrubber + "May · $1,272,400" tooltip; Super tile in **pressed** state; Home tile **··· long-press** hint; every tile tap -> entity detail.
 **Compliance:** "My Wealth" never "Portfolio"; liabilities amber never red; in-app figures OK; observation only.
 
+## 6. Spending — Transaction feed (tab screen)
+**Artefacts:** `stitch/light/spending.*` (screen `2cffe68c…`, donut overview) · `stitch/dark/spending.*` (screen `d917b81b…`)
+**Layout:** header ("Spending" + search + filter; month selector pill "‹ May 2026 ›") -> **spending overview** (DONUT: Groceries emerald · Transport sky · Dining amber · Subs indigo; centre "This month · $3,210 · 84 transactions"; right legend with coloured dot + $ + %) -> **"12 to review"** sky-tinted pill -> Triage -> **day-grouped feed** ("Today / Yesterday / Mon 26 May"): 40px merchant logo or category gem (1px ring) · merchant bold + relative meta · right-aligned tabular amount — rows: Woolworths −$84.20 (Groceries, emerald gem) with a faint emerald **swipe-to-categorise** reveal; Opal −$5.20 (Transport, sky gem) in a **pressed** state; Netflix −$18.99 (Subscription, indigo gem); Salary +$1,240.00 (emerald money-in); Coles −$32.40; Uber −$23.10 -> tab bar (Spending active) + Scan FAB.
+**Interaction:** row tap -> transaction detail; long-press -> quick actions/peek; swipe-right -> categorise (emerald); pressed state on press.
+**Compliance:** the donut + legend are a **neutral category breakdown** — NO budget %, NO target, NO "on track"; money-out neutral slate (never red, never amber); money-in emerald; observation only.
+
+## 7. Cashflow mini — Cash flow detail (pushed screen, no tab bar)
+**Artefacts:** `stitch/light/cashflow.*` (screen `c8e33271…`) · `stitch/dark/cashflow.*` (screen `a21642d3…`)
+**Layout:** header (back · "Cash flow" · period pill "This month ▾") -> **net hero** (faint emerald glow; eyebrow "Net this month"; emerald gradient tabular "+$3,210"; bento sub-stats "Money in $8,420" emerald-dot / "Money out $5,210" slate-dot) -> **in-vs-out chart** ("In vs out · last 6 months"; grouped rounded-cap bars Dec–May, money-in emerald / money-out slate, faint net line; scrubber + tooltip "May · In $8,420 · Out $5,210") -> **Money in** (Salary $7,200 emerald gem · Rental $980 teal gem · Interest $240 sky gem) -> **Upcoming this fortnight** (Rent −$1,850 · Fri 30 May; Netflix −$18.99 · 3 Jun [**pressed**]; Energy AGL −$210 · 5 Jun).
+**Interaction:** chart scrub -> tooltip + highlighted bar pair; upcoming/income row tap -> detail; pressed state on press.
+**Compliance:** observation only — NO advice, NO targets, NO "on track", NO "money left until payday" countdown; money-out neutral (never red), net/money-in emerald; "Upcoming" is factual (no "you'll be short" language).
+
 ---
 
 ## Copy / data fixes to apply (carried into the build + the Code follow-up)
@@ -53,6 +65,7 @@
 - Daily Pulse dark highlight CTA: **"Review providers" -> "See details"**.
 - Accounts liability label: **"Home Insurance Mortgage" -> "Mortgage"**.
 - **Rental reconciliation:** allocation lists Rental but Assets has no Rental tile — add a Rental (teal) tile *or* drop Rental from allocation so the entity set is coherent. (Real list = engine.)
+- **Spending (dark) donut legend:** standardise the legend figures to the locked **light** values (Groceries $1,180 · 37%, Transport $420 · 13%, Dining $360 · 11%, Subs $250 · 8%); the dark mock drifted ($1,384 / $802 / $481 / $321) and its percentages summed >100%.
 
 ## Status of artefacts + design-system realignment
 - Stitch artefacts (PNG + HTML, light + dark) are generated and live in chat outputs; they land under
