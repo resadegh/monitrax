@@ -18,9 +18,12 @@
   - [x] Deep research (categorisation UX · transfer detection · loan modelling · AU tax · CDR/Basiq) + codebase audit.
   - [x] Phase doc + recommendation ([`PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md`](../blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md)).
   - [x] **Decision:** import folds into existing surfaces (Repayments tab + create-page auto-fill) — **no standalone dialog** (Reza, 2026-06-21).
-  - [x] **51.1 design (core):** Repayments tab (Stitch `309e4b0c`, dark) + import affordance (`f160bad2`) — **approved**.
-  - [ ] **51.1 design (remaining):** "Awaiting confirmation" queue + create-page handoff + full light/dark × desktop/mobile variant matrix (§18.7.2).
-  - [ ] **51.1 build:** loan ledger (quarantined) + actual-vs-actual matching engine + interest/principal split (schema + migration §12.12).
+  - [x] **51.1 design (all 3 core surfaces approved):** Repayments tab (`309e4b0c`) + import affordance (`f160bad2`) + matching confirm queue (`ea91d6e3`).
+  - [ ] **51.1 design (remaining):** create-page handoff + full light/dark × desktop/mobile variant matrix (§18.7.2).
+  - [x] **51.1 build #1 — schema foundation:** `LoanTransaction` ledger (quarantined) + `LoanTransactionKind`/`LoanMatchStatus` enums + `Loan.deductibleFraction` + migration `20260621000000_add_loan_ledger` (additive). Build green.
+  - [ ] **51.1 build #2:** loan-scoped statement import (QIF/CSV → LoanTransaction).
+  - [ ] **51.1 build #3:** actual-vs-actual matching engine + confirm path.
+  - [ ] **51.1 build #4:** Repayments tab + confirm-queue React + create-page handoff + tests.
   - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.
   - [ ] **51.3 (CDR):** swap ingestion to Basiq; TR 2000/2 mixed-purpose apportionment.
 - **Risk:** tax correctness (offset vs redraw; never show estimated interest as a tax figure); §12.14 reform gate on negative-gearing projections.
