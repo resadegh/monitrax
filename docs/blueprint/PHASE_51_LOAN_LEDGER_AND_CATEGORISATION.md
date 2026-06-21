@@ -191,5 +191,18 @@ Surfaces to design:
    addition to the existing create flow, not a new composition).
 
 All seed the §18.7.2 in-app glass vocabulary; light + dark × desktop + mobile per §18.7.2.
-~~Standalone import dialog (Stitch `f160bad2`)~~ — superseded by this decision; its drop-zone
-panel is reused inside surface #1.
+
+### 9.1 Design status (Stitch artefacts — project `1859462351962811110`)
+
+| Surface | Status | Stitch screen | Artefact |
+|---|---|---|---|
+| Repayments tab (inline import + ledger + split) | ✅ **APPROVED** (Reza, 2026-06-21 "looks good, ship it") | `309e4b0c5df54b38936fb07af5ed140b` (dark) | `.stitch/designs/phase51/loan-repayments-tab-v1-dark.{png,html}` |
+| Loan-import affordance (drop-zone panel, reused inside the Repayments tab) | ✅ approved (folded in) | `f160bad2d6ab4479910341150060eb8d` (light) | `.stitch/designs/phase51/loan-import-dialog-v1.{png,html}` |
+| "Awaiting confirmation" review queue | ⬜ to design | — | — |
+| Create-page post-create "import transactions too?" handoff | ⬜ to design (small addition) | — | — |
+
+**Still owed before build sign-off:** the confirmation-queue design + the full
+light/dark × desktop/mobile variant matrix (§18.7.2 dark-mode reviewer rule). **Build-time note:**
+use the canonical navy dark tokens (`#050913` / `--editorial-ivory` dark), NOT Stitch's
+green-tinted default dark — record the approved screen IDs above in the converted component's
+file-header JSDoc (§18.4).

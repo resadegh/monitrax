@@ -13,11 +13,14 @@
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
 - **Started:** 2026-06-21.
 - **Owner:** Reza (decisions) + Claude (research, design direction, build).
-- **Last touched:** 2026-06-21 — scoped from a deep-research pass (5 cited streams + codebase audit); Phase doc written.
+- **Last touched:** 2026-06-21 — research + Phase doc shipped (PR #1166); the two core 51.1 designs (Repayments tab + folded-in import) **approved by Reza** ("looks good, ship it").
 - **Phase checklist:**
   - [x] Deep research (categorisation UX · transfer detection · loan modelling · AU tax · CDR/Basiq) + codebase audit.
   - [x] Phase doc + recommendation ([`PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md`](../blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md)).
-  - [ ] **51.1 (now, QIF):** Stitch designs (loan-scoped import dialog · Repayments tab · "Awaiting confirmation" queue) → loan ledger (quarantined) + actual-vs-actual matching + interest/principal split.
+  - [x] **Decision:** import folds into existing surfaces (Repayments tab + create-page auto-fill) — **no standalone dialog** (Reza, 2026-06-21).
+  - [x] **51.1 design (core):** Repayments tab (Stitch `309e4b0c`, dark) + import affordance (`f160bad2`) — **approved**.
+  - [ ] **51.1 design (remaining):** "Awaiting confirmation" queue + create-page handoff + full light/dark × desktop/mobile variant matrix (§18.7.2).
+  - [ ] **51.1 build:** loan ledger (quarantined) + actual-vs-actual matching engine + interest/principal split (schema + migration §12.12).
   - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.
   - [ ] **51.3 (CDR):** swap ingestion to Basiq; TR 2000/2 mixed-purpose apportionment.
 - **Risk:** tax correctness (offset vs redraw; never show estimated interest as a tax figure); §12.14 reform gate on negative-gearing projections.

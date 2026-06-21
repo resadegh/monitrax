@@ -64,6 +64,25 @@ Surfaces changed:
 - Generate Phase 51.1 Stitch designs (seed §18.7.2 vocabulary; light+dark × desktop+mobile).
 - Confirm the two-records transfer model (§7) and the first categorisation lever to sequence.
 
+### Update — designs approved + shipped (Reza: "looks good, ship it and document all of this")
+- **Decision (Reza, 2026-06-21):** fold the statement upload into **existing** surfaces — no
+  standalone import dialog (§12.1 / §18.2.1). Ledger import lives inline in a new loan-detail
+  **Repayments tab**; the create page keeps its "attach to auto-fill" drop zone (extended
+  post-create to offer ledger import).
+- **Stitch designs (project `1859462351962811110`), approved:**
+  - Repayments tab — screen `309e4b0c5df54b38936fb07af5ed140b` (dark) — inline import + summary
+    strip (Interest this FY w/ Deductible chip, Principal paid, Current balance) + ledger
+    (Date/Amount/Interest/Principal/Status; Linked vs Confirm pills; IO row = full interest, $0
+    principal) + "actual statement interest = accountant's figure" footer.
+  - Import affordance — screen `f160bad2d6ab4479910341150060eb8d` (light) — drop-zone panel,
+    reused inside the Repayments tab.
+  - Artefacts committed under `.stitch/designs/phase51/`.
+- **Still owed before build:** confirmation-queue design + create-page handoff + full
+  light/dark × desktop/mobile variant matrix. Build-time: use canonical navy dark tokens
+  (`#050913`), not Stitch's green-tinted default.
+- **PR #1166** marked ready + merged (research + plan + approved core designs). Build (Phase
+  51.1 code) is the next step.
+
 ### Research source lists (deep-research pass)
 - Categorisation: Monarch / Copilot / PocketSmith / YNAB / Frollo / WeMoney / Pocketbook / Up help docs.
 - Transfers: PocketSmith Transfer-marking + mortgage-as-transfer; Monarch/Copilot/YNAB/Frollo/WeMoney.
