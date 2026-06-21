@@ -21,7 +21,7 @@
   - [x] **51.1 design (all 3 core surfaces approved):** Repayments tab (`309e4b0c`) + import affordance (`f160bad2`) + matching confirm queue (`ea91d6e3`).
   - [ ] **51.1 design (remaining):** create-page handoff + full light/dark × desktop/mobile variant matrix (§18.7.2).
   - [x] **51.1 build #1 — schema foundation:** `LoanTransaction` ledger (quarantined) + `LoanTransactionKind`/`LoanMatchStatus` enums + `Loan.deductibleFraction` + migration `20260621000000_add_loan_ledger` (additive). Build green.
-  - [ ] **51.1 build #2:** loan-scoped statement import (QIF/CSV → LoanTransaction).
+  - [x] **51.1 build #2 — loan-scoped import:** `importLoanStatement()` (QIF/CSV → quarantined `LoanTransaction`; keyword+direction kind classification; dedup by contentHash) + `POST /api/loans/[id]/ledger/import` + 13 tests. Build green.
   - [ ] **51.1 build #3:** actual-vs-actual matching engine + confirm path.
   - [ ] **51.1 build #4:** Repayments tab + confirm-queue React + create-page handoff + tests.
   - [ ] **51.2:** review-exceptions categorisation inbox + "apply to past+future" rules + confidence gate + ATO-label mapping.

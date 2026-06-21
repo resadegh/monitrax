@@ -1,5 +1,44 @@
 # Changelog - 2026-06-21
 
+## Session: loan-import-shk180 (Phase 51.1 — build increment 2: loan-statement import)
+
+### Changes Made
+- **Type**: Feature (Phase 51.1 build #2) — loan-scoped statement import into the quarantined ledger.
+- **Scope**: `lib/bookkeeping/loanLedger/importLoanStatement.ts` (new), `app/api/loans/[id]/ledger/import/route.ts` (new).
+
+### Solution
+- **`importLoanStatement()`** — reuses the canonical `parseQIF`/`parseCSV` parsers + the dedup
+  `normaliseDescription` helper (§12.1/§12.2; no new parsing). Maps each statement row →
+  `LoanTransaction` with: `classifyLoanRow()` (keyword-first — interest/redraw/fee/repayment —
+  then a direction fallback: credit reduces balance → repayment, debit → interest), absolute
+  amount + derived direction, `balanceAfter`, and a stable `computeLoanRowHash()` dedup key
+  (loanId + ISO date + 2dp amount + normalised desc) so a re-imported overlapping statement
+  doesn't double the ledger. Bulk `createMany`. Returns `{ total, imported, skipped, byKind }`.
+- **`POST /api/loans/[id]/ledger/import`** — thin wrapper (§12.3): `loan.write` permission +
+  ownership check, multipart `file` → `file.text()` → service; parser errors map to 422 (never
+  leak internals); CREATE audit (fire-and-forget, §12.5; no financial detail in metadata).
+- The ledger stays **quarantined** — categorisation/spending operate on `UnifiedTransaction` only.
+
+### Files Added
+- `lib/bookkeeping/loanLedger/importLoanStatement.ts`
+- `app/api/loans/[id]/ledger/import/route.ts`
+- `tests/bookkeeping/loanStatementImport.test.ts` (13 tests — classification, dedup hash, mapping)
+
+### Build Status
+- [x] `tsc --noEmit` clean · `npm run build` passes · 13/13 import tests green
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- **None.** Only `createMany` (inserts) into the new `loan_transactions` table. No update/delete; no schema change.
+
+### Phase 41E reform compliance (CLAUDE.md §12.14)
+- N/A — import/classification only; no tax-engine function, no financial calc, no per-asset tax UI. Interest/principal split + deductibility land in later increments (matching engine).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] API contract (new import endpoint) — Phase 51 doc describes the flow.
+- [ ] infra / identity / deploy / security / design — none.
+
+---
+
 ## Session: loan-ledger-build-shk180 (Phase 51.1 — build increment 1: schema foundation)
 
 ### Changes Made
