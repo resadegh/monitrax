@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `d69429e` (merge of #1163) · **on:** 2026-06-21 · **by:** chat session (0·MOB design set locked — light+dark; screen specs authored; cursor refresh)
+**Last verified against HEAD:** `b03975d` (merge of #1164) · **on:** 2026-06-21 · **by:** chat session (0·MOB: Spending + Cashflow mini locked light+dark — 7 screens total; specs documented; cursor refresh)
 
 > **OPEN THREADS (Code session 2026-06-16/17):** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
 > on Properties/Investments/Assets (Super deferred — needs `SUPER` LinkedEntityType + migration). (2) **Mobile scan
@@ -93,12 +93,12 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
   (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.
 
 - **0·MOB (Mobile companion app) — design phase.** Live tracker: docs/implementation/05_MOBILE_WORKSTREAM.md.
-  **LOCKED light+dark set (5 screens: Daily Pulse · Triage · Scanner · Insights · Accounts)** on the canonical
+  **LOCKED light+dark set — 7 screens: Daily Pulse · Triage · Scanner · Insights · Accounts · Spending (transaction feed) · Cashflow mini** on the canonical
   Stitch system (project `4167588157712714472`, asset `f73ad289…` "My Wealth glass"); rich/premium direction (D6),
-  quality loop >9 bar (D7), interaction states required (D8), font lock (D-TYPE). Screen specs authored
+  quality loop >9 bar (D7), interaction states required (D8), font lock (D-TYPE). Screen specs for all 7 authored
   (`docs/mobile/design/02_SCREEN_SPECIFICATIONS.md`). NEXT (Code follow-up): commit Stitch artefacts under
-  `docs/mobile/design/stitch/`, realign `01_DESIGN_SYSTEM.md` to rich-glass v3, realign blueprint §13, apply copy/data
-  fixes. THEN: remaining MVP screens (transaction feed · cashflow mini · quick-add · health detail · biometric unlock ·
+  `docs/mobile/design/stitch/` (7 screens), realign `01_DESIGN_SYSTEM.md` to rich-glass v3, realign blueprint §13, apply copy/data
+  fixes (incl. Spending-dark donut-legend). THEN: remaining MVP screens (quick-add · health detail · biometric unlock ·
   notification prefs · widget) + RN build in `monitrax-mobile`. BLOCKERS: D4 push-copy compliance sign-off (content
   only, not the visual design); build gates on Basiq accredited+live + §15.1 P0. RN app = future monitrax-mobile repo.
 
