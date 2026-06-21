@@ -7,7 +7,7 @@
 > NEVER ground truth — only live `resadegh/monitrax` HEAD is.
 > **No session is notified of anything.** Merge-awareness and "what changed" are a session-start PULL, never a subscription.
 
-**Last verified against HEAD:** `a0eb95e` (merge of #1162) · **on:** 2026-06-19 · **by:** Code session (mobile workstream `0·MOB` governance scaffolding + STATE cursor refresh)
+**Last verified against HEAD:** `d69429e` (merge of #1163) · **on:** 2026-06-21 · **by:** chat session (0·MOB design set locked — light+dark; screen specs authored; cursor refresh)
 
 > **OPEN THREADS (Code session 2026-06-16/17):** (1) **Per-item Documents upload — THIS PR**: `DocumentsSection`
 > on Properties/Investments/Assets (Super deferred — needs `SUPER` LinkedEntityType + migration). (2) **Mobile scan
@@ -92,11 +92,15 @@ the repo moved — re-verify the cursor below against the live plan BEFORE actin
 - **Verified-live this session:** #1122/#1123/#1124 each built + merged; prod deploys reached READY on monitrax.com.au
   (iad1+syd1) — half-yearly live, scan-recognition fix live, storage quota enforcing in prod. main advanced to `654bc55`.
 
-- **0·MOB (Mobile companion app) — design phase, NEW 2026-06-19.** Live tracker:
-  docs/implementation/05_MOBILE_WORKSTREAM.md. Current: realign the mobile design system to the
-  §18.7 glass vocabulary (Stitch-first), then produce the MVP screen set. Next: author Monitrax
-  Mobile DESIGN.md → Stitch design system → Daily Pulse spike. Blocker: D4 notification-copy
-  compliance sign-off (content only, not the visual design). RN app = future monitrax-mobile repo.
+- **0·MOB (Mobile companion app) — design phase.** Live tracker: docs/implementation/05_MOBILE_WORKSTREAM.md.
+  **LOCKED light+dark set (5 screens: Daily Pulse · Triage · Scanner · Insights · Accounts)** on the canonical
+  Stitch system (project `4167588157712714472`, asset `f73ad289…` "My Wealth glass"); rich/premium direction (D6),
+  quality loop >9 bar (D7), interaction states required (D8), font lock (D-TYPE). Screen specs authored
+  (`docs/mobile/design/02_SCREEN_SPECIFICATIONS.md`). NEXT (Code follow-up): commit Stitch artefacts under
+  `docs/mobile/design/stitch/`, realign `01_DESIGN_SYSTEM.md` to rich-glass v3, realign blueprint §13, apply copy/data
+  fixes. THEN: remaining MVP screens (transaction feed · cashflow mini · quick-add · health detail · biometric unlock ·
+  notification prefs · widget) + RN build in `monitrax-mobile`. BLOCKERS: D4 push-copy compliance sign-off (content
+  only, not the visual design); build gates on Basiq accredited+live + §15.1 P0. RN app = future monitrax-mobile repo.
 
 ## D. THE SESSION RITUAL  (all surfaces; Code ALSO follows CLAUDE.md Parts 1/7/10)
 

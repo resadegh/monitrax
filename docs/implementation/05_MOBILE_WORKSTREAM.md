@@ -19,34 +19,54 @@
 - **Status:** 🟡 Active — **design phase**.
 - **Started:** 2026-06-19.
 - **Owner:** Reza + Claude (chat = PM + Stitch design direction · Code = repo writes · future `monitrax-mobile` = RN build).
-- **Last touched:** 2026-06-19 (governance scaffolding).
+- **Last touched:** 2026-06-21 (locked light+dark design set — 5 screens).
 - **Why this matters:** the mobile design-system + blueprint §13 visual sections predate the
   §18.7 glass vocabulary (authored 2026-06-01) and the Phase 45 glass migration — so the
   documented mobile look has drifted from the current web app. Realigning it (Stitch-first) is
   the design-phase goal before any RN build.
 
 ### Phase checklist
-- [x] Governance scaffolding (this PR)
-- [ ] Monitrax Mobile **DESIGN.md** — translate the §18.7.2 glass-on-ivory vocabulary into a native mobile design system
-- [ ] Stand up the **Monitrax Mobile Stitch project + design system** (record project ID here)
-- [ ] Daily Pulse home **spike** — generate against the design system, iterate to lock the look
-- [ ] MVP screen set (4-variant matrix: mobile light/dark) — Daily Pulse · Triage · Scanner · Insights/Alerts · Transaction feed · Cashflow mini · Quick-add · Health detail · Biometric unlock · Notification prefs · home-screen widget
-- [ ] **v3 design-doc** (`docs/mobile/design/01_DESIGN_SYSTEM.md`) + **blueprint §13** realignment to §18.7, referencing the locked Stitch artefacts
+- [x] Governance scaffolding (#1163)
+- [~] Monitrax Mobile **DESIGN.md** — rich-glass v3 vocabulary defined; `01_DESIGN_SYSTEM.md` surgical realignment pending a Code follow-up
+- [x] Stand up the **Monitrax Mobile Stitch project + design system** — project `4167588157712714472`; canonical design-system asset `f73ad289d43a49f79bf3fc4f773996ab` ("My Wealth Glass")
+- [x] Daily Pulse home **spike** — generated, iterated, **locked**
+- [~] MVP screen set — **5 of the matrix locked light + dark: Daily Pulse · Triage · Scanner · Insights · Accounts (My Wealth).** Remaining: Transaction feed · Cashflow mini · Quick-add · Health detail · Biometric unlock · Notification prefs · home-screen widget
+- [~] **v3 design-doc** + **blueprint §13** realignment — screen specs authored (`docs/mobile/design/02_SCREEN_SPECIFICATIONS.md`); `01_DESIGN_SYSTEM.md` realignment + §13 pending Code
 - [ ] RN conversion in `monitrax-mobile` (separate repo)
 
 ### Decision log
 - **D1 — glass translation: PROCEEDING.** Translate the web glass-on-ivory vocabulary into native materials (warm ivory `#FAFAF7` / deep navy `#050913` ground, native blur/material cards, sky→indigo gradient money, per-entity sub-palettes) — NOT the doc's current flat slate-on-white `#FFFFFF`. SSOT-consistent; native craft (SF Pro, springs, haptics) retained.
-- **D2 — TRAIL in the IA: PROCEEDING on hybrid** unless Reza redirects. Keep the task-oriented companion tabs (Home/Triage/Alerts/More); make Daily Pulse lead with the TRAIL stage; document the deviation from the web 5-tab TRAIL bar (CLAUDE.md §14).
-- **D3 — home-screen widget:** *design* it now (strongest native-only differentiator + wealth-OS differentiation vs spending-tracker rivals); **build-sequence (MVP vs Tier 3) = Reza's call.**
-- **D5 — sequencing:** design proceeds now; the *build* gates on **Basiq accredited + live** (integration is built, accreditation is the real gate) + the §15.1 P0 backend pre-reqs (API versioning, Cloud Armor, FCM).
+- **D2 — TRAIL in the IA: PROCEEDING on hybrid** unless Reza redirects. Keep the task-oriented companion tabs; make Daily Pulse lead with the TRAIL stage; document the deviation from the web 5-tab TRAIL bar (CLAUDE.md §14). *Tab set realigned to Home/Spending/Accounts/More + Scan FAB.*
+- **D3 — home-screen widget:** *design* it now; **build-sequence (MVP vs Tier 3) = Reza's call.**
+- **D5 — sequencing:** design proceeds now; the *build* gates on **Basiq accredited + live** + the §15.1 P0 backend pre-reqs (API versioning, Cloud Armor, FCM).
+- **D6 — design direction (LOCKED 2026-06-21):** rich / premium "Copilot-like" (big charts, generous tasteful colour, bento, real depth) over the rejected flat "Clean Wealth" pivot. Journey: glass → Clean (rejected) → rich.
+- **D7 — quality loop (process, STANDING):** every Stitch generation is self-reviewed + scored vs benchmarks (Copilot Money, Apple Health/Wallet) + requirements, refined **up to 5 passes**, bar **>9/10**; only the best is presented; **approval = lock, no re-roll.**
+- **D8 — interactivity (requirement, STANDING):** tiles + charts have defined interaction states (tap / long-press / scrub + pressed; hover = web only). Mocks depict; RN builds; captured in `02_SCREEN_SPECIFICATIONS.md`.
+- **D-TYPE — font lock:** SF Pro (iOS) · Roboto (Android) · Inter (web + Stitch proxy).
+- **Design-system SSOT:** canonical = `f73ad289d43a49f79bf3fc4f773996ab` ("My Wealth Glass"); `b61f869b24f84efb8317684e781b2a54` ("Clean Wealth") **deprecated**. Richness is prompt-driven — restate the full visual spec in every Stitch prompt.
+
+### Screen lock status (light + dark)
+| Screen | Light | Dark | Stitch screen IDs (light / dark) |
+|---|---|---|---|
+| Daily Pulse (Home) | ✅ locked | ✅ | `9cb9d480…` / `b163f385…` |
+| Triage (Review) | ✅ locked | ✅ | `9262005b…` / `dcca169d…` |
+| Scanner | ✅ locked | ✅ (reuse — mode-agnostic) | `2ced2652…` / `fd2fdc85…` |
+| Insights | ✅ locked | ✅ | `3164a83c…` / `14898be9…` |
+| Accounts (My Wealth) | ✅ locked | ✅ | `34d23df5…` / `2526df08…` |
 
 ### Open for Reza
 - **D2** — confirm the hybrid IA (or request the 5-tab TRAIL bar).
 - **D3** — widget in MVP vs Tier 3.
-- **D4 — COMPLIANCE BLOCKER (notification content).** Some blueprint §9.2 push copy (e.g. "Your offset account could save $2,400/year") risks the CDR "no figures in push body" rule (§9.5) **and** the AFSL "information, not advice" boundary. Notification *content* is **held** for Reza compliance sign-off. Does NOT block the visual design work.
+- **D4 — COMPLIANCE BLOCKER (notification content).** Some blueprint §9.2 push copy risks the CDR "no figures in push body" rule (§9.5) **and** the AFSL "information, not advice" boundary. Notification *content* is **held** for Reza compliance sign-off. Does NOT block the visual design work.
+
+### Follow-ups (Code session)
+- Commit Stitch artefacts (PNG + HTML, light + dark) under `docs/mobile/design/stitch/`.
+- Surgically realign `docs/mobile/design/01_DESIGN_SYSTEM.md` to rich-glass v3 (preserve valid motion/haptics/gesture/a11y/icon sections).
+- Realign blueprint §13 to reference the v3 design system + locked artefacts.
+- Apply the copy/data fixes in `02_SCREEN_SPECIFICATIONS.md`.
 
 ### Cross-references (not copies)
 - Spec tree + index: `docs/mobile/00_INDEX.md`
 - Master spec: `docs/mobile/blueprint/PHASE_15_MOBILE_COMPANION_APP.md`
-- Design system (to be realigned): `docs/mobile/design/01_DESIGN_SYSTEM.md`
+- Design system: `docs/mobile/design/01_DESIGN_SYSTEM.md` · Screen specs: `docs/mobile/design/02_SCREEN_SPECIFICATIONS.md`
 - Design law: `CLAUDE.md` §18 (Stitch-first) + §18.7 (glass vocabulary)
