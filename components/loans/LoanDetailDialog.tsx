@@ -80,6 +80,7 @@ import {
 } from '@/components/ui/tabs';
 import Link from 'next/link';
 import { LinkedDataPanel } from '@/components/LinkedDataPanel';
+import { LoanRepaymentsTab } from '@/components/loans/LoanRepaymentsTab';
 import EntityStrategyTab from '@/components/strategy/EntityStrategyTab';
 import { HelpTooltip } from '@/components/help/HelpTooltip';
 import { Percent, TrendingDown as TrendingDownIcon, ArrowRight as ArrowRightIcon } from 'lucide-react';
@@ -273,10 +274,11 @@ export function LoanDetailDialog({
 
           {loan && (
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="property">Property</TabsTrigger>
                 <TabsTrigger value="offset">Offset</TabsTrigger>
+                <TabsTrigger value="repayments">Repayments</TabsTrigger>
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="strategy" className="gap-1">
                   <Lightbulb className="h-3 w-3" />
@@ -571,6 +573,10 @@ export function LoanDetailDialog({
                     </p>
                   </div>
                 )}
+              </TabsContent>
+
+              <TabsContent value="repayments">
+                <LoanRepaymentsTab loanId={loan.id} />
               </TabsContent>
 
               <TabsContent value="expenses" className="space-y-4 pt-4">
