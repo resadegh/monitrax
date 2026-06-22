@@ -169,3 +169,39 @@
 - Batch categorisation does one indexed `findUnique` per uncategorised tx **only when KB_READ_ENABLED
   is on** (no-op otherwise); batch the KB lookups if profiling shows a need once enabled.
 - `bulk-categorise` + `transactions/[id]/link` correction paths can get the same write-hook later (52.1c follow-up).
+
+---
+
+## Session: phase52-housekeeping-shk180 (Phase 52 — KB housekeeping job)
+
+### Changes Made
+- **Type**: Feature (Phase 52) — KB tidy-up / anti-bloat job (answers Reza's housekeeping question).
+- **Scope**: `lib/categorisation/kb/housekeeping.ts` (new), `app/api/categorisation/kb/housekeeping/route.ts` (new).
+
+### Solution
+- **`runKbHousekeeping()`** — prunes **stale, sub-k, never-reinforced provisional** signatures
+  (graduated/`isGlobal` patterns are NEVER pruned; near-k kept) older than `KB_STALE_PROVISIONAL_MONTHS`
+  (12mo), and returns a **KB-health report** (total / global / provisional / pruned). Pure
+  `isStaleProvisional()` predicate (unit-tested).
+- **`POST /api/categorisation/kb/housekeeping`** — `CRON_SECRET` + timing-safe auth (mirrors
+  `/api/cdr/lifecycle`), for GCP Cloud Scheduler (weekly). Audited.
+
+### Files Added
+- `lib/categorisation/kb/housekeeping.ts` · `app/api/categorisation/kb/housekeeping/route.ts`
+- `tests/categorisation/kbHousekeeping.test.ts` (4 tests)
+
+### Build Status
+- [x] `tsc` clean · `npm run build` passes · 4/4 tests green
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- `transactionSignature.deleteMany` — guarded `isGlobal:false` (never a shared/graduated pattern) AND
+  `distinctUserCount < k` AND `lastConfirmedAt < cutoff` (12mo). Removes only de-identified, low-value
+  provisional aggregate rows; cascade-deletes their (dead-pattern) contributions. No user-owned
+  financial data; intended bounded cleanup. **Guard:** the triple `where` filter. Confirmation: NOT
+  REQUIRED — operates only on the feature's own de-identified provisional rows.
+
+### Phase 41E (§12.14) — N/A. Security/CDR — operates on de-identified aggregate rows only; cron-auth'd.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (housekeeping job + cron endpoint) → Phase 52 doc §6b (item 8 ticked).
+- [ ] infra — **operator TODO**: create the Cloud Scheduler job once the KB is enabled (noted in doc).
