@@ -594,6 +594,21 @@ On `/dashboard/activity`, clicking the "High · 83" band chip showed "No transac
 
 ---
 
+## Session: ai-bookkeeper-tile-and-bands-shk180 (AI-bookkeeper tile hidden + Medium band missing)
+
+### Bugs (Reza, 2026-06-22)
+1. The "Your AI bookkeeper" tile (entry point to the review inbox) never appeared, despite 283 uncategorised booked transactions.
+2. The Medium confidence band chip was missing on Activity.
+
+### Root causes + fixes
+1. `components/bookkeeping/ConfidenceReviewCard.tsx` — the show/hide gate counted only the staging queue (`medium + low + highUnconfirmed`), ignoring booked low/medium rows (`txMedium/txLow`). Same gap as the inbox. Now `pending` includes `txMedium + txLow`, so the card (and its "Open review inbox" link) appears whenever there is booked review work.
+2. `app/dashboard/activity/page.tsx` — the three confidence bands hid at 0, so Medium (genuinely 0 for this user) wasn't shown. The three core bands now always render, so the lens is predictable ("Medium · 0" instead of a missing chip).
+
+### Files: `components/bookkeeping/ConfidenceReviewCard.tsx`, `app/dashboard/activity/page.tsx`. tsc + eslint clean (pre-existing warning only).
+### Doc-sync (§16): this changelog. No config/schema/infra change.
+
+---
+
 ## Session: ai-use-disclosure-kb-shk180 (legal — disclose shared categorisation KB in AI Use Disclosure)
 
 ### Context (Reza, 2026-06-22)
