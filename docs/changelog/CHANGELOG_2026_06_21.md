@@ -1,5 +1,66 @@
 # Changelog - 2026-06-21
 
+## Session: categorisation-kb-design-shk180 (Phase 52 — shared categorisation KB: design + decision)
+
+### Changes Made
+- **Type**: Design + strategic decision (no code). New Phase 52 workstream.
+- **Why**: Reza proposed a comprehensive AI categorisation/recognition engine — a DB in Monitrax
+  that every user's confirmations enrich and the AI always consults, so the Gemini AI gets smarter
+  about Australian transactions over time.
+
+### Recommendation captured (Phase doc)
+- Named it correctly: **RAG** (knowledge base the AI consults), **not** fine-tuning Gemini.
+- **Two-layer architecture**: lookup-first (free, ~90% of txns) → Gemini-on-miss (RAG, the tail);
+  both feed the same growing KB. Makes bringing AI categorisation back affordable (it was cut
+  2026-05-09 for cost).
+- **Data model**: a de-identified `TransactionSignature` (pattern → `categoryVotes` distribution +
+  `distinctUserCount` + MCC + coarse amount-hint), the cross-user evolution of `MerchantMapping`.
+  Indicators ranked: keywords/normalised-merchant (primary) > MCC (strong) > amount (weak tiebreaker).
+- **Guardrails** (privacy is the gating constraint): PII-scrub before shared write, k-anonymity
+  graduation (≥k distinct users), per-user override always wins, vote-distribution poisoning
+  resistance, documented CDR stance before Basiq.
+- Integrates into the existing TIE precedence chain; seeds from `mccCatalog`; embeddings as the
+  fuzzy-match upgrade. **Powers Phase 51.2** (categorisation overhaul).
+
+### DECIDED (Reza, 2026-06-21)
+- Sharing posture = **Hybrid: private + k-anon shared** (recommended; rejected fully-shared and
+  curated-global-only).
+
+### Pattern identification + counting (Reza Q answered + documented — Phase doc §4.1)
+- Identity = **normalisation into a canonical signature** (reuse `normaliseDescription()` + merchant
+  standardisation + MCC); same signature = same pattern. Counting via a **private
+  `SignatureContribution` ledger** (one row per `(signature, user)`, `@@unique`): `distinctUserCount`
+  = COUNT(distinct userId), `categoryVotes` = tally. **Graduation at k** (≥5 distinct users) flips a
+  pattern from private → shared. Variant collapse via embeddings later.
+
+### Legal / compliance disclosure (Reza directive — documents users sign off)
+- `docs/legal/privacy-policy.md` — new **§4.1** (shared categorisation KB: de-identified patterns +
+  counts only, PII scrub, k-anonymity, per-user precedence, no sale/no general-model training) +
+  **§6.2** CDR cross-reference.
+- `docs/legal/05_cdr_consent_notice_template.md` — plain-English de-identified-categorisation disclosure.
+- `docs/policy/CDR_DATA_MINIMISATION.md` — minimisation controls section.
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — CDR posture row (status DESIGN until PII-scrubber +
+  written de-identification procedure ship).
+- **PDF regeneration owed** (`monitrax_privacy_policy_v1.pdf` etc.) before served to users; **build gate**:
+  no shared-KB write ships until the PII-scrubber + de-identification procedure are implemented + signed off.
+
+### Files Added / Updated
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` (NEW; +§4.1 counting, +§8a legal/compliance).
+- `docs/legal/privacy-policy.md`, `docs/legal/05_cdr_consent_notice_template.md`,
+  `docs/policy/CDR_DATA_MINIMISATION.md`, `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`.
+- `docs/implementation/02_UP_NEXT.md` — Phase 52 registered; `docs/IMPLEMENTATION_PLAN.md` — hub date.
+
+### Build Status
+- N/A — docs-only.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] strategic decision (sharing posture) + new workstream → Phase 52 doc, `02_UP_NEXT.md`, hub.
+- [x] security / CDR posture + privacy/consent disclosure → privacy policy §4.1/§6.2, CDR consent notice,
+      data-minimisation policy, CDR compliance matrix.
+- [ ] code / infra — none (design only; the PII-scrubber + de-identification procedure are a build gate).
+
+---
+
 ## Session: loan-repayments-tab-shk180 (Phase 51.1 — build increment 4: Repayments tab UI)
 
 ### Changes Made

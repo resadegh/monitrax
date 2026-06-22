@@ -6,6 +6,15 @@
 
 ---
 
+## 🧠 Phase 52 — Shared Categorisation Knowledge Base (designed + decided, build queued)
+
+- **Status:** 📋 UP NEXT — design + decision complete (Phase doc [`PHASE_52_SHARED_CATEGORISATION_KB.md`](../blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md)); build not started.
+- **What:** a RAG categorisation engine — a de-identified, cross-user **knowledge base** in Monitrax's DB that every user's confirmations enrich, that the AI consults on every categorisation (lookup-first, Gemini-on-miss). The cross-user evolution of `MerchantMapping`. **This is the engine that powers Phase 51.2** (categorisation-overwhelm overhaul).
+- **DECIDED (Reza, 2026-06-21):** sharing posture = **Hybrid — private + k-anon shared** (private per-user mappings; patterns confirmed by ≥k distinct users graduate to a de-identified shared KB acting as a prior, never an override).
+- **Trigger to start:** Reza go-ahead (after Phase 51.1 settles). First increment = 52.1 (KB schema + PII-scrub + k-anon graduation + vote write-back).
+- **Key risks:** privacy/CDR is the gating constraint (PII scrub before shared write; k-anonymity; documented CDR stance before Basiq). Cost mitigated by lookup-first.
+- **Why this matters:** makes the AI right more often → fewer corrections → directly attacks the "categorisation is overwhelming" problem, and builds AU-transaction intelligence that's Monitrax's own asset.
+
 ## 🎯 Demo-Complete Critical Path — Lighthouse Adviser Pitch
 
 > **Reza directive 2026-05-04:** the lighthouse adviser pitch waits for a *fully functional* demo of the complete capabilities — not a half-built skeleton, not a demo-mode skin, not a marketing video. "Demo-complete" means the real product, fully working, populated with realistic seeded users — only PROD-hardening (pen test, insurance, CMEK, Cloud Armor, evidence pack, Stripe live mode, training programs, DOCX templates) defers to PROD-ready. Every other Up Next item is bucketed below.

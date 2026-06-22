@@ -138,3 +138,16 @@ If you have questions about Open Banking or CDR data handling, contact us at **a
 
 **Version:** v1.0-2026-05-24  
 **Effective from:** 24 May 2026
+
+
+---
+
+## Improving categorisation (de-identified)
+
+When you confirm or correct how your transactions are categorised, we may use **de-identified,
+aggregated patterns** (for example, a merchant name mapped to a spending category) to improve
+automatic categorisation for all users. This does **not** include your name, account numbers,
+balances, transaction amounts or dates, or any information that identifies you. Patterns are only
+shared once enough **distinct users** have categorised them the same way; patterns unique to you
+stay private to your account. We do not sell this information and do not use it to train general AI
+models. See the Privacy Policy (sections 4.1 and 6.2) for details.

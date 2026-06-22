@@ -425,3 +425,19 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 *Last Updated: 2026-04-10*
 *Next Review: After Phase E (GCP Services) completion*
 *Recent: Full Basiq spreadsheet alignment (Steps 1-6). Score recalculated: ~65% across all 117+ requirements. Key gaps: GCP tools, policies, evidence collection.*
+
+
+---
+
+## Shared categorisation knowledge base — CDR posture (Phase 52)
+
+| Item | Position |
+|---|---|
+| **What it is** | A de-identified, aggregated knowledge base of transaction patterns (merchant signature → category) enriched by users' confirmations; consulted by the categorisation engine (RAG). |
+| **CDR data used?** | Only **de-identified** patterns derived from transaction data. No CDR data, account IDs, balances, per-user amounts/dates, or consumer identifiers enter the shared store. CDR-derived patterns are de-identified per the CDR Rules before any cross-user use. |
+| **Privacy Safeguard alignment** | Treated as de-identified data: PII scrubbed before contribution; **k-anonymity** graduation (≥ k distinct users) before a pattern is shared; per-user data stays private to that user. No disclosure of CDR data to third parties for this purpose. |
+| **Secondary use** | Documented in the Privacy Policy §4.1 + §6.2 and `CDR_DATA_MINIMISATION.md`; surfaced in the CDR consent notice. Not sold; not used to train general AI models. |
+| **Consumer control** | A user's own categorisations always take precedence; the shared KB is a default suggestion only. |
+| **Status** | DESIGN (Phase 52, decided 2026-06-21 — hybrid private + k-anon shared). Build to add the PII-scrubber + k-anon graduation + a written de-identification procedure before any shared write ships. |
+
+Canonical design: `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md`.
