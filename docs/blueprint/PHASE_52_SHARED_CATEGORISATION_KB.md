@@ -366,3 +366,14 @@ accumulates, read later once patterns graduate):
 
 **Rollback:** set either flag back to `false` — instant, no data loss (the KB just stops being
 written/read). All flags default OFF, so a missing env var = disabled.
+
+## 52.5c-fix — Review inbox now includes booked uncategorised transactions (2026-06-22)
+
+The 52.5c inbox read only the import staging queue (`TransactionReviewQueue`), so it
+showed "All caught up" while hundreds of **booked** low/medium-confidence uncategorised
+`UnifiedTransaction`s sat in the list (the `txLow`/`txMedium` gap from `getConfidenceSummary`).
+Fix: `ReviewCategoriesInbox` also fetches `GET /api/unified-transactions?uncategorized=true`
+(the SSOT needs-review set) and renders a "Needs a category" section, each row categorised
+via the v3 `TransactionLinkDialog`. Empty state fires only when BOTH populations are clear.
+Note: the AI-bookkeeper entry-point card still self-hides on the staging queue only —
+persistent entry point for the inbox is an open UX decision (Reza to confirm).

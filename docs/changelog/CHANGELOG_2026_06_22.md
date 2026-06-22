@@ -558,3 +558,20 @@ Reza feedback on the #1185 ship: the dialog "almost looks the same as before …
 
 ### Files: `components/transactions/TransactionLinkDialog.tsx`. tsc + eslint clean (pre-existing loadMatches warning only).
 ### Doc-sync (§16/§18): matches the merged v3 artefacts in `.stitch/designs/phase51-recon-redesign/`; this changelog.
+
+---
+
+## Session: review-inbox-booked-uncategorised-shk180 (Phase 52.5c-fix — inbox showed "All caught up" while hundreds uncategorised)
+
+### Bug (Reza, live test 2026-06-22)
+The Review categories inbox (`/dashboard/activity/review`) showed "All caught up" while Activity showed "Low · 283" + many Uncategorised rows.
+
+### Root cause
+The inbox read ONLY the import **staging queue** (`TransactionReviewQueue` via `review-queue?band=`), which was empty. The 283 are **booked `UnifiedTransaction`s** that are low/medium-confidence + uncategorised (`txLow`/`txMedium` — the gap explicitly noted in `lib/bank/bulkConfirm.ts` `getConfidenceSummary`). The inbox never read that population, so its `items.length === 0` empty-state fired.
+
+### Fix
+`components/bookkeeping/ReviewCategoriesInbox.tsx` now also fetches booked uncategorised transactions via `GET /api/unified-transactions?uncategorized=true` (the SSOT "needs review" set — unlinked + `userCorrectedCategory != true`, same definition behind the Activity "Uncategorised" badge + Home pending count). They render in a new "Needs a category (N)" section; each row opens the v3 `TransactionLinkDialog` to categorise (reuses the Phase 51 surface — no new endpoint). Empty state now fires only when staged queue AND booked uncategorised are both empty; header "to review" + progress include the booked total. Staged bulk-confirm bar gated to staged items only.
+
+### Files: `components/bookkeeping/ReviewCategoriesInbox.tsx`. tsc + eslint clean.
+### §18.2.1 backfill owed: the "Needs a category" section reuses the existing staged-row glass vocabulary (not a net-new composition), but a Stitch artefact for the two-section inbox is owed as a follow-up backfill.
+### Doc-sync (§16): Phase 52 doc + this changelog.
