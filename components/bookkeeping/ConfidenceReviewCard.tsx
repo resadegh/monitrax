@@ -35,6 +35,11 @@ interface ConfidenceSummary {
   highUnconfirmed: number;
   medium: number;
   low: number;
+  /** Phase 52.5c-fix — booked (already-real) transactions in the medium/low
+   *  confidence bands. The staging counts above MISS these, which is why the
+   *  card used to hide while hundreds of booked uncategorised rows remained. */
+  txMedium?: number;
+  txLow?: number;
 }
 
 export function ConfidenceReviewCard({
@@ -102,11 +107,15 @@ export function ConfidenceReviewCard({
   if (!summary) return null;
 
   const { high, highUnconfirmed, medium, low } = summary;
-  const total = high + medium + low;
+  // Phase 52.5c-fix — booked low/medium-confidence rows (the txLow/txMedium gap).
+  const bookedReview = (summary.txMedium ?? 0) + (summary.txLow ?? 0);
+  const total = high + medium + low + bookedReview;
   // Phase 49.13 — unconfirmed HIGH rows are pending work too (auto-filed
   // is not confirmed; they still count toward the Home "to categorise"
-  // pile until signed off).
-  const pending = medium + low + highUnconfirmed;
+  // pile until signed off). Phase 52.5c-fix — booked low/medium rows are also
+  // pending review work, so the card no longer hides while they exist (the
+  // "Open review inbox" link is the path to clearing them).
+  const pending = medium + low + highUnconfirmed + bookedReview;
 
   // Nothing sorted yet, or everything already confirmed → stay out of the way.
   if (total === 0 || (pending === 0 && justConfirmed === null)) return null;
