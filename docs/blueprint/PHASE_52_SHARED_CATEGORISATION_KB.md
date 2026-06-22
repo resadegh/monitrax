@@ -197,8 +197,12 @@ the low-value tail.
   (`isGlobal` at k=5), O(1) per write (no ledger scan → scales). Pure `applyVoteDelta()` (top-N cap) +
   `summariseVotes()`. **GATED OFF by default** (`KB_WRITE_ENABLED`) until the de-identification
   procedure is signed off. 10 tests.
-- **52.2 — lookup-first categoriser:** insert the shared-KB prior into the TIE precedence chain;
-  measure hit-rate. Still no LLM.
+- **52.2 — lookup primitive (read path):** ✅ `lookupSharedCategory()` + pure `interpretSignature()`
+  — returns the community category only for **graduated** (`isGlobal`) patterns above the confidence
+  floor; gated `KB_READ_ENABLED` (default OFF). 7 tests.
+- **52.2b — wire into the categoriser:** insert the shared-KB prior into the `categoriseTransaction`
+  precedence chain (user mapping → rules → **KB prior** → fallback), with canonical-category → level
+  resolution; measure hit-rate. Still no LLM.
 - **52.3 — Gemini-on-miss (RAG):** KB-as-context prompt for the unknown tail; confirmed answers
   write back. Cost-gated.
 - **52.4 — seed + embeddings:** seed from mccCatalog + curated AU list; add the embedding fuzzy-match
