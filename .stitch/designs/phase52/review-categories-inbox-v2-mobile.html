@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Review categories</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary": "#006b2c",
+                        "navy-primary": "#0F172A",
+                        "surface-ivory": "#FAFAF7",
+                        "trail-amber": "#F59E0B",
+                        "trail-emerald": "#16A34A",
+                        "trail-sky": "#0EA5E9",
+                        "trail-indigo": "#6366F1",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container": "#e9f0e5"
+                    },
+                    "borderRadius": {
+                        "22px": "22px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px"
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            color: #171d16;
+            -webkit-font-smoothing: antialiased;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(226, 232, 240, 0.8);
+        }
+        .progress-bar-bg {
+            background: #E2E8F0;
+            height: 6px;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            height: 100%;
+            border-radius: 999px;
+            width: 96%;
+        }
+        .btn-primary-gradient {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            box-shadow: 0 8px 20px -4px rgba(14, 165, 233, 0.4);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .hairline-divider {
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+        }
+        .hairline-divider:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen pb-32">
+<!-- Header Section -->
+<header class="px-margin-mobile pt-10 mb-8">
+<div class="flex justify-between items-center mb-1">
+<span class="text-[11px] font-bold text-slate-400 uppercase tracking-[0.15em]">Inbox</span>
+<div class="flex items-center gap-1.5">
+<span class="text-slate-400 text-[10px] font-medium">Syncing</span>
+<div class="w-1.5 h-1.5 rounded-full bg-trail-emerald animate-pulse"></div>
+</div>
+</div>
+<h1 class="text-2xl font-bold text-navy-primary tracking-tight mb-6">Review categories</h1>
+<div class="space-y-3">
+<div class="flex justify-between items-end">
+<p class="text-[13px] font-medium text-slate-600">96% categorised — 8 to review</p>
+</div>
+<div class="progress-bar-bg">
+<div class="progress-bar-fill"></div>
+</div>
+</div>
+</header>
+<!-- Unified Feed List -->
+<main class="px-margin-mobile">
+<div class="glass-card rounded-22px overflow-hidden">
+<!-- Transaction Row: Woolworths -->
+<div class="hairline-divider">
+<div class="p-5 flex items-start gap-4">
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-[15px] font-semibold text-navy-primary truncate">Woolworths Metro</h4>
+<span class="text-[15px] font-semibold text-navy-primary tabular-nums">$142.50</span>
+</div>
+<p class="text-[12px] text-slate-500 mb-3">18 Jun • Personal Credit Card</p>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold uppercase tracking-wider">
+                                Groceries
+                            </span>
+<span class="text-[10px] text-slate-400">92% match</span>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="w-11 h-11 flex items-center justify-center rounded-full bg-trail-emerald/10 text-trail-emerald active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-full text-slate-300">
+<span class="material-symbols-outlined text-[24px]">expand_more</span>
+</button>
+</div>
+</div>
+<!-- Expanded Sub-panel (Visible State) -->
+<div class="bg-trail-sky/[0.04] border-t border-slate-100/50 px-5 py-4 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-trail-sky text-[18px]">auto_fix</span>
+<span class="text-[12px] font-medium text-slate-600">Learn Once: Apply to all WOOLWORTHS</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-trail-sky"></div>
+</label>
+</div>
+</div>
+<!-- Transaction Row: Coles -->
+<div class="hairline-divider">
+<div class="p-5 flex items-start gap-4">
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-[15px] font-semibold text-navy-primary truncate">Coles Supermarkets</h4>
+<span class="text-[15px] font-semibold text-navy-primary tabular-nums">$64.20</span>
+</div>
+<p class="text-[12px] text-slate-500 mb-3">17 Jun • Everyday Savings</p>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-trail-emerald/10 text-trail-emerald text-[10px] font-bold uppercase tracking-wider">
+                                Groceries
+                            </span>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="w-11 h-11 flex items-center justify-center rounded-full border border-slate-200 text-slate-300 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px]">check_circle</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-full text-slate-300">
+<span class="material-symbols-outlined text-[24px]">expand_more</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Transaction Row: Amber Exception -->
+<div class="hairline-divider relative">
+<div class="absolute left-0 top-0 bottom-0 w-[3px] bg-trail-amber"></div>
+<div class="p-5 flex items-start gap-4">
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-[15px] font-semibold text-navy-primary truncate">SQ *Avenue Cafe</h4>
+<span class="text-[15px] font-semibold text-navy-primary tabular-nums">$12.50</span>
+</div>
+<p class="text-[12px] text-slate-500 mb-3">15 Jun • Platinum Amex</p>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-trail-amber/12 text-trail-amber text-[10px] font-bold uppercase tracking-wider">
+                                Needs a look
+                            </span>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="w-11 h-11 flex items-center justify-center rounded-full border border-slate-200 text-slate-300 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px]">check_circle</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-full text-slate-300">
+<span class="material-symbols-outlined text-[24px]">expand_more</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Transaction Row: Netflix -->
+<div class="hairline-divider">
+<div class="p-5 flex items-start gap-4">
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-start mb-1">
+<h4 class="text-[15px] font-semibold text-navy-primary truncate">Netflix.com</h4>
+<span class="text-[15px] font-semibold text-navy-primary tabular-nums">$22.99</span>
+</div>
+<p class="text-[12px] text-slate-500 mb-3">14 Jun • Monthly Recurring</p>
+<div class="flex items-center gap-2">
+<span class="inline-flex items-center px-2.5 py-0.5 rounded-full bg-trail-violet/12 text-trail-violet text-[10px] font-bold uppercase tracking-wider">
+                                Entertainment
+                            </span>
+</div>
+</div>
+<div class="flex flex-col gap-3">
+<button class="w-11 h-11 flex items-center justify-center rounded-full border border-slate-200 text-slate-300">
+<span class="material-symbols-outlined text-[24px]">check_circle</span>
+</button>
+<button class="w-11 h-11 flex items-center justify-center rounded-full text-slate-300">
+<span class="material-symbols-outlined text-[24px]">expand_more</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default or shown at bottom) -->
+<div class="mt-16 text-center">
+<div class="inline-flex items-center justify-center w-14 h-14 rounded-full bg-trail-emerald/10 text-trail-emerald mb-4">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<h3 class="text-[17px] font-semibold text-navy-primary mb-1">All caught up</h3>
+<p class="text-[13px] text-slate-500 px-10">Your financial story is clean for June. Nice work.</p>
+</div>
+</main>
+<!-- Sticky Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-margin-mobile z-50">
+<div class="max-w-md mx-auto">
+<button class="btn-primary-gradient w-full h-14 rounded-22px text-white font-bold text-[15px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+                Confirm 6 ready
+                <span class="material-symbols-outlined text-[20px]">auto_awesome</span>
+</button>
+</div>
+</div>
+<!-- Minimal Mobile Tab Bar (For Navigation Context) -->
+<div class="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-40px)] max-w-sm glass-card rounded-full p-1.5 flex justify-around shadow-2xl md:hidden hidden">
+<a class="p-3 text-slate-400" href="#"><span class="material-symbols-outlined">home</span></a>
+<a class="p-3 bg-navy-primary text-white rounded-full" href="#"><span class="material-symbols-outlined">account_balance</span></a>
+<a class="p-3 text-slate-400" href="#"><span class="material-symbols-outlined">payments</span></a>
+<a class="p-3 text-slate-400" href="#"><span class="material-symbols-outlined">group</span></a>
+</div>
+<script>
+        // Simple Interaction Simulation
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('touchstart', () => btn.classList.add('opacity-70'));
+            btn.addEventListener('touchend', () => btn.classList.remove('opacity-70'));
+        });
+    </script>
+</body></html>

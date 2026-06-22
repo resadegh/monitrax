@@ -363,3 +363,115 @@ Full Phase 51 + 52 documentation brought current in this PR:
 - `docs/implementation/02_UP_NEXT.md` — Phase 52 status → ENGINE SHIPPED + LIVE (52.5b/c remaining).
 - `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
 - (Compliance already merged earlier: `policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md`, `compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, privacy policy §4.1/§6.2, `policy/CDR_DATA_MINIMISATION.md`, CDR consent notice.)
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — review-exceptions inbox design + §18.8 quality gate)
+
+### Changes Made
+- **Type**: Design (Stitch) + process rule (CLAUDE.md §18.8). No app code.
+
+### CLAUDE.md §18.8 — Stitch output quality gate (NEW, Reza directive 2026-06-22)
+- Every Stitch output must be **self-reviewed against a 7-lens rubric and score > 9/10 before being
+  presented**; sub-9 designs are iterated until they pass; the scores are shown for auditability;
+  reviewers reject sub-9 designs or sub-9→React conversions. Applies to all surfaces + all sessions.
+  Protocol version bumped 2.2 → 2.3.
+
+### Design — review-categories inbox (52.5c)
+- Stitch screen generated (v1 `291a1716`, **scored 8.0/10 → rejected** per the new gate), then refined
+  via `edit_screens` (v2 `fdf91885`, **scored 9.2/10 → passes**). v2 = true sky→indigo gradient + glow,
+  TRAIL-coloured category pills + secondary community-confidence cues, refined emerald checkboxes,
+  merchant-primary hierarchy, amber "Needs a look" accent strip, sky-tinted "apply to all <merchant> —
+  past & future" learn-once sub-panel, calm "All caught up" empty state. Artefact:
+  `.stitch/designs/phase52/review-categories-inbox-v2.png`.
+- **Next:** Reza nod → React build (ReviewQueue component + review-queue / bulk-confirm / apply-rule
+  endpoints, reuse `recordContribution` for the learn-once rule) + dark + mobile variants (all through the §18.8 gate).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] design system / process → CLAUDE.md §18.8 + Phase 52 doc §7 + this changelog.
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — KB write-back across ALL human confirmation surfaces)
+
+### Changes Made
+- **Type**: Feature (engine wiring) — make the shared categorisation KB learn from every genuine human categorisation path, not just the single-transaction edit.
+- **Scope**: `lib/categorisation/kb/`, `lib/bank/reviewQueue.ts`, `app/api/unified-transactions/{bulk-categorise,[id]}/route.ts`.
+- **Root cause (gap found on build per §10):** before this, only `PATCH /api/unified-transactions/[id]` fed the shared KB (`recordContribution`). The bulk/review confirmation paths — `bulk-categorise` (power-user "Categorise N selected"), `bulk-confirm` (the Phase 49 "AI bookkeeper" medium/low bands), the per-row "✓ Looks right" affordance, and the per-batch review route — all wrote the PRIVATE `merchantMapping` but **never fed the cross-user KB**. So the AI engine could not learn from the highest-volume categorisation paths.
+- **Solution:** one canonical learn-once helper `recordKbContribution()` (`lib/categorisation/kb/recordFromConfirmation.ts`, §12.2 SSOT) — encode triple → gate (`KB_WRITE_ENABLED`) → scrub → swallow. Wired into:
+  - `confirmReviewItem` (`lib/bank/reviewQueue.ts`) — covers bulk-confirm bands + per-row "✓ Looks right" + per-batch review in one place.
+  - `bulk-categorise` route — once per distinct merchant in the batch.
+  - single PATCH — refactored off the inline `recordContribution`/`encodeCategoryPath` onto the same helper.
+  - All callers pass the **canonical category triple** (same vocabulary the KB stores → no vote fragmentation).
+- **Echo-chamber-safe:** import-time AI auto-accept (`bulkConfirmAutoAccepted`) and `bulkConfirmHighBand` are deliberately NOT wired — only a genuine human confirm/edit/re-categorise is a real k-anonymity vote.
+
+### Link Transaction dialog — KB question (Reza, 2026-06-22)
+- Investigated: the Link Transaction dialog (`/api/transactions/[id]/link`) runs in the **legacy flat-enum** category vocabulary; the KB runs in the canonical 3-level hierarchy. Wiring it directly would fragment KB graduation + surface mismatched names. **Deliberately deferred** to a thin `enum ↔ canonical` vocabulary bridge (Phase 52 doc §8b; `02_UP_NEXT.md`).
+
+### Files Modified
+- `lib/categorisation/kb/recordFromConfirmation.ts` (NEW) — canonical learn-once helper.
+- `lib/bank/reviewQueue.ts` — `confirmReviewItem` now calls `recordKbContribution` after the queue update.
+- `app/api/unified-transactions/bulk-categorise/route.ts` — per-distinct-merchant KB write-back.
+- `app/api/unified-transactions/[id]/route.ts` — refactored onto the shared helper.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` — §7 (52.5c shipped), §8b (vocabulary-bridge follow-up), §9 (review-inbox placement open Q).
+- `docs/implementation/02_UP_NEXT.md` — 52.5c status + vocabulary-bridge Up Next.
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (KB engine wiring) → Phase 52 doc §7/§8b/§9 + this changelog + `02_UP_NEXT.md`. No design/config/infra/identity/security surface changed (endpoints reused, no new env vars, no schema change).
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — Link/reconciliation tool SSOT audit + KB read/write)
+
+### Changes Made
+- **Type**: Feature + SSOT remediation. Reza ask 2026-06-22: *"are you performing an audit and review on the link / reconciliation tool to make sure it will be SSOT and read/write to the new KB AI engine?"*
+- **Audit finding**: `/api/transactions/[id]/link` (the Link/reconciliation dialog) was the one categorisation surface off-SSOT on two axes — it wrote raw **legacy flat codes** to `merchantMapping`, **never** seeded the `CanonicalCategoryRegistry` (§12.2), and **never** read/wrote the shared KB. Everything else uses the canonical 3-level triple.
+- **Fix**:
+  - NEW `lib/categorisation/kb/categoryBridge.ts` — the single documented correspondence between the legacy flat-code vocabulary and the canonical hierarchy: `legacyCodeToCanonical()` + `canonicalToLegacyCode()` (deterministic → no KB vote fragmentation). 12 tests.
+  - `learnCanonicalFromLink()` in the link route — at every `learnMerchant` site (link-to-income/expense, create-income, create-expense): bridge code → triple → `resolveOrCreateCategory` (seed registry) + `recordKbContribution` (teach KB). Skips loan links (Phase 51 ledger owns repayments) + custom categories (free-text, never graduate).
+  - READ: `suggestedCategory` now consults `lookupSharedCategory` (graduated community KB) and maps the canonical answer back to a legacy code for the dialog's `CategorySelect`.
+  - Both gated (`KB_WRITE_ENABLED`/`KB_READ_ENABLED`), de-identified, fire-and-forget.
+- **Remaining (non-blocking tech-debt)**: `merchantMapping.categoryLevel1` still stores the legacy code at these sites (keeps the dialog's existing read working); full `merchantMapping`→canonical unification retires the bridge later.
+
+### Files Modified
+- `lib/categorisation/kb/categoryBridge.ts` (NEW) + `tests/categorisation/categoryBridge.test.ts` (NEW, 12 tests).
+- `app/api/transactions/[id]/link/route.ts` — `learnCanonicalFromLink()` helper + 3 write sites + KB read fallback for `suggestedCategory`.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` §7 + §8b (audit + fix).
+- `docs/implementation/02_UP_NEXT.md` — item flipped to DONE.
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `vitest run tests/categorisation/` — 64/64 pass (incl. 12 new bridge tests).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (link-tool SSOT + KB wiring) → Phase 52 §7/§8b + this changelog + `02_UP_NEXT`. No design/config/infra/identity/security surface changed (no new endpoints, env vars, or schema).
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c-UI — dedicated Review categories inbox)
+
+### Changes Made
+- **Type**: Feature (UI) — dedicated full-page categorisation triage inbox (Reza decision 2026-06-22: dedicated page, not a refresh of the inline card).
+- **Scope**: `app/dashboard/activity/review/`, `components/bookkeeping/`.
+- Reuses the existing, now-KB-wired endpoints (GET `bulk-confirm` summary + GET `review-queue?band=` + POST `review-queue` confirm/skip) — **no new endpoints**. Confirming routes through `confirmReviewItem` → `recordKbContribution`, so the inbox teaches the shared KB.
+
+### Stitch (§18 + §18.8 gate) — 4-variant matrix, all > 9/10
+- desktop light `fdf91885` 9.2 (approved earlier) · desktop dark `c31ae9ca` **9.4** (vs v1 ~9.1) · mobile light "Unified Feed" `c203a7d7` **9.3** (vs "Stacked" ~9.0) · mobile dark `0fc7905b` **9.3**.
+- Artefacts: `.stitch/designs/phase52/review-categories-inbox-v2{,-dark,-mobile,-mobile-dark}.{html,png}`.
+
+### Files Modified
+- `components/bookkeeping/ReviewCategoriesInbox.tsx` (NEW) — glass-vocabulary inbox (header progress, bulk-confirm, per-row confirm/skip, amber "Needs a look" low band, "All caught up" empty state); light/dark via editorial tokens; mobile-responsive.
+- `app/dashboard/activity/review/page.tsx` (NEW) — DashboardLayout wrapper.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — "Open review inbox →" deep-link (entry point).
+- `.stitch/designs/phase52/*` — 6 new artefacts (3 PNG + 3 HTML for dark/mobile/mobile-dark).
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` §7 + §9 (shipped).
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `eslint` clean on new/changed files.
+
+### Doc-sync (CLAUDE.md §16 + §18.8)
+- [x] design system / Stitch → Phase 52 §7/§9 + this changelog; 4-variant matrix at ≥9 recorded; artefacts committed. No config/infra/identity/security surface changed.

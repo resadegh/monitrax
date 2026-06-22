@@ -13,6 +13,58 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
+import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
+import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
+import { decodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
+import {
+  legacyCodeToCanonical,
+  canonicalToLegacyCode,
+  type TxDirection,
+} from '@/lib/categorisation/kb/categoryBridge';
+
+/**
+ * Phase 52.5c — make the Link / reconciliation tool SSOT-aligned + KB-wired.
+ *
+ * Audit finding (Reza, 2026-06-22): this tool was the one categorisation surface
+ * that bypassed BOTH canonical sources — it wrote raw legacy category CODES to the
+ * private `merchantMapping` and never touched the `CanonicalCategoryRegistry`
+ * (§12.2 SSOT) nor the shared KB. Everywhere else uses the canonical 3-level triple.
+ *
+ * This helper closes the gap: it bridges the chosen legacy code → the canonical
+ * triple (one source: `categoryBridge.ts`), seeds the canonical registry, and feeds
+ * the shared KB (gated, de-identified) — the same learn-once path the PATCH / bulk /
+ * review surfaces use. Fire-and-forget (never blocks/throws into the link flow).
+ * No-op for unknown / custom codes (custom categories are user free-text → never
+ * graduate, so they don't belong in the cross-user KB) and for loan repayments
+ * (handled by the Phase 51 loan-ledger matcher, not merchant categorisation).
+ */
+function learnCanonicalFromLink(args: {
+  userId: string;
+  merchantText: string | null | undefined;
+  code: string | null | undefined;
+  direction: TxDirection;
+  mcc?: string | null;
+}): void {
+  const canonical = legacyCodeToCanonical(args.code, args.direction);
+  if (!canonical || !args.merchantText) return;
+  // Seed the canonical category registry (idempotent) — SSOT §12.2.
+  resolveOrCreateCategory({
+    userId: args.userId,
+    level1: canonical.level1,
+    level2: canonical.level2,
+    subcategory: canonical.subcategory,
+  }).catch(() => {});
+  // Teach the shared, de-identified KB (gated by KB_WRITE_ENABLED).
+  recordKbContribution({
+    userId: args.userId,
+    rawDescription: args.merchantText,
+    categoryLevel1: canonical.level1,
+    categoryLevel2: canonical.level2,
+    subcategory: canonical.subcategory,
+    mcc: args.mcc ?? null,
+  });
+}
 
 interface LinkRequest {
   action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
@@ -221,6 +273,19 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                 usageCount: 1,
               },
             });
+
+            // Phase 52.5c — also seed the canonical registry + teach the shared KB
+            // (canonical vocabulary). Skip loan links — a loan REPAYMENT merchant is
+            // not a spend category (Phase 51 ledger matching owns that).
+            if (body.type !== 'loan') {
+              learnCanonicalFromLink({
+                userId,
+                merchantText: transaction.merchantStandardised,
+                code: targetCategory,
+                direction: body.type === 'income' ? 'IN' : 'OUT',
+                mcc: transaction.merchantCategoryCode,
+              });
+            }
           }
 
           return NextResponse.json({
@@ -365,6 +430,15 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   confidence: 1.0,
                   usageCount: 1,
                 },
+              });
+
+              // Phase 52.5c — seed canonical registry + teach the shared KB (income).
+              learnCanonicalFromLink({
+                userId,
+                merchantText: transaction.merchantStandardised,
+                code: body.category,
+                direction: 'IN',
+                mcc: transaction.merchantCategoryCode,
               });
             }
 
@@ -522,6 +596,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
                   usageCount: 1,
                 },
               });
+
+              // Phase 52.5c — seed canonical registry + teach the shared KB
+              // (expense). Only for SYSTEM codes — custom categories are free-text
+              // user labels that can't map to the canonical hierarchy and never
+              // graduate, so they stay out of the cross-user KB.
+              if (!body.customCategoryId) {
+                learnCanonicalFromLink({
+                  userId,
+                  merchantText: transaction.merchantStandardised,
+                  code: body.category,
+                  direction: 'OUT',
+                  mcc: transaction.merchantCategoryCode,
+                });
+              }
             }
 
             return NextResponse.json({
@@ -1084,6 +1172,23 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
 
       const mappedCategory = predictedCategory ? (categoryMapping[predictedCategory] || predictedCategory) : null;
 
+      // Phase 52.5c — KB read: with no private/global learned mapping AND no engine
+      // prediction, consult the shared, GRADUATED community KB and map its canonical
+      // answer back to the legacy code the dialog's CategorySelect expects. Gated by
+      // KB_READ_ENABLED (no DB hit when off); only ≥k-graduated patterns return.
+      let kbSuggestedCategory: string | null = null;
+      if (!learnedCategory && !mappedCategory) {
+        const kbHit = await lookupSharedCategory(transaction.description || merchantName || '');
+        if (kbHit) {
+          const decoded = decodeCategoryPath(kbHit.category);
+          kbSuggestedCategory = canonicalToLegacyCode(
+            decoded.level1,
+            decoded.level2,
+            transaction.direction as TxDirection
+          );
+        }
+      }
+
       interface MatchResult {
         id: string;
         name: string;
@@ -1408,7 +1513,7 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
         currentLink,
         suggestedMatches: matches.slice(0, 10), // Increased to show all rental property options
         // Suggested category for creating new expenses based on transaction prediction or learned mapping
-        suggestedCategory: learnedCategory || mappedCategory,
+        suggestedCategory: learnedCategory || mappedCategory || kbSuggestedCategory,
         // Learned category from previous user categorizations
         learnedCategory,
         // Same-vendor uncategorized transactions for batch categorization

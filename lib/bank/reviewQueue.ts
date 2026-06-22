@@ -21,6 +21,7 @@ import {
   type CategoryPrediction,
   type UserConfirmation,
 } from '@/lib/bank/aiCategorisation';
+import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 
 // Confidence band → the queue's `confidenceLevel` tag (set at import time by
 // classifyByConfidence). Kept here next to the queue logic so band semantics
@@ -229,6 +230,23 @@ export async function confirmReviewItem(
       applyToSimilar,
       reviewedAt: new Date(),
     },
+  });
+
+  // Phase 52.5c — teach the SHARED, de-identified KB from this genuine human
+  // confirmation. This is what finally makes the review-queue surfaces (the
+  // "AI bookkeeper" bulk-confirm bands + the per-row "✓ Looks right" affordance,
+  // both of which route here) feed the cross-user AI engine — not just the
+  // private merchant mapping. Fire-and-forget + gated OFF by default
+  // (KB_WRITE_ENABLED) + de-identified by the scrubber. Confirming the AI's own
+  // category still counts as a human vote (the user validated it); editing it is
+  // the stronger signal. Echo-chamber-safe: import-time AI auto-accept goes
+  // through processUserConfirmation directly, never this human-only path.
+  recordKbContribution({
+    userId,
+    rawDescription: txData.description || txData.merchantStandardised || txData.merchantRaw || '',
+    categoryLevel1: finalValues.categoryLevel1,
+    categoryLevel2: finalValues.categoryLevel2 ?? null,
+    subcategory: finalValues.subcategory ?? null,
   });
 
   const context: LearningContext = {

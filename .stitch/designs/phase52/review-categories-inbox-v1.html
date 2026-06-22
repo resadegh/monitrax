@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Smart Inbox</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-surface": "#2b322b",
+                        "surface-dim": "#d5dcd1",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "secondary-container": "#d9dff4",
+                        "on-background": "#171d16",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed": "#151b2a",
+                        "inverse-on-surface": "#ecf3e7",
+                        "secondary": "#585e6f",
+                        "surface-container-low": "#eff6ea",
+                        "on-surface-variant": "#3e4a3d",
+                        "on-primary-fixed": "#002109",
+                        "surface-ivory": "#FAFAF7",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-tertiary-container": "#fdfcff",
+                        "secondary-fixed": "#dce2f6",
+                        "on-error-container": "#93000a",
+                        "on-surface": "#171d16",
+                        "trail-violet": "#8B5CF6",
+                        "on-secondary": "#ffffff",
+                        "background": "#f4fcf0",
+                        "tertiary-container": "#66768d",
+                        "surface-bright": "#f4fcf0",
+                        "on-primary-container": "#f7fff2",
+                        "error": "#ba1a1a",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-highest": "#dde5d9",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "surface-container": "#e9f0e5",
+                        "on-secondary-container": "#5c6274",
+                        "primary-fixed": "#7ffc97",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-high": "#e3eadf",
+                        "outline-variant": "#bdcaba",
+                        "error-container": "#ffdad6",
+                        "trail-amber": "#F59E0B",
+                        "primary-container": "#00873a",
+                        "trail-indigo": "#6366F1",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "error-red": "#DC2626",
+                        "primary": "#006b2c",
+                        "surface": "#f4fcf0",
+                        "trail-sky": "#0EA5E9",
+                        "tertiary": "#4d5d73",
+                        "on-error": "#ffffff",
+                        "inverse-primary": "#62df7d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "trail-emerald": "#16A34A",
+                        "surface-variant": "#dde5d9",
+                        "surface-tint": "#006e2d",
+                        "outline": "#6e7b6c",
+                        "tertiary-fixed": "#d3e4fe"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "22px": "22px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "edge-margin": "48px",
+                        "stack-md": "16px",
+                        "stack-lg": "32px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "label-caps": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "label-caps": ["11px", {"lineHeight": "1.2", "letterSpacing": "0.12em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            color: #171d16;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid #E2E8F0;
+            box-shadow: 0 4px 12px rgba(11, 18, 32, 0.04);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(11, 18, 32, 0.08);
+        }
+        .progress-bar-bg {
+            background: #E2E8F0;
+            height: 6px;
+            border-radius: 999px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #0EA5E9 0%, #6366F1 100%);
+            height: 100%;
+            border-radius: 999px;
+            width: 96%;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+        .bulk-action-bar {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(32px);
+            -webkit-backdrop-filter: blur(32px);
+            border: 1.5px solid rgba(226, 232, 240, 0.6);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+<div class="flex h-full min-h-screen">
+<!-- Side Navigation (Predicted from JSON) -->
+<aside class="hidden md:flex flex-col py-8 px-6 bg-surface-ivory border-r border-outline-variant/20 h-screen w-64 fixed left-0 top-0 z-50">
+<div class="mb-10">
+<h1 class="font-headline-md text-headline-md font-bold text-primary">Monitrax</h1>
+<p class="font-label-md text-on-surface-variant opacity-60">Wealth Management</p>
+</div>
+<nav class="flex flex-col gap-1">
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="font-body-sm text-body-sm">Home</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-primary bg-primary/5 font-bold border-l-4 border-primary -ml-6 pl-10" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<span class="font-body-sm text-body-sm">Accounts</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span class="font-body-sm text-body-sm">Budget</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">group</span>
+<span class="font-body-sm text-body-sm">Household</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">monitoring</span>
+<span class="font-body-sm text-body-sm">Wealth</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<span class="material-symbols-outlined">explore</span>
+<span class="font-body-sm text-body-sm">Guide</span>
+</a>
+</nav>
+<div class="mt-auto flex items-center gap-3 pt-6 border-t border-outline-variant/20">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="A professional headshot of a middle-aged woman with a friendly expression, soft natural lighting in a modern home office setting, editorial photography style, soft focus background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDotqk_iccaEv0Ry1rjT9y-KadpUIMOJeRYGPuF3PNX6LgT0UuBiF6X92OIZN2DleDHMNJtNqEdGwff77hWtj7AadLhcs2fgekifKadIagfVljt2iynfaPsA5Q63L4wDs0CET0Fkqcr1JG6dcj7wq6n18OAb18MFleCM446VY7-KGPxXUaTbDM5SdABaqyYWBNFh_hSz1S5Wfw5EtGS7TvAUyrazDLndjNZAk72o-R6VpPRmhXMAMosnUP2ef456Sfjp3LXKJQm7T4"/>
+<div>
+<p class="font-label-md text-label-md font-bold">Eleanor Vance</p>
+<p class="text-[11px] text-on-surface-variant">Premium Member</p>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 px-4 md:px-margin-desktop py-8 max-w-5xl mx-auto w-full">
+<!-- Top App Bar (Predicted) -->
+<header class="mb-12">
+<div class="flex justify-between items-center mb-2">
+<span class="font-eyebrow text-eyebrow text-secondary-container uppercase tracking-widest text-secondary">MY ACCOUNTS</span>
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant text-label-md">Syncing...</span>
+<div class="w-2 h-2 rounded-full bg-trail-emerald animate-pulse"></div>
+</div>
+</div>
+<h2 class="font-headline-lg text-headline-lg mb-6">Review categories</h2>
+<!-- Progress Section -->
+<div class="max-w-md">
+<div class="flex justify-between items-end mb-3">
+<p class="font-body-md text-body-md">You're 96% categorised — 8 to review</p>
+<span class="font-label-md text-label-md text-on-surface-variant opacity-60">Goal: 100%</span>
+</div>
+<div class="progress-bar-bg">
+<div class="progress-bar-fill"></div>
+</div>
+</div>
+</header>
+<!-- Bulk Action Bar -->
+<div class="bulk-action-bar sticky top-4 z-40 flex items-center justify-between px-6 py-4 rounded-[16px] mb-8 shadow-sm">
+<div class="flex items-center gap-4">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<span class="font-label-md text-label-md font-medium">Select all</span>
+</div>
+<div class="flex items-center gap-6">
+<span class="hidden md:block font-label-md text-label-md text-on-surface-variant/70 italic">6 high-confidence ready</span>
+<button class="bg-gradient-to-r from-trail-sky to-trail-indigo text-white px-6 py-2.5 rounded-xl font-medium shadow-md hover:opacity-90 active:scale-95 transition-all text-sm">
+                        Confirm 6
+                    </button>
+</div>
+</div>
+<!-- Transaction List -->
+<div class="space-y-4 mb-section-gap">
+<!-- Expanded Row (Special State) -->
+<div class="glass-card rounded-22px p-6 ring-2 ring-primary/20 relative overflow-hidden">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<div>
+<h4 class="font-headline-sm text-headline-sm leading-none mb-1">Woolworths Metro</h4>
+<p class="font-label-md text-on-surface-variant opacity-60">18 Jun • Personal Credit Card</p>
+</div>
+</div>
+<div class="md:text-right">
+<p class="font-data-lg text-data-lg tabular-nums">$142.50</p>
+</div>
+<div class="flex flex-col items-start md:items-center gap-1 min-w-[140px]">
+<div class="pill bg-primary/10 text-primary gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                Groceries
+                            </div>
+<span class="text-[11px] text-on-surface-variant/60 ml-2">92% community match</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check</span>
+</button>
+<button class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">Change</button>
+</div>
+</div>
+<!-- Expanded Affordance -->
+<div class="bg-surface-container-low/50 -mx-6 -mb-6 p-6 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-primary text-xl">auto_fix</span>
+<span class="font-body-sm text-body-sm">Also apply to all WOOLWORTHS — past &amp; future</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-outline-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+<!-- Normal Row: Coles -->
+<div class="glass-card rounded-22px p-6">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<div>
+<h4 class="font-headline-sm text-headline-sm leading-none mb-1">Coles Supermarkets</h4>
+<p class="font-label-md text-on-surface-variant opacity-60">17 Jun • Everyday Savings</p>
+</div>
+</div>
+<div class="md:text-right">
+<p class="font-data-lg text-data-lg tabular-nums">$64.20</p>
+</div>
+<div class="flex flex-col items-start md:items-center gap-1 min-w-[140px]">
+<div class="pill bg-primary/10 text-primary gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+                                Groceries
+                            </div>
+<span class="text-[11px] text-on-surface-variant/60 ml-2">88% match</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">check</span>
+</button>
+<button class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">Change</button>
+</div>
+</div>
+</div>
+<!-- Amber State: Needs a look -->
+<div class="glass-card rounded-22px p-6 border-l-4 border-l-trail-amber">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<div>
+<h4 class="font-headline-sm text-headline-sm leading-none mb-1">SQ *Avenue Cafe</h4>
+<p class="font-label-md text-on-surface-variant opacity-60">15 Jun • Platinum Amex</p>
+</div>
+</div>
+<div class="md:text-right">
+<p class="font-data-lg text-data-lg tabular-nums">$12.50</p>
+</div>
+<div class="flex flex-col items-start md:items-center gap-1 min-w-[140px]">
+<div class="pill bg-surface-container text-on-surface-variant gap-2 border border-outline-variant/30">
+<span class="w-2 h-2 rounded-full bg-trail-amber"></span>
+                                Needs a look
+                            </div>
+<span class="text-[11px] text-trail-amber font-medium ml-2">Low confidence match</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">check</span>
+</button>
+<button class="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors">Categorise</button>
+</div>
+</div>
+</div>
+<!-- Subscription Row -->
+<div class="glass-card rounded-22px p-6">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<div>
+<h4 class="font-headline-sm text-headline-sm leading-none mb-1">Netflix.com</h4>
+<p class="font-label-md text-on-surface-variant opacity-60">14 Jun • Monthly Recurring</p>
+</div>
+</div>
+<div class="md:text-right">
+<p class="font-data-lg text-data-lg tabular-nums">$22.99</p>
+</div>
+<div class="flex flex-col items-start md:items-center gap-1 min-w-[140px]">
+<div class="pill bg-trail-violet/10 text-trail-violet gap-2">
+<span class="w-2 h-2 rounded-full bg-trail-violet"></span>
+                                Entertainment
+                            </div>
+<span class="text-[11px] text-on-surface-variant/60 ml-2">Consistent pattern</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">check</span>
+</button>
+<button class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">Change</button>
+</div>
+</div>
+</div>
+<!-- Transport Row -->
+<div class="glass-card rounded-22px p-6">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+<div class="flex items-center gap-6">
+<input checked="" class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary/20" type="checkbox"/>
+<div>
+<h4 class="font-headline-sm text-headline-sm leading-none mb-1">Shell Collingwood</h4>
+<p class="font-label-md text-on-surface-variant opacity-60">12 Jun • Fuel &amp; Transport</p>
+</div>
+</div>
+<div class="md:text-right">
+<p class="font-data-lg text-data-lg tabular-nums">$91.04</p>
+</div>
+<div class="flex flex-col items-start md:items-center gap-1 min-w-[140px]">
+<div class="pill bg-trail-sky/10 text-trail-sky gap-2">
+<span class="w-2 h-2 rounded-full bg-trail-sky"></span>
+                                Transport
+                            </div>
+<span class="text-[11px] text-on-surface-variant/60 ml-2">99% match</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-10 h-10 flex items-center justify-center rounded-full border border-outline-variant text-on-surface-variant hover:bg-primary/10 hover:text-primary transition-colors">
+<span class="material-symbols-outlined">check</span>
+</button>
+<button class="px-4 py-2 text-sm font-medium text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">Change</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Empty State Celebration (Footer) -->
+<footer class="text-center py-12 border-t border-outline-variant/20">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/5 mb-4">
+<span class="material-symbols-outlined text-primary text-3xl" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-2">All caught up — 0 to review</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs mx-auto">Your financial story is up to date for June. Nice work keeping it clean.</p>
+<div class="mt-8 flex justify-center gap-4">
+<button class="px-6 py-2 border-1.5 border-outline-variant rounded-xl text-sm font-medium hover:bg-surface-container transition-colors">View Reports</button>
+<button class="px-6 py-2 bg-primary text-white rounded-xl text-sm font-medium hover:bg-primary-container transition-colors">Back to Dashboard</button>
+</div>
+</footer>
+</main>
+</div>
+<!-- Bottom Mobile Nav (Predicted) -->
+<div class="md:hidden fixed bottom-8 left-1/2 -translate-x-1/2 w-[calc(100%-40px)] max-w-md z-50 glass-card rounded-22px p-2 flex items-center justify-around">
+<a class="p-3 text-on-surface-variant" href="#"><span class="material-symbols-outlined">home</span></a>
+<a class="p-3 bg-primary text-white rounded-xl shadow-lg" href="#"><span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">account_balance</span></a>
+<a class="p-3 text-on-surface-variant" href="#"><span class="material-symbols-outlined">payments</span></a>
+<a class="p-3 text-on-surface-variant" href="#"><span class="material-symbols-outlined">group</span></a>
+</div>
+<script>
+        // Simple micro-interaction for the bulk action button
+        const confirmBtn = document.querySelector('button.from-trail-sky');
+        confirmBtn.addEventListener('click', function() {
+            this.textContent = "Confirming...";
+            this.classList.add('opacity-50');
+            setTimeout(() => {
+                this.textContent = "Done ✓";
+                this.classList.remove('from-trail-sky', 'to-trail-indigo', 'opacity-50');
+                this.classList.add('bg-trail-emerald');
+            }, 800);
+        });
+
+        // Toggle state logic for the "Learn Once" toggle
+        const toggle = document.querySelector('input[type="checkbox"].sr-only');
+        const expandedCard = document.querySelector('.ring-primary\\/20');
+        if(toggle) {
+            toggle.addEventListener('change', function() {
+                if(this.checked) {
+                    expandedCard.classList.add('ring-2', 'ring-primary/20');
+                } else {
+                    expandedCard.classList.remove('ring-2', 'ring-primary/20');
+                }
+            });
+        }
+    </script>
+</body></html>

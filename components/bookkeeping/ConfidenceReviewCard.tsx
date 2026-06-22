@@ -25,7 +25,8 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Loader2, Sparkles } from 'lucide-react';
+import Link from 'next/link';
+import { Check, Loader2, Sparkles, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
 interface ConfidenceSummary {
@@ -133,6 +134,15 @@ export function ConfidenceReviewCard({
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {highShare}% filed automatically — nice and tidy
                 </p>
+                {/* Phase 52.5c — deep-link into the dedicated full-page triage
+                    inbox for clearing the whole pile calmly. */}
+                <Link
+                  href="/dashboard/activity/review"
+                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 transition hover:gap-1.5 dark:text-sky-300"
+                >
+                  Open review inbox
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
               </div>
               <span className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-[14px] bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 shrink-0">
                 <Sparkles className="w-5 h-5" />

@@ -229,8 +229,45 @@ the low-value tail.
 - **52.5b — embeddings (fuzzy tail):** non-prefix variants ("WW METRO" → "WOOLWORTHS") via vector
   similarity (pgvector in Cloud SQL or Vertex). Needs the `vector` extension (operator) + a vector
   column + an embeddings model. **Deferred — larger infra increment.**
-- **52.5c / Phase 51.2 — surfaces:** review-exceptions inbox + "apply to past/future" + ATO-label
-  mapping, powered by this engine. **Stitch-first; larger UI increment.**
+- **52.5c — KB write-back across ALL human confirmation surfaces ✅ (this PR):** the central gap found
+  on build (CLAUDE.md §10 research-before-action): before this, **only** the single-transaction PATCH
+  taught the shared KB. The bulk/review confirmation paths — `bulk-categorise` (power-user "Categorise N
+  selected"), `bulk-confirm` (the "AI bookkeeper" medium/low bands), the per-row "✓ Looks right"
+  affordance, and the per-batch review route — all wrote the PRIVATE `merchantMapping` but **never fed
+  the cross-user KB**. So the AI engine couldn't learn from the highest-volume categorisation paths.
+  Fix: one canonical learn-once helper `recordKbContribution()` (`lib/categorisation/kb/recordFromConfirmation.ts`,
+  CLAUDE.md §12.2 SSOT) wired into (a) `confirmReviewItem` (covers bulk-confirm bands + per-row +
+  per-batch review in one place), (b) the `bulk-categorise` route (once per distinct merchant), and
+  (c) the single PATCH (refactored onto the same helper). All pass the canonical category triple — the
+  same vocabulary the KB stores → **no vote fragmentation**. **Echo-chamber-safe:** import-time AI
+  auto-accept (`bulkConfirmAutoAccepted`) and `bulkConfirmHighBand` are deliberately NOT wired — only a
+  genuine human confirm/edit/re-categorise is a real k-anonymity vote. Fire-and-forget + gated OFF by
+  default (`KB_WRITE_ENABLED`).
+- **52.5c — Link / reconciliation tool SSOT + KB read/write ✅ (this PR):** the Link dialog was the one
+  categorisation surface bypassing BOTH the canonical category registry AND the KB (it wrote raw legacy
+  flat codes). New bridge `categoryBridge.ts` (`legacyCodeToCanonical` / `canonicalToLegacyCode`, 12
+  tests) + `learnCanonicalFromLink()` in the link route now: (WRITE) bridge code → canonical triple →
+  seed `CanonicalCategoryRegistry` + teach the KB at every learnMerchant site (skips loans + custom);
+  (READ) `suggestedCategory` consults the graduated community KB, mapped back to a legacy code for the
+  dialog. Full detail: §8b.
+- **52.5c-UI — review-exceptions inbox surface:** review-exceptions inbox + "apply to past/future"
+  learn-once toggle, powered by this engine. **Stitch-first; UI increment.** Design ✅ (light, **9.2/10**
+  per §18.8 gate; v1 `291a1716` scored 8.0 → rejected) — Stitch screen
+  `fdf91885d9854bf48ebdeb97bbcd2762`, `.stitch/designs/phase52/review-categories-inbox-v2.png`
+  (finishable "96% categorised — 8 to review" header + progress bar; high-confidence pre-checked +
+  bulk Confirm; per-row AI category + community-confidence cue; expanded "apply to all <merchant> —
+  past & future" learn-once toggle; amber "Needs a look" exceptions; calm "All caught up" empty state).
+  **DECIDED + SHIPPED (Reza, 2026-06-22): dedicated full-page inbox.** `app/dashboard/activity/review/page.tsx`
+  + `components/bookkeeping/ReviewCategoriesInbox.tsx` on the §18.7.2 glass vocabulary, reusing the
+  existing KB-wired endpoints (GET `bulk-confirm` summary + GET `review-queue?band=` items + POST
+  `review-queue` confirm/skip) — **no new endpoints**. Confirming routes through `confirmReviewItem` →
+  `recordKbContribution`, so the inbox teaches the KB. Entry point: an "Open review inbox →" deep-link
+  added to the inline Phase 49 `ConfidenceReviewCard` (the card stays for at-a-glance; the page is the
+  calm full-screen triage). **Stitch 4-variant matrix, all > 9 per §18.8:** desktop light `fdf91885`
+  (9.2) / desktop dark `c31ae9ca` (9.4) / mobile light `c203a7d7` (9.3) / mobile dark `0fc7905b` (9.3);
+  artefacts `.stitch/designs/phase52/review-categories-inbox-v2{,-dark,-mobile,-mobile-dark}.{html,png}`.
+  Header "N% categorised — M to review" + progress; medium band pre-selected for bulk confirm; per-row
+  confirm/skip; amber "Needs a look" for the low band; calm "All caught up" empty state.
 
 ## 8. Risks
 - **Privacy/CDR** (the dominant one) — §5 guardrails; needs the documented CDR stance.
@@ -259,11 +296,53 @@ generated artefacts — regenerate from the updated `.md` before they're served 
 gate:** no shared-KB write ships until the PII-scrubber + the written de-identification procedure are
 implemented and signed off (compliance matrix status flips DESIGN → IMPLEMENTED).
 
+## 8b. Link / reconciliation tool — SSOT audit + KB read/write ✅ (Reza, 2026-06-22)
+
+Reza asked (2026-06-22): *"are you performing an audit and review on the link / reconciliation tool to
+make sure it will be SSOT and read/write to the new KB AI engine?"* — Yes. Findings + fix:
+
+**Audit finding.** The Link Transaction dialog (`components/transactions/TransactionLinkDialog.tsx` →
+`/api/transactions/[id]/link`) was the **one categorisation surface off-SSOT on two axes**:
+1. It wrote raw **legacy flat codes** (`EXPENSE_CATEGORIES`/`INCOME_TYPES`: `GROCERIES`, `SALARY`, …)
+   to the private `merchantMapping` and **never seeded the `CanonicalCategoryRegistry`** (§12.2 SSOT) —
+   unlike the PATCH / bulk-categorise / review paths, which all go through `resolveOrCreateCategory`.
+2. It **never fed nor consulted the shared KB**.
+The KB, the TIE categoriser, and the registry all speak the **canonical 3-level hierarchy**
+(`Food & Dining` > `Groceries`). Writing flat codes straight into the KB would fragment graduation
+(`GROCERIES` vs `Food & Dining>Groceries` for the same merchant) and surface mismatched names on read.
+
+**Fix (this PR).** A single bridge `lib/categorisation/kb/categoryBridge.ts` —
+`legacyCodeToCanonical(code, direction)` + `canonicalToLegacyCode(level1, level2, direction)` (12 tests)
+— is the one documented correspondence between the two vocabularies. The link route now:
+- **WRITE:** at each `learnMerchant` site (link-to-income/expense, create-income, create-expense) calls
+  `learnCanonicalFromLink()` → bridges the chosen code → canonical triple → seeds the canonical registry
+  (`resolveOrCreateCategory`) **and** teaches the shared KB (`recordKbContribution`, the same learn-once
+  helper as every other surface). Skips loan links (Phase 51 ledger owns repayments) and custom
+  categories (free-text, never graduate).
+- **READ:** when there's no private/global learned mapping and no engine prediction, `suggestedCategory`
+  now consults `lookupSharedCategory()` and maps the graduated community answer back to a legacy code via
+  `canonicalToLegacyCode` so the dialog's `CategorySelect` can pre-select it.
+Both write + read are gated (`KB_WRITE_ENABLED`/`KB_READ_ENABLED`), de-identified, fire-and-forget.
+
+**Remaining (smaller, documented tech-debt, NOT blocking):** `merchantMapping.categoryLevel1` still
+stores the legacy code at these sites (so the dialog's existing read keeps working); the full
+`merchantMapping` → canonical-triple unification is the larger §12.2 cleanup that retires the bridge.
+Until then the bridge guarantees the KB + registry get clean canonical data.
+
 ## 9. Open questions
 - k value (start k=5?) — tune with data.
 - Exact PII-scrub ruleset (person-to-person detection, name/number stripping) — needs a tested
   scrubber before any shared write.
 - Embedding backend (pgvector in Cloud SQL vs Vertex Vector Search) — §12.7 evaluation at 52.4.
+- ~~Review inbox placement~~ **DECIDED (Reza, 2026-06-22): dedicated full-page triage inbox** (v2 design),
+  reusing the now-KB-wired `review-queue` (item-level confirm/skip/edit/transfer) + `bulk-confirm` (band
+  summary + whole-band confirm) endpoints — no new endpoints. Complements the inline Phase 49
+  `ConfidenceReviewCard` (which becomes a likely entry point into the page). **Build plan (Stitch-first,
+  §18):** (1) generate dark + mobile variants from the approved v2 light screen (`fdf91885`), each
+  through the §18.8 ≥9 gate → 4-variant matrix; (2) `app/dashboard/activity/review/page.tsx` +
+  `components/bookkeeping/ReviewCategoriesInbox.tsx` on the §18.7.2 glass vocabulary; (3) "apply to all
+  &lt;merchant&gt; — past & future" learn-once toggle → `editReviewItem` w/ applyToSimilar (already feeds
+  the KB via `confirmReviewItem`); (4) nav entry from the Activity confidence card; (5) docs + changelog.
 
 ## 10. Enablement runbook (how to switch the KB on)
 
