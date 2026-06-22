@@ -558,3 +558,19 @@ Reza feedback on the #1185 ship: the dialog "almost looks the same as before …
 
 ### Files: `components/transactions/TransactionLinkDialog.tsx`. tsc + eslint clean (pre-existing loadMatches warning only).
 ### Doc-sync (§16/§18): matches the merged v3 artefacts in `.stitch/designs/phase51-recon-redesign/`; this changelog.
+
+---
+
+## Session: activity-confidence-band-filter-fix-shk180 (Activity "High" band shows nothing)
+
+### Bug (Reza, 2026-06-22)
+On `/dashboard/activity`, clicking the "High · 83" band chip showed "No transactions match" despite the count; "Low · 283" worked; no Medium chip (expected — 0 medium).
+
+### Root cause
+`tileFilter` defaults to `'uncategorized'`, and the band chip set `confidenceBand` WITHOUT clearing it, so the list query AND-ed both: `confidence=high & uncategorized=true`. High-confidence rows are auto-filed (categorised), so the intersection is empty. Low only appeared to work because low-confidence rows happen to be uncategorised. The band counts intentionally count the WHOLE band, so the list was inconsistent with the count.
+
+### Fix
+`app/dashboard/activity/page.tsx` — when a confidence band is active it is the SOLE lens (takes precedence over the uncategorized/spend/income tile filters). High now shows all high-confidence transactions, matching its chip count.
+
+### Files: `app/dashboard/activity/page.tsx`. tsc + eslint clean (pre-existing warning only).
+### Doc-sync (§16): this changelog. No config/schema/infra change.
