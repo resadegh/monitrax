@@ -192,9 +192,11 @@ the low-value tail.
   (rejects transfers/PII, strips numbers/dates/refs/method-noise → canonical signature) — 11 tests.
   `SignatureContribution` classified in `accountReset` (RESET_DELETE). **No write-back / consumption
   yet** — the gate ships first (per the build gate).
-- **52.1b — write-back service (flag-gated):** `recordContribution()` — scrub → upsert signature →
-  upsert the user's contribution → recompute votes + `distinctUserCount` + graduation (`isGlobal` at
-  k). Behind a default-OFF flag until the de-identification procedure is signed off.
+- **52.1b — write-back service (flag-gated):** ✅ `recordContribution()` — scrub → upsert signature →
+  upsert the user's contribution → **incrementally** update votes + `distinctUserCount` + graduation
+  (`isGlobal` at k=5), O(1) per write (no ledger scan → scales). Pure `applyVoteDelta()` (top-N cap) +
+  `summariseVotes()`. **GATED OFF by default** (`KB_WRITE_ENABLED`) until the de-identification
+  procedure is signed off. 10 tests.
 - **52.2 — lookup-first categoriser:** insert the shared-KB prior into the TIE precedence chain;
   measure hit-rate. Still no LLM.
 - **52.3 — Gemini-on-miss (RAG):** KB-as-context prompt for the unknown tail; confirmed answers
