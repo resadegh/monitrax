@@ -1,5 +1,45 @@
 # Changelog - 2026-06-21
 
+## Session: categorisation-kb-design-shk180 (Phase 52 — shared categorisation KB: design + decision)
+
+### Changes Made
+- **Type**: Design + strategic decision (no code). New Phase 52 workstream.
+- **Why**: Reza proposed a comprehensive AI categorisation/recognition engine — a DB in Monitrax
+  that every user's confirmations enrich and the AI always consults, so the Gemini AI gets smarter
+  about Australian transactions over time.
+
+### Recommendation captured (Phase doc)
+- Named it correctly: **RAG** (knowledge base the AI consults), **not** fine-tuning Gemini.
+- **Two-layer architecture**: lookup-first (free, ~90% of txns) → Gemini-on-miss (RAG, the tail);
+  both feed the same growing KB. Makes bringing AI categorisation back affordable (it was cut
+  2026-05-09 for cost).
+- **Data model**: a de-identified `TransactionSignature` (pattern → `categoryVotes` distribution +
+  `distinctUserCount` + MCC + coarse amount-hint), the cross-user evolution of `MerchantMapping`.
+  Indicators ranked: keywords/normalised-merchant (primary) > MCC (strong) > amount (weak tiebreaker).
+- **Guardrails** (privacy is the gating constraint): PII-scrub before shared write, k-anonymity
+  graduation (≥k distinct users), per-user override always wins, vote-distribution poisoning
+  resistance, documented CDR stance before Basiq.
+- Integrates into the existing TIE precedence chain; seeds from `mccCatalog`; embeddings as the
+  fuzzy-match upgrade. **Powers Phase 51.2** (categorisation overhaul).
+
+### DECIDED (Reza, 2026-06-21)
+- Sharing posture = **Hybrid: private + k-anon shared** (recommended; rejected fully-shared and
+  curated-global-only).
+
+### Files Added / Updated
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` (NEW).
+- `docs/implementation/02_UP_NEXT.md` — Phase 52 registered (designed + decided, build queued).
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+
+### Build Status
+- N/A — docs-only.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] strategic decision (sharing posture) + new workstream → Phase 52 doc, `02_UP_NEXT.md`, hub.
+- [ ] code / infra / security — none (design only; CDR stance to be added to the compliance matrix at build time).
+
+---
+
 ## Session: loan-repayments-tab-shk180 (Phase 51.1 — build increment 4: Repayments tab UI)
 
 ### Changes Made
