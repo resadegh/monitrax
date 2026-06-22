@@ -205,3 +205,50 @@ export async function resolveRepaymentMatch(
   }
   return { ok: true };
 }
+
+/**
+ * Phase 51.2 — confirm a loan-repayment ↔ transaction link from the ACTIVITY
+ * reconcile surface (the user picked a specific offset/funding transaction in the
+ * Link dialog). Unlike `resolveRepaymentMatch` (loan-side, requires a prior
+ * SUGGESTED row), this links an explicit (loanTransaction, transaction) pair the
+ * resolution engine surfaced — works whether the ledger row was UNMATCHED or
+ * SUGGESTED.
+ *
+ * Effect: LoanTransaction → LINKED (+ matchedTransactionId); the funding
+ * UnifiedTransaction → isTransfer=true (principal out of spending) + loanId set
+ * (GRDCS link to the loan). §12.11-safe — both sides scoped to rows this user
+ * owns; the action IS the user's explicit confirmation in the dialog.
+ */
+export async function linkRepaymentToTransaction(
+  userId: string,
+  loanTransactionId: string,
+  transactionId: string
+): Promise<{ ok: boolean }> {
+  const [row, txn] = await Promise.all([
+    prisma.loanTransaction.findFirst({
+      where: { id: loanTransactionId, userId, kind: 'REPAYMENT_RECEIVED' },
+      select: { id: true, loanId: true },
+    }),
+    prisma.unifiedTransaction.findFirst({
+      where: { id: transactionId, userId },
+      select: { id: true },
+    }),
+  ]);
+  if (!row || !txn) return { ok: false };
+
+  await prisma.$transaction(async (tx) => {
+    await tx.loanTransaction.update({
+      where: { id: row.id },
+      data: {
+        matchStatus: LoanMatchStatus.LINKED,
+        matchedTransactionId: transactionId,
+        matchConfidence: 1,
+      },
+    });
+    await tx.unifiedTransaction.updateMany({
+      where: { id: transactionId, userId },
+      data: { isTransfer: true, loanId: row.loanId },
+    });
+  });
+  return { ok: true };
+}

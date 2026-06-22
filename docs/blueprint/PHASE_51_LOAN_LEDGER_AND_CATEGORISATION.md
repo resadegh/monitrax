@@ -147,6 +147,30 @@ each category to an **ATO label behind the scenes**.
 - **Phase 51.2 — categorisation overhaul:** review-exceptions inbox · "apply to past+future" rules
   · confidence gate · ATO-label mapping · generalised transfer detection (CC payments,
   inter-account).
+  - **51.2 (reconcile surface) — Transaction Resolution Precedence ✅ SHIPPED 2026-06-22.** The
+    audit finding (Reza): the imported loan ledger was **never connected to the Activity reconcile/link
+    dialog** — that dialog matched loans only by `loan.minRepayment` (0 for interest-only) so it could
+    never recognise a repayment, and **batched all same-description payments together** (the exact
+    cross-loan collision Phase 51 exists to solve). Reza's directive: *"AI recognition on
+    categorisation for any transaction should check ALL accounts first to see if it is a transfer or a
+    loan repayment, etc, BEFORE hitting the KB engine."* Fix:
+    - `lib/bookkeeping/resolveTransaction.ts` — `resolveTransactionMatches(userId, txnId)`: matches the
+      txn against the user's **loan ledgers** (any loan, exact amount + date window → disambiguates
+      same-description repayments to different loans) and **other accounts** (opposite-direction
+      sibling → internal transfer). Suggest-first (Reza decision): ranked candidates, nothing
+      auto-applied.
+    - `linkRepaymentToTransaction()` (matchRepayments.ts) — confirm a ledger-repayment ↔ txn link from
+      the Activity side (LoanTransaction→LINKED, funding txn→isTransfer + loanId). §12.11-safe.
+    - Link dialog GET now returns `resolution` and **suppresses the same-vendor batch** when a txn
+      resolves to a repayment/transfer. POST gains `action:'linkLoanRepayment'`. The dialog surfaces
+      "Loan repayment — &lt;loan&gt; · Link as repayment" / "Transfer to &lt;account&gt; · Mark as
+      transfer" at the TOP of Suggested, above categorisation.
+    - **Also shipped:** discoverable loan-statement import entry points (loan row "Import statement"
+      action + `LoanDetailDialog` `initialTab` deep-link to Repayments) — users were looking on the
+      edit form, not the detail dialog.
+    - **Follow-up (queued):** run this resolution AHEAD of rules/KB at **import/auto-categorisation
+      time** (not just the reconcile surface), so transfers/repayments never enter the
+      uncategorised-as-spending pile; relax the loan matcher's offset-only requirement.
 - **Phase 51.3 — CDR/Basiq:** swap ingestion source only (same store, same engine). Loan txns
   auto-arrive; `offsetAccountIds` drives auto-linking; TR 2000/2 mixed-purpose apportionment as the
   accuracy capstone.

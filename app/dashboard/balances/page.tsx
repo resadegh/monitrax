@@ -250,6 +250,9 @@ function BalancesPageContent() {
   // of navigating to /dashboard/loans/{id}.
   const [detailLoan, setDetailLoan] = useState<LoanRow | null>(null);
   const [loanDetailOpen, setLoanDetailOpen] = useState(false);
+  // Phase 51 follow-up — which tab the detail dialog opens on, so the
+  // "Import statement" entry points can deep-link to Repayments.
+  const [loanDetailInitialTab, setLoanDetailInitialTab] = useState<string>('overview');
 
   // Phase 1c: data-source picker state. The "+ Account" / "+ Loan"
   // toolbar buttons open a small 2-tile picker (Import / Manual) per
@@ -428,8 +431,9 @@ function BalancesPageContent() {
   // Phase 36 Phase 2a: open the inline loan detail dialog. Mirrors
   // `openAccountDetail` — the page already has the loan in state from
   // the /api/loans fetch, so no extra request is needed.
-  const openLoanDetail = (loan: LoanRow) => {
+  const openLoanDetail = (loan: LoanRow, tab: string = 'overview') => {
     setDetailLoan(loan);
+    setLoanDetailInitialTab(tab);
     setLoanDetailOpen(true);
   };
 
@@ -976,6 +980,7 @@ function BalancesPageContent() {
                       loan={l}
                       accounts={accounts}
                       onClick={() => openLoanDetail(l)}
+                      onImport={() => openLoanDetail(l, 'repayments')}
                     />
                   ))}
                 </div>
@@ -1027,6 +1032,7 @@ function BalancesPageContent() {
         loan={detailLoan as LoanDetail | null}
         open={loanDetailOpen}
         onOpenChange={setLoanDetailOpen}
+        initialTab={loanDetailInitialTab}
         onEdit={(l) => {
           setLoanDetailOpen(false);
           void openLoanEdit(l);
@@ -1352,10 +1358,13 @@ function LoanRowView({
   loan,
   accounts,
   onClick,
+  onImport,
 }: {
   loan: LoanRow;
   accounts: AccountRow[];
   onClick: () => void;
+  /** Phase 51 follow-up — deep-link to the detail dialog's Repayments tab to import this loan's statement. */
+  onImport: () => void;
 }) {
   const meta = LOAN_TYPE_META[loan.type];
   const Icon = meta.icon;
@@ -1366,48 +1375,50 @@ function LoanRowView({
   const offsetReduction = offset ? Math.max(0, Math.min(offset.currentBalance, loan.principal)) : 0;
   const effectivePrincipal = loan.principal - offsetReduction;
 
+  // Row is a div (not a button) so the per-loan "Import statement" action can be
+  // a real sibling button — nested buttons are invalid HTML (mirrors AccountRowView).
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full text-left flex items-start gap-4 px-4 sm:px-5 py-4 border-b border-border last:border-0 hover-lift hover:bg-muted/40 group"
-    >
-      <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent} shrink-0 mt-0.5`}>
-        <Icon className="w-5 h-5" />
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="font-medium truncate">{loan.name}</div>
-        <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-          <span>{meta.label}</span>
-          <span>·</span>
-          <span className="tabular-nums">{(loan.interestRateAnnual * 100).toFixed(2)}% {loan.rateType === 'FIXED' ? 'fixed' : 'variable'}</span>
-          {loan.isInterestOnly && <><span>·</span><span>Interest only</span></>}
+    <div className="flex w-full items-start border-b border-border last:border-0 hover:bg-muted/40 group">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 min-w-0 items-start gap-4 px-4 sm:px-5 py-4 text-left hover-lift"
+      >
+        <div className={`flex items-center justify-center w-10 h-10 rounded-xl ${meta.accent} shrink-0 mt-0.5`}>
+          <Icon className="w-5 h-5" />
         </div>
 
-        {/* Relationship breadcrumbs — preserved exactly as in the old page */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {loan.property && (
-            <LinkChip icon={HomeIcon} label={`Secured by ${loan.property.name}`} tone="rose" />
-          )}
-          {offset && (
-            <LinkChip
-              icon={Link2}
-              label={`Offset: ${offset.name} (${formatCurrency(offset.currentBalance)})`}
-              tone="emerald"
-            />
-          )}
-          {loan.linkedAsset && (
-            <LinkChip icon={Car} label={`Vehicle: ${loan.linkedAsset.name}`} tone="sky" />
-          )}
-          {loan.linkedAccount && (
-            <LinkChip icon={CreditCard} label={`Card: ${loan.linkedAccount.name}`} tone="amber" />
-          )}
-        </div>
-      </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">{loan.name}</div>
+          <div className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
+            <span>{meta.label}</span>
+            <span>·</span>
+            <span className="tabular-nums">{(loan.interestRateAnnual * 100).toFixed(2)}% {loan.rateType === 'FIXED' ? 'fixed' : 'variable'}</span>
+            {loan.isInterestOnly && <><span>·</span><span>Interest only</span></>}
+          </div>
 
-      <div className="text-right flex items-center gap-3 shrink-0">
-        <div>
+          {/* Relationship breadcrumbs — preserved exactly as in the old page */}
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {loan.property && (
+              <LinkChip icon={HomeIcon} label={`Secured by ${loan.property.name}`} tone="rose" />
+            )}
+            {offset && (
+              <LinkChip
+                icon={Link2}
+                label={`Offset: ${offset.name} (${formatCurrency(offset.currentBalance)})`}
+                tone="emerald"
+              />
+            )}
+            {loan.linkedAsset && (
+              <LinkChip icon={Car} label={`Vehicle: ${loan.linkedAsset.name}`} tone="sky" />
+            )}
+            {loan.linkedAccount && (
+              <LinkChip icon={CreditCard} label={`Card: ${loan.linkedAccount.name}`} tone="amber" />
+            )}
+          </div>
+        </div>
+
+        <div className="text-right shrink-0">
           <div className="font-semibold tabular-nums text-rose-600">
             -{formatCurrency(loan.principal)}
           </div>
@@ -1417,9 +1428,23 @@ function LoanRowView({
             </div>
           )}
         </div>
-        <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors" />
+      </button>
+
+      {/* Phase 51 follow-up — direct "Import statement" entry point. Quiet by
+          default, lights up on row hover / focus; always visible on touch. */}
+      <div className="flex items-center gap-1 pr-3 sm:pr-4 pl-1 self-center">
+        <button
+          type="button"
+          onClick={onImport}
+          title={`Import ${loan.name} statement (QIF / CSV / OFX)`}
+          aria-label={`Import ${loan.name} statement`}
+          className="inline-flex items-center justify-center w-9 h-9 rounded-lg text-muted-foreground/70 hover:text-sky-600 hover:bg-sky-500/10 focus:text-sky-600 focus:bg-sky-500/10 transition-colors sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100"
+        >
+          <Upload className="w-4 h-4" />
+        </button>
+        <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-foreground/80 transition-colors shrink-0" />
       </div>
-    </button>
+    </div>
   );
 }
 

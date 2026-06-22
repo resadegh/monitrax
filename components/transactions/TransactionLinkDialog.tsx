@@ -101,6 +101,33 @@ interface CurrentLink {
   name: string;
 }
 
+// Phase 51.2 — Transaction Resolution Precedence. Structural matches surfaced
+// BEFORE merchant categorisation: a txn that is really a loan repayment or an
+// internal transfer, recognised against the user's own ledgers/accounts.
+interface LoanRepaymentMatch {
+  kind: 'LOAN_REPAYMENT';
+  loanTransactionId: string;
+  loanId: string;
+  loanName: string;
+  amount: number;
+  date: string;
+  interestPortion: number | null;
+  confidence: number;
+}
+interface TransferMatch {
+  kind: 'TRANSFER';
+  transactionId: string;
+  accountId: string;
+  accountName: string;
+  amount: number;
+  date: string;
+  confidence: number;
+}
+interface Resolution {
+  loanRepayments: LoanRepaymentMatch[];
+  transfers: TransferMatch[];
+}
+
 interface TransactionLinkDialogProps {
   transaction: Transaction | null;
   open: boolean;
@@ -192,6 +219,9 @@ export function TransactionLinkDialog({
   // Phase 30: Transaction pattern for reconciliation
   const [transactionPattern, setTransactionPattern] = useState<TransactionPattern | null>(null);
 
+  // Phase 51.2 — structural resolution (loan repayment / transfer) surfaced first.
+  const [resolution, setResolution] = useState<Resolution>({ loanRepayments: [], transfers: [] });
+
   // Create new form state
   const [newName, setNewName] = useState('');
   const [newCategory, setNewCategory] = useState('');
@@ -261,6 +291,7 @@ export function TransactionLinkDialog({
       setLearnedCategory(null);
       setLearnMerchant(true);
       setTransactionPattern(null);
+      setResolution({ loanRepayments: [], transfers: [] });
       setSuccess(null);
       setError(null);
     }
@@ -319,6 +350,8 @@ export function TransactionLinkDialog({
       setLearnedCategory(data.learnedCategory || null);
       // Phase 30: Store transaction pattern for reconciliation
       setTransactionPattern(data.transactionPattern || null);
+      // Phase 51.2: structural resolution matches (loan repayment / transfer)
+      setResolution(data.resolution ?? { loanRepayments: [], transfers: [] });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -372,6 +405,60 @@ export function TransactionLinkDialog({
     }
   };
 
+
+  // Phase 51.2 — confirm a resolution-surfaced loan-repayment match. Links this
+  // funding transaction to the imported ledger row (isTransfer + loanId set).
+  const handleLinkLoanRepayment = async (loanTransactionId: string) => {
+    if (!transaction) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'linkLoanRepayment', loanTransactionId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setSuccess(data.message || 'Linked to loan repayment');
+      await onLinked?.();
+      setTimeout(() => {
+        if (hasMoreTransactions && onNavigateNext) onNavigateNext();
+        else onOpenChange(false);
+      }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to link');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Phase 51.2 — confirm a resolution-surfaced transfer match (reuses the
+  // existing 'transfer' action with the matched counterpart account).
+  const handleMarkTransferTo = async (accountId: string) => {
+    if (!transaction) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/transactions/${transaction.id}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'transfer', transferToAccountId: accountId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setSuccess(data.message || 'Marked as transfer');
+      await onLinked?.();
+      setTimeout(() => {
+        if (hasMoreTransactions && onNavigateNext) onNavigateNext();
+        else onOpenChange(false);
+      }, 800);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to mark as transfer');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleCreate = async () => {
     if (!transaction || !newName || (!newCategory && !isTransfer && !isInvestmentContribution)) return;
@@ -799,6 +886,71 @@ export function TransactionLinkDialog({
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">
+              {/* Phase 51.2 — Transaction Resolution: structural matches first.
+                  A loan repayment / internal transfer is recognised against the
+                  user's own ledgers + accounts BEFORE any merchant categorisation
+                  (so same-description repayments to different loans are never
+                  batched together). */}
+              {(resolution.loanRepayments.length > 0 || resolution.transfers.length > 0) && (
+                <div className="space-y-2 mb-1">
+                  {resolution.loanRepayments.map((m) => (
+                    <div
+                      key={m.loanTransactionId}
+                      className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold flex items-center gap-1.5">
+                            <Landmark className="h-4 w-4 text-emerald-600 shrink-0" />
+                            Loan repayment — {m.loanName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Matches your statement: {formatCurrency(m.amount)} · {formatDate(m.date)}
+                            {m.interestPortion != null && ` · ${formatCurrency(m.interestPortion)} interest (deductible)`}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleLinkLoanRepayment(m.loanTransactionId)}
+                          disabled={saving}
+                          className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+                        >
+                          <Link2 className="h-3 w-3 mr-1" />
+                          Link as repayment
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {resolution.transfers.map((m) => (
+                    <div
+                      key={m.transactionId}
+                      className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold flex items-center gap-1.5">
+                            <ArrowRightLeft className="h-4 w-4 text-amber-600 shrink-0" />
+                            Transfer {isIncome ? 'from' : 'to'} {m.accountName}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Matches {formatCurrency(m.amount)} · {formatDate(m.date)} in {m.accountName}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleMarkTransferTo(m.accountId)}
+                          disabled={saving}
+                          className="shrink-0"
+                        >
+                          <ArrowRightLeft className="h-3 w-3 mr-1" />
+                          Mark as transfer
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {/* Transaction Pattern Alert */}
               {transactionPattern && transactionPattern.count >= 3 && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">
