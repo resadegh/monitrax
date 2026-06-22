@@ -251,3 +251,26 @@ implemented and signed off (compliance matrix status flips DESIGN → IMPLEMENTE
 - Exact PII-scrub ruleset (person-to-person detection, name/number stripping) — needs a tested
   scrubber before any shared write.
 - Embedding backend (pgvector in Cloud SQL vs Vertex Vector Search) — §12.7 evaluation at 52.4.
+
+## 10. Enablement runbook (how to switch the KB on)
+
+The engine is built + merged but **gated OFF**. Enable in this order (staged: write first so data
+accumulates, read later once patterns graduate):
+
+1. **Sign off the de-identification procedure** — `docs/policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md`
+   §7 (the build-gate prerequisite).
+2. **Regenerate + serve the legal PDFs** — `monitrax_privacy_policy_v1.pdf` (now has §4.1) + the CDR
+   consent notice, from the updated `.md`, so users see the disclosure before any cross-user write.
+3. **Enable WRITE** — set `KB_WRITE_ENABLED=true` (Vercel → Production). De-identified votes start
+   accumulating as users confirm categories. **Nothing changes for users yet** (reads still off).
+4. **Create the housekeeping Cloud Scheduler job** — weekly `POST /api/categorisation/kb/housekeeping`
+   with `Authorization: Bearer <CRON_SECRET>` (mirror the CDR-lifecycle job).
+5. **Let patterns graduate** — a pattern needs ≥k=5 distinct users. Monitor the housekeeping health
+   report (`globalSignatures` rising).
+6. **Enable READ** — once `globalSignatures > 0` and looks sane, set `KB_READ_ENABLED=true`. The
+   categoriser now uses the shared prior (step 3 of the precedence chain).
+7. **Monitor** — hit-rate (% categorised without an LLM), cardinality, global vs provisional, via the
+   health report. Tune `KB_MIN_CONFIDENCE` / k if needed.
+
+**Rollback:** set either flag back to `false` — instant, no data loss (the KB just stops being
+written/read). All flags default OFF, so a missing env var = disabled.
