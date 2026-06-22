@@ -294,3 +294,36 @@
 
 ### Operator note
 - After deploy, run the seed once: `POST /api/categorisation/kb/seed` with `Authorization: Bearer <CRON_SECRET>`. Re-run safely whenever the seed list grows.
+
+---
+
+## Session: phase52-seed-expand-shk180 (Phase 52 — build 52.4.1: expand the curated AU seed)
+
+### Changes Made
+- **Type**: Data (Phase 52) — expand the KB seed from 84 → ~276 curated AU merchants for better day-one READ coverage.
+- **Scope**: `lib/categorisation/kb/seedData.ts`.
+
+### Solution
+- Hand-curated ~276 well-known AU merchants across all spending categories (groceries, fast food,
+  cafes, fuel, PT, rideshare, parking, car maintenance, tolls, department/electronics/home/clothing/
+  online retail, furniture, energy/internet/mobile/water, pharmacy/gym/optical/health-insurance,
+  streaming/gaming/cinemas/events/books, beauty, flights/hotels/car-rental, insurers, brokers,
+  courses). All in bank-feed-normalised form; valid `CATEGORY_HIERARCHY` paths; unique scrubbed
+  patterns (4 integrity tests pass).
+- **Provenance (licence-clean):** independently-stated public-knowledge facts (merchant → category),
+  hand-assembled — NOT copied from any provider's compilation, and NOT derived from Basiq/CDR output
+  (per the 2026-06-22 dataset research + the copyright-facts vs CDR-purpose analysis). Defensible in
+  an audit; every row is a public fact. HF (MIT) / MCC (Unlicense) remain available for future bulk
+  expansion under their licences.
+
+### Build Status
+- [x] `npm run build` passes · 4/4 seed-integrity tests green (count, valid categories, scrub-clean, no dup patterns).
+
+### Destructive write checklist (§12.11) — None (data array only; seeded via existing idempotent createMany). No schema change.
+### Phase 41E (§12.14) — N/A. Security/CDR — public merchant facts only; no user/CDR data.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] data (seed list) — no behaviour/schema change; same `seedCategorisationKb()` path.
+
+### Operator note
+- Re-run `POST /api/categorisation/kb/seed` after deploy to load the ~192 new merchants (idempotent — existing 84 are skipped, new ones created).
