@@ -216,8 +216,11 @@ the low-value tail.
   `categoriseTransaction` (after the KB prior). Sends the de-identified signature + valid taxonomy +
   graduated KB examples (RAG) to Gemini; validates level1; never throws into the hot path. Gated
   `KB_GEMINI_ENABLED` (default OFF, cost control). Confirmed answers write back via 52.1c. 6 tests.
-- **52.4 — seed + embeddings:** seed from mccCatalog + curated AU list; add the embedding fuzzy-match
-  for the tail.
+- **52.4 — seed ✅:** `AU_MERCHANT_SEEDS` (~80 curated AU merchants → valid taxonomy) seeded via
+  `seedCategorisationKb()` (idempotent `createMany skipDuplicates`) as `source:SEED`, `isGlobal:true`
+  (curated → bypasses k-anonymity; `isGlobal` made sticky so a later vote/reset can't demote it).
+  `POST /api/categorisation/kb/seed` (CRON_SECRET). Makes graduated merchants exist day-one so READ
+  is useful immediately. 4 integrity tests. **Embeddings (fuzzy tail) deferred to 52.5.**
 - **52.5 — surfaces (= Phase 51.2):** review-exceptions inbox + "apply to past/future" + ATO-label
   mapping, powered by this engine.
 
