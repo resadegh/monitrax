@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Link Transaction</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "surface-tint": "#62df7d",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "secondary-fixed-dim": "#4de082",
+                        "secondary-fixed": "#6dfe9c",
+                        "surface-dim": "#0e150f",
+                        "on-tertiary-fixed": "#3f0016",
+                        "surface-bright": "#343b33",
+                        "on-surface": "#dde5d9",
+                        "on-secondary-fixed": "#00210c",
+                        "primary-fixed": "#7ffc97",
+                        "surface": "#0e150f",
+                        "outline-variant": "#3e4a3d",
+                        "background": "#0e150f",
+                        "on-surface-variant": "#bdcaba",
+                        "on-tertiary": "#660027",
+                        "on-primary": "#003914",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-variant": "#30372f",
+                        "surface-container-lowest": "#09100a",
+                        "on-secondary-fixed-variant": "#005227",
+                        "primary": "#62df7d",
+                        "outline": "#879485",
+                        "on-secondary-container": "#003e1c",
+                        "on-primary-container": "#003111",
+                        "surface-container-high": "#252c24",
+                        "on-background": "#dde5d9",
+                        "surface-container-low": "#171d16",
+                        "on-tertiary-container": "#5a0022",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#30372f",
+                        "inverse-surface": "#dde5d9",
+                        "secondary-container": "#00b55d",
+                        "inverse-primary": "#006e2d",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "tertiary-fixed": "#ffd9de",
+                        "primary-container": "#1ca64d",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary": "#003919",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1b211a",
+                        "tertiary": "#ffb2bf",
+                        "tertiary-container": "#ec6284",
+                        "secondary": "#4de082",
+                        "inverse-on-surface": "#2b322b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "margin-desktop": "64px",
+                        "container-max": "1440px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-panel {
+            background: rgba(22, 22, 30, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .emerald-glow {
+            box-shadow: 0px 10px 30px rgba(22, 163, 74, 0.2);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        body {
+            background-color: #0e150f;
+            color: #dde5d9;
+        }
+    </style>
+</head>
+<body class="antialiased overflow-hidden">
+<!-- Animated Background -->
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 md:p-6">
+<!-- Modal Container -->
+<div class="relative w-full max-w-[520px] glass-panel rounded-lg overflow-hidden flex flex-col max-h-[921px]" style="max-width: 460px; background: rgba(14, 20, 36, 0.7); border-color: rgba(255, 255, 255, 0.12);">
+<!-- Header -->
+<div class="flex items-center justify-between px-gutter py-6 border-b border-outline-variant/30">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-widest mb-1">Link Transaction</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Unmatched Activity</h2>
+</div>
+<button class="w-10 h-10 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Transaction Hero -->
+<div class="px-gutter py-8 text-center bg-surface-container-low/30">
+<div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-surface-container-highest mb-4 border border-outline-variant/50">
+<span class="material-symbols-outlined text-headline-lg text-on-surface" data-icon="payments">payments</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-1">Apple Services / iCloud</p>
+<div class="font-display-hero text-headline-lg leading-tight font-bold text-white tabular-nums">
+                    -$12.99
+                </div>
+<p class="font-body-sm text-body-sm text-outline mt-2 tracking-wide uppercase">Oct 24, 2023 • AMEX Platinum</p>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto custom-scrollbar px-gutter py-6 space-y-6">
+<!-- Recommended Action -->
+<div class="p-6 rounded-DEFAULT bg-primary/5 border border-primary/20 emerald-glow group cursor-pointer hover:bg-primary/10 transition-all">
+<div class="flex items-start gap-4">
+<div class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">star</span>
+</div>
+<div class="flex-1">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-primary uppercase mb-1">Recommended</span>
+<span class="text-xs text-primary/80 font-medium">98% Match</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-primary mb-1">Cloud Subscription</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant/80">Match found in "Monthly Expenses". This aligns with your recurring digital services budget.</p>
+</div>
+</div>
+<div class="mt-4 flex justify-end">
+<button class="bg-primary text-on-primary-container px-6 py-2 rounded-full font-medium hover:opacity-90 transition-all flex items-center gap-2" style="background: linear-gradient(to right, #0EA5E9, #6366F1); color: white;">
+                            Link this entry
+                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- More Options (Expanded State) -->
+<div>
+<div class="flex items-center justify-between mb-4">
+<h4 class="font-label-caps text-label-caps text-outline uppercase tracking-wider">More options</h4>
+<span class="h-px flex-1 bg-outline-variant/20 ml-4"></span>
+</div>
+<div class="flex flex-col gap-2"><button class="flex items-center w-full h-[56px] px-4 rounded-DEFAULT glass-panel border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-highest/50 transition-all group"><span class="material-symbols-outlined mr-4 text-outline group-hover:text-primary transition-colors">receipt</span><span class="font-body-md text-body-md text-on-surface text-left flex-1">Categorise as an expense</span><span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span></button><button class="flex items-center w-full h-[56px] px-4 rounded-DEFAULT glass-panel border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-highest/50 transition-all group"><span class="material-symbols-outlined mr-4 text-outline group-hover:text-primary transition-colors">link</span><span class="font-body-md text-body-md text-on-surface text-left flex-1">Link to an existing expense or loan</span><span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span></button><button class="flex items-center w-full h-[56px] px-4 rounded-DEFAULT glass-panel border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-highest/50 transition-all group"><span class="material-symbols-outlined mr-4 text-amber-500" style="font-variation-settings: 'FILL' 1;">swap_horiz</span><span class="font-body-md text-body-md text-on-surface text-left flex-1">Mark as a transfer</span><span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span></button><button class="flex items-center w-full h-[56px] px-4 rounded-DEFAULT glass-panel border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-highest/50 transition-all group"><span class="material-symbols-outlined mr-4 text-outline group-hover:text-primary transition-colors">call_split</span><span class="font-body-md text-body-md text-on-surface text-left flex-1">Split this transaction</span><span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span></button><button class="flex items-center w-full h-[56px] px-4 rounded-DEFAULT glass-panel border-outline-variant/10 hover:border-primary/40 hover:bg-surface-container-highest/50 transition-all group"><span class="material-symbols-outlined mr-4 text-outline group-hover:text-primary transition-colors">add_circle</span><span class="font-body-md text-body-md text-on-surface text-left flex-1">Create a new entry</span><span class="material-symbols-outlined text-outline group-hover:text-on-surface transition-colors">chevron_right</span></button></div>
+</div>
+</div>
+<!-- Footer -->
+<div class="p-4 border-t border-outline-variant/10 bg-transparent">
+<button class="w-full py-4 text-center text-on-surface-variant hover:text-on-surface transition-colors font-body-md flex items-center justify-center gap-2">
+                    Skip for now
+                    <span class="material-symbols-outlined text-lg">arrow_right_alt</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Micro-interaction Script -->
+<script>
+        // Simple hover effect augmentation
+        document.querySelectorAll('.glass-panel').forEach(card => {
+            card.addEventListener('mousemove', (e) => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+<style>
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.02);
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</body></html>

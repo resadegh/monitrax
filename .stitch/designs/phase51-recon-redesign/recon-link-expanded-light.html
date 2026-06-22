@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax - Link Transaction</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e3eadf",
+                        "primary-fixed": "#7ffc97",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed": "#151b2a",
+                        "on-secondary-fixed-variant": "#404757",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-container": "#fdfcff",
+                        "inverse-primary": "#62df7d",
+                        "surface-ivory": "#FAFAF7",
+                        "surface-container-low": "#eff6ea",
+                        "on-primary-fixed": "#002109",
+                        "primary": "#006b2c",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "background": "#f4fcf0",
+                        "on-secondary-container": "#5c6274",
+                        "surface-variant": "#dde5d9",
+                        "surface-dim": "#d5dcd1",
+                        "on-error-container": "#93000a",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface-tint": "#006e2d",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "outline-slate": "#94A3B8",
+                        "surface-container-highest": "#dde5d9",
+                        "inverse-on-surface": "#ecf3e7",
+                        "trail-indigo": "#6366F1",
+                        "inverse-surface": "#2b322b",
+                        "tertiary-container": "#66768d",
+                        "trail-emerald": "#16A34A",
+                        "on-background": "#171d16",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface": "#f4fcf0",
+                        "secondary-container": "#d9dff4",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "outline": "#6e7b6c",
+                        "on-tertiary": "#ffffff",
+                        "error-red": "#DC2626",
+                        "on-primary": "#ffffff",
+                        "trail-amber": "#F59E0B",
+                        "primary-fixed-dim": "#62df7d",
+                        "trail-sky": "#0EA5E9",
+                        "tertiary": "#4d5d73",
+                        "error": "#ba1a1a",
+                        "trail-violet": "#8B5CF6",
+                        "on-surface": "#171d16",
+                        "surface-bright": "#f4fcf0",
+                        "secondary-fixed": "#dce2f6",
+                        "on-error": "#ffffff",
+                        "surface-container": "#e9f0e5",
+                        "outline-variant": "#bdcaba",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#f7fff2",
+                        "secondary": "#585e6f",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-container": "#00873a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "unit": "4px",
+                        "margin-mobile": "20px",
+                        "container-max": "1280px",
+                        "section-gap": "48px",
+                        "margin-desktop": "48px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-lg": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            vertical-align: middle;
+        }
+        .modal-glass {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(15, 23, 42, 0.1);
+        }
+        .near-ink { color: #0F172A; }
+        .slate-500 { color: #64748B; }
+    </style>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-6 font-body-md">
+<!-- Screen Wrapper -->
+<main class="w-full flex flex-col items-center">
+<!-- Center Modal -->
+<div class="w-full max-w-[460px] modal-glass rounded-[24px] shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] overflow-hidden transition-all duration-300">
+<!-- Header -->
+<header class="flex items-center justify-between px-6 pt-6 pb-4">
+<div class="flex flex-col">
+<span class="text-trail-sky font-eyebrow text-eyebrow tracking-[0.18em]">LINK TRANSACTION</span>
+<h2 class="near-ink font-headline-sm text-headline-sm mt-1">Unmatched Activity</h2>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined slate-500">close</span>
+</button>
+</header>
+<!-- Hero Section -->
+<section class="px-6 py-4 flex flex-col items-center text-center">
+<div class="w-16 h-16 bg-surface-container rounded-2xl flex items-center justify-center mb-4">
+<span class="material-symbols-outlined text-primary text-3xl">cloud</span>
+</div>
+<p class="slate-500 font-label-md text-label-md mb-1">Apple Services / iCloud</p>
+<h1 class="near-ink font-data-xl text-data-xl">-$12.99</h1>
+<p class="slate-500 font-eyebrow text-eyebrow mt-3">OCT 24, 2023 • AMEX PLATINUM</p>
+</section>
+<!-- Recommended Card -->
+<section class="px-6 py-4">
+<div class="bg-surface-container-low border-[1.5px] border-trail-emerald/30 rounded-xl p-4 flex gap-4 items-start">
+<div class="mt-1 flex-shrink-0">
+<span class="material-symbols-outlined text-trail-emerald" style="font-variation-settings: 'FILL' 1;">stars</span>
+</div>
+<div>
+<span class="text-trail-emerald font-eyebrow text-[10px] tracking-widest block mb-1">RECOMMENDED</span>
+<h4 class="near-ink font-headline-sm text-label-md font-bold">Cloud Subscription</h4>
+<p class="slate-500 font-body-sm text-body-sm mt-1 leading-relaxed">This aligns with your recurring digital services budget.</p>
+</div>
+</div>
+</section>
+<!-- CTA -->
+<section class="px-6 py-2">
+<button class="w-full h-12 bg-gradient-to-r from-trail-sky to-trail-indigo text-white font-label-md text-label-md rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    Link this entry
+                </button>
+</section>
+<!-- More Options List -->
+<section class="px-6 py-6 space-y-3">
+<h5 class="slate-500 font-eyebrow text-[10px] tracking-widest px-1">MORE OPTIONS</h5>
+<!-- Row 1 -->
+<div class="flex items-center justify-between p-3 rounded-lg border border-near-ink/5 bg-white/40 hover:bg-white/60 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined slate-500 group-hover:text-primary transition-colors">receipt_long</span>
+<span class="near-ink font-label-md text-label-md">Categorise as an expense</span>
+</div>
+<span class="material-symbols-outlined slate-500 text-sm">chevron_right</span>
+</div>
+<!-- Row 2 -->
+<div class="flex items-center justify-between p-3 rounded-lg border border-near-ink/5 bg-white/40 hover:bg-white/60 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined slate-500 group-hover:text-primary transition-colors">link</span>
+<span class="near-ink font-label-md text-label-md">Link to an existing expense or loan</span>
+</div>
+<span class="material-symbols-outlined slate-500 text-sm">chevron_right</span>
+</div>
+<!-- Row 3 -->
+<div class="flex items-center justify-between p-3 rounded-lg border border-near-ink/5 bg-white/40 hover:bg-white/60 transition-colors cursor-pointer group">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-trail-amber group-hover:scale-110 transition-transform">swap_horiz</span>
+<span class="near-ink font-label-md text-label-md">Mark as a transfer</span>
+</div>
+<span class="material-symbols-outlined slate-500 text-sm">chevron_right</span>
+</div>
+</section>
+<!-- Footer -->
+<footer class="px-6 pb-8 pt-2 flex justify-center">
+<button class="slate-500 font-label-md text-label-md hover:text-near-ink transition-colors flex items-center gap-1 group">
+                    Skip for now 
+                    <span class="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_right_alt</span>
+</button>
+</footer>
+</div>
+</main>
+<!-- Contextual JavaScript for Micro-interactions -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const rows = document.querySelectorAll('.cursor-pointer');
+            rows.forEach(row => {
+                row.addEventListener('mousedown', () => {
+                    row.style.transform = 'scale(0.99)';
+                });
+                row.addEventListener('mouseup', () => {
+                    row.style.transform = 'scale(1)';
+                });
+                row.addEventListener('mouseleave', () => {
+                    row.style.transform = 'scale(1)';
+                });
+            });
+        });
+    </script>
+</body></html>

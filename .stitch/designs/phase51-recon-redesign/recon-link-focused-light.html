@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax — Link Transaction</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #FAFAF7;
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .brand-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container-high": "#e3eadf",
+                      "primary-fixed": "#7ffc97",
+                      "error-container": "#ffdad6",
+                      "on-secondary-fixed": "#151b2a",
+                      "on-secondary-fixed-variant": "#404757",
+                      "surface-container-lowest": "#ffffff",
+                      "on-tertiary-container": "#fdfcff",
+                      "inverse-primary": "#62df7d",
+                      "surface-ivory": "#FAFAF7",
+                      "surface-container-low": "#eff6ea",
+                      "on-primary-fixed": "#002109",
+                      "primary": "#006b2c",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "background": "#f4fcf0",
+                      "on-secondary-container": "#5c6274",
+                      "surface-variant": "#dde5d9",
+                      "surface-dim": "#d5dcd1",
+                      "on-error-container": "#93000a",
+                      "on-surface-variant": "#3e4a3d",
+                      "surface-tint": "#006e2d",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "outline-slate": "#94A3B8",
+                      "surface-container-highest": "#dde5d9",
+                      "inverse-on-surface": "#ecf3e7",
+                      "trail-indigo": "#6366F1",
+                      "inverse-surface": "#2b322b",
+                      "tertiary-container": "#66768d",
+                      "trail-emerald": "#16A34A",
+                      "on-background": "#171d16",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "tertiary-fixed": "#d3e4fe",
+                      "surface": "#f4fcf0",
+                      "secondary-container": "#d9dff4",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "outline": "#6e7b6c",
+                      "on-tertiary": "#ffffff",
+                      "error-red": "#DC2626",
+                      "on-primary": "#ffffff",
+                      "trail-amber": "#F59E0B",
+                      "primary-fixed-dim": "#62df7d",
+                      "trail-sky": "#0EA5E9",
+                      "tertiary": "#4d5d73",
+                      "error": "#ba1a1a",
+                      "trail-violet": "#8B5CF6",
+                      "on-surface": "#171d16",
+                      "surface-bright": "#f4fcf0",
+                      "secondary-fixed": "#dce2f6",
+                      "on-error": "#ffffff",
+                      "surface-container": "#e9f0e5",
+                      "outline-variant": "#bdcaba",
+                      "on-secondary": "#ffffff",
+                      "on-primary-container": "#f7fff2",
+                      "secondary": "#585e6f",
+                      "on-primary-fixed-variant": "#005320",
+                      "primary-container": "#00873a"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "section-gap": "48px",
+                      "margin-desktop": "48px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "data-lg": ["Inter"],
+                      "body-md": ["Inter"],
+                      "headline-sm": ["Inter"],
+                      "headline-md": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "body-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["14px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "fontWeight": "400"}],
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "body-lg": ["18px", {"lineHeight": "1.65", "fontWeight": "400"}]
+              }
+            }
+          }
+        }
+      </script>
+</head>
+<body class="bg-surface-ivory min-h-screen flex items-center justify-center p-6">
+<!-- Modal Container (460px width) -->
+<main class="w-full max-w-[460px] bg-white/70 backdrop-blur-xl border border-on-surface/10 rounded-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] overflow-hidden relative">
+<!-- Header -->
+<header class="px-6 pt-6 pb-4 flex justify-between items-start">
+<div>
+<span class="text-trail-sky font-eyebrow text-eyebrow tracking-widest uppercase mb-1 block">LINK TRANSACTION</span>
+<h1 class="font-headline-sm text-headline-sm text-[#0F172A]">We think we know what this is.</h1>
+</div>
+<button aria-label="Close" class="text-slate-400 hover:text-[#0F172A] transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</header>
+<!-- Transaction Details Card -->
+<section class="px-6 mb-6">
+<div class="bg-white/50 border border-on-surface/5 rounded-xl p-6 flex flex-col items-center text-center">
+<span class="text-slate-500 font-label-md text-label-md mb-2">18 Jun 2026</span>
+<h2 class="font-headline-sm text-headline-sm text-[#0F172A] mb-4">Periodical Payment to Bankwest</h2>
+<div class="mb-4">
+<span class="font-data-xl text-data-xl tabular-nums text-[#0F172A]">-$1,295</span>
+</div>
+<div class="px-3 py-1 bg-surface-container-low text-on-surface-variant font-label-md text-label-md rounded-full border border-outline-variant/30">
+                    Expense
+                </div>
+</div>
+</section>
+<!-- Recommended Matching Panel -->
+<section class="px-6 mb-8">
+<div class="bg-trail-emerald/[0.03] border border-trail-emerald rounded-xl p-5 relative">
+<div class="absolute -top-3 left-4 bg-trail-emerald text-white px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase">
+                    Recommended Match
+                </div>
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-white rounded-lg border border-on-surface/5 flex items-center justify-center shadow-sm">
+<span class="material-symbols-outlined text-trail-emerald text-[28px]" data-weight="fill">account_balance</span>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-sm text-headline-sm text-[#0F172A] mb-1">Loan repayment — Bankwest</h3>
+<div class="flex items-center gap-2">
+<span class="text-slate-500 font-label-md text-label-md">Proof match detected:</span>
+<div class="px-2 py-0.5 bg-trail-emerald/10 text-trail-emerald font-label-md text-[12px] rounded border border-trail-emerald/20 tabular-nums">
+                                $1,295 interest (deductible)
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Primary Action -->
+<section class="px-6 mb-4">
+<button class="brand-gradient w-full py-4 rounded-xl text-white font-label-md text-body-md font-semibold shadow-lg shadow-trail-indigo/20 hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                Confirm repayment
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+</button>
+</section>
+<!-- Footer Actions -->
+<footer class="px-6 pb-8 text-center">
+<div class="flex items-center justify-center gap-3 mb-6">
+<span class="text-slate-500 font-label-md text-label-md">Remember payments like this</span>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-trail-emerald"></div>
+</label>
+</div>
+<a class="text-slate-500 font-label-md text-label-md hover:text-[#0F172A] transition-colors underline underline-offset-4 decoration-slate-300" href="#">
+                Skip for now
+            </a>
+</footer>
+</main>
+<!-- Visual Polish: Decorative elements -->
+<div class="fixed inset-0 -z-10 pointer-events-none opacity-40">
+<div class="absolute top-[10%] left-[5%] w-64 h-64 bg-trail-sky/10 rounded-full blur-[120px]"></div>
+<div class="absolute bottom-[10%] right-[5%] w-96 h-96 bg-trail-emerald/10 rounded-full blur-[150px]"></div>
+</div>
+<script>
+        // Simple micro-interaction for the toggle
+        document.querySelector('input[type="checkbox"]').addEventListener('change', function(e) {
+            const label = this.parentElement.previousElementSibling;
+            if (this.checked) {
+                label.classList.remove('text-slate-400');
+                label.classList.add('text-slate-500');
+            } else {
+                label.classList.add('text-slate-400');
+                label.classList.remove('text-slate-500');
+            }
+        });
+    </script>
+</body></html>

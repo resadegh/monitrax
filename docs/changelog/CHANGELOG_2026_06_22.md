@@ -509,3 +509,17 @@ Full Phase 51 + 52 documentation brought current in this PR:
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (loan import discoverability + resolution precedence) → Phase 51 doc §6 (51.2) + this changelog. No design-token/config/infra/identity/security surface changed; no schema change.
+
+---
+
+## Session: recon-link-redesign-shk180 (Phase 51 — reconcile/link dialog Stitch redesign)
+
+### Design (Stitch-first §18.2.1 + §18.8 gate)
+- Redesigned the Link/reconcile modal for simplicity: one clear action + progressive disclosure ("More options"), keeping every function (audit table in PR). In-app glass vocabulary (§18.7.2).
+- Stitch 4-variant matrix (focused state) + expanded state, all >9 per §18.8: focused desktop-dark `c1d12153` 9.3 / desktop-light `1a219881` 9.3 / mobile-light `6b4e490f` 9.3 / mobile-dark `b054603f` 9.1; expanded desktop-dark `e7a9afdc` 9.1 / desktop-light `88d0d73a` 9.1. v1 expanded scored 8.5 (green primary) → fixed to sky→indigo, re-scored.
+- Artefacts: `.stitch/designs/phase51-recon-redesign/recon-link-*.{html,png}` (project 1859462351962811110).
+- Stitch note: `edit_screens` updates HTML but its preview thumbnail re-renders lazily; use `generate`/`variants` for immediate faithful renders. Stitch remains the sole UI design platform (§18).
+
+### Next (same PR): React restructure of TransactionLinkDialog (collapsed primary action + showMore disclosure, all handlers preserved).
+
+### Doc-sync (§16): Phase 51 doc §10 + this changelog.
