@@ -803,30 +803,28 @@ function ActivityPageContent() {
                 list filters. Counts include EVERYTHING in the band: new
                 items from imports + booked transactions, so the chip number
                 matches what the user actually sees when they click it. */}
-            {bandCounts.high > 0 && (
-              <ConfidenceChip
-                active={confidenceBand === 'high'}
-                onClick={() => { setConfidenceBand(confidenceBand === 'high' ? null : 'high'); setPage(1); }}
-                dot="bg-emerald-400"
-                label={`High · ${bandCounts.high.toLocaleString('en-AU')}`}
-              />
-            )}
-            {bandCounts.medium + bandCounts.txMedium > 0 && (
-              <ConfidenceChip
-                active={confidenceBand === 'medium'}
-                onClick={() => { setConfidenceBand(confidenceBand === 'medium' ? null : 'medium'); setPage(1); }}
-                dot="bg-amber-400"
-                label={`Medium · ${(bandCounts.medium + bandCounts.txMedium).toLocaleString('en-AU')}`}
-              />
-            )}
-            {bandCounts.low + bandCounts.txLow > 0 && (
-              <ConfidenceChip
-                active={confidenceBand === 'low'}
-                onClick={() => { setConfidenceBand(confidenceBand === 'low' ? null : 'low'); setPage(1); }}
-                dot="bg-rose-400"
-                label={`Low · ${(bandCounts.low + bandCounts.txLow).toLocaleString('en-AU')}`}
-              />
-            )}
+            {/* Phase 52.5c-fix (Reza 2026-06-22) — the three confidence bands
+                always render (even at 0) so the lens is predictable; previously
+                a band hid at 0, which read as "Medium is missing" rather than
+                "you have no medium-confidence transactions". */}
+            <ConfidenceChip
+              active={confidenceBand === 'high'}
+              onClick={() => { setConfidenceBand(confidenceBand === 'high' ? null : 'high'); setPage(1); }}
+              dot="bg-emerald-400"
+              label={`High · ${bandCounts.high.toLocaleString('en-AU')}`}
+            />
+            <ConfidenceChip
+              active={confidenceBand === 'medium'}
+              onClick={() => { setConfidenceBand(confidenceBand === 'medium' ? null : 'medium'); setPage(1); }}
+              dot="bg-amber-400"
+              label={`Medium · ${(bandCounts.medium + bandCounts.txMedium).toLocaleString('en-AU')}`}
+            />
+            <ConfidenceChip
+              active={confidenceBand === 'low'}
+              onClick={() => { setConfidenceBand(confidenceBand === 'low' ? null : 'low'); setPage(1); }}
+              dot="bg-rose-400"
+              label={`Low · ${(bandCounts.low + bandCounts.txLow).toLocaleString('en-AU')}`}
+            />
             <ChipToggle
               active={showRecurringOnly}
               onClick={() => { setShowRecurringOnly(!showRecurringOnly); setPage(1); }}
