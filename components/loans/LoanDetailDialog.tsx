@@ -45,7 +45,7 @@ import {
   Home as HomeIcon,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -164,6 +164,12 @@ interface LoanDetailDialogProps {
   onDelete?: (loan: LoanDetail) => void | Promise<void>;
   /** GRDCS Linked tab navigation handler. */
   onLinkedEntityNavigate?: (entity: GRDCSLinkedEntity) => void;
+  /**
+   * Phase 51 follow-up — which tab to open on. Lets entry points (e.g. the
+   * "Import statement" actions on the Balances page / loan edit form) deep-link
+   * straight to the Repayments import. Defaults to 'overview'.
+   */
+  initialTab?: string;
 }
 
 // =============================================================================
@@ -238,7 +244,16 @@ export function LoanDetailDialog({
   onEdit,
   onDelete,
   onLinkedEntityNavigate,
+  initialTab,
 }: LoanDetailDialogProps) {
+  // Phase 51 follow-up — controlled tab so entry points can deep-link to
+  // "repayments" (the statement import). Resets to the requested tab each time
+  // the dialog opens; `defaultValue` alone wouldn't update on re-open.
+  const [activeTab, setActiveTab] = useState(initialTab ?? 'overview');
+  useEffect(() => {
+    if (open) setActiveTab(initialTab ?? 'overview');
+  }, [open, initialTab]);
+
   // Two-step delete: clicking Delete opens an AlertDialog; the
   // user must explicitly confirm before the parent's onDelete
   // fires. Mirrors the AccountDetailDialog pattern.
@@ -273,7 +288,7 @@ export function LoanDetailDialog({
           </DialogHeader>
 
           {loan && (
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="property">Property</TabsTrigger>
