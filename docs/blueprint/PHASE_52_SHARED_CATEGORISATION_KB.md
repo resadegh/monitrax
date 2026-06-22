@@ -69,6 +69,41 @@ Per-user layer stays in `MerchantMapping` (or its evolution): private, authorita
 The `categoryVotes` distribution makes it self-correcting: confidence = dominant share; one user
 can't flip an established pattern.
 
+### 4.1 How we identify "the same pattern" and keep count (Reza Q, 2026-06-21)
+
+**Identification = normalisation into a canonical signature.** Two users' raw descriptions
+("WOOLWORTHS 1234 SYDNEY 05/06", "WW METRO 4521") must collapse to the *same key*. The pipeline:
+
+1. **Normalise** raw description → signature via the existing `normaliseDescription()` (uppercase;
+   strip digits/dates/reference numbers/store numbers/BPAY refs/location tails; collapse whitespace)
+   + merchant standardisation + MCC. The **normalised signature is the identity key** — same
+   signature = "the same pattern".
+2. **A private contribution ledger does the counting** — a per-`(signature, user)` row:
+
+   ```
+   SignatureContribution (PRIVATE — never exposed cross-user)
+     signatureId    // FK to the TransactionSignature key
+     userId
+     category       // what THIS user categorised it as (FK CanonicalCategoryRegistry)
+     updatedAt
+     @@unique([signatureId, userId])   // one vote per user per pattern; lets them change it
+   ```
+
+   This ledger is the **source of truth for counts**: `distinctUserCount` = COUNT(distinct userId)
+   for the signature; `categoryVotes` = tally of `category` across contributions. The `@@unique`
+   guarantees a user is counted once and can revise their vote (revisions re-tally, no double-count).
+3. **Graduation at k.** A signature is **private/provisional** until `distinctUserCount ≥ k` (k≥5 at
+   launch) — used only for its contributing users. Once it crosses k, it graduates to **shared/global**
+   and becomes a prior for everyone. (The shared `TransactionSignature` row exposes only the aggregate
+   `categoryVotes` + `distinctUserCount` — never the contribution ledger.)
+4. **Variant collapse.** v1 matches on exact-normalised signature + token + MCC. The fuzzy tail
+   ("WW METRO" vs "WOOLWORTHS") is handled later by **embeddings** (§6 upgrade) so near-variants map
+   to the same signature.
+
+So: **normalise → identity key; per-user contribution ledger → distinct-user count + vote tally →
+graduate to shared at k.** The ledger also enforces the §5 guardrails (per-user override = the user's
+own contribution always wins; k-anonymity = the graduation gate).
+
 ## 5. Guardrails (this is where it lives or dies — compliance + architect)
 
 Cross-user learning from CDR-derived data → privacy is the GATING constraint (Part 13).
@@ -115,6 +150,26 @@ for the fuzzy tail (GCP-first, §12.7).
 - **Quality/poisoning** — vote distribution + k-gate + per-user override.
 - **Cold start** — solved by seeding.
 - **Category drift** — votes reference the canonical registry; never free-text categories.
+
+## 8a. Legal & compliance documentation (updated 2026-06-21)
+
+The de-identified cross-user learning is disclosed in the documents users rely on / sign off:
+
+- **`docs/legal/privacy-policy.md` §4.1** (new) — what the shared knowledge base is, that it stores
+  only de-identified patterns + aggregate counts, PII-scrubbing, k-anonymity, per-user precedence,
+  no sale / no general-model training; **§6.2** cross-reference for CDR-derived patterns.
+- **`docs/legal/05_cdr_consent_notice_template.md`** — a plain-English "improving categorisation
+  (de-identified)" disclosure in the CDR consent notice.
+- **`docs/policy/CDR_DATA_MINIMISATION.md`** — the minimisation controls (de-identify before use,
+  PII scrub, k-anonymity, no sale/no training, consumer precedence).
+- **`docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`** — the CDR posture row (de-identified data;
+  Privacy Safeguard alignment; status = DESIGN until the PII-scrubber + written de-identification
+  procedure ship).
+
+**PDF regeneration owed:** `docs/legal/monitrax_privacy_policy_v1.pdf` (+ any consent-notice PDF) are
+generated artefacts — regenerate from the updated `.md` before they're served to users. **Build-time
+gate:** no shared-KB write ships until the PII-scrubber + the written de-identification procedure are
+implemented and signed off (compliance matrix status flips DESIGN → IMPLEMENTED).
 
 ## 9. Open questions
 - k value (start k=5?) — tune with data.

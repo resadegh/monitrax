@@ -26,17 +26,38 @@
 - Sharing posture = **Hybrid: private + k-anon shared** (recommended; rejected fully-shared and
   curated-global-only).
 
+### Pattern identification + counting (Reza Q answered + documented — Phase doc §4.1)
+- Identity = **normalisation into a canonical signature** (reuse `normaliseDescription()` + merchant
+  standardisation + MCC); same signature = same pattern. Counting via a **private
+  `SignatureContribution` ledger** (one row per `(signature, user)`, `@@unique`): `distinctUserCount`
+  = COUNT(distinct userId), `categoryVotes` = tally. **Graduation at k** (≥5 distinct users) flips a
+  pattern from private → shared. Variant collapse via embeddings later.
+
+### Legal / compliance disclosure (Reza directive — documents users sign off)
+- `docs/legal/privacy-policy.md` — new **§4.1** (shared categorisation KB: de-identified patterns +
+  counts only, PII scrub, k-anonymity, per-user precedence, no sale/no general-model training) +
+  **§6.2** CDR cross-reference.
+- `docs/legal/05_cdr_consent_notice_template.md` — plain-English de-identified-categorisation disclosure.
+- `docs/policy/CDR_DATA_MINIMISATION.md` — minimisation controls section.
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — CDR posture row (status DESIGN until PII-scrubber +
+  written de-identification procedure ship).
+- **PDF regeneration owed** (`monitrax_privacy_policy_v1.pdf` etc.) before served to users; **build gate**:
+  no shared-KB write ships until the PII-scrubber + de-identification procedure are implemented + signed off.
+
 ### Files Added / Updated
-- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` (NEW).
-- `docs/implementation/02_UP_NEXT.md` — Phase 52 registered (designed + decided, build queued).
-- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` (NEW; +§4.1 counting, +§8a legal/compliance).
+- `docs/legal/privacy-policy.md`, `docs/legal/05_cdr_consent_notice_template.md`,
+  `docs/policy/CDR_DATA_MINIMISATION.md`, `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`.
+- `docs/implementation/02_UP_NEXT.md` — Phase 52 registered; `docs/IMPLEMENTATION_PLAN.md` — hub date.
 
 ### Build Status
 - N/A — docs-only.
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] strategic decision (sharing posture) + new workstream → Phase 52 doc, `02_UP_NEXT.md`, hub.
-- [ ] code / infra / security — none (design only; CDR stance to be added to the compliance matrix at build time).
+- [x] security / CDR posture + privacy/consent disclosure → privacy policy §4.1/§6.2, CDR consent notice,
+      data-minimisation policy, CDR compliance matrix.
+- [ ] code / infra — none (design only; the PII-scrubber + de-identification procedure are a build gate).
 
 ---
 

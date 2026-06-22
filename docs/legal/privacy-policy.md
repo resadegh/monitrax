@@ -221,6 +221,19 @@ We do not disclose CDR data to AI providers unless this is permitted under the C
 
 AI outputs may be incomplete, inaccurate, outdated, or unsuitable for your circumstances. You should independently verify AI outputs before relying on them.
 
+### 4.1 Shared categorisation knowledge base
+
+To make automatic transaction categorisation more accurate over time, we maintain a **de-identified, aggregated knowledge base of transaction patterns** (for example, a normalised merchant name such as "WOOLWORTHS" mapped to a spending category such as "Groceries"). When you confirm or correct how a transaction is categorised, that signal may contribute to this knowledge base.
+
+This knowledge base is designed so that it cannot identify you:
+
+- It stores only **de-identified merchant/pattern signatures, category labels, and aggregate counts**. It does **not** store your name, account numbers, balances, the amounts of your transactions, the dates of your transactions, or any other information that identifies you or your accounts.
+- Before any pattern is contributed, we **remove personal details** from the transaction text (for example, names or account numbers that can appear in transfers); transfers between people are excluded.
+- A pattern is only added to the **shared** knowledge base after a sufficient number of **distinct users** have categorised it the same way (a k-anonymity threshold). Patterns that are unique to you remain **private to your account** and are not shared.
+- Your own categorisations always take precedence for your account. The shared knowledge base only ever suggests a default; it never overrides your choices.
+
+We use this knowledge base to provide and improve the categorisation feature for all users. We do **not** sell it, and it is **not** used to train general AI models. Where this knowledge is derived from CDR data, it is de-identified in accordance with the CDR Rules before any cross-user use (see section 6).
+
 ---
 
 ## 5. Who we disclose personal information to
@@ -326,6 +339,8 @@ You may choose not to connect CDR data.
 We use and disclose CDR data only in accordance with the specific CDR consent you provide, applicable CDR laws and rules, and our relevant CDR arrangements.
 
 We do not use CDR data for unrelated analytics, advertising, marketing, AI training, professional referrals, or third-party promotion unless this is permitted under the CDR Rules and covered by a valid consent.
+
+Where categorisation patterns are derived from CDR data, we **de-identify** that information in accordance with the CDR Rules before it contributes to the shared categorisation knowledge base described in section 4.1. Only de-identified, aggregated patterns (which do not identify you or your accounts) are used across users; your underlying CDR data is not disclosed for this purpose.
 
 ### 6.3 Withdrawal of CDR consent
 

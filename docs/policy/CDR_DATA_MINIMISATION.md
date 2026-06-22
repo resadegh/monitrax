@@ -135,3 +135,30 @@ This policy is reviewed:
 
 *Last Updated: 2026-04-12*
 *Next Review: 2027-04-12*
+
+
+---
+
+## De-identified categorisation knowledge base (Phase 52)
+
+Monitrax improves automatic transaction categorisation using a **shared, de-identified
+knowledge base of transaction patterns** (normalised merchant signature → category). This is a
+secondary use of transaction information and is governed by the following minimisation controls:
+
+- **De-identification before any cross-user use.** Only a normalised merchant/pattern signature,
+  the category label, and aggregate counts are stored in the shared knowledge base. No CDR data,
+  no account identifiers, no balances, no per-user transaction amounts or dates, and no information
+  identifying the consumer are stored in it. CDR-derived patterns are de-identified per the CDR Rules
+  before contributing.
+- **PII scrubbing.** Personal details that can appear in transaction text (e.g. names or account
+  numbers in person-to-person transfers) are removed, and person-to-person transfers are excluded,
+  before a pattern is contributed.
+- **k-anonymity graduation.** A pattern is only added to the **shared** knowledge base once at least
+  *k* **distinct users** (k ≥ 5 at launch) have independently categorised it the same way. Patterns
+  unique to a single user remain **private to that user's account** and are never shared.
+- **No sale, no general-model training.** The knowledge base is used only to provide/improve the
+  categorisation feature. It is not sold and is not used to train general AI models.
+- **Consumer precedence.** A user's own categorisations always take precedence for their account; the
+  shared knowledge base only supplies a default suggestion and never overrides a user's choice.
+
+Canonical design: `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md`.
