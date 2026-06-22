@@ -221,8 +221,16 @@ the low-value tail.
   (curated → bypasses k-anonymity; `isGlobal` made sticky so a later vote/reset can't demote it).
   `POST /api/categorisation/kb/seed` (CRON_SECRET). Makes graduated merchants exist day-one so READ
   is useful immediately. 4 integrity tests. **Embeddings (fuzzy tail) deferred to 52.5.**
-- **52.5 — surfaces (= Phase 51.2):** review-exceptions inbox + "apply to past/future" + ATO-label
-  mapping, powered by this engine.
+- **52.5a — fuzzy prefix fallback ✅:** `lookupSharedCategory` now does exact → then a deterministic
+  **token-prefix** fallback (`isTokenPrefix`/`pickPrefixMatch` + a wildcard-safe `$queryRaw`): the
+  longest graduated pattern that is a whole-token leading prefix of the signature wins — handles
+  "BRAND + store/location suffix" ("WOOLWORTHS METRO 1234" → `WOOLWORTHS`), the dominant AU feed shape.
+  No infra/schema change. 6 tests.
+- **52.5b — embeddings (fuzzy tail):** non-prefix variants ("WW METRO" → "WOOLWORTHS") via vector
+  similarity (pgvector in Cloud SQL or Vertex). Needs the `vector` extension (operator) + a vector
+  column + an embeddings model. **Deferred — larger infra increment.**
+- **52.5c / Phase 51.2 — surfaces:** review-exceptions inbox + "apply to past/future" + ATO-label
+  mapping, powered by this engine. **Stitch-first; larger UI increment.**
 
 ## 8. Risks
 - **Privacy/CDR** (the dominant one) — §5 guardrails; needs the documented CDR stance.
