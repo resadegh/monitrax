@@ -257,12 +257,17 @@ the low-value tail.
   (finishable "96% categorised — 8 to review" header + progress bar; high-confidence pre-checked +
   bulk Confirm; per-row AI category + community-confidence cue; expanded "apply to all <merchant> —
   past & future" learn-once toggle; amber "Needs a look" exceptions; calm "All caught up" empty state).
-  **Note (found on build):** a confidence-review surface already ships from Phase 49
-  (`components/bookkeeping/ConfidenceReviewCard.tsx` inline on the Activity page, reusing
-  `review-queue` + `bulk-confirm`). The v2 design is a *dedicated* full-page triage inbox — the
-  decision (dedicated page reusing the existing endpoints vs applying v2 as a refresh of the inline
-  Phase 49 card) is the remaining open item before the React build + dark/mobile variants. **Endpoints
-  already exist and are now KB-wired — no new endpoints needed.**
+  **DECIDED + SHIPPED (Reza, 2026-06-22): dedicated full-page inbox.** `app/dashboard/activity/review/page.tsx`
+  + `components/bookkeeping/ReviewCategoriesInbox.tsx` on the §18.7.2 glass vocabulary, reusing the
+  existing KB-wired endpoints (GET `bulk-confirm` summary + GET `review-queue?band=` items + POST
+  `review-queue` confirm/skip) — **no new endpoints**. Confirming routes through `confirmReviewItem` →
+  `recordKbContribution`, so the inbox teaches the KB. Entry point: an "Open review inbox →" deep-link
+  added to the inline Phase 49 `ConfidenceReviewCard` (the card stays for at-a-glance; the page is the
+  calm full-screen triage). **Stitch 4-variant matrix, all > 9 per §18.8:** desktop light `fdf91885`
+  (9.2) / desktop dark `c31ae9ca` (9.4) / mobile light `c203a7d7` (9.3) / mobile dark `0fc7905b` (9.3);
+  artefacts `.stitch/designs/phase52/review-categories-inbox-v2{,-dark,-mobile,-mobile-dark}.{html,png}`.
+  Header "N% categorised — M to review" + progress; medium band pre-selected for bulk confirm; per-row
+  confirm/skip; amber "Needs a look" for the low band; calm "All caught up" empty state.
 
 ## 8. Risks
 - **Privacy/CDR** (the dominant one) — §5 guardrails; needs the documented CDR stance.
@@ -329,9 +334,15 @@ Until then the bridge guarantees the KB + registry get clean canonical data.
 - Exact PII-scrub ruleset (person-to-person detection, name/number stripping) — needs a tested
   scrubber before any shared write.
 - Embedding backend (pgvector in Cloud SQL vs Vertex Vector Search) — §12.7 evaluation at 52.4.
-- **Review inbox placement** — dedicated full-page triage inbox (v2 design, reuses the now-KB-wired
-  `review-queue`/`bulk-confirm` endpoints) vs applying v2 as a visual refresh of the inline Phase 49
-  `ConfidenceReviewCard`. Awaiting Reza.
+- ~~Review inbox placement~~ **DECIDED (Reza, 2026-06-22): dedicated full-page triage inbox** (v2 design),
+  reusing the now-KB-wired `review-queue` (item-level confirm/skip/edit/transfer) + `bulk-confirm` (band
+  summary + whole-band confirm) endpoints — no new endpoints. Complements the inline Phase 49
+  `ConfidenceReviewCard` (which becomes a likely entry point into the page). **Build plan (Stitch-first,
+  §18):** (1) generate dark + mobile variants from the approved v2 light screen (`fdf91885`), each
+  through the §18.8 ≥9 gate → 4-variant matrix; (2) `app/dashboard/activity/review/page.tsx` +
+  `components/bookkeeping/ReviewCategoriesInbox.tsx` on the §18.7.2 glass vocabulary; (3) "apply to all
+  &lt;merchant&gt; — past & future" learn-once toggle → `editReviewItem` w/ applyToSimilar (already feeds
+  the KB via `confirmReviewItem`); (4) nav entry from the Activity confidence card; (5) docs + changelog.
 
 ## 10. Enablement runbook (how to switch the KB on)
 

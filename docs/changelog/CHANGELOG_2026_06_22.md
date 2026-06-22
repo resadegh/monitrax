@@ -448,3 +448,30 @@ Full Phase 51 + 52 documentation brought current in this PR:
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (link-tool SSOT + KB wiring) → Phase 52 §7/§8b + this changelog + `02_UP_NEXT`. No design/config/infra/identity/security surface changed (no new endpoints, env vars, or schema).
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c-UI — dedicated Review categories inbox)
+
+### Changes Made
+- **Type**: Feature (UI) — dedicated full-page categorisation triage inbox (Reza decision 2026-06-22: dedicated page, not a refresh of the inline card).
+- **Scope**: `app/dashboard/activity/review/`, `components/bookkeeping/`.
+- Reuses the existing, now-KB-wired endpoints (GET `bulk-confirm` summary + GET `review-queue?band=` + POST `review-queue` confirm/skip) — **no new endpoints**. Confirming routes through `confirmReviewItem` → `recordKbContribution`, so the inbox teaches the shared KB.
+
+### Stitch (§18 + §18.8 gate) — 4-variant matrix, all > 9/10
+- desktop light `fdf91885` 9.2 (approved earlier) · desktop dark `c31ae9ca` **9.4** (vs v1 ~9.1) · mobile light "Unified Feed" `c203a7d7` **9.3** (vs "Stacked" ~9.0) · mobile dark `0fc7905b` **9.3**.
+- Artefacts: `.stitch/designs/phase52/review-categories-inbox-v2{,-dark,-mobile,-mobile-dark}.{html,png}`.
+
+### Files Modified
+- `components/bookkeeping/ReviewCategoriesInbox.tsx` (NEW) — glass-vocabulary inbox (header progress, bulk-confirm, per-row confirm/skip, amber "Needs a look" low band, "All caught up" empty state); light/dark via editorial tokens; mobile-responsive.
+- `app/dashboard/activity/review/page.tsx` (NEW) — DashboardLayout wrapper.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — "Open review inbox →" deep-link (entry point).
+- `.stitch/designs/phase52/*` — 6 new artefacts (3 PNG + 3 HTML for dark/mobile/mobile-dark).
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` §7 + §9 (shipped).
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `eslint` clean on new/changed files.
+
+### Doc-sync (CLAUDE.md §16 + §18.8)
+- [x] design system / Stitch → Phase 52 §7/§9 + this changelog; 4-variant matrix at ≥9 recorded; artefacts committed. No config/infra/identity/security surface changed.
