@@ -262,3 +262,35 @@
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (Gemini-on-miss + wire) → Phase 52 doc §7 (52.3 ticked).
 - [ ] schema / infra / UI — none.
+
+---
+
+## Session: phase52-seed-shk180 (Phase 52 — build 52.4: seed the KB with curated AU merchants)
+
+### Changes Made
+- **Type**: Feature (Phase 52 #6) — day-one KB seed so the (now-enabled) READ path is useful immediately.
+- **Scope**: `lib/categorisation/kb/seedData.ts` + `seedKb.ts` (new), `app/api/categorisation/kb/seed/route.ts` (new), `lib/categorisation/kb/recordContribution.ts` (sticky isGlobal).
+
+### Solution
+- **`AU_MERCHANT_SEEDS`** — ~80 curated AU merchants (Woolworths/Coles/Bunnings/Telstra/AGL/Netflix/
+  Qantas/…) → valid `CATEGORY_HIERARCHY` paths, in bank-feed-normalised form for exact-match hit-rate.
+- **`seedCategorisationKb()`** — scrubs each merchant → pattern, inserts as `source:SEED`,
+  `isGlobal:true`, confidence 1.0, via idempotent `createMany({ skipDuplicates })` (never clobbers
+  accumulated user votes on an existing pattern). `POST /api/categorisation/kb/seed` (CRON_SECRET).
+- **Sticky `isGlobal`** in `recordContribution` (`sig.isGlobal || summary.isGlobal`) — a seed or
+  graduated pattern can't be demoted by a later vote or a reset-driven decrement.
+- 4 seed-integrity tests (count, valid categories, all scrub cleanly, no dup patterns). Dropped bare
+  "BP" (2-letter → scrubber rejects; appears as "BP <location>" in feeds anyway — embeddings later).
+
+### Build Status
+- [x] `tsc` clean · `npm run build` passes · 46/46 categorisation tests green.
+
+### Destructive write checklist (§12.11) — None (createMany inserts, skipDuplicates; sticky-isGlobal is an additive flag rule). No schema change.
+### Phase 41E (§12.14) — N/A. Security/CDR — seeds are public merchant→category facts; no user data.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (seed + endpoint + sticky isGlobal) → Phase 52 doc §7 (52.4 ticked).
+- [ ] infra — operator TODO: run `POST /api/categorisation/kb/seed` once (then graduated merchants exist for READ).
+
+### Operator note
+- After deploy, run the seed once: `POST /api/categorisation/kb/seed` with `Authorization: Bearer <CRON_SECRET>`. Re-run safely whenever the seed list grows.

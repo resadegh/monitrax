@@ -119,7 +119,10 @@ export async function recordContribution(args: {
         distinctUserCount: newDistinct,
         topCategory: summary.topCategory,
         confidence: summary.confidence,
-        isGlobal: summary.isGlobal,
+        // isGlobal is STICKY: once a pattern graduates (≥k) or is curated/seeded
+        // (source SEED, isGlobal true), it stays a shared default — a later vote
+        // or a reset-driven decrement must not demote it. Phase 52.4.
+        isGlobal: sig.isGlobal || summary.isGlobal,
       },
     });
 
