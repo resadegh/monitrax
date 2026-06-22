@@ -1,8 +1,8 @@
 ---
 title: AI Use Disclosure
 slug: ai-use-disclosure
-version: v1.0-2026-05-24
-effectiveFrom: 2026-05-24
+version: v1.1-2026-06-23
+effectiveFrom: 2026-06-23
 status: final
 audience: public
 summary: How Monitrax uses AI-assisted features and what users should understand before relying on AI outputs.
@@ -10,7 +10,7 @@ summary: How Monitrax uses AI-assisted features and what users should understand
 
 # AI Use Disclosure
 
-**Effective from:** 24 May 2026
+**Effective from:** 23 June 2026
 
 Monitrax may include AI-assisted features that help users understand, organise, classify, summarise, or model information.
 
@@ -94,6 +94,20 @@ We do not use your personal information or CDR data to train general AI models u
 
 CDR data is disclosed to AI providers only where permitted under the CDR Rules, covered by relevant CDR consent and contractual arrangements, and reasonably necessary to provide the specific feature you requested.
 
+### 5.1 Learning from your categorisations (shared knowledge base)
+
+To make automatic transaction categorisation more accurate over time, Monitrax maintains a **de-identified, aggregated knowledge base of transaction patterns** (for example, a normalised merchant name such as "WOOLWORTHS" mapped to a category such as "Groceries"). When you confirm or correct how a transaction is categorised, that signal may contribute to this knowledge base.
+
+This knowledge base is designed so that it cannot identify you:
+
+- It stores only **de-identified merchant/pattern signatures, category labels, and aggregate counts**. It does **not** store your name, account numbers, balances, transaction amounts, transaction dates, or any other information that identifies you or your accounts.
+- Personal details are **removed from the transaction text** before any pattern is contributed (for example, names or account numbers that can appear in transfers), and transfers between people are excluded.
+- A pattern is only added to the **shared** knowledge base once a sufficient number of **distinct users** have categorised it the same way (a k-anonymity threshold). Patterns that are unique to you remain **private to your account**.
+- Your own categorisations always take precedence; the shared knowledge base only ever suggests a default and never overrides your choices.
+- The knowledge base is **not sold** and is **not** used to train general AI models. Where this knowledge is derived from CDR data, it is de-identified in accordance with the CDR Rules.
+
+This section mirrors, and is governed by, **section 4.1 of the [Privacy Policy](/legal/privacy-policy)**.
+
 ---
 
 ## 6. Human review
@@ -132,5 +146,5 @@ Postal address: 10 Fairview St, Guildford NSW 2161, Australia
 
 ---
 
-**Version:** v1.0-2026-05-24  
-**Effective from:** 24 May 2026
+**Version:** v1.1-2026-06-23  
+**Effective from:** 23 June 2026
