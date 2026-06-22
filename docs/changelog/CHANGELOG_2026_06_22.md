@@ -363,3 +363,29 @@ Full Phase 51 + 52 documentation brought current in this PR:
 - `docs/implementation/02_UP_NEXT.md` — Phase 52 status → ENGINE SHIPPED + LIVE (52.5b/c remaining).
 - `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
 - (Compliance already merged earlier: `policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md`, `compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, privacy policy §4.1/§6.2, `policy/CDR_DATA_MINIMISATION.md`, CDR consent notice.)
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — review-exceptions inbox design + §18.8 quality gate)
+
+### Changes Made
+- **Type**: Design (Stitch) + process rule (CLAUDE.md §18.8). No app code.
+
+### CLAUDE.md §18.8 — Stitch output quality gate (NEW, Reza directive 2026-06-22)
+- Every Stitch output must be **self-reviewed against a 7-lens rubric and score > 9/10 before being
+  presented**; sub-9 designs are iterated until they pass; the scores are shown for auditability;
+  reviewers reject sub-9 designs or sub-9→React conversions. Applies to all surfaces + all sessions.
+  Protocol version bumped 2.2 → 2.3.
+
+### Design — review-categories inbox (52.5c)
+- Stitch screen generated (v1 `291a1716`, **scored 8.0/10 → rejected** per the new gate), then refined
+  via `edit_screens` (v2 `fdf91885`, **scored 9.2/10 → passes**). v2 = true sky→indigo gradient + glow,
+  TRAIL-coloured category pills + secondary community-confidence cues, refined emerald checkboxes,
+  merchant-primary hierarchy, amber "Needs a look" accent strip, sky-tinted "apply to all <merchant> —
+  past & future" learn-once sub-panel, calm "All caught up" empty state. Artefact:
+  `.stitch/designs/phase52/review-categories-inbox-v2.png`.
+- **Next:** Reza nod → React build (ReviewQueue component + review-queue / bulk-confirm / apply-rule
+  endpoints, reuse `recordContribution` for the learn-once rule) + dark + mobile variants (all through the §18.8 gate).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] design system / process → CLAUDE.md §18.8 + Phase 52 doc §7 + this changelog.

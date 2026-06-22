@@ -1984,6 +1984,29 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 - Phase 45.6 — MoneyStoryHero + WealthUniverse + DailyPulse → full-width hero + Bento Pair where appropriate.
 - Future: `/dashboard/balances` mobile reflow, `/dashboard/cfo` mobile reflow, My Wealth landing mobile reflow.
 
+### 18.8 Stitch output quality gate — review ≥ 9/10 before presenting (MANDATORY)
+
+> **Reza directive (2026-06-22):** *"make sure you perform the required reviews on the stitch outputs and only present it to me if the score is above 9/10 … this gate control should be in CLAUDE.md and as an instruction for all sessions going forward."*
+
+**Every Stitch output (generate / edit / variant) MUST be self-reviewed and score > 9/10 before it is shown to the user.** Designs that score ≤ 9 are iterated in Stitch (edit/regenerate) until they pass — the user only ever sees the passing version.
+
+**The rubric (score each /10, then an honest overall — overall is NOT a simple average; a single serious miss caps it):**
+
+1. **Brand glass vocabulary (§18.7.2 / §18.7)** — correct surface (warm ivory / navy dark), glass cards, hairline borders, layered float shadows, the right per-surface sub-palette, true gradients (not generic Tailwind blue/green), radii, Inter, `tabular-nums`.
+2. **Hierarchy & restraint** — the primary thing is primary; secondary is secondary; Apple "when in doubt, remove". No clutter, no false precision.
+3. **Behaviour-psychology** — celebrates the next action, normalises not shames, finishable where relevant, warm copy (§14), no manufactured urgency.
+4. **Typography & spacing** — consistent rhythm, the 4/8px scale, eyebrows, comfortable row heights, aligned numerals.
+5. **Premium tier (Apple / Linear / Mercury / Stripe)** — reads hand-crafted and expensive, not a clean template. Refined controls (checkboxes, pills, toggles), intentional detail.
+6. **Functional completeness** — all required states present (empty / loading / error / exception / expanded), per the brief.
+7. **Polish details** — icon weight (1.5px Lucide), pill/chip styling, gradient glow, dividers, no emojis, no excitement punctuation.
+
+**Process (mandatory):**
+- Generate/edit in Stitch → **self-score against the rubric** → if ≤ 9, **list the specific deficiencies and iterate** (`edit_screens` / regenerate) → re-score → repeat until > 9.
+- **Only then** download the artefact and present it to the user, **with the rubric scores shown** (per-lens + overall) so the gate is auditable.
+- Record the passing screen ID + score in the Phase doc / changelog. The rejected iterations don't need committing, but the *fact* of the gate (v1 8.0 → v2 9.2, etc.) belongs in the changelog.
+
+**Reviewer enforcement:** a reviewer (human or future-Claude) MUST reject any PR that presents/ships a Stitch design without evidence of the ≥9 review (the rubric scores in the changelog/PR), or that converted a sub-9 design to React. Applies to ALL surfaces (public + in-app) and ALL sessions.
+
 ---
 
 ## ENFORCEMENT
@@ -2007,5 +2030,5 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 
 ---
 
-*Last Updated: 2026-06-01*
-*Protocol Version: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
+*Last Updated: 2026-06-22*
+*Protocol Version: 2.3 — §18.8 added (Stitch output quality gate — self-review ≥ 9/10 against the 7-lens rubric before presenting any Stitch design; iterate until it passes; show the scores; reviewer rejects sub-9 designs or sub-9→React conversions. Reza directive 2026-06-22: "only present it to me if the score is above 9/10 … this gate should be in CLAUDE.md and for all sessions going forward."). Previous: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
