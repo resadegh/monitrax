@@ -8,7 +8,7 @@
 
 ## 🧠 Phase 52 — Shared Categorisation Knowledge Base (designed + decided, build queued)
 
-- **Status:** 📋 UP NEXT — design + decision complete (Phase doc [`PHASE_52_SHARED_CATEGORISATION_KB.md`](../blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md)); build not started.
+- **Status:** 🟡 BUILDING — design + decision complete; **52.1 (KB schema + PII-scrubber) shipped** (this PR). Next: 52.1b write-back service (flag-gated), then 52.2 lookup-first categoriser. Phase doc [`PHASE_52_SHARED_CATEGORISATION_KB.md`](../blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md).
 - **What:** a RAG categorisation engine — a de-identified, cross-user **knowledge base** in Monitrax's DB that every user's confirmations enrich, that the AI consults on every categorisation (lookup-first, Gemini-on-miss). The cross-user evolution of `MerchantMapping`. **This is the engine that powers Phase 51.2** (categorisation-overwhelm overhaul).
 - **DECIDED (Reza, 2026-06-21):** sharing posture = **Hybrid — private + k-anon shared** (private per-user mappings; patterns confirmed by ≥k distinct users graduate to a de-identified shared KB acting as a prior, never an override).
 - **Trigger to start:** Reza go-ahead (after Phase 51.1 settles). First increment = 52.1 (KB schema + PII-scrub + k-anon graduation + vote write-back).

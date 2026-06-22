@@ -114,6 +114,7 @@ export const RESET_DELETE_MODELS = [
   'DebtPlan',
   'UnifiedTransaction',
   'LoanTransaction', // Phase 51 — loan ledger; user financial data, wiped on "Start fresh" (cascades from Loan/User anyway)
+  'SignatureContribution', // Phase 52 — user's private categorisation votes; wiped on reset (the shared TransactionSignature is de-identified aggregate, has no userId, and self-heals on recompute)
   'CanonicalCategoryRegistry',
   'BookkeepingPeriod',
   'EngagementState',

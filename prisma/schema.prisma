@@ -95,6 +95,22 @@ enum LoanMatchStatus {
   DISMISSED // user rejected the suggested match
 }
 
+// Phase 52 — shared categorisation knowledge base. How a signature is matched.
+enum SignatureMatchType {
+  EXACT // normalised merchant signature (primary)
+  TOKEN // keyword token
+  MCC // merchant category code
+  REGEX
+  EMBEDDING // semantic (fuzzy-tail upgrade)
+}
+
+// Phase 52 — where a knowledge-base signature came from.
+enum SignatureSource {
+  SEED // curated AU seed (mccCatalog + merchant list)
+  USER_CONFIRMED // grown from user confirmations
+  AI_SUGGESTED // Gemini-on-miss, pending confirmation
+}
+
 enum AccountType {
   OFFSET
   SAVINGS
@@ -1275,10 +1291,11 @@ model User {
   strategyForecasts       StrategyForecast[]
 
   // Phase 13: Transactional Intelligence
-  unifiedTransactions UnifiedTransaction[]
-  recurringPayments   RecurringPayment[]
-  loanTransactions    LoanTransaction[] // Phase 51 — loan ledger
-  spendingProfile     SpendingProfile?
+  unifiedTransactions    UnifiedTransaction[]
+  recurringPayments      RecurringPayment[]
+  loanTransactions       LoanTransaction[] // Phase 51 — loan ledger
+  signatureContributions SignatureContribution[] // Phase 52 — categorisation KB (private per-user votes)
+  spendingProfile        SpendingProfile?
 
   // Phase 14: Cashflow Optimisation Engine
   cashflowForecasts  CashflowForecast[]
@@ -2872,6 +2889,68 @@ model LoanTransaction {
   @@index([matchStatus])
   @@index([loanId, date, amount, contentHash], name: "loan_tx_dedup")
   @@map("loan_transactions")
+}
+
+// =============================================================================
+// PHASE 52: SHARED CATEGORISATION KNOWLEDGE BASE (de-identified, RAG)
+// =============================================================================
+
+/// Phase 52 — the SHARED, de-identified categorisation knowledge base. One row
+/// per distinct normalised merchant/pattern signature (NOT per user, NOT per
+/// transaction). Stores ONLY a de-identified pattern + aggregate category votes
+/// + counts — never a userId, amount, date, balance, or anything identifying.
+/// Graduates to `isGlobal` once `distinctUserCount >= K` (k-anonymity). The
+/// `@@unique([region, pattern, matchType])` is the dedup + lookup key — a repeat
+/// pattern updates this row in place (no pile-up). See
+/// docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md §4–§6b.
+model TransactionSignature {
+  id                String             @id @default(uuid())
+  region            String             @default("AU")
+  pattern           String // normalised signature, e.g. "WOOLWORTHS"
+  matchType         SignatureMatchType @default(EXACT)
+  mcc               String? // merchant category code when known (strong signal)
+  categoryVotes     Json               @default("{}") // { "Groceries": 412, … } capped top-N
+  topCategory       String? // dominant category (denormalised for fast lookup)
+  confidence        Float              @default(0) // dominant share of votes
+  distinctUserCount Int                @default(0) // k-anonymity gate (from the contribution ledger)
+  isGlobal          Boolean            @default(false) // graduated past k → usable as a shared prior
+  amountHintMin     Float? // coarse range only — weak tiebreaker, never a user's figure
+  amountHintMed     Float?
+  amountHintMax     Float?
+  source            SignatureSource    @default(USER_CONFIRMED)
+  lastConfirmedAt   DateTime           @default(now())
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  contributions SignatureContribution[]
+
+  @@unique([region, pattern, matchType]) // dedup + lookup key (anti-bloat)
+  @@index([region, pattern])
+  @@index([mcc])
+  @@index([isGlobal])
+  @@map("transaction_signatures")
+}
+
+/// Phase 52 — PRIVATE per-(signature, user) contribution ledger. The source of
+/// truth for distinct-user counts + each user's own vote (revisable). NEVER
+/// exposed cross-user. `@@unique([signatureId, userId])` caps it at one row per
+/// user per pattern (the anti-bloat guarantee) and lets a user change their vote
+/// without double-counting.
+model SignatureContribution {
+  id          String   @id @default(uuid())
+  signatureId String
+  userId      String
+  category    String // canonical category this user assigned (FK-by-convention to CanonicalCategoryRegistry)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  signature TransactionSignature @relation(fields: [signatureId], references: [id], onDelete: Cascade)
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([signatureId, userId])
+  @@index([signatureId])
+  @@index([userId])
+  @@map("signature_contributions")
 }
 
 // =============================================================================

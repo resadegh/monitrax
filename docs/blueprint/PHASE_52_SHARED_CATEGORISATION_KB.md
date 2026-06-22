@@ -185,8 +185,16 @@ the low-value tail.
 
 ## 7. Phasing (each step shippable + testable)
 
-- **52.1 — KB schema + write-back:** `TransactionSignature` table + the PII-scrub + k-anon
-  graduation + vote-update service. Confirmations feed it (no UI change yet).
+- **52.1 — KB schema + PII-scrubber:** ✅ (in progress this PR) `TransactionSignature` (shared,
+  de-identified; unique `(region,pattern,matchType)` dedup key + indexes) + `SignatureContribution`
+  (private per-user ledger, `@@unique(signatureId,userId)`) + enums + migration
+  `20260622000000_add_categorisation_kb` (additive). **`scrubToSignature()`** de-identification gate
+  (rejects transfers/PII, strips numbers/dates/refs/method-noise → canonical signature) — 11 tests.
+  `SignatureContribution` classified in `accountReset` (RESET_DELETE). **No write-back / consumption
+  yet** — the gate ships first (per the build gate).
+- **52.1b — write-back service (flag-gated):** `recordContribution()` — scrub → upsert signature →
+  upsert the user's contribution → recompute votes + `distinctUserCount` + graduation (`isGlobal` at
+  k). Behind a default-OFF flag until the de-identification procedure is signed off.
 - **52.2 — lookup-first categoriser:** insert the shared-KB prior into the TIE precedence chain;
   measure hit-rate. Still no LLM.
 - **52.3 — Gemini-on-miss (RAG):** KB-as-context prompt for the unknown tail; confirmed answers
