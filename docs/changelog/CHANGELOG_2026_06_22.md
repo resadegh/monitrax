@@ -126,3 +126,46 @@
 ### Next
 - **52.2b** — wire `lookupSharedCategory` into `categoriseTransaction` (user mapping → rules → KB
   prior → fallback) with canonical-category → level resolution; measure hit-rate.
+
+---
+
+## Session: phase52-wiring-shk180 (Phase 52 — build 52.1c + 52.2b: wire the KB loop end-to-end)
+
+### Changes Made
+- **Type**: Feature (Phase 52 build #4) — connect the KB read + write into the live flows (gated OFF).
+- **Scope**: `lib/tie/categorisation.ts`, `app/api/unified-transactions/[id]/route.ts`,
+  `lib/categorisation/kb/categoryPath.ts` (new).
+
+### Solution
+- **52.2b (read-wire):** `lookupSharedCategory` inserted into `categoriseTransaction` precedence —
+  user mapping → rules → **KB prior** → fallback. New `source: 'KB'`. `KB_READ_ENABLED` default OFF →
+  returns null with **no DB hit**, so existing behaviour is unchanged until enabled. (Gemini-on-miss
+  52.3 will slot in after the KB prior.)
+- **52.1c (write-hook):** `recordContribution()` called (fire-and-forget, gated) from the category
+  correction endpoint (`PATCH /api/unified-transactions/[id]`) alongside the per-user `MerchantMapping`
+  upsert — so a confirmation feeds both the user's private mapping AND (gated) the shared KB.
+- **`encode/decodeCategoryPath`** — round-trips the 3-level category through the KB's single `category`
+  key (lossless, no registry-id dependency).
+
+### Files Added / Modified
+- `lib/categorisation/kb/categoryPath.ts` (NEW) + `tests/categorisation/categoryPath.test.ts` (4 tests).
+- `lib/tie/categorisation.ts` — KB prior step + `source: 'KB'` + imports.
+- `app/api/unified-transactions/[id]/route.ts` — fire-and-forget `recordContribution` hook + imports.
+
+### Build Status
+- [x] `tsc` clean · `npm run build` passes · 32/32 categorisation tests green (codec + lookup + write + scrub).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- The write-hook calls the §12.11-guarded `recordContribution` (own rows only) — fire-and-forget,
+  gated OFF. No new direct writes; no schema change.
+
+### Phase 41E (§12.14) — N/A. Security/CDR — both paths gated; scrubber de-identifies before any write.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (read+write wiring) → Phase 52 doc §7 (52.1c / 52.2b ticked).
+- [ ] schema / infra / UI — none.
+
+### Note
+- Batch categorisation does one indexed `findUnique` per uncategorised tx **only when KB_READ_ENABLED
+  is on** (no-op otherwise); batch the KB lookups if profiling shows a need once enabled.
+- `bulk-categorise` + `transactions/[id]/link` correction paths can get the same write-hook later (52.1c follow-up).

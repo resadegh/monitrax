@@ -200,9 +200,13 @@ the low-value tail.
 - **52.2 — lookup primitive (read path):** ✅ `lookupSharedCategory()` + pure `interpretSignature()`
   — returns the community category only for **graduated** (`isGlobal`) patterns above the confidence
   floor; gated `KB_READ_ENABLED` (default OFF). 7 tests.
-- **52.2b — wire into the categoriser:** insert the shared-KB prior into the `categoriseTransaction`
-  precedence chain (user mapping → rules → **KB prior** → fallback), with canonical-category → level
-  resolution; measure hit-rate. Still no LLM.
+- **52.1c — write hook:** ✅ `recordContribution()` called (fire-and-forget, gated) from the category
+  correction endpoint (`PATCH /api/unified-transactions/[id]`) alongside the per-user `MerchantMapping`
+  upsert. A confirmation now feeds both the user's private mapping AND (gated) the shared KB.
+- **52.2b — wired into the categoriser:** ✅ `lookupSharedCategory` inserted into `categoriseTransaction`
+  (user mapping → rules → **KB prior** → fallback); `encode/decodeCategoryPath` round-trips the 3-level
+  category through the KB's single `category` key; new `source: 'KB'`. Gated `KB_READ_ENABLED` (no-op
+  with no DB hit when off). Gemini-on-miss (52.3) slots in after the KB prior.
 - **52.3 — Gemini-on-miss (RAG):** KB-as-context prompt for the unknown tail; confirmed answers
   write back. Cost-gated.
 - **52.4 — seed + embeddings:** seed from mccCatalog + curated AU list; add the embedding fuzzy-match
