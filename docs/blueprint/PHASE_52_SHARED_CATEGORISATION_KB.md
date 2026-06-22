@@ -230,7 +230,13 @@ the low-value tail.
   similarity (pgvector in Cloud SQL or Vertex). Needs the `vector` extension (operator) + a vector
   column + an embeddings model. **Deferred — larger infra increment.**
 - **52.5c / Phase 51.2 — surfaces:** review-exceptions inbox + "apply to past/future" + ATO-label
-  mapping, powered by this engine. **Stitch-first; larger UI increment.**
+  mapping, powered by this engine. **Stitch-first; larger UI increment.** Design ✅ (light) — Stitch
+  screen `291a1716eb774460828d044f21a7d2ea`, `.stitch/designs/phase52/review-categories-inbox-v1.{png,html}`
+  (finishable "96% categorised — 8 to review" header + progress bar; high-confidence pre-checked +
+  bulk Confirm; per-row AI category + community-confidence cue; expanded "apply to all <merchant> —
+  past & future" learn-once toggle; amber "Needs a look" exceptions; calm "All caught up" empty state).
+  Awaiting Reza nod → then React build (component + review-queue/bulk-confirm/apply-rule endpoints) +
+  dark + mobile variants.
 
 ## 8. Risks
 - **Privacy/CDR** (the dominant one) — §5 guardrails; needs the documented CDR stance.
