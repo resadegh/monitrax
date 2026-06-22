@@ -229,3 +229,36 @@
 ### Doc-sync (CLAUDE.md §16)
 - [x] security / CDR posture + policy → de-identification procedure, compliance matrix, Phase 52 §10.
 - [ ] code / infra — none (operator enablement steps documented, not executed).
+
+---
+
+## Session: phase52-gemini-onmiss-shk180 (Phase 52 — build 52.3: Gemini-on-miss RAG)
+
+### Changes Made
+- **Type**: Feature (Phase 52 #5) — the LLM tail of the categoriser, gated OFF (cost control).
+- **Scope**: `lib/categorisation/kb/geminiOnMiss.ts` (new), `lib/tie/categorisation.ts` (step 4 wire).
+
+### Solution
+- **`geminiCategoriseOnMiss(rawDescription)`** — last resort after user-mapping → rules → KB prior all
+  miss. Sends the **de-identified signature** (never raw PII/transfers — scrubbed first) + the valid
+  AU taxonomy + up to 12 graduated KB examples (RAG few-shot) to Gemini Flash; validates `categoryLevel1`
+  against the taxonomy; clamps confidence; **never throws into the hot path** (returns null on any error).
+  Confirmed answers write back via the 52.1c hook → the tail shrinks over time.
+- Wired as **step 4** in `categoriseTransaction` (after the KB prior, before fallback).
+- Gated by **`KB_GEMINI_ENABLED` (default OFF)** — AI categorisation was cut 2026-05-09 for cost; this
+  brings it back only for the genuine unknown tail, only when enabled.
+- Pure `buildCategorisationPrompt()` (JSON-only contract + RAG examples) unit-tested.
+
+### Files Added / Modified
+- `lib/categorisation/kb/geminiOnMiss.ts` (NEW) + `tests/categorisation/geminiOnMiss.test.ts` (6 tests).
+- `lib/tie/categorisation.ts` — step-4 wire + import.
+
+### Build Status
+- [x] `tsc` clean · `npm run build` passes · 42/42 categorisation tests green.
+
+### Destructive write checklist (§12.11) — None (read-only DB; LLM call). 
+### Phase 41E (§12.14) — N/A. Security/CDR — only the de-identified signature reaches Gemini; gated.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (Gemini-on-miss + wire) → Phase 52 doc §7 (52.3 ticked).
+- [ ] schema / infra / UI — none.

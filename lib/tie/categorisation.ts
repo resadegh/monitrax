@@ -18,6 +18,7 @@ import {
 } from './types';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
 import { decodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
+import { geminiCategoriseOnMiss } from '@/lib/categorisation/kb/geminiOnMiss';
 
 // =============================================================================
 // TYPES
@@ -725,8 +726,13 @@ export async function categoriseTransaction(
     };
   }
 
-  // 4. Gemini-on-miss (RAG) — increment 52.3 (not yet wired). When added it
-  //    receives the KB as retrieval context. Until then we fall through.
+  // 4. Gemini-on-miss (RAG) — increment 52.3. Gated by KB_GEMINI_ENABLED
+  //    (default OFF) → returns null with no LLM call until enabled. Receives the
+  //    KB as retrieval context; its confirmed answers write back via 52.1c.
+  const aiResult = await geminiCategoriseOnMiss(kbText);
+  if (aiResult) {
+    return aiResult;
+  }
 
   // 5. Fallback
   return {
