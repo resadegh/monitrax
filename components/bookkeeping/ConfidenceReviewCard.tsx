@@ -109,6 +109,13 @@ export function ConfidenceReviewCard({
   const { high, highUnconfirmed, medium, low } = summary;
   // Phase 52.5c-fix — booked low/medium-confidence rows (the txLow/txMedium gap).
   const bookedReview = (summary.txMedium ?? 0) + (summary.txLow ?? 0);
+  // SSOT (Reza 2026-06-23): the band COUNTS shown here must match the Activity
+  // band chips, which count the whole band = staging queue + booked rows. The
+  // staging-only `medium`/`low` understated (e.g. "0 low" while the chip showed
+  // "Low · 283"). `confirmBand('medium')` still bulk-confirms only the staging
+  // portion; booked rows route to the per-band review surface (onReviewBand).
+  const mediumCount = medium + (summary.txMedium ?? 0);
+  const lowCount = low + (summary.txLow ?? 0);
   const total = high + medium + low + bookedReview;
   // Phase 49.13 — unconfirmed HIGH rows are pending work too (auto-filed
   // is not confirmed; they still count toward the Home "to categorise"
@@ -211,18 +218,26 @@ export function ConfidenceReviewCard({
                     Review
                   </button>
                 </div>
+              ) : mediumCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => onReviewBand?.('medium')}
+                  className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-amber-500/30 bg-amber-500/[0.08] px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 transition hover:bg-amber-500/15 w-full sm:w-auto"
+                >
+                  Review {mediumCount.toLocaleString('en-AU')} medium
+                </button>
               ) : (
                 <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
                   0 medium — nothing waiting
                 </span>
               )}
-              {low > 0 ? (
+              {lowCount > 0 ? (
                 <button
                   type="button"
                   onClick={() => onReviewBand?.('low')}
                   className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-rose-500/30 bg-rose-500/[0.08] px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-500/15 w-full sm:w-auto"
                 >
-                  Review {low.toLocaleString('en-AU')} low
+                  Review {lowCount.toLocaleString('en-AU')} low
                 </button>
               ) : (
                 <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
