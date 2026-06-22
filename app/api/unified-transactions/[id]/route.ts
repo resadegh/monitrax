@@ -13,6 +13,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { isPeriodEditable } from '@/lib/bookkeeping/period';
+import { recordContribution } from '@/lib/categorisation/kb/recordContribution';
+import { encodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
 import {
   recordTransactionEdit,
   pickCategoryFields,
@@ -167,6 +169,18 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
             },
           });
         }
+
+        // Phase 52 — also contribute this confirmation to the SHARED, de-identified
+        // categorisation KB (cross-user learning). Fire-and-forget + GATED OFF by
+        // default (KB_WRITE_ENABLED) → no-op until enabled after the de-identification
+        // procedure sign-off. The scrubber rejects PII/transfers; the shared store
+        // holds only de-identified patterns + aggregate votes (never this user's data).
+        recordContribution({
+          userId,
+          rawDescription: existing.description ?? existing.merchantStandardised ?? '',
+          category: encodeCategoryPath(body.categoryLevel1, body.categoryLevel2 ?? null, body.subcategory ?? null),
+          mcc: existing.merchantCategoryCode ?? null,
+        }).catch(() => {});
       }
 
       if (body.categoryLevel2 !== undefined) {

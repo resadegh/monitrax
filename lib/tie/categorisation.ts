@@ -16,6 +16,8 @@ import {
   CATEGORY_HIERARCHY,
   ALL_CATEGORIES,
 } from './types';
+import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
+import { decodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
 
 // =============================================================================
 // TYPES
@@ -26,7 +28,7 @@ export interface CategorisationResult {
   categoryLevel2: string | null;
   subcategory: string | null;
   confidence: number; // 0-1
-  source: 'RULE' | 'AI' | 'USER' | 'FALLBACK';
+  source: 'RULE' | 'AI' | 'USER' | 'KB' | 'FALLBACK';
   ruleMatched?: string;
 }
 
@@ -706,11 +708,27 @@ export async function categoriseTransaction(
     return rulesResult;
   }
 
-  // 3. AI categorisation removed 2026-05-09 (Tech Debt #17). If/when an AI
-  //    fallback path is wanted, route it through the existing Gemini
-  //    infrastructure (`lib/ai/gemini.ts` + `lib/bank/aiCategorisation.ts`).
+  // 3. Phase 52 — shared KB prior (community's graduated answer). Gated by
+  //    KB_READ_ENABLED (default OFF) → returns null with no DB hit until enabled,
+  //    so this is a no-op for existing behaviour. Only graduated (≥k users),
+  //    confident patterns return a value (see lookupSharedCategory).
+  const kbText = tx.description || tx.merchantStandardised || tx.merchantRaw || '';
+  const kbMatch = await lookupSharedCategory(kbText);
+  if (kbMatch) {
+    const { level1, level2, subcategory } = decodeCategoryPath(kbMatch.category);
+    return {
+      categoryLevel1: level1,
+      categoryLevel2: level2,
+      subcategory,
+      confidence: kbMatch.confidence,
+      source: 'KB',
+    };
+  }
 
-  // 4. Fallback
+  // 4. Gemini-on-miss (RAG) — increment 52.3 (not yet wired). When added it
+  //    receives the KB as retrieval context. Until then we fall through.
+
+  // 5. Fallback
   return {
     categoryLevel1: 'Other',
     categoryLevel2: 'Uncategorised',
