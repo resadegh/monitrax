@@ -251,7 +251,7 @@ BOTH states; v2 expanded was 8.5, fixed):
   mobile-light `6b4e490f` (9.3) · mobile-dark `b054603f` (9.1).
 - Expanded "More options" state: desktop-dark `e7a9afdc` (9.1) · desktop-light `88d0d73a` (9.1).
 
-**Build:** convert to React by restructuring `components/transactions/TransactionLinkDialog.tsx` —
+**Build ✅ (React conversion shipped — separate PR):** restructured `components/transactions/TransactionLinkDialog.tsx` —
 collapsed primary-action view (reuses the Phase 51.2 resolution matches) + a `showMore` disclosure that
 reveals the existing tabbed UI verbatim, preserving all wired handlers (link / create / split /
 transfer / investment / batch / receipt / vendor card / learning).
