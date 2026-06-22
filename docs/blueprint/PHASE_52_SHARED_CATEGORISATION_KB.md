@@ -212,8 +212,10 @@ the low-value tail.
   (user mapping → rules → **KB prior** → fallback); `encode/decodeCategoryPath` round-trips the 3-level
   category through the KB's single `category` key; new `source: 'KB'`. Gated `KB_READ_ENABLED` (no-op
   with no DB hit when off). Gemini-on-miss (52.3) slots in after the KB prior.
-- **52.3 — Gemini-on-miss (RAG):** KB-as-context prompt for the unknown tail; confirmed answers
-  write back. Cost-gated.
+- **52.3 — Gemini-on-miss (RAG): ✅** `geminiCategoriseOnMiss()` — wired as step 4 in
+  `categoriseTransaction` (after the KB prior). Sends the de-identified signature + valid taxonomy +
+  graduated KB examples (RAG) to Gemini; validates level1; never throws into the hot path. Gated
+  `KB_GEMINI_ENABLED` (default OFF, cost control). Confirmed answers write back via 52.1c. 6 tests.
 - **52.4 — seed + embeddings:** seed from mccCatalog + curated AU list; add the embedding fuzzy-match
   for the tail.
 - **52.5 — surfaces (= Phase 51.2):** review-exceptions inbox + "apply to past/future" + ATO-label
