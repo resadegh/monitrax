@@ -90,3 +90,39 @@
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (KB write-back) → Phase 52 doc §7.
 - [ ] schema / infra / UI — none (no schema change; reuses 52.1 tables).
+
+---
+
+## Session: phase52-lookup-shk180 (Phase 52 — build increment 52.2: shared-KB lookup primitive)
+
+### Changes Made
+- **Type**: Feature (Phase 52 build #3) — the read-path lookup primitive, gated OFF.
+- **Scope**: `lib/categorisation/kb/lookupCategory.ts` (new).
+
+### Solution
+- **`lookupSharedCategory(rawDescription)`** — scrub → fetch the signature → return the community
+  category ONLY for **graduated** (`isGlobal`, ≥k users) patterns above the confidence floor
+  (`KB_MIN_CONFIDENCE` 0.6); a miss returns null (caller falls through to rules → later Gemini).
+- Pure **`interpretSignature()`** carries the gating (isGlobal + confidence) — unit-tested.
+- Gated by **`KB_READ_ENABLED` (default OFF)**; harmless even when on (nothing graduates until writes
+  are enabled). 7 tests.
+
+### Files Added
+- `lib/categorisation/kb/lookupCategory.ts`
+- `tests/categorisation/lookupCategory.test.ts` (7 tests — gating, default-OFF read gate)
+
+### Build Status
+- [x] `tsc --noEmit` clean · `npm run build` passes · 7/7 tests green
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- **None.** Read-only (a single `findUnique`).
+
+### Phase 41E (§12.14) — N/A. Security/CDR — read-only of de-identified, graduated patterns; gated.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (read primitive) → Phase 52 doc §7 (52.2 / 52.2b split).
+- [ ] schema / infra / UI — none.
+
+### Next
+- **52.2b** — wire `lookupSharedCategory` into `categoriseTransaction` (user mapping → rules → KB
+  prior → fallback) with canonical-category → level resolution; measure hit-rate.
