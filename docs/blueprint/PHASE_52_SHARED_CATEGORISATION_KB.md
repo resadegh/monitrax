@@ -173,7 +173,12 @@ linearly with usage — *provided normalisation is good*. So the controls are:
 7. **Storage discipline.** Narrow columns; integer minor units for amount hints; **no raw description
    stored** (only the de-identified signature + counts); JSON votes capped.
 
-8. **Housekeeping job (GCP-first §12.7).** A Cloud Scheduler job: prune stale provisionals, recompute
+8. **Housekeeping job (GCP-first §12.7) — ✅ BUILT.** `lib/categorisation/kb/housekeeping.ts`
+   (`runKbHousekeeping` + pure `isStaleProvisional`) prunes stale sub-k provisionals (graduated
+   patterns never pruned) and returns a KB-health report; exposed at
+   `POST /api/categorisation/kb/housekeeping` (CRON_SECRET, mirrors `/api/cdr/lifecycle`) for GCP
+   Cloud Scheduler (weekly). 4 tests. **Operator TODO:** create the Scheduler job once the KB is
+   enabled. Future: recompute/compaction + richer metrics. Originally a Cloud Scheduler job: prune stale provisionals, recompute
    confidence, compact ledgers, and emit **KB-health metrics** — signature cardinality, cardinality/txn
    ratio, **lookup hit-rate (% categorised without an LLM call)**, provisional-vs-graduated ratio, p95
    lookup latency, table sizes. Hit-rate going up + cardinality flattening = the KB getting *richer*
