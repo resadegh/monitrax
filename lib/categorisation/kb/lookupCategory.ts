@@ -46,7 +46,30 @@ export function interpretSignature(
 }
 
 /**
+ * Pure: is `pattern` a whole-token leading prefix of `query`?
+ * "WOOLWORTHS" is a token-prefix of "WOOLWORTHS METRO" (brand + suffix) but NOT
+ * of "WOOLWORTHSX" (same-token bleed) — the space boundary prevents false hits,
+ * and "APPLE MUSIC" is not a prefix of "APPLE STORE" (different second token).
+ */
+export function isTokenPrefix(pattern: string, query: string): boolean {
+  return query === pattern || query.startsWith(pattern + ' ');
+}
+
+/** Pure: pick the LONGEST (most specific) candidate that is a token-prefix of the query. */
+export function pickPrefixMatch<T extends { pattern: string }>(query: string, candidates: T[]): T | null {
+  let best: T | null = null;
+  for (const c of candidates) {
+    if (isTokenPrefix(c.pattern, query) && (!best || c.pattern.length > best.pattern.length)) best = c;
+  }
+  return best;
+}
+
+/**
  * Look up the shared-KB category for a raw description (gated; graduated patterns only).
+ * Two passes: (1) EXACT normalised-signature match, then (2) a deterministic fuzzy
+ * fallback — the longest graduated pattern that is a whole-token leading prefix of the
+ * signature (handles "BRAND + store/location suffix", the dominant AU feed shape).
+ * Embeddings (52.5b) extend this to non-prefix variants ("WW METRO" → "WOOLWORTHS").
  */
 export async function lookupSharedCategory(rawDescription: string, region = 'AU'): Promise<KbMatch | null> {
   if (!KB_READ_ENABLED) return null;
@@ -54,10 +77,29 @@ export async function lookupSharedCategory(rawDescription: string, region = 'AU'
   const scrub = scrubToSignature(rawDescription);
   if (!scrub.ok) return null;
 
-  const sig = await prisma.transactionSignature.findUnique({
+  // 1. Exact signature match.
+  const exact = await prisma.transactionSignature.findUnique({
     where: { region_pattern_matchType: { region, pattern: scrub.pattern, matchType: SignatureMatchType.EXACT } },
     select: { pattern: true, topCategory: true, confidence: true, distinctUserCount: true, isGlobal: true },
   });
+  const exactMatch = interpretSignature(exact);
+  if (exactMatch) return exactMatch;
 
-  return interpretSignature(sig);
+  // 2. Fuzzy fallback: longest graduated pattern that is a token-prefix of the signature.
+  //    `$1 LIKE pattern || ' %'` finds patterns that are a strict leading-token prefix;
+  //    patterns are alphanumeric (no LIKE wildcards), so this is injection/wildcard-safe.
+  const rows = await prisma.$queryRaw<
+    { pattern: string; topCategory: string | null; confidence: number; distinctUserCount: number; isGlobal: boolean }[]
+  >`
+    SELECT pattern, "topCategory", confidence, "distinctUserCount", "isGlobal"
+    FROM transaction_signatures
+    WHERE region = ${region}
+      AND "matchType" = 'EXACT'
+      AND "isGlobal" = true
+      AND "topCategory" IS NOT NULL
+      AND ${scrub.pattern} LIKE pattern || ' %'
+    ORDER BY length(pattern) DESC
+    LIMIT 1
+  `;
+  return interpretSignature(rows[0] ?? null);
 }

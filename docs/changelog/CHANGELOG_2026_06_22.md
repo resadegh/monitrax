@@ -327,3 +327,28 @@
 
 ### Operator note
 - Re-run `POST /api/categorisation/kb/seed` after deploy to load the ~192 new merchants (idempotent — existing 84 are skipped, new ones created).
+
+---
+
+## Session: phase52-fuzzy-prefix-shk180 (Phase 52 — build 52.5a: deterministic fuzzy prefix fallback)
+
+### Changes Made
+- **Type**: Feature (Phase 52) — fuzzy matching for the dominant "brand + store/location suffix" feed shape, no infra.
+- **Scope**: `lib/categorisation/kb/lookupCategory.ts`.
+
+### Solution
+- `lookupSharedCategory` now does **exact match → then a token-prefix fallback**: the longest graduated
+  pattern that is a whole-token leading prefix of the signature wins. "WOOLWORTHS METRO 1234" →
+  `WOOLWORTHS`; safe against same-token bleed ("WOOLWORTHSX") and different-second-token brands
+  ("APPLE MUSIC" ≠ "APPLE STORE"). Pure `isTokenPrefix()` / `pickPrefixMatch()` helpers (unit-tested);
+  the DB pass is a wildcard-safe `$queryRaw` (`$1 LIKE pattern || ' %'`, patterns are alphanumeric).
+- Transparent to the categoriser (still calls `lookupSharedCategory`); gated by `KB_READ_ENABLED`.
+- No infra/schema change. Embeddings (non-prefix variants like "WW METRO" → "WOOLWORTHS") deferred to 52.5b.
+
+### Build Status
+- [x] `tsc` clean · `npm run build` passes · 53/53 categorisation tests green (6 new prefix tests).
+
+### Destructive write checklist (§12.11) — None (read-only $queryRaw). Phase 41E — N/A. Security/CDR — reads de-identified graduated patterns only; gated.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (fuzzy prefix) → Phase 52 doc §7 (52.5a ✅; 52.5b embeddings + 52.5c UI scoped as larger follow-ups).

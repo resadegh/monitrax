@@ -54,3 +54,36 @@ describe('lookupSharedCategory — read gate', () => {
     expect(await lookupSharedCategory('WOOLWORTHS 1234')).toBeNull();
   });
 });
+
+import { isTokenPrefix, pickPrefixMatch } from '@/lib/categorisation/kb/lookupCategory';
+
+describe('isTokenPrefix — fuzzy brand+suffix matching (52.5a)', () => {
+  it('matches brand + store/location suffix', () => {
+    expect(isTokenPrefix('WOOLWORTHS', 'WOOLWORTHS METRO SYDNEY')).toBe(true);
+  });
+  it('matches exact', () => {
+    expect(isTokenPrefix('WOOLWORTHS', 'WOOLWORTHS')).toBe(true);
+  });
+  it('does NOT bleed across a token (WOOLWORTHSX)', () => {
+    expect(isTokenPrefix('WOOLWORTHS', 'WOOLWORTHSX')).toBe(false);
+  });
+  it('does NOT match a different second token (APPLE MUSIC vs APPLE STORE)', () => {
+    expect(isTokenPrefix('APPLE MUSIC', 'APPLE STORE')).toBe(false);
+  });
+  it('does NOT match when query is shorter than pattern', () => {
+    expect(isTokenPrefix('COLES EXPRESS', 'COLES')).toBe(false);
+  });
+});
+
+describe('pickPrefixMatch — longest (most specific) wins', () => {
+  it('prefers the more specific multi-token pattern', () => {
+    const best = pickPrefixMatch('COLES EXPRESS 0421 NSW', [
+      { pattern: 'COLES' },
+      { pattern: 'COLES EXPRESS' },
+    ]);
+    expect(best?.pattern).toBe('COLES EXPRESS');
+  });
+  it('returns null when nothing is a prefix', () => {
+    expect(pickPrefixMatch('BP CONNECT', [{ pattern: 'WOOLWORTHS' }])).toBeNull();
+  });
+});
