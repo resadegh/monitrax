@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Link Transaction - Wealth OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#ecf3e7",
+                        "trail-sky": "#0EA5E9",
+                        "on-primary-fixed-variant": "#005320",
+                        "primary-fixed": "#7ffc97",
+                        "on-secondary": "#ffffff",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "secondary": "#585e6f",
+                        "on-tertiary": "#ffffff",
+                        "trail-emerald": "#16A34A",
+                        "outline": "#6e7b6c",
+                        "on-surface-variant": "#3e4a3d",
+                        "surface": "#f4fcf0",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "error": "#ba1a1a",
+                        "surface-dim": "#F1EFE8",
+                        "on-secondary-container": "#5c6274",
+                        "error-container": "#ffdad6",
+                        "background": "#f4fcf0",
+                        "trail-violet": "#8B5CF6",
+                        "surface-ivory": "#FAFAF7",
+                        "on-primary-fixed": "#002109",
+                        "on-error": "#ffffff",
+                        "on-secondary-fixed-variant": "#404757",
+                        "tertiary": "#4d5d73",
+                        "primary-container": "#00873a",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "inverse-primary": "#62df7d",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-container": "#e9f0e5",
+                        "secondary-fixed": "#dce2f6",
+                        "secondary-container": "#d9dff4",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-tertiary-container": "#fdfcff",
+                        "surface-variant": "#dde5d9",
+                        "trail-indigo": "#6366F1",
+                        "tertiary-container": "#66768d",
+                        "primary": "#006b2c",
+                        "on-primary-container": "#f7fff2",
+                        "on-error-container": "#93000a",
+                        "outline-slate": "#94A3B8",
+                        "on-background": "#171d16",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed": "#d3e4fe",
+                        "surface-container-low": "#eff6ea",
+                        "on-surface": "#171d16",
+                        "inverse-surface": "#2b322b",
+                        "surface-bright": "#f4fcf0",
+                        "error-red": "#DC2626",
+                        "surface-container-high": "#e3eadf",
+                        "outline-variant": "#bdcaba",
+                        "trail-amber": "#F59E0B",
+                        "surface-tint": "#006e2d",
+                        "surface-container-highest": "#dde5d9",
+                        "on-primary": "#ffffff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "section-gap": "48px",
+                        "unit": "4px",
+                        "container-max": "1280px",
+                        "margin-desktop": "48px",
+                        "gutter": "24px"
+                    },
+                    "fontFamily": {
+                        "eyebrow": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-lg-mobile": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-lg-mobile": ["28px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #FAFAF7;
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border: 1.5px solid #E2E8F0;
+        }
+        .soft-float {
+            box-shadow: 0 10px 25px -5px rgba(11, 18, 32, 0.04), 0 8px 10px -6px rgba(11, 18, 32, 0.04);
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-switch {
+            width: 44px;
+            height: 24px;
+        }
+        .custom-switch:checked {
+            background-color: #16A34A;
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="min-h-screen flex items-end justify-center">
+<!-- Mobile Transaction Modal (Bottom-Sheet Style) -->
+<main class="w-full max-w-[390px] relative">
+<!-- Scrim for context (mocking a background app state) -->
+<div class="fixed inset-0 bg-on-background/5 pointer-events-none"></div>
+<!-- The Modal Card -->
+<div class="glass-card soft-float rounded-t-[32px] w-full px-margin-mobile pt-8 pb-10 flex flex-col gap-8 animate-in slide-in-from-bottom duration-500">
+<!-- 1. Header Section -->
+<header class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<span class="font-eyebrow text-eyebrow text-trail-sky">LINK TRANSACTION</span>
+<h2 class="font-headline-sm text-headline-sm text-on-background">We think we know what this is.</h2>
+</div>
+<button aria-label="Close" class="w-11 h-11 -mt-2 -mr-2 flex items-center justify-center rounded-full hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant">close</span>
+</button>
+</header>
+<!-- 2. Transaction Hero Section -->
+<section class="flex flex-col gap-4">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="font-label-md text-label-md text-on-surface">Periodical Payment to Bankwest</span>
+</div>
+<span class="font-body-sm text-body-sm text-on-surface-variant">18 Jun 2026</span>
+</div>
+<div class="flex flex-col gap-4">
+<div class="font-data-xl text-data-xl tabular-nums text-on-background tracking-tighter">
+                        -$1,295
+                    </div>
+<div class="flex items-center gap-3">
+<span class="bg-surface-container-high text-on-surface-variant px-3 py-1 rounded-full font-label-md text-label-md">
+                            Expense
+                        </span>
+<a class="font-label-md text-label-md text-on-secondary-container underline underline-offset-4 decoration-outline-variant hover:text-primary transition-colors" href="#">
+                            View vendor card
+                        </a>
+</div>
+</div>
+</section>
+<!-- 3. Recommended Action Section -->
+<section class="border-[1.5px] border-trail-emerald bg-trail-emerald/[0.04] rounded-xl p-4 flex flex-col gap-3">
+<div class="flex justify-between items-start">
+<div class="flex flex-col gap-1">
+<h3 class="font-headline-sm text-headline-sm text-on-background">Loan repayment — Bankwest</h3>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Matches your loan statement</p>
+</div>
+<span class="material-symbols-outlined text-trail-emerald" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex">
+<span class="bg-trail-emerald text-white px-2 py-0.5 rounded font-eyebrow text-[10px] tracking-widest">
+                        DEDUCTIBLE
+                    </span>
+</div>
+</section>
+<!-- 4. Primary CTA & 5. Toggle Section -->
+<div class="flex flex-col gap-6">
+<div class="flex flex-col gap-4">
+<button class="sky-indigo-gradient w-full h-11 rounded-xl flex items-center justify-center font-label-md text-label-md text-white font-semibold active:scale-[0.98] transition-transform">
+                        Confirm repayment
+                    </button>
+<div class="flex items-center justify-between py-2">
+<label class="font-body-md text-body-md text-on-surface cursor-pointer" for="remember-payment">Remember payments like this</label>
+<div class="relative inline-block w-11 h-6 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 border-transparent appearance-none cursor-pointer checked:right-0 checked:bg-trail-emerald right-5 transition-all duration-300 shadow-sm" id="remember-payment" name="remember-payment" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-6 rounded-full bg-surface-container cursor-pointer border border-outline-variant" for="remember-payment"></label>
+</div>
+</div>
+</div>
+</div>
+<!-- 6. Footer Section -->
+<footer class="flex flex-col items-center gap-6 pt-2">
+<button class="flex items-center gap-1 font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors group">
+                    Not a repayment? More options
+                    <span class="material-symbols-outlined text-[18px] group-hover:translate-y-0.5 transition-transform">expand_more</span>
+</button>
+<button class="h-11 w-full font-label-md text-label-md text-on-secondary-container hover:text-primary transition-colors">
+                    Skip for now
+                </button>
+</footer>
+</div>
+<!-- Home Indicator (iOS Style) -->
+<div class="h-1.5 w-32 bg-on-background/10 rounded-full mx-auto mt-4 mb-2"></div>
+</main>
+<style>
+        /* Custom Switch Styling Logic */
+        .toggle-checkbox:checked {
+            right: 0;
+            background-color: #ffffff;
+            border-color: #16A34A;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #16A34A;
+            border-color: #16A34A;
+        }
+        .toggle-checkbox {
+            right: 20px;
+            border-color: #cbd5e1;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .toggle-label {
+            transition: background-color 0.3s ease;
+        }
+        
+        /* Entrance animation */
+        @keyframes slideInUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-in {
+            animation: slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+    </style>
+<script>
+        // Simple micro-interaction for the toggle
+        document.getElementById('remember-payment').addEventListener('change', function(e) {
+            const label = this.nextElementSibling;
+            if(this.checked) {
+                console.log('Preference: Saved');
+            } else {
+                console.log('Preference: Unsaved');
+            }
+        });
+
+        // CTA Click Interaction
+        document.querySelector('.sky-indigo-gradient').addEventListener('click', function() {
+            this.innerHTML = '<span class="material-symbols-outlined animate-spin mr-2">progress_activity</span> Processing...';
+            this.classList.add('opacity-90');
+            setTimeout(() => {
+                this.innerHTML = '<span class="material-symbols-outlined mr-2">check</span> Confirmed';
+                this.classList.replace('sky-indigo-gradient', 'bg-trail-emerald');
+            }, 1000);
+        });
+    </script>
+</body></html>

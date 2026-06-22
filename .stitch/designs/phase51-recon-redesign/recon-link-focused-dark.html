@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Transaction Reconciliation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "surface-tint": "#62df7d",
+                        "on-primary-fixed-variant": "#005320",
+                        "on-error": "#690005",
+                        "on-tertiary-fixed-variant": "#8a143c",
+                        "secondary-fixed-dim": "#4de082",
+                        "secondary-fixed": "#6dfe9c",
+                        "surface-dim": "#0e150f",
+                        "on-tertiary-fixed": "#3f0016",
+                        "surface-bright": "#343b33",
+                        "on-surface": "#dde5d9",
+                        "on-secondary-fixed": "#00210c",
+                        "primary-fixed": "#7ffc97",
+                        "surface": "#0e150f",
+                        "outline-variant": "#3e4a3d",
+                        "background": "#0e150f",
+                        "on-surface-variant": "#bdcaba",
+                        "on-tertiary": "#660027",
+                        "on-primary": "#003914",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-variant": "#30372f",
+                        "surface-container-lowest": "#09100a",
+                        "on-secondary-fixed-variant": "#005227",
+                        "primary": "#62df7d",
+                        "outline": "#879485",
+                        "on-secondary-container": "#003e1c",
+                        "on-primary-container": "#003111",
+                        "surface-container-high": "#252c24",
+                        "on-background": "#dde5d9",
+                        "surface-container-low": "#171d16",
+                        "on-tertiary-container": "#5a0022",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-highest": "#30372f",
+                        "inverse-surface": "#dde5d9",
+                        "secondary-container": "#00b55d",
+                        "inverse-primary": "#006e2d",
+                        "tertiary-fixed-dim": "#ffb2bf",
+                        "tertiary-fixed": "#ffd9de",
+                        "primary-container": "#1ca64d",
+                        "on-primary-fixed": "#002109",
+                        "on-secondary": "#003919",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1b211a",
+                        "tertiary": "#ffb2bf",
+                        "tertiary-container": "#ec6284",
+                        "secondary": "#4de082",
+                        "inverse-on-surface": "#2b322b"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "headline-md": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: #050913;
+            font-family: 'Inter', sans-serif;
+        }
+        .glass-modal {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.12) inset, 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .glass-subcard {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .emerald-glow-panel {
+            background: rgba(98, 223, 125, 0.02);
+            border: 1px solid rgba(98, 223, 125, 0.3);
+            box-shadow: 0 0 40px rgba(98, 223, 125, 0.05);
+        }
+        .sky-indigo-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #6366F1 100%);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease;
+        }
+        .sky-indigo-gradient:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 25px -5px rgba(14, 165, 233, 0.4);
+        }
+        .sky-indigo-gradient:active {
+            transform: translateY(0);
+            filter: brightness(0.9);
+        }
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        
+        /* Toggle Switch Style */
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #62df7d;
+        }
+        .toggle-checkbox:checked + .toggle-label .toggle-dot {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-4 overflow-hidden">
+<!-- Atmospheric Background Shader Placeholder -->
+<!-- Main Modal Container -->
+<div class="relative w-full max-w-[460px] z-50 animate-in fade-in zoom-in duration-500">
+<div class="glass-modal rounded-xl overflow-hidden p-6">
+<!-- Header -->
+<div class="flex items-start justify-between mb-8">
+<div class="flex gap-4">
+<div class="w-10 h-10 rounded-full flex items-center justify-center bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-primary text-[20px]">link</span>
+</div>
+<div>
+<h1 class="font-headline-md text-on-surface leading-tight">Link transaction</h1>
+<p class="text-on-surface-variant font-body-sm mt-1 opacity-70">We think we know what this is.</p>
+</div>
+</div>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Body Section 1: Transaction Hero -->
+<div class="glass-subcard rounded-lg p-5 mb-6 flex justify-between items-center">
+<div class="space-y-1.5">
+<h2 class="font-body-md font-bold text-on-surface">Periodical Payment to Bankwest</h2>
+<p class="text-on-surface-variant/60 font-body-sm">18 Jun 2026</p>
+<div class="flex items-center gap-3 pt-1">
+<span class="px-2 py-0.5 bg-surface-variant/30 text-on-surface-variant text-[11px] font-bold uppercase tracking-wider rounded">Expense</span>
+<a class="text-primary hover:underline text-body-sm font-medium flex items-center gap-1 group" href="#">
+                            View vendor card 
+                            <span class="material-symbols-outlined text-[16px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+</a>
+</div>
+</div>
+<div class="text-right">
+<span class="text-[40px] font-semibold tabular-nums text-on-surface">-$1,295</span>
+</div>
+</div>
+<!-- Body Section 2: Recommended Action -->
+<div class="emerald-bordered-container">
+<div class="emerald-glow-panel rounded-lg p-6 relative overflow-hidden">
+<!-- Subtle decorative glow -->
+<div class="absolute -right-8 -top-8 w-24 h-24 bg-primary/10 blur-3xl rounded-full"></div>
+<div class="flex items-center gap-3 mb-3">
+<span class="material-symbols-outlined text-primary" data-weight="fill">account_balance</span>
+<h3 class="font-body-md font-semibold text-primary">Loan repayment — Bankwest</h3>
+</div>
+<p class="text-on-surface-variant font-body-md mb-6 leading-relaxed">
+                        Matches your loan statement · <span class="text-on-surface font-medium">$1,295</span> · 18 Jun · <span class="text-secondary font-medium">$1,295 interest (deductible)</span>
+</p>
+<button class="sky-indigo-gradient w-full py-4 px-6 rounded-lg text-white font-semibold text-body-md flex items-center justify-center gap-2 mb-4">
+                        Confirm repayment
+                    </button>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant font-body-sm">Remember payments like this</span>
+</div>
+<div class="flex items-center">
+<input checked="" class="toggle-checkbox hidden" id="remember" type="checkbox"/>
+<label class="toggle-label relative inline-block w-10 h-5 bg-surface-container-highest rounded-full cursor-pointer transition-colors duration-200" for="remember">
+<span class="toggle-dot absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="ml-2 text-secondary font-bold text-[10px] uppercase tracking-tighter">ON</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Body Section 3: Collapsed Options -->
+<div class="mt-6 flex justify-center">
+<button class="flex items-center gap-1.5 text-on-surface-variant/60 hover:text-on-surface-variant transition-colors text-body-sm py-2 px-4 rounded-full hover:bg-surface-variant/30">
+                    Not a repayment? More options 
+                    <span class="material-symbols-outlined text-[18px]">arrow_drop_down</span>
+</button>
+</div>
+<!-- Footer -->
+<div class="mt-10 mb-2 text-center">
+<button class="text-on-surface-variant/40 hover:text-on-surface-variant transition-colors text-body-md font-medium group">
+                    Skip for now 
+                    <span class="inline-block transition-transform group-hover:translate-x-1">→</span>
+</button>
+</div>
+</div>
+</div>
+<!-- UI Background Elements -->
+<div class="fixed top-1/4 -left-32 w-96 h-96 bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<div class="fixed bottom-1/4 -right-32 w-96 h-96 bg-secondary/5 blur-[120px] rounded-full pointer-events-none"></div>
+<script>
+        // Simple micro-interactions
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('mousedown', () => btn.style.transform = 'scale(0.98)');
+            btn.addEventListener('mouseup', () => btn.style.transform = '');
+            btn.addEventListener('mouseleave', () => btn.style.transform = '');
+        });
+
+        // Toggle state logic for display
+        const toggle = document.getElementById('remember');
+        const toggleText = toggle.nextElementSibling.nextElementSibling;
+        toggle.addEventListener('change', (e) => {
+            toggleText.textContent = e.target.checked ? 'ON' : 'OFF';
+            toggleText.classList.toggle('text-primary', e.target.checked);
+            toggleText.classList.toggle('text-on-surface-variant', !e.target.checked);
+        });
+    </script>
+</body></html>

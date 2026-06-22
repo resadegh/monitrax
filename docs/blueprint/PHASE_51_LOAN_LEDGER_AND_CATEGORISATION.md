@@ -230,3 +230,28 @@ light/dark × desktop/mobile variant matrix (§18.7.2 dark-mode reviewer rule). 
 use the canonical navy dark tokens (`#050913` / `--editorial-ivory` dark), NOT Stitch's
 green-tinted default dark — record the approved screen IDs above in the converted component's
 file-header JSDoc (§18.4).
+
+## 10. Reconcile/Link dialog redesign — Stitch-first simplification (2026-06-22)
+
+Reza: the Link/reconcile modal grew into an "everything dialog" (4 co-equal tabs + same-vendor batch
++ many toggles + receipt + vendor card + resolution) — *"a bit crowded and complex … simplify without
+sacrificing functionality."* Redesigned **Stitch-first** (§18.2.1) on the in-app glass vocabulary
+(§18.7.2).
+
+**Thesis — one clear action + progressive disclosure.** At rest the modal shows the transaction +
+ONE recommended action (resolution-led: "Loan repayment — Bankwest · Confirm" / "Transfer to X", else a
+recommended category). Everything else (Categorise / Link to existing / Mark as transfer / Split /
+Create new / batch / receipt) folds under a quiet **"More options ▾"**. Nothing is removed — see the
+function-audit table in the PR; every capability is kept, just demoted.
+
+**Stitch artefacts** (`.stitch/designs/phase51-recon-redesign/`, project `1859462351962811110`) — all
+passed the §18.8 ≥9 gate (v1 desktop-dark 9.3/9.1 → refined for brand-correct sky→indigo primary on
+BOTH states; v2 expanded was 8.5, fixed):
+- Focused (recommended-action) state: desktop-dark `c1d12153` (9.3) · desktop-light `1a219881` (9.3) ·
+  mobile-light `6b4e490f` (9.3) · mobile-dark `b054603f` (9.1).
+- Expanded "More options" state: desktop-dark `e7a9afdc` (9.1) · desktop-light `88d0d73a` (9.1).
+
+**Build:** convert to React by restructuring `components/transactions/TransactionLinkDialog.tsx` —
+collapsed primary-action view (reuses the Phase 51.2 resolution matches) + a `showMore` disclosure that
+reveals the existing tabbed UI verbatim, preserving all wired handlers (link / create / split /
+transfer / investment / batch / receipt / vendor card / learning).
