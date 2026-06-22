@@ -475,3 +475,37 @@ Full Phase 51 + 52 documentation brought current in this PR:
 
 ### Doc-sync (CLAUDE.md §16 + §18.8)
 - [x] design system / Stitch → Phase 52 §7/§9 + this changelog; 4-variant matrix at ≥9 recorded; artefacts committed. No config/infra/identity/security surface changed.
+
+---
+
+## Session: loan-import-discoverability-and-inbox-booked-shk180 (Phase 51 follow-ups — import discoverability + Transaction Resolution Precedence)
+
+### Issue 1 — loan-statement import not discoverable
+- **Symptom (Reza):** imported-statement option not visible on the loan account; user looked on the loan **edit form** (which only has the Gemini "Attach document to auto-fill" for form fields), not the loan **detail dialog → Repayments tab** where the QIF/CSV/OFX import lives.
+- **Fix:** `LoanDetailDialog` gains an `initialTab` prop (controlled Tabs); Balances loan rows gain an "Import statement" action (mirrors AccountRowView) that deep-links to detail → Repayments. `openLoanDetail(loan, tab?)`.
+
+### Issue 2 — reconcile/link doesn't recognise loan repayments (the important one)
+- **Root cause (audit):** the Phase 51 ledger matcher lives ONLY in the loan Repayments tab ("Find offset matches", matches against the loan's LINKED offset account). The Activity reconcile/link dialog was **never wired to the ledger** — it matched loans by `loan.minRepayment` (0 for interest-only) → "No matching entries found" → fell back to batching all same-description "Periodical Payment To Bankwest" rows together (the cross-loan collision Phase 51 set out to solve).
+- **Reza directive:** categorisation must first check ALL the user's accounts/ledgers to see if a txn is a transfer / loan repayment / etc., BEFORE the KB engine.
+- **Fix (suggest-first, reconcile-surface-first — Reza decisions):**
+  - `lib/bookkeeping/resolveTransaction.ts` (NEW) — `resolveTransactionMatches()` matches a txn against all loan ledgers (exact amount + date window) + other accounts (opposite-direction sibling = transfer). Ranked candidates; nothing auto-applied.
+  - `linkRepaymentToTransaction()` (matchRepayments.ts) — confirm a ledger-repayment↔txn link from the Activity side (LoanTransaction→LINKED, funding txn→isTransfer + loanId). §12.11-safe.
+  - `/api/transactions/[id]/link` GET returns `resolution` + **suppresses same-vendor batch** when resolved; POST gains `action:'linkLoanRepayment'`.
+  - `TransactionLinkDialog` surfaces "Loan repayment — <loan> · Link as repayment" / "Transfer <to/from> <account> · Mark as transfer" at the TOP of Suggested, above categorisation.
+
+### Files
+- NEW `lib/bookkeeping/resolveTransaction.ts`; `lib/bookkeeping/loanLedger/matchRepayments.ts` (+`linkRepaymentToTransaction`); `app/api/transactions/[id]/link/route.ts` (resolution GET + suppress batch + linkLoanRepayment POST); `components/transactions/TransactionLinkDialog.tsx` (resolution UI); `components/loans/LoanDetailDialog.tsx` (`initialTab`); `app/dashboard/balances/page.tsx` (loan-row import entry); docs.
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- `linkRepaymentToTransaction` — `prisma.unifiedTransaction.updateMany({ where:{ id, userId }, data:{ isTransfer:true, loanId }})` + `loanTransaction.update`.
+  1. **`where` matches:** the single txn the user explicitly picked in the dialog (by id, scoped to userId) + the one ledger row.
+  2. **Columns overwritten:** `isTransfer` (→true), `loanId` (→ the loan); LoanTransaction `matchStatus/matchedTransactionId/matchConfidence`. No user-entered amount/description/category touched.
+  3. **Guard:** id + userId; the action IS the user's explicit confirmation in the Link dialog.
+  - User confirmation: NOT REQUIRED — user-initiated, own rows, reversible (unlink).
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `eslint` clean on changed files (1 pre-existing exhaustive-deps warning on the existing loadMatches effect — not introduced here).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (loan import discoverability + resolution precedence) → Phase 51 doc §6 (51.2) + this changelog. No design-token/config/infra/identity/security surface changed; no schema change.

@@ -13,6 +13,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
+import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
@@ -67,7 +69,9 @@ function learnCanonicalFromLink(args: {
 }
 
 interface LinkRequest {
-  action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment';
+  action: 'link' | 'create' | 'update' | 'unlink' | 'transfer' | 'investment' | 'linkLoanRepayment';
+  /** For linkLoanRepayment — the imported ledger repayment row to link this txn to. */
+  loanTransactionId?: string;
   type?: 'income' | 'expense' | 'loan';
   targetId?: string; // For link/update actions
   updateAmount?: boolean; // Whether to update the linked entry's amount
@@ -737,6 +741,32 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             { error: 'Invalid type for update action' },
             { status: 400 }
           );
+        }
+
+        case 'linkLoanRepayment': {
+          // Phase 51.2 — confirm a resolution-surfaced loan-repayment match:
+          // links this offset/funding transaction to the imported ledger
+          // repayment, marks it isTransfer (principal out of spending) + sets
+          // loanId. The category KB write-back is deliberately skipped — a
+          // repayment is not a merchant categorisation.
+          if (!body.loanTransactionId) {
+            return NextResponse.json(
+              { error: 'loanTransactionId required for linkLoanRepayment action' },
+              { status: 400 }
+            );
+          }
+          const result = await linkRepaymentToTransaction(
+            userId,
+            body.loanTransactionId,
+            transactionId
+          );
+          if (!result.ok) {
+            return NextResponse.json(
+              { error: 'Could not link this transaction to the loan repayment' },
+              { status: 404 }
+            );
+          }
+          return NextResponse.json({ success: true, message: 'Linked to loan repayment' });
         }
 
         case 'unlink': {
@@ -1496,6 +1526,22 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
         }
       }
 
+      // Phase 51.2 — Transaction Resolution Precedence: BEFORE offering merchant
+      // categorisation, check the user's own loans + accounts. A txn that is
+      // really a loan repayment or an internal transfer must be surfaced as such
+      // (and must NOT be batch-grouped with same-description payments to OTHER
+      // loans — the bug Reza hit). Best-effort; a failure degrades to no match.
+      let resolution = { loanRepayments: [], transfers: [] } as Awaited<
+        ReturnType<typeof resolveTransactionMatches>
+      >;
+      try {
+        resolution = await resolveTransactionMatches(userId, transactionId);
+      } catch {
+        // non-fatal — fall through to ordinary categorisation suggestions
+      }
+      const hasResolution =
+        resolution.loanRepayments.length > 0 || resolution.transfers.length > 0;
+
       return NextResponse.json({
         transaction: {
           id: transaction.id,
@@ -1511,13 +1557,18 @@ export const GET = withPermission<RouteContext>('transaction.read', async (reque
           investmentAccountId: transaction.investmentAccountId,
         },
         currentLink,
+        // Phase 51.2 — structural matches (loan repayment / transfer) take
+        // precedence; the dialog surfaces these above categorisation.
+        resolution,
         suggestedMatches: matches.slice(0, 10), // Increased to show all rental property options
         // Suggested category for creating new expenses based on transaction prediction or learned mapping
         suggestedCategory: learnedCategory || mappedCategory || kbSuggestedCategory,
         // Learned category from previous user categorizations
         learnedCategory,
-        // Same-vendor uncategorized transactions for batch categorization
-        sameVendorTransactions,
+        // Same-vendor batch — SUPPRESSED when this txn resolves to a loan
+        // repayment / transfer (never batch a repayment as an expense, and never
+        // group repayments across different loans).
+        sameVendorTransactions: hasResolution ? [] : sameVendorTransactions,
         // Phase 30: Transaction pattern analysis for reconciliation
         transactionPattern,
         availableEntries: {
