@@ -347,3 +347,24 @@ Resolution + documentation
 ---
 
 *All CDR requirements verified against docs/blueprint/CDR_BASIQ_COMPLIANCE_MATRIX.md, docs/operational/security/03_CDR_COMPLIANCE.md, and docs/policy/CDR_DATA_RETENTION_SCHEDULE.md. See TRACKING_REFERENCE.md for source verification.*
+
+---
+
+## Shared Categorisation KB — de-identified cross-user learning (Phase 52)
+
+Monitrax operates a de-identified, cross-user categorisation knowledge base (Phase 52). BAU + CDR
+obligations:
+
+- **De-identified by construction.** The shared store (`transaction_signatures`) holds only merchant
+  patterns + aggregate votes — **no userId, amount, date, or balance**. The PII-scrubber rejects
+  transfers/PII before any write; patterns graduate to shared only at **k = 5 distinct users**
+  (k-anonymity). Procedure: `docs/policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md`.
+- **Never feed CDR/Basiq enrichment output into the shared KB.** CDR-derived data is consent/purpose-
+  bound; the KB is fed only by (a) users' own de-identified confirmations and (b) open/licensed +
+  public-fact seeds.
+- **Disclosure:** Privacy Policy §4.1/§6.2 + CDR consent notice + `policy/CDR_DATA_MINIMISATION.md`.
+  Before `KB_WRITE_ENABLED` goes on, the de-id procedure must be signed off and the privacy-policy PDF
+  (with §4.1) published.
+- **Operations:** flags, endpoints (seed + weekly housekeeping), monitoring, troubleshooting →
+  `docs/operational/runbooks/14_CATEGORISATION_KB_OPERATIONS.md`. Compliance posture row →
+  `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`.

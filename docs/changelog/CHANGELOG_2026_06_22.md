@@ -352,3 +352,14 @@
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (fuzzy prefix) → Phase 52 doc §7 (52.5a ✅; 52.5b embeddings + 52.5c UI scoped as larger follow-ups).
+
+### Doc-sync sweep (Reza directive — "update all relevant documents into 1181")
+Full Phase 51 + 52 documentation brought current in this PR:
+- `docs/blueprint/MASTER_BLUEPRINT.md` — added **Phase 51 + Phase 52** rows to the phase-status table (§3.4).
+- `docs/00_INDEX.md` — indexed `PHASE_51_*` + `PHASE_52_*`.
+- `docs/operational/runbooks/14_CATEGORISATION_KB_OPERATIONS.md` (NEW) — **BAU runbook**: flags, seed/housekeeping endpoints, CRON_SECRET, Cloud Scheduler setup, KB-health monitoring, re-seed, troubleshooting, compliance guardrails. Indexed in `operational/00_INDEX.md`.
+- `docs/bau-framework/06_CDR_COMPLIANCE_OPERATIONS.md` — KB de-identified cross-user learning section (CDR posture + links).
+- `docs/implementation/04_RECENTLY_COMPLETED.md` — Phase 51.1 + Phase 52 completion entries.
+- `docs/implementation/02_UP_NEXT.md` — Phase 52 status → ENGINE SHIPPED + LIVE (52.5b/c remaining).
+- `docs/IMPLEMENTATION_PLAN.md` — hub Last updated.
+- (Compliance already merged earlier: `policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md`, `compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md`, privacy policy §4.1/§6.2, `policy/CDR_DATA_MINIMISATION.md`, CDR consent notice.)

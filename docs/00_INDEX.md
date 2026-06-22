@@ -93,6 +93,8 @@ The B2B2C surface is **demo-complete end-to-end**. Phase 32B + 32C + 33a-d/g + 4
 | [PHASE_39_MY_WEALTH_REDESIGN.md](blueprint/PHASE_39_MY_WEALTH_REDESIGN.md) | v4 tile pattern shipped; propagation parked | ACTIVE |
 | **Phase 50 — AI Document Router** |  |  |
 | [PHASE_50_AI_DOCUMENT_ROUTER.md](blueprint/PHASE_50_AI_DOCUMENT_ROUTER.md) | Recognise → attach-or-create → file. Phase A ✅ (scan fix + ASSET link); Phase B ~ (storage quota ✅, GCS cut-over blocked on provisioning, attach-to-existing queued); Phase C queued | ACTIVE |
+| [PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md](blueprint/PHASE_51_LOAN_LEDGER_AND_CATEGORISATION.md) | Loan ledger + repayment matching + interest/principal tax split (51.1 ✅ shipped); Repayments tab | ACTIVE |
+| [PHASE_52_SHARED_CATEGORISATION_KB.md](blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md) | De-identified cross-user categorisation KB (RAG) — engine live + seeded; 52.5b embeddings + 52.5c UI remain. Ops: runbook 14; compliance: `policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md` | ACTIVE |
 | PHASE_01 through PHASE_31 | Pre-B2B2C phase specifications (~47 files) | Various |
 | PHASE_E_GCP_SERVICE_ENABLEMENT.md | GCP service enablement plan | ACTIVE |
 
