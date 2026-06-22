@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Link2, Plus, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp } from 'lucide-react';
+import { Link2, Plus, X, Check, AlertTriangle, Loader2, Home, Landmark, Briefcase, DollarSign, Package, ArrowRightLeft, TrendingUp, ChevronRight, ChevronLeft, Sparkles, Scissors } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 import {
   Dialog,
@@ -21,7 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -225,6 +225,9 @@ export function TransactionLinkDialog({
   // transaction + ONE recommended action; the full tabbed UI (All / Create /
   // Split / batch) reveals under "More options". Reset closed on each open.
   const [showMore, setShowMore] = useState(false);
+  // Phase 51 redesign — within "More options", a single focused sub-view at a
+  // time (slim-row menu → one section), replacing the old 4-tab wall.
+  const [moreView, setMoreView] = useState<'menu' | 'match' | 'all' | 'create' | 'split'>('menu');
 
   // Create new form state
   const [newName, setNewName] = useState('');
@@ -297,6 +300,7 @@ export function TransactionLinkDialog({
       setTransactionPattern(null);
       setResolution({ loanRepayments: [], transfers: [] });
       setShowMore(false);
+      setMoreView('menu');
       setSuccess(null);
       setError(null);
     }
@@ -798,12 +802,17 @@ export function TransactionLinkDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-600 dark:text-sky-400">
+            Link transaction
+          </p>
           <DialogTitle className="flex items-center gap-2">
             <Link2 className="h-5 w-5" />
             Link Transaction
           </DialogTitle>
           <DialogDescription>
-            Link this transaction to an existing {isIncome ? 'income' : 'expense or loan repayment'} entry or create a new one
+            {hasResolution
+              ? 'We think we know what this is.'
+              : `How would you like to handle this ${isIncome ? 'income' : 'transaction'}?`}
           </DialogDescription>
         </DialogHeader>
 
@@ -835,7 +844,7 @@ export function TransactionLinkDialog({
               )}
             </div>
             <div className="text-right">
-              <p className={`font-semibold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
+              <p className={`text-2xl font-semibold tabular-nums tracking-tight ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
                 {isIncome ? '+' : '-'}{formatCurrency(transaction.amount)}
               </p>
               <Badge variant={isIncome ? 'default' : 'secondary'}>
@@ -956,8 +965,11 @@ export function TransactionLinkDialog({
             {resolutionCards}
             {!hasResolution && (
               <Button
-                onClick={() => setShowMore(true)}
-                className="w-full"
+                onClick={() => {
+                  setMoreView('create');
+                  setShowMore(true);
+                }}
+                className="w-full bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 text-white border-0"
                 disabled={saving}
               >
                 <Plus className="h-4 w-4 mr-2" />
@@ -966,22 +978,57 @@ export function TransactionLinkDialog({
             )}
             <button
               type="button"
-              onClick={() => setShowMore(true)}
+              onClick={() => {
+                setMoreView('menu');
+                setShowMore(true);
+              }}
               className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-1.5"
             >
               {hasResolution ? 'Not a repayment? More options' : 'More options'} ▾
             </button>
           </div>
         ) : (
-          <Tabs defaultValue="match" className="mt-2">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="match">
-                Suggested ({suggestedMatches.length})
-              </TabsTrigger>
-              <TabsTrigger value="all">All Entries</TabsTrigger>
-              <TabsTrigger value="create">Create New</TabsTrigger>
-              <TabsTrigger value="split">Split</TabsTrigger>
-            </TabsList>
+          <Tabs
+            value={moreView}
+            onValueChange={(v) => setMoreView(v as typeof moreView)}
+            className="mt-2"
+          >
+            {/* Phase 51 redesign — "More options" is a calm slim-row menu that
+                navigates to ONE focused section at a time (not a 4-tab wall).
+                The menu has no matching TabsContent, so only it renders; each
+                row sets moreView to the section, shown with a Back affordance. */}
+            {moreView === 'menu' ? (
+              <div className="space-y-3">
+                {resolutionCards}
+                <div className="space-y-1.5">
+                  {([
+                    { v: 'create', icon: Plus, label: isIncome ? 'Categorise as income' : 'Categorise as an expense' },
+                    { v: 'match', icon: Sparkles, label: `Suggested matches${suggestedMatches.length ? ` (${suggestedMatches.length})` : ''}` },
+                    { v: 'all', icon: Link2, label: 'Link to an existing entry' },
+                    { v: 'split', icon: Scissors, label: 'Split this transaction' },
+                  ] as const).map(({ v, icon: Icon, label }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setMoreView(v)}
+                      className="w-full flex items-center gap-3 p-3 rounded-lg border border-border bg-card/50 hover:bg-accent hover:border-foreground/20 transition-colors text-left"
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium flex-1">{label}</span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setMoreView('menu')}
+                className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" /> Back to options
+              </button>
+            )}
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">

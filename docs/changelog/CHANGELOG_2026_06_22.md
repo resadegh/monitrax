@@ -545,3 +545,16 @@ Full Phase 51 + 52 documentation brought current in this PR:
 - [x] `eslint` — only the pre-existing loadMatches exhaustive-deps warning (not introduced here).
 
 ### Doc-sync (§16 + §18): design artefacts shipped in #1184; this commit is the React conversion. Phase 51 doc §10 + this changelog.
+
+---
+
+## Session: recon-link-v3-fidelity-shk180 (Phase 51 — dialog v3 visual fidelity follow-up)
+
+Reza feedback on the #1185 ship: the dialog "almost looks the same as before … More options is exactly like before … doesn't look like the v3 Stitch." Correct — #1185 applied the *structure* (collapsed view + disclosure) but reused the old hero styling + the old 4-tab wall. This commit brings the visual vocabulary in line with the approved v3:
+- Header: sky eyebrow "Link transaction" + warm subtitle ("We think we know what this is." when a resolution match exists, else "How would you like to handle this?").
+- Hero: larger `text-2xl tabular-nums` amount.
+- Collapsed primary CTA: sky→indigo brand gradient (was default green); opens Create directly.
+- **"More options" is now a slim-row menu** (Categorise / Suggested matches / Link to existing / Split) that navigates to ONE focused section at a time with a "Back to options" affordance — replacing the 4-tab wall. Controlled `moreView` state; resets to 'menu' on open.
+
+### Files: `components/transactions/TransactionLinkDialog.tsx`. tsc + eslint clean (pre-existing loadMatches warning only).
+### Doc-sync (§16/§18): matches the merged v3 artefacts in `.stitch/designs/phase51-recon-redesign/`; this changelog.
