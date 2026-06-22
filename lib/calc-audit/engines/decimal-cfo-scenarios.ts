@@ -102,6 +102,13 @@ function makeSnapshot(input: MinimalSnapshotInput = {}): MasterFinancialSnapshot
       keptAfterEssentials: 0,
       keptMargin: 0,
       freeCashDays: 0,
+      // Phase 1 (cashflow-actuals) — not exercised by these scenarios; zeroed.
+      actualMonthlyOutflow: 0,
+      actualMonthlyInflow: 0,
+      actualNetCashflow: 0,
+      actualAvgMonthlyOutflow: 0,
+      actualOutflowByCategory: {},
+      hasActualData: false,
     },
     netWorth: { netWorth: input.netWorth ?? 0 } as MasterFinancialSnapshot['netWorth'],
     propertyPortfolioValue: input.propertyPortfolioValue ?? 0,

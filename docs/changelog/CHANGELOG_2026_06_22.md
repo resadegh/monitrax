@@ -635,3 +635,81 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 
 ### Files: `app/dashboard/activity/page.tsx`, `components/bookkeeping/ConfidenceReviewCard.tsx`. tsc + eslint clean (pre-existing warning only).
 ### Doc-sync (§16): this changelog. No config/schema/infra change.
+---
+
+## Session: cashflow-actuals-phase1-shk180 (Cashflow correctness Phase 1 — actual-transaction headlines)
+
+### Changes Made
+- **Type**: Fix (financial correctness) — headline cashflow tiles were computed from DECLARED
+  records (Expense/Income/Loan × frequency) and silently dropped uncategorised / unlinked OUT
+  transactions, producing a falsely optimistic surplus / margin / runway. This phase adds an
+  ACTUAL-transaction path to the canonical snapshot and repoints the 5 worst-offending surfaces.
+- **Scope**: `lib/calculations/actualCashflow.ts` (new pure engine), `lib/services/masterFinancialService.ts`
+  (new actual fields on `quickMetrics`), 5 API routes.
+- **Root Cause**: `calculateCashflow()` (cashflowOrchestrator) only sees declared records. The only
+  transactions master loaded were `incomeId/expenseId NOT null` (for budgetVariance) — every
+  uncategorised/unlinked OUT transaction was invisible to every headline number.
+- **Solution**: extracted the correct aggregation pattern (already present in `lib/tie/analytics.ts`
+  + `lib/calculations/moneyStoryTrend.ts`) into one pure, unit-tested engine and surfaced its output
+  on `quickMetrics` as ADDITIVE fields (declared fields untouched for back-compat).
+
+### New canonical engine — `lib/calculations/actualCashflow.ts`
+- `computeActualCashflow(transactions, { now })` → `{ currentMonthOutflow, currentMonthInflow,
+  currentMonthNet, avgMonthlyOutflow, avgMonthlyInflow, outflowByCategory, hasActualData }`.
+- Rules: excludes `isTransfer === true`; `Math.abs(amount)`; OUT/IN by `direction`; null category →
+  `'Uncategorised'` (INCLUDED in totals); trailing-3-FULL-month average with a fixed /3 divisor
+  (a zero-spend month is a real data point). Empty input → all zeros, `hasActualData=false`.
+
+### New master snapshot fields (additive — `quickMetrics`)
+- `actualMonthlyOutflow` — current calendar-month OUT (abs, ex-transfers, incl. Uncategorised)
+- `actualMonthlyInflow` — current calendar-month IN
+- `actualNetCashflow` — inflow − outflow (can be negative)
+- `actualAvgMonthlyOutflow` — trailing-3-full-month avg OUT (for rate/runway tiles)
+- `actualOutflowByCategory` — current-month OUT by category (null → 'Uncategorised')
+- `hasActualData` — true if any non-transfer txn in the trailing ~4-month window
+- New SEPARATE fetch of ALL `unifiedTransaction` rows (trailing 4 months, `{date, amount, direction,
+  categoryLevel1, isTransfer}`). The existing linked-only fetch (budgetVariance) is UNCHANGED.
+
+### 5 repoints (headline = actual; declared kept for plan/back-compat)
+1. `app/api/cashflow/intelligence/route.ts` `buildWaterfallData` — money-out + per-category + surplus
+   now from `actualOutflowByCategory` + `actualMonthlyInflow` (no separate loan line — loans already
+   appear as OUT txns). Master fetched once, reused for saving-opportunities.
+2. `app/api/cashflow/intelligence/route.ts` `buildBudgetComparison` — the "Actual" column now from
+   `actualOutflowByCategory` (was `expense.amount × frequency` — i.e. Actual==Plan).
+3. `app/api/dashboard/insights/route.ts` Money-Story — `kept`/`keptMargin`/`surplus` switch the spend
+   side to actuals (kept = net income − actualMonthlyOutflow) when `hasActualData`, else declared.
+   Ribbon left as-is (already actual).
+4. `app/api/safety-net/route.ts` — months-covered + scenario survivability now use
+   `actualAvgMonthlyOutflow` from master; route thinned to use the snapshot (removed local reduces).
+5. `app/api/cashflow/summary/route.ts` `buildSummaryInput` — `netSurplus`/spend use actual outflow so
+   the Gemini narrative stops asserting a false surplus.
+
+### Files Modified
+- `lib/calculations/actualCashflow.ts` — NEW pure engine
+- `tests/calculations/actualCashflow.test.ts` — NEW (10 tests: transfers, uncategorised, abs, IN/OUT
+  split, trailing average, empty input)
+- `lib/services/masterFinancialService.ts` — new fetch + helper call + 6 new quickMetrics fields + type
+- `lib/calc-audit/engines/decimal-cfo-scenarios.ts` — `makeSnapshot()` literal extended for the new fields
+- `app/api/cashflow/intelligence/route.ts`, `app/api/dashboard/insights/route.ts`,
+  `app/api/safety-net/route.ts`, `app/api/cashflow/summary/route.ts` — repoints
+
+### Build Status
+- [x] `npx tsc --noEmit` clean (0 errors)
+- [x] `npx eslint --no-ignore` clean on all touched files (0 errors)
+- [x] `npm run build` passes
+- [x] `npx vitest run tests/calculations` (108) + `tests/cfo` (259) green
+
+### Documentation Updated
+- `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` — noted the actual-transaction fields on the master snapshot
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — workstream entry
+
+### Doc-sync (CLAUDE.md §16)
+- [architecture] `docs/architecture/01_ARCHITECTURE_OVERVIEW.md` — master snapshot now exposes actual-transaction cashflow fields alongside declared.
+
+### Phase 2 still needed
+- Repoint remaining declared-only surfaces (budget page, debt-freedom runway, health-score savings-rate
+  input, CFO scenarios baseline) to the actual fields.
+- Surface plan-vs-actual explicitly in the UI (show both, label clearly) rather than swapping silently.
+- Consider promoting `essential vs discretionary` onto the actual breakdown (needs category→essential map).
+- Add a confidence/coverage signal so a partial-month or low-transaction-coverage user isn't shown an
+  understated actual as gospel.

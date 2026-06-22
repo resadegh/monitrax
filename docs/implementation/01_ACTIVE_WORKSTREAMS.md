@@ -8,6 +8,21 @@
 
 ## 🟡 Active Workstreams
 
+### 0·CASHFLOW-ACTUALS. Headline cashflow correctness — actual vs declared (Phase 1)
+
+- **Status:** 🟡 ACTIVE — **Phase 1 shipped** (foundation + 5 repoints); Phase 2 queued.
+- **Started:** 2026-06-22.
+- **Owner:** Reza (decisions) + Claude (build).
+- **Last touched:** 2026-06-22 — Phase 1 built on branch `claude/cashflow-actuals-phase1-shk180`.
+- **Phase checklist:**
+  - [x] **Audit:** confirmed headline tiles compute from DECLARED records and silently drop uncategorised/unlinked OUT transactions → falsely optimistic surplus/margin/runway.
+  - [x] **Phase 1A — foundation:** new pure engine `lib/calculations/actualCashflow.ts` (`computeActualCashflow()`, 10 tests) + new actual fields on master `quickMetrics` (`actualMonthlyOutflow`/`Inflow`/`actualNetCashflow`/`actualAvgMonthlyOutflow`/`actualOutflowByCategory`/`hasActualData`) computed from ALL non-transfer `UnifiedTransaction` (trailing ~4 mo). Declared fields untouched (back-compat).
+  - [x] **Phase 1B — repoint 5 worst offenders:** cashflow waterfall + budget-vs-actual (`/api/cashflow/intelligence`), Money-Story kept/margin (`/api/dashboard/insights`), safety-net survivability (`/api/safety-net`), Gemini cashflow narrative (`/api/cashflow/summary`).
+  - [ ] **Phase 2:** remaining declared-only surfaces (budget page, debt-freedom runway, health-score savings-rate input, CFO baseline); surface plan-vs-actual explicitly in UI (show both); essential/discretionary split on actuals; transaction-coverage confidence signal.
+- **Risk:** silent semantic shift (kept/margin now mean "after actual spend"); mitigated by `hasActualData` gate (falls back to declared for no-transaction users).
+- **Blocking:** none. PR opened by parent.
+- **Why this matters:** the headline numbers were lying — a user with uncategorised spending saw a surplus they don't have. Financial-adviser lens: never quote a number we can't trace to reality; the actual engine makes the headline honest.
+
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
