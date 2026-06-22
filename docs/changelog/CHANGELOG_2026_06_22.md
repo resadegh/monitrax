@@ -523,3 +523,25 @@ Full Phase 51 + 52 documentation brought current in this PR:
 ### Next (same PR): React restructure of TransactionLinkDialog (collapsed primary action + showMore disclosure, all handlers preserved).
 
 ### Doc-sync (§16): Phase 51 doc §10 + this changelog.
+
+---
+
+## Session: recon-link-react-conversion-shk180 (Phase 51 — reconcile/link dialog React conversion)
+
+### Changes
+- Converted the approved Stitch redesign (PR #1184) into the live `TransactionLinkDialog`:
+  - **Collapsed one-clear-action view** at rest: leads with the Phase 51.2 resolution cards (loan repayment / transfer); when none, a single primary "Categorise this transaction" CTA. A quiet "More options ▾" / "Not a repayment? More options" reveals the rest.
+  - **Full tabbed UI (Suggested / All / Create / Split) reveals under `showMore`** (or automatically when a `currentLink` already exists, so unlink/change stays reachable).
+  - **Same-vendor batch gated behind `showMore`** (was always-on) — keeps the collapsed view to one action; still server-suppressed when a resolution match exists.
+  - Resolution cards extracted to a shared `resolutionCards` const (no duplication between collapsed + expanded).
+  - **No function removed** — link / create / split / transfer / investment / batch / receipt / vendor card / merchant-learning all preserved, just demoted behind disclosure.
+- `showMore` resets closed on every dialog open.
+
+### Files
+- `components/transactions/TransactionLinkDialog.tsx` — showMore state + collapsed view + disclosure gating + shared resolution const.
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `eslint` — only the pre-existing loadMatches exhaustive-deps warning (not introduced here).
+
+### Doc-sync (§16 + §18): design artefacts shipped in #1184; this commit is the React conversion. Phase 51 doc §10 + this changelog.

@@ -221,6 +221,10 @@ export function TransactionLinkDialog({
 
   // Phase 51.2 — structural resolution (loan repayment / transfer) surfaced first.
   const [resolution, setResolution] = useState<Resolution>({ loanRepayments: [], transfers: [] });
+  // Phase 51 redesign — progressive disclosure. At rest the dialog shows the
+  // transaction + ONE recommended action; the full tabbed UI (All / Create /
+  // Split / batch) reveals under "More options". Reset closed on each open.
+  const [showMore, setShowMore] = useState(false);
 
   // Create new form state
   const [newName, setNewName] = useState('');
@@ -292,6 +296,7 @@ export function TransactionLinkDialog({
       setLearnMerchant(true);
       setTransactionPattern(null);
       setResolution({ loanRepayments: [], transfers: [] });
+      setShowMore(false);
       setSuccess(null);
       setError(null);
     }
@@ -352,6 +357,8 @@ export function TransactionLinkDialog({
       setTransactionPattern(data.transactionPattern || null);
       // Phase 51.2: structural resolution matches (loan repayment / transfer)
       setResolution(data.resolution ?? { loanRepayments: [], transfers: [] });
+      // Phase 51 redesign — start collapsed (one clear action) on every open.
+      setShowMore(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load matches');
     } finally {
@@ -721,6 +728,72 @@ export function TransactionLinkDialog({
   const categoryOptions = isIncome ? INCOME_TYPES : EXPENSE_CATEGORIES;
   const categoryLabels = isIncome ? INCOME_TYPE_LABELS : EXPENSE_CATEGORY_LABELS;
 
+  // Phase 51 redesign — the structural "recommended action" cards (loan
+  // repayment / transfer), reused by BOTH the collapsed one-clear-action view
+  // and (when expanded) the Suggested tab. Defined once to avoid duplication.
+  const hasResolution =
+    resolution.loanRepayments.length > 0 || resolution.transfers.length > 0;
+  const resolutionCards = hasResolution ? (
+    <div className="space-y-2">
+      {resolution.loanRepayments.map((m) => (
+        <div
+          key={m.loanTransactionId}
+          className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold flex items-center gap-1.5">
+                <Landmark className="h-4 w-4 text-emerald-600 shrink-0" />
+                Loan repayment — {m.loanName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Matches your statement: {formatCurrency(m.amount)} · {formatDate(m.date)}
+                {m.interestPortion != null && ` · ${formatCurrency(m.interestPortion)} interest (deductible)`}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => handleLinkLoanRepayment(m.loanTransactionId)}
+              disabled={saving}
+              className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+            >
+              <Link2 className="h-3 w-3 mr-1" />
+              Link as repayment
+            </Button>
+          </div>
+        </div>
+      ))}
+      {resolution.transfers.map((m) => (
+        <div
+          key={m.transactionId}
+          className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
+        >
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold flex items-center gap-1.5">
+                <ArrowRightLeft className="h-4 w-4 text-amber-600 shrink-0" />
+                Transfer {isIncome ? 'from' : 'to'} {m.accountName}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Matches {formatCurrency(m.amount)} · {formatDate(m.date)} in {m.accountName}
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleMarkTransferTo(m.accountId)}
+              disabled={saving}
+              className="shrink-0"
+            >
+              <ArrowRightLeft className="h-3 w-3 mr-1" />
+              Mark as transfer
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
@@ -772,8 +845,9 @@ export function TransactionLinkDialog({
           </div>
         </div>
 
-        {/* Same-Vendor Transactions */}
-        {sameVendorTransactions.length > 0 && (
+        {/* Same-Vendor Transactions — Phase 51 redesign: batch lives under
+            "More options" (showMore), so the collapsed view stays one-action. */}
+        {showMore && sameVendorTransactions.length > 0 && (
           <div className="p-3 bg-purple-50 dark:bg-purple-950/30 rounded-lg border border-purple-200 dark:border-purple-800">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -873,6 +947,31 @@ export function TransactionLinkDialog({
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
+        ) : !showMore && !currentLink ? (
+          /* Phase 51 redesign — collapsed ONE clear action. The recommended
+             structural action (loan repayment / transfer) leads; if none, a
+             single primary "Categorise" CTA. Everything else is one tap away
+             under "More options" (which reveals the full tabbed UI below). */
+          <div className="mt-2 space-y-3">
+            {resolutionCards}
+            {!hasResolution && (
+              <Button
+                onClick={() => setShowMore(true)}
+                className="w-full"
+                disabled={saving}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {isIncome ? 'Categorise this income' : 'Categorise this transaction'}
+              </Button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowMore(true)}
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors py-1.5"
+            >
+              {hasResolution ? 'Not a repayment? More options' : 'More options'} ▾
+            </button>
+          </div>
         ) : (
           <Tabs defaultValue="match" className="mt-2">
             <TabsList className="grid w-full grid-cols-4">
@@ -886,71 +985,9 @@ export function TransactionLinkDialog({
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">
-              {/* Phase 51.2 — Transaction Resolution: structural matches first.
-                  A loan repayment / internal transfer is recognised against the
-                  user's own ledgers + accounts BEFORE any merchant categorisation
-                  (so same-description repayments to different loans are never
-                  batched together). */}
-              {(resolution.loanRepayments.length > 0 || resolution.transfers.length > 0) && (
-                <div className="space-y-2 mb-1">
-                  {resolution.loanRepayments.map((m) => (
-                    <div
-                      key={m.loanTransactionId}
-                      className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold flex items-center gap-1.5">
-                            <Landmark className="h-4 w-4 text-emerald-600 shrink-0" />
-                            Loan repayment — {m.loanName}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Matches your statement: {formatCurrency(m.amount)} · {formatDate(m.date)}
-                            {m.interestPortion != null && ` · ${formatCurrency(m.interestPortion)} interest (deductible)`}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handleLinkLoanRepayment(m.loanTransactionId)}
-                          disabled={saving}
-                          className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
-                        >
-                          <Link2 className="h-3 w-3 mr-1" />
-                          Link as repayment
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {resolution.transfers.map((m) => (
-                    <div
-                      key={m.transactionId}
-                      className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold flex items-center gap-1.5">
-                            <ArrowRightLeft className="h-4 w-4 text-amber-600 shrink-0" />
-                            Transfer {isIncome ? 'from' : 'to'} {m.accountName}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            Matches {formatCurrency(m.amount)} · {formatDate(m.date)} in {m.accountName}
-                          </p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleMarkTransferTo(m.accountId)}
-                          disabled={saving}
-                          className="shrink-0"
-                        >
-                          <ArrowRightLeft className="h-3 w-3 mr-1" />
-                          Mark as transfer
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              {/* Phase 51.2 resolution cards (shared) — also shown in the
+                  collapsed one-clear-action view above; here for the expanded tab. */}
+              {resolutionCards}
               {/* Transaction Pattern Alert */}
               {transactionPattern && transactionPattern.count >= 3 && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">
