@@ -1238,9 +1238,16 @@ function ActivityPageContent() {
         }}
         hasMoreTransactions={transactions.length > 1}
         onNavigateNext={() => {
+          // Advance to the transaction AFTER the current one. Fix (2026-06-23):
+          // previously this always reopened current[0], so "Skip for now" (which
+          // doesn't change the list) re-opened the SAME transaction and looked
+          // broken. After a confirm/categorise the row is gone (idx === -1), so
+          // we fall back to current[0] (the new first) — that path still works.
           const current = transactionsRef.current;
-          if (current.length > 0) {
-            setLinkingTransaction(current[0]);
+          const idx = current.findIndex((t) => t.id === linkingTransaction?.id);
+          const next = idx >= 0 ? current[idx + 1] : current[0];
+          if (next) {
+            setLinkingTransaction(next);
           } else {
             setShowLinkDialog(false);
             setLinkingTransaction(null);

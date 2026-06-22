@@ -620,3 +620,18 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 
 ### Files: `docs/legal/07_ai_use_disclosure.md`. Doc-only; no code/schema/infra.
 ### Note: legal text — recommend Reza (and ideally legal counsel) confirm wording before merge/publish.
+
+---
+
+## Session: skip-button-and-tile-ssot-shk180 (reconcile Skip broken + AI-tile SSOT violation)
+
+### Bugs (Reza, 2026-06-23)
+1. In the reconcile/Link dialog, **"Skip for now" did nothing**.
+2. **SSOT violation:** the AI-bookkeeper tile showed "0 low — nothing waiting" while the Activity band chip below showed "Low · 283" — two different values for the same thing.
+
+### Root causes + fixes
+1. `app/dashboard/activity/page.tsx` `onNavigateNext` always reopened `current[0]`. On a Skip (which doesn't change the list), that re-opened the SAME first transaction → looked broken. Now it finds the current transaction's index and advances to the NEXT one (`idx + 1`); after a confirm/categorise the row is gone (`idx === -1`) so it falls back to `current[0]` (the new first) — that path still works. Closes when none remain.
+2. `components/bookkeeping/ConfidenceReviewCard.tsx` — the tile's medium/low **counts** used staging-only `medium`/`low`, while the Activity chips count the whole band (staging + booked = `+ txMedium/txLow`). The tile now shows `mediumCount = medium + txMedium` and `lowCount = low + txLow`, matching the chips (e.g. "Review 283 low"). `confirmBand('medium')` still bulk-confirms only the staging portion; booked rows route to the per-band review surface (`onReviewBand`). Single canonical band-count definition across both surfaces.
+
+### Files: `app/dashboard/activity/page.tsx`, `components/bookkeeping/ConfidenceReviewCard.tsx`. tsc + eslint clean (pre-existing warning only).
+### Doc-sync (§16): this changelog. No config/schema/infra change.
