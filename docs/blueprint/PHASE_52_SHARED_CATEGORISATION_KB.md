@@ -131,6 +131,58 @@ Evolve `MerchantMapping` into the two-tier (private + shared) model. **Seed** th
 semantically. Start with normalised-exact + token + MCC (deterministic, free); add embeddings only
 for the fuzzy tail (GCP-first, §12.7).
 
+## 6b. Scale, indexing & anti-bloat controls (Reza Q, 2026-06-21)
+
+**The key fact:** the `TransactionSignature` table is bounded by the number of **distinct merchant
+patterns**, not by transaction volume. 10M transactions from 100k users still collapse to ~tens of
+thousands of AU merchant signatures. The KB grows **asymptotically** (toward "all AU merchants"), not
+linearly with usage — *provided normalisation is good*. So the controls are:
+
+1. **Structural dedup (no pile-up by construction).** Every contribution does an **upsert** keyed on a
+   **UNIQUE index `(region, pattern, matchType)`** — a second occurrence of the same pattern NEVER
+   inserts a new row; it increments counts/votes in place. There is no "similar data piling up" because
+   identical normalised signatures are the same row.
+
+2. **Normalisation quality is control #1.** Weak normalisation = "WW METRO 1234" and "WOOLWORTHS 4521"
+   become separate rows (cardinality leak). Invest in the normaliser/scrubber; **monitor the
+   cardinality-to-transaction ratio** as the canary — if signature count grows ~linearly with
+   transactions, normalisation is leaking and needs tuning. Embeddings (§6) later collapse the fuzzy tail.
+
+3. **Indexing plan:**
+   - `TransactionSignature`: **unique** `(region, pattern, matchType)` (lookup + dedup key); index `mcc`;
+     **partial index on the graduated set** (`WHERE distinctUserCount >= k`, or an `isGlobal` flag) so the
+     hot shared-prior lookups scan a small subset; vector index (pgvector ivfflat/hnsw) added with embeddings.
+   - `SignatureContribution`: **`@@unique([signatureId, userId])`** (this is also the anti-bloat guarantee —
+     one row per user per pattern, ever), index `signatureId` (tallying), index `userId` (per-user reads +
+     account-reset deletion).
+   - Hot path = a single indexed equality lookup on `(region, pattern)` → stays fast at any scale.
+
+4. **Long-tail pruning.** Seen-by-one / sub-k **provisional** signatures that aren't reinforced within a
+   window (e.g. 12 months) are pruned by a scheduled job — they're low-value and likely noise. Only
+   **graduated** (≥k) patterns are kept indefinitely.
+
+5. **Vote compaction (optional, later).** For strongly-established signatures (distinctUserCount ≫ k,
+   stable high confidence), retain the aggregate `categoryVotes` + a capped/rolling sample rather than
+   every contribution row forever. Cap `categoryVotes` to **top-N categories + "other"** (never a
+   50-entry distribution).
+
+6. **Recency weighting / slow decay.** Weight recent confirmations higher so the KB stays current when a
+   merchant's category drifts, and stale patterns age out naturally — keeps it *useful* as it grows, not
+   just *bigger*.
+
+7. **Storage discipline.** Narrow columns; integer minor units for amount hints; **no raw description
+   stored** (only the de-identified signature + counts); JSON votes capped.
+
+8. **Housekeeping job (GCP-first §12.7).** A Cloud Scheduler job: prune stale provisionals, recompute
+   confidence, compact ledgers, and emit **KB-health metrics** — signature cardinality, cardinality/txn
+   ratio, **lookup hit-rate (% categorised without an LLM call)**, provisional-vs-graduated ratio, p95
+   lookup latency, table sizes. Hit-rate going up + cardinality flattening = the KB getting *richer*
+   without bloating.
+
+**Net control:** richer (more graduated patterns, better votes) while row-count stays bounded by the
+merchant universe — because dedup is the unique index, not an afterthought, and pruning + compaction trim
+the low-value tail.
+
 ## 7. Phasing (each step shippable + testable)
 
 - **52.1 — KB schema + write-back:** `TransactionSignature` table + the PII-scrub + k-anon
