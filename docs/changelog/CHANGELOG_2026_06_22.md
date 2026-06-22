@@ -591,3 +591,17 @@ On `/dashboard/activity`, clicking the "High · 83" band chip showed "No transac
 
 ### Files: `app/dashboard/activity/page.tsx`. tsc + eslint clean (pre-existing warning only).
 ### Doc-sync (§16): this changelog. No config/schema/infra change.
+
+---
+
+## Session: ai-use-disclosure-kb-shk180 (legal — disclose shared categorisation KB in AI Use Disclosure)
+
+### Context (Reza, 2026-06-22)
+Item 3 of the review session: ensure privacy/compliance docs needing user review are published. Finding: the 13 legal docs are ALREADY published at `/legal` (3 consent-captured at signup), and the **Privacy Policy §4.1 already fully discloses the shared categorisation KB**. The only gap: the **AI Use Disclosure** didn't mention the cross-user de-identified learning.
+
+### Change (DRAFT — needs Reza sign-off before merge)
+- `docs/legal/07_ai_use_disclosure.md` — added **§5.1 "Learning from your categorisations (shared knowledge base)"**, mirroring Privacy Policy §4.1 (de-identified patterns, k-anonymity, no PII/amounts/dates, user categorisations take precedence, not sold, not for general-AI training, CDR de-identification). Version bumped v1.0 → **v1.1-2026-06-23**.
+- AI Use Disclosure is a **supporting** (non-consent-captured) doc, so the version bump does not trigger re-consent.
+
+### Files: `docs/legal/07_ai_use_disclosure.md`. Doc-only; no code/schema/infra.
+### Note: legal text — recommend Reza (and ideally legal counsel) confirm wording before merge/publish.
