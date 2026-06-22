@@ -205,3 +205,27 @@
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (housekeeping job + cron endpoint) → Phase 52 doc §6b (item 8 ticked).
 - [ ] infra — **operator TODO**: create the Cloud Scheduler job once the KB is enabled (noted in doc).
+
+---
+
+## Session: phase52-enablement-shk180 (Phase 52 — enablement procedure + runbook)
+
+### Changes Made
+- **Type**: Compliance + operational docs (the build-gate artifacts for enabling the KB). No code.
+- **Why**: Reza asked for enablement guidance; the gate requires a written de-identification procedure
+  to sign off before flipping the flags.
+
+### Added / Updated
+- `docs/policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md` (NEW) — the sign-off artifact: what the shared KB
+  stores (aggregate-only, no userId/amount/date), the de-identification mechanism (scrubber rules),
+  k-anonymity second layer, re-identification risk assessment (low), reversibility, disclosure, and a
+  sign-off checklist.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` §10 — **enablement runbook** (staged: sign-off
+  → PDF regen → `KB_WRITE_ENABLED` → Scheduler job → let patterns graduate → `KB_READ_ENABLED` →
+  monitor; instant flag rollback).
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — status flipped DESIGN → **BUILT — GATED OFF**,
+  awaiting procedure sign-off + PDF regen.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] security / CDR posture + policy → de-identification procedure, compliance matrix, Phase 52 §10.
+- [ ] code / infra — none (operator enablement steps documented, not executed).
