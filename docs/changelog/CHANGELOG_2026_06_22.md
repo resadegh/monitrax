@@ -389,3 +389,35 @@ Full Phase 51 + 52 documentation brought current in this PR:
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] design system / process → CLAUDE.md §18.8 + Phase 52 doc §7 + this changelog.
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — KB write-back across ALL human confirmation surfaces)
+
+### Changes Made
+- **Type**: Feature (engine wiring) — make the shared categorisation KB learn from every genuine human categorisation path, not just the single-transaction edit.
+- **Scope**: `lib/categorisation/kb/`, `lib/bank/reviewQueue.ts`, `app/api/unified-transactions/{bulk-categorise,[id]}/route.ts`.
+- **Root cause (gap found on build per §10):** before this, only `PATCH /api/unified-transactions/[id]` fed the shared KB (`recordContribution`). The bulk/review confirmation paths — `bulk-categorise` (power-user "Categorise N selected"), `bulk-confirm` (the Phase 49 "AI bookkeeper" medium/low bands), the per-row "✓ Looks right" affordance, and the per-batch review route — all wrote the PRIVATE `merchantMapping` but **never fed the cross-user KB**. So the AI engine could not learn from the highest-volume categorisation paths.
+- **Solution:** one canonical learn-once helper `recordKbContribution()` (`lib/categorisation/kb/recordFromConfirmation.ts`, §12.2 SSOT) — encode triple → gate (`KB_WRITE_ENABLED`) → scrub → swallow. Wired into:
+  - `confirmReviewItem` (`lib/bank/reviewQueue.ts`) — covers bulk-confirm bands + per-row "✓ Looks right" + per-batch review in one place.
+  - `bulk-categorise` route — once per distinct merchant in the batch.
+  - single PATCH — refactored off the inline `recordContribution`/`encodeCategoryPath` onto the same helper.
+  - All callers pass the **canonical category triple** (same vocabulary the KB stores → no vote fragmentation).
+- **Echo-chamber-safe:** import-time AI auto-accept (`bulkConfirmAutoAccepted`) and `bulkConfirmHighBand` are deliberately NOT wired — only a genuine human confirm/edit/re-categorise is a real k-anonymity vote.
+
+### Link Transaction dialog — KB question (Reza, 2026-06-22)
+- Investigated: the Link Transaction dialog (`/api/transactions/[id]/link`) runs in the **legacy flat-enum** category vocabulary; the KB runs in the canonical 3-level hierarchy. Wiring it directly would fragment KB graduation + surface mismatched names. **Deliberately deferred** to a thin `enum ↔ canonical` vocabulary bridge (Phase 52 doc §8b; `02_UP_NEXT.md`).
+
+### Files Modified
+- `lib/categorisation/kb/recordFromConfirmation.ts` (NEW) — canonical learn-once helper.
+- `lib/bank/reviewQueue.ts` — `confirmReviewItem` now calls `recordKbContribution` after the queue update.
+- `app/api/unified-transactions/bulk-categorise/route.ts` — per-distinct-merchant KB write-back.
+- `app/api/unified-transactions/[id]/route.ts` — refactored onto the shared helper.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` — §7 (52.5c shipped), §8b (vocabulary-bridge follow-up), §9 (review-inbox placement open Q).
+- `docs/implementation/02_UP_NEXT.md` — 52.5c status + vocabulary-bridge Up Next.
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (KB engine wiring) → Phase 52 doc §7/§8b/§9 + this changelog + `02_UP_NEXT.md`. No design/config/infra/identity/security surface changed (endpoints reused, no new env vars, no schema change).

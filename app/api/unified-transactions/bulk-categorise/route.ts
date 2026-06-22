@@ -34,6 +34,7 @@ import {
   pickCategoryFields,
 } from '@/lib/bookkeeping/transactionEditAudit';
 import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
+import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 
 interface BulkCategoriseBody {
   transactionIds?: unknown;
@@ -219,6 +220,29 @@ export const POST = withPermission('transaction.write', async (request: NextRequ
         confidenceScore: 1.0,
       }),
       source: 'USER',
+    });
+  }
+
+  // Phase 52.5c — teach the SHARED, de-identified KB once per distinct merchant
+  // in this batch (the user-chosen canonical triple is the same vocabulary the
+  // KB stores, so no fragmentation). This makes the "Categorise N selected"
+  // power path feed the cross-user AI engine, not just the private merchant
+  // mapping written above. Fire-and-forget + gated OFF by default
+  // (KB_WRITE_ENABLED) + de-identified by the scrubber.
+  const kbMerchants = Array.from(
+    new Map(
+      transactions
+        .filter((t) => t.merchantStandardised)
+        .map((t) => [t.merchantStandardised!.toLowerCase(), t.merchantStandardised!])
+    ).values()
+  );
+  for (const merchant of kbMerchants) {
+    recordKbContribution({
+      userId: auth.userId,
+      rawDescription: merchant,
+      categoryLevel1,
+      categoryLevel2,
+      subcategory,
     });
   }
 

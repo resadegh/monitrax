@@ -229,15 +229,33 @@ the low-value tail.
 - **52.5b — embeddings (fuzzy tail):** non-prefix variants ("WW METRO" → "WOOLWORTHS") via vector
   similarity (pgvector in Cloud SQL or Vertex). Needs the `vector` extension (operator) + a vector
   column + an embeddings model. **Deferred — larger infra increment.**
-- **52.5c / Phase 51.2 — surfaces:** review-exceptions inbox + "apply to past/future" + ATO-label
-  mapping, powered by this engine. **Stitch-first; larger UI increment.** Design ✅ (light, **9.2/10**
+- **52.5c — KB write-back across ALL human confirmation surfaces ✅ (this PR):** the central gap found
+  on build (CLAUDE.md §10 research-before-action): before this, **only** the single-transaction PATCH
+  taught the shared KB. The bulk/review confirmation paths — `bulk-categorise` (power-user "Categorise N
+  selected"), `bulk-confirm` (the "AI bookkeeper" medium/low bands), the per-row "✓ Looks right"
+  affordance, and the per-batch review route — all wrote the PRIVATE `merchantMapping` but **never fed
+  the cross-user KB**. So the AI engine couldn't learn from the highest-volume categorisation paths.
+  Fix: one canonical learn-once helper `recordKbContribution()` (`lib/categorisation/kb/recordFromConfirmation.ts`,
+  CLAUDE.md §12.2 SSOT) wired into (a) `confirmReviewItem` (covers bulk-confirm bands + per-row +
+  per-batch review in one place), (b) the `bulk-categorise` route (once per distinct merchant), and
+  (c) the single PATCH (refactored onto the same helper). All pass the canonical category triple — the
+  same vocabulary the KB stores → **no vote fragmentation**. **Echo-chamber-safe:** import-time AI
+  auto-accept (`bulkConfirmAutoAccepted`) and `bulkConfirmHighBand` are deliberately NOT wired — only a
+  genuine human confirm/edit/re-categorise is a real k-anonymity vote. Fire-and-forget + gated OFF by
+  default (`KB_WRITE_ENABLED`).
+- **52.5c-UI — review-exceptions inbox surface:** review-exceptions inbox + "apply to past/future"
+  learn-once toggle, powered by this engine. **Stitch-first; UI increment.** Design ✅ (light, **9.2/10**
   per §18.8 gate; v1 `291a1716` scored 8.0 → rejected) — Stitch screen
   `fdf91885d9854bf48ebdeb97bbcd2762`, `.stitch/designs/phase52/review-categories-inbox-v2.png`
   (finishable "96% categorised — 8 to review" header + progress bar; high-confidence pre-checked +
   bulk Confirm; per-row AI category + community-confidence cue; expanded "apply to all <merchant> —
   past & future" learn-once toggle; amber "Needs a look" exceptions; calm "All caught up" empty state).
-  Awaiting Reza nod → then React build (component + review-queue/bulk-confirm/apply-rule endpoints) +
-  dark + mobile variants.
+  **Note (found on build):** a confidence-review surface already ships from Phase 49
+  (`components/bookkeeping/ConfidenceReviewCard.tsx` inline on the Activity page, reusing
+  `review-queue` + `bulk-confirm`). The v2 design is a *dedicated* full-page triage inbox — the
+  decision (dedicated page reusing the existing endpoints vs applying v2 as a refresh of the inline
+  Phase 49 card) is the remaining open item before the React build + dark/mobile variants. **Endpoints
+  already exist and are now KB-wired — no new endpoints needed.**
 
 ## 8. Risks
 - **Privacy/CDR** (the dominant one) — §5 guardrails; needs the documented CDR stance.
@@ -266,11 +284,34 @@ generated artefacts — regenerate from the updated `.md` before they're served 
 gate:** no shared-KB write ships until the PII-scrubber + the written de-identification procedure are
 implemented and signed off (compliance matrix status flips DESIGN → IMPLEMENTED).
 
+## 8b. Vocabulary-bridge follow-up — the Link Transaction dialog (found 2026-06-22)
+
+Reza asked (2026-06-22): *"can you also check the link transaction page will also be utilising the KB
+AI engine?"* On investigation:
+
+- The **Link Transaction dialog** (`components/transactions/TransactionLinkDialog.tsx` →
+  `/api/transactions/[id]/link`) runs in a **legacy flat-enum** category vocabulary
+  (`EXPENSE_CATEGORIES`: `GROCERIES`, `LOAN_INTEREST`, …) — a single flat code per transaction.
+- The KB, the rules engine, `categoriseTransaction`, and every surface wired in 52.5c run in the
+  **canonical 3-level hierarchy** (`Food & Dining` > `Groceries` > …).
+- Writing flat-enum codes into the KB would **fragment graduation** (the same Woolworths pattern voted
+  `GROCERIES` by the link dialog and `Food & Dining>Groceries` by PATCH would split the tally and never
+  reach k cleanly) and would surface **mismatched category names** on read. So the link dialog is
+  **deliberately NOT wired** to the KB yet — doing it carelessly degrades the shared KB.
+- **The right sequence:** (1) ✅ wire the canonical-vocabulary confirmation surfaces (done, 52.5c
+  above); (2) build a thin `enum ↔ canonical triple` bridge (`EXPENSE_CATEGORIES`/`INCOME_TYPES` →
+  `(level1, level2)`); (3) route the link dialog's `learnMerchant` write AND its `suggestedCategory`
+  read through that bridge so it both teaches and consults the KB without fragmentation.
+- Tracked as an `Up Next` item in `docs/implementation/02_UP_NEXT.md`.
+
 ## 9. Open questions
 - k value (start k=5?) — tune with data.
 - Exact PII-scrub ruleset (person-to-person detection, name/number stripping) — needs a tested
   scrubber before any shared write.
 - Embedding backend (pgvector in Cloud SQL vs Vertex Vector Search) — §12.7 evaluation at 52.4.
+- **Review inbox placement** — dedicated full-page triage inbox (v2 design, reuses the now-KB-wired
+  `review-queue`/`bulk-confirm` endpoints) vs applying v2 as a visual refresh of the inline Phase 49
+  `ConfidenceReviewCard`. Awaiting Reza.
 
 ## 10. Enablement runbook (how to switch the KB on)
 

@@ -13,8 +13,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { isPeriodEditable } from '@/lib/bookkeeping/period';
-import { recordContribution } from '@/lib/categorisation/kb/recordContribution';
-import { encodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
+import { recordKbContribution } from '@/lib/categorisation/kb/recordFromConfirmation';
 import {
   recordTransactionEdit,
   pickCategoryFields,
@@ -171,16 +170,20 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
         }
 
         // Phase 52 — also contribute this confirmation to the SHARED, de-identified
-        // categorisation KB (cross-user learning). Fire-and-forget + GATED OFF by
-        // default (KB_WRITE_ENABLED) → no-op until enabled after the de-identification
-        // procedure sign-off. The scrubber rejects PII/transfers; the shared store
-        // holds only de-identified patterns + aggregate votes (never this user's data).
-        recordContribution({
+        // categorisation KB (cross-user learning). Phase 52.5c routes this through
+        // the canonical `recordKbContribution` learn-once helper shared with the
+        // bulk-categorise + review-queue confirm surfaces (CLAUDE.md §12.2 SSOT).
+        // Fire-and-forget + GATED OFF by default (KB_WRITE_ENABLED); the scrubber
+        // rejects PII/transfers so the shared store holds only de-identified
+        // patterns + aggregate votes (never this user's data).
+        recordKbContribution({
           userId,
           rawDescription: existing.description ?? existing.merchantStandardised ?? '',
-          category: encodeCategoryPath(body.categoryLevel1, body.categoryLevel2 ?? null, body.subcategory ?? null),
+          categoryLevel1: body.categoryLevel1,
+          categoryLevel2: body.categoryLevel2 ?? null,
+          subcategory: body.subcategory ?? null,
           mcc: existing.merchantCategoryCode ?? null,
-        }).catch(() => {});
+        });
       }
 
       if (body.categoryLevel2 !== undefined) {
