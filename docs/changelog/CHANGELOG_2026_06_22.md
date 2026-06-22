@@ -421,3 +421,30 @@ Full Phase 51 + 52 documentation brought current in this PR:
 
 ### Doc-sync (CLAUDE.md §16)
 - [x] code (KB engine wiring) → Phase 52 doc §7/§8b/§9 + this changelog + `02_UP_NEXT.md`. No design/config/infra/identity/security surface changed (endpoints reused, no new env vars, no schema change).
+
+---
+
+## Session: phase52-review-ui-design-shk180 (Phase 52.5c — Link/reconciliation tool SSOT audit + KB read/write)
+
+### Changes Made
+- **Type**: Feature + SSOT remediation. Reza ask 2026-06-22: *"are you performing an audit and review on the link / reconciliation tool to make sure it will be SSOT and read/write to the new KB AI engine?"*
+- **Audit finding**: `/api/transactions/[id]/link` (the Link/reconciliation dialog) was the one categorisation surface off-SSOT on two axes — it wrote raw **legacy flat codes** to `merchantMapping`, **never** seeded the `CanonicalCategoryRegistry` (§12.2), and **never** read/wrote the shared KB. Everything else uses the canonical 3-level triple.
+- **Fix**:
+  - NEW `lib/categorisation/kb/categoryBridge.ts` — the single documented correspondence between the legacy flat-code vocabulary and the canonical hierarchy: `legacyCodeToCanonical()` + `canonicalToLegacyCode()` (deterministic → no KB vote fragmentation). 12 tests.
+  - `learnCanonicalFromLink()` in the link route — at every `learnMerchant` site (link-to-income/expense, create-income, create-expense): bridge code → triple → `resolveOrCreateCategory` (seed registry) + `recordKbContribution` (teach KB). Skips loan links (Phase 51 ledger owns repayments) + custom categories (free-text, never graduate).
+  - READ: `suggestedCategory` now consults `lookupSharedCategory` (graduated community KB) and maps the canonical answer back to a legacy code for the dialog's `CategorySelect`.
+  - Both gated (`KB_WRITE_ENABLED`/`KB_READ_ENABLED`), de-identified, fire-and-forget.
+- **Remaining (non-blocking tech-debt)**: `merchantMapping.categoryLevel1` still stores the legacy code at these sites (keeps the dialog's existing read working); full `merchantMapping`→canonical unification retires the bridge later.
+
+### Files Modified
+- `lib/categorisation/kb/categoryBridge.ts` (NEW) + `tests/categorisation/categoryBridge.test.ts` (NEW, 12 tests).
+- `app/api/transactions/[id]/link/route.ts` — `learnCanonicalFromLink()` helper + 3 write sites + KB read fallback for `suggestedCategory`.
+- `docs/blueprint/PHASE_52_SHARED_CATEGORISATION_KB.md` §7 + §8b (audit + fix).
+- `docs/implementation/02_UP_NEXT.md` — item flipped to DONE.
+
+### Build Status
+- [x] `npx tsc --noEmit` passes.
+- [x] `vitest run tests/categorisation/` — 64/64 pass (incl. 12 new bridge tests).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] code (link-tool SSOT + KB wiring) → Phase 52 §7/§8b + this changelog + `02_UP_NEXT`. No design/config/infra/identity/security surface changed (no new endpoints, env vars, or schema).

@@ -243,6 +243,13 @@ the low-value tail.
   auto-accept (`bulkConfirmAutoAccepted`) and `bulkConfirmHighBand` are deliberately NOT wired — only a
   genuine human confirm/edit/re-categorise is a real k-anonymity vote. Fire-and-forget + gated OFF by
   default (`KB_WRITE_ENABLED`).
+- **52.5c — Link / reconciliation tool SSOT + KB read/write ✅ (this PR):** the Link dialog was the one
+  categorisation surface bypassing BOTH the canonical category registry AND the KB (it wrote raw legacy
+  flat codes). New bridge `categoryBridge.ts` (`legacyCodeToCanonical` / `canonicalToLegacyCode`, 12
+  tests) + `learnCanonicalFromLink()` in the link route now: (WRITE) bridge code → canonical triple →
+  seed `CanonicalCategoryRegistry` + teach the KB at every learnMerchant site (skips loans + custom);
+  (READ) `suggestedCategory` consults the graduated community KB, mapped back to a legacy code for the
+  dialog. Full detail: §8b.
 - **52.5c-UI — review-exceptions inbox surface:** review-exceptions inbox + "apply to past/future"
   learn-once toggle, powered by this engine. **Stitch-first; UI increment.** Design ✅ (light, **9.2/10**
   per §18.8 gate; v1 `291a1716` scored 8.0 → rejected) — Stitch screen
@@ -284,25 +291,38 @@ generated artefacts — regenerate from the updated `.md` before they're served 
 gate:** no shared-KB write ships until the PII-scrubber + the written de-identification procedure are
 implemented and signed off (compliance matrix status flips DESIGN → IMPLEMENTED).
 
-## 8b. Vocabulary-bridge follow-up — the Link Transaction dialog (found 2026-06-22)
+## 8b. Link / reconciliation tool — SSOT audit + KB read/write ✅ (Reza, 2026-06-22)
 
-Reza asked (2026-06-22): *"can you also check the link transaction page will also be utilising the KB
-AI engine?"* On investigation:
+Reza asked (2026-06-22): *"are you performing an audit and review on the link / reconciliation tool to
+make sure it will be SSOT and read/write to the new KB AI engine?"* — Yes. Findings + fix:
 
-- The **Link Transaction dialog** (`components/transactions/TransactionLinkDialog.tsx` →
-  `/api/transactions/[id]/link`) runs in a **legacy flat-enum** category vocabulary
-  (`EXPENSE_CATEGORIES`: `GROCERIES`, `LOAN_INTEREST`, …) — a single flat code per transaction.
-- The KB, the rules engine, `categoriseTransaction`, and every surface wired in 52.5c run in the
-  **canonical 3-level hierarchy** (`Food & Dining` > `Groceries` > …).
-- Writing flat-enum codes into the KB would **fragment graduation** (the same Woolworths pattern voted
-  `GROCERIES` by the link dialog and `Food & Dining>Groceries` by PATCH would split the tally and never
-  reach k cleanly) and would surface **mismatched category names** on read. So the link dialog is
-  **deliberately NOT wired** to the KB yet — doing it carelessly degrades the shared KB.
-- **The right sequence:** (1) ✅ wire the canonical-vocabulary confirmation surfaces (done, 52.5c
-  above); (2) build a thin `enum ↔ canonical triple` bridge (`EXPENSE_CATEGORIES`/`INCOME_TYPES` →
-  `(level1, level2)`); (3) route the link dialog's `learnMerchant` write AND its `suggestedCategory`
-  read through that bridge so it both teaches and consults the KB without fragmentation.
-- Tracked as an `Up Next` item in `docs/implementation/02_UP_NEXT.md`.
+**Audit finding.** The Link Transaction dialog (`components/transactions/TransactionLinkDialog.tsx` →
+`/api/transactions/[id]/link`) was the **one categorisation surface off-SSOT on two axes**:
+1. It wrote raw **legacy flat codes** (`EXPENSE_CATEGORIES`/`INCOME_TYPES`: `GROCERIES`, `SALARY`, …)
+   to the private `merchantMapping` and **never seeded the `CanonicalCategoryRegistry`** (§12.2 SSOT) —
+   unlike the PATCH / bulk-categorise / review paths, which all go through `resolveOrCreateCategory`.
+2. It **never fed nor consulted the shared KB**.
+The KB, the TIE categoriser, and the registry all speak the **canonical 3-level hierarchy**
+(`Food & Dining` > `Groceries`). Writing flat codes straight into the KB would fragment graduation
+(`GROCERIES` vs `Food & Dining>Groceries` for the same merchant) and surface mismatched names on read.
+
+**Fix (this PR).** A single bridge `lib/categorisation/kb/categoryBridge.ts` —
+`legacyCodeToCanonical(code, direction)` + `canonicalToLegacyCode(level1, level2, direction)` (12 tests)
+— is the one documented correspondence between the two vocabularies. The link route now:
+- **WRITE:** at each `learnMerchant` site (link-to-income/expense, create-income, create-expense) calls
+  `learnCanonicalFromLink()` → bridges the chosen code → canonical triple → seeds the canonical registry
+  (`resolveOrCreateCategory`) **and** teaches the shared KB (`recordKbContribution`, the same learn-once
+  helper as every other surface). Skips loan links (Phase 51 ledger owns repayments) and custom
+  categories (free-text, never graduate).
+- **READ:** when there's no private/global learned mapping and no engine prediction, `suggestedCategory`
+  now consults `lookupSharedCategory()` and maps the graduated community answer back to a legacy code via
+  `canonicalToLegacyCode` so the dialog's `CategorySelect` can pre-select it.
+Both write + read are gated (`KB_WRITE_ENABLED`/`KB_READ_ENABLED`), de-identified, fire-and-forget.
+
+**Remaining (smaller, documented tech-debt, NOT blocking):** `merchantMapping.categoryLevel1` still
+stores the legacy code at these sites (so the dialog's existing read keeps working); the full
+`merchantMapping` → canonical-triple unification is the larger §12.2 cleanup that retires the bridge.
+Until then the bridge guarantees the KB + registry get clean canonical data.
 
 ## 9. Open questions
 - k value (start k=5?) — tune with data.
