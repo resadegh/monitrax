@@ -463,10 +463,17 @@ function ActivityPageContent() {
       if (dateRange.end) params.append('endDate', dateRange.end);
       if (showRecurringOnly) params.append('recurring', 'true');
       if (showAnomaliesOnly) params.append('hasAnomalies', 'true');
-      // Phase 49.14 — confidence-band lens filters the booked list too.
-      if (confidenceBand) params.append('confidence', confidenceBand);
-
-      if (tileFilter === 'uncategorized') {
+      // Phase 49.14 — confidence-band lens. When a band is active it is the
+      // SOLE lens: it must show EVERYTHING in that band (matching the chip
+      // count, which counts the whole band). Previously the band was AND-ed
+      // with the default `uncategorized` tile filter, so "High" became
+      // `confidence=high & uncategorized=true` — an empty intersection, since
+      // high-confidence rows are auto-filed (not uncategorised). "Low" only
+      // appeared to work because low-confidence rows happen to be uncategorised.
+      // Fix (2026-06-22): band takes precedence over the tile filters.
+      if (confidenceBand) {
+        params.append('confidence', confidenceBand);
+      } else if (tileFilter === 'uncategorized') {
         params.append('uncategorized', 'true');
       } else if (tileFilter === 'spend') {
         params.append('direction', 'OUT');

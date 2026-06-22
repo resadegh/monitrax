@@ -575,3 +575,19 @@ The inbox read ONLY the import **staging queue** (`TransactionReviewQueue` via `
 ### Files: `components/bookkeeping/ReviewCategoriesInbox.tsx`. tsc + eslint clean.
 ### §18.2.1 backfill owed: the "Needs a category" section reuses the existing staged-row glass vocabulary (not a net-new composition), but a Stitch artefact for the two-section inbox is owed as a follow-up backfill.
 ### Doc-sync (§16): Phase 52 doc + this changelog.
+
+---
+
+## Session: activity-confidence-band-filter-fix-shk180 (Activity "High" band shows nothing)
+
+### Bug (Reza, 2026-06-22)
+On `/dashboard/activity`, clicking the "High · 83" band chip showed "No transactions match" despite the count; "Low · 283" worked; no Medium chip (expected — 0 medium).
+
+### Root cause
+`tileFilter` defaults to `'uncategorized'`, and the band chip set `confidenceBand` WITHOUT clearing it, so the list query AND-ed both: `confidence=high & uncategorized=true`. High-confidence rows are auto-filed (categorised), so the intersection is empty. Low only appeared to work because low-confidence rows happen to be uncategorised. The band counts intentionally count the WHOLE band, so the list was inconsistent with the count.
+
+### Fix
+`app/dashboard/activity/page.tsx` — when a confidence band is active it is the SOLE lens (takes precedence over the uncategorized/spend/income tile filters). High now shows all high-confidence transactions, matching its chip count.
+
+### Files: `app/dashboard/activity/page.tsx`. tsc + eslint clean (pre-existing warning only).
+### Doc-sync (§16): this changelog. No config/schema/infra change.
