@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.2.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.3.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 36 · **Edges:** 38
-- **By kind:** orchestrator 2 · engine 9 · input-field 13 · law 5 · number 4 · ui-surface 3
-- **By status:** documented 36
-- **Edge provenance:** verified 38 *(verified > graphify > inferred)*
+- **Nodes:** 41 · **Edges:** 43
+- **By kind:** orchestrator 2 · engine 13 · input-field 13 · law 6 · number 4 · ui-surface 3
+- **By status:** documented 41
+- **Edge provenance:** verified 43 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -28,6 +28,10 @@
 | **Income tax position** | `lib/tax-engine/position/taxPositionCalculator.ts:92` | engine | tax | TaxPositionResult — assessable income breakdown, deductions, taxable income, tax on income (marginal brackets), Medicare, marginal rate, PAYG, net tax payable/refund. | ITAA 1997 (income tax) + ATO individual income tax rates + Medicare Levy Act 1986 | lib/tax-engine/position/taxPositionCalculator.ts:92 (read this session) | documented |
 | **Salary take-home (PAYG)** | `lib/tax-engine/income/salaryProcessor.ts:46` | engine | tax | SalaryBreakdown — gross↔net take-home (handles GROSS and NET input), PAYG, salary-sacrifice, tax-free-threshold flag, step-by-step calc trail. | ITAA 1997 (income tax) + ATO PAYG withholding | lib/tax-engine/income/salaryProcessor.ts:46 (read this session) | documented |
 | **FY tax thresholds (canonical)** | `lib/tax-engine/config/taxYearConfig.ts:370` | service | tax | The canonical TaxYearConfig for the current FY (brackets, Medicare, LITO, super caps, transfer-balance cap, etc.) — the SSOT for AU tax thresholds (CLAUDE.md §12.2). | ATO individual income tax rates / Medicare Levy / Super thresholds + ITAA sections (cited inline in source) | lib/tax-engine/config/taxYearConfig.ts:370 (read this session) | documented |
+| **CGT discount (Div 115 / reform Measure 2)** | `lib/tax-engine/divisions/cgtDiscount.ts:166` | engine | tax | CgtDiscountResult — the discounted/indexed taxable capital gain that flows into the CAPITAL_GAIN income line of calculateTaxPosition. | ITAA 1997 Div 115 (CGT discount); 2026-27 reform Measure 2; CLAUDE.md §12.14 FW-1/FW-2 | lib/tax-engine/divisions/cgtDiscount.ts:166 (read this session) | documented |
+| **CGT indexation (post-reform)** | `lib/tax-engine/divisions/cgtIndexation.ts:87` | engine | tax | CgtIndexationResult — indexed cost base OR UNCOMPUTED flag (pre-reform fallback). | 2026-27 reform Measure 2; CLAUDE.md §12.14 FW-2 | lib/tax-engine/divisions/cgtIndexation.ts:87 (read this session) | documented |
+| **CGT minimum rate (30% floor, post-reform)** | `lib/tax-engine/divisions/cgtMinimumRate.ts:80` | engine | tax | CgtMinimumRateResult — the floored taxable gain (post-reform). | 2026-27 reform Measure 2; CLAUDE.md §12.14 | lib/tax-engine/divisions/cgtMinimumRate.ts:80 (read this session) | documented |
+| **Negative-gearing regime classifier (Measure 1)** | `lib/tax-engine/divisions/negativeGearingRegime.ts:147` | engine | tax | NegativeGearingRegime discriminant — which regime governs loss-offset for this property. | 2026-27 reform Measure 1; CLAUDE.md §12.14 FW-1 | lib/tax-engine/divisions/negativeGearingRegime.ts:147 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -55,7 +59,8 @@
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
 | **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG) |
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position |
-| **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 |  |
+| **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
+| **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
 
 ## Edges (verified, with evidence)
 
@@ -99,6 +104,11 @@
 | Salary take-home (PAYG) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | PAYG take-home uses the same FY brackets/LITO |
 | Income tax position | → | Net tax payable | feeds | AUD/year→AUD/year | verified | taxPositionCalculator.ts netTaxPayable output |
 | Net tax payable | → | Tax position surface | rendered-at | AUD/year→AUD/year | verified | tax position surface renders netTaxPayable |
+| CGT discount (Div 115 / reform Measure 2) | → | ITAA 1997 Div 115 — CGT 50% discount | governed-by | — | verified | cgtDiscount.ts:166 pre-reform 50% discount default |
+| CGT discount (Div 115 / reform Measure 2) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | cgtDiscount.ts:184 acquisitionContractDate > REFORM_CUT_OVER_UTC (Measure 2 gate) |
+| CGT indexation (post-reform) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | cgtIndexation.ts:87/96 post-reform indexation, UNCOMPUTED until commencement |
+| CGT minimum rate (30% floor, post-reform) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | cgtMinimumRate.ts:80 post-reform 30% floor (Measure 2) |
+| Negative-gearing regime classifier (Measure 1) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | negativeGearingRegime.ts:147 + :31 import REFORM_CUT_OVER_UTC (Measure 1) |
 
 ---
 

@@ -246,3 +246,30 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 
 ### PR
 - Folded into PR #1204 (draft).
+
+---
+
+## Session: neomatrix-N4.2 (reform-gated CGT / negative gearing — regime layer)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix N4.2). **No financial logic changed.** Every node/edge verified from source this session (§19.2).
+- **Why:** prove the **regime / B8 layer** (Phase 41E §12.14) end-to-end — the reform cut-over law node was an anchor in N4.1; N4.2 attaches the reform-gated engines to it and populates the regime axis.
+
+### What was modelled (graph 36→41 nodes / 38→43 edges, all `verified`)
+- `calculateCgtDiscount` (cgtDiscount.ts:166) — Div 115 pre-reform 50% discount ↔ Measure 2 post-reform (indexation + 30% floor); default pre-reform until `commencementVerified` (FW-2: no silent post-reform numbers).
+- `applyCgtIndexation` (cgtIndexation.ts:87) — post-reform; returns UNCOMPUTED + pre-reform fallback until Royal Assent.
+- `applyCgtMinimumRate` (cgtMinimumRate.ts:80) — post-reform 30% floor.
+- `deriveNegativeGearingRegime` (negativeGearingRegime.ts:147) — Measure 1 classifier (loss-offset → new builds only post-reform), the single canonical grandfathering decision (FW-1).
+- Law node ITAA 1997 Div 115; all four engines `governed-by` the 2026-27 reform cut-over (`REFORM_CUT_OVER_UTC`). `regime: "post-reform"` on the indexation + 30%-floor nodes.
+
+### Verification
+- `npm run neomatrix:check` → **OK** (41 nodes / 43 edges; schema valid; invariants hold; all 15 engine/orchestrator file:line anchors resolve; markdown fresh).
+- **Regime axis proven sliceable**: `regime=post-reform` → CGT indexation · 30% floor · reform cut-over.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (+5 nodes, +5 edges; v0.2.0→0.3.0), `GENERATED_CORE.md` (regenerated), `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next
+- N4.3: super (contributions/caps/Div 293) → land tax/stamp duty/GST → then health → CFO → intelligence → reports.
+
+### PR — folded into PR #1204 (draft).
