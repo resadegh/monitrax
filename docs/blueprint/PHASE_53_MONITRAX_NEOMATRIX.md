@@ -1,8 +1,8 @@
 # Phase 53 — Neomatrix (Monitrax Financial Logic Knowledge Graph)
 
-> **Status:** Design spec — APPROVED FOR BUILD (new session). Not yet implemented.
+> **Status:** 🟢 **IN BUILD — foundation + tax domain modelled AND audited; self-enforcing on every build.** (Design spec §1–§14 below; as-built status in §0 immediately after this header.) Build began 2026-06-23.
 > **Author:** Architect-mode session 2026-06-23 (Reza directive).
-> **Build owner:** a dedicated new Claude Code session, guided by Reza.
+> **Build owner:** dedicated Claude Code build session(s), guided by Reza.
 > **Parent workstream:** extends `0·FIN-LOGIC-INDEX` (the markdown Financial
 > Logic Index, `docs/financial-logic/`). The Neomatrix is the *machine-readable
 > + navigable + auditable* evolution of that index.
@@ -10,6 +10,41 @@
 > **Name:** **Neomatrix** (Reza, 2026-06-23) — the Monitrax financial-logic
 > knowledge graph. ("Money Tracks Neonatrix" was the spoken form; Reza confirmed
 > the name is **Neomatrix**.)
+
+---
+
+## 0. As-built status (live — updated 2026-06-23)
+
+> The §1–§14 below are the original design. This section is the **as-built
+> truth** — what is shipped, where it lives, and what's next. Granular detail
+> lives in the artefacts linked here; this is the index.
+
+### What's shipped (merged to `main`)
+
+| Phase | Status | Artefact |
+|---|---|---|
+| **N0 — Graphify trial** | ✅ **GO, adopted** (code-only/offline, zero egress; reproduced 9/9 of the `00b` orchestration edges) | [`docs/financial-logic/graph/N0_GRAPHIFY_TRIAL.md`](../financial-logic/graph/N0_GRAPHIFY_TRIAL.md) |
+| **N1 — schema + generator + core slice** | ✅ | schema [`graph/schema/financial-graph.schema.md`](../financial-logic/graph/schema/financial-graph.schema.md); model [`graph/financial-graph.json`](../financial-logic/graph/financial-graph.json); generator `scripts/neomatrix/*.mjs`; view [`graph/GENERATED_CORE.md`](../financial-logic/graph/GENERATED_CORE.md) |
+| **N3 (seed) — CI audit + build gate** | ✅ **live** — `npm run neomatrix:check` in `vercel-build` (CLAUDE.md Part 21) + vitest `tests/neomatrix/financialGraph.test.ts` (schema · A3 orphan/convergence · file:line anchors · markdown freshness) | `tests/neomatrix/` |
+| **N4 — domain backfill (tax-first)** | ✅ **tax domain modelled** — income tax · PAYG · CGT/reform (regime layer) · super (SG, caps, Div 293/296, SMSF Div 295) · land/stamp/GST — all `verified` with `file:line` | `financial-graph.json` (domain `tax`) |
+| **A1 — executable law-referenced audit** | 🔄 **in progress** — the model *referees* the code: law-derived expected values, real engines run, mismatch → `suspected-issue` (raised, never auto-fixed). Core + income tax/Medicare + GST/Div 293/SG audited; no suspected-issue found. Locks the income-tax bracket-boundary P0 fix + the SG-cap P1 fix. | `tests/neomatrix/financialAudit.test.ts` |
+
+### Decisions taken (Reza)
+- **Graphify adopted** in code-only/offline mode (N0 go/no-go).
+- **Schema locked** as built (Reza: "you know what I need — recommend").
+- **Tax-first** backfill order.
+- **Every build runs through CLAUDE.md + Neomatrix** — critical instruction → CLAUDE.md **Part 21** + the `vercel-build` gate.
+- **Self-review gate** — CLAUDE.md **Part 20** (3×/10-10 before sign-off) + **§20.4** (any financial build = recorded 10/10).
+- **Audit-as-we-go, model is the reference, never change a Monitrax rule without confirmation** — a discrepancy is a documented `suspected-issue`, raised with Reza.
+
+### Still pending
+- **A1 continues:** SMSF Div 295 + CGT, then health → CFO → intelligence → reports (each modelled + audited).
+- **N2 — interactive 2D explorer** (Cytoscape, reads the JSON).
+- **N5 (optional) — literal 3D view** (last; only after value is proven).
+- **A2 drift sentinel (AST-hash binding) + A4 conversion-node enforcement** (currently informational warnings).
+
+### Coverage (live)
+The JSON's own dashboard is in `GENERATED_CORE.md` (§ Coverage & trust). Tracked as `financial-graph.json` `version`. Live workstream: `0·NEOMATRIX` in [`docs/implementation/01_ACTIVE_WORKSTREAMS.md`](../implementation/01_ACTIVE_WORKSTREAMS.md).
 
 ---
 
