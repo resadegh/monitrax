@@ -176,7 +176,12 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
     principal: loan.principal,
     minRepayment: loan.minRepayment,
     repaymentFrequency: loan.repaymentFrequency,
-    interestRateAnnual: loan.interestRateAnnual * 100, // Convert to percentage
+    // P0 fix (2026-06-23): pass the DECIMAL rate as-is. Previously this `*100`
+    // (percent) compensated for loanAggregator's erroneous `/100` — the two
+    // bugs cancelled. Now that loanAggregator correctly treats the rate as a
+    // decimal, this MUST pass the decimal too, else interest/weightedRate go
+    // 100× too HIGH. Paired with the `weightedAverageRate` (no /100) fix below.
+    interestRateAnnual: loan.interestRateAnnual,
     type: loan.type,
     isInterestOnly: loan.isInterestOnly,
     propertyId: loan.propertyId,
@@ -215,7 +220,7 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
     loanPortfolio: {
       totalDebt: aggregation.totalPrincipal,
       totalMonthlyRepayments: aggregation.totalRepayments,
-      weightedAverageRate: aggregation.weightedInterestRate / 100, // Convert back to decimal
+      weightedAverageRate: aggregation.weightedInterestRate, // P0 fix 2026-06-23: weightedInterestRate is ALREADY a decimal; the prior /100 made the rate 100× too low
       loanCount: loans.length,
       debtToIncomeRatio: debtMetrics.debtToIncomeRatio / 100,
       debtServiceRatio: debtMetrics.debtServiceRatio / 100,

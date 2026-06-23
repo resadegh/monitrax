@@ -48,7 +48,12 @@ export function calculateIncomeTax(
   for (const bracket of config.brackets) {
     const bracketMax = bracket.max ?? Infinity;
 
-    if (taxableIncome <= bracket.min) {
+    // P0 fix (2026-06-23): use strict `<`. With `<=`, an income exactly equal
+    // to a bracket minimum (e.g. $45,001 / $135,001 / $190,001) broke out of
+    // the loop with tax still 0 — returning $0 tax at every bracket boundary.
+    // `bracket.min` is the INCLUSIVE lower bound (prior bracket max + 1), so an
+    // income equal to it belongs IN this bracket and must be taxed here.
+    if (taxableIncome < bracket.min) {
       break;
     }
 
@@ -196,7 +201,9 @@ export function calculateIncomeTaxDecimal(
     const bracketMin = new Decimal(bracket.min);
     const bracketMax = bracket.max == null ? null : new Decimal(bracket.max);
 
-    if (taxableDec.lte(bracketMin)) break;
+    // P0 fix (2026-06-23): strict `<` — see the float path above. `lte` zeroed
+    // tax for income exactly on a bracket minimum.
+    if (taxableDec.lt(bracketMin)) break;
 
     if (bracketMax == null || taxableDec.lte(bracketMax)) {
       // Matches Float's `taxableIncome - bracket.min + 1`.
