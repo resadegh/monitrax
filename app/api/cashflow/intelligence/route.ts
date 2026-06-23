@@ -27,6 +27,7 @@ import {
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import {
   detectSavingOpportunities,
   type SavingOpportunitiesResult,
@@ -499,13 +500,24 @@ function buildTaxOptimization(
 // FORECAST SUMMARY
 // =============================================================================
 
+/**
+ * Build the cashflow forecast HERO from CANONICAL monthly figures.
+ *
+ * Phase 2 (cashflow-SSOT-convergence, 2026-06-23): this previously took
+ * DECLARED income/expenses/loans and computed its own surplus — the source
+ * of the falsely-optimistic hero (+$10,505 surplus / 51.9% saving rate)
+ * while the same page's money-flow waterfall already showed actuals. It now
+ * takes the single canonical in/out/net (actual when transactions exist,
+ * declared fallback otherwise) via getCanonicalMonthlyCashflow(). `outflow`
+ * already includes loan repayments + uncategorised spend. See CLAUDE.md §19.1.
+ */
 function buildForecastSummary(
   totalBalance: number,
   monthlyIncome: number,
-  monthlyExpenses: number,
-  monthlyLoanRepayments: number
+  monthlyOutflow: number,
+  monthlyNet: number
 ): ForecastSummary {
-  const monthlySurplus = monthlyIncome - monthlyExpenses - monthlyLoanRepayments;
+  const monthlySurplus = monthlyNet;
   const dailyNet = monthlySurplus / 30;
 
   // Calculate 30 and 90 day predictions
@@ -516,7 +528,7 @@ function buildForecastSummary(
   let breakEvenDay = -1;
   if (monthlyIncome > 0) {
     const dailyIncome = monthlyIncome / 30;
-    const dailyExpense = (monthlyExpenses + monthlyLoanRepayments) / 30;
+    const dailyExpense = monthlyOutflow / 30;
     let runningTotal = 0;
 
     for (let day = 1; day <= 30; day++) {
@@ -530,11 +542,11 @@ function buildForecastSummary(
 
   // Determine risk levels
   const risk30: 'LOW' | 'MEDIUM' | 'HIGH' =
-    balance30 > monthlyExpenses ? 'LOW' :
+    balance30 > monthlyOutflow ? 'LOW' :
     balance30 > 0 ? 'MEDIUM' : 'HIGH';
 
   const risk90: 'LOW' | 'MEDIUM' | 'HIGH' =
-    balance90 > monthlyExpenses * 3 ? 'LOW' :
+    balance90 > monthlyOutflow * 3 ? 'LOW' :
     balance90 > 0 ? 'MEDIUM' : 'HIGH';
 
   const hasShortfall = balance30 < 0 || balance90 < 0;
@@ -543,7 +555,7 @@ function buildForecastSummary(
     current: {
       balance: totalBalance,
       income: monthlyIncome,
-      expenses: monthlyExpenses + monthlyLoanRepayments,
+      expenses: monthlyOutflow,
       net: monthlySurplus,
     },
     forecast30Day: {
@@ -593,24 +605,45 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const monthlyExpenses = calculateMonthlyExpenses(data.expenses);
       const monthlyLoanRepayments = calculateMonthlyLoanRepayments(data.loans);
       const totalBalance = calculateTotalBalance(data.accounts);
-      const emergencyBuffer = calculateEmergencyBuffer(totalBalance, monthlyExpenses, monthlyLoanRepayments);
 
-      // Prepare health score input
+      // Phase 2 (cashflow-SSOT-convergence, 2026-06-23) — the ONE canonical
+      // monthly in/out/net for the health score + forecast hero. Actual when
+      // the user has transactions; declared fallback otherwise. `outflow`
+      // folds in loan repayments + uncategorised spend, so loanRepayments is
+      // 0 in the health-score input below (no double counting). When master is
+      // unavailable we degrade to the declared record figures. CLAUDE.md §19.1.
+      const canonical = masterSnapshot
+        ? getCanonicalMonthlyCashflow(masterSnapshot)
+        : {
+            inflow: monthlyIncome,
+            outflow: monthlyExpenses + monthlyLoanRepayments,
+            net: monthlyIncome - monthlyExpenses - monthlyLoanRepayments,
+            avgMonthlyOutflow: monthlyExpenses + monthlyLoanRepayments,
+            basis: 'declared' as const,
+            savingsRate:
+              monthlyIncome > 0
+                ? ((monthlyIncome - monthlyExpenses - monthlyLoanRepayments) / monthlyIncome) * 100
+                : 0,
+          };
+
+      const emergencyBuffer = calculateEmergencyBuffer(totalBalance, canonical.outflow, 0);
+
+      // Prepare health score input — canonical outflow (loans folded in).
       const healthScoreInput: HealthScoreInput = {
-        monthlyIncome,
-        monthlyExpenses,
-        monthlyLoanRepayments,
+        monthlyIncome: canonical.inflow,
+        monthlyExpenses: canonical.outflow,
+        monthlyLoanRepayments: 0,
         availableCash: totalBalance,
-        withdrawableCash: Math.max(0, totalBalance - (monthlyExpenses + monthlyLoanRepayments) * 3),
-        burnRate: monthlyExpenses + monthlyLoanRepayments,
+        withdrawableCash: Math.max(0, totalBalance - canonical.outflow * 3),
+        burnRate: canonical.outflow,
         volatilityIndex: data.spendingProfile?.overallVolatility || 30,
         breakEvenDay: 15, // Will be calculated properly
-        hasShortfall: totalBalance < monthlyExpenses,
+        hasShortfall: totalBalance < canonical.outflow,
         shortfallDays: 0,
         emergencyBuffer,
         hasBudget: !!data.budgetAnalysis,
         budgetedTotal: data.budgetAnalysis?.totalRealisticBudget || undefined,
-        actualTotal: monthlyExpenses,
+        actualTotal: canonical.outflow,
       };
 
       // Calculate health score
@@ -668,8 +701,13 @@ export const GET = withPermission('report.read', async (request, auth) => {
         actualOutflowByCategory
       );
 
-      // Build forecast summary
-      const forecast = buildForecastSummary(totalBalance, monthlyIncome, monthlyExpenses, monthlyLoanRepayments);
+      // Build forecast summary — CANONICAL in/out/net (actual when present).
+      const forecast = buildForecastSummary(
+        totalBalance,
+        canonical.inflow,
+        canonical.outflow,
+        canonical.net
+      );
 
       // Build tax optimization
       const taxOptimization = buildTaxOptimization(data.income, data.expenses, data.loans);

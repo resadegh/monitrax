@@ -398,7 +398,14 @@ export const GET = withPermission('report.read', async (request, auth) => {
         },
         emergencyFund: {
           liquidCash,
-          monthlyExpenses: totalMonthlyExpenses,
+          // Phase 2 (cashflow-SSOT-convergence, 2026-06-23) — display the EXACT
+          // denominator the engine used for monthsCovered (actual trailing-avg
+          // outflow when transactions exist; declared fallback otherwise), not
+          // the declared `totalMonthlyExpenses`. Previously the numerator
+          // (liquidCash) + monthsCovered were actual-based while the displayed
+          // "/month" figure was declared — an internal contradiction on one
+          // tile. CLAUDE.md §19.1.
+          monthlyExpenses: snapshot.emergencyFund.monthlyExpenses,
           monthsCovered,
           target: snapshot.emergencyFund.targetMonths,
           status: emergencyFundStatus,
