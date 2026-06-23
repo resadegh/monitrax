@@ -732,3 +732,6 @@ Removed the extra `/100` at all three sites (`/12` and `.div(12)` only; weighted
 
 ### Tests: `tests/calculations/loanInterestRate.test.ts` ($100k @ 0.06 → $500/mo, $6,000/yr, float+Decimal parity). tsc clean; aggregators shadow + calc-audit 200/200; CFO 259/259 green.
 ### Doc-sync (§16): this changelog. No config/schema/infra change. (AUDIT_DEBT_WHATIF.md on main via #1194.)
+
+### Addendum (fix-loan-interest-100x) — caught a compensating ×100 caller
+Self-review surfaced `lib/cfo/decisionSupport/loanDecisionSupport.ts:179` passing `interestRateAnnual * 100` (percent) INTO `aggregateLoanRepayments`. With the OLD aggregator `/100`, the two cancelled (loanDecisionSupport was coincidentally correct). Removing the aggregator `/100` alone would have made loanDecisionSupport's interest + weightedAverageRate **100× too HIGH**. Fixed `:179` to pass the decimal as-is — paired with the `:218` `weightedAverageRate` (no /100) fix. Verified the only OTHER aggregator caller (`masterFinancialService:1826`) already passes the decimal. All other `*100` occurrences are display/onboarding (not fed to the aggregator). tsc clean; 462 tests green (cfo + loan + aggregators + calc-audit).
