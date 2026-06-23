@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + N4.3 super + N4.4 land tax / stamp duty / GST (tax domain complete to indirect taxes).",
   "builtAtCommit": null,
@@ -1482,6 +1482,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
+    },
+    {
+      "id": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "kind": "engine",
+      "label": "Income tax (marginal brackets)",
+      "file": "lib/tax-engine/core/incomeTaxCalculator.ts",
+      "line": 21,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "IncomeTaxResult { taxPayable, marginalRate, effectiveRate }.",
+      "formula": "Progressive marginal-bracket tax: find the bracket where taxableIncome falls; tax = bracket.baseAmount + (taxableIncome − bracket.min + 1) × bracket.rate. taxableIncome ≤ 0 → 0. P0 fix 2026-06-23: strict `<` on bracket.min so an income exactly at a bracket minimum is taxed (was returning $0 at every boundary).",
+      "authority": "ITAA 1997; ATO individual income tax rates (FY24-25 Stage 3)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/incomeTaxCalculator.ts:21",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "engine.medicareLevyCalculator.calculateMedicareLevy",
+      "kind": "engine",
+      "label": "Medicare levy (2% + shade-in)",
+      "file": "lib/tax-engine/core/medicareLevyCalculator.ts",
+      "line": 38,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "MedicareLevyResult { medicareLevy, medicareSurcharge, total, isShadeIn }.",
+      "formula": "Below threshold → 0; shade-in (threshold..125%) → 10% of excess over threshold; above shade-out → full 2% of taxable income. Exempt/≤0 → 0.",
+      "authority": "Medicare Levy Act 1986; ATO Medicare Levy",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/medicareLevyCalculator.ts:38",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -2183,6 +2225,66 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "gstCalculator.ts:38 s9-70 10%; :40 s23-15 threshold",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.taxYearConfig.getCurrentTaxYearConfig",
+      "to": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "incomeTaxCalculator.ts:23 default config = getCurrentTaxYearConfig()",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.taxYearConfig.getCurrentTaxYearConfig",
+      "to": "engine.medicareLevyCalculator.calculateMedicareLevy",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "medicareLevyCalculator.ts:40 default config = getCurrentTaxYearConfig()",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "taxPositionCalculator.ts:220 calculateIncomeTax(taxableIncome, fyConfig)",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.medicareLevyCalculator.calculateMedicareLevy",
+      "to": "engine.taxPositionCalculator.calculateTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "taxPositionCalculator.ts:223 calculateMedicareLevy({taxableIncome}, fyConfig)",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "ATO marginal brackets from FY config",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.medicareLevyCalculator.calculateMedicareLevy",
+      "to": "law.medicareLevyAct",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "medicareLevyCalculator.ts 2% + shade-in",
       "verifiedDate": "2026-06-23"
     }
   ]
