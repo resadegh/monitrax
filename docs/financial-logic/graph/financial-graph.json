@@ -1,8 +1,8 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
-  "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO score.",
+  "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if scenario).",
   "builtAtCommit": null,
   "lastReviewed": "2026-06-23",
   "nodes": [
@@ -1755,6 +1755,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
+    },
+    {
+      "id": "engine.cutSpendCategory.cutSpendCategoryScenario",
+      "kind": "engine",
+      "label": "What-if: cut a spend category",
+      "file": "lib/cfo/scenarios/cutSpendCategory.ts",
+      "line": 18,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — monthly cashflow + annual saving + savings-rate + emergency-months impact of cutting a category.",
+      "formula": "realisedReduction = min(monthlyReduction, currentCategorySpend); annual saving = realisedReduction × 12; monthlyCashflowAfter = before + realisedReduction.",
+      "authority": "Monitrax what-if methodology (annual = monthly delta × 12, held constant 12 months; reduction capped at actual spend)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cfo/scenarios/cutSpendCategory.ts:18",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "law.monitrax.whatIfAnnualisation",
+      "kind": "law",
+      "label": "What-if annualisation rule",
+      "file": "lib/cfo/scenarios",
+      "line": null,
+      "layer": null,
+      "domain": "cfo",
+      "trailStage": "L",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "What-if scenarios annualise a monthly delta as delta × 12 (assumes the change holds constant for 12 months); reductions/inputs are capped at the actual underlying amount.",
+      "formula": "annual = monthlyDelta × 12",
+      "authority": "Monitrax CFO what-if methodology",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/cfo/scenarios/cutSpendCategory.ts:73",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -2606,6 +2648,16 @@
       "fromUnit": "score",
       "toUnit": "score",
       "evidence": "/dashboard/cfo renders the CFO score",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.cutSpendCategory.cutSpendCategoryScenario",
+      "to": "law.monitrax.whatIfAnnualisation",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "cutSpendCategory.ts:73 annual = realisedReduction × 12; :12 cap at currentMonthlySpend",
       "verifiedDate": "2026-06-23"
     }
   ]

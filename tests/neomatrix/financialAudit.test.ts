@@ -31,6 +31,7 @@ import { calculateSmsfIncomeTax } from '@/lib/tax-engine/super/smsfIncomeTax';
 import { calculateAggregateScore } from '@/lib/health/aggregateEngine';
 import { scoreToRiskBand } from '@/lib/health/types';
 import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
+import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -418,7 +419,53 @@ const CASES: AuditCase[] = [
     actual: () => calculateOverallScoreDecimal(cfoComponents(0, 0, 0, 0, 0, 0)).toNumber(),
     expected: 0,
   },
+
+  // ── CFO what-if: cut a spend category — annual = realised × 12 (capped) ───────
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: annual saving = realised monthly reduction × 12',
+    derivation: 'cut $200/mo from a $500/mo category → realised $200 → annual $200 × 12 = $2,400',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'Dining', monthlyReduction: 200 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 2400,
+  },
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: reduction is capped at the actual category spend',
+    derivation: 'request $800/mo but category is only $500/mo → realised $500 → annual $6,000',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'Dining', monthlyReduction: 800 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 6000,
+  },
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: a category with no spend yields $0',
+    derivation: 'unknown category → current spend $0 → annual $0',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'NotARealCategory', monthlyReduction: 200 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 0,
+  },
 ];
+
+// Minimal snapshot stub — only the fields cutSpendCategoryScenario reads.
+function cutSpendCtx(diningSpend: number): never {
+  return {
+    snapshot: {
+      expenses: { monthly: { byCategory: [{ category: 'Dining', amount: diningSpend }] } },
+      quickMetrics: {
+        monthlyCashflow: 1000,
+        monthlyExpenses: 3000,
+        monthlyIncome: 5000,
+        savingsRate: 20,
+        monthlyLoanRepayments: 0,
+      },
+      emergencyFund: { monthsCovered: 3, liquidCash: 9000 },
+    },
+  } as never;
+}
 
 // Risk-band classifier returns a string, so it has its own boundary block.
 describe('Neomatrix A1 — health risk-band boundaries (scoreToRiskBand)', () => {

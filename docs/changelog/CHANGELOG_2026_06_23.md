@@ -501,3 +501,29 @@ Expected values hand-derived from the documented CFO weights independent of the 
 - `npm run neomatrix:check` → OK (graph v0.10.0→0.11.0; fresh).
 
 ### Next — CFO what-if scenarios (cutSpend/redirect-to-offset), then intelligence + reports.
+
+---
+
+## Session: neomatrix-cfo-scenarios (model + A1 audit — cut-spend what-if)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, CFO scenarios). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- Stacked on the CFO-score branch (#1213).
+
+### What was modelled (graph 77→79 nodes)
+- `cutSpendCategoryScenario` (lib/cfo/scenarios/cutSpendCategory.ts:18) + a what-if-annualisation law node (annual = monthly delta × 12; reduction capped at actual spend).
+
+### A1 audit (3 new cases, all pass)
+- Cut $200/mo from a $500/mo category → realised $200 → **annual $2,400**.
+- Request $800/mo on a $500/mo category → capped at $500 → **annual $6,000**.
+- Unknown category (no spend) → **$0**.
+- **Result: no `suspected-issue`** — agrees with the documented what-if methodology; now locked.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived (realised × 12, capped at current spend) independent of the code; real engine executed with a minimal snapshot stub (only the fields it reads); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **55/55 pass** (audit 49 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.11.0→0.12.0; fresh).
+
+### Next — intelligence (insights engine) + reports, then remaining what-if scenarios (redirect-to-offset etc.).
