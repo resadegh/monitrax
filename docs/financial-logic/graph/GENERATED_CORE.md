@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.3.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.4.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 41 · **Edges:** 43
-- **By kind:** orchestrator 2 · engine 13 · input-field 13 · law 6 · number 4 · ui-surface 3
-- **By status:** documented 41
-- **Edge provenance:** verified 43 *(verified > graphify > inferred)*
+- **Nodes:** 57 · **Edges:** 62
+- **By kind:** orchestrator 2 · engine 19 · input-field 18 · law 11 · number 4 · ui-surface 3
+- **By status:** documented 57
+- **Edge provenance:** verified 62 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -32,6 +32,12 @@
 | **CGT indexation (post-reform)** | `lib/tax-engine/divisions/cgtIndexation.ts:87` | engine | tax | CgtIndexationResult — indexed cost base OR UNCOMPUTED flag (pre-reform fallback). | 2026-27 reform Measure 2; CLAUDE.md §12.14 FW-2 | lib/tax-engine/divisions/cgtIndexation.ts:87 (read this session) | documented |
 | **CGT minimum rate (30% floor, post-reform)** | `lib/tax-engine/divisions/cgtMinimumRate.ts:80` | engine | tax | CgtMinimumRateResult — the floored taxable gain (post-reform). | 2026-27 reform Measure 2; CLAUDE.md §12.14 | lib/tax-engine/divisions/cgtMinimumRate.ts:80 (read this session) | documented |
 | **Negative-gearing regime classifier (Measure 1)** | `lib/tax-engine/divisions/negativeGearingRegime.ts:147` | engine | tax | NegativeGearingRegime discriminant — which regime governs loss-offset for this property. | 2026-27 reform Measure 1; CLAUDE.md §12.14 FW-1 | lib/tax-engine/divisions/negativeGearingRegime.ts:147 (read this session) | documented |
+| **Super guarantee (SG)** | `lib/tax-engine/super/contributionCalculator.ts:61` | engine | tax | SG contribution amount. | SGAA 1992; ATO SG rate + max contribution base | lib/tax-engine/super/contributionCalculator.ts:61 (read this session) | documented |
+| **Super contributions + tax saved** | `lib/tax-engine/super/contributionCalculator.ts:115` | engine | tax | Concessional/non-concessional totals, 15% contributions tax, tax saved. | ITAA 1997 s295-485 (15% taxed-in-fund) | lib/tax-engine/super/contributionCalculator.ts:115 (read this session) | documented |
+| **Concessional carry-forward** | `lib/tax-engine/super/capTracker.ts:96` | engine | tax | Available carry-forward concessional cap. | ITAA 1997 s291-20 | lib/tax-engine/super/capTracker.ts:96 (read this session) | documented |
+| **Non-concessional bring-forward** | `lib/tax-engine/super/capTracker.ts:148` | engine | tax | Bring-forward non-concessional availability. | ITAA 1997 s292-85 | lib/tax-engine/super/capTracker.ts:148 (read this session) | documented |
+| **Div 293 + Div 296 high-income/balance tax** | `lib/tax-engine/super/highIncomeSuperTax.ts:77` | engine | tax | Div 293 surcharge (+ Div 296 when commenced). | ITAA 1997 Div 293; Div 296 (proposed); CLAUDE.md §12.14 FW-2 | lib/tax-engine/super/highIncomeSuperTax.ts:77 (read this session) | documented |
+| **SMSF income tax (Div 295)** | `lib/tax-engine/super/smsfIncomeTax.ts:151` | engine | tax | SMSF tax payable (15% concessional / 45% NALI). | ITAA 1997 Div 295; s295-385/390 (ECPI); s295-550 (NALI) | lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -61,6 +67,11 @@
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position |
 | **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
 | **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
+| **s295-485 — 15% taxed-in-fund** | Concessional contributions / fund income taxed at 15% in the fund. | ITAA 1997 s295-485 | Super contributions + tax saved, SMSF income tax (Div 295) |
+| **Contribution caps + carry/bring-forward** | Concessional cap (s291), non-concessional cap (s292), carry-forward (s291-20), bring-forward (s292-85). | ITAA 1997 s291 / s292 | Super guarantee (SG), Concessional carry-forward, Non-concessional bring-forward |
+| **Div 293 — extra 15% (high income)** | Additional 15% tax on concessional contributions for income above the threshold. | ITAA 1997 Div 293 (s293-15) | Div 293 + Div 296 high-income/balance tax |
+| **Div 296 — extra 15% on TSB earnings (proposed)** | Proposed additional 15% on earnings attributable to TSB above the threshold — pending commencement (FW-2). | ITAA 1997 Div 296 (proposed) | Div 293 + Div 296 high-income/balance tax |
+| **Div 295 — taxation of complying super funds** | Complying fund taxed at 15%; ECPI exemption (s295-385/390); NALI at top rate (s295-550). | ITAA 1997 Div 295 | SMSF income tax (Div 295) |
 
 ## Edges (verified, with evidence)
 
@@ -109,6 +120,25 @@
 | CGT indexation (post-reform) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | cgtIndexation.ts:87/96 post-reform indexation, UNCOMPUTED until commencement |
 | CGT minimum rate (30% floor, post-reform) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | cgtMinimumRate.ts:80 post-reform 30% floor (Measure 2) |
 | Negative-gearing regime classifier (Measure 1) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | negativeGearingRegime.ts:147 + :31 import REFORM_CUT_OVER_UTC (Measure 1) |
+| Super guarantee rate (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:104 in returned config |
+| Concessional cap (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:106 in returned config |
+| Non-concessional cap (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:107 in returned config |
+| Div 293 threshold (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:108 in returned config |
+| Taxed-in-fund 15% rate (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:109 in returned config |
+| FY tax thresholds (canonical) | → | Super guarantee (SG) | feeds | — | verified | contributionCalculator.ts:63 default config; :72 superGuaranteeQuarterlyCap |
+| FY tax thresholds (canonical) | → | Super contributions + tax saved | feeds | — | verified | contributionCalculator.ts:115 uses config (15% concessional) |
+| FY tax thresholds (canonical) | → | Concessional carry-forward | feeds | — | verified | capTracker.ts:96 default config |
+| FY tax thresholds (canonical) | → | Non-concessional bring-forward | feeds | — | verified | capTracker.ts:150 default config; :157 nonConcessionalCap |
+| FY tax thresholds (canonical) | → | Div 293 + Div 296 high-income/balance tax | feeds | — | verified | highIncomeSuperTax.ts:85 division293Threshold; :97 superContributionsTaxRate |
+| FY tax thresholds (canonical) | → | SMSF income tax (Div 295) | feeds | — | verified | smsfIncomeTax.ts:155 superContributionsTaxRate |
+| Super guarantee (SG) | → | Contribution caps + carry/bring-forward | governed-by | — | verified | SG max contribution base (config.superGuaranteeQuarterlyCap) |
+| Super contributions + tax saved | → | s295-485 — 15% taxed-in-fund | governed-by | — | verified | contributionCalculator.ts:171 15% concessional contributions tax |
+| Concessional carry-forward | → | Contribution caps + carry/bring-forward | governed-by | — | verified | capTracker.ts:96 s291-20 carry-forward |
+| Non-concessional bring-forward | → | Contribution caps + carry/bring-forward | governed-by | — | verified | capTracker.ts:148/166 s292-85 bring-forward |
+| Div 293 + Div 296 high-income/balance tax | → | Div 293 — extra 15% (high income) | governed-by | — | verified | highIncomeSuperTax.ts:7,97 Div 293 s293-15 |
+| Div 293 + Div 296 high-income/balance tax | → | Div 296 — extra 15% on TSB earnings (proposed) | governed-by | — | verified | highIncomeSuperTax.ts:9,101 Div 296 (pending div296CommencementVerified) |
+| SMSF income tax (Div 295) | → | Div 295 — taxation of complying super funds | governed-by | — | verified | smsfIncomeTax.ts:13-21 Div 295 + ECPI + NALI |
+| SMSF income tax (Div 295) | → | s295-485 — 15% taxed-in-fund | governed-by | — | verified | smsfIncomeTax.ts:155 15% concessional rate s295-485 |
 
 ---
 
