@@ -75,3 +75,27 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 - `docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md` — **new.** Layered data-flow diagram (DB → pure engines → masterFinancialService → API routes → UI, mermaid), verified engine dependency graph (file:line for each `masterFinancialService` composition call), per-number lineage table (raw field → engine → accessor → route → tile), and the two-snapshot-SSOT distinction. Verified-only edges (confirmed in source this session).
 - `00_INDEX.md` — per-engine schema now requires **Fed by / Feeds into** edges; relationships spoke registered.
 - `01_CORE_CALCULATIONS.md` — added **Fed by / Feeds into** to all 4 entries.
+
+---
+
+## Session: neomatrix-design-spec-shk180
+
+### Changes Made
+- **Type:** Documentation (design spec for a new build workstream)
+- **Scope:** new `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` — full build spec for the **Neomatrix**
+- **Why:** Reza named the financial-logic knowledge-graph artefact **Neomatrix** and asked for a complete, hand-off-ready design spec for a dedicated new session to build, while this session continues the audit/discrepancy work.
+- **What the spec defines:** vision; honest conceptual model (typed directed knowledge graph, NOT a literal cube — the "cube" survives as sliceable projections: layer/domain/TRAIL/regime); 4-layer architecture (L0 Graphify structural skeleton · L1 `financial-graph.json` semantic graph · L2 views: generated markdown + 2D explorer + optional 3D · L3 CI audit checks); the node/edge JSON schema (§5); tech choices (Graphify, Cytoscape, optional 3d-force-graph, CI like check-plan-freshness); build phases N0–N5 with acceptance criteria; integration with the existing `docs/financial-logic/` index + masterFinancialService SSOT + the #1201 enforcement gate; §13.6 security (no CDR data in graph; verify Graphify local-only); guardrails (model-only, never-guess, derive-don't-hand-maintain, value-before-visuals); how the new session should start; open decisions.
+- **Graphify research:** verified via web search that Graphify (`safishamsi/graphify`) is a real Claude Code knowledge-graph skill (tree-sitter AST/call-graph, NetworkX, Leiden communities, local). Conclusion in the spec: complementary (bones), not a replacement for the semantic correctness layer (meaning).
+
+### Files Added
+- `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md`
+
+### Files Modified
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — new `0·NEOMATRIX` workstream.
+
+### Testing
+- [x] No code — docs only.
+
+### PR
+- PR URL: (to be filled)
+- Status: design spec for a new build session

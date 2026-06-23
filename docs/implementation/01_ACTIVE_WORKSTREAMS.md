@@ -50,6 +50,26 @@
 - **Risk:** the index documenting stale behaviour if an engine changes without updating the entry — mitigated by the same-PR sync rule (§16) and (future) the CI freshness gate.
 - **Blocking:** none for the doc backfill. The generator/CI-gate sub-phase awaits Reza's go-ahead on the Phase-A enforcement approach.
 
+### 0·NEOMATRIX. Neomatrix — Financial Logic Knowledge Graph (Phase 53)
+
+- **Status:** 🟡 ACTIVE — **design spec shipped; build handed to a dedicated new session.**
+- **Started:** 2026-06-23.
+- **Owner:** Reza (direction) + a dedicated build session (execution). This session authored the spec only.
+- **Last touched:** 2026-06-23 — full build spec `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` on branch `claude/neomatrix-design-spec-shk180`. Reza named it **Neomatrix** and asked for a complete design spec to hand to a new build session.
+- **What it is:** the machine-readable + navigable + auditable evolution of the markdown Financial Logic Index — a typed directed knowledge graph of every calc engine/number/formula/law (nodes) + dependencies/data-flow (edges), with sliceable projections (the "cube" axes: layer / domain / TRAIL / regime) and CI validation so no number can drift from its canonical source without the build failing. Reza's "3D model / chemical structure" in its correct CS form (graph, not literal cube).
+- **Architecture (4 layers):** L0 structural skeleton (Graphify auto AST/call-graph — trial first), L1 semantic graph `financial-graph.json` (the canonical model — formulas/authority/units/lineage, research-verified), L2 views (markdown generated from JSON + interactive 2D explorer + optional 3D), L3 CI audit checks (the correctness guarantee). Division of labour: Graphify = bones (auto edges), our graph = meaning (no tool can derive formulas/laws).
+- **Phase checklist (for the build session):**
+  - [x] Design spec (`PHASE_53_MONITRAX_NEOMATRIX.md`).
+  - [ ] N0 — Graphify trial on `lib/` + §13.6 security pre-check (go/no-go on Layer 0).
+  - [ ] N1 — `financial-graph.json` schema + proof slice (4 core engines) + markdown generator.
+  - [ ] N2 — interactive 2D explorer.
+  - [ ] N3 — CI audit checks (generalise the #1201 drift-guard).
+  - [ ] N4 — backfill domains (tax first — highest risk).
+  - [ ] N5 (optional) — literal 3D view.
+- **Constraints:** documentation/model only — never change a formula/law/threshold; never guess an edge or formula (cite file:line or mark `unverified`); derive don't hand-maintain (markdown renders from JSON; CI checks freshness); no CDR data in the graph.
+- **Risk:** maintenance drift if hand-kept (mitigated by derive-from-code + CI freshness); Graphify egress (mitigated by N0 security pre-check); gold-plating the 3D (mitigated by value-before-visuals ordering).
+- **Why this matters:** drift is a graph problem; this is the artefact that makes every number traceable + provable-correct, and machine-enforces it. The structural fix for the recurring correctness failures.
+
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
