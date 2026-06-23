@@ -478,3 +478,26 @@ Expected values hand-derived from the documented health formula + band threshold
 - `tests/neomatrix/financialAudit.test.ts` (+8 cases + risk-band block), `financial-graph.json` (v0.10.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — CFO/scenarios (model + audit), then intelligence + reports.
+
+---
+
+## Session: neomatrix-cfo (model + A1 audit — CFO score)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, **CFO domain**). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+
+### What was modelled (graph 72→77 nodes; domains now core+tax+health+**cfo**)
+- `calculateOverallScoreDecimal` (scoreCalculator.ts:730) + `calculateCFOScore` (:33, §6.4 CFO SSOT) + the 6-component weighting law node; `number.cfoScore` → `/dashboard/cfo` tile.
+
+### A1 audit (3 new cases, all pass)
+- **CFO overall score** (weights .25/.20/.15/.15/.15/.10, sum 1.0): all components 100 → **100**; (80×.25+60×.20+40×.15+100×.15+50×.15+20×.10) → **62.5**; all 0 → **0**.
+- **Result: no `suspected-issue`** — agrees with the documented weighting; now locked. **11 engines now A1-audited**.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from the documented CFO weights independent of the code; real engine executed (Decimal); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **52/52 pass** (audit 46 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.10.0→0.11.0; fresh).
+
+### Next — CFO what-if scenarios (cutSpend/redirect-to-offset), then intelligence + reports.
