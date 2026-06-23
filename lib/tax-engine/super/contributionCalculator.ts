@@ -49,7 +49,6 @@ export interface SuperContributionResult {
 }
 
 // Maximum super contribution base (quarterly) for SG
-const MAX_SUPER_CONTRIBUTION_BASE_2024_25 = 62500; // Quarterly
 
 // =============================================================================
 // Super Guarantee Calculator
@@ -65,8 +64,13 @@ export function calculateSuperGuarantee(
 ): { amount: number; rate: number; calculations: CalculationStep[] } {
   const calculations: CalculationStep[] = [];
 
-  // Apply maximum super contribution base (annualized)
-  const annualMaxBase = MAX_SUPER_CONTRIBUTION_BASE_2024_25 * 4;
+  // Apply maximum super contribution base (annualized).
+  // P1 fix (2026-06-23, audit): use the per-FY config cap (SSOT), not a
+  // hardcoded value. The hardcoded $62,500 was FY25-26's cap; FY24-25 is
+  // $65,070 — using the wrong one understated SG for high earners.
+  // `config.superGuaranteeQuarterlyCap` holds the ATO-verified per-year base.
+  const quarterlyMaxBase = config.superGuaranteeQuarterlyCap;
+  const annualMaxBase = quarterlyMaxBase * 4;
   const eligibleEarnings = Math.min(grossSalary, annualMaxBase);
 
   calculations.push({
@@ -81,7 +85,7 @@ export function calculateSuperGuarantee(
       label: 'Maximum super contribution base',
       value: annualMaxBase,
       operation: '=',
-      explanation: `SG is only calculated on first $${annualMaxBase.toLocaleString()} (quarterly max $${MAX_SUPER_CONTRIBUTION_BASE_2024_25.toLocaleString()})`,
+      explanation: `SG is only calculated on first $${annualMaxBase.toLocaleString()} (quarterly max $${quarterlyMaxBase.toLocaleString()})`,
     });
   }
 
@@ -494,8 +498,6 @@ export interface SuperContributionResultDecimal {
   division293Tax: Decimal;
 }
 
-const ANNUAL_MAX_SUPER_BASE = new Decimal(MAX_SUPER_CONTRIBUTION_BASE_2024_25).times(4);
-
 /**
  * Decimal sibling of `calculateSuperGuarantee`. SG calculated on OTE
  * up to the annualised max super contribution base.
@@ -508,7 +510,9 @@ export function calculateSuperGuaranteeDecimal(
   config: TaxYearConfig = getCurrentTaxYearConfig(),
 ): { amount: Decimal; rate: Decimal } {
   const grossDec = toDecimal(grossSalary) ?? new Decimal(0);
-  const eligibleEarnings = Decimal.min(grossDec, ANNUAL_MAX_SUPER_BASE);
+  // P1 fix (2026-06-23, audit): per-FY config cap (SSOT), not a hardcoded value.
+  const annualMaxBase = new Decimal(config.superGuaranteeQuarterlyCap).times(4);
+  const eligibleEarnings = Decimal.min(grossDec, annualMaxBase);
   const sgAmount = eligibleEarnings.times(config.superGuaranteeRate);
   return {
     amount: sgAmount.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN),
