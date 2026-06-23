@@ -273,3 +273,54 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 - N4.3: super (contributions/caps/Div 293) → land tax/stamp duty/GST → then health → CFO → intelligence → reports.
 
 ### PR — folded into PR #1204 (draft).
+
+---
+
+## Session: neomatrix-N4.3 (super domain) + CLAUDE.md §20.4
+
+### Changes Made
+- **Type:** Documentation / model + governance. **No financial logic changed.** Financial build → **self-review 10/10** recorded (§20.4).
+- **Reza directives:** (a) "the 3 time review against requirement rule for all your builds … 10/10 for any financial builds" → **CLAUDE.md §20.4** added (3× review applies to every build; any financial build must score 10/10, recorded in the PR/changelog; v2.6→2.7). (b) "continue" → N4.3 super backfill.
+
+### N4.3 — superannuation (graph 41→57 nodes / 43→62 edges, all `verified`, file:line read this session)
+- SG: `calculateSuperGuarantee` (contributionCalculator.ts:61) + `calculateSuperContributions` (:115, 15% taxed-in-fund s295-485, tax-saved).
+- Caps: `calculateCarryForward` (capTracker.ts:96, s291-20 carry-forward, TSB<500k) + `calculateBringForward` (:148, s292-85 bring-forward).
+- High-income/balance: `calculateHighIncomeSuperTax` (highIncomeSuperTax.ts:77, **Div 293** extra 15% s293-15; **Div 296** proposed — gated behind `div296CommencementVerified`, UNCOMPUTED until commenced, FW-2).
+- SMSF: `calculateSmsfIncomeTax` (smsfIncomeTax.ts:151, **Div 295** complying-fund 15%; **ECPI** s295-385/390; **NALI** s295-550 at top rate).
+- 5 FY-config inputs (SG rate :104 / concessional cap :106 / non-concessional cap :107 / Div293 threshold :108 / 15% rate :109) → `getCurrentTaxYearConfig`; all 6 super engines fed by it (each config-usage verified in source). 5 ITAA law nodes; `governed-by` edges throughout.
+
+### Self-review (§20.4 — 10/10)
+- Pass 1 draft → Pass 2 critique (every config→engine edge verified by reading the engine's config usage — not guessed; every governed-by cites an ITAA section read in-source; no tax VALUES in the graph §9; Div 296 FW-2 captured; anchors resolve; no orphan/contradiction) → Pass 3 consistency (no invented UI/orchestrator edges). **Overall 10/10.**
+
+### Verification
+- `npm run neomatrix:check` → **OK** (57/62; schema valid; invariants hold; all 21 engine/orchestrator file:line anchors resolve; markdown fresh).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (+16 nodes/+19 edges; v0.3.0→0.4.0), `GENERATED_CORE.md`, `CLAUDE.md` (§20.4, v2.7), `docs/implementation/01_ACTIVE_WORKSTREAMS.md`.
+
+### Next
+- N4.4: land tax / stamp duty / GST → then health → CFO → intelligence → reports.
+
+---
+
+## Session: neomatrix-N4.4 (indirect taxes — land/stamp/GST)
+
+### Changes Made
+- **Type:** Documentation / model. **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- N4.4 completes the tax domain's indirect taxes (graph 57→64 nodes / 62→70 edges, all `verified`, file:line read this session):
+  - `calculateLandTax` (stateLandTax.ts:374) → `calculateCrossStateLandTax` (crossStateAggregator.ts:105, calls calculateLandTax at :136) → orchestrator `buildMasterTaxPosition` (masterTaxPosition.ts:200).
+  - `calculateStampDuty` (stateStampDuty.ts:285) → orchestrator (:213).
+  - `calculateGst` (gstCalculator.ts:104, s9-70 10% / s23-15 $75k) → orchestrator (:226).
+  - Law nodes: state Land Tax Acts, state Duties Acts (+ foreign surcharge), GST Act 1999; `governed-by` edges throughout.
+- This wires the orchestrator's cross-cutting modules (land tax / stamp duty / GST) — the tax orchestration picture is now complete.
+
+### Self-review (§20.4) — **10/10**
+Every edge verified by source read (crossStateAggregator:136; masterTaxPosition:200/213/226); Acts cited from file headers; GST rate/threshold cite s9-70/s23-15. Anchors resolve; no orphan/contradiction.
+
+### Verification
+- `npm run neomatrix:check` → **OK** (64/70; schema valid; invariants hold; all 23 engine/orchestrator file:line anchors resolve; markdown fresh).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (v0.4.0→0.5.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — N4.5: health engine → CFO → intelligence → reports.
