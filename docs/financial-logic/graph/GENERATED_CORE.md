@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.6.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.7.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 64 · **Edges:** 70
-- **By kind:** orchestrator 2 · engine 23 · input-field 18 · law 14 · number 4 · ui-surface 3
-- **By status:** documented 64
-- **Edge provenance:** verified 70 *(verified > graphify > inferred)*
+- **Nodes:** 66 · **Edges:** 76
+- **By kind:** orchestrator 2 · engine 25 · input-field 18 · law 14 · number 4 · ui-surface 3
+- **By status:** documented 66
+- **Edge provenance:** verified 76 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -42,6 +42,8 @@
 | **Cross-state land tax (household)** | `lib/tax-engine/landTax/crossStateAggregator.ts:105` | engine | tax | Household-wide land-tax position. | State Land Tax Acts (per-state aggregation) | lib/tax-engine/landTax/crossStateAggregator.ts:105 (read this session) | documented |
 | **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | lib/tax-engine/stampDuty/stateStampDuty.ts:285 (read this session) | documented |
 | **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) | documented |
+| **Income tax (marginal brackets)** | `lib/tax-engine/core/incomeTaxCalculator.ts:21` | engine | tax | IncomeTaxResult { taxPayable, marginalRate, effectiveRate }. | ITAA 1997; ATO individual income tax rates (FY24-25 Stage 3) | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/incomeTaxCalculator.ts:21 | documented |
+| **Medicare levy (2% + shade-in)** | `lib/tax-engine/core/medicareLevyCalculator.ts:38` | engine | tax | MedicareLevyResult { medicareLevy, medicareSurcharge, total, isShadeIn }. | Medicare Levy Act 1986; ATO Medicare Levy | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/medicareLevyCalculator.ts:38 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -59,7 +61,7 @@
 | **Net worth (displayed)** (`netWorth`) | Net worth | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
 | **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
 | **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
-| **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
+| **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 
 ## Governing laws / authorities (B6)
 
@@ -67,8 +69,8 @@
 |---|---|---|---|
 | **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
-| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG) |
-| **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position |
+| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets) |
+| **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in) |
 | **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
 | **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
 | **s295-485 — 15% taxed-in-fund** | Concessional contributions / fund income taxed at 15% in the fund. | ITAA 1997 s295-485 | Super contributions + tax saved, SMSF income tax (Div 295) |
@@ -154,6 +156,12 @@
 | Cross-state land tax (household) | → | State Land Tax Acts | governed-by | — | verified | cross-state land-tax aggregation |
 | Stamp duty / transfer duty (per state) | → | State Duties Acts | governed-by | — | verified | stateStampDuty.ts header — state Duties Acts + foreign surcharge |
 | GST / BAS | → | GST Act 1999 | governed-by | — | verified | gstCalculator.ts:38 s9-70 10%; :40 s23-15 threshold |
+| FY tax thresholds (canonical) | → | Income tax (marginal brackets) | feeds | — | verified | incomeTaxCalculator.ts:23 default config = getCurrentTaxYearConfig() |
+| FY tax thresholds (canonical) | → | Medicare levy (2% + shade-in) | feeds | — | verified | medicareLevyCalculator.ts:40 default config = getCurrentTaxYearConfig() |
+| Income tax (marginal brackets) | → | Income tax position | feeds | — | verified | taxPositionCalculator.ts:220 calculateIncomeTax(taxableIncome, fyConfig) |
+| Medicare levy (2% + shade-in) | → | Income tax position | feeds | — | verified | taxPositionCalculator.ts:223 calculateMedicareLevy({taxableIncome}, fyConfig) |
+| Income tax (marginal brackets) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | ATO marginal brackets from FY config |
+| Medicare levy (2% + shade-in) | → | Medicare Levy Act 1986 | governed-by | — | verified | medicareLevyCalculator.ts 2% + shade-in |
 
 ---
 

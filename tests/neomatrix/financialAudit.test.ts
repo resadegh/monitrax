@@ -21,6 +21,9 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 import { resolveCanonicalCashflow } from '@/lib/calculations/canonicalCashflow';
+import { calculateIncomeTax } from '@/lib/tax-engine/core/incomeTaxCalculator';
+import { calculateMedicareLevy } from '@/lib/tax-engine/core/medicareLevyCalculator';
+import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
 const graph = JSON.parse(
   readFileSync(resolve(process.cwd(), 'docs/financial-logic/graph/financial-graph.json'), 'utf8'),
@@ -110,6 +113,70 @@ const CASES: AuditCase[] = [
         { inflow: 0, outflow: 500, net: -500 },
       ).savingsRate,
     expected: 0,
+  },
+
+  // ── Income tax — ATO FY24-25 Stage 3 marginal brackets (the LAW) ────────────
+  // ATO published brackets: 0% ≤18,200 · 16% 18,201–45,000 · 30% 45,001–135,000
+  // (base 4,288) · 37% 135,001–190,000 (base 31,288) · 45% 190,001+ (base 51,638).
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25: tax-free threshold $18,200',
+    derivation: 'taxable income $18,200 → $0',
+    actual: () => calculateIncomeTax(18200, TAX_YEAR_2024_25).taxPayable,
+    expected: 0,
+  },
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25: 16% on 18,201–45,000',
+    derivation: '16% × (45,000 − 18,200) = 0.16 × 26,800 = 4,288',
+    actual: () => calculateIncomeTax(45000, TAX_YEAR_2024_25).taxPayable,
+    expected: 4288,
+  },
+  {
+    // The P0 bug regression-lock: income exactly AT a bracket minimum used to
+    // return $0 (broke out of the loop). Must now tax in the new bracket.
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25 bracket boundary $45,001 (base 4,288 + 30%): must NOT be $0',
+    derivation: '4,288 + 30% × (45,001 − 45,000) = 4,288 + 0.30 = 4,288.30',
+    actual: () => calculateIncomeTax(45001, TAX_YEAR_2024_25).taxPayable,
+    expected: 4288.3,
+  },
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25: $100,000 in the 30% bracket (base 4,288)',
+    derivation: '4,288 + 30% × (100,000 − 45,000) = 4,288 + 16,500 = 20,788',
+    actual: () => calculateIncomeTax(100000, TAX_YEAR_2024_25).taxPayable,
+    expected: 20788,
+  },
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25 bracket boundary $135,001 (base 31,288 + 37%): must NOT be $0',
+    derivation: '31,288 + 37% × (135,001 − 135,000) = 31,288 + 0.37 = 31,288.37',
+    actual: () => calculateIncomeTax(135001, TAX_YEAR_2024_25).taxPayable,
+    expected: 31288.37,
+  },
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25: $190,000 (top of the 37% bracket, base 31,288)',
+    derivation: '31,288 + 37% × (190,000 − 135,000) = 31,288 + 20,350 = 51,638',
+    actual: () => calculateIncomeTax(190000, TAX_YEAR_2024_25).taxPayable,
+    expected: 51638,
+  },
+  {
+    node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    law: 'ATO FY24-25: $200,000 in the 45% bracket (base 51,638)',
+    derivation: '51,638 + 45% × (200,000 − 190,000) = 51,638 + 4,500 = 56,138',
+    actual: () => calculateIncomeTax(200000, TAX_YEAR_2024_25).taxPayable,
+    expected: 56138,
+  },
+
+  // ── Medicare levy — Medicare Levy Act (2% above the shade-out) ───────────────
+  {
+    node: 'engine.medicareLevyCalculator.calculateMedicareLevy',
+    law: 'Medicare Levy 2% of taxable income above the shade-out (single)',
+    derivation: '$100,000 is above the shade-out → 2% × 100,000 = 2,000',
+    actual: () => calculateMedicareLevy({ taxableIncome: 100000 }, TAX_YEAR_2024_25).total,
+    expected: 2000,
   },
 ];
 

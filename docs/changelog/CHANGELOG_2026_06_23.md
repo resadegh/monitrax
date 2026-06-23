@@ -352,3 +352,33 @@ Expected values are law/formula-derived independent of the code; real engines ex
 - Added `tests/neomatrix/financialAudit.test.ts`. Modified `financial-graph.json` (verifiedBy + v0.6.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — A1 tax slice (ATO-law-derived expected: income tax brackets, Medicare, Div 293, GST), then health/CFO backfill (each with its A1 audit, audit-as-we-go).
+
+---
+
+## Session: neomatrix-A1-tax (executable ATO-law audit — income tax + Medicare)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 §14 A1, tax). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- Models + audits the two core tax engines against the **ATO law** (not the code).
+
+### What was built
+- **Graph (v0.6.0→0.7.0, +2 nodes / +6 edges):** `engine.incomeTaxCalculator.calculateIncomeTax` (core/incomeTaxCalculator.ts:21) + `engine.medicareLevyCalculator.calculateMedicareLevy` (core/medicareLevyCalculator.ts:38), fed by the FY-config SSOT, feeding `calculateTaxPosition` (:220/:223), `governed-by` ITAA income-tax / Medicare Levy Act law nodes.
+- **A1 tax audit (9 cases, all pass), ATO FY24-25 Stage 3 brackets hand-derived:**
+  - Tax-free threshold $18,200 → $0.
+  - 16% band: $45,000 → $4,288.
+  - **Bracket-boundary regression locks** (the historical $0-at-boundary P0 bug, fixed 2026-06-23): $45,001 → **$4,288.30**, $135,001 → **$31,288.37** (must NOT be $0).
+  - 30% band: $100,000 → $20,788. 37% top: $190,000 → $51,638. 45% band: $200,000 → $56,138.
+  - Medicare 2% above shade-out: $100,000 → $2,000.
+- **Result: no `suspected-issue`** — the income-tax + Medicare engines agree with the ATO law; cases are now law-anchored locks. The P0 bracket-boundary fix is provably protected against regression.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from ATO published rates independent of the code; real engines executed (vitest 15 audit cases); deterministic (explicit FY24-25 config); tied to the model (new nodes asserted present); no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **21/21 pass** (audit 15 + graph 6).
+- `npm run neomatrix:check` → OK (66 nodes / 76 edges; fresh).
+
+### Files
+- `tests/neomatrix/financialAudit.test.ts` (+9 tax cases), `financial-graph.json` (v0.7.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — A1: Div 293 / super + GST (ATO-law-derived), then health/CFO backfill with their A1 audits.
