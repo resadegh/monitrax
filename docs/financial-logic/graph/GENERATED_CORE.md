@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.4.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.5.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 57 · **Edges:** 62
-- **By kind:** orchestrator 2 · engine 19 · input-field 18 · law 11 · number 4 · ui-surface 3
-- **By status:** documented 57
-- **Edge provenance:** verified 62 *(verified > graphify > inferred)*
+- **Nodes:** 64 · **Edges:** 70
+- **By kind:** orchestrator 2 · engine 23 · input-field 18 · law 14 · number 4 · ui-surface 3
+- **By status:** documented 64
+- **Edge provenance:** verified 70 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -38,6 +38,10 @@
 | **Non-concessional bring-forward** | `lib/tax-engine/super/capTracker.ts:148` | engine | tax | Bring-forward non-concessional availability. | ITAA 1997 s292-85 | lib/tax-engine/super/capTracker.ts:148 (read this session) | documented |
 | **Div 293 + Div 296 high-income/balance tax** | `lib/tax-engine/super/highIncomeSuperTax.ts:77` | engine | tax | Div 293 surcharge (+ Div 296 when commenced). | ITAA 1997 Div 293; Div 296 (proposed); CLAUDE.md §12.14 FW-2 | lib/tax-engine/super/highIncomeSuperTax.ts:77 (read this session) | documented |
 | **SMSF income tax (Div 295)** | `lib/tax-engine/super/smsfIncomeTax.ts:151` | engine | tax | SMSF tax payable (15% concessional / 45% NALI). | ITAA 1997 Div 295; s295-385/390 (ECPI); s295-550 (NALI) | lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session) | documented |
+| **State land tax (per state)** | `lib/tax-engine/landTax/stateLandTax.ts:374` | engine | tax | Per-state land tax payable. | State Land Tax Acts (NSW 1956 / VIC 2005 / QLD / SA / WA / TAS) | lib/tax-engine/landTax/stateLandTax.ts:374 (read this session) | documented |
+| **Cross-state land tax (household)** | `lib/tax-engine/landTax/crossStateAggregator.ts:105` | engine | tax | Household-wide land-tax position. | State Land Tax Acts (per-state aggregation) | lib/tax-engine/landTax/crossStateAggregator.ts:105 (read this session) | documented |
+| **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | lib/tax-engine/stampDuty/stateStampDuty.ts:285 (read this session) | documented |
+| **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -72,6 +76,9 @@
 | **Div 293 — extra 15% (high income)** | Additional 15% tax on concessional contributions for income above the threshold. | ITAA 1997 Div 293 (s293-15) | Div 293 + Div 296 high-income/balance tax |
 | **Div 296 — extra 15% on TSB earnings (proposed)** | Proposed additional 15% on earnings attributable to TSB above the threshold — pending commencement (FW-2). | ITAA 1997 Div 296 (proposed) | Div 293 + Div 296 high-income/balance tax |
 | **Div 295 — taxation of complying super funds** | Complying fund taxed at 15%; ECPI exemption (s295-385/390); NALI at top rate (s295-550). | ITAA 1997 Div 295 | SMSF income tax (Div 295) |
+| **State Land Tax Acts** | Progressive land tax on aggregated taxable land value, per state (NT = none). | NSW Land Tax Act 1956; VIC Land Tax Act 2005; QLD/SA/WA/TAS equivalents | State land tax (per state), Cross-state land tax (household) |
+| **State Duties Acts** | Transfer (stamp) duty on dutiable property value + foreign-purchaser surcharge. | NSW Duties Act 1997; VIC Duties Act 2000; state equivalents | Stamp duty / transfer duty (per state) |
+| **GST Act 1999** | 10% GST on taxable supplies; $75k registration threshold. | A New Tax System (Goods and Services Tax) Act 1999 — s9-70, s23-15 | GST / BAS |
 
 ## Edges (verified, with evidence)
 
@@ -139,6 +146,14 @@
 | Div 293 + Div 296 high-income/balance tax | → | Div 296 — extra 15% on TSB earnings (proposed) | governed-by | — | verified | highIncomeSuperTax.ts:9,101 Div 296 (pending div296CommencementVerified) |
 | SMSF income tax (Div 295) | → | Div 295 — taxation of complying super funds | governed-by | — | verified | smsfIncomeTax.ts:13-21 Div 295 + ECPI + NALI |
 | SMSF income tax (Div 295) | → | s295-485 — 15% taxed-in-fund | governed-by | — | verified | smsfIncomeTax.ts:155 15% concessional rate s295-485 |
+| State land tax (per state) | → | Cross-state land tax (household) | feeds | — | verified | crossStateAggregator.ts:136 calls calculateLandTax per state |
+| Cross-state land tax (household) | → | Master tax position | feeds | — | verified | masterTaxPosition.ts:200 crossCutting.landTax = calculateCrossStateLandTax(...) |
+| Stamp duty / transfer duty (per state) | → | Master tax position | feeds | — | verified | masterTaxPosition.ts:213 calculateStampDuty(stampInput, config) |
+| GST / BAS | → | Master tax position | feeds | — | verified | masterTaxPosition.ts:226 crossCutting.gst = calculateGst(input.gst) |
+| State land tax (per state) | → | State Land Tax Acts | governed-by | — | verified | stateLandTax.ts header — per-state Land Tax Acts |
+| Cross-state land tax (household) | → | State Land Tax Acts | governed-by | — | verified | cross-state land-tax aggregation |
+| Stamp duty / transfer duty (per state) | → | State Duties Acts | governed-by | — | verified | stateStampDuty.ts header — state Duties Acts + foreign surcharge |
+| GST / BAS | → | GST Act 1999 | governed-by | — | verified | gstCalculator.ts:38 s9-70 10%; :40 s23-15 threshold |
 
 ---
 

@@ -300,3 +300,27 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 
 ### Next
 - N4.4: land tax / stamp duty / GST → then health → CFO → intelligence → reports.
+
+---
+
+## Session: neomatrix-N4.4 (indirect taxes — land/stamp/GST)
+
+### Changes Made
+- **Type:** Documentation / model. **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- N4.4 completes the tax domain's indirect taxes (graph 57→64 nodes / 62→70 edges, all `verified`, file:line read this session):
+  - `calculateLandTax` (stateLandTax.ts:374) → `calculateCrossStateLandTax` (crossStateAggregator.ts:105, calls calculateLandTax at :136) → orchestrator `buildMasterTaxPosition` (masterTaxPosition.ts:200).
+  - `calculateStampDuty` (stateStampDuty.ts:285) → orchestrator (:213).
+  - `calculateGst` (gstCalculator.ts:104, s9-70 10% / s23-15 $75k) → orchestrator (:226).
+  - Law nodes: state Land Tax Acts, state Duties Acts (+ foreign surcharge), GST Act 1999; `governed-by` edges throughout.
+- This wires the orchestrator's cross-cutting modules (land tax / stamp duty / GST) — the tax orchestration picture is now complete.
+
+### Self-review (§20.4) — **10/10**
+Every edge verified by source read (crossStateAggregator:136; masterTaxPosition:200/213/226); Acts cited from file headers; GST rate/threshold cite s9-70/s23-15. Anchors resolve; no orphan/contradiction.
+
+### Verification
+- `npm run neomatrix:check` → **OK** (64/70; schema valid; invariants hold; all 23 engine/orchestrator file:line anchors resolve; markdown fresh).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (v0.4.0→0.5.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — N4.5: health engine → CFO → intelligence → reports.
