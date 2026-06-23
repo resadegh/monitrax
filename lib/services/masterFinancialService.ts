@@ -1898,10 +1898,18 @@ async function computeMasterFinancialSnapshot(
         : `${staleManualCount} manual ${staleManualCount === 1 ? 'balance' : 'balances'} last updated ${oldestStaleAgeDays === 1 ? '1 day' : `${oldestStaleAgeDays} days`} ago.`,
   };
 
-  // Build emergency fund metrics
+  // Build emergency fund metrics.
+  // P0 fix (2026-06-23, audit domain B): months-of-cover must reflect REAL
+  // burn. Previously used `monthlyExpenses.all.total` (DECLARED expenses,
+  // excludes loans) → overstated runway when actual spend > declared. Use the
+  // trailing actual avg outflow (all OUT txns incl. loans + uncategorised) when
+  // transactions exist; fall back to declared only when there are none.
+  const emergencyFundMonthlyOutflow = actualCashflow.hasActualData
+    ? actualCashflow.avgMonthlyOutflow
+    : monthlyExpenses.all.total;
   const emergencyFund = buildEmergencyFundMetrics(
     liquidCash,
-    monthlyExpenses.all.total
+    emergencyFundMonthlyOutflow
   );
 
   // Build health score
