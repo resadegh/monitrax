@@ -2009,6 +2009,45 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 
 ---
 
+## PART 19: FINANCIAL CORRECTNESS & AUDIT DISCIPLINE — CRITICAL, NON-NEGOTIABLE
+
+> **Every monetary number Monitrax shows a user must be correct, traceable to real data, and reflect their actual financial situation. No exceptions. No guessing.** This part exists because Reza explicitly stated (2026-06-23), after an audit found a tax calculator returning $0 at every bracket boundary, loan interest computed 100× wrong, and cashflow/runway numbers built on declared estimates instead of actual transactions:
+>
+> *"the numbers and calculations produced are 100% correct everywhere in the app and reflect the real transactions and financial situation of the user … when transactions are loaded and statements the numbers should be 100% real across the app, no exceptions, non negotiable."*
+>
+> *"make sure you understand every single function you audit — what is the input, what's the real calculation based on the rules, laws and formulas, what's the expected output … don't guess ever."*
+
+### 19.1 The ACTUALS-vs-DECLARED rule (single source of financial truth)
+
+**When a user has loaded transactions / bank statements, every monetary figure — spending, income, cashflow, surplus, savings rate, margin, runway, emergency-fund months, net-worth flows, projections, tax inputs — MUST be derived from those ACTUAL transactions.** Declared entries (`Income` / `Expense` / `Loan` rows × frequency) are the **fallback only** when there are no transactions for that scope.
+
+| Rule | Detail |
+|---|---|
+| **Actuals win when present** | Gate every flow figure on whether actual-transaction data exists (`quickMetrics.hasActualData` on the master snapshot). True → use actuals; false → declared fallback. Never show a declared number as if it were actual when actuals exist. |
+| **Transfers excluded** | `isTransfer === true` rows are internal account-to-account moves — never counted as spend or income. |
+| **Uncategorised INCLUDED** | Uncategorised OUT transactions are real money out. Bucket them under `'Uncategorised'` — **never drop them**. Dropping uncategorised spend is the exact bug that produced false-optimistic surplus/margin/runway. |
+| **Canonical actuals source** | `lib/calculations/actualCashflow.ts` → consumed via `masterFinancialService` `quickMetrics.actual*` fields. Do not re-implement; do not read declared records for a "what actually happened" number. |
+| **Label the plan as the plan** | Declared figures may still be shown, but only labelled as budget/plan — never as actuals. |
+
+### 19.2 The four-step audit discipline (apply to EVERY function — never guess)
+
+Before declaring ANY calculation correct, you MUST establish all four, with evidence. If you cannot establish even one, mark it **⚠️ UNVERIFIABLE** and stop — **never guess, never assume, never trust a comment, a prior audit, or a variable name.**
+
+1. **Input contract** — for each parameter: its exact unit, type, and convention, proven from the schema + the writer (form/import) + callers. (Unit confusion is the #1 source of error: e.g. `Loan.interestRateAnnual` is a *decimal* `0.0625`, NOT a percent — a wrong assumption here caused a 100× bug.)
+2. **Governing rule / law / formula** — the *correct* calculation from the authority (ATO brackets/thresholds/caps, standard amortisation `M = P·r(1+r)ⁿ/((1+r)ⁿ−1)`, CGT discount + the Phase 41E reform rules, net worth = Σassets − Σliabilities, the §19.1 actuals rule). Cite the source/URL — never recall a rate or rule from memory.
+3. **Expected output** — hand-computed worked examples (real numbers in → exact numbers out) derived from step 2.
+4. **Verify** — run the actual code with those inputs and confirm output == expected. Verdict: **✅ verified** (with the worked example), **❌ wrong** (state wrong# vs correct#), or **⚠️ unverifiable** (state exactly why).
+
+**Check every CALLER, not just the function.** A function and its caller can carry compensating errors that cancel (e.g. a caller `×100` masking an aggregator `÷100`). Fixing one without the other introduces a regression. Audit the full path: writer → storage → engine → every consumer.
+
+### 19.3 Enforcement
+
+- Any PR that adds or changes a financial calculation MUST show, in the PR/changelog, the §19.2 evidence (input units, the formula/law, ≥1 worked example, the verification result) and a §19.1 statement (actuals-vs-declared basis + how it falls back when no transactions).
+- A reviewer (human or future-Claude) MUST reject any PR that: produces a user-facing money number from declared records when actual transactions exist (§19.1); changes a calc without §19.2 worked-example evidence; or asserts correctness from a comment/variable-name/prior-audit instead of a verified computation.
+- "It passes the existing tests" is not sufficient if the tests encode the wrong unit or the wrong expected value — verify the test's expected value against the law/formula too.
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -2030,5 +2069,5 @@ A reviewer (human or future-Claude) MUST reject any PR that:
 
 ---
 
-*Last Updated: 2026-06-22*
-*Protocol Version: 2.3 — §18.8 added (Stitch output quality gate — self-review ≥ 9/10 against the 7-lens rubric before presenting any Stitch design; iterate until it passes; show the scores; reviewer rejects sub-9 designs or sub-9→React conversions. Reza directive 2026-06-22: "only present it to me if the score is above 9/10 … this gate should be in CLAUDE.md and for all sessions going forward."). Previous: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
+*Last Updated: 2026-06-23*
+*Protocol Version: 2.4 — Part 19 added (FINANCIAL CORRECTNESS & AUDIT DISCIPLINE — CRITICAL, NON-NEGOTIABLE). Reza directives 2026-06-23: "the numbers and calculations produced are 100% correct everywhere … reflect the real transactions … no exceptions, non negotiable" + "understand every single function you audit — input, the real calculation based on rules/laws/formulas, expected output … don't guess ever." §19.1 codifies the actuals-vs-declared single-source-of-financial-truth rule (actuals when transactions exist, declared only as fallback, transfers excluded, uncategorised included); §19.2 the four-step audit discipline (input contract → law/formula → expected output → verify; ⚠️ never guess; check every caller); §19.3 reviewer enforcement. Previous: 2.3 — §18.8 added (Stitch output quality gate — self-review ≥ 9/10 against the 7-lens rubric before presenting any Stitch design; iterate until it passes; show the scores; reviewer rejects sub-9 designs or sub-9→React conversions. Reza directive 2026-06-22: "only present it to me if the score is above 9/10 … this gate should be in CLAUDE.md and for all sessions going forward."). Previous: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
