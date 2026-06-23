@@ -478,3 +478,52 @@ Expected values hand-derived from the documented health formula + band threshold
 - `tests/neomatrix/financialAudit.test.ts` (+8 cases + risk-band block), `financial-graph.json` (v0.10.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — CFO/scenarios (model + audit), then intelligence + reports.
+
+---
+
+## Session: neomatrix-cfo (model + A1 audit — CFO score)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, **CFO domain**). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+
+### What was modelled (graph 72→77 nodes; domains now core+tax+health+**cfo**)
+- `calculateOverallScoreDecimal` (scoreCalculator.ts:730) + `calculateCFOScore` (:33, §6.4 CFO SSOT) + the 6-component weighting law node; `number.cfoScore` → `/dashboard/cfo` tile.
+
+### A1 audit (3 new cases, all pass)
+- **CFO overall score** (weights .25/.20/.15/.15/.15/.10, sum 1.0): all components 100 → **100**; (80×.25+60×.20+40×.15+100×.15+50×.15+20×.10) → **62.5**; all 0 → **0**.
+- **Result: no `suspected-issue`** — agrees with the documented weighting; now locked. **11 engines now A1-audited**.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from the documented CFO weights independent of the code; real engine executed (Decimal); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **52/52 pass** (audit 46 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.10.0→0.11.0; fresh).
+
+### Next — CFO what-if scenarios (cutSpend/redirect-to-offset), then intelligence + reports.
+
+---
+
+## Session: neomatrix-cfo-scenarios (model + A1 audit — cut-spend what-if)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, CFO scenarios). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- Stacked on the CFO-score branch (#1213).
+
+### What was modelled (graph 77→79 nodes)
+- `cutSpendCategoryScenario` (lib/cfo/scenarios/cutSpendCategory.ts:18) + a what-if-annualisation law node (annual = monthly delta × 12; reduction capped at actual spend).
+
+### A1 audit (3 new cases, all pass)
+- Cut $200/mo from a $500/mo category → realised $200 → **annual $2,400**.
+- Request $800/mo on a $500/mo category → capped at $500 → **annual $6,000**.
+- Unknown category (no spend) → **$0**.
+- **Result: no `suspected-issue`** — agrees with the documented what-if methodology; now locked.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived (realised × 12, capped at current spend) independent of the code; real engine executed with a minimal snapshot stub (only the fields it reads); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **55/55 pass** (audit 49 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.11.0→0.12.0; fresh).
+
+### Next — intelligence (insights engine) + reports, then remaining what-if scenarios (redirect-to-offset etc.).

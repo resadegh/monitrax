@@ -30,7 +30,20 @@ import { calculateCgtDiscount } from '@/lib/tax-engine/divisions/cgtDiscount';
 import { calculateSmsfIncomeTax } from '@/lib/tax-engine/super/smsfIncomeTax';
 import { calculateAggregateScore } from '@/lib/health/aggregateEngine';
 import { scoreToRiskBand } from '@/lib/health/types';
+import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
+import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
+import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
+
+const cfoComponents = (cf: number, debt: number, emerg: number, div: number, spend: number, save: number) =>
+  ({
+    cashflowStrength: new Decimal(cf),
+    debtCoverage: new Decimal(debt),
+    emergencyBuffer: new Decimal(emerg),
+    investmentDiversification: new Decimal(div),
+    spendingControl: new Decimal(spend),
+    savingsRate: new Decimal(save),
+  }) as never;
 
 const graph = JSON.parse(
   readFileSync(resolve(process.cwd(), 'docs/financial-logic/graph/financial-graph.json'), 'utf8'),
@@ -383,7 +396,76 @@ const CASES: AuditCase[] = [
       calculateAggregateScore([{ score: 10, weight: 1 }] as never, { totalPenalty: 50 } as never),
     expected: 0,
   },
+
+  // ── CFO score — Monitrax 6-component weighting (.25/.20/.15/.15/.15/.10) ──────
+  {
+    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
+    law: 'CFO methodology: overall = Σ(component × weight); weights sum to 1.0',
+    derivation: 'all components 100 → 100 × (0.25+0.20+0.15+0.15+0.15+0.10) = 100',
+    actual: () => calculateOverallScoreDecimal(cfoComponents(100, 100, 100, 100, 100, 100)).toNumber(),
+    expected: 100,
+  },
+  {
+    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
+    law: 'CFO methodology: each component is weighted by its share',
+    derivation: '80×.25 + 60×.20 + 40×.15 + 100×.15 + 50×.15 + 20×.10 = 20+12+6+15+7.5+2 = 62.5',
+    actual: () => calculateOverallScoreDecimal(cfoComponents(80, 60, 40, 100, 50, 20)).toNumber(),
+    expected: 62.5,
+  },
+  {
+    node: 'engine.scoreCalculator.calculateOverallScoreDecimal',
+    law: 'CFO methodology: all-zero components → 0',
+    derivation: 'all 0 → 0',
+    actual: () => calculateOverallScoreDecimal(cfoComponents(0, 0, 0, 0, 0, 0)).toNumber(),
+    expected: 0,
+  },
+
+  // ── CFO what-if: cut a spend category — annual = realised × 12 (capped) ───────
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: annual saving = realised monthly reduction × 12',
+    derivation: 'cut $200/mo from a $500/mo category → realised $200 → annual $200 × 12 = $2,400',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'Dining', monthlyReduction: 200 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 2400,
+  },
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: reduction is capped at the actual category spend',
+    derivation: 'request $800/mo but category is only $500/mo → realised $500 → annual $6,000',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'Dining', monthlyReduction: 800 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 6000,
+  },
+  {
+    node: 'engine.cutSpendCategory.cutSpendCategoryScenario',
+    law: 'What-if methodology: a category with no spend yields $0',
+    derivation: 'unknown category → current spend $0 → annual $0',
+    actual: () =>
+      cutSpendCategoryScenario(cutSpendCtx(500), { category: 'NotARealCategory', monthlyReduction: 200 } as never)
+        .impacts.find((i) => i.label === 'Annual saving')!.after,
+    expected: 0,
+  },
 ];
+
+// Minimal snapshot stub — only the fields cutSpendCategoryScenario reads.
+function cutSpendCtx(diningSpend: number): never {
+  return {
+    snapshot: {
+      expenses: { monthly: { byCategory: [{ category: 'Dining', amount: diningSpend }] } },
+      quickMetrics: {
+        monthlyCashflow: 1000,
+        monthlyExpenses: 3000,
+        monthlyIncome: 5000,
+        savingsRate: 20,
+        monthlyLoanRepayments: 0,
+      },
+      emergencyFund: { monthsCovered: 3, liquidCash: 9000 },
+    },
+  } as never;
+}
 
 // Risk-band classifier returns a string, so it has its own boundary block.
 describe('Neomatrix A1 — health risk-band boundaries (scoreToRiskBand)', () => {
