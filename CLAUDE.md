@@ -2048,6 +2048,57 @@ Before declaring ANY calculation correct, you MUST establish all four, with evid
 
 ---
 
+## PART 20: SELF-REVIEW GATE — 3× REVIEW, 10/10 BEFORE SIGN-OFF (MANDATORY)
+
+> **Before presenting ANY suggestion, plan, recommendation, design, or instruction to Reza for sign-off, you MUST self-review it at least three times and refine it until the outcome is 10/10. Reza only ever sees the passing version.** Driven by Reza directive 2026-06-23: *"you always have to review your own suggestions and instructions at least 3 times and make sure the outcome is 10/10 before presenting to me for sign off."*
+
+This generalises the §18.8 Stitch quality gate (≥9/10 on the 7-lens rubric) to **everything you put in front of Reza for a decision** — architecture proposals, financial-logic plans, Neomatrix design, PR recommendations, written instructions to sub-agents, runbook steps, copy.
+
+### 20.1 The rule
+
+1. **Three passes minimum.** Pass 1: draft. Pass 2: adversarially critique it (where is this wrong, over-engineered, ungrounded, or unclear? does it survive the §0 four lenses + §19 correctness discipline? is any claim un-cited / guessed?). Pass 3: refine and re-score. Iterate beyond three if it is not yet 10/10.
+2. **10/10 bar.** Present only when the outcome is genuinely 10/10 against its purpose — not "good enough." If you cannot honestly reach 10/10, say so explicitly and present the specific blocker for Reza's input rather than a sub-par recommendation dressed as finished.
+3. **Show the gate, briefly.** When presenting, state that the 3× review was done and what the critique changed (e.g. "v1 listed 11 ideas → merged 3 duplicates, cut 1 gold-plated, elevated the 2 that target the named pain → final 8"). Keep it tight — the gate informs the answer, it doesn't bloat it (§0.3).
+4. **Never guess inside the gate.** A self-review that rubber-stamps an unverified claim fails the gate. Every load-bearing fact must trace to source (§19.2) before it earns a 10.
+
+### 20.2 Relationship to §18.8
+
+§18.8 is the **design-specific instance** (Stitch outputs, ≥9/10 on the visual rubric). Part 20 is the **general rule** for all sign-off-bound output. When both apply (a Stitch design), satisfy the stricter bar. CLAUDE.md wins over both if they ever conflict.
+
+### 20.3 Enforcement
+
+A reviewer (human or future-Claude) MUST reject work presented for sign-off with no evidence of the 3× review, or output that is visibly sub-10 (un-cited claims, internal contradictions, over-engineering the brief, ignoring a load-bearing lens). "I'll fix it after you approve" does not satisfy the gate — the gate is *before* presenting.
+
+---
+
+## PART 21: EVERY BUILD RUNS THROUGH CLAUDE.md + NEOMATRIX (CRITICAL, NON-NEGOTIABLE)
+
+> **Every build and every PR runs through BOTH this CLAUDE.md protocol AND the Neomatrix (the financial-logic knowledge graph). No financial number ships without being modelled in the graph, and the build fails if the graph is invalid, stale, or self-contradictory.** Reza directive 2026-06-23: *"all future builds should always run through claude.md and neoMatrix and this will be a critical instruction."*
+
+The Neomatrix is `docs/financial-logic/graph/financial-graph.json` (Layer 1 SSOT) + its generator/audit (`scripts/neomatrix/`, `npm run neomatrix:generate|check`). Spec: `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md`.
+
+### 21.1 The build gate
+
+- **`vercel-build` runs `npm run neomatrix:check`** (right after `lint:financial-surfaces`, before `prisma migrate deploy`). The build **fails** when: the graph fails schema validation; a `number` node has no path to an `engine` (A3 orphan); two surfaces of the same `semanticKey` trace to different engines (A3 convergence — the #1201 class); a documented engine's `file:line` no longer resolves to its symbol (drifted anchor); or `GENERATED_CORE.md` is stale vs the JSON.
+- The same checks run in the vitest suite (`tests/neomatrix/financialGraph.test.ts`), already a required CI check.
+
+### 21.2 The same-PR modelling rule (mirrors §16 + §19)
+
+Any PR that **adds or changes a financial engine, formula, number, or its lineage** MUST, in the same PR:
+1. Add/update the node(s) + edge(s) in `financial-graph.json`, each `verified` with a `file:line` read in source (never guessed — §19.2; unverifiable → `status:"unverified"` with reason; suspected bug → `status:"suspected-issue"` raised with Reza, never silently fixed).
+2. Regenerate `GENERATED_CORE.md` (`npm run neomatrix:generate`).
+3. Run `npm run neomatrix:check` locally before pushing.
+
+### 21.3 Reviewer enforcement
+
+A reviewer (human or future-Claude) MUST reject any PR that changes a financial engine/number without the matching Neomatrix update, or that ships with `neomatrix:check` failing. As graph coverage grows (N4 backfill), this gate widens automatically — every modelled number stays provably tied to its canonical engine, and drift becomes a build failure rather than a production surprise.
+
+### 21.4 What this gate is NOT
+
+It does not change any financial logic (the graph models + verifies; §10/§19). It is not a substitute for the §19 worked-example discipline — it enforces that the model exists and stays consistent; correctness of the underlying formula is still established by §19.2. The graph never holds CDR/user data or value literals (Phase 53 §9).
+
+---
+
 ## ENFORCEMENT
 
 **This protocol is MANDATORY for every Claude Code session working on Monitrax.**
@@ -2070,4 +2121,4 @@ Before declaring ANY calculation correct, you MUST establish all four, with evid
 ---
 
 *Last Updated: 2026-06-23*
-*Protocol Version: 2.4 — Part 19 added (FINANCIAL CORRECTNESS & AUDIT DISCIPLINE — CRITICAL, NON-NEGOTIABLE). Reza directives 2026-06-23: "the numbers and calculations produced are 100% correct everywhere … reflect the real transactions … no exceptions, non negotiable" + "understand every single function you audit — input, the real calculation based on rules/laws/formulas, expected output … don't guess ever." §19.1 codifies the actuals-vs-declared single-source-of-financial-truth rule (actuals when transactions exist, declared only as fallback, transfers excluded, uncategorised included); §19.2 the four-step audit discipline (input contract → law/formula → expected output → verify; ⚠️ never guess; check every caller); §19.3 reviewer enforcement. Previous: 2.3 — §18.8 added (Stitch output quality gate — self-review ≥ 9/10 against the 7-lens rubric before presenting any Stitch design; iterate until it passes; show the scores; reviewer rejects sub-9 designs or sub-9→React conversions. Reza directive 2026-06-22: "only present it to me if the score is above 9/10 … this gate should be in CLAUDE.md and for all sessions going forward."). Previous: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*
+*Protocol Version: 2.6 — Part 21 added (EVERY BUILD RUNS THROUGH CLAUDE.md + NEOMATRIX — CRITICAL). Reza directive 2026-06-23: "all future builds should always run through claude.md and neoMatrix and this will be a critical instruction." `vercel-build` now runs `npm run neomatrix:check` (schema + A3 orphan/convergence invariants + file:line anchors + markdown freshness); any PR changing a financial engine/number must update `financial-graph.json` (verified file:line) + regenerate `GENERATED_CORE.md` in the same PR; reviewer rejects financial PRs without the matching Neomatrix update. Previous: 2.5 — Part 20 added (SELF-REVIEW GATE — 3× review, 10/10 before sign-off, MANDATORY). Reza directive 2026-06-23: "you always have to review your own suggestions and instructions at least 3 times and make sure the outcome is 10/10 before presenting to me for sign off." Generalises the §18.8 Stitch ≥9/10 gate to all sign-off-bound output (architecture, financial-logic plans, Neomatrix design, PR recommendations, instructions, copy); present only the passing version; show what the critique changed; never rubber-stamp an unverified claim. Previous: 2.4 — Part 19 added (FINANCIAL CORRECTNESS & AUDIT DISCIPLINE — CRITICAL, NON-NEGOTIABLE). Reza directives 2026-06-23: "the numbers and calculations produced are 100% correct everywhere … reflect the real transactions … no exceptions, non negotiable" + "understand every single function you audit — input, the real calculation based on rules/laws/formulas, expected output … don't guess ever." §19.1 codifies the actuals-vs-declared single-source-of-financial-truth rule (actuals when transactions exist, declared only as fallback, transfers excluded, uncategorised included); §19.2 the four-step audit discipline (input contract → law/formula → expected output → verify; ⚠️ never guess; check every caller); §19.3 reviewer enforcement. Previous: 2.3 — §18.8 added (Stitch output quality gate — self-review ≥ 9/10 against the 7-lens rubric before presenting any Stitch design; iterate until it passes; show the scores; reviewer rejects sub-9 designs or sub-9→React conversions. Reza directive 2026-06-22: "only present it to me if the score is above 9/10 … this gate should be in CLAUDE.md and for all sessions going forward."). Previous: 2.2 — §18.7 added (Canonical design principles ARE the Stitch design guidance, MANDATORY). Reza directive 2026-06-01: "always use the design principles in CLAUDE.md and update them when there is a change — these should always be used for Stitch UI/UX design guidance." §18.7.2 codifies the in-app My Wealth glass vocabulary digest (surface, glass, radii, Stage-I atmosphere, per-entity palette, money signal, tile anatomy, typography, motion, glyphs, behaviour-psychology) that every Stitch prompt must seed, plus a same-PR update requirement when the design language changes. Previous: 2.1 — Part 18 added (UI/UX Design-Change Workflow — Stitch-first, MANDATORY, 2026-05-26). 2.0 (Part 17 Live Production Monitoring, 2026-05-20).*

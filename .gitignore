@@ -57,3 +57,6 @@ next-env.d.ts
 
 # prisma
 # Note: migrations should be committed for safe deployments
+
+# Neomatrix / Graphify (Layer 0) — regenerable working artifact, not the canonical store
+graphify-out/

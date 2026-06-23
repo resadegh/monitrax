@@ -99,3 +99,177 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 ### PR
 - PR URL: (to be filled)
 - Status: design spec for a new build session
+
+---
+
+## Session: neomatrix-N0 (Graphify trial — `0·NEOMATRIX`)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix Phase 53 **N0** — Graphify Layer-0 trial). **No financial logic changed.**
+- **Scope:** new `docs/financial-logic/graph/` (Neomatrix home) — N0 trial report + README; gitignore the regenerable Graphify output.
+- **Why:** N0 gates the Layer-0 (Graphify) adoption decision. Two questions had to be answered from a real run, not memory (§19.2): (1) **§13.6 security** — does code leave the machine during extraction? (2) **accuracy** — does Graphify's auto AST graph reproduce the hand-verified `00b` edges?
+
+### What was done (real trial, reproducible — see report §6)
+- Installed **graphify 0.8.45** (`uv tool install graphifyy`; PyPI reachable in this env).
+- Ran `graphify update lib` (code-only, **all LLM API keys unset**) over `lib/` (539 `.ts` files) → **6120 nodes / 12866 edges / 253 communities**, pinned to `built_at_commit 2a5e0f5`.
+- **Security result (§13.6): provably code-only / zero egress.** 100% of nodes `_origin:"ast"`, `file_type:"code"`; 12855/12866 edges `EXTRACTED` (AST) + 11 `INFERRED`; no LLM nodes; no API host in cache. In code-only mode Graphify is a local static analyser (like `tsc`/`eslint`).
+- **Accuracy result: 9/9** of the `00b §2` verified orchestration call-edges reproduced at **exact `file:line`** matching `00b`'s citations (L1767/L1819/L1831/L1857/L1910/L1916/L874/L1005 + the canonical→resolve delegation). No false edges on the core slice; name collisions (3× `calculateNetWorth`) kept as distinct file-scoped nodes.
+- **Division of labour validated:** Graphify supplies structural `calls`/`imports` edges (bones); it cannot derive a single formula, law, unit, data-flow (`UnifiedTransaction`→`computeActualCashflow`), `falls-back-to` semantic, or domain/TRAIL/regime slice — that is Layer 1's job (meaning).
+
+### Recommendation — **GO (conditional, code-only/offline)** under the report §5 guardrails (no API key ever; code-only inputs; Graphify output gitignored not committed; its edges imported into `financial-graph.json` flagged `source:"graphify"`; pin to commit for freshness). ⏸️ **Paused for Reza's go/no-go before N1.**
+
+### Files Added
+- `docs/financial-logic/graph/N0_GRAPHIFY_TRIAL.md`
+- `docs/financial-logic/graph/README.md`
+
+### Files Modified
+- `.gitignore` — ignore `graphify-out/` (regenerable Layer-0 working artifact, §9).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` N0 ticked + Last touched.
+
+### Testing
+- [x] No app code — docs/model only. Build/lint unaffected.
+- [x] Trial reproducible via report §6 commands.
+
+### PR
+- PR URL: (to be filled)
+- Status: N0 report — awaiting Reza go/no-go
+
+---
+
+## Session: neomatrix-N0 (addendum — smartest-model design + self-review gate)
+
+### Changes Made
+- **Type:** Documentation / governance. **No code, no financial logic changed.**
+- **Why:** Reza (2026-06-23) gave full authority to make the Neomatrix *"the smartest and complete model ever built for fast and accurate referencing, coding and improvement … without drift, getting lost or guesswork"*, and added a standing rule: *"always review your own suggestions and instructions at least 3 times and make sure the outcome is 10/10 before presenting for sign off."*
+
+### What was added
+- **CLAUDE.md Part 20 — Self-Review Gate (3× review, 10/10 before sign-off, MANDATORY).** Generalises the §18.8 Stitch ≥9/10 gate to ALL sign-off-bound output (architecture, financial-logic plans, Neomatrix design, PR recommendations, instructions, copy). Protocol version 2.4 → 2.5.
+- **PHASE_53 §14 — "smartest model" enhancements (proposed, pending sign-off).** Self-reviewed 3× per Part 20 (12 raw ideas → final 11 in 3 tiers). Tier A (spine — machine-PROVEN correctness): A1 executable worked-examples (L3 runs engines, asserts outputs), A2 drift sentinel (AST-hash binding → engine body change without metadata bump fails CI), A3 convergence/contradiction audit (same `semanticKey` ⇒ same canonical accessor — the #1201 class), A4 unit-typed edges (unit mismatch fails CI — the 100× class). Tier B (reach): B5 bidirectional lineage + blast-radius, B6 law/authority nodes + `governed-by`, B7 provenance tiers + trust score, B8 regime/temporal layer (§12.14). Tier C (interface): C9 Neomatrix MCP query surface, C10 coverage/freshness/trust dashboard, C11 the 3D view done right (height=layer, glow on anomalies, fly the lineage — Layer 2c, after value).
+
+### Files Modified
+- `CLAUDE.md` — Part 20 + version bump to 2.5.
+- `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` — new §14 enhancements + footer.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` note.
+- `docs/changelog/CHANGELOG_2026_06_23.md` — this entry.
+
+### Testing
+- [x] Docs/governance only — build/lint unaffected.
+
+### PR
+- Folded into PR #1204 (draft, paused for go/no-go + enhancement sign-off).
+
+---
+
+## Session: neomatrix-N1 (schema + proof slice + generator)
+
+### Changes Made
+- **Type:** Documentation / model + a CI-enforced model test. **No financial logic changed.**
+- **Why:** Reza (2026-06-23): *"review your own recommendation … continue with the best approach based on the requirements and scoring model. come to me where there is a critical direction needed."* Self-scored the N0 GO (evidence-backed, reversible → adopt autonomously) and proceeded to N1; the only foundational call is the schema shape, built to 10/10 and presented concretely rather than blocking.
+
+### What was built (Phase 53 N1)
+- **Schema** (`docs/financial-logic/graph/schema/financial-graph.schema.md`) — §5 node/edge contract + the cheap §14 additions (`semanticKey` for A3, `fromUnit`/`toUnit` for A4, `astHash` for A2, provenance tiers `verified>graphify>inferred`).
+- **`financial-graph.json`** — the canonical semantic graph (Layer 1). **23 nodes / 26 edges, all `verified` with file:line evidence**: the 4 core engines (`calculateNetWorth` :217 · `calculateCashflow` :302 · `computeActualCashflow` :104 · `getCanonicalMonthlyCashflow` :114) + `resolveCanonicalCashflow` :78 + the `getMasterFinancialSnapshot` orchestrator :1704 + 10 raw input-field nodes + 2 law nodes (B6) + 3 number nodes (with `semanticKey`) + 2 ui-surfaces; lineage, units, worked examples, authorities all carried.
+- **Generator** (`scripts/neomatrix/generate-financial-logic.mjs` + `graphlib.mjs`, pure Node, zero new deps) — renders `GENERATED_CORE.md` FROM the JSON (Layer 2a: coverage/trust dashboard + engine registry + worked-examples + number-lineage + laws + edges). `npm run neomatrix:generate` / `neomatrix:check`.
+- **Layer-3 audit seed, enforced in CI today** (`tests/neomatrix/financialGraph.test.ts`): schema validation · **A3 orphan-number** (every displayed number traces to an engine) · **A3 convergence/contradiction** (two tiles of the same `semanticKey` must trace to the same engine — the exact #1201 "+$10,505 hero vs −$20,914 waterfall" class, with a passing negative test) · **file:line resolution** (each documented engine line in source contains its symbol) · **markdown freshness**. Lives in the existing vitest suite (already a required check) — no `vercel-build` change yet (full N3 gate is a separate Reza decision).
+
+### Autonomous calls made (per Reza's "continue with the best approach")
+- **Graphify Layer-0: adopted** (code-only/offline) — evidence-backed GO, reversible.
+- **Generator/test in pure Node + vitest** (not ts-node into vercel-build) — zero new deps, enforced in CI now without build-gating.
+- **Branch:** stayed on the designated `claude/eloquent-archimedes-jqahjw` (harness rule; PR #1204).
+
+### Verification
+- `node scripts/neomatrix/generate-financial-logic.mjs --check` → **OK** (schema valid, invariants hold, markdown fresh).
+- Dependency-free harness replicating all 6 vitest assertions → **6 passed, 0 failed** (node_modules not installed in this env, so vitest itself wasn't run here; the test exercises only pure helpers + fs and will run in CI).
+
+### Files Added
+- `docs/financial-logic/graph/financial-graph.json`, `…/GENERATED_CORE.md`, `…/schema/financial-graph.schema.md`
+- `scripts/neomatrix/graphlib.mjs`, `scripts/neomatrix/generate-financial-logic.mjs`
+- `tests/neomatrix/financialGraph.test.ts`
+
+### Files Modified
+- `package.json` — `neomatrix:generate` / `neomatrix:check` scripts.
+- `docs/financial-logic/graph/README.md` — N1 status + commands.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` N1 ticked.
+
+### ⏸️ Critical direction needed from Reza
+- **Schema sign-off** before the domain backfill (N4 — tax first). The §5+§14 shape above is the contract every future domain inherits; confirm or adjust now while only the core slice exists.
+
+### PR
+- Folded into PR #1204 (draft).
+
+---
+
+## Session: neomatrix-N3-gate (build gate + critical instruction) + schema locked
+
+### Changes Made
+- **Type:** Build pipeline + governance. **No financial logic changed.**
+- **Reza decisions (2026-06-23):** (1) "you know what I need — make the recommendation" → **schema LOCKED** as built (the §5+§14 node/edge shape is the recommendation; no further field-by-field sign-off). (2) **N4 = tax-first.** (3) "all future builds should always run through claude.md and neoMatrix — this will be a critical instruction."
+
+### What was done
+- **`neomatrix:check` wired into `vercel-build`** (after `lint:financial-surfaces`, before `prisma migrate deploy` — fails fast, no DB mutation on a bad model).
+- **CLI check strengthened** — now also verifies engine `file:line` anchors resolve to their symbol (drifted anchor → build fails), matching the vitest test.
+- **CLAUDE.md Part 21 (CRITICAL)** — "Every build runs through CLAUDE.md + Neomatrix": the build gate (21.1), the same-PR modelling rule for any financial-engine/number change (21.2, mirrors §16+§19), reviewer enforcement (21.3). Protocol v2.5 → 2.6.
+- **Infra doc** `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` build-sequence updated.
+
+### Verification
+- `npm run neomatrix:check` (now incl. anchors) → **OK**.
+
+### Files Modified
+- `package.json` (vercel-build), `scripts/neomatrix/generate-financial-logic.mjs` (anchor check), `CLAUDE.md` (Part 21 + v2.6), `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`.
+
+---
+
+## Session: neomatrix-N4.1 (tax-domain backfill — income-tax spine)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix N4.1 — tax domain). **No financial logic changed.**
+- **Reza decision:** N4 = tax-first. This is the first domain backfill, research-verified per §19.2 (every node/edge cites a file:line read this session — never guessed).
+
+### What was modelled (graph 23→36 nodes / 26→38 edges, all `verified`)
+- **Chain:** orchestrator `buildMasterTaxPosition` (masterTaxPosition.ts:186) → `calculateEntityTaxPosition` (entityTaxRouter.ts:300, calls calculateTaxPosition at :332) → income-tax `calculateTaxPosition` (taxPositionCalculator.ts:92). Verified the full call path in source.
+- **PAYG:** `processSalary` (salaryProcessor.ts:46) — GROSS↔net take-home.
+- **Thresholds SSOT:** `getCurrentTaxYearConfig` (taxYearConfig.ts:370) ← bracket (:41) / Medicare (:61) / LITO (:85) config inputs. No rate VALUES copied into the graph (§9) — the graph cites where they live.
+- **Law nodes (B6):** ITAA 1997 income tax + ATO rates · Medicare Levy Act 1986 · **2026-27 reform cut-over** (`REFORM_CUT_OVER_UTC` = 2026-05-12T09:30:00Z, reformConstants.ts:46) as the regime/B8 anchor for the N4.2 CGT/negative-gearing engines.
+- **Lineage:** `number.taxPayable` (semanticKey) → `ui.dashboard.tax`. A3 invariant holds (taxPayable traces to calculateTaxPosition).
+
+### Verification
+- `npm run neomatrix:check` → **OK** (36 nodes / 38 edges, schema valid, invariants hold, **all 11 engine/orchestrator file:line anchors resolve**, markdown fresh).
+- Build gate proven live: the prior preview deploy ran `neomatrix:check` inside `vercel-build` and went **Ready/green**.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (+13 tax nodes, +12 tax edges; v0.1.0→0.2.0; reformatted pretty-print)
+- `docs/financial-logic/graph/GENERATED_CORE.md` (regenerated)
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` (N4.1)
+
+### Next
+- N4.2: CGT discount/indexation + negative gearing (reform-gated — exercises the regime layer), then super → land tax/stamp duty/GST → health → CFO → intelligence → reports.
+
+### PR
+- Folded into PR #1204 (draft).
+
+---
+
+## Session: neomatrix-N4.2 (reform-gated CGT / negative gearing — regime layer)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix N4.2). **No financial logic changed.** Every node/edge verified from source this session (§19.2).
+- **Why:** prove the **regime / B8 layer** (Phase 41E §12.14) end-to-end — the reform cut-over law node was an anchor in N4.1; N4.2 attaches the reform-gated engines to it and populates the regime axis.
+
+### What was modelled (graph 36→41 nodes / 38→43 edges, all `verified`)
+- `calculateCgtDiscount` (cgtDiscount.ts:166) — Div 115 pre-reform 50% discount ↔ Measure 2 post-reform (indexation + 30% floor); default pre-reform until `commencementVerified` (FW-2: no silent post-reform numbers).
+- `applyCgtIndexation` (cgtIndexation.ts:87) — post-reform; returns UNCOMPUTED + pre-reform fallback until Royal Assent.
+- `applyCgtMinimumRate` (cgtMinimumRate.ts:80) — post-reform 30% floor.
+- `deriveNegativeGearingRegime` (negativeGearingRegime.ts:147) — Measure 1 classifier (loss-offset → new builds only post-reform), the single canonical grandfathering decision (FW-1).
+- Law node ITAA 1997 Div 115; all four engines `governed-by` the 2026-27 reform cut-over (`REFORM_CUT_OVER_UTC`). `regime: "post-reform"` on the indexation + 30%-floor nodes.
+
+### Verification
+- `npm run neomatrix:check` → **OK** (41 nodes / 43 edges; schema valid; invariants hold; all 15 engine/orchestrator file:line anchors resolve; markdown fresh).
+- **Regime axis proven sliceable**: `regime=post-reform` → CGT indexation · 30% floor · reform cut-over.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (+5 nodes, +5 edges; v0.2.0→0.3.0), `GENERATED_CORE.md` (regenerated), `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next
+- N4.3: super (contributions/caps/Div 293) → land tax/stamp duty/GST → then health → CFO → intelligence → reports.
+
+### PR — folded into PR #1204 (draft).

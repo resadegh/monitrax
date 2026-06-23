@@ -404,6 +404,7 @@ module load time. The Proxy caches the resulting `PrismaClient` on
 2. **Vercel** detects changes and triggers a build (Render is no longer in the loop — see migration doc).
 3. Build command executes (`vercel-build` script in `package.json`):
    - `npm run lint:financial-surfaces` (static-analysis gate; fails build on new violations)
+   - `npm run neomatrix:check` (Neomatrix build gate, added 2026-06-23 — CLAUDE.md Part 21; validates `financial-graph.json` schema + the A3 orphan/convergence invariants + engine `file:line` anchors + `GENERATED_CORE.md` freshness; aborts the build before the DB migrate if the financial-logic graph is invalid, stale, or self-contradictory)
    - `prisma migrate deploy` (applies any new migration; aborts the deploy on failure — see CLAUDE.md §12.12)
    - `prisma generate`
    - `npm run seed:feature-flags` (idempotent upsert of canonical `GlobalFeatureFlag` rows from `prisma/seed-feature-flags.ts`; never overwrites the operator-controlled `enabled` column; added 2026-05-17 so new flag rows auto-appear in `/admin/feature-flags` on next deploy)
