@@ -716,6 +716,16 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 
 ---
 
+## Session: phase2-reports-runway-shk180 (P0 — Reports cashflowRunway on declared spend)
+
+### Bug (audit domain B P0, verified 2026-06-23)
+`lib/reports/contextBuilder.ts:224` computed cashflowRunway by dividing liquid assets by `calculateMonthlyExpenses(userId)` — a local `prisma.expense` declared reduce, never reading transactions → overstated runway in the report a user hands an adviser.
+
+### Fix
+Use `getMasterFinancialSnapshot().quickMetrics.actualAvgMonthlyOutflow` (all OUT txns incl. loans + uncategorised) when `hasActualData`; fall back to declared `calculateMonthlyExpenses` only when no transactions. (The `999` no-data sentinel is retained — pre-existing; flagged as a separate UX follow-up.)
+
+### Tests: tsc clean; tests/reports 8/8 green.
+### Doc-sync (§16): this changelog; audit docs/audit/AUDIT_CASHFLOW_SSOT.md.
 ## Session: phase2-emergencyfund-actuals-shk180 (P0 — emergency-fund runway on declared spend)
 
 ### Bug (audit domain B P0, verified 2026-06-23)

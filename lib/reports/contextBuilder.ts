@@ -219,10 +219,19 @@ async function calculateFinancialSummary(userId: string) {
   const totalLiabilities = sumLoanBalances(loans);
   const netWorth = totalAssets - totalLiabilities;
 
-  // Simple cashflow runway calculation (months of expenses covered by liquid assets)
+  // Cashflow runway (months of burn covered by liquid assets).
+  // P0 fix (2026-06-23, audit domain B): must use REAL burn, not declared
+  // expenses. Previously divided by `calculateMonthlyExpenses` (a declared
+  // `prisma.expense` reduce) → overstated runway when actual spend > declared,
+  // in a report a user hands an adviser. Use the canonical snapshot's actual
+  // avg monthly outflow (all OUT txns incl. loans + uncategorised) when
+  // transactions exist; fall back to declared only when there are none.
   const liquidAssets = accountBalances + investmentValue;
-  const monthlyExpenses = await calculateMonthlyExpenses(userId);
-  const cashflowRunway = monthlyExpenses > 0 ? Math.round(liquidAssets / monthlyExpenses) : 999;
+  const runwaySnapshot = await getMasterFinancialSnapshot(userId);
+  const monthlyBurn = runwaySnapshot.quickMetrics.hasActualData
+    ? runwaySnapshot.quickMetrics.actualAvgMonthlyOutflow
+    : await calculateMonthlyExpenses(userId);
+  const cashflowRunway = monthlyBurn > 0 ? Math.round(liquidAssets / monthlyBurn) : 999;
 
   // Simple health score (0-100)
   const healthScore = calculateHealthScore(netWorth, totalLiabilities, cashflowRunway);
