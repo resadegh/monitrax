@@ -196,3 +196,23 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 
 ### PR
 - Folded into PR #1204 (draft).
+
+---
+
+## Session: neomatrix-N3-gate (build gate + critical instruction) + schema locked
+
+### Changes Made
+- **Type:** Build pipeline + governance. **No financial logic changed.**
+- **Reza decisions (2026-06-23):** (1) "you know what I need — make the recommendation" → **schema LOCKED** as built (the §5+§14 node/edge shape is the recommendation; no further field-by-field sign-off). (2) **N4 = tax-first.** (3) "all future builds should always run through claude.md and neoMatrix — this will be a critical instruction."
+
+### What was done
+- **`neomatrix:check` wired into `vercel-build`** (after `lint:financial-surfaces`, before `prisma migrate deploy` — fails fast, no DB mutation on a bad model).
+- **CLI check strengthened** — now also verifies engine `file:line` anchors resolve to their symbol (drifted anchor → build fails), matching the vitest test.
+- **CLAUDE.md Part 21 (CRITICAL)** — "Every build runs through CLAUDE.md + Neomatrix": the build gate (21.1), the same-PR modelling rule for any financial-engine/number change (21.2, mirrors §16+§19), reviewer enforcement (21.3). Protocol v2.5 → 2.6.
+- **Infra doc** `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` build-sequence updated.
+
+### Verification
+- `npm run neomatrix:check` (now incl. anchors) → **OK**.
+
+### Files Modified
+- `package.json` (vercel-build), `scripts/neomatrix/generate-financial-logic.mjs` (anchor check), `CLAUDE.md` (Part 21 + v2.6), `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`.

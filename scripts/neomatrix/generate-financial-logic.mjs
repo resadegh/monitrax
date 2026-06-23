@@ -34,12 +34,32 @@ const structural = validateGraph(graph);
 const { errors: invariantErrors, warnings } = auditInvariants(graph);
 const cov = coverageSummary(graph);
 
+// file:line resolution — every documented engine/orchestrator line in source
+// must contain its symbol (the Layer-3 "file:line exists" audit; §19.2).
+const anchorErrors = [];
+for (const n of graph.nodes) {
+  if ((n.kind !== 'engine' && n.kind !== 'orchestrator') || n.status !== 'documented') continue;
+  if (!n.file || n.line == null) continue;
+  const symbol = String(n.id).split('.').pop();
+  let line = '';
+  try {
+    line = (readFileSync(resolve(__dir, '../../', n.file), 'utf8').split('\n')[n.line - 1] ?? '');
+  } catch {
+    anchorErrors.push(`${n.id}: cannot read ${n.file}`);
+    continue;
+  }
+  if (!line.includes(symbol)) {
+    anchorErrors.push(`${n.id}: ${n.file}:${n.line} does not contain "${symbol}" (drifted anchor; got: ${line.trim().slice(0, 70)})`);
+  }
+}
+
 console.log(`Neomatrix: ${cov.nodes} nodes, ${cov.edges} edges (${Object.entries(cov.bySource).map(([k, v]) => `${k} ${v}`).join(', ')}).`);
 for (const w of warnings) console.log(`   ⚠ ${w}`);
 
 let bad = false;
 if (structural.length) { fail('Schema validation failed', structural); bad = true; }
 if (invariantErrors.length) { fail('Correctness invariants failed', invariantErrors); bad = true; }
+if (anchorErrors.length) { fail('file:line anchors drifted', anchorErrors); bad = true; }
 
 const rendered = renderMarkdown(graph);
 
