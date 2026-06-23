@@ -133,3 +133,27 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 ### PR
 - PR URL: (to be filled)
 - Status: N0 report — awaiting Reza go/no-go
+
+---
+
+## Session: neomatrix-N0 (addendum — smartest-model design + self-review gate)
+
+### Changes Made
+- **Type:** Documentation / governance. **No code, no financial logic changed.**
+- **Why:** Reza (2026-06-23) gave full authority to make the Neomatrix *"the smartest and complete model ever built for fast and accurate referencing, coding and improvement … without drift, getting lost or guesswork"*, and added a standing rule: *"always review your own suggestions and instructions at least 3 times and make sure the outcome is 10/10 before presenting for sign off."*
+
+### What was added
+- **CLAUDE.md Part 20 — Self-Review Gate (3× review, 10/10 before sign-off, MANDATORY).** Generalises the §18.8 Stitch ≥9/10 gate to ALL sign-off-bound output (architecture, financial-logic plans, Neomatrix design, PR recommendations, instructions, copy). Protocol version 2.4 → 2.5.
+- **PHASE_53 §14 — "smartest model" enhancements (proposed, pending sign-off).** Self-reviewed 3× per Part 20 (12 raw ideas → final 11 in 3 tiers). Tier A (spine — machine-PROVEN correctness): A1 executable worked-examples (L3 runs engines, asserts outputs), A2 drift sentinel (AST-hash binding → engine body change without metadata bump fails CI), A3 convergence/contradiction audit (same `semanticKey` ⇒ same canonical accessor — the #1201 class), A4 unit-typed edges (unit mismatch fails CI — the 100× class). Tier B (reach): B5 bidirectional lineage + blast-radius, B6 law/authority nodes + `governed-by`, B7 provenance tiers + trust score, B8 regime/temporal layer (§12.14). Tier C (interface): C9 Neomatrix MCP query surface, C10 coverage/freshness/trust dashboard, C11 the 3D view done right (height=layer, glow on anomalies, fly the lineage — Layer 2c, after value).
+
+### Files Modified
+- `CLAUDE.md` — Part 20 + version bump to 2.5.
+- `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` — new §14 enhancements + footer.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` note.
+- `docs/changelog/CHANGELOG_2026_06_23.md` — this entry.
+
+### Testing
+- [x] Docs/governance only — build/lint unaffected.
+
+### PR
+- Folded into PR #1204 (draft, paused for go/no-go + enhancement sign-off).

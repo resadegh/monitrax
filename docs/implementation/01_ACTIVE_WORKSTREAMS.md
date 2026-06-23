@@ -61,6 +61,7 @@
 - **Phase checklist (for the build session):**
   - [x] Design spec (`PHASE_53_MONITRAX_NEOMATRIX.md`).
   - [x] **N0 — Graphify trial on `lib/` + §13.6 security pre-check** — report [`docs/financial-logic/graph/N0_GRAPHIFY_TRIAL.md`](../financial-logic/graph/N0_GRAPHIFY_TRIAL.md). **Result: GO (conditional, code-only/offline).** Graphify 0.8.45 over `lib/` (539 files) ran with all LLM keys unset → 6120 nodes / 12866 edges, **100% AST-extracted, zero egress** (§13.6 pass); reproduced **9/9** of the `00b §2` verified orchestration call-edges at exact `file:line`; no false core edges. ⏸️ **Awaiting Reza's go/no-go before N1** (and confirm per-phase branch convention).
+  - [ ] **"Smartest model" enhancements (PHASE_53 §14, proposed — pending Reza sign-off)** — Tier A spine (A1 executable worked-examples · A2 drift sentinel/AST-hash · A3 convergence-contradiction audit (the #1201 class) · A4 unit-typed edges (the 100× class)); Tier B reach (lineage+blast-radius · law nodes · trust score · regime layer); Tier C interface (Neomatrix MCP query surface · coverage dashboard · 3D done right, last). Self-reviewed 3× per CLAUDE.md Part 20.
   - [ ] N1 — `financial-graph.json` schema + proof slice (4 core engines) + markdown generator.
   - [ ] N2 — interactive 2D explorer.
   - [ ] N3 — CI audit checks (generalise the #1201 drift-guard).

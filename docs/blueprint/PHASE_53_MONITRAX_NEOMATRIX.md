@@ -276,5 +276,59 @@ Schema:
 
 ---
 
-*Design spec created 2026-06-23. Build to be executed by a dedicated session.
+## 14. The "smartest model" enhancements (proposed — pending Reza sign-off)
+
+> Added 2026-06-23 after Reza gave full authority to make the Neomatrix *"the
+> smartest and complete model ever built for fast and accurate referencing,
+> coding and improvement"* — so any mistake is found with full context, **without
+> drift, getting lost, or guesswork.** Self-reviewed 3× per CLAUDE.md Part 20:
+> v1 brain-dump = 12 ideas → merged the golden-number registry into executable
+> worked-examples, **elevated the two checks that hit Monitrax's named pains** (the
+> #1201 "two numbers on one page" contradiction and the §19 100×-unit bug class),
+> demoted literal 3D to last with an honest "comprehension, not audit" caveat →
+> **final 11 in three tiers.** These extend §4–§7; they do not change any
+> financial logic.
+
+### Tier A — the SPINE: machine-*proven* correctness (this is what kills drift & guesswork)
+
+| # | Enhancement | Why it's load-bearing |
+|---|---|---|
+| **A1** | **Executable worked-examples (golden numbers).** Each engine node's `workedExample` becomes real fixture `inputs → expectedOutput`; the Layer-3 audit **runs the pure engine** and asserts the output every CI run. | Turns the graph from *documentation that asserts correctness* into *CI that proves it*. The 2026-06-23 tax-$0-at-bracket-boundary bug would have failed the build. Pure engines first (the 4 core are pure); DB-bound engines via injected fixtures. |
+| **A2** | **Drift sentinel (AST-hash binding).** Each node stores its symbol's `ast_hash` (Graphify already emits it). CI recomputes; if a financial engine's **body changed** but its node metadata (`formula`/`verifiedDate`) did **not** update in the same PR → build fails. | The structural anti-drift mechanism Reza named. Generalises the #1201 enforcement gate from one surface to every engine. |
+| **A3** | **Convergence / contradiction audit.** Every `number` node carries a `semanticKey` (e.g. `monthlyCashflow`). Two `ui-surface` nodes with the same key MUST trace to the **same canonical accessor** — else CI fails. | This is the *exact* #1201 failure: the `/cashflow` hero (+$10,505 declared) and its own waterfall (−$20,914 actual) rendered the same concept from different sources. The graph makes that impossible to ship. |
+| **A4** | **Unit-typed edges.** Edges carry `fromUnit`/`toUnit`; an engine emitting `AUD/month` feeding one expecting `AUD/year` with **no conversion node** → CI fails. | Catches the 100× loan-interest decimal class (`interestRateAnnual` = `0.0625` decimal, not percent — §19.2). Unit confusion is the #1 source of financial error. |
+
+### Tier B — the REACH: full context & fast referencing
+
+| # | Enhancement | Value |
+|---|---|---|
+| **B5** | **Bidirectional lineage + blast-radius queries.** Number → raw-field origin (reverse lineage) **and** engine → every affected tile (forward blast radius). | "Find out how any number is born, and what a change breaks, without getting lost." Layers the *semantic* version over Graphify's structural `path`/`explain`. |
+| **B6** | **Law / authority nodes (`kind:"law"`) + `governed-by` edges.** ATO sections / standard formulas as real nodes. Slice "every number governed by ITAA 1997 s4-10." | A tax-law change → instant blast radius across the graph. Gold for AU correctness and the Phase 41E reform (§12.14). |
+| **B7** | **Provenance tiers + per-number trust score.** `verified` > `graphify` > `inferred` > `unverified`; each displayed number gets a computed audit-confidence; low-trust chains are visibly flagged. | You see *where the risk is* at a glance — honest, anti-overconfidence. |
+| **B8** | **Regime / temporal layer.** A node may hold multiple formula variants keyed by regime + commencement date; the post-reform branch is gated by `commencementVerified` (§12.14) and returns UNCOMPUTED until Royal Assent. | Makes Phase 41E grandfathering first-class — no silent post-reform numbers. |
+
+### Tier C — the INTERFACE: so it's actually used (and the literal 3D)
+
+| # | Enhancement | Notes |
+|---|---|---|
+| **C9** | **Neomatrix MCP query surface.** Expose the graph as an MCP tool so a future Claude session **queries the Neomatrix** ("what feeds the emergency-fund tile? is it verified?") instead of re-reading ~109 files. | The meta-leverage Reza named — *"so you always know how everything works."* The graph becomes the agent's index. Graphify ships `graphify-mcp` for the structural layer; we add the thin semantic layer. |
+| **C10** | **Coverage + freshness + trust dashboard** in the hub — % engines modelled · % verified vs graphify vs inferred · # stale nodes · # `suspected-issue`. Generated from the JSON. | Always-honest gaps; never claims more coverage than is verified. |
+| **C11** | **The 3D view, done right (Layer 2c — after value).** Height = the layer axis (DB floor → UI ceiling, so a number's lineage is a **visible vertical column**); colour = domain; node size = blast-radius; **`suspected-issue`/stale nodes glow red**; click a node → camera **flies the lineage path**. | Honest caveat (designer + architect lens): **2D is the audit workhorse; 3D is comprehension + the "molecule" Reza pictured.** It earns its place *only* with the anomaly-glow + lineage-fly — otherwise it's decoration. Build after Tiers A/B prove value. |
+
+### Recommended default priority (if Reza signs off)
+
+1. **Lock Tier A into N1+N3** — it *is* the audit, and it directly closes the drift/guesswork gaps. A1+A3+A4 are the highest-ROI checks Monitrax has ever had.
+2. **Tier B with the domain backfill (N4)** — B6/B8 land with the tax domain (highest risk); B5/B7 are cheap and continuous.
+3. **C9 + C10 early** — they make the artefact *usable by me and every future session*, multiplying the value of everything above.
+4. **C11 (3D) last / optional** — only once A/B earn it, with the anomaly-glow + lineage-fly that make it an audit aid, not a toy.
+
+> None of Tier A–C changes a formula, law, or threshold — they *model and verify*
+> the logic that exists (§10). A check that surfaces a wrong number raises a
+> `status:"suspected-issue"` with Reza; it never edits the engine.
+
+---
+
+*Design spec created 2026-06-23 (§1–§13). §14 "smartest model" enhancements
+added 2026-06-23 (Reza full-authority directive; self-reviewed 3× per Part 20),
+status: proposed/pending sign-off. Build to be executed by a dedicated session.
 Extends `0·FIN-LOGIC-INDEX`; does not change any financial logic.*
