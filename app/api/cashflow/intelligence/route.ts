@@ -150,31 +150,32 @@ function calculateEmergencyBuffer(
 // WATERFALL CHART DATA
 // =============================================================================
 
+/**
+ * Phase 1 (cashflow-actuals) — waterfall now reflects ACTUAL transactions, not
+ * declared records. `income` is actual inflow, `outflowByCategory` is the
+ * current-month OUT total per category (incl. the 'Uncategorised' line that the
+ * old declared path silently dropped). Loan repayments are NOT added separately
+ * — they already appear as OUT transactions, so a separate line would
+ * double-count. Source: `getMasterFinancialSnapshot()` quickMetrics (§12.3 —
+ * no re-reduce here).
+ */
 function buildWaterfallData(
-  monthlyIncome: number,
-  expenses: any[],
-  monthlyLoanRepayments: number
+  income: number,
+  outflowByCategory: Record<string, number>
 ): WaterfallData {
   const items: WaterfallDataPoint[] = [];
 
   // Start with income
   items.push({
     name: 'Income',
-    value: monthlyIncome,
+    value: income,
     type: 'income',
   });
 
-  // Group expenses by category
-  const categoryTotals = new Map<string, number>();
-  for (const e of expenses) {
-    const category = e.category || 'Other';
-    const monthly = normalizeToMonthly(Number(e.amount), e.frequency);
-    categoryTotals.set(category, (categoryTotals.get(category) || 0) + monthly);
-  }
-
-  // Add expense categories (top 5 + Other)
-  const sortedCategories = Array.from(categoryTotals.entries())
-    .sort((a, b) => b[1] - a[1]);
+  // Actual spend by category (already aggregated by the canonical engine).
+  const sortedCategories = Object.entries(outflowByCategory).sort(
+    (a, b) => b[1] - a[1]
+  );
 
   let otherTotal = 0;
   sortedCategories.forEach(([category, amount], index) => {
@@ -199,18 +200,11 @@ function buildWaterfallData(
     });
   }
 
-  // Add loan repayments
-  if (monthlyLoanRepayments > 0) {
-    items.push({
-      name: 'Loan Repayments',
-      value: -monthlyLoanRepayments,
-      type: 'expense',
-      category: 'Loans',
-    });
-  }
-
-  const totalExpenses = Array.from(categoryTotals.values()).reduce((a, b) => a + b, 0) + monthlyLoanRepayments;
-  const surplus = monthlyIncome - totalExpenses;
+  const totalExpenses = Object.values(outflowByCategory).reduce(
+    (a, b) => a + b,
+    0
+  );
+  const surplus = income - totalExpenses;
 
   // Add net result
   items.push({
@@ -222,7 +216,7 @@ function buildWaterfallData(
 
   return {
     items,
-    netIncome: monthlyIncome,
+    netIncome: income,
     totalExpenses,
     surplus,
   };
@@ -232,10 +226,18 @@ function buildWaterfallData(
 // BUDGET COMPARISON
 // =============================================================================
 
+/**
+ * Phase 1 (cashflow-actuals) — the "Actual" side of budget-vs-actual now comes
+ * from ACTUAL transactions (`actualOutflowByCategory` off the master snapshot),
+ * not declared `expense.amount × frequency`. The old path made "Actual" equal
+ * to the plan, which made every variance read as on-track. Categories are keyed
+ * by the transaction `categoryLevel1`; the budget side keeps its own category
+ * keys (any mismatch surfaces as a budgeted-but-not-spent or
+ * spent-but-not-budgeted row, which is correct).
+ */
 function buildBudgetComparison(
   budgetAnalysis: any,
-  expenses: any[],
-  monthlyExpenses: number
+  actualOutflowByCategory: Record<string, number>
 ): BudgetComparison | undefined {
   if (!budgetAnalysis) return undefined;
 
@@ -258,13 +260,10 @@ function buildBudgetComparison(
     }
   }
 
-  // Calculate actual spending by category
-  const actualByCategory = new Map<string, number>();
-  for (const e of expenses) {
-    const category = e.category || 'Other';
-    const monthly = normalizeToMonthly(Number(e.amount), e.frequency);
-    actualByCategory.set(category, (actualByCategory.get(category) || 0) + monthly);
-  }
+  // Actual spending by category — straight from the canonical actual engine.
+  const actualByCategory = new Map<string, number>(
+    Object.entries(actualOutflowByCategory)
+  );
 
   // Build comparison
   const allCategories = new Set([...budgetedByCategory.keys(), ...actualByCategory.keys()]);
@@ -572,6 +571,20 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Fetch all financial data
       const data = await fetchUserFinancialData(userId);
 
+      // Phase 1 (cashflow-actuals) — canonical snapshot. Drives the ACTUAL
+      // waterfall + budget-vs-actual + saving opportunities below. Single fetch,
+      // reused (§12.3/§12.10). Master failure must not blank the whole page, so
+      // we degrade gracefully: actual fields fall back to empty (= declared
+      // income with no spend lines) and savingOpportunities stays empty.
+      let masterSnapshot: Awaited<
+        ReturnType<typeof getMasterFinancialSnapshot>
+      > | null = null;
+      try {
+        masterSnapshot = await getMasterFinancialSnapshot(userId);
+      } catch (snapErr) {
+        console.error('[CashflowIntelligence] Master snapshot failed:', snapErr);
+      }
+
       // Calculate core metrics
       const monthlyIncome = calculateMonthlyIncome(data.income);
       const monthlyExpenses = calculateMonthlyExpenses(data.expenses);
@@ -633,11 +646,24 @@ export const GET = withPermission('report.read', async (request, auth) => {
       // Detect money leaks
       const leaks = detectMoneyLeaks(leakDetectorInput);
 
-      // Build waterfall data
-      const waterfall = buildWaterfallData(monthlyIncome, data.expenses, monthlyLoanRepayments);
+      // Phase 1 (cashflow-actuals) — actual figures off the canonical snapshot.
+      // When master is unavailable, actualIncome falls back to declared income
+      // and the category breakdown is empty (waterfall shows income with no
+      // spend lines rather than a wrong, optimistic surplus).
+      const actualIncome = masterSnapshot?.quickMetrics.actualMonthlyInflow
+        ? masterSnapshot.quickMetrics.actualMonthlyInflow
+        : monthlyIncome;
+      const actualOutflowByCategory =
+        masterSnapshot?.quickMetrics.actualOutflowByCategory ?? {};
 
-      // Build budget comparison
-      const budgetComparison = buildBudgetComparison(data.budgetAnalysis, data.expenses, monthlyExpenses);
+      // Build waterfall data — ACTUAL income vs ACTUAL spend-by-category.
+      const waterfall = buildWaterfallData(actualIncome, actualOutflowByCategory);
+
+      // Build budget comparison — "Actual" column from ACTUAL transactions.
+      const budgetComparison = buildBudgetComparison(
+        data.budgetAnalysis,
+        actualOutflowByCategory
+      );
 
       // Build forecast summary
       const forecast = buildForecastSummary(totalBalance, monthlyIncome, monthlyExpenses, monthlyLoanRepayments);
@@ -649,18 +675,18 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const smartActions = buildSmartActions(leaks, healthScore, budgetComparison);
 
       // Phase 45.8 — detect cross-account / cross-property saving opportunities.
-      // Pulls from the canonical master snapshot so liquidCash, loan balance,
-      // and gross income are SSOT. Failure here must NOT block the rest of
-      // the intelligence response.
+      // Reuses the canonical master snapshot fetched above (§12.10 — one fetch
+      // per request). Empty when master was unavailable.
       let savingOpportunities: SavingOpportunitiesResult = {
         opportunities: [],
         totalEstimatedAnnualBenefit: 0,
       };
-      try {
-        const masterSnapshot = await getMasterFinancialSnapshot(userId);
-        savingOpportunities = detectSavingOpportunities(masterSnapshot);
-      } catch (oppError) {
-        console.error('[CashflowIntelligence] Saving opportunities detection failed:', oppError);
+      if (masterSnapshot) {
+        try {
+          savingOpportunities = detectSavingOpportunities(masterSnapshot);
+        } catch (oppError) {
+          console.error('[CashflowIntelligence] Saving opportunities detection failed:', oppError);
+        }
       }
 
       // Calculate data quality

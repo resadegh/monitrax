@@ -56,6 +56,14 @@ import {
   type CashflowResult,
 } from '@/lib/calculations/cashflowOrchestrator';
 
+// Phase 1 (cashflow-actuals) — ACTUAL-transaction cashflow alongside the
+// DECLARED-record cashflow above. See actualCashflow.ts header for the why
+// (declared-only headlines silently drop uncategorised OUT transactions).
+import {
+  computeActualCashflow,
+  type ActualCashflowTransaction,
+} from '@/lib/calculations/actualCashflow';
+
 import {
   aggregateExpenses,
   aggregateExpensesByCategory,
@@ -354,6 +362,22 @@ export interface MasterFinancialSnapshot {
     keptAfterEssentials: number;      // *Phase 43 — monthlyNetIncome − essential-monthly-expenses ("Kept" line)
     keptMargin: number;               // *Phase 43 — keptAfterEssentials / monthlyGrossIncome × 100 (%, 0 when no income)
     freeCashDays: number;             // *Phase 43 — liquidCash ÷ daily expense burn ("Free today" expressed in days; 0 when expenses are 0)
+
+    // ── Phase 1 (cashflow-actuals) — ACTUAL transaction-based cashflow ──────
+    // The DECLARED fields above (monthlyExpenses/monthlyCashflow/savingsRate/
+    // keptMargin) are computed from Expense/Income/Loan records × frequency and
+    // silently DROP uncategorised/unlinked OUT transactions — making surplus,
+    // margin, and runway falsely optimistic. The fields below are computed from
+    // ALL non-transfer UnifiedTransaction rows (incl. the 'Uncategorised'
+    // bucket) via `computeActualCashflow()`. Headline surfaces should read
+    // these; declared fields remain for back-compat (the "plan" side of
+    // plan-vs-actual). All zero + hasActualData=false when no txns in window.
+    actualMonthlyOutflow: number;       // current calendar-month OUT (abs, ex-transfers)
+    actualMonthlyInflow: number;        // current calendar-month IN (abs, ex-transfers)
+    actualNetCashflow: number;          // actualMonthlyInflow − actualMonthlyOutflow (can be negative)
+    actualAvgMonthlyOutflow: number;    // trailing-3-full-month avg OUT (for rate/runway tiles)
+    actualOutflowByCategory: Record<string, number>; // current-month OUT by category, null → 'Uncategorised'
+    hasActualData: boolean;             // true if any non-transfer txn in the trailing window
   };
 
   /**
@@ -524,6 +548,21 @@ interface RawLinkedTransaction {
   expenseId: string | null;
 }
 
+/**
+ * Phase 1 (cashflow-actuals) — ALL transactions in the trailing window (linked
+ * or not, categorised or not), used to compute ACTUAL outflow/inflow. This is
+ * intentionally SEPARATE from `RawLinkedTransaction` (which stays scoped to
+ * income/expense-linked rows for `budgetVariance`). `categoryLevel1` +
+ * `isTransfer` are the two columns the declared path doesn't carry.
+ */
+interface RawActualTransaction {
+  date: Date;
+  amount: number;
+  direction: string;
+  categoryLevel1: string | null;
+  isTransfer: boolean | null;
+}
+
 interface RawUserData {
   /** Phase 47 C1 — entity refs for the byEntity breakdown. */
   entities: Array<{ id: string; name: string; type: string }>;
@@ -536,6 +575,8 @@ interface RawUserData {
   superannuation: RawSuperannuation[];
   assets: RawAsset[];
   linkedTransactions: RawLinkedTransaction[];
+  /** Phase 1 (cashflow-actuals) — ALL non-transfer-aware txns, trailing window. */
+  actualTransactions: RawActualTransaction[];
 }
 
 // =============================================================================
@@ -558,6 +599,7 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     superannuation,
     assets,
     linkedTransactions,
+    actualTransactions,
   ] = await Promise.all([
     // Phase 47 C1 — entity refs (id/name/type only) for the byEntity view.
     prisma.legalEntity.findMany({
@@ -702,6 +744,27 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
         expenseId: true,
       },
     }),
+    // Phase 1 (cashflow-actuals) — ALL transactions in the trailing ~4 months,
+    // linked or not. Drives `computeActualCashflow()` so headline tiles reflect
+    // what actually left the account (incl. uncategorised OUT). Separate from
+    // the linked-only fetch above (which powers budgetVariance) — do NOT merge,
+    // the two serve different SSOT concerns (§12.2). 4-month window = current
+    // month + the 3 trailing full months the average needs.
+    prisma.unifiedTransaction.findMany({
+      where: {
+        userId,
+        date: {
+          gte: new Date(new Date().getFullYear(), new Date().getMonth() - 3, 1),
+        },
+      },
+      select: {
+        date: true,
+        amount: true,
+        direction: true,
+        categoryLevel1: true,
+        isTransfer: true,
+      },
+    }),
   ]);
 
   return {
@@ -715,6 +778,14 @@ async function fetchAllUserData(userId: string): Promise<RawUserData> {
     superannuation,
     assets,
     linkedTransactions,
+    actualTransactions: actualTransactions.map((t) => ({
+      date: t.date,
+      // amount is a Prisma Decimal — normalise to number at the boundary.
+      amount: Number(t.amount),
+      direction: t.direction,
+      categoryLevel1: t.categoryLevel1,
+      isTransfer: t.isTransfer,
+    })),
   };
 }
 
@@ -1549,6 +1620,14 @@ function applyScopeFilter(
       keptAfterEssentials: 0,
       keptMargin: 0,
       freeCashDays: 0,
+      // Phase 1 (cashflow-actuals) — actuals are transaction/account-derived;
+      // zero them when the ACCOUNTS scope is not granted to this viewer.
+      actualMonthlyOutflow: 0,
+      actualMonthlyInflow: 0,
+      actualNetCashflow: 0,
+      actualAvgMonthlyOutflow: 0,
+      actualOutflowByCategory: {},
+      hasActualData: false,
     };
   }
 
@@ -1773,6 +1852,12 @@ async function computeMasterFinancialSnapshot(
     .filter(a => LIQUID_ACCOUNT_TYPES.includes(a.type as any))
     .reduce((sum, a) => sum + a.currentBalance, 0);
 
+  // Phase 1 (cashflow-actuals) — ACTUAL transaction-based cashflow. Canonical
+  // engine; route handlers must read these off quickMetrics, never re-reduce.
+  const actualCashflow = computeActualCashflow(
+    data.actualTransactions as ActualCashflowTransaction[]
+  );
+
   // Phase 12 PR 3c.2e — derive the staleness metadata from the same
   // accounts array. SSOT: the rule lives in
   // `components/accounts/DataSourceChip.tsx` (`isBalanceStale` +
@@ -1900,6 +1985,16 @@ async function computeMasterFinancialSnapshot(
         monthlyExpenses.all.total > 0
           ? liquidCash / (monthlyExpenses.all.total / 30)
           : 0,
+
+      // Phase 1 (cashflow-actuals) — ACTUAL transaction-based fields. Read
+      // straight off the canonical `computeActualCashflow()` result; no
+      // arithmetic here.
+      actualMonthlyOutflow: actualCashflow.currentMonthOutflow,
+      actualMonthlyInflow: actualCashflow.currentMonthInflow,
+      actualNetCashflow: actualCashflow.currentMonthNet,
+      actualAvgMonthlyOutflow: actualCashflow.avgMonthlyOutflow,
+      actualOutflowByCategory: actualCashflow.outflowByCategory,
+      hasActualData: actualCashflow.hasActualData,
     },
 
     // Phase 12 PR 3c.2e — confidence signal for every derived metric

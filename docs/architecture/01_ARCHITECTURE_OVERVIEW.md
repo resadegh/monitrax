@@ -479,6 +479,19 @@ invariant: **`getMasterFinancialSnapshot()` is the canonical engine
 for both consumer and adviser views; the `viewerContext` parameter
 applies service-layer scope filtering, NOT a forked engine.**
 
+*Added 2026-06-22 (cashflow-actuals Phase 1).* The master snapshot now
+carries an **ACTUAL-transaction cashflow** layer alongside the declared
+(Expense/Income/Loan × frequency) figures. Computed by the pure engine
+`lib/calculations/actualCashflow.ts` (`computeActualCashflow()`) from ALL
+non-transfer `UnifiedTransaction` rows in a trailing ~4-month window, it is
+exposed on `quickMetrics` as `actualMonthlyOutflow`, `actualMonthlyInflow`,
+`actualNetCashflow`, `actualAvgMonthlyOutflow`, `actualOutflowByCategory`
+(null category → `'Uncategorised'`, which the declared path silently dropped)
+and `hasActualData`. Headline surfaces (cashflow waterfall, budget-vs-actual,
+Money-Story kept/margin, safety-net survivability, the Gemini cashflow
+narrative) read the actual fields; the declared fields remain for back-compat
+and represent the "plan" side of plan-vs-actual.
+
 ## **§13.1 New Engines / Services**
 
 Eight new canonical services in `lib/services/`:
