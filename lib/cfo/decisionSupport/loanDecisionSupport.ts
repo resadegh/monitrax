@@ -215,7 +215,7 @@ export async function calculateCFOLoanInsights(userId: string): Promise<CFOLoanI
     loanPortfolio: {
       totalDebt: aggregation.totalPrincipal,
       totalMonthlyRepayments: aggregation.totalRepayments,
-      weightedAverageRate: aggregation.weightedInterestRate / 100, // Convert back to decimal
+      weightedAverageRate: aggregation.weightedInterestRate, // P0 fix 2026-06-23: weightedInterestRate is ALREADY a decimal; the prior /100 made the rate 100× too low
       loanCount: loans.length,
       debtToIncomeRatio: debtMetrics.debtToIncomeRatio / 100,
       debtServiceRatio: debtMetrics.debtServiceRatio / 100,

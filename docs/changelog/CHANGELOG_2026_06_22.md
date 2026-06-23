@@ -713,3 +713,22 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 - Consider promoting `essential vs discretionary` onto the actual breakdown (needs category→essential map).
 - Add a confidence/coverage signal so a partial-month or low-transaction-coverage user isn't shown an
   understated actual as gospel.
+
+---
+
+## Session: fix-loan-interest-100x-p0-shk180 (P0 — loan interest 100× too low)
+
+### Bug (audit P0, verified 2026-06-23)
+`Loan.interestRateAnnual` is a DECIMAL (0.0625 = 6.25% — `prisma/schema.prisma:1624`, `LoanFormDialog` saves `/100`). Three engines divided the already-decimal rate by 100 AGAIN → 100× understated:
+- `lib/calculations/loanAggregator.ts` (the canonical SSOT debt engine) float `:95` + Decimal `:234` — `/100/12`. Every consumer of `debtSummary.totalInterest` inherited it. $100k @ 0.06 gave **$5/mo** instead of **$500/mo**.
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts:218` — `weightedInterestRate / 100` (already decimal) → CFO loan rate 100× too low.
+- `app/api/cashflow/intelligence/route.ts:439` — deductible investment-loan interest `/100` → deduction 100× too low → overstated taxable income + estimated tax.
+
+### Fix
+Removed the extra `/100` at all three sites (`/12` and `.div(12)` only; weightedInterestRate used as-is; deductible interest = principal × rate). Fixed the stale Decimal docstring. **Corrected the masking fixtures** `lib/calc-audit/engines/decimal-calculations.ts` (`6.25/6.85` percent → `0.0625/0.0685` decimal) — these fed percent into loanAggregator, coincidentally cancelling the /100 and hiding the bug from the shadow test.
+
+### Not touched (verified correct)
+`debtPlanner`, `payDownLoan`, `redirectToOffset`, `refinanceLoan`, `calculatePayoffMonths` — all already use the decimal rate correctly (audit ✅). `loanDecisionSupport:219` `debtToIncomeRatio / 100` is a DIFFERENT field (DTI), out of scope.
+
+### Tests: `tests/calculations/loanInterestRate.test.ts` ($100k @ 0.06 → $500/mo, $6,000/yr, float+Decimal parity). tsc clean; aggregators shadow + calc-audit 200/200; CFO 259/259 green.
+### Doc-sync (§16): this changelog. No config/schema/infra change. (AUDIT_DEBT_WHATIF.md on main via #1194.)

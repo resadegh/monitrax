@@ -435,7 +435,10 @@ function buildTaxOptimization(
   // Calculate loan interest (investment loans are deductible)
   for (const l of loans) {
     if (l.type === 'INVESTMENT') {
-      const annualInterest = Number(l.principal) * (Number(l.interestRateAnnual) / 100);
+      // P0 fix (2026-06-23): interestRateAnnual is a DECIMAL (0.06 = 6%). The
+      // prior /100 made the deductible investment-loan interest 100× too low,
+      // understating the deduction → overstating taxable income + estimated tax.
+      const annualInterest = Number(l.principal) * Number(l.interestRateAnnual);
       deductibleExpenses += annualInterest;
     }
   }
