@@ -28,6 +28,8 @@ import { calculateHighIncomeSuperTax } from '@/lib/tax-engine/super/highIncomeSu
 import { calculateSuperGuarantee } from '@/lib/tax-engine/super/contributionCalculator';
 import { calculateCgtDiscount } from '@/lib/tax-engine/divisions/cgtDiscount';
 import { calculateSmsfIncomeTax } from '@/lib/tax-engine/super/smsfIncomeTax';
+import { calculateAggregateScore } from '@/lib/health/aggregateEngine';
+import { scoreToRiskBand } from '@/lib/health/types';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
 const graph = JSON.parse(
@@ -341,7 +343,63 @@ const CASES: AuditCase[] = [
       ).naliTax,
     expected: 4500,
   },
+
+  // ── Health aggregate score — Monitrax methodology (weighted − penalty, clamp) ─
+  {
+    node: 'engine.aggregateEngine.calculateAggregateScore',
+    law: 'Health methodology: score = round(clamp(0,100, Σ(catScore×catWeight) − totalPenalty))',
+    derivation: '(80×0.5 + 60×0.5) − 0 = 70',
+    actual: () =>
+      calculateAggregateScore(
+        [{ score: 80, weight: 0.5 }, { score: 60, weight: 0.5 }] as never,
+        { totalPenalty: 0 } as never,
+      ),
+    expected: 70,
+  },
+  {
+    node: 'engine.aggregateEngine.calculateAggregateScore',
+    law: 'Penalty modifiers subtract from the weighted score',
+    derivation: '(80×0.5 + 60×0.5) − 10 = 60',
+    actual: () =>
+      calculateAggregateScore(
+        [{ score: 80, weight: 0.5 }, { score: 60, weight: 0.5 }] as never,
+        { totalPenalty: 10 } as never,
+      ),
+    expected: 60,
+  },
+  {
+    node: 'engine.aggregateEngine.calculateAggregateScore',
+    law: 'Score is clamped to a 0-100 ceiling',
+    derivation: '100×1.5 = 150 → clamp to 100',
+    actual: () =>
+      calculateAggregateScore([{ score: 100, weight: 1.5 }] as never, { totalPenalty: 0 } as never),
+    expected: 100,
+  },
+  {
+    node: 'engine.aggregateEngine.calculateAggregateScore',
+    law: 'Score is clamped to a 0 floor',
+    derivation: '(10×1) − 50 = −40 → clamp to 0',
+    actual: () =>
+      calculateAggregateScore([{ score: 10, weight: 1 }] as never, { totalPenalty: 50 } as never),
+    expected: 0,
+  },
 ];
+
+// Risk-band classifier returns a string, so it has its own boundary block.
+describe('Neomatrix A1 — health risk-band boundaries (scoreToRiskBand)', () => {
+  it('every audited node exists in the graph', () => {
+    expect(nodeIds.has('engine.aggregateEngine.calculateAggregateScore')).toBe(true);
+  });
+  const cases: [number, string][] = [
+    [80, 'EXCELLENT'], [79, 'GOOD'], [60, 'GOOD'], [59, 'MODERATE'],
+    [40, 'MODERATE'], [39, 'CONCERNING'], [20, 'CONCERNING'], [19, 'CRITICAL'], [0, 'CRITICAL'],
+  ];
+  for (const [score, band] of cases) {
+    it(`score ${score} → ${band} (Monitrax health band thresholds)`, () => {
+      expect(scoreToRiskBand(score)).toBe(band);
+    });
+  }
+});
 
 describe('Neomatrix A1 — executable law-referenced audit (model refs the code)', () => {
   it('every audited node exists in financial-graph.json (audit tied to the model)', () => {
