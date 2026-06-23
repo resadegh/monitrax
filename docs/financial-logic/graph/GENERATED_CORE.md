@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.1.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.2.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 23 · **Edges:** 26
-- **By kind:** orchestrator 1 · engine 5 · input-field 10 · law 2 · number 3 · ui-surface 2
-- **By status:** documented 23
-- **Edge provenance:** verified 26 *(verified > graphify > inferred)*
+- **Nodes:** 36 · **Edges:** 38
+- **By kind:** orchestrator 2 · engine 9 · input-field 13 · law 5 · number 4 · ui-surface 3
+- **By status:** documented 36
+- **Edge provenance:** verified 38 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -23,6 +23,11 @@
 | **Actual cashflow** | `lib/calculations/actualCashflow.ts:104` | engine | core | ActualCashflowResult — current-month outflow/inflow/net, trailing-avg monthly outflow+inflow, current-month outflow-by-category (incl. 'Uncategorised'), hasActualData. From actual UnifiedTransaction rows. | CLAUDE.md §19.1 (actuals; transfers excluded; uncategorised INCLUDED) | tests/calculations/actualCashflow.test.ts | documented |
 | **Canonical monthly cashflow** | `lib/calculations/canonicalCashflow.ts:114` | engine | core | CanonicalMonthlyCashflow { inflow, outflow, net, savingsRate, avgMonthlyOutflow, basis } where basis ∈ {actual, declared}. THE SSOT for 'money in/out/net this month'. | CLAUDE.md §19.1 (actuals-vs-declared SSOT) | tests/calculations/canonicalCashflow.test.ts, tests/calculations/cashflowSurfacesUseCanonical.test.ts | documented |
 | **Resolve canonical cashflow (the rule)** | `lib/calculations/canonicalCashflow.ts:78` | engine | core | The pure actuals-vs-declared resolution (actual, declared) → canonical result. For routes that compute actuals locally. | CLAUDE.md §19.1 (actuals-vs-declared SSOT) | tests/calculations/canonicalCashflow.test.ts | documented |
+| **Master tax position** | `lib/tax-engine/orchestrator/masterTaxPosition.ts:186` | service | tax | Household-wide MasterTaxPositionV2: per-entity dispatch + cross-cutting (land tax/stamp duty/GST) + loss overlays + citations + boundary footer. | CLAUDE.md §6.1 (tax SSOT) + ITAA 1997 | lib/tax-engine/orchestrator/masterTaxPosition.ts:186 (read this session) | documented |
+| **Per-entity tax dispatch** | `lib/tax-engine/entity/entityTaxRouter.ts:300` | service | tax | Routes per legal-entity type; PERSONAL_NAME / SOLE_TRADER → wraps calculateTaxPosition(). | ITAA 1997; entity-type tax treatment | lib/tax-engine/entity/entityTaxRouter.ts:300,332 (read this session) | documented |
+| **Income tax position** | `lib/tax-engine/position/taxPositionCalculator.ts:92` | engine | tax | TaxPositionResult — assessable income breakdown, deductions, taxable income, tax on income (marginal brackets), Medicare, marginal rate, PAYG, net tax payable/refund. | ITAA 1997 (income tax) + ATO individual income tax rates + Medicare Levy Act 1986 | lib/tax-engine/position/taxPositionCalculator.ts:92 (read this session) | documented |
+| **Salary take-home (PAYG)** | `lib/tax-engine/income/salaryProcessor.ts:46` | engine | tax | SalaryBreakdown — gross↔net take-home (handles GROSS and NET input), PAYG, salary-sacrifice, tax-free-threshold flag, step-by-step calc trail. | ITAA 1997 (income tax) + ATO PAYG withholding | lib/tax-engine/income/salaryProcessor.ts:46 (read this session) | documented |
+| **FY tax thresholds (canonical)** | `lib/tax-engine/config/taxYearConfig.ts:370` | service | tax | The canonical TaxYearConfig for the current FY (brackets, Medicare, LITO, super caps, transfer-balance cap, etc.) — the SSOT for AU tax thresholds (CLAUDE.md §12.2). | ATO individual income tax rates / Medicare Levy / Super thresholds + ITAA sections (cited inline in source) | lib/tax-engine/config/taxYearConfig.ts:370 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -40,6 +45,7 @@
 | **Net worth (displayed)** (`netWorth`) | Net worth | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
 | **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
 | **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
+| **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 
 ## Governing laws / authorities (B6)
 
@@ -47,6 +53,9 @@
 |---|---|---|---|
 | **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
+| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG) |
+| **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position |
+| **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 |  |
 
 ## Edges (verified, with evidence)
 
@@ -78,6 +87,18 @@
 | Monthly cash flow (this month) | → | /cashflow — hero | rendered-at | AUD/month→AUD/month | verified | 00b §3 /cashflow hero (converged) |
 | Canonical monthly cashflow | → | Saving rate | feeds | %→% | verified | 00b §3 saving rate (canonical .savingsRate) |
 | Saving rate | → | /cashflow — hero | rendered-at | %→% | verified | 00b §3 /cashflow hero |
+| Marginal tax brackets (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:41 brackets are part of the returned config (:370) |
+| Medicare levy config | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:61 medicare config in the returned config |
+| Low Income Tax Offset (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:85 LITO config in the returned config |
+| FY tax thresholds (canonical) | → | Income tax position | feeds | thresholds→thresholds | verified | taxPositionCalculator.ts:96 config \|\| getCurrentTaxYearConfig() |
+| FY tax thresholds (canonical) | → | Salary take-home (PAYG) | feeds | thresholds→thresholds | verified | salaryProcessor.ts:48 default config = getCurrentTaxYearConfig() |
+| Income tax position | → | Per-entity tax dispatch | feeds | AUD/year→AUD/year | verified | entityTaxRouter.ts:332 calls calculateTaxPosition for individuals |
+| Per-entity tax dispatch | → | Master tax position | feeds | AUD/year→AUD/year | verified | masterTaxPosition.ts:193 maps calculateEntityTaxPosition over entities |
+| Income tax position | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | marginal brackets + LITO from FY config (taxYearConfig.ts:41,85) |
+| Income tax position | → | Medicare Levy Act 1986 | governed-by | — | verified | medicare in grossTax (taxPositionCalculator.ts:242); rate at taxYearConfig.ts:61 |
+| Salary take-home (PAYG) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | PAYG take-home uses the same FY brackets/LITO |
+| Income tax position | → | Net tax payable | feeds | AUD/year→AUD/year | verified | taxPositionCalculator.ts netTaxPayable output |
+| Net tax payable | → | Tax position surface | rendered-at | AUD/year→AUD/year | verified | tax position surface renders netTaxPayable |
 
 ---
 

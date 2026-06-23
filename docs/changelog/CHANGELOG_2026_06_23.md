@@ -216,3 +216,33 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 
 ### Files Modified
 - `package.json` (vercel-build), `scripts/neomatrix/generate-financial-logic.mjs` (anchor check), `CLAUDE.md` (Part 21 + v2.6), `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md`.
+
+---
+
+## Session: neomatrix-N4.1 (tax-domain backfill — income-tax spine)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix N4.1 — tax domain). **No financial logic changed.**
+- **Reza decision:** N4 = tax-first. This is the first domain backfill, research-verified per §19.2 (every node/edge cites a file:line read this session — never guessed).
+
+### What was modelled (graph 23→36 nodes / 26→38 edges, all `verified`)
+- **Chain:** orchestrator `buildMasterTaxPosition` (masterTaxPosition.ts:186) → `calculateEntityTaxPosition` (entityTaxRouter.ts:300, calls calculateTaxPosition at :332) → income-tax `calculateTaxPosition` (taxPositionCalculator.ts:92). Verified the full call path in source.
+- **PAYG:** `processSalary` (salaryProcessor.ts:46) — GROSS↔net take-home.
+- **Thresholds SSOT:** `getCurrentTaxYearConfig` (taxYearConfig.ts:370) ← bracket (:41) / Medicare (:61) / LITO (:85) config inputs. No rate VALUES copied into the graph (§9) — the graph cites where they live.
+- **Law nodes (B6):** ITAA 1997 income tax + ATO rates · Medicare Levy Act 1986 · **2026-27 reform cut-over** (`REFORM_CUT_OVER_UTC` = 2026-05-12T09:30:00Z, reformConstants.ts:46) as the regime/B8 anchor for the N4.2 CGT/negative-gearing engines.
+- **Lineage:** `number.taxPayable` (semanticKey) → `ui.dashboard.tax`. A3 invariant holds (taxPayable traces to calculateTaxPosition).
+
+### Verification
+- `npm run neomatrix:check` → **OK** (36 nodes / 38 edges, schema valid, invariants hold, **all 11 engine/orchestrator file:line anchors resolve**, markdown fresh).
+- Build gate proven live: the prior preview deploy ran `neomatrix:check` inside `vercel-build` and went **Ready/green**.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` (+13 tax nodes, +12 tax edges; v0.1.0→0.2.0; reformatted pretty-print)
+- `docs/financial-logic/graph/GENERATED_CORE.md` (regenerated)
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` (N4.1)
+
+### Next
+- N4.2: CGT discount/indexation + negative gearing (reform-gated — exercises the regime layer), then super → land tax/stamp duty/GST → health → CFO → intelligence → reports.
+
+### PR
+- Folded into PR #1204 (draft).
