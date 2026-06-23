@@ -769,3 +769,17 @@ The audit also claimed `incomeInBracket = taxableIncome − bracket.min + 1` ove
 
 ### Tests: `tests/tax-engine/incomeTaxBoundary.test.ts` (4 tests — every boundary + interior + monotonicity, ATO FY24-25 values). tsc clean; decimal/calc-audit parity 220/220 green.
 ### Doc-sync (§16): this changelog. No config/schema/infra change. (Audit doc AUDIT_TAX.md already on main via #1194.)
+
+---
+
+## Session: fix-sg-cap-p1-shk180 (P1 — Super Guarantee used a hardcoded max-contribution-base)
+
+### Bug (audit tax P1, verified per Part-19 2026-06-23)
+`lib/tax-engine/super/contributionCalculator.ts` hardcoded the quarterly max super contribution base at `MAX_SUPER_CONTRIBUTION_BASE_2024_25 = 62500` (actually FY25-26's value) instead of reading `config.superGuaranteeQuarterlyCap` (the per-FY SSOT, already ATO-verified: FY24-25 = $65,070, FY25-26 = $62,500). For FY24-25 high earners the SG was capped at the wrong base → understated.
+
+### Part-19 verification
+- Input: `config.superGuaranteeQuarterlyCap` (per-FY, types.ts:137) + `config.superGuaranteeRate`. Worked example FY24-25 $300k salary: min(300000, 65070×4=260280) × 0.115 = **$29,932.20** (was $28,750 with the hardcoded $62,500). FY25-26 $300k: 250000 × 0.12 = $30,000.
+- Fix: float + Decimal paths now use `config.superGuaranteeQuarterlyCap`; removed the dead `MAX_SUPER_CONTRIBUTION_BASE_2024_25` constant (§12.1).
+
+### Tests: `tests/tax-engine/superGuaranteeCap.test.ts` (4 — per-FY cap, below-cap, float/Decimal parity). tsc clean; tax-engine+cfo 1173, regression/golden-master 270 — no regression.
+### §12.14: SG cap is current-law (not a post-reform measure) — no commencement gate needed. Doc-sync (§16): this changelog; audit AUDIT_TAX.md (on main).
