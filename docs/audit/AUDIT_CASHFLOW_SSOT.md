@@ -142,3 +142,32 @@ Routes doing their own `reduce()` over `prisma.expense/income/loan/account` inst
 **Not independently verifiable here (⚠️):** the runtime distribution of `Loan.type` values
 (finding #10) — whether any production loans are typed `'MORTGAGE'` without `propertyId` — requires
 DB inspection, which this read-only audit did not perform.
+
+---
+
+## 6. Convergence status (2026-06-23 — Phase 2, PR cashflow-ssot-convergence)
+
+Root cause confirmed: **SSOT was documented (§6.1/§12.2/§12.3) but never *enforced***, so each
+cashflow-emitting route picked its own basis. Establishing ONE correct number + comparing every
+surface against it (per Reza's directive) drove these fixes:
+
+| Surface | Before | After |
+|---|---|---|
+| `/cashflow` HERO (`buildForecastSummary` + cashflow health-score, `intelligence/route.ts`) | DECLARED records (the +$10,505 surplus / 51.9% saving-rate fiction) while the SAME page's money-flow waterfall showed actuals | resolves through the canonical accessor — hero now agrees with the waterfall |
+| Emergency-fund tile (`insights/route.ts`) | numerator + `monthsCovered` actual-based, displayed "/month" figure DECLARED (`totalMonthlyExpenses`) — internal contradiction | displays `snapshot.emergencyFund.monthlyExpenses` (the engine's own denominator) |
+| Trailing-avg divisor (`actualCashflow.ts`) | fixed `/3` → false ~$938 emergency for recently-connected users | data-driven divisor (populated months only) |
+
+**New canonical SSOT:** `lib/calculations/canonicalCashflow.ts` — `getCanonicalMonthlyCashflow()` +
+pure `resolveCanonicalCashflow()`. Every cashflow surface must resolve through it
+(actuals win when `hasActualData`, declared fallback otherwise). **Enforcement gate:**
+`tests/calculations/cashflowSurfacesUseCanonical.test.ts` fails the build if a converged surface
+drops the accessor.
+
+**Deferred — Home tiles (Phase 2b):** Monthly Cash Flow / Annual Outgoings / Saving Rate
+(`portfolio/snapshot.cashflow` + `insights.kpiTiles.outgoingsAnnual`) NOT converged this PR —
+overwriting the headline to actual breaks the Home drill-down tie-out (it recomposes net from a
+DECLARED Income−Expenses−Loans breakdown; actuals only give Inflow−Outflow). Needs a section-level
+drill-down change (Stitch-first, §18.2.1), not a backend overwrite.
+
+**Still open (Phase 2c):** rolling-30-day analytics window vs current-calendar-month reconciliation;
+`/activity` donut "20% kept" YTD source trace; budget page / debt-freedom runway / CFO baseline.

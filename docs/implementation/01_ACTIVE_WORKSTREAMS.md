@@ -10,18 +10,25 @@
 
 ### 0·CASHFLOW-ACTUALS. Headline cashflow correctness — actual vs declared (Phase 1)
 
-- **Status:** 🟡 ACTIVE — **Phase 1 shipped** (foundation + 5 repoints); Phase 2 queued.
+- **Status:** 🟡 ACTIVE — **Phase 1 shipped**; **Phase 2 SSOT-convergence in flight** (this PR).
 - **Started:** 2026-06-22.
 - **Owner:** Reza (decisions) + Claude (build).
-- **Last touched:** 2026-06-22 — Phase 1 built on branch `claude/cashflow-actuals-phase1-shk180`.
+- **Last touched:** 2026-06-23 — Phase 2 convergence on branch `claude/cashflow-ssot-convergence-shk180`. Reza: *"this is very critical issue … find the correct numbers and source of truth and compare all other numbers based on that."*
 - **Phase checklist:**
   - [x] **Audit:** confirmed headline tiles compute from DECLARED records and silently drop uncategorised/unlinked OUT transactions → falsely optimistic surplus/margin/runway.
   - [x] **Phase 1A — foundation:** new pure engine `lib/calculations/actualCashflow.ts` (`computeActualCashflow()`, 10 tests) + new actual fields on master `quickMetrics` (`actualMonthlyOutflow`/`Inflow`/`actualNetCashflow`/`actualAvgMonthlyOutflow`/`actualOutflowByCategory`/`hasActualData`) computed from ALL non-transfer `UnifiedTransaction` (trailing ~4 mo). Declared fields untouched (back-compat).
   - [x] **Phase 1B — repoint 5 worst offenders:** cashflow waterfall + budget-vs-actual (`/api/cashflow/intelligence`), Money-Story kept/margin (`/api/dashboard/insights`), safety-net survivability (`/api/safety-net`), Gemini cashflow narrative (`/api/cashflow/summary`).
-  - [ ] **Phase 2:** remaining declared-only surfaces (budget page, debt-freedom runway, health-score savings-rate input, CFO baseline); surface plan-vs-actual explicitly in UI (show both); essential/discretionary split on actuals; transaction-coverage confidence signal.
-- **Risk:** silent semantic shift (kept/margin now mean "after actual spend"); mitigated by `hasActualData` gate (falls back to declared for no-transaction users).
-- **Blocking:** none. PR opened by parent.
-- **Why this matters:** the headline numbers were lying — a user with uncategorised spending saw a surplus they don't have. Financial-adviser lens: never quote a number we can't trace to reality; the actual engine makes the headline honest.
+  - [x] **Phase 2 — SSOT convergence (root-cause: SSOT documented but never *enforced*):**
+    - [x] **Canonical accessor** `lib/calculations/canonicalCashflow.ts` (`getCanonicalMonthlyCashflow` + pure `resolveCanonicalCashflow`) — the ONE place the actuals-vs-declared rule lives (CLAUDE.md §19.1). 4 tests.
+    - [x] **`/cashflow` HERO fixed** — `buildForecastSummary` + the cashflow health-score input in `/api/cashflow/intelligence` previously read DECLARED records (the +$10,505 surplus / 51.9% saving-rate fiction) while the SAME page's money-flow waterfall already showed actuals → two numbers on one page. Both now resolve through the canonical accessor.
+    - [x] **Emergency-fund tile internal mismatch fixed** — `/api/dashboard/insights` displayed declared `totalMonthlyExpenses` as the "/month" denominator while `monthsCovered` used the actual trailing-avg; now displays `snapshot.emergencyFund.monthlyExpenses` (the engine's own denominator).
+    - [x] **Divisor fix** — `actualCashflow.ts` trailing average changed from a fixed `/3` to a **data-driven divisor** (months with NO transactions are missing data, excluded from sum + divisor; a populated low-spend month still counts). Fixes the false $938 emergency figure for recently-connected users.
+    - [x] **Enforcement gate** — `tests/calculations/cashflowSurfacesUseCanonical.test.ts` structural guard fails the build if a converged surface drops the canonical accessor.
+  - [ ] **Phase 2b — Home page convergence (DEFERRED, needs frontend + Stitch):** the Home "Monthly Cash Flow / Annual Outgoings / Saving Rate" tiles read declared `portfolio/snapshot.cashflow` + `insights.kpiTiles.outgoingsAnnual`. Converging the **headline** to actual breaks the **drill-down** tie-out (it recomposes net from a declared Income−Expenses−Loans breakdown; actuals only give Inflow−Outflow). Doing it right needs a section-level drill-down change (§18.2.1 Stitch-first) — scoped as a separate workstream, NOT a backend-only overwrite.
+  - [ ] **Phase 2c — open items:** reconcile the rolling-30-day analytics window vs current-calendar-month (label honestly); trace the `/activity` donut "20% kept" YTD source; remaining declared-only surfaces (budget page, debt-freedom runway, CFO baseline); plan-vs-actual shown explicitly in UI.
+- **Risk:** silent semantic shift (kept/margin/surplus now mean "after actual spend"); mitigated by `hasActualData` gate (falls back to declared for no-transaction users).
+- **Blocking:** Phase 2b gated on a Stitch drill-down design (drill-down decomposition can't be done backend-only without re-introducing a contradiction).
+- **Why this matters:** the headline numbers were lying — a user with uncategorised spending saw a surplus they don't have, and two tiles on one page showed different numbers because SSOT was documented but never enforced. Financial-adviser lens: never quote a number we can't trace to reality; the canonical accessor + enforcement gate make the headline honest *and* keep it honest.
 
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
