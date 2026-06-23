@@ -42,3 +42,36 @@
 ### PR
 - PR URL: (to be filled)
 - Status: Open (draft)
+
+---
+
+## Session: financial-logic-index-shk180
+
+### Changes Made
+- **Type:** Documentation (new master reference — no logic change)
+- **Scope:** new `docs/financial-logic/` hub + spokes — the Financial Logic Index
+- **Why:** Reza directive — *"build the document for every phase [after] complete research on the document for that section, the code, understand the logic, then document. Never guess or assume … only to keep a live index and reference … so you can understand Monitrax without guess or assumption."* The 2026-06-23 doc-coverage audit found ~27% of ~112 financial-engine files have proper inline headers and NO canonical engine→file→formula→authority index. Calc drift (the #1201 cashflow contradiction) happens when a surface changes without tracing to the canonical source; this index is the anchor.
+- **Constraints honoured:** documentation only (no logic/law/formula/threshold changed); research-first (each entry written only after a complete source read + phase-doc + input-unit + caller trace); never guess (`⚠️ UNVERIFIED`/`⚠️ SUSPECTED ISSUE` markers reserved for the unverifiable).
+
+### Files Added
+- `docs/financial-logic/00_INDEX.md` — hub: purpose, operating rules, status legend, spoke map, coverage tracker.
+- `docs/financial-logic/01_CORE_CALCULATIONS.md` — first spoke, 4 engines fully documented from complete reads: net worth (`netWorthCalculator.ts`), declared cashflow (`cashflowOrchestrator.ts`), actual cashflow (`actualCashflow.ts`), canonical cashflow (`canonicalCashflow.ts`) — each with Produces · Canonical accessor · Inputs (unit/type/convention) · Formula+authority · Gotchas · Consumers · Verified-by · worked example.
+
+### Files Modified
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — new `0·FIN-LOGIC-INDEX` workstream.
+
+### Note on branch base
+Stacked on the #1201 cashflow-SSOT branch so the index documents the **converged** state (data-driven divisor + `canonicalCashflow.ts` exist). PR base set to the #1201 branch for a clean diff; retarget to main once #1201 merges.
+
+### Testing
+- [x] No code changed — docs only. (No build/lint impact.)
+
+### PR
+- PR URL: (to be filled — pending GitHub MCP re-auth)
+- Status: template slice for format sign-off
+
+#### Addendum — relationships & lineage (third dimension)
+Reza directive: the index must also capture how all numbers/engines relate, so the artefact explains how Monitrax works end-to-end and how any number is generated.
+- `docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md` — **new.** Layered data-flow diagram (DB → pure engines → masterFinancialService → API routes → UI, mermaid), verified engine dependency graph (file:line for each `masterFinancialService` composition call), per-number lineage table (raw field → engine → accessor → route → tile), and the two-snapshot-SSOT distinction. Verified-only edges (confirmed in source this session).
+- `00_INDEX.md` — per-engine schema now requires **Fed by / Feeds into** edges; relationships spoke registered.
+- `01_CORE_CALCULATIONS.md` — added **Fed by / Feeds into** to all 4 entries.

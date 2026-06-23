@@ -30,6 +30,26 @@
 - **Blocking:** Phase 2b gated on a Stitch drill-down design (drill-down decomposition can't be done backend-only without re-introducing a contradiction).
 - **Why this matters:** the headline numbers were lying — a user with uncategorised spending saw a surplus they don't have, and two tiles on one page showed different numbers because SSOT was documented but never enforced. Financial-adviser lens: never quote a number we can't trace to reality; the canonical accessor + enforcement gate make the headline honest *and* keep it honest.
 
+### 0·FIN-LOGIC-INDEX. Financial Logic Index — master reference for all calc engines
+
+- **Status:** 🟡 ACTIVE — **template slice shipped** (hub + Core Calculations spoke, 4 engines); domain-by-domain backfill queued.
+- **Started:** 2026-06-23.
+- **Owner:** Reza (decisions) + Claude (research + write).
+- **Last touched:** 2026-06-23 — hub `docs/financial-logic/00_INDEX.md` + spoke `01_CORE_CALCULATIONS.md` on branch `claude/financial-logic-index-shk180` (stacked on the #1201 cashflow-SSOT branch so it documents the converged state). Reza directive: *"build the document for every phase [after] complete research on the document for that section, the code, understand the logic, then document. Never guess or assume … only to keep a live index and reference … so you can understand Monitrax without guess or assumption."*
+- **Why this exists:** the doc-coverage audit (2026-06-23) found ~27% of ~112 financial-engine files have proper inline headers, tax-divisions/CFO-scenarios largely undocumented, and NO canonical engine→file→formula→authority index. Drift (the #1201 cashflow contradiction) happens when a surface is changed without tracing to the canonical source. This index is the anchor an engineer/AI reads before touching any number, and the reference for correctness audits.
+- **Hard constraints (Reza):** **documentation only** — never change logic/law/formula/threshold without explicit confirmation; **research-first** — full source read + phase doc + input-unit trace + caller trace before writing each entry; never guess (`⚠️ UNVERIFIED`/`⚠️ SUSPECTED ISSUE` instead).
+- **Phase checklist:**
+  - [x] Hub + status legend + operating rules (`00_INDEX.md`).
+  - [x] **Core Calculations spoke** — net worth, declared cashflow, actual cashflow, canonical cashflow (4 of ~10, each from a complete read + verification evidence).
+  - [ ] Core Calculations — remaining (aggregators incl. loan-interest decimal gotcha, money-story trend, asset valuation, net-worth history, entity breakdown).
+  - [ ] **Tax engine spoke** (highest risk — divisions/CGT/super, with ATO authority citations).
+  - [ ] CFO + scenarios spoke (what-if formula + assumptions).
+  - [ ] Intelligence + reports spoke.
+  - [ ] Services/orchestration spoke (`masterFinancialService`, portfolio snapshot, emergency fund).
+  - [ ] (Phase A follow-up, separate decision) machine-derived registry generator + CI freshness gate so the index can't drift.
+- **Risk:** the index documenting stale behaviour if an engine changes without updating the entry — mitigated by the same-PR sync rule (§16) and (future) the CI freshness gate.
+- **Blocking:** none for the doc backfill. The generator/CI-gate sub-phase awaits Reza's go-ahead on the Phase-A enforcement approach.
+
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
