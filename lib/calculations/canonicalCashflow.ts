@@ -1,0 +1,133 @@
+/**
+ * Canonical monthly cashflow accessor — the ONE place that decides
+ * "money in / out / net for this month" for every surface in the app.
+ *
+ * WHY THIS EXISTS (CLAUDE.md §6.1 / §12.2 / §12.3 / §19.1)
+ * --------------------------------------------------------
+ * SSOT was documented but never *enforced*. Multiple routes each chose
+ * their own basis for cashflow: some read DECLARED records (Income /
+ * Expense / Loan × frequency), some read ACTUAL transactions, and some
+ * mixed the two within a single tile. The result: two cashflow tiles on
+ * the same page showed different — and, for declared surfaces, falsely
+ * optimistic — numbers (declared drops uncategorised/unlinked OUT
+ * transactions; see actualCashflow.ts).
+ *
+ * THE RULE (CLAUDE.md §19.1)
+ * --------------------------
+ * When the user has actual transactions in the window, EVERY flow figure
+ * derives from them (`hasActualData === true` → basis 'actual'). Declared
+ * records are the fallback ONLY when no transactions exist (basis
+ * 'declared'). Transfers are already excluded and uncategorised OUT is
+ * already included upstream in computeActualCashflow().
+ *
+ * Every cashflow-emitting route MUST call getCanonicalMonthlyCashflow()
+ * and MUST NOT re-derive in/out/net from records. The drift guard at
+ * tests/calculations/canonicalCashflow.test.ts pins the contract.
+ *
+ * @see lib/calculations/actualCashflow.ts  — produces the actual figures
+ * @see lib/services/masterFinancialService.ts — surfaces them on quickMetrics
+ */
+import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+
+/** The basis a canonical figure was computed from. */
+export type CashflowBasis = 'actual' | 'declared';
+
+export interface CanonicalMonthlyCashflow {
+  /** Money IN this month (net pay landing in accounts when actual). */
+  inflow: number;
+  /** Money OUT this month — expenses + loan repayments + uncategorised. */
+  outflow: number;
+  /** inflow − outflow. Can be negative (a real deficit). */
+  net: number;
+  /** net / inflow × 100. 0 when there is no inflow. */
+  savingsRate: number;
+  /**
+   * Smoothed monthly OUT for rate / runway / emergency-fund tiles.
+   * Actual trailing-average when present; declared outflow otherwise.
+   */
+  avgMonthlyOutflow: number;
+  /** Where these numbers came from — surface this so the UI never lies. */
+  basis: CashflowBasis;
+}
+
+/** Actual-transaction inputs (from computeActualCashflow). */
+export interface ActualCashflowInputs {
+  hasActualData: boolean;
+  inflow: number;
+  outflow: number;
+  net: number;
+  /** Trailing-average OUT for rate/runway tiles. */
+  avgOutflow: number;
+}
+
+/** Declared-record inputs (the plan side — fallback only). */
+export interface DeclaredCashflowInputs {
+  inflow: number;
+  /** Total monthly OUT = expenses + loan repayments. */
+  outflow: number;
+  net: number;
+}
+
+/**
+ * The ONE rule (CLAUDE.md §19.1): actuals win when present, declared
+ * fallback otherwise. This is the only place the rule is implemented —
+ * both the snapshot convenience accessor and any route that computes
+ * actuals locally (e.g. portfolio/snapshot) call through here so the
+ * answer can never drift between surfaces.
+ */
+export function resolveCanonicalCashflow(
+  actual: ActualCashflowInputs,
+  declared: DeclaredCashflowInputs
+): CanonicalMonthlyCashflow {
+  if (actual.hasActualData) {
+    return {
+      inflow: actual.inflow,
+      outflow: actual.outflow,
+      net: actual.net,
+      savingsRate: actual.inflow > 0 ? (actual.net / actual.inflow) * 100 : 0,
+      // Trailing average for rate/runway; fall to the current-month outflow if
+      // the average is empty (sparse history) so we never report a false 0.
+      avgMonthlyOutflow: actual.avgOutflow > 0 ? actual.avgOutflow : actual.outflow,
+      basis: 'actual',
+    };
+  }
+  return {
+    inflow: declared.inflow,
+    outflow: declared.outflow,
+    net: declared.net,
+    savingsRate: declared.inflow > 0 ? (declared.net / declared.inflow) * 100 : 0,
+    avgMonthlyOutflow: declared.outflow,
+    basis: 'declared',
+  };
+}
+
+/** Minimal slice of the snapshot this accessor needs. */
+type CashflowSource = Pick<MasterFinancialSnapshot, 'cashflow' | 'quickMetrics'>;
+
+/**
+ * The canonical monthly cashflow for a master snapshot.
+ *
+ * Actual when `quickMetrics.hasActualData` is true; declared fallback
+ * otherwise. Declared outflow = expenses + loan repayments (loan
+ * repayments are real money out, counted in the actual OUT total too).
+ */
+export function getCanonicalMonthlyCashflow(
+  snapshot: CashflowSource
+): CanonicalMonthlyCashflow {
+  const qm = snapshot.quickMetrics;
+  const cf = snapshot.cashflow;
+  return resolveCanonicalCashflow(
+    {
+      hasActualData: qm.hasActualData,
+      inflow: qm.actualMonthlyInflow,
+      outflow: qm.actualMonthlyOutflow,
+      net: qm.actualNetCashflow,
+      avgOutflow: qm.actualAvgMonthlyOutflow,
+    },
+    {
+      inflow: cf.monthlyNetIncome,
+      outflow: cf.monthlyExpenses + cf.monthlyLoanRepayments,
+      net: cf.monthlyCashflow,
+    }
+  );
+}

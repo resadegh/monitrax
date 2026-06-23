@@ -7,7 +7,8 @@
  *   - uncategorised OUT bucketed under 'Uncategorised' AND counted in totals
  *   - Math.abs() applied to negative amounts
  *   - IN vs OUT split by `direction` (not amount sign)
- *   - trailing-3-full-month average maths (fixed /3 divisor)
+ *   - trailing-full-month average maths (data-driven divisor — months with
+ *     NO transactions are missing data, excluded from sum AND divisor)
  *   - empty input → all-zero result with hasActualData=false
  */
 
@@ -128,8 +129,8 @@ describe('computeActualCashflow', () => {
     expect(r.currentMonthNet).toBe(-500);
   });
 
-  it('averages the trailing 3 FULL months with a fixed /3 divisor', () => {
-    // March OUT 300, April OUT 600, May OUT 900 → avg = 1800/3 = 600.
+  it('averages the trailing months that have data (all 3 populated → /3)', () => {
+    // March OUT 300, April OUT 600, May OUT 900 → all 3 populated → 1800/3 = 600.
     // Current-month rows must NOT affect the average.
     const r = computeActualCashflow(
       [
@@ -137,7 +138,7 @@ describe('computeActualCashflow', () => {
         tx({ date: APRIL(10), amount: 600, direction: 'OUT' }),
         tx({ date: MAY(10), amount: 900, direction: 'OUT' }),
         tx({ date: CURRENT(5), amount: 9999, direction: 'OUT' }),
-        // trailing inflow: only April 1200 → avg = 1200/3 = 400.
+        // April also has IN; all 3 months are populated → IN avg = 1200/3 = 400.
         tx({ date: APRIL(12), amount: 1200, direction: 'IN' }),
       ],
       { now: NOW }
@@ -148,16 +149,34 @@ describe('computeActualCashflow', () => {
     expect(r.currentMonthOutflow).toBe(9999);
   });
 
-  it('a zero-spend trailing month still divides by 3', () => {
-    // Only May has spend (600); March + April empty → avg = 600/3 = 200.
+  it('months with NO transactions are missing data, excluded from the divisor', () => {
+    // Only May has spend (600); March + April have no transactions at all →
+    // they are missing data, not zero-spend months → divisor = 1 → avg = 600.
+    // (The old fixed /3 divisor wrongly produced 200 for a user who only
+    // recently connected their bank — the 2026-06-23 cashflow-SSOT fix.)
     const r = computeActualCashflow(
       [tx({ date: MAY(10), amount: 600, direction: 'OUT' })],
       { now: NOW }
     );
-    expect(r.avgMonthlyOutflow).toBe(200);
+    expect(r.avgMonthlyOutflow).toBe(600);
+  });
+
+  it('a populated month that nets to low spend still counts (real low spend)', () => {
+    // March has a tiny OUT (10); May has 600. Both populated → divisor = 2 →
+    // avg = 610/2 = 305. A real low-spend month is data, not absence of data.
+    const r = computeActualCashflow(
+      [
+        tx({ date: MARCH(10), amount: 10, direction: 'OUT' }),
+        tx({ date: MAY(10), amount: 600, direction: 'OUT' }),
+      ],
+      { now: NOW }
+    );
+    expect(r.avgMonthlyOutflow).toBe(305);
   });
 
   it('excludes transfers from the trailing average too', () => {
+    // April has a transfer (excluded) + one real OUT 300 → April is the only
+    // populated month (transfers do not populate) → divisor = 1 → avg = 300.
     const r = computeActualCashflow(
       [
         tx({ date: APRIL(10), amount: 5000, direction: 'OUT', isTransfer: true }),
@@ -165,6 +184,6 @@ describe('computeActualCashflow', () => {
       ],
       { now: NOW }
     );
-    expect(r.avgMonthlyOutflow).toBe(100); // 300 / 3
+    expect(r.avgMonthlyOutflow).toBe(300);
   });
 });

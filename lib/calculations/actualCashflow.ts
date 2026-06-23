@@ -63,10 +63,15 @@ export interface ActualCashflowResult {
   /** currentMonthInflow − currentMonthOutflow (can be negative). */
   currentMonthNet: number;
   /**
-   * Average monthly OUT across the trailing 3 FULL calendar months
-   * (i.e. excluding the in-progress current month). Smooths spikes for
-   * rate / runway tiles. Divisor is always 3 — a zero-spend month is a
-   * real data point, not absence of data.
+   * Average monthly OUT across the trailing FULL calendar months that
+   * actually have transaction data (i.e. excluding the in-progress current
+   * month AND excluding months with zero transactions). Smooths spikes for
+   * rate / runway tiles. The divisor is data-driven: a month with NO
+   * transactions is treated as MISSING data, not a real zero-spend month —
+   * dividing by a fixed 3 when the user only connected their bank recently
+   * understated the average and produced false runway/emergency numbers
+   * (2026-06-23 cashflow-SSOT audit). A populated month that nets to low
+   * spend is still counted (real low spend, not absence of data).
    */
   avgMonthlyOutflow: number;
   /** Average monthly IN across the trailing 3 FULL calendar months. */
@@ -120,9 +125,10 @@ export function computeActualCashflow(
   const currentKey = monthKey(now);
 
   // Trailing 3 FULL months = the 3 calendar months immediately BEFORE the
-  // current (in-progress) month. We average across exactly these 3 buckets
-  // so an empty month still drags the average down (it's a real zero-spend
-  // month, not missing data — the window is fixed, not data-driven).
+  // current (in-progress) month. We average across the months in this window
+  // that actually have transaction data (data-driven divisor) — a month with
+  // NO transactions is missing data, not a real zero-spend month, and must
+  // not drag the average toward zero (2026-06-23 cashflow-SSOT audit).
   const fullMonthKeys: string[] = [];
   for (let i = 1; i <= 3; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
@@ -163,7 +169,15 @@ export function computeActualCashflow(
     }
   }
 
-  // Average across the fixed 3-month window (divisor is always 3).
+  // Data-driven divisor: count only the full months in the window that have
+  // ANY non-transfer transaction (in OR out). A month with no transactions is
+  // missing data and is excluded from both the sum and the divisor; a
+  // populated month that nets to low spend is included (real low spend).
+  const populatedMonths = fullMonthKeys.filter(
+    (k) => trailingOut.has(k) || trailingIn.has(k)
+  ).length;
+  const divisor = populatedMonths > 0 ? populatedMonths : 1; // sums are 0 when 0
+
   const sumTrailingOut = fullMonthKeys.reduce(
     (s, k) => s + (trailingOut.get(k) || 0),
     0
@@ -172,8 +186,8 @@ export function computeActualCashflow(
     (s, k) => s + (trailingIn.get(k) || 0),
     0
   );
-  const avgMonthlyOutflow = sumTrailingOut / fullMonthKeys.length;
-  const avgMonthlyInflow = sumTrailingIn / fullMonthKeys.length;
+  const avgMonthlyOutflow = sumTrailingOut / divisor;
+  const avgMonthlyInflow = sumTrailingIn / divisor;
 
   return {
     currentMonthOutflow,
