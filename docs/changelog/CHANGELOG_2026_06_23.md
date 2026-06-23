@@ -69,3 +69,9 @@ Stacked on the #1201 cashflow-SSOT branch so the index documents the **converged
 ### PR
 - PR URL: (to be filled — pending GitHub MCP re-auth)
 - Status: template slice for format sign-off
+
+#### Addendum — relationships & lineage (third dimension)
+Reza directive: the index must also capture how all numbers/engines relate, so the artefact explains how Monitrax works end-to-end and how any number is generated.
+- `docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md` — **new.** Layered data-flow diagram (DB → pure engines → masterFinancialService → API routes → UI, mermaid), verified engine dependency graph (file:line for each `masterFinancialService` composition call), per-number lineage table (raw field → engine → accessor → route → tile), and the two-snapshot-SSOT distinction. Verified-only edges (confirmed in source this session).
+- `00_INDEX.md` — per-engine schema now requires **Fed by / Feeds into** edges; relationships spoke registered.
+- `01_CORE_CALCULATIONS.md` — added **Fed by / Feeds into** to all 4 entries.

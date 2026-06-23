@@ -33,7 +33,8 @@
   - `breakdown.liquidAssets = Σ account.currentBalance where type ≠ 'OFFSET'`
   - `breakdown.investmentAssets = assets.investments + assets.superannuation`
 - **Liability classification (load-bearing gotcha):** a loan is a **mortgage** when `loan.type` (upper-cased) is `'HOME'` or `'INVESTMENT'`, **or** `loan.propertyId` is set; a **credit card** when `type === 'CREDIT_CARD'`; **everything else → personal loans** — including the typo `'MORTGAGE'`. Loan-creation flows MUST use `'HOME'`/`'INVESTMENT'` for property loans or the loan misclassifies. (This is a real footgun — flagged for the tax/loan UI audit, not changed here.)
-- **Consumers:** `lib/services/masterFinancialService.ts` (the master snapshot's net worth); historically also `app/api/financial-health`, `app/api/portfolio/snapshot`, `lib/health/aggregateEngine.ts` (the file header lists the scattered sites it replaced — those must call this engine, not re-derive).
+- **Fed by:** raw rows only (Property / Account / Investment / Super / Asset / Loan) — a **leaf** pure engine, depends on no other engine. (See `00b_RELATIONSHIPS_AND_LINEAGE.md` §1–§2.)
+- **Feeds into / Consumers:** `lib/services/masterFinancialService.ts` (the master snapshot's net worth; also a `buildHealthScore` input — net worth is a health-score factor); historically also `app/api/financial-health`, `app/api/portfolio/snapshot`, `lib/health/aggregateEngine.ts` (the file header lists the scattered sites it replaced — those must call this engine, not re-derive).
 - **Verified by:** `tests/calculations/netWorthCalculator.decimal.test.ts` (Float vs Decimal parity, 8 tests); Phase 41i calc-audit fixture `core.netWorth` (classification contract). Worked example: property 800,000 + account 20,000 + (100 units × 50) − loan 600,000 = 800,000+20,000+5,000−600,000 = **225,000**.
 - **Last verified:** 2026-06-23 (full read).
 
@@ -60,7 +61,8 @@
   - `expenseRatio = monthlyExpenses / monthlyNetIncome × 100`; `debtServiceRatio = monthlyLoanRepayments / monthlyNetIncome × 100`.
   - Annual = monthly × 12. All output fields rounded to 2dp (`Math.round(n*100)/100`); the Decimal sibling does **not** pre-round (rounds only at the output boundary).
 - **Key behaviour / gotcha:** this is the DECLARED basis. It **does not** see uncategorised/unlinked bank spend, so on its own it overstates surplus for users with real transactions. The §4 canonical accessor exists precisely to choose actual-over-declared when transactions exist (CLAUDE.md §19.1).
-- **Consumers:** `lib/services/masterFinancialService.ts` (`snapshot.cashflow` + declared `quickMetrics`); the declared fallback inside `getCanonicalMonthlyCashflow` (§4).
+- **Fed by:** Income / Expense / Loan records + `lib/utils/frequencies.ts` (`toMonthly`) + `lib/cashflow/incomeNormalizer.ts` (`calculateTakeHomePay` for salary GROSS→net). Leaf engine over declared records.
+- **Feeds into / Consumers:** `lib/services/masterFinancialService.ts` (`snapshot.cashflow` + declared `quickMetrics`); the declared fallback inside `getCanonicalMonthlyCashflow` (§4).
 - **Verified by:** `tests/calculations/aggregators.decimal.test.ts` (Float/Decimal parity). Worked example: net income 8,000/mo − expenses 5,000 − loans 1,000 = **2,000/mo**, savingsRate = 2,000/8,000 = **25%**.
 - **Last verified:** 2026-06-23 (full read).
 
@@ -83,7 +85,8 @@
   - Trailing window = the **3 full calendar months before** the current (in-progress) month. **Data-driven divisor (2026-06-23 fix):** `avgMonthlyOutflow = Σ trailing OUT / (count of those 3 months that have ≥1 non-transfer transaction)`. A month with **no** transactions is *missing data* → excluded from sum AND divisor; a populated low-spend month still counts. Divisor floored at 1 (sums are 0 anyway when no populated months). `avgMonthlyInflow` uses the same divisor.
   - Empty input (or all-transfers) → all-zero result with `hasActualData = false`.
 - **Why the divisor matters:** the previous fixed `/3` understated the average for users who only recently connected their bank (2 of 3 prior months had no data) → produced a false ~$938 emergency-fund figure. (Changed in PR #1201; see §6 of `docs/audit/AUDIT_CASHFLOW_SSOT.md`.)
-- **Consumers:** `lib/services/masterFinancialService.ts` (exposes the actual fields + uses `avgMonthlyOutflow` as the emergency-fund denominator); `getCanonicalMonthlyCashflow` (§4).
+- **Fed by:** `UnifiedTransaction` rows (the actual bank ledger) only. Leaf engine over actuals.
+- **Feeds into / Consumers:** `lib/services/masterFinancialService.ts` (exposes the actual fields on `quickMetrics` + uses `avgMonthlyOutflow` as the emergency-fund denominator → so it feeds **emergency fund** and, transitively, the **health score**); `getCanonicalMonthlyCashflow` (§4).
 - **Verified by:** `tests/calculations/actualCashflow.test.ts` (11 tests — transfers excluded, Uncategorised counted, abs/direction handling, data-driven divisor). Worked example: only May populated (600), Mar+Apr no data → divisor 1 → avg **600**; Mar 10 + May 600 both populated → divisor 2 → avg **305**.
 - **Last verified:** 2026-06-23 (authored/read this session).
 
@@ -101,7 +104,8 @@
   - **Else (no transactions):** `inflow = monthlyNetIncome`, `outflow = monthlyExpenses + monthlyLoanRepayments` (loan repayments folded into outflow), `net = monthlyCashflow`, `basis = 'declared'`.
   - `savingsRate = net / inflow × 100` (0 when inflow ≤ 0).
 - **Key behaviour:** **actuals win when present; declared is fallback only.** `outflow` always includes loan repayments (in the actual case they're inside the transaction OUT total; in the declared case they're added explicitly), so consumers must not add loans again.
-- **Consumers (converged in PR #1201):** `/api/cashflow/intelligence` (forecast hero + cashflow health-score input); future surfaces per the §16 enforcement. Bound by the drift-guard test below. **Pending convergence (Phase 2b):** Home `portfolio/snapshot` cashflow tiles (deferred — needs a drill-down redesign so the declared Income−Expenses−Loans breakdown doesn't contradict an actual headline).
+- **Fed by:** the master snapshot — `quickMetrics.actual*` (from `computeActualCashflow`, §3) for the actual branch, and `snapshot.cashflow` (from `calculateCashflow`, §2) for the declared fallback. It is a **resolver** over the two cashflow engines, not a new computation.
+- **Feeds into / Consumers (converged in PR #1201):** `/api/cashflow/intelligence` (forecast hero + cashflow health-score input); future surfaces per the §16 enforcement. Bound by the drift-guard test below. **Pending convergence (Phase 2b):** Home `portfolio/snapshot` cashflow tiles (deferred — needs a drill-down redesign so the declared Income−Expenses−Loans breakdown doesn't contradict an actual headline).
 - **Verified by:** `tests/calculations/canonicalCashflow.test.ts` (4 tests) + `tests/calculations/cashflowSurfacesUseCanonical.test.ts` (enforcement gate). Worked example: In 25,827 / Out 46,741 → net **−20,914**, savingsRate ≈ **−80.98%**, basis `'actual'` (the real deficit that the old declared hero hid as +$10,505 / 51.9%).
 - **Last verified:** 2026-06-23 (authored this session, PR #1201).
 

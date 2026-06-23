@@ -29,7 +29,11 @@
    independently verifiable is marked `⚠️ UNVERIFIED` with the reason.
 3. **Every entry must carry:** Produces · Canonical accessor · Inputs (unit +
    type + convention) · Formula / rule (+ authority) · Key behaviours/gotchas ·
-   Consumers · Verified-by · Status.
+   **Fed by** (the engines/inputs it depends on) · **Feeds into** (its
+   consumers) · Verified-by · Status. The **Fed by / Feeds into** edges are what
+   make this a relationship graph, not a flat list — they must trace to the
+   cross-engine map in [`00b_RELATIONSHIPS_AND_LINEAGE.md`](00b_RELATIONSHIPS_AND_LINEAGE.md),
+   and every edge must be confirmed in source (never guessed).
 4. **Kept in sync per change.** Any PR that adds or changes a financial engine
    updates its entry here in the same PR (mirrors the §16 doc-sync rule). The
    `Last verified` date on each entry is the contract.
@@ -53,6 +57,7 @@
 
 | Spoke | Domain | Engines | Status |
 |---|---|---|---|
+| [`00b_RELATIONSHIPS_AND_LINEAGE.md`](00b_RELATIONSHIPS_AND_LINEAGE.md) | **The wiring** — layered data-flow diagram, engine dependency graph, and per-number lineage (raw field → engine → route → tile) | core flow numbers + master orchestration | 🟡 grows with each spoke |
 | [`01_CORE_CALCULATIONS.md`](01_CORE_CALCULATIONS.md) | Net worth, cashflow (declared + actual + canonical), aggregators | 4 of ~10 documented | 🟡 in progress |
 | `02_TAX_ENGINE.md` | Income tax, PAYG, Medicare, CGT, divisions, super, GST, land/stamp duty | not started | 🔶 |
 | `03_HEALTH_ENGINE.md` | 7-category metric → score → risk | not started | 🔶 |
