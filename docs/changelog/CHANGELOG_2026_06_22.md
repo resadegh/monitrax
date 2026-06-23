@@ -726,3 +726,35 @@ Use `getMasterFinancialSnapshot().quickMetrics.actualAvgMonthlyOutflow` (all OUT
 
 ### Tests: tsc clean; tests/reports 8/8 green.
 ### Doc-sync (§16): this changelog; audit docs/audit/AUDIT_CASHFLOW_SSOT.md.
+## Session: fix-loan-interest-100x-p0-shk180 (P0 — loan interest 100× too low)
+
+### Bug (audit P0, verified 2026-06-23)
+`Loan.interestRateAnnual` is a DECIMAL (0.0625 = 6.25% — `prisma/schema.prisma:1624`, `LoanFormDialog` saves `/100`). Three engines divided the already-decimal rate by 100 AGAIN → 100× understated:
+- `lib/calculations/loanAggregator.ts` (the canonical SSOT debt engine) float `:95` + Decimal `:234` — `/100/12`. Every consumer of `debtSummary.totalInterest` inherited it. $100k @ 0.06 gave **$5/mo** instead of **$500/mo**.
+- `lib/cfo/decisionSupport/loanDecisionSupport.ts:218` — `weightedInterestRate / 100` (already decimal) → CFO loan rate 100× too low.
+- `app/api/cashflow/intelligence/route.ts:439` — deductible investment-loan interest `/100` → deduction 100× too low → overstated taxable income + estimated tax.
+
+### Fix
+Removed the extra `/100` at all three sites (`/12` and `.div(12)` only; weightedInterestRate used as-is; deductible interest = principal × rate). Fixed the stale Decimal docstring. **Corrected the masking fixtures** `lib/calc-audit/engines/decimal-calculations.ts` (`6.25/6.85` percent → `0.0625/0.0685` decimal) — these fed percent into loanAggregator, coincidentally cancelling the /100 and hiding the bug from the shadow test.
+
+### Not touched (verified correct)
+`debtPlanner`, `payDownLoan`, `redirectToOffset`, `refinanceLoan`, `calculatePayoffMonths` — all already use the decimal rate correctly (audit ✅). `loanDecisionSupport:219` `debtToIncomeRatio / 100` is a DIFFERENT field (DTI), out of scope.
+
+### Tests: `tests/calculations/loanInterestRate.test.ts` ($100k @ 0.06 → $500/mo, $6,000/yr, float+Decimal parity). tsc clean; aggregators shadow + calc-audit 200/200; CFO 259/259 green.
+### Doc-sync (§16): this changelog. No config/schema/infra change. (AUDIT_DEBT_WHATIF.md on main via #1194.)
+
+### Addendum (fix-loan-interest-100x) — caught a compensating ×100 caller
+Self-review surfaced `lib/cfo/decisionSupport/loanDecisionSupport.ts:179` passing `interestRateAnnual * 100` (percent) INTO `aggregateLoanRepayments`. With the OLD aggregator `/100`, the two cancelled (loanDecisionSupport was coincidentally correct). Removing the aggregator `/100` alone would have made loanDecisionSupport's interest + weightedAverageRate **100× too HIGH**. Fixed `:179` to pass the decimal as-is — paired with the `:218` `weightedAverageRate` (no /100) fix. Verified the only OTHER aggregator caller (`masterFinancialService:1826`) already passes the decimal. All other `*100` occurrences are display/onboarding (not fed to the aggregator). tsc clean; 462 tests green (cfo + loan + aggregators + calc-audit).
+## Session: fix-tax-bracket-boundary-p0-shk180 (P0 — income tax = $0 at every bracket boundary)
+
+### Bug (audit P0, verified by hand 2026-06-23)
+`lib/tax-engine/core/incomeTaxCalculator.ts` looped with `if (taxableIncome <= bracket.min) break;`. Since `tax` is only assigned inside the bracket-match block, an income EXACTLY equal to a bracket minimum broke out with `tax` still 0 → **$0 tax returned at $45,001 / $135,001 / $190,001 / $18,201**. Feeds `/api/tax`, `/api/tax/position`, super optimiser.
+
+### Fix
+`<=` → strict `<` (float path) and `.lte` → `.lt` (Decimal sibling). `bracket.min` is the inclusive lower bound (prior max + 1), so income equal to it belongs in that bracket.
+
+### Audit correction (facts over deference)
+The audit also claimed `incomeInBracket = taxableIncome − bracket.min + 1` over-taxes and should drop the `+1`. **That is wrong** — the `+1` correctly compensates for `min` being prior-max+1 (e.g. $50,000 → 4288 + (50000−45001+1)×0.30 = $5,788 ✓ ATO). The `+1` was NOT touched. The audit's "$135,001 → $26,888" figure was also wrong; the buggy output was $0 (hand-traced).
+
+### Tests: `tests/tax-engine/incomeTaxBoundary.test.ts` (4 tests — every boundary + interior + monotonicity, ATO FY24-25 values). tsc clean; decimal/calc-audit parity 220/220 green.
+### Doc-sync (§16): this changelog. No config/schema/infra change. (Audit doc AUDIT_TAX.md already on main via #1194.)
