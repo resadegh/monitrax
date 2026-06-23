@@ -364,6 +364,27 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
       const dailyBudget = monthlyRemaining > 0 ? monthlyRemaining / daysInMonth : 0;
 
+      // Phase 1 (cashflow-actuals) — Money-Story "Kept" + margin now reflect
+      // ACTUAL spend, not declared. The declared `keptAfterEssentials` excludes
+      // discretionary spend AND drops uncategorised OUT transactions, so it
+      // overstates what was kept. With real transaction data we compute
+      // kept = net income − actual total spend (this calendar month). We only
+      // switch when `hasActualData` is true; otherwise fall back to the declared
+      // value so a brand-new user with no transactions still sees the plan.
+      const qm = snapshot.quickMetrics;
+      const keptActual = qm.hasActualData
+        ? totalMonthlyIncome - qm.actualMonthlyOutflow
+        : qm.keptAfterEssentials;
+      const keptMarginActual = qm.hasActualData
+        ? snapshot.cashflow.monthlyGrossIncome > 0
+          ? (keptActual / snapshot.cashflow.monthlyGrossIncome) * 100
+          : 0
+        : qm.keptMargin;
+      // Surplus follows the same rule — actual net when we have real data.
+      const surplusActual = qm.hasActualData
+        ? qm.actualNetCashflow
+        : qm.monthlyCashflow;
+
       const response: DashboardInsights = {
         healthScore: {
           score: healthScore,
@@ -405,13 +426,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
         // transaction aggregation; empty trend when <2 months of data.
         moneyStory: {
           earned: snapshot.quickMetrics.monthlyGrossIncome,
-          kept: snapshot.quickMetrics.keptAfterEssentials,
-          keptMargin: snapshot.quickMetrics.keptMargin,
+          // Phase 1 (cashflow-actuals) — Kept/margin/surplus reflect ACTUAL
+          // spend when transaction data exists (declared fallback otherwise).
+          kept: keptActual,
+          keptMargin: keptMarginActual,
           freeToday: snapshot.quickMetrics.liquidCash,
           freeDays: snapshot.quickMetrics.freeCashDays,
           enoughHistory: expenseMaturity.isMature,
           taxWithheld: snapshot.cashflow.monthlyPaygWithholding,
-          surplus: snapshot.quickMetrics.monthlyCashflow,
+          surplus: surplusActual,
           trend: moneyStoryTrend.trend,
           marginDeltaPoints: moneyStoryTrend.marginDeltaPoints,
           freedomYears: snapshot.quickMetrics.freeCashDays / 365.25,

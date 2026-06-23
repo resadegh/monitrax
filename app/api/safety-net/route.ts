@@ -16,25 +16,18 @@
 import { NextResponse } from 'next/server';
 import { withPermission } from '@/lib/auth/guards';
 import prisma from '@/lib/db';
-import { toMonthly } from '@/lib/utils/frequencies';
-import type { Frequency } from '@/lib/types/prisma-enums';
-
-function safeToMonthly(amount: number, frequency: string): number {
-  try {
-    return toMonthly(amount, (frequency || 'MONTHLY') as Frequency);
-  } catch {
-    return amount;
-  }
-}
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 
 export const GET = withPermission('report.read', async (request, auth) => {
   try {
     const userId = auth.userId;
 
-    const [accounts, expenses, loans, recurringPayments] = await Promise.all([
-      prisma.account.findMany({ where: { userId } }),
-      prisma.expense.findMany({ where: { userId } }),
-      prisma.loan.findMany({ where: { userId } }),
+    // Phase 1 (cashflow-actuals) — survivability + months-covered now read from
+    // the canonical master snapshot (§6.1 — no local financial reduces). Only
+    // recurringPayments (bills status) is fetched here because the master
+    // snapshot doesn't model the bills calendar.
+    const [snapshot, recurringPayments] = await Promise.all([
+      getMasterFinancialSnapshot(userId),
       prisma.recurringPayment.findMany({
         where: { userId, isActive: true },
         include: { account: true },
@@ -42,35 +35,26 @@ export const GET = withPermission('report.read', async (request, auth) => {
       }),
     ]);
 
-    const liquidAccounts = accounts.filter(
-      (a) => a.type === 'SAVINGS' || a.type === 'OFFSET' || a.type === 'TRANSACTIONAL'
-    );
-    const liquidCash = liquidAccounts.reduce(
-      (sum, a) => sum + Number(a.currentBalance || 0),
-      0
-    );
+    const qm = snapshot.quickMetrics;
+    const liquidCash = qm.liquidCash;
 
-    const monthlyExpenses = expenses.reduce(
-      (sum, e) => sum + safeToMonthly(Number(e.amount || 0), e.frequency || 'MONTHLY'),
-      0
-    );
+    // Survival burn rate = ACTUAL trailing-3-month average outflow when we have
+    // real transaction data (it already includes loan repayments + the
+    // uncategorised spend the declared path dropped). Falls back to declared
+    // expenses + loan repayments for a user with no transaction history. Using
+    // the actual average makes "how many months could I survive?" honest —
+    // declared records understate it.
+    const declaredOutgoings = qm.monthlyExpenses + qm.monthlyLoanRepayments;
+    const totalMonthlyOutgoings = qm.hasActualData
+      ? qm.actualAvgMonthlyOutflow
+      : declaredOutgoings;
 
-    const monthlyLoanRepayments = loans.reduce(
-      (sum, l) => sum + safeToMonthly(Number(l.minRepayment || 0), l.repaymentFrequency || 'MONTHLY'),
-      0
-    );
-
-    const totalMonthlyOutgoings = monthlyExpenses + monthlyLoanRepayments;
     const targetMonths = 3;
     const monthsCovered = totalMonthlyOutgoings > 0 ? liquidCash / totalMonthlyOutgoings : 0;
     const targetAmount = targetMonths * totalMonthlyOutgoings;
     const gap = Math.max(0, targetAmount - liquidCash);
 
-    const monthlyIncome = await prisma.income.findMany({ where: { userId } });
-    const totalMonthlyIncome = monthlyIncome.reduce(
-      (sum, i) => sum + safeToMonthly(Number(i.amount || 0), i.frequency || 'MONTHLY'),
-      0
-    );
+    const totalMonthlyIncome = qm.monthlyIncome;
     const monthlySurplus = totalMonthlyIncome - totalMonthlyOutgoings;
     const weeksToTarget = monthlySurplus > 0 && gap > 0
       ? Math.ceil((gap / monthlySurplus) * 4.33)

@@ -23,6 +23,7 @@ import {
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 import { toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
+import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 
 // Uses centralized toMonthly from lib/utils/frequencies (Blueprint §5.1)
 
@@ -31,7 +32,7 @@ import { Frequency } from '@/lib/types/prisma-enums';
 // =============================================================================
 
 async function buildSummaryInput(userId: string) {
-  const [accounts, income, expenses, loans, budgetAnalysis, leaks] = await Promise.all([
+  const [accounts, income, expenses, loans, budgetAnalysis, leaks, snapshot] = await Promise.all([
     prisma.account.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
@@ -44,6 +45,8 @@ async function buildSummaryInput(userId: string) {
     prisma.recurringPayment.findMany({
       where: { userId, isActive: true },
     }),
+    // Phase 1 (cashflow-actuals) — canonical snapshot for ACTUAL spend/surplus.
+    getMasterFinancialSnapshot(userId),
   ]);
 
   // Calculate monthly income (NET after PAYG)
@@ -82,12 +85,23 @@ async function buildSummaryInput(userId: string) {
     0
   );
 
+  // Phase 1 (cashflow-actuals) — total monthly outflow now reflects ACTUAL
+  // transactions when available (trailing-3-month average, which already
+  // includes loan repayments + the uncategorised spend the declared path
+  // dropped). Falls back to declared expenses + loan repayments otherwise.
+  // This stops the Gemini narrative from asserting a surplus that doesn't
+  // exist once uncategorised spend is counted.
+  const qm = snapshot.quickMetrics;
+  const declaredOutflow = monthlyExpenses + monthlyLoanRepayments;
+  const monthlyOutflow = qm.hasActualData
+    ? qm.actualAvgMonthlyOutflow
+    : declaredOutflow;
+
   // Calculate emergency buffer
-  const monthlyOutflow = monthlyExpenses + monthlyLoanRepayments;
   const emergencyBuffer = monthlyOutflow > 0 ? totalBalance / monthlyOutflow : 0;
 
-  // Calculate net surplus
-  const netSurplus = monthlyIncome - monthlyExpenses - monthlyLoanRepayments;
+  // Calculate net surplus — income minus ACTUAL total outflow.
+  const netSurplus = monthlyIncome - monthlyOutflow;
 
   // Calculate leakage (simplified - from price increases)
   const leakageTotal = leaks
