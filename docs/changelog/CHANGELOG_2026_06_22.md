@@ -713,3 +713,19 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 - Consider promoting `essential vs discretionary` onto the actual breakdown (needs category→essential map).
 - Add a confidence/coverage signal so a partial-month or low-transaction-coverage user isn't shown an
   understated actual as gospel.
+
+---
+
+## Session: fix-tax-bracket-boundary-p0-shk180 (P0 — income tax = $0 at every bracket boundary)
+
+### Bug (audit P0, verified by hand 2026-06-23)
+`lib/tax-engine/core/incomeTaxCalculator.ts` looped with `if (taxableIncome <= bracket.min) break;`. Since `tax` is only assigned inside the bracket-match block, an income EXACTLY equal to a bracket minimum broke out with `tax` still 0 → **$0 tax returned at $45,001 / $135,001 / $190,001 / $18,201**. Feeds `/api/tax`, `/api/tax/position`, super optimiser.
+
+### Fix
+`<=` → strict `<` (float path) and `.lte` → `.lt` (Decimal sibling). `bracket.min` is the inclusive lower bound (prior max + 1), so income equal to it belongs in that bracket.
+
+### Audit correction (facts over deference)
+The audit also claimed `incomeInBracket = taxableIncome − bracket.min + 1` over-taxes and should drop the `+1`. **That is wrong** — the `+1` correctly compensates for `min` being prior-max+1 (e.g. $50,000 → 4288 + (50000−45001+1)×0.30 = $5,788 ✓ ATO). The `+1` was NOT touched. The audit's "$135,001 → $26,888" figure was also wrong; the buggy output was $0 (hand-traced).
+
+### Tests: `tests/tax-engine/incomeTaxBoundary.test.ts` (4 tests — every boundary + interior + monotonicity, ATO FY24-25 values). tsc clean; decimal/calc-audit parity 220/220 green.
+### Doc-sync (§16): this changelog. No config/schema/infra change. (Audit doc AUDIT_TAX.md already on main via #1194.)
