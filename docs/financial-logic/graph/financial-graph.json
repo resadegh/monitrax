@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + N4.3 super + N4.4 land tax / stamp duty / GST (tax domain complete to indirect taxes).",
   "builtAtCommit": null,
@@ -1016,7 +1016,7 @@
       "authority": "SGAA 1992; ATO SG rate + max contribution base",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/super/contributionCalculator.ts:61 (read this session)",
+      "verifiedBy": "lib/tax-engine/super/contributionCalculator.ts:61 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
@@ -1100,7 +1100,7 @@
       "authority": "ITAA 1997 Div 293; Div 296 (proposed); CLAUDE.md §12.14 FW-2",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/super/highIncomeSuperTax.ts:77 (read this session)",
+      "verifiedBy": "lib/tax-engine/super/highIncomeSuperTax.ts:77 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
@@ -1415,7 +1415,7 @@
       "authority": "A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold)",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/gst/gstCalculator.ts:104 (read this session)",
+      "verifiedBy": "lib/tax-engine/gst/gstCalculator.ts:104 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
