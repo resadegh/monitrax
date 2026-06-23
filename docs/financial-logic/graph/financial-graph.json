@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + N4.3 super + N4.4 land tax / stamp duty / GST (tax domain complete to indirect taxes).",
   "builtAtCommit": null,
@@ -911,7 +911,7 @@
       "authority": "ITAA 1997 Div 115 (CGT discount); 2026-27 reform Measure 2; CLAUDE.md §12.14 FW-1/FW-2",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/divisions/cgtDiscount.ts:166 (read this session)",
+      "verifiedBy": "lib/tax-engine/divisions/cgtDiscount.ts:166 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
@@ -1121,7 +1121,7 @@
       "authority": "ITAA 1997 Div 295; s295-385/390 (ECPI); s295-550 (NALI)",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session)",
+      "verifiedBy": "lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"

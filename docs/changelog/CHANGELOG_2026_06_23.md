@@ -426,3 +426,27 @@ Expected values hand-derived from the ATO law (s9-70 / s293-15 / SGAA) independe
 
 ### Files
 - `CLAUDE.md` (Part 1 Step 3, §12.13, Part 9 ×2, version footer).
+
+---
+
+## Session: neomatrix-A1-tax3 (executable ATO-law audit — SMSF Div 295 + CGT discount)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 §14 A1, tax). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+
+### A1 cases (7 new, all pass)
+- **CGT discount** (`calculateCgtDiscount`, ITAA 1997 Div 115): individual s115-25 50% → $100k gain taxable **$50,000**; complying SMSF s115-100 1/3 → $90k taxable **$60,000**; company s115-10 no discount → **$100,000**; held <12 months → no discount → **$100,000**. (Rates confirmed from source: PERSONAL_NAME 0.5 / COMPANY 0 / SMSF 1/3.)
+- **SMSF income tax** (`calculateSmsfIncomeTax`, ITAA 1997 Div 295): concessional contributions 15% → **$15,000**; complying-fund investment income 15% → **$7,500**; NALI s295-550 at the 45% top rate → **$4,500**.
+- **Result: no `suspected-issue`** — both agree with the ATO law; now law-anchored locks. **9 engines now A1-audited** (net worth, canonical cashflow, income tax, Medicare, GST, Div 293, SG, CGT discount, SMSF Div 295).
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from Div 115 / Div 295 / s295-550 + the per-entity rates read in source; real engines executed (vitest 29 audit cases); deterministic (explicit FY24-25 config + omitted reform date = pre-reform default); tied to the model (`verifiedBy` updated); no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **35/35 pass** (audit 29 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.8.0→0.9.0; fresh).
+
+### Files
+- `tests/neomatrix/financialAudit.test.ts` (+7 cases), `financial-graph.json` (v0.9.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — pivot to the health engine (model + audit), then CFO/scenarios.
