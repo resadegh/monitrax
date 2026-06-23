@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.9.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.10.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 66 · **Edges:** 76
-- **By kind:** orchestrator 2 · engine 25 · input-field 18 · law 14 · number 4 · ui-surface 3
-- **By status:** documented 66
-- **Edge provenance:** verified 76 *(verified > graphify > inferred)*
+- **Nodes:** 72 · **Edges:** 81
+- **By kind:** orchestrator 2 · engine 28 · input-field 18 · law 15 · number 5 · ui-surface 4
+- **By status:** documented 72
+- **Edge provenance:** verified 81 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -44,6 +44,9 @@
 | **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
 | **Income tax (marginal brackets)** | `lib/tax-engine/core/incomeTaxCalculator.ts:21` | engine | tax | IncomeTaxResult { taxPayable, marginalRate, effectiveRate }. | ITAA 1997; ATO individual income tax rates (FY24-25 Stage 3) | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/incomeTaxCalculator.ts:21 | documented |
 | **Medicare levy (2% + shade-in)** | `lib/tax-engine/core/medicareLevyCalculator.ts:38` | engine | tax | MedicareLevyResult { medicareLevy, medicareSurcharge, total, isShadeIn }. | Medicare Levy Act 1986; ATO Medicare Levy | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/medicareLevyCalculator.ts:38 | documented |
+| **Health aggregate score** | `lib/health/aggregateEngine.ts:106` | engine | health | The 0-100 aggregate health score from weighted category scores − penalties. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/health/aggregateEngine.ts:106 | documented |
+| **Health score (with trend/band)** | `lib/health/aggregateEngine.ts:315` | engine | health | HealthScore { score, trend, band } from the aggregate. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | lib/health/aggregateEngine.ts:315 (read this session) | documented |
+| **Financial health report (SSOT)** | `lib/health/aggregateEngine.ts:338` | service | health | FinancialHealthReport — the canonical §12.3 health output. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | lib/health/aggregateEngine.ts:338 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -62,6 +65,7 @@
 | **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
 | **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
+| **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
 
 ## Governing laws / authorities (B6)
 
@@ -81,6 +85,7 @@
 | **State Land Tax Acts** | Progressive land tax on aggregated taxable land value, per state (NT = none). | NSW Land Tax Act 1956; VIC Land Tax Act 2005; QLD/SA/WA/TAS equivalents | State land tax (per state), Cross-state land tax (household) |
 | **State Duties Acts** | Transfer (stamp) duty on dutiable property value + foreign-purchaser surcharge. | NSW Duties Act 1997; VIC Duties Act 2000; state equivalents | Stamp duty / transfer duty (per state) |
 | **GST Act 1999** | 10% GST on taxable supplies; $75k registration threshold. | A New Tax System (Goods and Services Tax) Act 1999 — s9-70, s23-15 | GST / BAS |
+| **Monitrax health-score methodology** | score = round(clamp(0,100, Σ(catScore×catWeight) − totalPenalty)) | Monitrax health methodology (Phase 12 Financial Health Engine) | Health aggregate score |
 
 ## Edges (verified, with evidence)
 
@@ -162,6 +167,11 @@
 | Medicare levy (2% + shade-in) | → | Income tax position | feeds | — | verified | taxPositionCalculator.ts:223 calculateMedicareLevy({taxableIncome}, fyConfig) |
 | Income tax (marginal brackets) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | ATO marginal brackets from FY config |
 | Medicare levy (2% + shade-in) | → | Medicare Levy Act 1986 | governed-by | — | verified | medicareLevyCalculator.ts 2% + shade-in |
+| Health aggregate score | → | Health score (with trend/band) | feeds | — | verified | aggregateEngine.ts:321 generateHealthScore calls calculateAggregateScore |
+| Health score (with trend/band) | → | Financial health report (SSOT) | feeds | — | verified | aggregateEngine.ts:343 generateHealthReport calls generateHealthScore |
+| Health aggregate score | → | Monitrax health-score methodology | governed-by | — | verified | weighted sum − penalty, clamped 0-100 (aggregateEngine.ts:106) |
+| Health score (with trend/band) | → | Financial health score | feeds | — | verified | generateHealthScore produces the displayed score |
+| Financial health score | → | Home — Health tile | rendered-at | score→score | verified | 00b §3 Home Health tile |
 
 ---
 

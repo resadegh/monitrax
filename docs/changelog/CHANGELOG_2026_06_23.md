@@ -450,3 +450,31 @@ Expected values hand-derived from Div 115 / Div 295 / s295-550 + the per-entity 
 - `tests/neomatrix/financialAudit.test.ts` (+7 cases), `financial-graph.json` (v0.9.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — pivot to the health engine (model + audit), then CFO/scenarios.
+
+---
+
+## Session: neomatrix-health (model + A1 audit — Financial Health engine)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, **health domain**). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- First non-tax domain — proves the model+audit pattern generalises to Monitrax's INTERNAL methodology (not just external ATO law).
+
+### What was modelled (graph 66→72 nodes / 76→81 edges; domains now core + tax + **health**)
+- `calculateAggregateScore` (aggregateEngine.ts:106) → `generateHealthScore` (:315) → `generateHealthReport` (:338, the §12.3 health SSOT); methodology law node; `number.healthScore` → Home health tile.
+
+### A1 audit (8 new cases, all pass)
+- **Aggregate score** (methodology: `round(clamp(0,100, Σ(catScore×catWeight) − totalPenalty))`): (80×0.5 + 60×0.5) → **70**; −10 penalty → **60**; 100×1.5 → clamp **100**; (10×1) − 50 → clamp **0**.
+- **Risk-band boundaries** (`scoreToRiskBand`): 80→EXCELLENT, 79→GOOD, 60→GOOD, 59→MODERATE, 40→MODERATE, 39→CONCERNING, 20→CONCERNING, 19→CRITICAL, 0→CRITICAL.
+- **Result: no `suspected-issue`** — both agree with the documented methodology; now locked. **11 engines now A1-audited**.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from the documented health formula + band thresholds independent of the code; real engines executed (vitest 43 audit cases); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **49/49 pass** (audit 43 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.9.0→0.10.0; fresh).
+
+### Files
+- `tests/neomatrix/financialAudit.test.ts` (+8 cases + risk-band block), `financial-graph.json` (v0.10.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — CFO/scenarios (model + audit), then intelligence + reports.
