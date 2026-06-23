@@ -99,3 +99,37 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 ### PR
 - PR URL: (to be filled)
 - Status: design spec for a new build session
+
+---
+
+## Session: neomatrix-N0 (Graphify trial — `0·NEOMATRIX`)
+
+### Changes Made
+- **Type:** Documentation / model (Neomatrix Phase 53 **N0** — Graphify Layer-0 trial). **No financial logic changed.**
+- **Scope:** new `docs/financial-logic/graph/` (Neomatrix home) — N0 trial report + README; gitignore the regenerable Graphify output.
+- **Why:** N0 gates the Layer-0 (Graphify) adoption decision. Two questions had to be answered from a real run, not memory (§19.2): (1) **§13.6 security** — does code leave the machine during extraction? (2) **accuracy** — does Graphify's auto AST graph reproduce the hand-verified `00b` edges?
+
+### What was done (real trial, reproducible — see report §6)
+- Installed **graphify 0.8.45** (`uv tool install graphifyy`; PyPI reachable in this env).
+- Ran `graphify update lib` (code-only, **all LLM API keys unset**) over `lib/` (539 `.ts` files) → **6120 nodes / 12866 edges / 253 communities**, pinned to `built_at_commit 2a5e0f5`.
+- **Security result (§13.6): provably code-only / zero egress.** 100% of nodes `_origin:"ast"`, `file_type:"code"`; 12855/12866 edges `EXTRACTED` (AST) + 11 `INFERRED`; no LLM nodes; no API host in cache. In code-only mode Graphify is a local static analyser (like `tsc`/`eslint`).
+- **Accuracy result: 9/9** of the `00b §2` verified orchestration call-edges reproduced at **exact `file:line`** matching `00b`'s citations (L1767/L1819/L1831/L1857/L1910/L1916/L874/L1005 + the canonical→resolve delegation). No false edges on the core slice; name collisions (3× `calculateNetWorth`) kept as distinct file-scoped nodes.
+- **Division of labour validated:** Graphify supplies structural `calls`/`imports` edges (bones); it cannot derive a single formula, law, unit, data-flow (`UnifiedTransaction`→`computeActualCashflow`), `falls-back-to` semantic, or domain/TRAIL/regime slice — that is Layer 1's job (meaning).
+
+### Recommendation — **GO (conditional, code-only/offline)** under the report §5 guardrails (no API key ever; code-only inputs; Graphify output gitignored not committed; its edges imported into `financial-graph.json` flagged `source:"graphify"`; pin to commit for freshness). ⏸️ **Paused for Reza's go/no-go before N1.**
+
+### Files Added
+- `docs/financial-logic/graph/N0_GRAPHIFY_TRIAL.md`
+- `docs/financial-logic/graph/README.md`
+
+### Files Modified
+- `.gitignore` — ignore `graphify-out/` (regenerable Layer-0 working artifact, §9).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` N0 ticked + Last touched.
+
+### Testing
+- [x] No app code — docs/model only. Build/lint unaffected.
+- [x] Trial reproducible via report §6 commands.
+
+### PR
+- PR URL: (to be filled)
+- Status: N0 report — awaiting Reza go/no-go

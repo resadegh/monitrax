@@ -55,12 +55,12 @@
 - **Status:** 🟡 ACTIVE — **design spec shipped; build handed to a dedicated new session.**
 - **Started:** 2026-06-23.
 - **Owner:** Reza (direction) + a dedicated build session (execution). This session authored the spec only.
-- **Last touched:** 2026-06-23 — full build spec `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` on branch `claude/neomatrix-design-spec-shk180`. Reza named it **Neomatrix** and asked for a complete design spec to hand to a new build session.
+- **Last touched:** 2026-06-23 — **N0 Graphify trial executed** (build session, branch `claude/eloquent-archimedes-jqahjw`): code-only/offline extraction validated (zero egress), 9/9 `00b` orchestration edges reproduced. Go/no-go report shipped; paused for Reza. Prior: full build spec `PHASE_53_MONITRAX_NEOMATRIX.md` (branch `claude/neomatrix-design-spec-shk180`). Reza named it **Neomatrix**.
 - **What it is:** the machine-readable + navigable + auditable evolution of the markdown Financial Logic Index — a typed directed knowledge graph of every calc engine/number/formula/law (nodes) + dependencies/data-flow (edges), with sliceable projections (the "cube" axes: layer / domain / TRAIL / regime) and CI validation so no number can drift from its canonical source without the build failing. Reza's "3D model / chemical structure" in its correct CS form (graph, not literal cube).
 - **Architecture (4 layers):** L0 structural skeleton (Graphify auto AST/call-graph — trial first), L1 semantic graph `financial-graph.json` (the canonical model — formulas/authority/units/lineage, research-verified), L2 views (markdown generated from JSON + interactive 2D explorer + optional 3D), L3 CI audit checks (the correctness guarantee). Division of labour: Graphify = bones (auto edges), our graph = meaning (no tool can derive formulas/laws).
 - **Phase checklist (for the build session):**
   - [x] Design spec (`PHASE_53_MONITRAX_NEOMATRIX.md`).
-  - [ ] N0 — Graphify trial on `lib/` + §13.6 security pre-check (go/no-go on Layer 0).
+  - [x] **N0 — Graphify trial on `lib/` + §13.6 security pre-check** — report [`docs/financial-logic/graph/N0_GRAPHIFY_TRIAL.md`](../financial-logic/graph/N0_GRAPHIFY_TRIAL.md). **Result: GO (conditional, code-only/offline).** Graphify 0.8.45 over `lib/` (539 files) ran with all LLM keys unset → 6120 nodes / 12866 edges, **100% AST-extracted, zero egress** (§13.6 pass); reproduced **9/9** of the `00b §2` verified orchestration call-edges at exact `file:line`; no false core edges. ⏸️ **Awaiting Reza's go/no-go before N1** (and confirm per-phase branch convention).
   - [ ] N1 — `financial-graph.json` schema + proof slice (4 core engines) + markdown generator.
   - [ ] N2 — interactive 2D explorer.
   - [ ] N3 — CI audit checks (generalise the #1201 drift-guard).
