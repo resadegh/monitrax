@@ -157,3 +157,42 @@ Reza directive: the index must also capture how all numbers/engines relate, so t
 
 ### PR
 - Folded into PR #1204 (draft, paused for go/no-go + enhancement sign-off).
+
+---
+
+## Session: neomatrix-N1 (schema + proof slice + generator)
+
+### Changes Made
+- **Type:** Documentation / model + a CI-enforced model test. **No financial logic changed.**
+- **Why:** Reza (2026-06-23): *"review your own recommendation … continue with the best approach based on the requirements and scoring model. come to me where there is a critical direction needed."* Self-scored the N0 GO (evidence-backed, reversible → adopt autonomously) and proceeded to N1; the only foundational call is the schema shape, built to 10/10 and presented concretely rather than blocking.
+
+### What was built (Phase 53 N1)
+- **Schema** (`docs/financial-logic/graph/schema/financial-graph.schema.md`) — §5 node/edge contract + the cheap §14 additions (`semanticKey` for A3, `fromUnit`/`toUnit` for A4, `astHash` for A2, provenance tiers `verified>graphify>inferred`).
+- **`financial-graph.json`** — the canonical semantic graph (Layer 1). **23 nodes / 26 edges, all `verified` with file:line evidence**: the 4 core engines (`calculateNetWorth` :217 · `calculateCashflow` :302 · `computeActualCashflow` :104 · `getCanonicalMonthlyCashflow` :114) + `resolveCanonicalCashflow` :78 + the `getMasterFinancialSnapshot` orchestrator :1704 + 10 raw input-field nodes + 2 law nodes (B6) + 3 number nodes (with `semanticKey`) + 2 ui-surfaces; lineage, units, worked examples, authorities all carried.
+- **Generator** (`scripts/neomatrix/generate-financial-logic.mjs` + `graphlib.mjs`, pure Node, zero new deps) — renders `GENERATED_CORE.md` FROM the JSON (Layer 2a: coverage/trust dashboard + engine registry + worked-examples + number-lineage + laws + edges). `npm run neomatrix:generate` / `neomatrix:check`.
+- **Layer-3 audit seed, enforced in CI today** (`tests/neomatrix/financialGraph.test.ts`): schema validation · **A3 orphan-number** (every displayed number traces to an engine) · **A3 convergence/contradiction** (two tiles of the same `semanticKey` must trace to the same engine — the exact #1201 "+$10,505 hero vs −$20,914 waterfall" class, with a passing negative test) · **file:line resolution** (each documented engine line in source contains its symbol) · **markdown freshness**. Lives in the existing vitest suite (already a required check) — no `vercel-build` change yet (full N3 gate is a separate Reza decision).
+
+### Autonomous calls made (per Reza's "continue with the best approach")
+- **Graphify Layer-0: adopted** (code-only/offline) — evidence-backed GO, reversible.
+- **Generator/test in pure Node + vitest** (not ts-node into vercel-build) — zero new deps, enforced in CI now without build-gating.
+- **Branch:** stayed on the designated `claude/eloquent-archimedes-jqahjw` (harness rule; PR #1204).
+
+### Verification
+- `node scripts/neomatrix/generate-financial-logic.mjs --check` → **OK** (schema valid, invariants hold, markdown fresh).
+- Dependency-free harness replicating all 6 vitest assertions → **6 passed, 0 failed** (node_modules not installed in this env, so vitest itself wasn't run here; the test exercises only pure helpers + fs and will run in CI).
+
+### Files Added
+- `docs/financial-logic/graph/financial-graph.json`, `…/GENERATED_CORE.md`, `…/schema/financial-graph.schema.md`
+- `scripts/neomatrix/graphlib.mjs`, `scripts/neomatrix/generate-financial-logic.mjs`
+- `tests/neomatrix/financialGraph.test.ts`
+
+### Files Modified
+- `package.json` — `neomatrix:generate` / `neomatrix:check` scripts.
+- `docs/financial-logic/graph/README.md` — N1 status + commands.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOMATRIX` N1 ticked.
+
+### ⏸️ Critical direction needed from Reza
+- **Schema sign-off** before the domain backfill (N4 — tax first). The §5+§14 shape above is the contract every future domain inherits; confirm or adjust now while only the core slice exists.
+
+### PR
+- Folded into PR #1204 (draft).

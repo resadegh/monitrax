@@ -23,7 +23,9 @@
     "seed:portal-access": "npx ts-node prisma/seed-portal-test-access.ts",
     "seed:feature-flags": "npx ts-node --compiler-options '{\"module\":\"commonjs\",\"moduleResolution\":\"node\"}' prisma/seed-feature-flags.ts",
     "validate": "npm run seed:validation && npm run test && npm run generate:report",
-    "generate:report": "npx ts-node tests/validation/generate-report.ts"
+    "generate:report": "npx ts-node tests/validation/generate-report.ts",
+    "neomatrix:generate": "node scripts/neomatrix/generate-financial-logic.mjs",
+    "neomatrix:check": "node scripts/neomatrix/generate-financial-logic.mjs --check"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",
