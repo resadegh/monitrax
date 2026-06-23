@@ -324,3 +324,31 @@ Every edge verified by source read (crossStateAggregator:136; masterTaxPosition:
 - `docs/financial-logic/graph/financial-graph.json` (v0.4.0→0.5.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — N4.5: health engine → CFO → intelligence → reports.
+
+---
+
+## Session: neomatrix-A1 (executable law-referenced audit — first slice)
+
+### Changes Made
+- **Type:** Test / model (Phase 53 §14 **A1**). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- **Reza directives (2026-06-23):** "audit as we go so we can make sure the model works, and check Monitrax against it"; "many rules/conditions already built into Monitrax — don't change unless confirmed with me"; "the audit should always follow the 3 reviews and scoresheet rule."
+
+### What was built — A1 makes the model REFEREE the code (not mirror it)
+- `tests/neomatrix/financialAudit.test.ts`: for each engine, state the governing **law/formula** (the authority — external to the code), **hand-derive the expected output from that law** (§19.2 step 3), then **run the REAL engine** and assert it equals the law-derived value. Each audited node id must exist in `financial-graph.json` (audit tied to the model).
+- **First slice (core engines), 7 cases, 7/7 pass:**
+  - `calculateNetWorth` — assets−liabilities (225,000); investment units×avgPrice fallback (5,000); **Phase 39.5 SMSF-exclusion rule** (INDUSTRY counted, SMSF excluded → 100,000).
+  - `resolveCanonicalCashflow` — actuals-win + savingsRate=net/inflow×100 (40); declared fallback (37.5); zero-inflow → 0.
+- **Result: no `suspected-issue` in this batch** — the core engines agree with the law; the cases are now **law-anchored locks** (CI fails if an engine ever drifts from the law).
+- **The contract (per Reza):** a genuine mismatch is NOT committed as a failing assertion — it is raised with Reza (law citation + wrong-vs-right numbers) and the engine is left unchanged (§10/§19). Audited nodes' `verifiedBy` now references the A1 test.
+
+### Self-review (§20.4) — **10/10**
+Expected values are law/formula-derived independent of the code; real engines executed (7/7); audit tied to the model; no logic changed; honest scope (core only, tax A1 next).
+
+### Verification
+- `./node_modules/.bin/vitest run tests/neomatrix/` → **13/13 pass** (A1 audit 7 + graph audit 6).
+- `npm run neomatrix:check` → OK (graph fresh; v0.5.0→0.6.0 marking A1-audited nodes).
+
+### Files
+- Added `tests/neomatrix/financialAudit.test.ts`. Modified `financial-graph.json` (verifiedBy + v0.6.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — A1 tax slice (ATO-law-derived expected: income tax brackets, Medicare, Div 293, GST), then health/CFO backfill (each with its A1 audit, audit-as-we-go).
