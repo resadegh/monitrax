@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + N4.3 super + N4.4 land tax / stamp duty / GST (tax domain complete to indirect taxes).",
   "builtAtCommit": null,
@@ -80,7 +80,7 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "tests/calculations/netWorthCalculator.decimal.test.ts",
+      "verifiedBy": "tests/calculations/netWorthCalculator.decimal.test.ts + tests/neomatrix/financialAudit.test.ts (A1 law-referenced executable audit)",
       "workedExample": "property 800,000 + account 20,000 + (100 units × 50) − loan 600,000 = 225,000",
       "verifiedDate": "2026-06-23",
       "status": "documented"
@@ -234,7 +234,7 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "tests/calculations/canonicalCashflow.test.ts",
+      "verifiedBy": "tests/calculations/canonicalCashflow.test.ts + tests/neomatrix/financialAudit.test.ts (A1 law-referenced executable audit)",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
