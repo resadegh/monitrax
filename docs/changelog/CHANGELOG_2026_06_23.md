@@ -382,3 +382,29 @@ Expected values hand-derived from ATO published rates independent of the code; r
 - `tests/neomatrix/financialAudit.test.ts` (+9 tax cases), `financial-graph.json` (v0.7.0), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — A1: Div 293 / super + GST (ATO-law-derived), then health/CFO backfill with their A1 audits.
+
+---
+
+## Session: neomatrix-A1-tax2 (executable ATO-law audit — GST, Div 293, SG)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 §14 A1, tax). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- Audits three already-modelled tax engines against the **ATO law** (real engines run).
+
+### A1 cases (7 new, all pass)
+- **GST** (`calculateGst`, GST Act s9-70 10%): $1,000 taxable sale → net GST **$100**; sale $1,000 − purchase $500 ITC → net **$50**; GST-free sale → GST collected **$0** (s38).
+- **Div 293** (`calculateHighIncomeSuperTax`, ITAA 1997 s293-15 — 15% × lesser of excess-over-$250k and concessional): income $300k / conc $30k → **$4,500**; income $260k / conc $25k → **$1,500**; income $200k (below threshold) → **$0**.
+- **Super guarantee** (`calculateSuperGuarantee`, SGAA 1992 11.5% FY24-25 on OTE capped at max base): $100,000 OTE → **$11,500** (locks the 2026-06-23 P1 SG-cap fix against regression).
+- **Result: no `suspected-issue`** — all three agree with the law; now law-anchored locks.
+
+### Self-review (§20.4) — **10/10**
+Expected values hand-derived from the ATO law (s9-70 / s293-15 / SGAA) independent of the code; real engines executed (vitest 22 audit cases); deterministic (explicit FY24-25 config); tied to the model (`verifiedBy` updated on the 3 nodes); no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **28/28 pass** (audit 22 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.7.0→0.8.0; fresh).
+
+### Files
+- `tests/neomatrix/financialAudit.test.ts` (+7 cases), `financial-graph.json` (v0.8.0 verifiedBy), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
+
+### Next — A1: SMSF Div 295 + CGT discount, then the health/CFO backfill (each with its A1 audit).

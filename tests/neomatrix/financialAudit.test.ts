@@ -23,6 +23,9 @@ import { calculateNetWorth } from '@/lib/calculations/netWorthCalculator';
 import { resolveCanonicalCashflow } from '@/lib/calculations/canonicalCashflow';
 import { calculateIncomeTax } from '@/lib/tax-engine/core/incomeTaxCalculator';
 import { calculateMedicareLevy } from '@/lib/tax-engine/core/medicareLevyCalculator';
+import { calculateGst } from '@/lib/tax-engine/gst/gstCalculator';
+import { calculateHighIncomeSuperTax } from '@/lib/tax-engine/super/highIncomeSuperTax';
+import { calculateSuperGuarantee } from '@/lib/tax-engine/super/contributionCalculator';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
 const graph = JSON.parse(
@@ -177,6 +180,95 @@ const CASES: AuditCase[] = [
     derivation: '$100,000 is above the shade-out → 2% × 100,000 = 2,000',
     actual: () => calculateMedicareLevy({ taxableIncome: 100000 }, TAX_YEAR_2024_25).total,
     expected: 2000,
+  },
+
+  // ── GST — A New Tax System (GST) Act 1999, s9-70 (10%) ───────────────────────
+  {
+    node: 'engine.gstCalculator.calculateGst',
+    law: 'GST Act s9-70: 10% on a taxable supply',
+    derivation: '$1,000 taxable sale → 10% = $100 GST collected; no purchases → net GST $100',
+    actual: () =>
+      calculateGst({
+        transactions: [
+          { transactionId: 's1', supplyType: 'SALE', classification: 'TAXABLE', amountExcludingGst: 1000 },
+        ],
+        annualTurnover: 1000,
+        isRegistered: true,
+      }).netGst,
+    expected: 100,
+  },
+  {
+    node: 'engine.gstCalculator.calculateGst',
+    law: 'Net GST = GST collected on sales − input tax credits on purchases',
+    derivation: 'sale $1,000 (GST $100) − purchase $500 (ITC $50) = net $50',
+    actual: () =>
+      calculateGst({
+        transactions: [
+          { transactionId: 's1', supplyType: 'SALE', classification: 'TAXABLE', amountExcludingGst: 1000 },
+          { transactionId: 'p1', supplyType: 'NON_CAPITAL_PURCHASE', classification: 'TAXABLE', amountExcludingGst: 500 },
+        ],
+        annualTurnover: 1000,
+        isRegistered: true,
+      }).netGst,
+    expected: 50,
+  },
+  {
+    node: 'engine.gstCalculator.calculateGst',
+    law: 'GST Act s38: a GST-free supply charges no GST',
+    derivation: '$1,000 GST-free sale → $0 GST collected',
+    actual: () =>
+      calculateGst({
+        transactions: [
+          { transactionId: 's1', supplyType: 'SALE', classification: 'GST_FREE', amountExcludingGst: 1000 },
+        ],
+        annualTurnover: 1000,
+        isRegistered: true,
+      }).gstCollected,
+    expected: 0,
+  },
+
+  // ── Div 293 — extra 15% super tax (ITAA 1997 Div 293, s293-15) ───────────────
+  {
+    node: 'engine.highIncomeSuperTax.calculateHighIncomeSuperTax',
+    law: 's293-15: 15% × lesser of (Div293 income − $250k threshold) and concessional contributions',
+    derivation: 'income $300k → excess $50k; min($50k, concessional $30k) = $30k; 15% × $30k = $4,500',
+    actual: () =>
+      calculateHighIncomeSuperTax(
+        { div293Income: 300000, concessionalContributions: 30000, totalSuperBalance: 0 },
+        TAX_YEAR_2024_25,
+      ).div293.tax,
+    expected: 4500,
+  },
+  {
+    node: 'engine.highIncomeSuperTax.calculateHighIncomeSuperTax',
+    law: 's293-15: the lesser-of rule caps on the excess income when it is the smaller',
+    derivation: 'income $260k → excess $10k; min($10k, concessional $25k) = $10k; 15% × $10k = $1,500',
+    actual: () =>
+      calculateHighIncomeSuperTax(
+        { div293Income: 260000, concessionalContributions: 25000, totalSuperBalance: 0 },
+        TAX_YEAR_2024_25,
+      ).div293.tax,
+    expected: 1500,
+  },
+  {
+    node: 'engine.highIncomeSuperTax.calculateHighIncomeSuperTax',
+    law: 's293-15: no Div 293 below the $250k threshold',
+    derivation: 'income $200k < $250k → Div 293 does not apply → $0',
+    actual: () =>
+      calculateHighIncomeSuperTax(
+        { div293Income: 200000, concessionalContributions: 25000, totalSuperBalance: 0 },
+        TAX_YEAR_2024_25,
+      ).div293.tax,
+    expected: 0,
+  },
+
+  // ── Super guarantee — SGAA 1992 (11.5% FY24-25 on OTE, capped at max base) ───
+  {
+    node: 'engine.contributionCalculator.calculateSuperGuarantee',
+    law: 'SGAA 1992: SG = SG rate (11.5% FY24-25) × OTE, capped at the max contribution base',
+    derivation: '$100,000 OTE (below the ~$260k annual max base) × 11.5% = $11,500',
+    actual: () => calculateSuperGuarantee(100000, TAX_YEAR_2024_25).amount,
+    expected: 11500,
   },
 ];
 
