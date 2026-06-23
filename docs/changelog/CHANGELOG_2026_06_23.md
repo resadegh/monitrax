@@ -408,3 +408,21 @@ Expected values hand-derived from the ATO law (s9-70 / s293-15 / SGAA) independe
 - `tests/neomatrix/financialAudit.test.ts` (+7 cases), `financial-graph.json` (v0.8.0 verifiedBy), `GENERATED_CORE.md`, `01_ACTIVE_WORKSTREAMS.md`.
 
 ### Next — A1: SMSF Div 295 + CGT discount, then the health/CFO backfill (each with its A1 audit).
+
+---
+
+## Session: claudemd — Neomatrix consult-first rule wired into startup + checklists
+
+### Changes Made
+- **Type:** Governance (CLAUDE.md). **No code, no financial logic.**
+- **Reza directive:** "have you updated claude.md and the instructions to always use NeoMatrix for all future changes and builds?" — Part 21 already mandated the build gate + same-PR graph update + reviewer enforcement; this closes the missing **"consult it FIRST"** half (the referencing side).
+
+### What was added (reinforces Part 21)
+- **Part 1 Step 3 (Session Startup):** new item 5 — consult the Neomatrix for the number's lineage/formula/authority BEFORE changing it (model is the reference; the code is audited against it).
+- **§12.13 Before-Every-Session checklist:** Neomatrix consult + same-PR update + `neomatrix:check` line; discrepancy → `suspected-issue` raised, never silently fixed.
+- **Part 9 Pre-Change checklist:** consult-the-Neomatrix-first line.
+- **Part 9 Post-Change checklist:** `neomatrix:check` passes + graph updated/regenerated if a financial engine/number/lineage changed.
+- Protocol version note updated (2.7.1 follow-up).
+
+### Files
+- `CLAUDE.md` (Part 1 Step 3, §12.13, Part 9 ×2, version footer).
