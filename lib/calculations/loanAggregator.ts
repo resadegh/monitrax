@@ -91,8 +91,12 @@ export function aggregateLoanRepayments(
       (loan.repaymentFrequency || 'MONTHLY') as Frequency
     );
 
-    // Calculate interest portion (simplified)
-    const interestRateMonthly = (loan.interestRateAnnual || 0) / 100 / 12;
+    // Calculate interest portion (simplified).
+    // P0 fix (2026-06-23): interestRateAnnual is stored as a DECIMAL
+    // (0.0625 = 6.25% — prisma/schema.prisma + LoanFormDialog). The prior
+    // `/100/12` divided an already-decimal rate by 100 again → monthly interest
+    // (and totalInterest, the canonical SSOT debt figure) was 100× too low.
+    const interestRateMonthly = (loan.interestRateAnnual || 0) / 12;
     const monthlyInterest = principal * interestRateMonthly;
     const interest = targetFrequency === 'monthly' ? monthlyInterest : monthlyInterest * 12;
 
@@ -201,8 +205,9 @@ export interface DebtMetricsDecimal {
 /**
  * Decimal sibling of `aggregateLoanRepayments`. Same contract.
  *
- * Interest portion is computed in Decimal end-to-end:
- *   monthlyInterest = principal × interestRateAnnual / 100 / 12
+ * Interest portion is computed in Decimal end-to-end (interestRateAnnual is a
+ * DECIMAL, e.g. 0.0625 for 6.25%):
+ *   monthlyInterest = principal × interestRateAnnual / 12
  *   annualInterest  = monthlyInterest × 12
  */
 export function aggregateLoanRepaymentsDecimal(
@@ -231,7 +236,8 @@ export function aggregateLoanRepaymentsDecimal(
     );
 
     const interestRateAnnual = toDecimal(loan.interestRateAnnual) ?? new Decimal(0);
-    const interestRateMonthly = interestRateAnnual.div(100).div(12);
+    // P0 fix (2026-06-23): decimal rate — no extra /100 (see float path above).
+    const interestRateMonthly = interestRateAnnual.div(12);
     const monthlyInterest = principal.times(interestRateMonthly);
     const interest = targetFrequency === 'monthly' ? monthlyInterest : monthlyInterest.times(12);
 

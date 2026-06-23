@@ -70,14 +70,14 @@ const TWO_LOANS: LoanAggregatorInput[] = [
     principal: 743210.11,
     minRepayment: 4650,
     repaymentFrequency: 'MONTHLY',
-    interestRateAnnual: 6.25,
+    interestRateAnnual: 0.0625, // P0 fix 2026-06-23: decimal (was 6.25 percent, which masked the loanAggregator /100 bug)
     type: 'HOME',
   },
   {
     principal: 543210.99,
     minRepayment: 3200,
     repaymentFrequency: 'MONTHLY',
-    interestRateAnnual: 6.85,
+    interestRateAnnual: 0.0685, // P0 fix 2026-06-23: decimal (was 6.85 percent)
     type: 'INVESTMENT',
   },
 ];
