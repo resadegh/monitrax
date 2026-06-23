@@ -716,6 +716,17 @@ Item 3 of the review session: ensure privacy/compliance docs needing user review
 
 ---
 
+## Session: phase2-emergencyfund-actuals-shk180 (P0 — emergency-fund runway on declared spend)
+
+### Bug (audit domain B P0, verified 2026-06-23)
+`lib/services/masterFinancialService.ts:1904` computed emergency-fund months-of-cover from `monthlyExpenses.all.total` (DECLARED expenses, excludes loans). When actual spend > declared, runway was overstated (e.g. $20k liquid, $3k declared → "6.7 months"; true at $5k actual = 4.0). Cascades into `healthScore.emergencyFund`. The actual field (`actualCashflow.avgMonthlyOutflow`, in scope at :1857) existed but was unused.
+
+### Fix
+Gate on `hasActualData`: use `actualCashflow.avgMonthlyOutflow` (trailing-3-month avg of ALL OUT txns incl. loans + uncategorised) when transactions exist; fall back to declared only when none. Mirrors the Phase 1 + cashflow/summary precedent. `buildEmergencyFundMetrics` math itself was already verified ✅ correct — only the input changed.
+
+### Tests: tsc clean; cfo + calculations 367/367 green (snapshot shape unchanged).
+### Doc-sync (§16): this changelog; audit in docs/audit/AUDIT_CASHFLOW_SSOT.md (shipped via #1196).
+### Remaining domain-B (queued): Reports cashflowRunway (contextBuilder declared); P1 two monthlyCashflow definitions; declared-only surfaces (financial-health, cashflow lite, intelligence forecast/health, insights); P2 MORTGAGE liability classifier.
 ## Session: fix-loan-interest-100x-p0-shk180 (P0 — loan interest 100× too low)
 
 ### Bug (audit P0, verified 2026-06-23)
