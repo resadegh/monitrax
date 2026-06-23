@@ -26,6 +26,8 @@ import { calculateMedicareLevy } from '@/lib/tax-engine/core/medicareLevyCalcula
 import { calculateGst } from '@/lib/tax-engine/gst/gstCalculator';
 import { calculateHighIncomeSuperTax } from '@/lib/tax-engine/super/highIncomeSuperTax';
 import { calculateSuperGuarantee } from '@/lib/tax-engine/super/contributionCalculator';
+import { calculateCgtDiscount } from '@/lib/tax-engine/divisions/cgtDiscount';
+import { calculateSmsfIncomeTax } from '@/lib/tax-engine/super/smsfIncomeTax';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
 const graph = JSON.parse(
@@ -269,6 +271,75 @@ const CASES: AuditCase[] = [
     derivation: '$100,000 OTE (below the ~$260k annual max base) × 11.5% = $11,500',
     actual: () => calculateSuperGuarantee(100000, TAX_YEAR_2024_25).amount,
     expected: 11500,
+  },
+
+  // ── CGT discount — Div 115 (pre-reform; no acquisitionContractDate = default) ─
+  {
+    node: 'engine.cgtDiscount.calculateCgtDiscount',
+    law: 'ITAA 1997 s115-25: individual 50% discount when held ≥ 12 months',
+    derivation: 'PERSONAL_NAME, 24 months, nominal gain $100,000 → 50% discount → taxable $50,000',
+    actual: () =>
+      calculateCgtDiscount({ entityType: 'PERSONAL_NAME', monthsHeld: 24, nominalGain: 100000 }).discountedGain,
+    expected: 50000,
+  },
+  {
+    node: 'engine.cgtDiscount.calculateCgtDiscount',
+    law: 'ITAA 1997 s115-100: complying super fund 33⅓% discount',
+    derivation: 'SMSF, 24 months, nominal gain $90,000 → 1/3 discount → taxable $60,000',
+    actual: () =>
+      calculateCgtDiscount({ entityType: 'SMSF', monthsHeld: 24, nominalGain: 90000, isComplying: true }).discountedGain,
+    expected: 60000,
+  },
+  {
+    node: 'engine.cgtDiscount.calculateCgtDiscount',
+    law: 'ITAA 1997 s115-10: companies get NO CGT discount',
+    derivation: 'COMPANY, 24 months, nominal gain $100,000 → 0% discount → taxable $100,000',
+    actual: () =>
+      calculateCgtDiscount({ entityType: 'COMPANY', monthsHeld: 24, nominalGain: 100000 }).discountedGain,
+    expected: 100000,
+  },
+  {
+    node: 'engine.cgtDiscount.calculateCgtDiscount',
+    law: 'ITAA 1997 s115-25: NO discount when held < 12 months',
+    derivation: 'PERSONAL_NAME, 6 months, nominal gain $100,000 → 0% discount → taxable $100,000',
+    actual: () =>
+      calculateCgtDiscount({ entityType: 'PERSONAL_NAME', monthsHeld: 6, nominalGain: 100000 }).discountedGain,
+    expected: 100000,
+  },
+
+  // ── SMSF income tax — Div 295 (complying fund 15%; NALI at top rate s295-550) ─
+  {
+    node: 'engine.smsfIncomeTax.calculateSmsfIncomeTax',
+    law: 'ITAA 1997 Div 295: assessable (concessional) contributions taxed at 15%',
+    derivation: '$100,000 concessional contributions × 15% = $15,000',
+    actual: () =>
+      calculateSmsfIncomeTax(
+        { assessableInvestmentIncome: 0, deductions: 0, assessableContributions: 100000, nonArmsLengthIncome: 0, isComplying: true, isInPensionPhase: false },
+        TAX_YEAR_2024_25,
+      ).contributionsTax,
+    expected: 15000,
+  },
+  {
+    node: 'engine.smsfIncomeTax.calculateSmsfIncomeTax',
+    law: 'ITAA 1997 Div 295: a complying fund\'s investment income taxed at 15%',
+    derivation: '$50,000 investment income (no deductions, not pension phase) × 15% = $7,500',
+    actual: () =>
+      calculateSmsfIncomeTax(
+        { assessableInvestmentIncome: 50000, deductions: 0, assessableContributions: 0, nonArmsLengthIncome: 0, isComplying: true, isInPensionPhase: false },
+        TAX_YEAR_2024_25,
+      ).investmentIncomeTax,
+    expected: 7500,
+  },
+  {
+    node: 'engine.smsfIncomeTax.calculateSmsfIncomeTax',
+    law: 'ITAA 1997 s295-550: non-arm\'s-length income (NALI) taxed at the top marginal rate (45%)',
+    derivation: '$10,000 NALI × 45% = $4,500',
+    actual: () =>
+      calculateSmsfIncomeTax(
+        { assessableInvestmentIncome: 0, deductions: 0, assessableContributions: 0, nonArmsLengthIncome: 10000, isComplying: true, isInPensionPhase: false },
+        TAX_YEAR_2024_25,
+      ).naliTax,
+    expected: 4500,
   },
 ];
 
