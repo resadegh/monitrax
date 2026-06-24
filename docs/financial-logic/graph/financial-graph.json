@@ -1,8 +1,8 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
-  "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence (cashflow-health + linkage).",
+  "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
   "lastReviewed": "2026-06-23",
   "nodes": [
@@ -1881,6 +1881,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
+    },
+    {
+      "id": "engine.propertyPortfolio.generatePropertyPortfolioReport",
+      "kind": "engine",
+      "label": "Property portfolio report",
+      "file": "lib/reports/generators/propertyPortfolio.ts",
+      "line": 8,
+      "layer": "service",
+      "domain": "reports",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Report sections: portfolio metrics (total value/equity/purchase, capital growth + growth%, avg LVR, count) + tax benefits.",
+      "formula": "totalValue = Σ currentValue; totalPurchase = Σ purchasePrice; capitalGrowth = totalValue − totalPurchase; growth% = round(capitalGrowth/totalPurchase×100); avgLVR = Σ lvr / n.",
+      "authority": "Standard property-portfolio metrics (report aggregation of canonical per-property values)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/reports/generators/propertyPortfolio.ts:8",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "law.monitrax.reportAggregations",
+      "kind": "law",
+      "label": "Report aggregation rules",
+      "file": "lib/reports/generators",
+      "line": null,
+      "layer": null,
+      "domain": "reports",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Reports aggregate the canonical per-entity values (Σ for totals; growth% = (value−cost)/cost×100; averages = Σ/n) — they re-present, never re-derive differently from the canonical engines (§12.2).",
+      "formula": "total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n",
+      "authority": "Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/reports/generators/propertyPortfolio.ts:17-24",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -2762,6 +2804,16 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "linkageHealthService.ts:286-296 severity thresholds",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.propertyPortfolio.generatePropertyPortfolioReport",
+      "to": "law.monitrax.reportAggregations",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "propertyPortfolio.ts:17-24 Σ aggregations + growth%",
       "verifiedDate": "2026-06-23"
     }
   ]
