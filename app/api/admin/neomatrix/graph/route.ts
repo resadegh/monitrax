@@ -1,0 +1,57 @@
+/**
+ * Phase 53 N2 — Neomatrix graph admin API.
+ *
+ * GET /api/admin/neomatrix/graph
+ *   Returns the financial-logic knowledge graph (`financial-graph.json`)
+ *   for the admin-only 3D explorer at `/admin/neomatrix`.
+ *
+ * Admin-side only (same posture as `/admin/calc-audit`). The graph is
+ * METADATA ONLY — node ids, kinds, labels, file:line, formulas, authority,
+ * lineage edges. It holds NO CDR/user data (Phase 53 §9), so there is no
+ * data-exposure risk; it is admin-gated because file:line / formulas are
+ * internal architecture, not user content.
+ *
+ * The JSON is imported (bundled at build) so it always resolves on Vercel
+ * serverless without filesystem tracing.
+ */
+
+import { NextRequest, NextResponse } from 'next/server';
+import { verifyAdminGCPAuth } from '@/lib/admin/auth';
+import { hasPermission } from '@/lib/admin/permissions';
+import { isAdminPortalAccessible } from '@/lib/admin/featureFlags';
+import { ADMIN_ERROR_CODES } from '@/lib/admin/constants';
+import graph from '@/docs/financial-logic/graph/financial-graph.json';
+
+export async function GET(request: NextRequest) {
+  if (!isAdminPortalAccessible()) {
+    return NextResponse.json(
+      { error: { code: ADMIN_ERROR_CODES.ADMIN_PORTAL_NOT_ENABLED, message: 'Admin portal is not enabled' } },
+      { status: 503 },
+    );
+  }
+
+  const authResult = await verifyAdminGCPAuth(request);
+  if (!authResult.success || !authResult.context) {
+    return NextResponse.json({ error: authResult.error }, { status: 401 });
+  }
+
+  // Same permission as calc-audit — this is an audit/architecture surface.
+  if (!hasPermission(authResult.context.role, 'audit:read')) {
+    return NextResponse.json(
+      {
+        error: {
+          code: ADMIN_ERROR_CODES.INSUFFICIENT_PERMISSIONS,
+          message: 'You do not have permission to view the Neomatrix graph',
+        },
+      },
+      { status: 403 },
+    );
+  }
+
+  // Metadata only — safe to return as-is.
+  return NextResponse.json({
+    success: true,
+    data: graph,
+    meta: { timestamp: new Date().toISOString() },
+  });
+}

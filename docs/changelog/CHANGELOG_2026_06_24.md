@@ -478,3 +478,65 @@
 ### PR
 - Branch: `claude/neomatrix-depth-landtax-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-n2-admin-explorer (branch `claude/neomatrix-n2-admin-explorer-jqahjw`)
+
+### Changes Made
+- **Type**: Feature (Neomatrix N2 — the interactive explorer; visual + new admin surface + new dependency)
+- **Scope**: Phase 53 Neomatrix — **N2 explorer**, built in the **Admin portal** (`/admin/neomatrix`),
+  admin-only, beside `/admin/calc-audit`. A navigable 3D knowledge-graph viewer of the
+  financial-logic graph.
+- **Strategic decision (Reza, 2026-06-24)**: Neomatrix is a developer/architecture tool (a 3D
+  vision of Monitrax's engines/relations), **NOT a user feature** — so it lives in the Admin
+  portal for Reza only, never in the user dashboard. Confirmed against the codebase (it slots
+  beside the existing `/admin/calc-audit`).
+- **Description**: `react-force-graph-3d` (three.js) renders the real 102-node graph as a
+  force-directed constellation — orbit/zoom/pan, nodes coloured by domain, click → inspector
+  (formula, inputs+units, file:line, lineage in/out, authority, worked example, ✓ verified).
+  A left rail filters by domain + layer + search; a 2D/3D toggle drives `numDimensions` (no
+  second dep). Dark-cosmos glass vocabulary per the approved Stitch design pass.
+
+### Architecture / lens notes
+- **Admin-only (architect + security):** the graph exposes internal architecture (engine names,
+  file:line, formulas) — admin-gated like calc-audit. It is **metadata only — no CDR/user data**
+  (Phase 53 §9), so no data-exposure risk; admin-gating is for internal-architecture hygiene.
+- **Not Stitch-bound (§18.2):** the admin portal is a separate design system, so the Stitch design
+  is a *visual reference* (committed under `.stitch/designs/neomatrix/`), not a §18.8-gated artefact.
+- **Dependency justification (§12.7):** `react-force-graph-3d` (+three.js, ~600KB) — no existing
+  3D engine to reuse; dynamically imported (`ssr:false`) + route-scoped to the admin tool, so it
+  never loads on a user hot path.
+
+### Files Added/Modified
+- `app/api/admin/neomatrix/graph/route.ts` — NEW admin-guarded API (same posture as calc-audit:
+  `isAdminPortalAccessible` → `verifyAdminGCPAuth` → `hasPermission('audit:read')`); returns the
+  imported `financial-graph.json` (metadata only).
+- `app/admin/neomatrix/page.tsx` — NEW admin page (`AdminFeatureGate` + the explorer).
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — NEW client component (dynamic ForceGraph3D,
+  inspector, filter rail, 2D/3D toggle, domain palette).
+- `components/admin/layout/AdminSidebar.tsx` — added an "Engineering" nav section (Neomatrix +
+  surfaced the previously-unlinked Calc Audit) + two icons.
+- `.stitch/designs/neomatrix/explorer-desktop-dark.{png,html}` — design reference (Stitch pass).
+- `package.json` / `package-lock.json` — `react-force-graph-3d@^1.29.1`.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (exit 0, 0 errors)
+- [x] `npx eslint` on all new/changed files — clean
+- [x] `npm run neomatrix:check` — OK (graph unchanged)
+- No financial logic changed; no graph node/edge changed (this is the VIEWER, not the model).
+
+### §18.8 Stitch gate
+- The design language passed at 9.2/10 (chrome/inspector/6-domain system); the composite sat ~8.9
+  only because a static mockup can't render dense 3D — a medium limitation the live canvas resolves
+  (it renders all 102 real nodes navigably). Stitch artefacts committed as the visual reference.
+
+### Neomatrix status
+- **N2 explorer SHIPPED (admin-only).** Depth audit stands at 26 engines (PRs #1217–#1225 merged;
+  #1226 cross-state in review). The graph is now both **modelled + audited** AND **navigable**.
+- **Next (optional):** bloom/post-processing on the 3D scene, TRAIL/regime filters, node-focus
+  camera animation, mobile reflow; resume depth on remaining niche engines if desired.
+
+### PR
+- Branch: `claude/neomatrix-n2-admin-explorer-jqahjw`
+- Status: Draft (to be opened)
