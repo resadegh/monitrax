@@ -49,6 +49,7 @@ import {
   type EntityBreakdownInput,
 } from '@/lib/calculations/entityBreakdown';
 import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
+import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -797,6 +798,75 @@ const CASES: AuditCase[] = [
       applyOffsets(0, { lito: 0, sapto: 0, frankingCredits: 1000, foreignTax: 0, other: 0, total: 1000 })
         .refundableAmount,
     expected: 1000,
+  },
+
+  // ── Tax: stamp duty — NSW Duties Act 1997 Sch 1 progressive scale ────────────
+  // inBracket = value − bracket.min + 1; duty = baseAmount + inBracket × rate.
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'NSW Duties Act 1997 Sch 1: $327,001–$1,089,000 bracket — base $9,805 + 4.5% over $327,000',
+    derivation: '$600,000: 9,805 + (600,000 − 327,001 + 1) × 0.045 = 9,805 + 273,000 × 0.045 = 9,805 + 12,285 = 22,090',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 600000, purchaserType: 'INDIVIDUAL', isForeignPurchaser: false, isResidential: true },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).generalDuty,
+    expected: 22090,
+  },
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'NSW Duties Act 1997 Sch 1: $87,001–$327,000 bracket — base $1,405 + 3.5% over $87,000',
+    derivation: '$100,000: 1,405 + (100,000 − 87,001 + 1) × 0.035 = 1,405 + 13,000 × 0.035 = 1,405 + 455 = 1,860',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 100000, purchaserType: 'INDIVIDUAL', isForeignPurchaser: false, isResidential: true },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).generalDuty,
+    expected: 1860,
+  },
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'NSW Duties Act 1997 Sch 1: zero dutiable value → zero duty',
+    derivation: '$0 → $0',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 0, purchaserType: 'INDIVIDUAL', isForeignPurchaser: false, isResidential: true },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).generalDuty,
+    expected: 0,
+  },
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'NSW FPAD (Duties Act 1997 Ch 2 Pt 4 Div 4): 8% of dutiable value for a foreign purchaser of residential land',
+    derivation: 'foreign + residential $600,000 → surcharge 600,000 × 0.08 = 48,000',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 600000, purchaserType: 'COMPANY', isForeignPurchaser: true, isResidential: true },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).foreignPurchaserSurcharge,
+    expected: 48000,
+  },
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'Total duty = general duty + FPAD surcharge',
+    derivation: 'foreign + residential $600,000 → 22,090 + 48,000 = 70,090',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 600000, purchaserType: 'COMPANY', isForeignPurchaser: true, isResidential: true },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).totalDuty,
+    expected: 70090,
+  },
+  {
+    node: 'engine.stateStampDuty.calculateStampDuty',
+    law: 'FPAD applies to RESIDENTIAL land only — a foreign purchaser of non-residential land pays no surcharge',
+    derivation: 'foreign + NON-residential $600,000 → surcharge $0',
+    actual: () =>
+      calculateStampDuty(
+        { dutiableValue: 600000, purchaserType: 'COMPANY', isForeignPurchaser: true, isResidential: false },
+        NSW_STAMP_DUTY_FY2024_25,
+      ).foreignPurchaserSurcharge,
+    expected: 0,
   },
 ];
 

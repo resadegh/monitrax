@@ -363,3 +363,61 @@
 ### PR
 - Branch: `claude/neomatrix-depth-taxoffsets-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-stampduty (branch `claude/neomatrix-depth-stampduty-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, **tax domain**. A1-audited `calculateStampDuty`
+  (`lib/tax-engine/stampDuty/stateStampDuty.ts`) — already modelled (N4.4); this slice promotes
+  it from documented to **A1-audited** against the NSW Duties Act 1997 Sch 1 scale.
+- **Description**: Second tax-division depth slice. Locks the progressive-bracket math (incl. the
+  `inBracket = value − min + 1` convention), the FPAD foreign-purchaser surcharge, and the
+  RESIDENTIAL-only gate on FPAD. Brackets verified against the Duties Act in source (§19.2 — never
+  guessed). No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: `dutiableValue` AUD (higher of contract price / unencumbered market value);
+  `isForeignPurchaser`/`isResidential` gate FPAD; `config.brackets` = NSW Sch 1 scale +
+  `foreignPurchaserSurchargeRate` 0.08. Verified at `stateStampDuty.ts:100-118, :262-273, :285-320`.
+- **Law / formula**: NSW Duties Act 1997 Sch 1 progressive scale —
+  `duty = baseAmount + (value − bracketMin + 1) × rate`; FPAD (Ch 2 Pt 4 Div 4) = 8% of dutiable
+  value for a foreign purchaser of **residential** land; total = general + FPAD.
+- **Worked examples** (all ✅ verified by running the engine):
+  - $600,000 → general **$22,090** (9,805 + 273,000 × 0.045)
+  - $100,000 → general **$1,860** (1,405 + 13,000 × 0.035); $0 → **$0**
+  - foreign + residential $600,000 → FPAD **$48,000** (×0.08); total **$70,090**
+  - foreign + **non-residential** $600,000 → FPAD **$0** (residential-only gate)
+- **Verify**: 112/112 Neomatrix tests pass (was 106; +6 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — enriched the existing
+  `engine.stateStampDuty.calculateStampDuty` node (formula incl. the `+1` convention, inputs,
+  worked example, audit-backed verifiedBy). version 0.21.0 → **0.22.0**. 102 nodes / 112 edges
+  (no new nodes/edges — pure audit promotion).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +1 import, +6 A1 stamp-duty cases.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (25 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 112/112 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: enriched node + 6 cases. **Pass 2 (critique)**: confirmed every NSW value hand-derived
+  from the Sch 1 brackets in source (not the engine); confirmed mid-bracket values are clean
+  (the `+1` matters only at boundaries, documented in the formula); confirmed the FPAD
+  residential-only gate + total = general+FPAD cases lock the two-component structure. **Pass 3
+  (refine)**: kept the non-residential-FPAD-$0 case — it locks the load-bearing scope gate. No
+  engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **25 engines A1-audited** across all 6 domains. Graph v0.22.0 — 102 nodes / 112 edges, all `verified`.
+- **Next**: land tax (state thresholds + progressive scale), PAYG withholding, then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-stampduty-jqahjw`
+- Status: Draft (to be opened)
