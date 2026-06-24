@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -1923,6 +1923,89 @@
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
+    },
+    {
+      "id": "engine.loanAggregator.aggregateLoanRepayments",
+      "kind": "engine",
+      "label": "Loan/debt aggregation (interest)",
+      "file": "lib/calculations/loanAggregator.ts",
+      "line": 69,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "LoanAggregation — totalPrincipal, totalRepayments, totalInterest, weightedInterestRate, byType. The §6.2 debt SSOT.",
+      "formula": "monthly interest = principal × (interestRateAnnual / 12) [interestRateAnnual is a DECIMAL 0.0625 = 6.25%]; annual = ×12. weightedInterestRate = Σ(principal×rate)/Σprincipal. repayments via toMonthly/toAnnual.",
+      "authority": "Standard interest = principal × annual rate; CLAUDE.md §19.2 (interestRateAnnual decimal — the prior 100× bug, P0-fixed 2026-06-23)",
+      "inputs": [
+        {
+          "name": "loan.principal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "current balance"
+        },
+        {
+          "name": "loan.interestRateAnnual",
+          "unit": "decimal",
+          "type": "number",
+          "note": "0.0625 = 6.25% — NOT a percent"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced — locks the 100× class) + lib/calculations/loanAggregator.ts:69",
+      "workedExample": "500,000 × 0.0625/12 = 2,604.17/mo; ×12 = 31,250/yr",
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "engine.expenseAggregator.aggregateExpenses",
+      "kind": "engine",
+      "label": "Declared expense aggregation",
+      "file": "lib/calculations/expenseAggregator.ts",
+      "line": 76,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ExpenseAggregation — total, essential, discretionary, taxDeductible, byCategory. The §6.2 expense SSOT.",
+      "formula": "total = Σ toMonthly(amount, frequency) (or toAnnual); essential/discretionary by isEssential; taxDeductible by isTaxDeductible.",
+      "authority": "CLAUDE.md §6.2 (expense SSOT) + lib/utils/frequencies.ts toMonthly",
+      "inputs": [
+        {
+          "name": "expense.amount + frequency",
+          "unit": "AUD/period",
+          "type": "number",
+          "note": "toMonthly: ANNUAL/12, WEEKLY×52/12, MONTHLY×1"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/expenseAggregator.ts:76",
+      "workedExample": "$1,200 ANNUAL → $100/mo; $500 MONTHLY + $1,200 ANNUAL → $600/mo",
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "law.standard.loanInterest",
+      "kind": "law",
+      "label": "Loan interest = principal × annual rate",
+      "file": null,
+      "line": null,
+      "layer": null,
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Monthly interest = principal × (annual rate / 12); annual = principal × annual rate. The rate is a decimal fraction.",
+      "formula": "monthlyInterest = P × r/12",
+      "authority": "Standard interest formula",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/calculations/loanAggregator.ts:99-101",
+      "workedExample": null,
+      "verifiedDate": "2026-06-23",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -2814,6 +2897,56 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "propertyPortfolio.ts:17-24 Σ aggregations + growth%",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.loanAggregator.aggregateLoanRepayments",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "masterFinancialService.ts:1831 aggregateLoanRepayments(loanInputs,\"monthly\")",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.expenseAggregator.aggregateExpenses",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "masterFinancialService.ts:874 aggregateExpenses(...)",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "engine.loanAggregator.aggregateLoanRepayments",
+      "to": "law.standard.loanInterest",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "loanAggregator.ts:99-101 principal × interestRateAnnual/12",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.loanAggregator.aggregateLoanRepayments",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "loanAggregator.ts:90 Number(loan.principal)",
+      "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.expenseAggregator.aggregateExpenses",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "expenseAggregator.ts:94 toMonthly(expense.amount, frequency)",
       "verifiedDate": "2026-06-23"
     }
   ]

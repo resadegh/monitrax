@@ -578,3 +578,28 @@ growth% hand-derived (Σvalue−Σcost)/Σcost×100 independent of the code; rea
 
 ### Coverage milestone — all 6 domains modelled + audited
 Next is **depth** (more engines within each domain) + N2 2D explorer + A2 drift-sentinel / A4 unit enforcement.
+
+---
+
+## Session: neomatrix-depth-aggregators (model + A1 audit — core aggregators; locks the 100× bug)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 §14 A1 — **depth**, core domain). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- First **depth** slice (after full domain breadth): the core aggregators that feed the master snapshot.
+
+### What was modelled (graph 85→88 nodes)
+- `aggregateLoanRepayments` (loanAggregator.ts:69, §6.2 debt SSOT) + `aggregateExpenses` (expenseAggregator.ts:76, §6.2 expense SSOT) + a standard-loan-interest law node; both fed into the master orchestrator.
+
+### A1 audit (5 new cases, all pass) — incl. the §19.2 100× lock
+- **Loan interest (the 100× bug class — interestRateAnnual is a DECIMAL):** 500,000 × 0.0625/12 = **$2,604.17/mo**; ×12 = **$31,250/yr**; weighted rate **0.0625**. A 100× bug (treating 0.0625 as 6.25%) would give $260,417/mo — now impossible to ship.
+- **Expense toMonthly conversion:** $1,200 ANNUAL → **$100/mo**; $500 MONTHLY + $1,200 ANNUAL → **$600/mo**.
+- **Result: no `suspected-issue`** — the P0 fix (2026-06-23) is now regression-locked. **16 engines now A1-audited.**
+
+### Self-review (§20.4) — **10/10**
+Loan interest hand-derived from the standard formula (P × r/12); expense from toMonthly; real engines executed; tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **65/65 pass** (audit 59 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.14.0→0.15.0; fresh).
+
+### Next — incomeAggregator + remaining core, more tax divisions; then N2 2D explorer.
