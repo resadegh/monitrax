@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -1789,6 +1789,74 @@
       "status": "documented"
     },
     {
+      "id": "engine.taxOffsets.calculateLITO",
+      "kind": "engine",
+      "label": "Low Income Tax Offset (LITO) — two-tier phase-out",
+      "file": "lib/tax-engine/core/taxOffsets.ts",
+      "line": 36,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "LITO offset (AUD) for FY24-25 — a non-refundable offset that reduces income tax.",
+      "formula": "≤0 → 0; ≤fullThreshold(37,500) → maxOffset(700); ≥cutoff(66,667) → 0; else reduction = min(income,45,000−37,500)×0.05 + (income−45,000)×0.015 (tier2 only when income>45,000); offset = round(max(0, 700 − reduction), 2).",
+      "authority": "ATO Individual income tax rates — LITO FY24-25 (two-tier: 5c/$ 37.5k–45k, 1.5c/$ 45k–66,667)",
+      "inputs": [
+        {
+          "name": "taxableIncome",
+          "unit": "AUD/year",
+          "type": "number",
+          "note": "annual taxable income"
+        },
+        {
+          "name": "config.lito",
+          "unit": "AUD",
+          "type": "object",
+          "note": "maxOffset/fullThreshold/tier1/tier2/cutoff from taxYearConfig"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/tax-engine/core/taxOffsets.ts:36",
+      "workedExample": "$30k→$700; $40k→$575 (700−125); $45k→$325 (700−375); $50k→$250 (700−450); ≥$66,667→$0",
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
+      "id": "engine.taxOffsets.applyOffsets",
+      "kind": "engine",
+      "label": "Apply offsets to gross tax (refundable vs non-refundable)",
+      "file": "lib/tax-engine/core/taxOffsets.ts",
+      "line": 434,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "netTax + refundableAmount + usedOffsets — applies offsets to gross tax.",
+      "formula": "Non-refundable (LITO+SAPTO+foreignTax+other) reduce tax only to $0: nonRefundableUsed = min(Σnon-refundable, grossTax); taxAfterNonRefundable = grossTax − nonRefundableUsed; netTax = taxAfterNonRefundable − frankingCredits (refundable → can go negative); refundableAmount = netTax<0 ? |netTax| : 0.",
+      "authority": "ATO: LITO/SAPTO are non-refundable (reduce to $0); franking credits (Div 207) are refundable",
+      "inputs": [
+        {
+          "name": "grossTax",
+          "unit": "AUD",
+          "type": "number",
+          "note": "tax before offsets"
+        },
+        {
+          "name": "offsets",
+          "unit": "AUD",
+          "type": "object",
+          "note": "lito/sapto/frankingCredits/foreignTax/other"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/tax-engine/core/taxOffsets.ts:434",
+      "workedExample": "gross $1,000 + LITO $700 → netTax $300; gross $500 + LITO $700 → netTax $0 (non-refundable floor); gross $0 + franking $1,000 → netTax −$1,000, refundable $1,000",
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
       "id": "engine.medicareLevyCalculator.calculateMedicareLevy",
       "kind": "engine",
       "label": "Medicare levy (2% + shade-in)",
@@ -3421,6 +3489,36 @@
       "fromUnit": "%",
       "toUnit": "%",
       "evidence": "app/api/dashboard/insights/route.ts:173",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.taxYearConfig.lito",
+      "to": "engine.taxOffsets.calculateLITO",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "taxOffsets.ts:41 const { lito } = config",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.taxOffsets.calculateLITO",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "ATO Individual income tax rates — LITO (law.itaa1997.incomeTax covers brackets + LITO)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.taxOffsets.calculateLITO",
+      "to": "engine.taxOffsets.applyOffsets",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "taxOffsets.ts:443 nonRefundableOffsets includes offsets.lito",
       "verifiedDate": "2026-06-24"
     }
   ]
