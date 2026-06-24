@@ -1,10 +1,10 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-06-23",
+  "lastReviewed": "2026-06-24",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -1987,6 +1987,46 @@
       "status": "documented"
     },
     {
+      "id": "engine.incomeAggregator.aggregateIncome",
+      "kind": "engine",
+      "label": "Declared income aggregation (gross / net / PAYG)",
+      "file": "lib/calculations/incomeAggregator.ts",
+      "line": 143,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT.",
+      "formula": "grossTotal = Σ getGrossAmount(item, target); net = Σ getNetAmount; payg = Σ getPaygAmount. SALARY+NET uses grossAmount (already ANNUAL, /12 for monthly); SALARY+GROSS uses amount×freq; non-salary uses amount×freq. paygWithholding is already-annual (/12 for monthly). taxableIncome splits on isTaxable !== false.",
+      "authority": "CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual",
+      "inputs": [
+        {
+          "name": "income.amount + frequency",
+          "unit": "AUD/period",
+          "type": "number",
+          "note": "toMonthly: ANNUAL/12, WEEKLY×52/12, MONTHLY×1"
+        },
+        {
+          "name": "salaryType + grossAmount/netAmount",
+          "unit": "AUD/year",
+          "type": "number",
+          "note": "SALARY GROSS vs NET: grossAmount/netAmount are ALREADY-ANNUAL (asymmetric with amount which uses frequency)"
+        },
+        {
+          "name": "paygWithholding",
+          "unit": "AUD/year",
+          "type": "number",
+          "note": "already-annual; /12 for monthly target; only SALARY type"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143",
+      "workedExample": "SALARY GROSS $120k/yr + rental $2k/mo → grossTotal $12,000/mo; PAYG $30k → $2,500/mo; SALARY NET grossAmount $100k (annual target) → grossTotal $100,000",
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
       "id": "law.standard.loanInterest",
       "kind": "law",
       "label": "Loan interest = principal × annual rate",
@@ -2948,6 +2988,26 @@
       "toUnit": null,
       "evidence": "expenseAggregator.ts:94 toMonthly(expense.amount, frequency)",
       "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.incomeAggregator.aggregateIncome",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/period",
+      "toUnit": "AUD/month",
+      "evidence": "incomeAggregator.ts:82 converter(item.amount, item.frequency)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.incomeAggregator.aggregateIncome",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "masterFinancialService.ts:1005 aggregateIncome(income.map(mapIncome), targetFrequency)",
+      "verifiedDate": "2026-06-24"
     }
   ]
 }

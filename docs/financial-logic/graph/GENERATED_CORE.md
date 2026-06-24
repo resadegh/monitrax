@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.15.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.16.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 88 · **Edges:** 94
-- **By kind:** orchestrator 2 · engine 36 · input-field 18 · law 21 · number 6 · ui-surface 5
-- **By status:** documented 88
-- **Edge provenance:** verified 94 *(verified > graphify > inferred)*
+- **Nodes:** 89 · **Edges:** 96
+- **By kind:** orchestrator 2 · engine 37 · input-field 18 · law 21 · number 6 · ui-surface 5
+- **By status:** documented 89
+- **Edge provenance:** verified 96 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -55,6 +55,7 @@
 | **Property portfolio report** | `lib/reports/generators/propertyPortfolio.ts:8` | service | reports | Report sections: portfolio metrics (total value/equity/purchase, capital growth + growth%, avg LVR, count) + tax benefits. | Standard property-portfolio metrics (report aggregation of canonical per-property values) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/reports/generators/propertyPortfolio.ts:8 | documented |
 | **Loan/debt aggregation (interest)** | `lib/calculations/loanAggregator.ts:69` | engine | core | LoanAggregation — totalPrincipal, totalRepayments, totalInterest, weightedInterestRate, byType. The §6.2 debt SSOT. | Standard interest = principal × annual rate; CLAUDE.md §19.2 (interestRateAnnual decimal — the prior 100× bug, P0-fixed 2026-06-23) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced — locks the 100× class) + lib/calculations/loanAggregator.ts:69 | documented |
 | **Declared expense aggregation** | `lib/calculations/expenseAggregator.ts:76` | engine | core | ExpenseAggregation — total, essential, discretionary, taxDeductible, byCategory. The §6.2 expense SSOT. | CLAUDE.md §6.2 (expense SSOT) + lib/utils/frequencies.ts toMonthly | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/expenseAggregator.ts:76 | documented |
+| **Declared income aggregation (gross / net / PAYG)** | `lib/calculations/incomeAggregator.ts:143` | engine | core | IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT. | CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -66,14 +67,15 @@
 | **Canonical monthly cashflow** | In 25,827 / Out 46,741 → net −20,914; savingsRate ≈ −80.98%; basis 'actual' (the real deficit the old declared hero hid as +$10,505 / 51.9%) |
 | **Loan/debt aggregation (interest)** | 500,000 × 0.0625/12 = 2,604.17/mo; ×12 = 31,250/yr |
 | **Declared expense aggregation** | $1,200 ANNUAL → $100/mo; $500 MONTHLY + $1,200 ANNUAL → $600/mo |
+| **Declared income aggregation (gross / net / PAYG)** | SALARY GROSS $120k/yr + rental $2k/mo → grossTotal $12,000/mo; PAYG $30k → $2,500/mo; SALARY NET grossAmount $100k (annual target) → grossTotal $100,000 |
 
 ## Number lineage — how each displayed number is born
 
 | Number (semanticKey) | Engine ancestor(s) | Rendered at | Formula | Authority |
 |---|---|---|---|---|
 | **Net worth (displayed)** (`netWorth`) | Net worth | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
-| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
-| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
+| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
+| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 | **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
 | **CFO score** (`cfoScore`) | CFO score (orchestrator) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
@@ -202,6 +204,8 @@
 | Loan/debt aggregation (interest) | → | Loan interest = principal × annual rate | governed-by | — | verified | loanAggregator.ts:99-101 principal × interestRateAnnual/12 |
 | Loan.principal | → | Loan/debt aggregation (interest) | feeds | — | verified | loanAggregator.ts:90 Number(loan.principal) |
 | Expense (declared) | → | Declared expense aggregation | feeds | — | verified | expenseAggregator.ts:94 toMonthly(expense.amount, frequency) |
+| Income (declared) | → | Declared income aggregation (gross / net / PAYG) | feeds | AUD/period→AUD/month | verified | incomeAggregator.ts:82 converter(item.amount, item.frequency) |
+| Declared income aggregation (gross / net / PAYG) | → | Master financial snapshot | feeds | — | verified | masterFinancialService.ts:1005 aggregateIncome(income.map(mapIncome), targetFrequency) |
 
 ---
 
