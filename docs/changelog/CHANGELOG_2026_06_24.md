@@ -573,3 +573,60 @@
 ### PR
 - Branch: `claude/neomatrix-edges-visible-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-connect-domains (branch `claude/neomatrix-connect-domains-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — model connectivity; documentation/model only, NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — **cross-domain wiring**. Reza (live on `/admin/neomatrix`)
+  observed the **core nodes had no links to tax** — and more broadly the six domains rendered as
+  **disconnected islands** (0 cross-domain edges). His principle: in the real app the numbers are
+  never isolated, so a faithful graph should be (largely) connected.
+- **Root cause (model gap, NOT a code bug)**: the depth audit wired each engine to its *immediate*
+  inputs/outputs but never drew the **inter-domain seams**. In the real app the domains connect
+  mostly **through shared canonical inputs** (§12.2 SSOT): the CFO score, health input, and tax
+  position each independently read the same raw tables (`prisma.income/account/loan/expense/property/investment`),
+  intelligence consumes the master snapshot, etc. — but the graph only drew each input → its *first*
+  consumer.
+- **Fix**: added **18 cross-domain / connecting edges, every one verified to source (file:line, §19.2 — no guessed edges)**:
+
+### §19.2 evidence (each edge backed by a real read in source)
+- **core → CFO** (6): `lib/cfo/scoreCalculator.ts:43-51` — `calculateCFOScore` reads `prisma.account/loan/income/expense/investmentAccount/property`.
+- **core → health** (6): `app/api/financial-health/route.ts:61-91` — `buildHealthInput` reads the same raw tables → `:277 generateHealthReport`.
+- **core → tax** (1): `app/api/tax/route.ts:149` — `taxableIncome = assessableIncome − deductions` (from income) → `:257 calculateIncomeTax` (resolves Reza's core↔tax question).
+- **core → intelligence** (1): `app/api/cashflow/intelligence/route.ts:598` `getMasterFinancialSnapshot` → `:650 calculateCashflowHealthScore`.
+- **core → reports** (1): `app/api/reports/route.ts:107` `buildReportContext` → `lib/reports/generators/index.ts:46 generatePropertyPortfolioReport(context)`.
+- **core → CFO what-if** (1): `lib/cfo/scenarios/cutSpendCategory.ts:22` `const {snapshot}=ctx` + `types.ts:15` ScenarioContext wraps `MasterFinancialSnapshot`.
+- **core → netWorthHistory** (1): `lib/services/netWorthSnapshotRecorder.ts:52` — computed net worth is recorded into `NetWorthSnapshot`.
+- **core → CGT cluster** (1): `app/api/investments/capital-gains/route.ts:103` — CGT discount applied to investment disposal events.
+
+### Result (the graph is now whole)
+- **6 disconnected domain-islands → 1 main connected component of 96/102 nodes spanning all six domains** (core 34 · tax 45 · health 6 · cfo 7 · intelligence 2 · reports 2). **core↔tax connected.**
+- **Two honest standalone findings** (NOT force-wired — no source evidence to bridge them yet, per §19):
+  1. `moneyStoryTrend` (Transaction → ribbon → tile) — a self-contained read-model; the `Transaction`
+     table is read by no other *modelled* engine. Legit standalone vertical.
+  2. `linkageHealth` (+ its law) — consumes the `/api/portfolio/snapshot` orchestrator (`insightsEngine`),
+     which isn't a graph node yet. **Follow-up:** model that second SSOT (`SnapshotV2`) to connect it.
+- This is the visualization earning its keep: it surfaced both the cross-domain gap AND two genuinely
+  un-wired read-models — exactly the kind of finding a node list never shows.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +18 verified cross-domain edges. v0.23.0 → **0.24.0**. 102 nodes / 130 edges.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema, A3 invariants, anchors, freshness)
+- [x] `vitest run tests/neomatrix/` — 118/118
+- No financial logic changed; no nodes changed — edges added (each source-verified).
+
+### §20.4 self-review (10/10)
+- Every edge traced to a real `prisma.x.findMany` / call site in source (no guessed edges) — the
+  whole point of the Neomatrix. The 2 remaining clusters left honestly un-wired with a documented
+  reason + follow-up, rather than fabricating bridges. Connectivity verified via union-find
+  (6 components → 3; main = 96 nodes, all 6 domains). **10/10.**
+
+### PR
+- Branch: `claude/neomatrix-connect-domains-jqahjw`
+- Status: Draft (to be opened)
