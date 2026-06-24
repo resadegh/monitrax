@@ -11,8 +11,26 @@
 |---|---|---|
 | **L0** — structural skeleton (bones) | Graphify AST call/import graph (code-only, **regenerable**, gitignored) | ✅ trialled — see [`N0_GRAPHIFY_TRIAL.md`](N0_GRAPHIFY_TRIAL.md) |
 | **L1** — semantic graph (the truth) | `financial-graph.json` — nodes + typed edges + formula/authority/units/lineage | ✅ **N1 proof slice** — 4 core engines + lineage, schema `schema/financial-graph.schema.md` |
-| **L2** — views (the window) | markdown generated FROM the JSON · 2D explorer · optional 3D | 🟡 2a done (`GENERATED_CORE.md`); 2D/3D = N2 |
-| **L3** — audit (the guarantee) | CI checks: `file:line` resolves · every number→engine · no bypass · freshness | 🟡 seed live in `tests/neomatrix/` (schema · A3 invariants · file:line · freshness); full gate = N3 |
+| **L2** — views (the window) | markdown generated FROM the JSON · interactive explorer | ✅ `GENERATED_CORE.md` + **N2 3D explorer SHIPPED** at `/admin/neomatrix` (admin-only — see below) |
+| **L3** — audit (the guarantee) | CI checks: `file:line` resolves · every number→engine · no bypass · freshness | ✅ live in `tests/neomatrix/` + the `vercel-build` gate; **A1 executable law-referenced audit** (27 engines, 0 suspected-issues) in `tests/neomatrix/financialAudit.test.ts` |
+
+## The Explorer (L2 — `/admin/neomatrix`)
+
+A navigable **3D** view of this graph, **admin-only** (developer/architecture tool, not a
+user feature — Reza decision 2026-06-24). Orbit / zoom / pan a force-directed constellation;
+nodes coloured by domain; **click → inspector** (formula · inputs+units · `file:line` · lineage ·
+authority · worked example · ✓ verified); left-rail domain/layer/search filters; 2D/3D toggle.
+`react-force-graph-3d` (three.js) reads `financial-graph.json` via the admin-guarded
+`/api/admin/neomatrix/graph` (metadata only — no CDR data). Full design + architecture:
+[`PHASE_53_MONITRAX_NEOMATRIX.md` §15](../../blueprint/PHASE_53_MONITRAX_NEOMATRIX.md).
+
+**Connectivity:** the six domains connect through their **shared canonical inputs** (the CFO
+score, health input, and tax position each independently read the same raw tables) — every
+edge verified to `file:line` (§19.2, no guessed edges). As of PR #1231 the graph is **one
+connected component of 104/104 nodes** (core↔tax included; the last two islands — `moneyStoryTrend`
+and `linkageHealth` — bridged through their real shared consumer / second-SSOT orchestrators,
+**nothing isolated**). See [`PHASE_53` §16](../../blueprint/PHASE_53_MONITRAX_NEOMATRIX.md). Re-run a
+union-find components pass after adding nodes/edges.
 
 ## Files here
 

@@ -385,3 +385,104 @@ Schema:
 added 2026-06-23 (Reza full-authority directive; self-reviewed 3× per Part 20),
 status: proposed/pending sign-off. Build to be executed by a dedicated session.
 Extends `0·FIN-LOGIC-INDEX`; does not change any financial logic.*
+
+---
+
+## 15. N2 — The Explorer (AS-BUILT, 2026-06-24)
+
+> The interactive Layer-2 view. Shipped, prod-verified. **Admin-only.**
+
+### 15.1 What it is + where it lives
+A navigable **3D** view of the financial-logic knowledge graph at **`/admin/neomatrix`**
+(Admin portal, beside `/admin/calc-audit`). It renders the real `financial-graph.json`
+(102 nodes / 130 edges) as a force-directed constellation: orbit / zoom / pan, nodes
+coloured by domain, **click → inspector** (kind · formula · inputs+units · `file:line`
+source · lineage in/out · authority · worked example · ✓ verified badge + date), a
+left-rail with search + domain + layer filters, and a **2D / 3D toggle**.
+
+### 15.2 Why admin-only (⚖️ strategic decision, Reza 2026-06-24)
+Neomatrix is a **developer / architecture tool** — a 3D vision of the app's engines +
+relations — **not a user feature**. It exposes internal architecture (engine names,
+`file:line`, formulas), maps to no TRAIL stage (Part 14), and would only clutter the
+user IA. So it lives behind admin auth, for Reza. The graph is **metadata only — no
+CDR/user data** (§9), so there's no data-exposure risk; admin-gating is internal-
+architecture hygiene.
+
+### 15.3 Architecture
+| Piece | File | Notes |
+|---|---|---|
+| Route (page) | `app/admin/neomatrix/page.tsx` | `'use client'` wrapped in `<AdminFeatureGate feature="adminPortalEnabled">` (same posture as calc-audit) |
+| API | `app/api/admin/neomatrix/graph/route.ts` | `isAdminPortalAccessible` → `verifyAdminGCPAuth` → `hasPermission('audit:read')`; returns the imported `financial-graph.json` (metadata only). Bundled at build → resolves on Vercel serverless without FS tracing |
+| Component | `components/admin/neomatrix/NeomatrixExplorer.tsx` | `react-force-graph-3d` (three.js) dynamically imported `ssr:false`; domain palette; inspector; filters; 2D/3D toggle drives `numDimensions`; tuned d3 forces (`link.distance(34)`, `charge.strength(-55)`) |
+| Nav | `components/admin/layout/AdminSidebar.tsx` | new "Engineering" section (Neomatrix + the previously-unlinked Calc Audit) |
+| Dependency | `react-force-graph-3d@^1.29.1` (+three.js, ~600KB) | §12.7-justified: no existing 3D engine to reuse; dynamically imported + route-scoped to admin → never on a user hot path |
+| Design reference | `.stitch/designs/neomatrix/explorer-desktop-dark.{png,html}` | Stitch pass scored 9.2/10 on the §18.8 7-lens rubric. **Admin portal is a separate design system → NOT §18.8-Stitch-gated (§18.2)**; the Stitch artefact is a visual reference, the surface uses the dark-cosmos glass vocabulary as a deliberate immersive data-viz choice |
+
+### 15.4 Design vocabulary (admin dark-cosmos)
+Deep warm-navy ground (`#050913`) + sky→indigo ambient glow; floating glass panels
+(`#0E1424/70` + `backdrop-blur-xl`, hairline borders, `rounded-[22px]`); domain palette —
+**core** sky→indigo `#0EA5E9`, **tax** violet `#8B5CF6`, **health** emerald `#22C55E`,
+**cfo** amber `#F59E0B`, **intelligence** cyan `#06B6D4`, **reports** rose `#E11D48`;
+edges tinted by their source node's domain colour + flowing directional particles; Inter,
+`tabular-nums`, tracked-uppercase eyebrows.
+
+### 15.5 PRs
+- `#1227` — N2 explorer (admin 3D) · `#1228` — edge-visibility fix (edges were rendering
+  at 0.22 alpha → now domain-coloured + particles + tighter layout) · `#1229` — cross-domain
+  connectivity (see §16).
+
+### 15.6 Backlog (optional polish)
+Bloom / post-processing on the 3D scene · TRAIL + regime filters · camera-focus-on-click ·
+mobile reflow.
+
+---
+
+## 16. Cross-domain connectivity model (AS-BUILT, 2026-06-24)
+
+> Why the domains connect the way they do — and the principle that governs new edges.
+
+### 16.1 The principle
+In the running app **no number is isolated** — every value is derived by an engine from
+canonical inputs and rendered on a surface, and the domains feed each other. So a faithful
+graph is **largely connected**. A disconnected cluster therefore means one of two things:
+(a) the **model is incomplete** (a real relationship wasn't drawn), or (b) a genuinely
+**standalone read-model / dead code** — itself a finding. Both are valuable; the graph
+surfaces them.
+
+### 16.2 How the domains actually connect — *through shared canonical inputs* (§12.2 SSOT)
+The depth audit initially drew each input → its **first** consumer only, leaving the six
+domains as islands. In reality the connective tissue is the **shared raw inputs**: the
+CFO score (`scoreCalculator.ts`), the health input (`financial-health/route.ts buildHealthInput`)
+and the tax position (`tax/route.ts`) each **independently** read the same tables
+(`prisma.income/account/loan/expense/property/investment`); intelligence consumes the master
+snapshot; reports consume the report context. Wiring those verified fan-out edges connects
+the graph.
+
+### 16.3 The non-negotiable rule for edges (§19.2)
+**Every edge is verified to source (file:line) — never guessed.** An edge is added only when
+a real `prisma.x.findMany` / call-site proves the data flows that way. If no evidence exists,
+the cluster is left **honestly disconnected** with a documented reason, rather than fabricating
+a bridge. (PR #1229 added 18 such verified edges — 6 islands → 1 main component of 96/102 nodes;
+PR #1231 then closed the **last two islands** — see §16.4 below — giving **1 connected component
+of 104/104 nodes, all six domains, nothing isolated**.)
+
+### 16.4 The last two islands — closed (PR #1231)
+After #1229 two clusters remained standalone. A complete union-find audit (Reza directive,
+2026-06-24) traced both in source and connected them via the **real** path — and, importantly,
+*rejected* a tempting false bridge:
+
+| Cluster | The false bridge avoided | The verified bridge used |
+|---|---|---|
+| `moneyStoryTrend` (Transaction → ribbon → tile) | `input.Transaction → computeActualCashflow` — **rejected**: Money Story reads the `Transaction` table (`moneyStoryTrend.ts:77`) but the actuals engine reads `UnifiedTransaction`, a **different** table | the **shared consumer** `orchestrator.dashboardInsights.GET` (`app/api/dashboard/insights/route.ts:156`) composes both the master snapshot (`:161`) and Money Story (`:173`) |
+| `linkageHealth` (+ its law) | wiring raw inputs straight to it — **rejected**: it consumes a `SnapshotV2`, not raw tables | modelled `orchestrator.portfolioSnapshot.GET` (the §12.2 second SSOT, `app/api/portfolio/snapshot/route.ts:519`), which reads the same Property/Loan/Account/Income/Expense/Investment tables (`:525-596`); wired the 6 shared inputs → it → `calculateLinkageHealth` |
+
+**Architectural finding surfaced (not auto-fixed, §19/§21):** the app has **two transaction
+tables** — `Transaction` (read only by Money Story + a data-export route) and `UnifiedTransaction`
+(the master-snapshot actuals engine + ~56 other call sites). A potential consolidation; flagged
+for Reza, no code touched.
+
+### 16.5 How to verify connectivity (union-find)
+Run a connected-components pass over `financial-graph.json` (`parent[from]=find(to)` per edge).
+As of PR #1231 the graph is **one connected component of 104/104 nodes** (0 standalone). Re-run
+this check whenever nodes/edges are added — a new island is a signal to find its real bridge (or
+document why it's honestly standalone), never to fabricate one.
