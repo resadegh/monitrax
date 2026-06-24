@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.23.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.24.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 102 · **Edges:** 112
+- **Nodes:** 102 · **Edges:** 130
 - **By kind:** orchestrator 2 · engine 44 · input-field 20 · number 8 · ui-surface 7 · law 21
 - **By status:** documented 102
-- **Edge provenance:** verified 112 *(verified > graphify > inferred)*
+- **Edge provenance:** verified 130 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -89,7 +89,7 @@
 
 | Number (semanticKey) | Engine ancestor(s) | Rendered at | Formula | Authority |
 |---|---|---|---|---|
-| **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
+| **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots), Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
 | **Money Story kept margin (displayed)** (`moneyStoryMargin`) | Money Story 12-month trend (earned vs spent) | Dashboard — Money Story hero + KPI strip | = getMoneyStoryTrend(...).{ currentMargin, marginDeltaPoints } | CLAUDE.md §0 honesty contract |
 | **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
 | **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
@@ -240,6 +240,24 @@
 | Low Income Tax Offset (config) | → | Low Income Tax Offset (LITO) — two-tier phase-out | feeds | — | verified | taxOffsets.ts:41 const { lito } = config |
 | Low Income Tax Offset (LITO) — two-tier phase-out | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | ATO Individual income tax rates — LITO (law.itaa1997.incomeTax covers brackets + LITO) |
 | Low Income Tax Offset (LITO) — two-tier phase-out | → | Apply offsets to gross tax (refundable vs non-refundable) | feeds | AUD→AUD | verified | taxOffsets.ts:443 nonRefundableOffsets includes offsets.lito |
+| Account.currentBalance | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:43 prisma.account.findMany |
+| Loan.principal | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:44 prisma.loan.findMany |
+| Income (declared) | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:45 prisma.income.findMany |
+| Expense (declared) | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:46 prisma.expense.findMany |
+| Investment units × price | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:47 prisma.investmentAccount.findMany |
+| Property.currentValue | → | CFO score (orchestrator) | feeds | — | verified | lib/cfo/scoreCalculator.ts:51 prisma.property.findMany |
+| Property.currentValue | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:61 prisma.property → :277 generateHealthReport(input) |
+| Loan.principal | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:69 prisma.loan |
+| Account.currentBalance | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:76 prisma.account |
+| Income (declared) | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:79 prisma.income |
+| Expense (declared) | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:82 prisma.expense |
+| Investment units × price | → | Financial health report (SSOT) | feeds | — | verified | app/api/financial-health/route.ts:85 prisma.investmentAccount |
+| Income (declared) | → | Income tax (marginal brackets) | feeds | AUD/year→AUD/year | verified | app/api/tax/route.ts:149 taxableIncome = assessableIncome − deductions (from income) → :257 calculateIncomeTax/Medicare |
+| Master financial snapshot | → | Cashflow health score (5-category) | feeds | — | verified | app/api/cashflow/intelligence/route.ts:598 getMasterFinancialSnapshot → :650 calculateCashflowHealthScore |
+| Property.currentValue | → | Property portfolio report | feeds | — | verified | app/api/reports/route.ts:107 buildReportContext → lib/reports/generators/index.ts:46 generatePropertyPortfolioReport(context) |
+| Master financial snapshot | → | What-if: cut a spend category | feeds | — | verified | lib/cfo/scenarios/cutSpendCategory.ts:22 const {snapshot}=ctx; types.ts:15 ScenarioContext wraps MasterFinancialSnapshot |
+| Net worth | → | NetWorthSnapshot (stored monthly) | feeds | — | verified | lib/services/netWorthSnapshotRecorder.ts:52 prisma.netWorthSnapshot.upsert records computed netWorth/totalAssets/totalLiabilities |
+| Investment units × price | → | CGT discount (Div 115 / reform Measure 2) | feeds | — | verified | app/api/investments/capital-gains/route.ts:103 CGT discount applied to investment disposal events |
 
 ---
 

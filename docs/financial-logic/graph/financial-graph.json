@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -3557,6 +3557,186 @@
       "fromUnit": "AUD",
       "toUnit": "AUD",
       "evidence": "taxOffsets.ts:443 nonRefundableOffsets includes offsets.lito",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:43 prisma.account.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:44 prisma.loan.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:45 prisma.income.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:46 prisma.expense.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:47 prisma.investmentAccount.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.scoreCalculator.calculateCFOScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scoreCalculator.ts:51 prisma.property.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:61 prisma.property → :277 generateHealthReport(input)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:69 prisma.loan",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:76 prisma.account",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:79 prisma.income",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:82 prisma.expense",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.aggregateEngine.generateHealthReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/financial-health/route.ts:85 prisma.investmentAccount",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "AUD/year",
+      "evidence": "app/api/tax/route.ts:149 taxableIncome = assessableIncome − deductions (from income) → :257 calculateIncomeTax/Medicare",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.healthScoreAggregator.calculateCashflowHealthScore",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/cashflow/intelligence/route.ts:598 getMasterFinancialSnapshot → :650 calculateCashflowHealthScore",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.propertyPortfolio.generatePropertyPortfolioReport",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/reports/route.ts:107 buildReportContext → lib/reports/generators/index.ts:46 generatePropertyPortfolioReport(context)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.cutSpendCategory.cutSpendCategoryScenario",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/cfo/scenarios/cutSpendCategory.ts:22 const {snapshot}=ctx; types.ts:15 ScenarioContext wraps MasterFinancialSnapshot",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "input.NetWorthSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/services/netWorthSnapshotRecorder.ts:52 prisma.netWorthSnapshot.upsert records computed netWorth/totalAssets/totalLiabilities",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.cgtDiscount.calculateCgtDiscount",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/investments/capital-gains/route.ts:103 CGT discount applied to investment disposal events",
       "verifiedDate": "2026-06-24"
     }
   ]
