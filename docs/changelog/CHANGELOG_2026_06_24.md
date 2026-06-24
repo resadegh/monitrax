@@ -711,3 +711,75 @@
 ### PR
 - Branch: `claude/neomatrix-docs-fulldoc-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-connect-islands (branch `claude/neomatrix-connect-islands-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — model connectivity; documentation/model only, NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — **complete connectivity audit**. Reza (live on `/admin/neomatrix`)
+  observed that the **Money Story** cluster and the **GRDCS / linkage** cluster still rendered as
+  islands after #1229. Directive: *"do another complete audit of the connections and relationships
+  and make sure nothing is missed out."*
+- **Method**: ran a union-find over the whole graph (not an assumption) → exactly **2 components left**:
+  (A) Money Story 4-node cluster, (B) linkageHealth 2-node cluster. Then traced each in source to find
+  the **real** connection — §19.2, no guessed edges.
+
+### §19.2 audit evidence (the real bridges — each verified to file:line)
+- **A — Money Story.** The *input* side is genuinely near-standalone: `getMoneyStoryTrend` reads
+  `prisma.transaction` (the **`Transaction`** model, `moneyStoryTrend.ts:77`), and **no other modelled
+  engine reads that table** (only a data-export route does). ⚠️ **Critically, I did NOT bridge it via the
+  actuals engine** — `computeActualCashflow` reads `prisma.unifiedTransaction` (a **different** table),
+  so `input.Transaction → computeActualCashflow` would have been a FALSE edge. The honest bridge is the
+  **shared consumer**: `app/api/dashboard/insights/route.ts:156` (GET) composes BOTH
+  `getMasterFinancialSnapshot` (:161, core) AND `getMoneyStoryTrend` (:173) into the dashboard payload.
+  Modelled that composer (`orchestrator.dashboardInsights.GET`) → Money Story joins core.
+- **B — linkageHealth / GRDCS.** `calculateLinkageHealth(snapshot: SnapshotV2)`
+  (`linkageHealthService.ts:306`) consumes a **SnapshotV2**, not raw tables — so wiring raw inputs
+  straight to it would also be a false edge. The producer is the portfolio-snapshot SSOT
+  (`app/api/portfolio/snapshot/route.ts:519`, the §12.2 GRDCS second-SSOT), which reads the same
+  Property/Loan/Account/Income/Expense/Investment tables core models (`:525-596`) and assembles
+  SnapshotV2 (`:918`), consumed at `app/api/linkage/health/route.ts:45`. Modelled that orchestrator
+  (`orchestrator.portfolioSnapshot.GET`) and wired the 6 shared canonical inputs → it → linkageHealth.
+
+### Result (the graph is now whole)
+- **2 islands → 1 connected component of 104/104 nodes**, all six domains. **Nothing is isolated.**
+- **+2 nodes** (`orchestrator.dashboardInsights.GET` core · `orchestrator.portfolioSnapshot.GET`
+  intelligence), **+9 verified edges** (2 for Money Story, 7 for linkageHealth: 6 shared-input + 1
+  producer→consumer).
+- **Architectural finding surfaced to Reza (NOT auto-fixed, §19/§21):** the app has **two transaction
+  tables** — `Transaction` (read only by Money Story + a data export) and `UnifiedTransaction` (read by
+  the master-snapshot actuals engine + ~56 other call sites). Money Story is built on a different table
+  than the rest of the app's actuals. Flagged for Reza's awareness as a potential consolidation; no code
+  touched.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 orchestrator nodes, +9 verified edges. v0.25.0 → **0.26.0**. **104 nodes / 139 edges.**
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended.
+- **Cross-PR note:** the connectivity narrative (Phase 53 §16 + README "The Explorer" section) lands in
+  the still-draft #1230 and currently reads "96/102 nodes · 2 standalone". When this PR and #1230 are
+  reconciled (whichever merges second rebases), that text is updated to "**104/104 nodes · 1 component ·
+  0 standalone**". Tracked so the docs never contradict the model.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema, A3 invariants, file:line anchors resolve, freshness)
+- [x] `vitest run tests/neomatrix/` — 118/118
+- [x] union-find: **1 component, 104/104 nodes** (was 3 components)
+- No financial logic changed; no audited numbers added — 2 documented orchestrator nodes + 9 edges (each source-verified).
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1 (draft)**: 2 orchestrator nodes + 9 bridging edges → 1 component.
+- **Pass 2 (critique)**: adversarially checked for FALSE edges — caught the `input.Transaction →
+  computeActualCashflow` trap (Transaction ≠ UnifiedTransaction) and rejected it; confirmed each of the
+  9 edges cites a real `prisma.x.findMany` / call-site at exact line; confirmed both new ids' last
+  segment (`GET`) resolves at the cited line (the file:line anchor audit passed); confirmed no node
+  duplication (reused existing input nodes).
+- **Pass 3 (refine)**: surfaced the two-transaction-tables observation to Reza rather than papering
+  over it with a convenient-but-false edge; left no padding edges (6 verified shared inputs, not all 9
+  raw reads). Every island resolved with a real connection or it wouldn't ship. **10/10.**
+
+### PR
+- Branch: `claude/neomatrix-connect-islands-jqahjw`
+- Status: Draft (to be opened)
