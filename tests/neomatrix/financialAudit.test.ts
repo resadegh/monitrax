@@ -37,6 +37,12 @@ import { generatePropertyPortfolioReport } from '@/lib/reports/generators/proper
 import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
 import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
 import { aggregateIncome } from '@/lib/calculations/incomeAggregator';
+import {
+  holdingMarketValue,
+  sumHoldingsMarketValue,
+  loanBalance,
+  sumLoanBalances,
+} from '@/lib/calculations/assetValuation';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -626,6 +632,61 @@ const CASES: AuditCase[] = [
         'annual',
       ).nonTaxableIncome,
     expected: 5000,
+  },
+
+  // ── Depth: asset valuation — canonical read-model helpers (mirror net worth) ──
+  {
+    node: 'engine.assetValuation.holdingMarketValue',
+    law: 'Holding value = units × (currentPrice || averagePrice); live price preferred (mirrors netWorthCalculator)',
+    derivation: '100 units × current price $50 = $5,000',
+    actual: () => holdingMarketValue({ units: 100, currentPrice: 50 }),
+    expected: 5000,
+  },
+  {
+    node: 'engine.assetValuation.holdingMarketValue',
+    law: 'Cost-basis fallback: no currentPrice → averagePrice',
+    derivation: '200 units × average price $25 (no current price) = $5,000',
+    actual: () => holdingMarketValue({ units: 200, averagePrice: 25 }),
+    expected: 5000,
+  },
+  {
+    node: 'engine.assetValuation.holdingMarketValue',
+    law: 'Float path (||): a 0 currentPrice is falsy and falls back to averagePrice (audit L1-5, matches the live engine)',
+    derivation: '100 units, currentPrice 0 → averagePrice $25 = $2,500',
+    actual: () => holdingMarketValue({ units: 100, currentPrice: 0, averagePrice: 25 }),
+    expected: 2500,
+  },
+  {
+    node: 'engine.assetValuation.holdingMarketValue',
+    law: 'sumHoldingsMarketValue = Σ holdingMarketValue',
+    derivation: '(100×$50) + (200×avg $25) = 5,000 + 5,000 = 10,000',
+    actual: () =>
+      sumHoldingsMarketValue([
+        { units: 100, currentPrice: 50 },
+        { units: 200, averagePrice: 25 },
+      ]),
+    expected: 10000,
+  },
+  {
+    node: 'engine.assetValuation.loanBalance',
+    law: 'Loan balance = principal (prisma schema: Loan.principal IS the current outstanding balance, not the face amount)',
+    derivation: 'principal $600,000 → balance $600,000',
+    actual: () => loanBalance({ principal: 600000 }),
+    expected: 600000,
+  },
+  {
+    node: 'engine.assetValuation.loanBalance',
+    law: 'Mapped read-model alias: currentBalance is used when principal is absent (nullish-coalesced)',
+    derivation: 'currentBalance $300,000 (no principal) → $300,000',
+    actual: () => loanBalance({ currentBalance: 300000 }),
+    expected: 300000,
+  },
+  {
+    node: 'engine.assetValuation.loanBalance',
+    law: 'sumLoanBalances = Σ loanBalance (across principal + alias shapes)',
+    derivation: 'principal $600,000 + balance $100,000 = $700,000',
+    actual: () => sumLoanBalances([{ principal: 600000 }, { balance: 100000 }]),
+    expected: 700000,
   },
 ];
 
