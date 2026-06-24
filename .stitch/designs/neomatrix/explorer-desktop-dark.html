@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .text-gradient {
+            background: linear-gradient(135deg, #0EA5E9 0%, #8B5CF6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+        body {
+            background-color: #050913;
+            overflow: hidden;
+        }
+        /* Graph Node Glow Styles */
+        .node-glow-core { filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.6)); }
+        .node-glow-tax { filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.6)); }
+        .node-glow-health { filter: drop-shadow(0 0 8px rgba(22, 163, 74, 0.6)); }
+        .node-glow-cfo { filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6)); }
+        .node-glow-intel { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.6)); }
+        .node-glow-reports { filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.6)); }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-high": "#252c24",
+                        "on-tertiary": "#660027",
+                        "on-primary-container": "#003111",
+                        "surface-container-lowest": "#09100a",
+                        "primary-container": "#1ca64d",
+                        "on-tertiary-container": "#5a0022",
+                        "on-secondary": "#003919",
+                        "outline-variant": "#3e4a3d",
+                        "outline": "#879485",
+                        "primary": "#62df7d",
+                        "background": "#050913",
+                        "surface": "#0e150f",
+                        "on-surface": "#dde5d9",
+                        "on-surface-variant": "#bdcaba",
+                        "domain-core": "#0EA5E9",
+                        "domain-tax": "#8B5CF6",
+                        "domain-health": "#16A34A",
+                        "domain-cfo": "#F59E0B",
+                        "domain-intel": "#06B6D4",
+                        "domain-reports": "#E11D48"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "22px": "22px"
+                    },
+                    fontFamily: {
+                        "mono": ["JetBrains Mono", "monospace"],
+                        "sans": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="text-on-surface font-sans">
+<!-- Graph Background Layer (Static SVG) -->
+<div class="fixed inset-0 z-0 bg-[#050913] flex items-center justify-center overflow-hidden">
+<svg class="w-full h-full max-w-[1400px] max-h-[1000px]" viewbox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg"><!-- Dense Interconnected Web (Edges) -->
+<g stroke="white" stroke-opacity="0.18" stroke-width="0.4">
+<!-- Central Core Mesh -->
+<line x1="500" x2="450" y1="500" y2="450"></line>
+<line x1="500" x2="550" y1="500" y2="450"></line>
+<line x1="500" x2="550" y1="500" y2="550"></line>
+<line x1="500" x2="450" y1="500" y2="550"></line>
+<line x1="450" x2="550" y1="450" y2="450"></line>
+<line x1="550" x2="550" y1="450" y2="550"></line>
+<line x1="550" x2="450" y1="550" y2="550"></line>
+<line x1="450" x2="450" y1="550" y2="450"></line>
+<!-- Radiating Connections (Sample of ~90) -->
+<line stroke-opacity="0.12" x1="500" x2="300" y1="500" y2="200"></line>
+<line stroke-opacity="0.12" x1="500" x2="700" y1="500" y2="200"></line>
+<line stroke-opacity="0.12" x1="500" x2="300" y1="500" y2="800"></line>
+<line stroke-opacity="0.12" x1="500" x2="700" y1="500" y2="800"></line>
+<line x1="420" x2="350" y1="380" y2="300"></line>
+<line x1="420" x2="480" y1="380" y2="320"></line>
+<line x1="580" x2="650" y1="420" y2="350"></line>
+<line x1="580" x2="700" y1="420" y2="480"></line>
+<line x1="520" x2="450" y1="610" y2="700"></line>
+<line x1="520" x2="600" y1="610" y2="680"></line>
+<line x1="400" x2="300" y1="550" y2="400"></line>
+<line x1="600" x2="800" y1="520" y2="520"></line>
+<!-- Additional webbing lines for density -->
+<path d="M300,200 L350,300 L420,380 L500,500" fill="none" stroke-opacity="0.1"></path>
+<path d="M700,200 L650,350 L580,420 L500,500" fill="none" stroke-opacity="0.1"></path>
+<path d="M300,800 L450,700 L520,610 L500,500" fill="none" stroke-opacity="0.1"></path>
+<path d="M700,800 L600,680 L520,610 L500,500" fill="none" stroke-opacity="0.1"></path>
+<!-- ... (Representing ~90 lines total in final render) -->
+</g>
+<!-- Galaxy Core Nodes -->
+<g id="node-group">
+<!-- Central Orchestrators (Large/Bright) -->
+<g class="node-glow-core">
+<circle cx="500" cy="500" fill="#0EA5E9" fill-opacity="0.9" r="24"></circle>
+<circle cx="500" cy="500" fill="white" r="8"></circle>
+</g>
+<g class="node-glow-tax">
+<circle cx="450" cy="450" fill="#8B5CF6" fill-opacity="0.9" r="20"></circle>
+<circle cx="450" cy="450" fill="white" r="6"></circle>
+</g>
+<g class="node-glow-health">
+<circle cx="550" cy="450" fill="#16A34A" fill-opacity="0.9" r="18"></circle>
+<circle cx="550" cy="450" fill="white" r="6"></circle>
+</g>
+<g class="node-glow-cfo">
+<circle cx="550" cy="550" fill="#F59E0B" fill-opacity="0.9" r="22"></circle>
+<circle cx="550" cy="550" fill="white" r="7"></circle>
+</g>
+<g class="node-glow-intel">
+<circle cx="450" cy="550" fill="#06B6D4" fill-opacity="0.9" r="19"></circle>
+<circle cx="450" cy="550" fill="white" r="6"></circle>
+</g>
+<!-- Mid-Range Nodes (Radiating) -->
+<circle class="node-glow-tax" cx="350" cy="300" fill="#8B5CF6" r="12"></circle>
+<circle class="node-glow-health" cx="650" cy="350" fill="#16A34A" r="11"></circle>
+<circle class="node-glow-cfo" cx="450" cy="700" fill="#F59E0B" r="13"></circle>
+<circle class="node-glow-intel" cx="700" cy="480" fill="#06B6D4" r="10"></circle>
+<circle class="node-glow-tax" cx="300" cy="400" fill="#8B5CF6" r="12"></circle>
+<circle class="node-glow-reports" cx="600" cy="680" fill="#E11D48" r="11"></circle>
+<!-- Peripheral Nodes (Small/Dim/Blurred) -->
+<circle cx="150" cy="150" fill="#0EA5E9" fill-opacity="0.4" filter="blur(1px)" r="6"></circle>
+<circle cx="850" cy="150" fill="#16A34A" fill-opacity="0.3" filter="blur(2px)" r="5"></circle>
+<circle cx="150" cy="850" fill="#F59E0B" fill-opacity="0.4" filter="blur(1px)" r="7"></circle>
+<circle cx="850" cy="850" fill="#0EA5E9" fill-opacity="0.3" filter="blur(2px)" r="6"></circle>
+<circle cx="300" cy="200" fill="#8B5CF6" fill-opacity="0.5" r="8"></circle>
+<circle cx="700" cy="200" fill="#06B6D4" fill-opacity="0.5" r="7"></circle>
+<circle cx="300" cy="800" fill="#E11D48" fill-opacity="0.5" r="9"></circle>
+<circle cx="700" cy="800" fill="#16A34A" fill-opacity="0.5" r="8"></circle>
+<!-- ... (Representing ~55 nodes total in final render) -->
+</g></svg>
+</div>
+<!-- Side Navigation -->
+<nav class="fixed inset-y-0 left-0 flex flex-col z-40 w-64 bg-surface border-r border-outline-variant bg-opacity-95 backdrop-blur-md">
+<div class="p-6">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[20px]">account_balance</span>
+</div>
+<div>
+<h1 class="font-bold text-lg text-on-surface">Monitrax</h1>
+<p class="text-[10px] uppercase tracking-widest text-on-surface-variant opacity-60">Wealth OS</p>
+</div>
+</div>
+</div>
+<div class="flex-1 px-4 space-y-1 mt-4">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-white/5 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="text-sm">Home</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium px-4 rounded-xl border-l-2 border-primary" href="#">
+<span class="material-symbols-outlined mr-3">map</span>
+<span class="text-sm">My Guide</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-white/5 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="text-sm">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-white/5 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="text-sm">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-white/5 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="text-sm">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-white/5 transition-colors rounded-xl" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="text-sm">Reports</span>
+</a>
+</div>
+<div class="p-6 border-t border-outline-variant/30">
+<button class="w-full py-3 bg-primary text-on-primary rounded-xl font-medium hover:opacity-90 transition-all">
+            Update Plan
+        </button>
+</div>
+</nav>
+<!-- UI Overlay Layer -->
+<div class="relative z-10 ml-64 min-h-screen flex flex-col p-8 pointer-events-none">
+<!-- Top Bar -->
+<header class="flex justify-between items-center pointer-events-auto">
+<div class="flex items-center gap-6">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-white flex items-center gap-2">
+                    Neomatrix <span class="text-gradient">3D</span>
+</h2>
+<p class="text-[10px] uppercase tracking-[0.2em] text-on-surface-variant font-medium opacity-70">Financial-logic knowledge graph</p>
+</div>
+<div class="h-8 w-[1px] bg-white/10 mx-2"></div>
+<div class="flex gap-3">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-core"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">Core</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-tax"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">Tax</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-health"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">Health</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-cfo"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">CFO</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-intel"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">Intelligence</span>
+</div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
+<span class="w-2 h-2 rounded-full bg-domain-reports"></span>
+<span class="text-[9px] font-bold tracking-wider uppercase">Reports</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="glass p-1 rounded-full flex">
+<button class="px-5 py-1.5 text-[10px] font-bold tracking-widest uppercase text-on-surface-variant">2D</button>
+<button class="px-5 py-1.5 text-[10px] font-bold tracking-widest uppercase bg-white/10 text-white rounded-full shadow-sm">3D</button>
+</div>
+<button class="w-10 h-10 glass rounded-full flex items-center justify-center hover:bg-white/10 transition-colors">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+</header>
+<!-- Main Workspace Area -->
+<main class="flex-1 flex gap-8 mt-8">
+<!-- Left Rail Panel -->
+<aside class="w-80 flex flex-col gap-6 pointer-events-auto">
+<div class="glass rounded-22px p-6 flex-1 flex flex-col shadow-2xl">
+<div class="relative mb-6">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+<input class="w-full bg-black/40 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-white/20" placeholder="Search nodes..." type="text"/>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar space-y-8 pr-2">
+<div>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-4 uppercase">Domain</h4>
+<div class="space-y-3">
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-core"></div>
+<span class="text-sm text-on-surface-variant group-hover:text-white transition-colors">Core</span>
+</div>
+<span class="text-[10px] font-mono text-white/20">42</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-tax"></div>
+<span class="text-sm text-white font-medium">Tax</span>
+</div>
+<span class="text-[10px] font-mono text-domain-tax/80">28</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-health"></div>
+<span class="text-sm text-on-surface-variant group-hover:text-white transition-colors">Health</span>
+</div>
+<span class="text-[10px] font-mono text-white/20">12</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-cfo"></div>
+<span class="text-sm text-on-surface-variant group-hover:text-white transition-colors">CFO</span>
+</div>
+<span class="text-[10px] font-mono text-white/20">15</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-intel"></div>
+<span class="text-sm text-on-surface-variant group-hover:text-white transition-colors">Intelligence</span>
+</div>
+<span class="text-[10px] font-mono text-white/20">5</span>
+</div>
+<div class="flex items-center justify-between group cursor-pointer">
+<div class="flex items-center gap-3">
+<div class="w-1.5 h-1.5 rounded-full bg-domain-reports"></div>
+<span class="text-sm text-on-surface-variant group-hover:text-white transition-colors">Reports</span>
+</div>
+<span class="text-[10px] font-mono text-white/20">9</span>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-4 uppercase">Layer</h4>
+<div class="space-y-1">
+<div class="flex items-center gap-2 p-2 rounded-lg hover:bg-white/5 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-white/40">database</span>
+<span class="text-xs">Database (v2)</span>
+</div>
+<div class="flex items-center gap-2 p-2 rounded-lg bg-white/10 cursor-pointer">
+<span class="material-symbols-outlined text-[16px] text-domain-tax">settings_input_component</span>
+<span class="text-xs text-white">Engine Runtime</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+<div class="text-[10px] font-mono text-white/40 tracking-wider [font-variant-numeric:tabular-nums]">
+<span class="text-white">102</span> NODES · <span class="text-white">112</span> EDGES
+                    </div>
+<span class="w-2 h-2 rounded-full bg-domain-health animate-pulse"></span>
+</div>
+</div>
+</aside>
+<!-- Center Visual Space (Graph is in fixed background) -->
+<div class="flex-1"></div>
+<!-- Right Detail Panel -->
+<aside class="w-96 pointer-events-auto">
+<div class="glass rounded-22px shadow-2xl overflow-hidden flex flex-col h-full border border-domain-tax/20">
+<div class="p-6 pb-4 relative">
+<div class="absolute top-6 right-6">
+<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-domain-health/10 border border-domain-health/30">
+<span class="material-symbols-outlined text-domain-health text-[14px]">check_circle</span>
+<span class="text-[9px] font-bold uppercase tracking-wider text-domain-health">Verified</span>
+</div>
+</div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-xl bg-gradient-to-br from-domain-tax to-indigo-900 flex items-center justify-center shadow-lg shadow-black/20">
+<span class="material-symbols-outlined text-white">settings_b_roll</span>
+</div>
+<div>
+<span class="text-[10px] font-bold tracking-[0.2em] text-domain-tax uppercase">Engine</span>
+<h3 class="text-xl font-bold text-white leading-tight">calculateIncomeTax</h3>
+</div>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 pt-0 space-y-8">
+<section>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-3 uppercase">Formula</h4>
+<div class="p-4 bg-black/40 rounded-xl border border-white/5 font-mono text-[11px] leading-relaxed text-blue-300">
+<span class="text-domain-tax">const</span> taxable = Math.max(<span class="text-domain-cfo">0</span>, gross - deduct);<br/>
+<span class="text-domain-tax">return</span> applyBrackets(taxable, <span class="text-domain-intel">'AU_2024'</span>);
+                        </div>
+</section>
+<section class="grid grid-cols-2 gap-4">
+<div>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-3 uppercase">Inputs</h4>
+<div class="space-y-2">
+<div class="text-[11px] font-mono text-white/70 py-1 border-b border-white/5 flex justify-between">
+<span>grossIncome</span>
+<span class="text-white/20">AUD/yr</span>
+</div>
+<div class="text-[11px] font-mono text-white/70 py-1 border-b border-white/5 flex justify-between">
+<span>deductions</span>
+<span class="text-white/20">AUD</span>
+</div>
+</div>
+</div>
+<div>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-3 uppercase">Source</h4>
+<a class="inline-flex items-center gap-2 group" href="#">
+<span class="text-[11px] font-mono text-domain-intel group-hover:underline">incomeTaxCalculator.ts:21</span>
+<span class="material-symbols-outlined text-[14px] text-white/20">open_in_new</span>
+</a>
+</div>
+</section>
+<section>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-3 uppercase">Lineage</h4>
+<div class="flex items-center gap-2">
+<div class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-on-surface-variant font-medium">User Profile</div>
+<span class="material-symbols-outlined text-[14px] text-white/20">arrow_forward</span>
+<div class="px-3 py-1.5 rounded-full bg-domain-tax/10 border border-domain-tax/20 text-[10px] text-domain-tax font-bold">Tax Node</div>
+<span class="material-symbols-outlined text-[14px] text-white/20">arrow_forward</span>
+<div class="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-on-surface-variant font-medium">CFO Dashboard</div>
+</div>
+</section>
+<section class="p-5 bg-domain-tax/5 rounded-22px border border-domain-tax/10">
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-domain-tax/60 mb-4 uppercase">Worked Example</h4>
+<div class="flex items-end justify-between [font-variant-numeric:tabular-nums]">
+<div>
+<div class="text-xs text-white/40 mb-1">Gross Input</div>
+<div class="text-xl font-mono font-bold text-white">$100,000</div>
+</div>
+<span class="material-symbols-outlined text-domain-tax/40 mb-1">trending_flat</span>
+<div class="text-right">
+<div class="text-xs text-domain-tax/60 mb-1">Tax Payable</div>
+<div class="text-xl font-mono font-bold text-domain-tax">$20,788</div>
+</div>
+</div>
+</section>
+<section>
+<h4 class="text-[10px] font-bold tracking-[0.2em] text-white/40 mb-3 uppercase">Authority</h4>
+<div class="space-y-1">
+<div class="text-xs font-semibold text-white">ITAA 1997 — Income Tax Assessment Act</div>
+<div class="text-[10px] text-white/40">ATO Individual income tax rates · FY24-25</div>
+</div>
+</section>
+</div>
+<div class="p-6 mt-auto grid grid-cols-2 gap-3 bg-black/20 border-t border-white/5">
+<button class="flex items-center justify-center gap-2 py-3 glass rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+<span class="material-symbols-outlined text-[18px]">history</span> History
+                    </button>
+<button class="flex items-center justify-center gap-2 py-3 bg-domain-tax text-white rounded-xl text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-all active:scale-95 shadow-lg shadow-domain-tax/20">
+<span class="material-symbols-outlined text-[18px]">terminal</span> Run Test
+                    </button>
+</div>
+</div>
+</aside>
+</main>
+<footer class="mt-auto pointer-events-auto">
+<div class="flex items-center gap-4 text-[10px] font-mono text-white/20 tracking-widest uppercase">
+<span>Production v4.12.0</span>
+<span>•</span>
+<span>Region: AWS-Sydney-1</span>
+<span>•</span>
+<span class="text-domain-health/60">Cluster Health: Optimal</span>
+</div>
+</footer>
+</div>
+<!-- Floating Atmosphere Elements -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none overflow-hidden opacity-30 z-[1]">
+<div class="absolute top-[20%] left-[30%] w-96 h-96 bg-domain-tax/10 blur-[120px] rounded-full"></div>
+<div class="absolute bottom-[10%] right-[20%] w-[500px] h-[500px] bg-domain-core/10 blur-[150px] rounded-full"></div>
+</div>
+</body></html>

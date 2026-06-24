@@ -13,11 +13,29 @@
 
 ---
 
-## 0. As-built status (live — updated 2026-06-23)
+## 0. As-built status (live — updated 2026-06-24)
 
 > The §1–§14 below are the original design. This section is the **as-built
 > truth** — what is shipped, where it lives, and what's next. Granular detail
 > lives in the artefacts linked here; this is the index.
+
+> **N2 EXPLORER SHIPPED — ADMIN-ONLY (2026-06-24).** ⚖️ Strategic decision
+> (Reza): Neomatrix is a developer/architecture tool — a 3D vision of the app's
+> engines + relations — **not a user feature**. It therefore lives in the
+> **Admin portal** at `/admin/neomatrix` (admin-only, beside `/admin/calc-audit`),
+> never in the user dashboard. The original N2 design said "2D explorer, 3D later
+> (N5)"; with the value layer (102 verified nodes + audit) already done, N2/N5
+> merged into one navigable **3D** explorer: `react-force-graph-3d` (three.js,
+> dynamically-imported `ssr:false`, route-scoped — §12.7) renders the real graph
+> with orbit/zoom/pan, domain-coloured nodes, click→inspector (formula · inputs ·
+> file:line · lineage · authority · worked-example · ✓verified), left-rail
+> domain/layer/search filters, and a 2D/3D toggle (`numDimensions`). Admin API
+> `/api/admin/neomatrix/graph` (calc-audit guard posture; **metadata only — no CDR
+> data**, §9). Per §18.2 the admin portal is a separate design system (not §18.8
+> Stitch-gated); the Stitch design pass (9.2/10 language) is committed as the
+> visual reference under `.stitch/designs/neomatrix/`. Files: `app/admin/neomatrix/`,
+> `app/api/admin/neomatrix/graph/`, `components/admin/neomatrix/NeomatrixExplorer.tsx`,
+> sidebar "Engineering" section.
 
 ### What's shipped (merged to `main`)
 
