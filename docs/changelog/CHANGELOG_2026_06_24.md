@@ -64,3 +64,65 @@
 ### PR
 - Branch: `claude/neomatrix-depth-income-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-assetval (branch `claude/neomatrix-depth-assetval-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, core domain. Modelled + A1-audited the
+  canonical asset-valuation read-model helpers `holdingMarketValue` + `loanBalance`
+  (`lib/calculations/assetValuation.ts`, the §12.2 read-model SSOT).
+- **Description**: Continuing the depth pass after the income slice (PR #1218, merged +
+  prod-verified). These two helpers are the single source every read-model (Wealth-Universe,
+  report context, AI advisor) imports so it agrees with the dashboard/master snapshot. They
+  deliberately mirror the already-A1-audited `netWorthCalculator` basis — so auditing them
+  locks the read-model side to the same canonical formula. No suspected-issue found.
+  (`netWorthHistory` deliberately deferred to its own slice — it is DB-bound/async and
+  warrants a dedicated prisma-mock harness rather than a half-audit.)
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: holding `units` is a count, `currentPrice`/`averagePrice` are AUD/unit;
+  `loan.principal` is AUD and (per prisma schema) **IS** the current outstanding balance, not
+  the original face amount. Verified at `assetValuation.ts:44, :71`.
+- **Law / formula**: mirrors `netWorthCalculator` (already A1-audited) —
+  asset value = `units × (currentPrice || averagePrice)` (Float `||`: a 0 currentPrice is
+  falsy → falls back to averagePrice, audit L1-5); loan balance = `principal ?? currentBalance ?? balance`.
+- **Worked examples** (all ✅ verified by running the engine):
+  - 100u × $50 → **$5,000**; 200u × avg $25 (no current) → **$5,000** (cost-basis fallback)
+  - 100u, currentPrice 0 → averagePrice $25 → **$2,500** (Float `||` edge, L1-5)
+  - sum [(100×$50),(200×avg$25)] → **$10,000**
+  - principal $600,000 → **$600,000**; currentBalance $300,000 → **$300,000**
+  - sum [$600k principal, $100k balance] → **$700,000**
+- **Verify**: 77/77 Neomatrix tests pass (was 70; +7 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 nodes
+  (`engine.assetValuation.holdingMarketValue`, `engine.assetValuation.loanBalance`),
+  +4 edges (Investment/Loan inputs feed them; each `depends-on` netWorthCalculator as the
+  mirrored basis). version 0.16.0 → **0.17.0**. 91 nodes / 100 edges.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +4 imports, +7 A1 asset-valuation cases.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (19 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes (schema, A3 invariants, file:line anchors, markdown fresh)
+- [x] `vitest run tests/neomatrix/` — 77/77 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: 2 nodes + 7 cases. **Pass 2 (critique)**: confirmed every expected is hand-derived
+  from the canonical net-worth basis + prisma schema (not read off the engine); confirmed the
+  `||` (holding) vs `??` (loan) distinction is captured per-node; confirmed the L1-5 zero-price
+  edge is documented honestly. **Pass 3 (refine)**: tightened node formulas to spell out the
+  falsy-vs-nullish semantics. No engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **19 engines A1-audited** across all 6 domains. Graph v0.17.0 — 91 nodes / 100 edges, all `verified`.
+- **Next**: `netWorthHistory` (dedicated prisma-mock slice), remaining core (entityBreakdown,
+  moneyStoryTrend), more tax divisions, then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-assetval-jqahjw`
+- Status: Draft (to be opened)

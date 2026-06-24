@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.16.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.17.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 89 · **Edges:** 96
-- **By kind:** orchestrator 2 · engine 37 · input-field 18 · law 21 · number 6 · ui-surface 5
-- **By status:** documented 89
-- **Edge provenance:** verified 96 *(verified > graphify > inferred)*
+- **Nodes:** 91 · **Edges:** 100
+- **By kind:** orchestrator 2 · engine 39 · input-field 18 · law 21 · number 6 · ui-surface 5
+- **By status:** documented 91
+- **Edge provenance:** verified 100 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -19,6 +19,8 @@
 |---|---|---|---|---|---|---|---|
 | **Master financial snapshot** | `lib/services/masterFinancialService.ts:1704` | service | core | The single financial snapshot: totals, expense/income breakdowns, cashflow (declared), quickMetrics (incl. actual* fields), emergency fund, health score, net worth, debt. | CLAUDE.md §6.1 / §12.2 (Master Financial Service SSOT) | docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md §2 | documented |
 | **Net worth** | `lib/calculations/netWorthCalculator.ts:217` | engine | core | netWorth + asset summary (properties/accounts/investments/super/personalAssets/total), liability summary (mortgages/personalLoans/creditCards/total), breakdown (propertyEquity/liquidAssets/investmentAssets). | Accounting identity: net worth = total assets − total liabilities. | tests/calculations/netWorthCalculator.decimal.test.ts + tests/neomatrix/financialAudit.test.ts (A1 law-referenced executable audit) | documented |
+| **Holding market value (canonical helper)** | `lib/calculations/assetValuation.ts:44` | engine | core | Market value of one investment holding = units × (currentPrice \|\| averagePrice). The §12.2 read-model SSOT mirroring netWorthCalculator. | lib/calculations/netWorthCalculator.ts calculateTotalAssets (Float path) — value = units × (currentPrice\|\|averagePrice) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/assetValuation.ts:44 | documented |
+| **Loan current balance (canonical helper)** | `lib/calculations/assetValuation.ts:71` | engine | core | Current outstanding loan balance = principal ?? currentBalance ?? balance. The §12.2 read-model SSOT mirroring netWorthCalculator. | lib/calculations/netWorthCalculator.ts calculateTotalLiabilities — Number(loan.principal\|\|0); prisma schema: Loan.principal = current balance | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/assetValuation.ts:71 | documented |
 | **Declared cashflow** | `lib/calculations/cashflowOrchestrator.ts:302` | engine | core | CashflowResult — monthly/annual gross+net income, PAYG, expenses, loan repayments, cashflow (surplus), ratios (savingsRate/expenseRatio/debtServiceRatio), essential/discretionary split. DECLARED basis (records × frequency), NOT actual bank spend. | CLAUDE.md §19.1 (declared = the 'plan' side; fallback only when no transactions) | tests/calculations/aggregators.decimal.test.ts | documented |
 | **Actual cashflow** | `lib/calculations/actualCashflow.ts:104` | engine | core | ActualCashflowResult — current-month outflow/inflow/net, trailing-avg monthly outflow+inflow, current-month outflow-by-category (incl. 'Uncategorised'), hasActualData. From actual UnifiedTransaction rows. | CLAUDE.md §19.1 (actuals; transfers excluded; uncategorised INCLUDED) | tests/calculations/actualCashflow.test.ts | documented |
 | **Canonical monthly cashflow** | `lib/calculations/canonicalCashflow.ts:114` | engine | core | CanonicalMonthlyCashflow { inflow, outflow, net, savingsRate, avgMonthlyOutflow, basis } where basis ∈ {actual, declared}. THE SSOT for 'money in/out/net this month'. | CLAUDE.md §19.1 (actuals-vs-declared SSOT) | tests/calculations/canonicalCashflow.test.ts, tests/calculations/cashflowSurfacesUseCanonical.test.ts | documented |
@@ -62,6 +64,8 @@
 | Engine | Worked example (input → expected output) |
 |---|---|
 | **Net worth** | property 800,000 + account 20,000 + (100 units × 50) − loan 600,000 = 225,000 |
+| **Holding market value (canonical helper)** | 100u×$50=$5,000; 200u×avg$25 (no current)=$5,000; 100u, current 0→avg $25 = $2,500 |
+| **Loan current balance (canonical helper)** | principal $600,000→$600,000; currentBalance $300,000→$300,000; sum [$600k,balance $100k]=$700,000 |
 | **Declared cashflow** | net income 8,000/mo − expenses 5,000 − loans 1,000 = 2,000/mo; savingsRate = 2,000/8,000 = 25% |
 | **Actual cashflow** | Mar 10 + May 600 both populated, Apr empty → divisor 2 → avg 305 (a month with no txns is missing data, excluded from sum AND divisor) |
 | **Canonical monthly cashflow** | In 25,827 / Out 46,741 → net −20,914; savingsRate ≈ −80.98%; basis 'actual' (the real deficit the old declared hero hid as +$10,505 / 51.9%) |
@@ -73,9 +77,9 @@
 
 | Number (semanticKey) | Engine ancestor(s) | Rendered at | Formula | Authority |
 |---|---|---|---|---|
-| **Net worth (displayed)** (`netWorth`) | Net worth | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
-| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
-| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
+| **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
+| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
+| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 | **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
 | **CFO score** (`cfoScore`) | CFO score (orchestrator) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
@@ -206,6 +210,10 @@
 | Expense (declared) | → | Declared expense aggregation | feeds | — | verified | expenseAggregator.ts:94 toMonthly(expense.amount, frequency) |
 | Income (declared) | → | Declared income aggregation (gross / net / PAYG) | feeds | AUD/period→AUD/month | verified | incomeAggregator.ts:82 converter(item.amount, item.frequency) |
 | Declared income aggregation (gross / net / PAYG) | → | Master financial snapshot | feeds | — | verified | masterFinancialService.ts:1005 aggregateIncome(income.map(mapIncome), targetFrequency) |
+| Investment units × price | → | Holding market value (canonical helper) | feeds | —→AUD | verified | assetValuation.ts:45 units × (currentPrice\|\|averagePrice) |
+| Holding market value (canonical helper) | → | Net worth | depends-on | — | verified | assetValuation.ts:9-23 — helper mirrors netWorthCalculator basis; read-models share the SSOT |
+| Loan.principal | → | Loan current balance (canonical helper) | feeds | AUD→AUD | verified | assetValuation.ts:72 principal ?? currentBalance ?? balance |
+| Loan current balance (canonical helper) | → | Net worth | depends-on | — | verified | assetValuation.ts:9-23 — helper mirrors netWorthCalculator liabilities basis |
 
 ---
 

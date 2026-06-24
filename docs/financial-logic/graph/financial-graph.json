@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -83,6 +83,68 @@
       "verifiedBy": "tests/calculations/netWorthCalculator.decimal.test.ts + tests/neomatrix/financialAudit.test.ts (A1 law-referenced executable audit)",
       "workedExample": "property 800,000 + account 20,000 + (100 units × 50) − loan 600,000 = 225,000",
       "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "engine.assetValuation.holdingMarketValue",
+      "kind": "engine",
+      "label": "Holding market value (canonical helper)",
+      "file": "lib/calculations/assetValuation.ts",
+      "line": 44,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Market value of one investment holding = units × (currentPrice || averagePrice). The §12.2 read-model SSOT mirroring netWorthCalculator.",
+      "formula": "value = Number(units||0) × Number(currentPrice||averagePrice||0). Float path: 0 is falsy so a 0 currentPrice falls back to averagePrice (matches the live net-worth engine, audit L1-5).",
+      "authority": "lib/calculations/netWorthCalculator.ts calculateTotalAssets (Float path) — value = units × (currentPrice||averagePrice)",
+      "inputs": [
+        {
+          "name": "units",
+          "unit": "count",
+          "type": "number",
+          "note": "falsy→0"
+        },
+        {
+          "name": "currentPrice||averagePrice",
+          "unit": "AUD/unit",
+          "type": "number",
+          "note": "live price preferred; cost-basis fallback; 0 is falsy (||)"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/assetValuation.ts:44",
+      "workedExample": "100u×$50=$5,000; 200u×avg$25 (no current)=$5,000; 100u, current 0→avg $25 = $2,500",
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
+      "id": "engine.assetValuation.loanBalance",
+      "kind": "engine",
+      "label": "Loan current balance (canonical helper)",
+      "file": "lib/calculations/assetValuation.ts",
+      "line": 71,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Current outstanding loan balance = principal ?? currentBalance ?? balance. The §12.2 read-model SSOT mirroring netWorthCalculator.",
+      "formula": "balance = Number(principal ?? currentBalance ?? balance ?? 0). Loan.principal IS the current balance (prisma schema), not the original face amount.",
+      "authority": "lib/calculations/netWorthCalculator.ts calculateTotalLiabilities — Number(loan.principal||0); prisma schema: Loan.principal = current balance",
+      "inputs": [
+        {
+          "name": "principal",
+          "unit": "AUD",
+          "type": "number",
+          "note": "schema: IS current balance; nullish-coalesced with currentBalance/balance aliases for mapped shapes"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/assetValuation.ts:71",
+      "workedExample": "principal $600,000→$600,000; currentBalance $300,000→$300,000; sum [$600k,balance $100k]=$700,000",
+      "verifiedDate": "2026-06-24",
       "status": "documented"
     },
     {
@@ -3007,6 +3069,46 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "masterFinancialService.ts:1005 aggregateIncome(income.map(mapIncome), targetFrequency)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.assetValuation.holdingMarketValue",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": "AUD",
+      "evidence": "assetValuation.ts:45 units × (currentPrice||averagePrice)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.assetValuation.holdingMarketValue",
+      "to": "engine.netWorthCalculator.calculateNetWorth",
+      "type": "depends-on",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "assetValuation.ts:9-23 — helper mirrors netWorthCalculator basis; read-models share the SSOT",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.assetValuation.loanBalance",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "assetValuation.ts:72 principal ?? currentBalance ?? balance",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.assetValuation.loanBalance",
+      "to": "engine.netWorthCalculator.calculateNetWorth",
+      "type": "depends-on",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "assetValuation.ts:9-23 — helper mirrors netWorthCalculator liabilities basis",
       "verifiedDate": "2026-06-24"
     }
   ]
