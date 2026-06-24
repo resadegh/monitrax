@@ -630,3 +630,61 @@
 ### PR
 - Branch: `claude/neomatrix-connect-domains-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-crossstate (branch `claude/neomatrix-depth-crossstate-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, **tax domain**. A1-audited
+  `calculateCrossStateLandTax` (`lib/tax-engine/landTax/crossStateAggregator.ts`) — completes the
+  land-tax trilogy (state scale → cross-state aggregation).
+- **Description**: Locks the two grouping rules: (1) **within-state aggregation** — a single owner's
+  parcels in one state are summed against that state's threshold (NSW Land Tax Mgmt Act 1956 Pt 4);
+  (2) **across-state independence** — each state assesses separately (no federal aggregation). The
+  headline lock is grouping MATERIALITY: two sub-threshold NSW parcels that, summed, exceed the
+  threshold become taxable. No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: `properties[]` = {state, taxableLandValue AUD, isResidential}; `ownershipType`/
+  `isForeignOwner` applied uniformly. Verified at `crossStateAggregator.ts:105-213`.
+- **Law / formula**: within-state — group by state, sum `taxableLandValue`, call `calculateLandTax`
+  on each state aggregate; across-state — independent; `grandTotalTax = Σ(general + trust + foreign)`;
+  `statesAssessed` = distinct states.
+- **Worked examples** (all ✅ verified by running the engine):
+  - two NSW parcels $700,000 + $500,000 → NSW aggregated **$1,200,000**
+  - NSW $1.2M → general **$2,100** (100 + 125,000 × 0.016) — **materially different** from $0+$0 if assessed per-parcel (both below the $1.075M threshold)
+  - + VIC $400,000 (→ $2,050) → grand total **$4,150** (across-state independence)
+  - **statesAssessed = 2**
+- **Verify**: 122/122 Neomatrix tests pass (was 118; +4 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — enriched the existing
+  `engine.crossStateAggregator.calculateCrossStateLandTax` node (formula, inputs, worked example,
+  audit-backed verifiedBy). version 0.24.0 → **0.25.0**. 102 nodes / 130 edges (pure audit promotion; #1229's cross-domain connectivity edges retained after rebase).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +1 import, +4 A1 cross-state cases.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (27 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 122/122 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: enriched node + 4 cases. **Pass 2 (critique)**: confirmed the grouping-materiality case
+  genuinely proves the within-state aggregation changes the answer ($2,100 vs $0); confirmed the
+  cross-state grand total is the sum of two independently-derived per-state numbers. **Pass 3 (refine)**:
+  kept the aggregatedValue + statesAssessed cases — they lock the grouping mechanics. No engine touched;
+  no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **27 engines A1-audited** across all 6 domains. Graph v0.25.0 — 102 nodes / 130 edges, all `verified`.
+- **Next decision point**: depth is now comprehensive (all core aggregators + the major ATO/state-law
+  tax engines). Surfacing to Reza: continue depth into the remaining niche/classifier engines, OR pivot
+  to N2 (the 2D explorer) per "depth first, then N2".
+
+### PR
+- Branch: `claude/neomatrix-depth-crossstate-jqahjw`
+- Status: Draft (to be opened)
