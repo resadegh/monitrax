@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.18.0",
+  "version": "0.19.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -241,6 +241,34 @@
       "astHash": null,
       "verifiedBy": "app/api/dashboard/charts/route.ts:95",
       "workedExample": null,
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
+      "id": "engine.entityBreakdown.buildEntityBreakdown",
+      "kind": "engine",
+      "label": "Per-entity position breakdown (additive view)",
+      "file": "lib/calculations/entityBreakdown.ts",
+      "line": 86,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "EntityPosition[] — per owning-entity netWorth/assets/liabilities/monthlyIncome/expenses/cashflow. ADDITIVE: only adds the byEntity view beside the flat household numbers.",
+      "formula": "Partition rows by ownerEntityId (null → __unattributed__ bucket, never dropped); per partition reuse calculateNetWorth (identical math) + Σ toMonthly(income/expenses); monthlyCashflow = monthlyIncome − monthlyExpenses. Invariant: Σ per-entity netWorth == household netWorth. Empty entities omitted; sort largest-net first, unattributed last.",
+      "authority": "Phase 47 Stage C1 additivity contract (Σ per-entity == household) + §12.2/§12.3 (reuse calculateNetWorth, never re-implement)",
+      "inputs": [
+        {
+          "name": "ownerEntityId-tagged rows",
+          "unit": "AUD",
+          "type": "mixed",
+          "note": "properties/accounts/holdings/loans/super/assets/income/expenses; null owner → unattributed bucket"
+        }
+      ],
+      "astHash": null,
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/entityBreakdown.ts:86",
+      "workedExample": "e1 (prop 800k, loan 600k) netWorth 200k, income 10k/mo − exp 3k/mo = cashflow 7k; e2 (cash 20k) netWorth 20k; Σ = 220k = household; null-owned 50k → Unattributed bucket",
       "verifiedDate": "2026-06-24",
       "status": "documented"
     },
@@ -3236,6 +3264,36 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "app/api/dashboard/charts/route.ts:95",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.entityBreakdown.buildEntityBreakdown",
+      "to": "engine.netWorthCalculator.calculateNetWorth",
+      "type": "depends-on",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "entityBreakdown.ts:134 calculateNetWorth per partition (SSOT reuse)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.entityBreakdown.buildEntityBreakdown",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "entityBreakdown.ts:118 partition by ownerEntityId",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.entityBreakdown.buildEntityBreakdown",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "entityBreakdown.ts:123 partition by ownerEntityId",
       "verifiedDate": "2026-06-24"
     }
   ]

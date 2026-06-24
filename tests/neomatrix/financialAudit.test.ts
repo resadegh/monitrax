@@ -43,6 +43,11 @@ import {
   loanBalance,
   sumLoanBalances,
 } from '@/lib/calculations/assetValuation';
+import {
+  buildEntityBreakdown,
+  UNATTRIBUTED_ENTITY_ID,
+  type EntityBreakdownInput,
+} from '@/lib/calculations/entityBreakdown';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -688,6 +693,46 @@ const CASES: AuditCase[] = [
     actual: () => sumLoanBalances([{ principal: 600000 }, { balance: 100000 }]),
     expected: 700000,
   },
+
+  // ── Depth: entity breakdown — additivity invariant + unattributed bucket ─────
+  {
+    node: 'engine.entityBreakdown.buildEntityBreakdown',
+    law: 'Per-entity net worth = calculateNetWorth on that entity\'s partition (same SSOT engine, identical math)',
+    derivation: 'e1 owns property $800,000 − loan $600,000 = net worth $200,000',
+    actual: () => ebPosition('e1').netWorth,
+    expected: 200000,
+  },
+  {
+    node: 'engine.entityBreakdown.buildEntityBreakdown',
+    law: 'Per-entity monthlyCashflow = Σ toMonthly(income) − Σ toMonthly(expenses) on that partition',
+    derivation: 'e1 income $10,000/mo − expenses $3,000/mo = $7,000/mo',
+    actual: () => ebPosition('e1').monthlyCashflow,
+    expected: 7000,
+  },
+  {
+    node: 'engine.entityBreakdown.buildEntityBreakdown',
+    law: 'Additivity invariant (Phase 47 C1): Σ per-entity net worth == household net worth',
+    derivation: 'e1 200,000 + e2 20,000 + unattributed 50,000 = 270,000 (= household (800k+50k+20k) − 600k)',
+    actual: () => buildEntityBreakdown(ebInput()).reduce((s, p) => s + p.netWorth, 0),
+    expected: 270000,
+  },
+  {
+    node: 'engine.entityBreakdown.buildEntityBreakdown',
+    law: 'Null-owner rows go to the __unattributed__ bucket — never dropped (sums must reconcile)',
+    derivation: 'a $50,000 property with ownerEntityId=null → Unattributed position net worth $50,000',
+    actual: () => ebPosition(UNATTRIBUTED_ENTITY_ID).netWorth,
+    expected: 50000,
+  },
+  {
+    node: 'engine.entityBreakdown.buildEntityBreakdown',
+    law: 'Unattributed always sorts LAST, even when its net worth exceeds another entity\'s',
+    derivation: 'order is e1 200k, e2 20k, unattributed 50k → last position is unattributed ($50,000) despite 50k > e2 20k',
+    actual: () => {
+      const ps = buildEntityBreakdown(ebInput());
+      return ps[ps.length - 1].netWorth;
+    },
+    expected: 50000,
+  },
 ];
 
 // Extract the report's computed capital-growth % (a raw number on the metric trend).
@@ -723,6 +768,31 @@ function healthInput(over: Record<string, number>): never {
 }
 function stabilityScore(input: never): number {
   return calculateCashflowHealthScore(input).breakdown.find((b) => b.category === 'Cashflow Stability')!.score;
+}
+
+// Entity-breakdown fixture: e1 (property − loan + income/expenses), e2 (cash),
+// and a null-owner property that must land in the unattributed bucket.
+function ebInput(): EntityBreakdownInput {
+  return {
+    entities: [
+      { id: 'e1', name: 'Reza', type: 'PERSONAL' },
+      { id: 'e2', name: 'Family Trust', type: 'TRUST' },
+    ],
+    properties: [
+      { currentValue: 800000, ownerEntityId: 'e1' },
+      { currentValue: 50000, ownerEntityId: null }, // → unattributed
+    ],
+    accounts: [{ currentBalance: 20000, type: 'SAVINGS', ownerEntityId: 'e2' }],
+    investmentHoldings: [],
+    loans: [{ principal: 600000, type: 'MORTGAGE', ownerEntityId: 'e1' }],
+    superannuation: [],
+    assets: [],
+    income: [{ amount: 10000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
+    expenses: [{ amount: 3000, frequency: 'MONTHLY', ownerEntityId: 'e1' }],
+  };
+}
+function ebPosition(entityId: string) {
+  return buildEntityBreakdown(ebInput()).find((p) => p.entityId === entityId)!;
 }
 
 // Minimal snapshot stub — only the fields cutSpendCategoryScenario reads.

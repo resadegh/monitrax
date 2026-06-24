@@ -187,3 +187,63 @@
 ### PR
 - Branch: `claude/neomatrix-depth-nwhistory-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-entitybreak (branch `claude/neomatrix-depth-entitybreak-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, core domain. Modelled + A1-audited
+  `buildEntityBreakdown` (`lib/calculations/entityBreakdown.ts`, Phase 47 Stage C1 —
+  the per-entity additive ownership view).
+- **Description**: Continuing the depth pass after the netWorthHistory slice (PR #1220,
+  merged + prod-verified). This engine partitions the household's rows by `ownerEntityId`
+  and computes each entity's position by **reusing** `calculateNetWorth` (already A1-audited,
+  §12.2/§12.3 — never re-implemented). The audit locks the load-bearing **additivity
+  invariant** (Σ per-entity == household) and the **unattributed-bucket reconciliation**
+  guarantee (null-owner rows are never dropped; the bucket always sorts last). No
+  suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: rows carry `ownerEntityId` (NOT NULL for core types since Phase 41a;
+  null → `__unattributed__` bucket). Values AUD; income/expenses `frequency`-scaled. Verified
+  at `entityBreakdown.ts:86, :118-127, :134, :149-156`.
+- **Law / formula**: Phase 47 C1 additivity contract — `Σ per-entity netWorth == household netWorth`;
+  per partition `calculateNetWorth` (identical SSOT math) + `monthlyCashflow = Σ toMonthly(income) − Σ toMonthly(expenses)`;
+  null owner → unattributed (never dropped); sort largest-net first, unattributed last.
+- **Worked examples** (all ✅ verified by running the engine):
+  - e1 (property $800k − loan $600k) → net worth **$200,000**; income $10k/mo − exp $3k/mo → cashflow **$7,000/mo**
+  - Σ per-entity (e1 200k + e2 20k + unattributed 50k) = **$270,000** (= household (800+50+20)k − 600k) — additivity holds
+  - $50k property with `ownerEntityId=null` → Unattributed bucket net worth **$50,000** (never dropped)
+  - Unattributed sorts **last** ($50,000) even though 50k > e2's 20k
+- **Verify**: 89/89 Neomatrix tests pass (was 84; +5 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +1 node
+  (`engine.entityBreakdown.buildEntityBreakdown`), +3 edges (depends-on `calculateNetWorth`
+  as the reused SSOT; Property/Loan inputs feed the partition). version 0.18.0 → **0.19.0**.
+  96 nodes / 106 edges.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +1 import, +5 A1 cases, +2 fixture helpers.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (21 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 89/89 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: node + 5 cases. **Pass 2 (critique)**: confirmed the additivity Σ is hand-derived
+  to equal the household identity (not read off the engine); confirmed the unattributed-last case
+  genuinely exercises the sort comparator's special-case (50k > 20k yet last). **Pass 3 (refine)**:
+  kept the null-owner + unattributed-last cases — they lock the reconciliation guarantee that
+  makes the additive view trustworthy. No engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **21 engines A1-audited** across all 6 domains. Graph v0.19.0 — 96 nodes / 106 edges, all `verified`.
+- **Next**: `moneyStoryTrend` (remaining core), more tax divisions, then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-entitybreak-jqahjw`
+- Status: Draft (to be opened)
