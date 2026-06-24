@@ -34,6 +34,8 @@ import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
 import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
 import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/healthScoreAggregator';
 import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
+import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
+import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -493,6 +495,65 @@ const CASES: AuditCase[] = [
     actual: () =>
       propertyGrowthPct([{ currentValue: 600000, equity: 200000, purchasePrice: 500000, lvr: 60 }]),
     expected: 20,
+  },
+
+  // ── Depth: loan interest — the §19.2 "100× bug" class (rate is a DECIMAL) ─────
+  {
+    node: 'engine.loanAggregator.aggregateLoanRepayments',
+    law: 'Monthly interest = principal × (annual rate / 12); interestRateAnnual is a DECIMAL (0.0625 = 6.25%, NOT 6.25)',
+    derivation: '500,000 × (0.0625 / 12) = 2,604.17/mo (a 100× bug would give 260,417)',
+    actual: () =>
+      aggregateLoanRepayments(
+        [{ principal: 500000, interestRateAnnual: 0.0625, minRepayment: 0, repaymentFrequency: 'MONTHLY' }] as never,
+        'monthly',
+      ).totalInterest,
+    expected: 2604.17,
+  },
+  {
+    node: 'engine.loanAggregator.aggregateLoanRepayments',
+    law: 'Annual interest = principal × annual rate',
+    derivation: '500,000 × 0.0625 = 31,250/yr',
+    actual: () =>
+      aggregateLoanRepayments(
+        [{ principal: 500000, interestRateAnnual: 0.0625, minRepayment: 0, repaymentFrequency: 'MONTHLY' }] as never,
+        'annual',
+      ).totalInterest,
+    expected: 31250,
+  },
+  {
+    node: 'engine.loanAggregator.aggregateLoanRepayments',
+    law: 'Weighted interest rate = Σ(principal × rate) / Σ principal',
+    derivation: 'single loan @ 0.0625 → 0.0625',
+    actual: () =>
+      aggregateLoanRepayments(
+        [{ principal: 500000, interestRateAnnual: 0.0625, minRepayment: 0, repaymentFrequency: 'MONTHLY' }] as never,
+        'monthly',
+      ).weightedInterestRate,
+    expected: 0.0625,
+  },
+
+  // ── Depth: expense aggregation — toMonthly frequency conversion ──────────────
+  {
+    node: 'engine.expenseAggregator.aggregateExpenses',
+    law: 'Monthly total = Σ toMonthly(amount, frequency); ANNUAL → /12',
+    derivation: '$1,200 ANNUAL → $100/mo',
+    actual: () =>
+      aggregateExpenses([{ amount: 1200, frequency: 'ANNUAL', isEssential: true }] as never, 'monthly').total,
+    expected: 100,
+  },
+  {
+    node: 'engine.expenseAggregator.aggregateExpenses',
+    law: 'Monthly total sums across frequencies',
+    derivation: '$500 MONTHLY + $1,200 ANNUAL ($100/mo) = $600/mo',
+    actual: () =>
+      aggregateExpenses(
+        [
+          { amount: 500, frequency: 'MONTHLY', isEssential: true },
+          { amount: 1200, frequency: 'ANNUAL', isEssential: false },
+        ] as never,
+        'monthly',
+      ).total,
+    expected: 600,
   },
 ];
 
