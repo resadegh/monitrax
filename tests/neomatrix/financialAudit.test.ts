@@ -36,6 +36,7 @@ import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/health
 import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
 import { aggregateLoanRepayments } from '@/lib/calculations/loanAggregator';
 import { aggregateExpenses } from '@/lib/calculations/expenseAggregator';
+import { aggregateIncome } from '@/lib/calculations/incomeAggregator';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -554,6 +555,77 @@ const CASES: AuditCase[] = [
         'monthly',
       ).total,
     expected: 600,
+  },
+
+  // ── Depth: income aggregation — gross/net/PAYG, salary GROSS vs NET, taxable split ─
+  {
+    node: 'engine.incomeAggregator.aggregateIncome',
+    law: 'grossTotal = Σ getGrossAmount; SALARY GROSS uses amount×freq, non-salary uses amount×freq; toMonthly(ANNUAL)=/12',
+    derivation: 'SALARY GROSS $120,000 ANNUAL ($10,000/mo) + rental $2,000 MONTHLY = $12,000/mo',
+    actual: () =>
+      aggregateIncome(
+        [
+          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ] as never,
+        'monthly',
+      ).grossTotal,
+    expected: 12000,
+  },
+  {
+    node: 'engine.incomeAggregator.aggregateIncome',
+    law: 'paygWithholding is an ALREADY-ANNUAL figure (asymmetric with amount); monthly target divides by 12; only SALARY type',
+    derivation: 'PAYG $30,000 (annual) → $30,000 / 12 = $2,500/mo; rental contributes $0 (not SALARY)',
+    actual: () =>
+      aggregateIncome(
+        [
+          { type: 'SALARY', salaryType: 'GROSS', amount: 120000, frequency: 'ANNUAL', paygWithholding: 30000 },
+          { type: 'RENTAL', amount: 2000, frequency: 'MONTHLY' },
+        ] as never,
+        'monthly',
+      ).paygWithholding,
+    expected: 2500,
+  },
+  {
+    node: 'engine.incomeAggregator.aggregateIncome',
+    law: 'SALARY salaryType=NET with grossAmount set: grossAmount is ALREADY-ANNUAL (used directly for an annual target, not amount×freq)',
+    derivation: 'NET salary, grossAmount $100,000, annual target → grossTotal $100,000 (not the $78,000 net amount)',
+    actual: () =>
+      aggregateIncome(
+        [
+          { type: 'SALARY', salaryType: 'NET', amount: 78000, grossAmount: 100000, frequency: 'ANNUAL' },
+        ] as never,
+        'annual',
+      ).grossTotal,
+    expected: 100000,
+  },
+  {
+    node: 'engine.incomeAggregator.aggregateIncome',
+    law: 'taxableIncome accumulates gross when isTaxable !== false',
+    derivation: 'taxable SALARY gross $100,000 ANNUAL + non-taxable gift $5,000 → taxableIncome $100,000',
+    actual: () =>
+      aggregateIncome(
+        [
+          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
+          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
+        ] as never,
+        'annual',
+      ).taxableIncome,
+    expected: 100000,
+  },
+  {
+    node: 'engine.incomeAggregator.aggregateIncome',
+    law: 'nonTaxableIncome accumulates gross when isTaxable === false (never dropped — §19.1)',
+    derivation: 'non-taxable gift $5,000 ANNUAL → nonTaxableIncome $5,000',
+    actual: () =>
+      aggregateIncome(
+        [
+          { type: 'SALARY', salaryType: 'GROSS', amount: 100000, frequency: 'ANNUAL' },
+          { type: 'GIFT', amount: 5000, frequency: 'ANNUAL', isTaxable: false },
+        ] as never,
+        'annual',
+      ).nonTaxableIncome,
+    expected: 5000,
   },
 ];
 
