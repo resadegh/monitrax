@@ -93,6 +93,8 @@ export function NeomatrixExplorer() {
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set([...LAYERS, 'other']));
 
   const wrapRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const fgRef = useRef<any>(null);
   const [size, setSize] = useState({ w: 800, h: 600 });
 
   // ── Load the graph (admin API) ─────────────────────────────────────────────
@@ -127,6 +129,20 @@ export function NeomatrixExplorer() {
     return () => ro.disconnect();
   }, []);
 
+  // ── Tighten the layout so connected nodes cluster (edges become legible) ────
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg || !graph) return;
+    try {
+      // Shorter links pull related nodes together; mild repulsion keeps spacing.
+      fg.d3Force('link')?.distance(34);
+      fg.d3Force('charge')?.strength(-55);
+      fg.d3ReheatSimulation?.();
+    } catch {
+      /* ref/forces unavailable — layout falls back to defaults */
+    }
+  }, [graph]);
+
   // ── Degree map (node size by connection count) ─────────────────────────────
   const degree = useMemo(() => {
     const d = new Map<string, number>();
@@ -142,6 +158,22 @@ export function NeomatrixExplorer() {
     graph?.nodes.forEach((n) => m.set(n.id, n));
     return m;
   }, [graph]);
+
+  // id → domain colour, for tinting edges + particles by their source node.
+  const colorById = useMemo(() => {
+    const m = new Map<string, string>();
+    graph?.nodes.forEach((n) => m.set(n.id, nodeColor(n)));
+    return m;
+  }, [graph]);
+
+  // A link's source can be a string id (pre-simulation) or a node object (post).
+  const linkSourceColor = useCallback(
+    (l: { source: string | { id?: string } }) => {
+      const id = typeof l.source === 'object' ? l.source?.id : l.source;
+      return (id && colorById.get(id)) || NEUTRAL;
+    },
+    [colorById],
+  );
 
   // ── Filtered graph passed to the canvas ────────────────────────────────────
   const filtered = useMemo(() => {
@@ -206,6 +238,7 @@ export function NeomatrixExplorer() {
       {/* ── 3D / 2D canvas ─────────────────────────────────────────────────── */}
       {graph && !error && (
         <ForceGraph3D
+          ref={fgRef}
           graphData={filtered}
           width={size.w}
           height={size.h}
@@ -219,9 +252,15 @@ export function NeomatrixExplorer() {
           }}
           nodeOpacity={0.92}
           nodeResolution={16}
-          linkColor={() => 'rgba(148,163,184,0.22)'}
-          linkWidth={0.4}
-          linkDirectionalParticles={0}
+          // Edges: tinted by their source node's domain, clearly visible, with
+          // flowing directional particles so relationships read as "alive".
+          linkColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
+          linkOpacity={0.45}
+          linkWidth={0.6}
+          linkDirectionalParticles={2}
+          linkDirectionalParticleWidth={1.6}
+          linkDirectionalParticleSpeed={0.006}
+          linkDirectionalParticleColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
           onNodeClick={handleNodeClick}
           enableNodeDrag={false}
           showNavInfo={false}

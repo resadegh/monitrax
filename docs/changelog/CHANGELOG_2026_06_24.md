@@ -540,3 +540,36 @@
 ### PR
 - Branch: `claude/neomatrix-n2-admin-explorer-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-edges-visible (branch `claude/neomatrix-edges-visible-jqahjw`)
+
+### Changes Made
+- **Type**: Fix (Neomatrix N2 explorer — UI visibility; admin surface)
+- **Scope**: `components/admin/neomatrix/NeomatrixExplorer.tsx`. The 3D graph rendered nodes
+  but the **edges were effectively invisible** (Reza, live on `/admin/neomatrix`).
+- **Root cause**: link styling was far too faint — `linkColor` at 0.22 alpha + `linkWidth` 0.4
+  on the dark ground, with the force layout spread wide → the 112 edges rendered but couldn't be
+  seen. (The data was always correct — the filter rail showed "112 edges".)
+- **Fix**:
+  - Edges now **tinted by their source node's domain colour** (resolves source whether it's a
+    string id pre-simulation or a node object post-simulation), at `linkOpacity` 0.45, `linkWidth` 0.6.
+  - Added **flowing directional particles** (`linkDirectionalParticles={2}`, domain-coloured) so
+    relationships read as "alive".
+  - **Tighter layout** via `d3Force('link').distance(34)` + `charge.strength(-55)` (guarded by a
+    try/catch + optional chaining in case the ref doesn't forward) so connected nodes cluster and
+    edges become legible.
+
+### Files Modified
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — link styling + particles + force tuning +
+  `colorById`/`linkSourceColor` helpers + graph ref.
+
+### Build Status
+- [x] `npx tsc --noEmit` — clean (exit 0, 0 errors)
+- [x] `npx eslint` — clean
+- No financial logic, no graph data, no API change — viewer styling only.
+
+### PR
+- Branch: `claude/neomatrix-edges-visible-jqahjw`
+- Status: Draft (to be opened)
