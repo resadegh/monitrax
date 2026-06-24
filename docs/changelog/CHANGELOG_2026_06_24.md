@@ -126,3 +126,64 @@
 ### PR
 - Branch: `claude/neomatrix-depth-assetval-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-nwhistory (branch `claude/neomatrix-depth-nwhistory-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, core domain. Modelled + A1-audited
+  `getNetWorthHistory` (`lib/calculations/netWorthHistory.ts`, the §12.2 single
+  canonical reader of `NetWorthSnapshot`).
+- **Description**: First DB-bound engine audited via a **prisma-mock boundary** — the
+  pattern future DB-reading engines will reuse. We mock ONLY `prisma.netWorthSnapshot.findMany`
+  (the input source) and run the REAL engine over law-derived fixtures, so the delta math +
+  honesty gate we assert is the engine's own code (an audit, not a re-implementation). Full
+  lineage modelled: `NetWorthSnapshot` (stored) → `getNetWorthHistory` → trend-delta number →
+  the editorial Net Worth Trend tile. No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: stored rows are literal `NetWorthSnapshot` rows (`snapshotDate` Date,
+  `netWorth`/`totalAssets`/`totalLiabilities` Float AUD), oldest→newest. Verified at
+  `netWorthHistory.ts:47, :56, :83-89`; schema `prisma/schema.prisma:3426`.
+- **Law / formula**: CLAUDE.md §0 financial-adviser honesty contract (never invent data —
+  <2 rows ⇒ empty trend) + `deltaAbsolute = last − first`;
+  `deltaPct = first≠0 ? round((Δ/|first|)×1000)/10 : 0` (one-decimal %, **absolute** baseline, no divide-by-zero).
+- **Worked examples** (all ✅ verified by running the engine with mocked DB rows):
+  - [100k, 120k] → ΔAbs **+20,000**, Δ% **+20.0**
+  - 1 row → honesty gate: `trend []`, ΔAbs **0**, Δ% **0** (never a fabricated curve)
+  - first 0 → Δ% **0**, ΔAbs still real (**5,000**) — no divide-by-zero
+  - [−10k, −5k] → ΔAbs **+5,000**, Δ% **+50.0** (uses `|first|` — a recovery reads positive)
+  - 0 rows → honesty gate
+- **Verify**: 84/84 Neomatrix tests pass (was 77; +7 in a new prisma-mocked file). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +4 nodes
+  (`input.NetWorthSnapshot`, `engine.netWorthHistory.getNetWorthHistory`,
+  `number.netWorthTrendDelta`, `ui.dashboard.netWorthTrendTile`), +3 edges (full lineage).
+  version 0.17.0 → **0.18.0**. 95 nodes / 103 edges.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/netWorthHistoryAudit.test.ts` — NEW file (prisma-mock A1 harness, 7 cases).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (20 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes (schema, A3 invariants, file:line anchors, markdown fresh)
+- [x] `vitest run tests/neomatrix/` — 84/84 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: full lineage (4 nodes / 3 edges) + 7 prisma-mocked cases. **Pass 2 (critique)**:
+  confirmed the mock touches only the DB boundary (the engine computes for real); confirmed each
+  expected is hand-derived from the §0 honesty contract + the delta definition; confirmed the
+  negative-baseline case actually exercises `Math.abs(first)`. **Pass 3 (refine)**: kept the
+  negative-baseline + first-0 cases (they lock the two real correctness properties — abs baseline,
+  no divide-by-zero). No engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **20 engines A1-audited** across all 6 domains. Graph v0.18.0 — 95 nodes / 103 edges, all `verified`.
+- **Next**: remaining core (entityBreakdown, moneyStoryTrend), more tax divisions, then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-nwhistory-jqahjw`
+- Status: Draft (to be opened)
