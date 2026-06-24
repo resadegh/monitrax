@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.13.0, reviewed 2026-06-23). 
+> Rendered from `financial-graph.json` (v0.14.0, reviewed 2026-06-23). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 83 · **Edges:** 88
-- **By kind:** orchestrator 2 · engine 33 · input-field 18 · law 19 · number 6 · ui-surface 5
-- **By status:** documented 83
-- **Edge provenance:** verified 88 *(verified > graphify > inferred)*
+- **Nodes:** 85 · **Edges:** 89
+- **By kind:** orchestrator 2 · engine 34 · input-field 18 · law 20 · number 6 · ui-surface 5
+- **By status:** documented 85
+- **Edge provenance:** verified 89 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -52,6 +52,7 @@
 | **What-if: cut a spend category** | `lib/cfo/scenarios/cutSpendCategory.ts:18` | engine | cfo | ScenarioResult — monthly cashflow + annual saving + savings-rate + emergency-months impact of cutting a category. | Monitrax what-if methodology (annual = monthly delta × 12, held constant 12 months; reduction capped at actual spend) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cfo/scenarios/cutSpendCategory.ts:18 | documented |
 | **Cashflow health score (5-category)** | `lib/cashflow-intelligence/healthScoreAggregator.ts:248` | engine | intelligence | CashflowHealthScore — overall 0-100 + per-category breakdown (liquidity/stability/forecast/budget/debt). | Monitrax cashflow-intelligence methodology (Phase 13/14) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/cashflow-intelligence/healthScoreAggregator.ts:248 | documented |
 | **GRDCS linkage health** | `lib/intelligence/linkageHealthService.ts:306` | service | intelligence | LinkageHealthResponse — completeness, orphan/missing counts, module breakdown, severity. | Monitrax GRDCS linkage-health Blueprint thresholds (§04 GRDCS) | lib/intelligence/linkageHealthService.ts:306 (read this session) | documented |
+| **Property portfolio report** | `lib/reports/generators/propertyPortfolio.ts:8` | service | reports | Report sections: portfolio metrics (total value/equity/purchase, capital growth + growth%, avg LVR, count) + tax benefits. | Standard property-portfolio metrics (report aggregation of canonical per-property values) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/reports/generators/propertyPortfolio.ts:8 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -96,6 +97,7 @@
 | **What-if annualisation rule** | annual = monthlyDelta × 12 | Monitrax CFO what-if methodology | What-if: cut a spend category |
 | **Cashflow health category weights** | overall = Σ category × weight | Monitrax cashflow-intelligence methodology | Cashflow health score (5-category) |
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
+| **Report aggregation rules** | total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n | Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values) | Property portfolio report |
 
 ## Edges (verified, with evidence)
 
@@ -189,6 +191,7 @@
 | What-if: cut a spend category | → | What-if annualisation rule | governed-by | — | verified | cutSpendCategory.ts:73 annual = realisedReduction × 12; :12 cap at currentMonthlySpend |
 | Cashflow health score (5-category) | → | Cashflow health category weights | governed-by | — | verified | healthScoreAggregator.ts:257-263 weighted sum over CATEGORY_WEIGHTS |
 | GRDCS linkage health | → | GRDCS linkage severity thresholds | governed-by | — | verified | linkageHealthService.ts:286-296 severity thresholds |
+| Property portfolio report | → | Report aggregation rules | governed-by | — | verified | propertyPortfolio.ts:17-24 Σ aggregations + growth% |
 
 ---
 

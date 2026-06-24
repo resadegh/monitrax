@@ -33,6 +33,7 @@ import { scoreToRiskBand } from '@/lib/health/types';
 import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
 import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
 import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/healthScoreAggregator';
+import { generatePropertyPortfolioReport } from '@/lib/reports/generators/propertyPortfolio';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -472,7 +473,40 @@ const CASES: AuditCase[] = [
     actual: () => stabilityScore(healthInput({ monthlyIncome: 10000, monthlyExpenses: 6000, volatilityIndex: 50 })),
     expected: 90,
   },
+
+  // ── Reports: property portfolio capital-growth % (Σ aggregation) ─────────────
+  {
+    node: 'engine.propertyPortfolio.generatePropertyPortfolioReport',
+    law: 'Capital growth % = round((Σ currentValue − Σ purchasePrice) / Σ purchasePrice × 100)',
+    derivation: 'value (600k + 400k)=1.0M − cost (500k + 300k)=800k → growth 200k; 200k/800k×100 = 25',
+    actual: () =>
+      propertyGrowthPct([
+        { currentValue: 600000, equity: 200000, purchasePrice: 500000, lvr: 60 },
+        { currentValue: 400000, equity: 150000, purchasePrice: 300000, lvr: 50 },
+      ]),
+    expected: 25,
+  },
+  {
+    node: 'engine.propertyPortfolio.generatePropertyPortfolioReport',
+    law: 'Capital growth % on a single property',
+    derivation: 'value 600k − cost 500k → growth 100k; 100k/500k×100 = 20',
+    actual: () =>
+      propertyGrowthPct([{ currentValue: 600000, equity: 200000, purchasePrice: 500000, lvr: 60 }]),
+    expected: 20,
+  },
 ];
+
+// Extract the report's computed capital-growth % (a raw number on the metric trend).
+function propertyGrowthPct(
+  props: { currentValue: number; equity: number; purchasePrice: number; lvr: number }[],
+): number {
+  const sections = generatePropertyPortfolioReport(
+    { properties: props, depreciationSchedules: [] } as never,
+    {} as never,
+  ) as Array<{ id: string; metrics?: Array<{ label: string; trend?: { value: number } }> }>;
+  const sec = sections.find((s) => s.id === 'portfolio-metrics')!;
+  return sec.metrics!.find((m) => m.label === 'Capital Growth')!.trend!.value;
+}
 
 // A complete, valid HealthScoreInput so all 5 category scorers run; we assert
 // only the Cashflow-Stability sub-score (its documented formula).

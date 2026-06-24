@@ -552,3 +552,29 @@ Stability bands + volatility penalty hand-derived from the documented formula in
 - `npm run neomatrix:check` → OK (graph v0.12.0→0.13.0; fresh).
 
 ### Next — reports (the 6th/last domain), then remaining what-if scenarios + breadth.
+
+---
+
+## Session: neomatrix-reports (model + A1 audit — reports; ALL 6 DOMAINS milestone)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, **reports domain — the 6th/last**). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+- **Milestone: all 6 Neomatrix domains now represented** (core, tax, health, cfo, intelligence, reports).
+
+### What was modelled (graph 83→85 nodes)
+- `generatePropertyPortfolioReport` (lib/reports/generators/propertyPortfolio.ts:8) + a report-aggregation law node (reports re-present canonical per-entity values; Σ totals; growth% = (value−cost)/cost×100; §12.2 SSOT — never re-derive differently).
+
+### A1 audit (2 new cases, all pass)
+- 2 properties: value (600k+400k)=1.0M − cost (500k+300k)=800k → growth 200k → **growth% 25**.
+- 1 property: value 600k − cost 500k → growth 100k → **growth% 20**.
+- **Result: no `suspected-issue`** — agrees with the Σ aggregation; locked. **14 engines now A1-audited.**
+
+### Self-review (§20.4) — **10/10**
+growth% hand-derived (Σvalue−Σcost)/Σcost×100 independent of the code; real report generator executed; tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **60/60 pass** (audit 54 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.13.0→0.14.0; fresh).
+
+### Coverage milestone — all 6 domains modelled + audited
+Next is **depth** (more engines within each domain) + N2 2D explorer + A2 drift-sentinel / A4 unit enforcement.
