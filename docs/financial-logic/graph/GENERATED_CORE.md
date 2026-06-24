@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.25.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.26.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 102 · **Edges:** 130
-- **By kind:** orchestrator 2 · engine 44 · input-field 20 · number 8 · ui-surface 7 · law 21
-- **By status:** documented 102
-- **Edge provenance:** verified 130 *(verified > graphify > inferred)*
+- **Nodes:** 104 · **Edges:** 139
+- **By kind:** orchestrator 4 · engine 44 · input-field 20 · number 8 · ui-surface 7 · law 21
+- **By status:** documented 104
+- **Edge provenance:** verified 139 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -63,6 +63,8 @@
 | **Loan/debt aggregation (interest)** | `lib/calculations/loanAggregator.ts:69` | engine | core | LoanAggregation — totalPrincipal, totalRepayments, totalInterest, weightedInterestRate, byType. The §6.2 debt SSOT. | Standard interest = principal × annual rate; CLAUDE.md §19.2 (interestRateAnnual decimal — the prior 100× bug, P0-fixed 2026-06-23) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced — locks the 100× class) + lib/calculations/loanAggregator.ts:69 | documented |
 | **Declared expense aggregation** | `lib/calculations/expenseAggregator.ts:76` | engine | core | ExpenseAggregation — total, essential, discretionary, taxDeductible, byCategory. The §6.2 expense SSOT. | CLAUDE.md §6.2 (expense SSOT) + lib/utils/frequencies.ts toMonthly | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/expenseAggregator.ts:76 | documented |
 | **Declared income aggregation (gross / net / PAYG)** | `lib/calculations/incomeAggregator.ts:143` | engine | core | IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT. | CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143 | documented |
+| **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:156` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:156,161,173 (read this session) | documented |
+| **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:519` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -259,6 +261,15 @@
 | Master financial snapshot | → | What-if: cut a spend category | feeds | — | verified | lib/cfo/scenarios/cutSpendCategory.ts:22 const {snapshot}=ctx; types.ts:15 ScenarioContext wraps MasterFinancialSnapshot |
 | Net worth | → | NetWorthSnapshot (stored monthly) | feeds | — | verified | lib/services/netWorthSnapshotRecorder.ts:52 prisma.netWorthSnapshot.upsert records computed netWorth/totalAssets/totalLiabilities |
 | Investment units × price | → | CGT discount (Div 115 / reform Measure 2) | feeds | — | verified | app/api/investments/capital-gains/route.ts:103 CGT discount applied to investment disposal events |
+| Master financial snapshot | → | Dashboard insights composer | feeds | — | verified | app/api/dashboard/insights/route.ts:161 getMasterFinancialSnapshot(userId) |
+| Money Story 12-month trend (earned vs spent) | → | Dashboard insights composer | feeds | — | verified | app/api/dashboard/insights/route.ts:173 getMoneyStoryTrend(userId,12) — same route composes both |
+| Property.currentValue | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:525 prisma.property.findMany |
+| Loan.principal | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:538 prisma.loan.findMany |
+| Account.currentBalance | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:546 prisma.account.findMany |
+| Income (declared) | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:552 prisma.income.findMany |
+| Expense (declared) | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:559 prisma.expense.findMany |
+| Investment units × price | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:568 prisma.investmentAccount.findMany |
+| Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | GRDCS linkage health | feeds | — | verified | app/api/linkage/health/route.ts:45 calculateLinkageHealth(snapshot) — snapshot is this route's SnapshotV2 (fetchSnapshot :33) |
 
 ---
 

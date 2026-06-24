@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.25.0",
+  "version": "0.26.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -2449,6 +2449,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-23",
       "status": "documented"
+    },
+    {
+      "id": "orchestrator.dashboardInsights.GET",
+      "kind": "orchestrator",
+      "label": "Dashboard insights composer",
+      "file": "app/api/dashboard/insights/route.ts",
+      "line": 156,
+      "layer": "route",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders.",
+      "formula": "Composition root for the dashboard: GET handler calls getMasterFinancialSnapshot(userId) (:161) and getMoneyStoryTrend(userId,12) (:173), merges into the insights response.",
+      "authority": "CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/api/dashboard/insights/route.ts:156,161,173 (read this session)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
+    },
+    {
+      "id": "orchestrator.portfolioSnapshot.GET",
+      "kind": "orchestrator",
+      "label": "Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)",
+      "file": "app/api/portfolio/snapshot/route.ts",
+      "line": 519,
+      "layer": "route",
+      "domain": "intelligence",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master.",
+      "formula": "GET handler reads the raw user tables in parallel (prisma.property/loan/account/income/expense/investmentAccount/investmentHolding/investmentTransaction/asset .findMany, :525-596), builds the relational graph + linkageHealth (:611), assembles SnapshotV2 (version '2.0', :918).",
+      "authority": "CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-24",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -3750,6 +3792,96 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "app/api/investments/capital-gains/route.ts:103 CGT discount applied to investment disposal events",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "orchestrator.dashboardInsights.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/dashboard/insights/route.ts:161 getMasterFinancialSnapshot(userId)",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "engine.moneyStoryTrend.getMoneyStoryTrend",
+      "to": "orchestrator.dashboardInsights.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/dashboard/insights/route.ts:173 getMoneyStoryTrend(userId,12) — same route composes both",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:525 prisma.property.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:538 prisma.loan.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:546 prisma.account.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:552 prisma.income.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:559 prisma.expense.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "orchestrator.portfolioSnapshot.GET",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD",
+      "toUnit": "AUD",
+      "evidence": "app/api/portfolio/snapshot/route.ts:568 prisma.investmentAccount.findMany",
+      "verifiedDate": "2026-06-24"
+    },
+    {
+      "from": "orchestrator.portfolioSnapshot.GET",
+      "to": "engine.linkageHealthService.calculateLinkageHealth",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "app/api/linkage/health/route.ts:45 calculateLinkageHealth(snapshot) — snapshot is this route's SnapshotV2 (fetchSnapshot :33)",
       "verifiedDate": "2026-06-24"
     }
   ]
