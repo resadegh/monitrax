@@ -688,3 +688,26 @@
 ### PR
 - Branch: `claude/neomatrix-depth-crossstate-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-docs-fulldoc (branch `claude/neomatrix-docs-fulldoc-jqahjw`)
+
+### Changes Made
+- **Type**: Docs (full documentation of the Neomatrix N2 explorer + connectivity design; §16 doc-sync)
+- **Scope**: Reza: "make sure this design is fully documented and all relevant documents updated."
+  Documented the N2 3D explorer + the cross-domain connectivity model across the canonical docs.
+- **Files**:
+  - `docs/blueprint/PHASE_53_MONITRAX_NEOMATRIX.md` — **+§15 (N2 Explorer, as-built)** (what/where, admin-only rationale, architecture table, design vocabulary, PRs, backlog) **+§16 (Cross-domain connectivity model)** (the "nothing is isolated" principle, shared-input wiring, the verified-edge rule §19.2, union-find check). _Reconciled with PR #1231 during rebase: §16.4 now documents the **closure of the last two islands** (Money Story + linkageHealth) → **1 connected component of 104/104 nodes, 0 standalone** + the rejected-false-bridge + the two-transaction-tables finding._
+  - `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 53 row → 🟢 modelled + 100% audited (27 engines, 0 suspected-issues, all 6 domains) · N2 explorer shipped (admin) · connected graph · admin-only decision.
+  - `docs/financial-logic/graph/README.md` — L2/L3 rows updated; new "The Explorer" + connectivity section.
+  - `docs/00_INDEX.md` — added the Phase 53 row to the Blueprint table.
+  - `docs/architecture/09_INFRASTRUCTURE_AND_DEPLOYMENT.md` — bundle note: `react-force-graph-3d` dynamically-imported + admin-route-scoped (never in the user bundle).
+
+### Build Status
+- [x] Docs only — no code, no graph data, no financial logic changed.
+- [x] Plan freshness OK.
+
+### PR
+- Branch: `claude/neomatrix-docs-fulldoc-jqahjw`
+- Status: Draft (to be opened)
