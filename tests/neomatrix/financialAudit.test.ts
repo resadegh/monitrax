@@ -32,6 +32,7 @@ import { calculateAggregateScore } from '@/lib/health/aggregateEngine';
 import { scoreToRiskBand } from '@/lib/health/types';
 import { calculateOverallScoreDecimal } from '@/lib/cfo/scoreCalculator';
 import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
+import { calculateCashflowHealthScore } from '@/lib/cashflow-intelligence/healthScoreAggregator';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -448,7 +449,53 @@ const CASES: AuditCase[] = [
         .impacts.find((i) => i.label === 'Annual saving')!.after,
     expected: 0,
   },
+
+  // ── Intelligence: cashflow stability sub-score (documented surplus-ratio bands) ─
+  {
+    node: 'engine.healthScoreAggregator.calculateCashflowHealthScore',
+    law: 'Cashflow stability: surplus ratio ≥ 20% of income → score 100',
+    derivation: 'income 10,000 − expenses 6,000 − loans 0 = surplus 4,000; ratio 0.40 ≥ 0.20 → 100 (no volatility, no savings bonus)',
+    actual: () => stabilityScore(healthInput({ monthlyIncome: 10000, monthlyExpenses: 6000 })),
+    expected: 100,
+  },
+  {
+    node: 'engine.healthScoreAggregator.calculateCashflowHealthScore',
+    law: 'Cashflow stability: surplus ratio ≥ 10% (and < 20%) → score 80',
+    derivation: 'income 10,000 − expenses 8,800 = surplus 1,200; ratio 0.12 → 80',
+    actual: () => stabilityScore(healthInput({ monthlyIncome: 10000, monthlyExpenses: 8800 })),
+    expected: 80,
+  },
+  {
+    node: 'engine.healthScoreAggregator.calculateCashflowHealthScore',
+    law: 'Cashflow stability: volatility penalty = min(20, volatilityIndex × 0.2)',
+    derivation: 'ratio 0.40 → 100; volatilityIndex 50 → penalty min(20, 10) = 10 → 90',
+    actual: () => stabilityScore(healthInput({ monthlyIncome: 10000, monthlyExpenses: 6000, volatilityIndex: 50 })),
+    expected: 90,
+  },
 ];
+
+// A complete, valid HealthScoreInput so all 5 category scorers run; we assert
+// only the Cashflow-Stability sub-score (its documented formula).
+function healthInput(over: Record<string, number>): never {
+  return {
+    monthlyIncome: 10000,
+    monthlyExpenses: 6000,
+    monthlyLoanRepayments: 0,
+    availableCash: 20000,
+    withdrawableCash: 15000,
+    burnRate: 6000,
+    volatilityIndex: 0,
+    breakEvenDay: 1,
+    hasShortfall: false,
+    shortfallDays: 0,
+    hasBudget: false,
+    savingsRate: 0,
+    ...over,
+  } as never;
+}
+function stabilityScore(input: never): number {
+  return calculateCashflowHealthScore(input).breakdown.find((b) => b.category === 'Cashflow Stability')!.score;
+}
 
 // Minimal snapshot stub — only the fields cutSpendCategoryScenario reads.
 function cutSpendCtx(diningSpend: number): never {

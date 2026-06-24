@@ -527,3 +527,28 @@ Expected values hand-derived (realised × 12, capped at current spend) independe
 - `npm run neomatrix:check` → OK (graph v0.11.0→0.12.0; fresh).
 
 ### Next — intelligence (insights engine) + reports, then remaining what-if scenarios (redirect-to-offset etc.).
+
+---
+
+## Session: neomatrix-intelligence (model + A1 audit — cashflow-intelligence + GRDCS linkage)
+
+### Changes Made
+- **Type:** Test + model (Phase 53 N4 + §14 A1, **intelligence domain** — the 5th). **No financial logic changed.** Financial build → **self-review 10/10** (§20.4).
+
+### What was modelled (graph 79→83 nodes; domains now core+tax+health+cfo+**intelligence**)
+- `calculateCashflowHealthScore` (healthScoreAggregator.ts:248, 5-category weighted: liquidity .25/stability .25/forecast .20/budget .15/debt .15) + `calculateLinkageHealth` (linkageHealthService.ts:306, GRDCS severity thresholds) + the weighting + severity-threshold law nodes.
+
+### A1 audit (3 new cases, all pass) — cashflow stability sub-score
+- surplus ratio ≥ 20% (income 10k − exp 6k = 4k, ratio 0.40) → **100**.
+- ratio ≥ 10% (income 10k − exp 8.8k, ratio 0.12) → **80**.
+- volatility penalty min(20, volatilityIndex×0.2): ratio 0.40 → 100, vi 50 → −10 → **90**.
+- **Result: no `suspected-issue`** — agrees with the documented bands; locked. **13 engines now A1-audited.**
+
+### Self-review (§20.4) — **10/10**
+Stability bands + volatility penalty hand-derived from the documented formula independent of the code; real engine executed via the exported composite with a complete valid input (asserting the stability sub-score); tied to the model; no logic changed.
+
+### Verification
+- `vitest run tests/neomatrix/` → **58/58 pass** (audit 52 + graph 6).
+- `npm run neomatrix:check` → OK (graph v0.12.0→0.13.0; fresh).
+
+### Next — reports (the 6th/last domain), then remaining what-if scenarios + breadth.
