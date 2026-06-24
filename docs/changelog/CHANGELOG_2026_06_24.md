@@ -247,3 +247,62 @@
 ### PR
 - Branch: `claude/neomatrix-depth-entitybreak-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-moneystory (branch `claude/neomatrix-depth-moneystory-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, core domain. Modelled + A1-audited
+  `getMoneyStoryTrend` (`lib/calculations/moneyStoryTrend.ts`) — the 12-month
+  earned-vs-spent ribbon + KPI deltas behind the Money Story v2 hero.
+- **Description**: Second DB-bound engine audited via the **prisma-mock boundary**, this
+  time also pinning the clock (`vi.setSystemTime`) because the engine's month window is
+  anchored to "now". We mock only `prisma.transaction.findMany` and run the REAL engine
+  over law-derived fixtures. Locks the §0 honesty contract + §19.1 actuals bucketing and
+  the margin/KPI-delta math. **Graph crosses 100 nodes.** No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: literal `Transaction` rows (`date` Date; `amount` Float AUD; `direction`
+  IN/OUT). IN → earned, OUT → +|amount| spent. Verified at `moneyStoryTrend.ts:68, :77, :103-127, :152-175`;
+  schema `prisma/schema.prisma:1986`.
+- **Law / formula**: §0 honesty (zero months render zero, never interpolated; <2 active months → empty)
+  + §19.1 actuals. `kept = max(0, round(earned−spent))`; `currentMargin = round(last.kept/lastEarned×100)`;
+  `incomeDeltaPct = round((earnedLast−earnedFirst)/earnedFirst×1000)/10`;
+  `cashflowDeltaMonthly = last−prev month net`; `outgoingsDeltaVsAvg = round(lastSpent − windowAvg)`.
+- **Worked examples** (clock pinned to 2026-06-15; all ✅ verified by running the engine):
+  - May earned 10k/spent 6k, June earned 12k/spent 6k → currentMargin **50**, baselineMargin **40**, marginΔ **+10pts**
+  - incomeΔ **+20.0%**; cashflowΔ **+2,000** (June net 6k − May net 4k); outgoingsΔvsAvg **+5,000** (latest 6k − 12-month avg 1k)
+  - month that spent > earned → `kept` **0** (clamped ≥0; spend still real)
+  - <2 active months → empty trend, currentMargin **0** (never fabricated)
+- **Verify**: 98/98 Neomatrix tests pass (was 89; +9 in a new prisma-mock + fake-timer file). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +4 nodes
+  (`input.Transaction`, `engine.moneyStoryTrend.getMoneyStoryTrend`,
+  `number.moneyStoryMargin`, `ui.dashboard.moneyStoryHero`), +3 edges (full lineage).
+  version 0.19.0 → **0.20.0**. **100 nodes / 109 edges.**
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/moneyStoryTrendAudit.test.ts` — NEW file (prisma-mock + fake-timer A1 harness, 9 cases).
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (22 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 98/98 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: lineage (4 nodes / 3 edges) + 9 cases. **Pass 2 (critique)**: confirmed the clock pin
+  makes the month window deterministic and TZ-safe (mid-month midday + local Date constructors);
+  confirmed each expected is hand-derived from the §0/§19.1 law; confirmed the outgoings-avg divisor
+  includes the empty months (12, not 2). **Pass 3 (refine)**: kept the kept-clamp + honesty-gate +
+  outgoings-vs-avg cases — they lock the three subtle behaviours. No engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **22 engines A1-audited** across all 6 domains. Graph v0.20.0 — **100 nodes** / 109 edges, all `verified`.
+- **Next**: more tax divisions (e.g. land-tax / stamp-duty surfacing, FBT), then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-moneystory-jqahjw`
+- Status: Draft (to be opened)
