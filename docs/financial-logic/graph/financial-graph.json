@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -1674,13 +1674,32 @@
       "regime": null,
       "semanticKey": null,
       "produces": "Transfer duty payable (+ foreign surcharge).",
-      "formula": "Per-state transfer-duty scale on dutiable value; foreign-purchaser additional duty surcharge where applicable.",
+      "formula": "generalDuty = applyBrackets(dutiableValue): find bracket where value≤max, inBracket = value − min + 1 (the +1 reflects the \"duty per $1 of value\" convention), duty = baseAmount + max(0,inBracket) × rate. FPAD: isForeignPurchaser && isResidential && surchargeRate>0 → dutiableValue × rate. totalDuty = generalDuty + FPAD.",
       "authority": "State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …)",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "dutiableValue",
+          "unit": "AUD",
+          "type": "number",
+          "note": "higher of contract price or unencumbered market value"
+        },
+        {
+          "name": "isForeignPurchaser/isResidential",
+          "unit": "bool",
+          "type": "boolean",
+          "note": "gate the FPAD surcharge"
+        },
+        {
+          "name": "config.brackets",
+          "unit": "AUD",
+          "type": "object",
+          "note": "per-state progressive scale + foreignPurchaserSurchargeRate"
+        }
+      ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/stampDuty/stateStampDuty.ts:285 (read this session)",
-      "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced, NSW Duties Act 1997 Sch 1) + lib/tax-engine/stampDuty/stateStampDuty.ts:285",
+      "workedExample": "NSW: $600k→general $22,090 (9,805 + 273,000×0.045); $100k→$1,860 (1,405 + 13,000×0.035); foreign residential $600k→FPAD $48,000 (×0.08), total $70,090; non-residential→FPAD $0",
+      "verifiedDate": "2026-06-24",
       "status": "documented"
     },
     {

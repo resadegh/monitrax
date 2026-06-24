@@ -3,7 +3,7 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.21.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.22.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
@@ -45,7 +45,7 @@
 | **SMSF income tax (Div 295)** | `lib/tax-engine/super/smsfIncomeTax.ts:151` | engine | tax | SMSF tax payable (15% concessional / 45% NALI). | ITAA 1997 Div 295; s295-385/390 (ECPI); s295-550 (NALI) | lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
 | **State land tax (per state)** | `lib/tax-engine/landTax/stateLandTax.ts:374` | engine | tax | Per-state land tax payable. | State Land Tax Acts (NSW 1956 / VIC 2005 / QLD / SA / WA / TAS) | lib/tax-engine/landTax/stateLandTax.ts:374 (read this session) | documented |
 | **Cross-state land tax (household)** | `lib/tax-engine/landTax/crossStateAggregator.ts:105` | engine | tax | Household-wide land-tax position. | State Land Tax Acts (per-state aggregation) | lib/tax-engine/landTax/crossStateAggregator.ts:105 (read this session) | documented |
-| **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | lib/tax-engine/stampDuty/stateStampDuty.ts:285 (read this session) | documented |
+| **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced, NSW Duties Act 1997 Sch 1) + lib/tax-engine/stampDuty/stateStampDuty.ts:285 | documented |
 | **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
 | **Income tax (marginal brackets)** | `lib/tax-engine/core/incomeTaxCalculator.ts:21` | engine | tax | IncomeTaxResult { taxPayable, marginalRate, effectiveRate }. | ITAA 1997; ATO individual income tax rates (FY24-25 Stage 3) | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/incomeTaxCalculator.ts:21 | documented |
 | **Low Income Tax Offset (LITO) — two-tier phase-out** | `lib/tax-engine/core/taxOffsets.ts:36` | engine | tax | LITO offset (AUD) for FY24-25 — a non-refundable offset that reduces income tax. | ATO Individual income tax rates — LITO FY24-25 (two-tier: 5c/$ 37.5k–45k, 1.5c/$ 45k–66,667) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/tax-engine/core/taxOffsets.ts:36 | documented |
@@ -77,6 +77,7 @@
 | **Declared cashflow** | net income 8,000/mo − expenses 5,000 − loans 1,000 = 2,000/mo; savingsRate = 2,000/8,000 = 25% |
 | **Actual cashflow** | Mar 10 + May 600 both populated, Apr empty → divisor 2 → avg 305 (a month with no txns is missing data, excluded from sum AND divisor) |
 | **Canonical monthly cashflow** | In 25,827 / Out 46,741 → net −20,914; savingsRate ≈ −80.98%; basis 'actual' (the real deficit the old declared hero hid as +$10,505 / 51.9%) |
+| **Stamp duty / transfer duty (per state)** | NSW: $600k→general $22,090 (9,805 + 273,000×0.045); $100k→$1,860 (1,405 + 13,000×0.035); foreign residential $600k→FPAD $48,000 (×0.08), total $70,090; non-residential→FPAD $0 |
 | **Low Income Tax Offset (LITO) — two-tier phase-out** | $30k→$700; $40k→$575 (700−125); $45k→$325 (700−375); $50k→$250 (700−450); ≥$66,667→$0 |
 | **Apply offsets to gross tax (refundable vs non-refundable)** | gross $1,000 + LITO $700 → netTax $300; gross $500 + LITO $700 → netTax $0 (non-refundable floor); gross $0 + franking $1,000 → netTax −$1,000, refundable $1,000 |
 | **Loan/debt aggregation (interest)** | 500,000 × 0.0625/12 = 2,604.17/mo; ×12 = 31,250/yr |
