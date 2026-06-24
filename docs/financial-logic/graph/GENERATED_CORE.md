@@ -3,7 +3,7 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.22.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.23.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
@@ -43,7 +43,7 @@
 | **Non-concessional bring-forward** | `lib/tax-engine/super/capTracker.ts:148` | engine | tax | Bring-forward non-concessional availability. | ITAA 1997 s292-85 | lib/tax-engine/super/capTracker.ts:148 (read this session) | documented |
 | **Div 293 + Div 296 high-income/balance tax** | `lib/tax-engine/super/highIncomeSuperTax.ts:77` | engine | tax | Div 293 surcharge (+ Div 296 when commenced). | ITAA 1997 Div 293; Div 296 (proposed); CLAUDE.md §12.14 FW-2 | lib/tax-engine/super/highIncomeSuperTax.ts:77 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
 | **SMSF income tax (Div 295)** | `lib/tax-engine/super/smsfIncomeTax.ts:151` | engine | tax | SMSF tax payable (15% concessional / 45% NALI). | ITAA 1997 Div 295; s295-385/390 (ECPI); s295-550 (NALI) | lib/tax-engine/super/smsfIncomeTax.ts:151 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
-| **State land tax (per state)** | `lib/tax-engine/landTax/stateLandTax.ts:374` | engine | tax | Per-state land tax payable. | State Land Tax Acts (NSW 1956 / VIC 2005 / QLD / SA / WA / TAS) | lib/tax-engine/landTax/stateLandTax.ts:374 (read this session) | documented |
+| **State land tax (per state)** | `lib/tax-engine/landTax/stateLandTax.ts:374` | engine | tax | Per-state land tax payable. | State Land Tax Acts (NSW 1956 / VIC 2005 / QLD / SA / WA / TAS) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced, NSW Land Tax Act 1956 s27/s5A/Sch1A) + lib/tax-engine/landTax/stateLandTax.ts:374 | documented |
 | **Cross-state land tax (household)** | `lib/tax-engine/landTax/crossStateAggregator.ts:105` | engine | tax | Household-wide land-tax position. | State Land Tax Acts (per-state aggregation) | lib/tax-engine/landTax/crossStateAggregator.ts:105 (read this session) | documented |
 | **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced, NSW Duties Act 1997 Sch 1) + lib/tax-engine/stampDuty/stateStampDuty.ts:285 | documented |
 | **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
@@ -77,6 +77,7 @@
 | **Declared cashflow** | net income 8,000/mo − expenses 5,000 − loans 1,000 = 2,000/mo; savingsRate = 2,000/8,000 = 25% |
 | **Actual cashflow** | Mar 10 + May 600 both populated, Apr empty → divisor 2 → avg 305 (a month with no txns is missing data, excluded from sum AND divisor) |
 | **Canonical monthly cashflow** | In 25,827 / Out 46,741 → net −20,914; savingsRate ≈ −80.98%; basis 'actual' (the real deficit the old declared hero hid as +$10,505 / 51.9%) |
+| **State land tax (per state)** | NSW CY2025: $1.0M (<threshold)→$0; $2.0M→general $14,900 (100 + 925,000×0.016); trust $2M→surcharge $16,125 (1.5%×$1.075M); foreign residential $2M→surcharge $80,000 (×0.04), total $94,900; foreign non-residential→$0 (residential-only) |
 | **Stamp duty / transfer duty (per state)** | NSW: $600k→general $22,090 (9,805 + 273,000×0.045); $100k→$1,860 (1,405 + 13,000×0.035); foreign residential $600k→FPAD $48,000 (×0.08), total $70,090; non-residential→FPAD $0 |
 | **Low Income Tax Offset (LITO) — two-tier phase-out** | $30k→$700; $40k→$575 (700−125); $45k→$325 (700−375); $50k→$250 (700−450); ≥$66,667→$0 |
 | **Apply offsets to gross tax (refundable vs non-refundable)** | gross $1,000 + LITO $700 → netTax $300; gross $500 + LITO $700 → netTax $0 (non-refundable floor); gross $0 + franking $1,000 → netTax −$1,000, refundable $1,000 |

@@ -50,6 +50,7 @@ import {
 } from '@/lib/calculations/entityBreakdown';
 import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
 import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
+import { calculateLandTax, NSW_LAND_TAX_CY2025 } from '@/lib/tax-engine/landTax/stateLandTax';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -867,6 +868,74 @@ const CASES: AuditCase[] = [
         NSW_STAMP_DUTY_FY2024_25,
       ).foreignPurchaserSurcharge,
     expected: 0,
+  },
+
+  // ── Tax: land tax — NSW Land Tax Act 1956 (CY2025 thresholds + surcharges) ───
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'NSW Land Tax Act 1956 s27: nil below the general threshold ($1,075,000)',
+    derivation: '$1,000,000 < $1,075,000 → general land tax $0',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 1000000, ownershipType: 'INDIVIDUAL', isForeignOwner: false, isResidential: true },
+        NSW_LAND_TAX_CY2025,
+      ).generalLandTax,
+    expected: 0,
+  },
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'NSW Land Tax Act 1956 s27: $100 + 1.6% on excess over $1,075,000',
+    derivation: '$2,000,000: 100 + (2,000,000 − 1,075,001 + 1) × 0.016 = 100 + 925,000 × 0.016 = 100 + 14,800 = 14,900',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 2000000, ownershipType: 'INDIVIDUAL', isForeignOwner: false, isResidential: true },
+        NSW_LAND_TAX_CY2025,
+      ).generalLandTax,
+    expected: 14900,
+  },
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'NSW Land Tax Act 1956 s5A special trust surcharge: 1.5% on the first $1.075M (non-fixed trust)',
+    derivation: 'DISCRETIONARY_TRUST $2,000,000: min(2,000,000, 1,075,000) × 0.015 = 1,075,000 × 0.015 = 16,125',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 2000000, ownershipType: 'DISCRETIONARY_TRUST', isForeignOwner: false, isResidential: true },
+        NSW_LAND_TAX_CY2025,
+      ).trustSurcharge,
+    expected: 16125,
+  },
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'NSW Land Tax Act 1956 Sch 1A foreign person surcharge: 4% of taxable value (residential)',
+    derivation: 'foreign + residential $2,000,000 → 2,000,000 × 0.04 = 80,000',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 2000000, ownershipType: 'INDIVIDUAL', isForeignOwner: true, isResidential: true },
+        NSW_LAND_TAX_CY2025,
+      ).foreignOwnerSurcharge,
+    expected: 80000,
+  },
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'NSW foreign surcharge is residential-only — a foreign owner of non-residential land pays no surcharge',
+    derivation: 'foreign + NON-residential $2,000,000 → surcharge $0',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 2000000, ownershipType: 'INDIVIDUAL', isForeignOwner: true, isResidential: false },
+        NSW_LAND_TAX_CY2025,
+      ).foreignOwnerSurcharge,
+    expected: 0,
+  },
+  {
+    node: 'engine.stateLandTax.calculateLandTax',
+    law: 'Total land tax = general + trust surcharge + foreign surcharge',
+    derivation: 'foreign + residential individual $2,000,000 → 14,900 + 0 + 80,000 = 94,900',
+    actual: () =>
+      calculateLandTax(
+        { taxableLandValue: 2000000, ownershipType: 'INDIVIDUAL', isForeignOwner: true, isResidential: true },
+        NSW_LAND_TAX_CY2025,
+      ).totalTax,
+    expected: 94900,
   },
 ];
 

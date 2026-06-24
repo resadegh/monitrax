@@ -421,3 +421,60 @@
 ### PR
 - Branch: `claude/neomatrix-depth-stampduty-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-landtax (branch `claude/neomatrix-depth-landtax-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, **tax domain**. A1-audited `calculateLandTax`
+  (`lib/tax-engine/landTax/stateLandTax.ts`) — already modelled (N4.4); promoted to A1-audited
+  against the NSW Land Tax Act 1956 CY2025 thresholds + surcharges.
+- **Description**: Third tax-division depth slice (after offsets + stamp duty). Locks the
+  below-threshold zero, the progressive scale, the NSW special trust surcharge, the foreign
+  person surcharge, and the residential-only gate on the foreign surcharge. Thresholds verified
+  against the config in source (§19.2 — never guessed). No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: `taxableLandValue` AUD (excl. PPOR); `ownershipType`/`isForeignOwner`/`isResidential`
+  gate surcharges; `config` = NSW CY2025 (generalThreshold $1,075,000; brackets; foreignOwnerSurchargeRate
+  0.04 residential-only; trustSurchargeRate). Verified at `stateLandTax.ts:138-149, :342-355, :374-462`.
+- **Law / formula**: NSW Land Tax Act 1956 — s27 progressive scale `tax = baseAmount + (value − min + 1) × rate`,
+  nil below $1,075,000; s5A special trust surcharge 1.5% × min(value, $1.075M); Sch 1A foreign surcharge 4% of
+  residential taxable value; total = general + trust + foreign.
+- **Worked examples** (all ✅ verified by running the engine):
+  - $1,000,000 (< threshold) → general **$0**
+  - $2,000,000 → general **$14,900** (100 + 925,000 × 0.016)
+  - DISCRETIONARY_TRUST $2,000,000 → trust surcharge **$16,125** (1.5% × $1,075,000)
+  - foreign + residential $2,000,000 → foreign surcharge **$80,000** (×0.04); total **$94,900**
+  - foreign + **non-residential** $2,000,000 → foreign surcharge **$0** (residential-only gate)
+- **Verify**: 118/118 Neomatrix tests pass (was 112; +6 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — enriched the existing
+  `engine.stateLandTax.calculateLandTax` node (formula, inputs, worked example, audit-backed
+  verifiedBy). version 0.22.0 → **0.23.0**. 102 nodes / 112 edges (pure audit promotion).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +1 import, +6 A1 land-tax cases.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (26 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 118/118 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: enriched node + 6 cases. **Pass 2 (critique)**: confirmed every NSW value hand-derived
+  from the CY2025 config in source (not the engine); confirmed the residential-only gate and the
+  three-component total (general + trust + foreign) lock the surcharge structure. **Pass 3 (refine)**:
+  kept the below-threshold $0 + non-residential-$0 cases — they lock the two scope gates. No engine
+  touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **26 engines A1-audited** across all 6 domains. Graph v0.23.0 — 102 nodes / 112 edges, all `verified`.
+- **Next**: cross-state land-tax aggregator, PAYG withholding, then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-landtax-jqahjw`
+- Status: Draft (to be opened)

@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.22.0",
+  "version": "0.23.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -1632,13 +1632,32 @@
       "regime": null,
       "semanticKey": null,
       "produces": "Per-state land tax payable.",
-      "formula": "Progressive per-state land-tax scale on aggregated taxable land value (NT = structural zero).",
+      "formula": "generalLandTax = value≥generalThreshold ? applyBrackets(value): 0; applyBrackets: bracket where value≤max, inBracket = value − min + 1, tax = baseAmount + max(0,inBracket) × rate. NSW trust surcharge (non-fixed): min(value, $1.075M) × 0.015. Foreign surcharge: isForeignOwner && rate>0 && (!residentialOnly || isResidential) → value × rate. totalTax = general + trust + foreign.",
       "authority": "State Land Tax Acts (NSW 1956 / VIC 2005 / QLD / SA / WA / TAS)",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "taxableLandValue",
+          "unit": "AUD",
+          "type": "number",
+          "note": "land value excl. PPOR"
+        },
+        {
+          "name": "ownershipType/isForeignOwner/isResidential",
+          "unit": "enum/bool",
+          "type": "mixed",
+          "note": "gate trust + foreign surcharges"
+        },
+        {
+          "name": "config (NSW CY2025)",
+          "unit": "AUD",
+          "type": "object",
+          "note": "generalThreshold $1.075M; brackets; foreignOwnerSurchargeRate 0.04 residential-only; trustSurchargeRate"
+        }
+      ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/landTax/stateLandTax.ts:374 (read this session)",
-      "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced, NSW Land Tax Act 1956 s27/s5A/Sch1A) + lib/tax-engine/landTax/stateLandTax.ts:374",
+      "workedExample": "NSW CY2025: $1.0M (<threshold)→$0; $2.0M→general $14,900 (100 + 925,000×0.016); trust $2M→surcharge $16,125 (1.5%×$1.075M); foreign residential $2M→surcharge $80,000 (×0.04), total $94,900; foreign non-residential→$0 (residential-only)",
+      "verifiedDate": "2026-06-24",
       "status": "documented"
     },
     {
