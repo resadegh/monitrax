@@ -306,3 +306,60 @@
 ### PR
 - Branch: `claude/neomatrix-depth-moneystory-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: neomatrix-depth-taxoffsets (branch `claude/neomatrix-depth-taxoffsets-jqahjw`)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix — documentation/model + audit only; NO financial logic changed)
+- **Scope**: Phase 53 Neomatrix — DEPTH phase, **tax domain** (the depth pass now shifts
+  from core aggregators to tax divisions). Modelled + A1-audited `calculateLITO` +
+  `applyOffsets` (`lib/tax-engine/core/taxOffsets.ts`).
+- **Description**: First tax-division depth slice. LITO is the ATO FY24-25 Low Income Tax
+  Offset (two-tier phase-out); applyOffsets enforces the refundable-vs-non-refundable rule
+  (LITO/SAPTO floor net tax at $0; franking credits can refund below $0). Config thresholds
+  verified against `taxYearConfig.ts` (§19.2 — never guessed). No suspected-issue found.
+
+### §19.2 audit evidence (input → law → expected → verify)
+- **Input contract**: `taxableIncome` AUD/year; `config.lito` = {maxOffset 700, fullThreshold 37,500,
+  tier1{45,000, 0.05}, tier2{66,667, 0.015}, cutoff 66,667} — verified at `taxYearConfig.ts:85-97`.
+  `applyOffsets` takes grossTax AUD + an offsets object. Verified at `taxOffsets.ts:36, :434, :443-450`.
+- **Law / formula**: ATO FY24-25 LITO — full $700 ≤$37,500; 5c/$ over $37,500 to $45,000;
+  1.5c/$ over $45,000 to $66,667; nil ≥$66,667. applyOffsets — non-refundable (LITO/SAPTO/foreign/other)
+  `min(Σ, grossTax)` floors at $0; franking credits (Div 207) refundable → net can go negative.
+- **Worked examples** (all ✅ verified by running the engine):
+  - LITO: $30k → **$700**; $40k → **$575** (700−125); $45k → **$325** (700−375); $50k → **$250** (700−450); $66,667 → **$0**
+  - applyOffsets: gross $1,000 − LITO $700 → net **$300**; gross $500 + LITO $700 → net **$0** (floor, NOT −$200); gross $0 + franking $1,000 → refund **$1,000**
+- **Verify**: 106/106 Neomatrix tests pass (was 98; +8 cases). `npm run neomatrix:check` OK.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 nodes
+  (`engine.taxOffsets.calculateLITO`, `engine.taxOffsets.applyOffsets`), +3 edges
+  (`input.taxYearConfig.lito` feeds LITO; LITO governed-by `law.itaa1997.incomeTax`;
+  LITO feeds applyOffsets). version 0.20.0 → **0.21.0**. 102 nodes / 112 edges.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `tests/neomatrix/financialAudit.test.ts` — +1 import, +8 A1 tax-offset cases.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Neomatrix "Last touched" appended (24 engines A1-audited).
+
+### Build Status
+- [x] `npm run neomatrix:check` passes
+- [x] `vitest run tests/neomatrix/` — 106/106 pass
+- [x] No financial logic changed — model + test + docs only (§10/§19/§21)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: 2 nodes + 8 cases (initially set `applyOffsets` layer to `tax` — the schema gate
+  CAUGHT it: `invalid layer "tax"`, so the build failed correctly; `tax` is the domain, `engine`
+  is the layer — fixed). **Pass 2 (critique)**: confirmed every LITO value hand-derived from the
+  verified config (not the engine); confirmed the non-refundable-floor case ($0 not −$200) and the
+  franking-refundable case (−$1,000 → refund $1,000) lock the load-bearing distinction. **Pass 3
+  (refine)**: kept the boundary case ($45k tier1/tier2 join) + both applyOffsets sign cases. No
+  engine touched; no suspected-issue. **10/10.**
+
+### Neomatrix status
+- **24 engines A1-audited** across all 6 domains. Graph v0.21.0 — 102 nodes / 112 edges, all `verified`.
+- **Next**: more tax divisions (land tax / stamp duty surfacing, PAYG withholding), then N2 (2D explorer).
+
+### PR
+- Branch: `claude/neomatrix-depth-taxoffsets-jqahjw`
+- Status: Draft (to be opened)

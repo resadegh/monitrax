@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.20.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.21.0, reviewed 2026-06-24). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 100 · **Edges:** 109
-- **By kind:** orchestrator 2 · engine 42 · input-field 20 · number 8 · ui-surface 7 · law 21
-- **By status:** documented 100
-- **Edge provenance:** verified 109 *(verified > graphify > inferred)*
+- **Nodes:** 102 · **Edges:** 112
+- **By kind:** orchestrator 2 · engine 44 · input-field 20 · number 8 · ui-surface 7 · law 21
+- **By status:** documented 102
+- **Edge provenance:** verified 112 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -48,6 +48,8 @@
 | **Stamp duty / transfer duty (per state)** | `lib/tax-engine/stampDuty/stateStampDuty.ts:285` | engine | tax | Transfer duty payable (+ foreign surcharge). | State Duties Acts (NSW Duties Act 1997 / VIC Duties Act 2000 / …) | lib/tax-engine/stampDuty/stateStampDuty.ts:285 (read this session) | documented |
 | **GST / BAS** | `lib/tax-engine/gst/gstCalculator.ts:104` | engine | tax | GST/BAS net position. | A New Tax System (GST) Act 1999 — s9-70 (10%), s23-15 (threshold) | lib/tax-engine/gst/gstCalculator.ts:104 (read this session) + tests/neomatrix/financialAudit.test.ts (A1 law-referenced) | documented |
 | **Income tax (marginal brackets)** | `lib/tax-engine/core/incomeTaxCalculator.ts:21` | engine | tax | IncomeTaxResult { taxPayable, marginalRate, effectiveRate }. | ITAA 1997; ATO individual income tax rates (FY24-25 Stage 3) | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/incomeTaxCalculator.ts:21 | documented |
+| **Low Income Tax Offset (LITO) — two-tier phase-out** | `lib/tax-engine/core/taxOffsets.ts:36` | engine | tax | LITO offset (AUD) for FY24-25 — a non-refundable offset that reduces income tax. | ATO Individual income tax rates — LITO FY24-25 (two-tier: 5c/$ 37.5k–45k, 1.5c/$ 45k–66,667) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/tax-engine/core/taxOffsets.ts:36 | documented |
+| **Apply offsets to gross tax (refundable vs non-refundable)** | `lib/tax-engine/core/taxOffsets.ts:434` | engine | tax | netTax + refundableAmount + usedOffsets — applies offsets to gross tax. | ATO: LITO/SAPTO are non-refundable (reduce to $0); franking credits (Div 207) are refundable | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/tax-engine/core/taxOffsets.ts:434 | documented |
 | **Medicare levy (2% + shade-in)** | `lib/tax-engine/core/medicareLevyCalculator.ts:38` | engine | tax | MedicareLevyResult { medicareLevy, medicareSurcharge, total, isShadeIn }. | Medicare Levy Act 1986; ATO Medicare Levy | tests/neomatrix/financialAudit.test.ts (A1 ATO-law-referenced) + lib/tax-engine/core/medicareLevyCalculator.ts:38 | documented |
 | **Health aggregate score** | `lib/health/aggregateEngine.ts:106` | engine | health | The 0-100 aggregate health score from weighted category scores − penalties. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | tests/neomatrix/financialAudit.test.ts (A1 methodology-referenced) + lib/health/aggregateEngine.ts:106 | documented |
 | **Health score (with trend/band)** | `lib/health/aggregateEngine.ts:315` | engine | health | HealthScore { score, trend, band } from the aggregate. | Monitrax health-score methodology (Phase 12 — weighted category scores − penalties, clamped 0-100) | lib/health/aggregateEngine.ts:315 (read this session) | documented |
@@ -75,6 +77,8 @@
 | **Declared cashflow** | net income 8,000/mo − expenses 5,000 − loans 1,000 = 2,000/mo; savingsRate = 2,000/8,000 = 25% |
 | **Actual cashflow** | Mar 10 + May 600 both populated, Apr empty → divisor 2 → avg 305 (a month with no txns is missing data, excluded from sum AND divisor) |
 | **Canonical monthly cashflow** | In 25,827 / Out 46,741 → net −20,914; savingsRate ≈ −80.98%; basis 'actual' (the real deficit the old declared hero hid as +$10,505 / 51.9%) |
+| **Low Income Tax Offset (LITO) — two-tier phase-out** | $30k→$700; $40k→$575 (700−125); $45k→$325 (700−375); $50k→$250 (700−450); ≥$66,667→$0 |
+| **Apply offsets to gross tax (refundable vs non-refundable)** | gross $1,000 + LITO $700 → netTax $300; gross $500 + LITO $700 → netTax $0 (non-refundable floor); gross $0 + franking $1,000 → netTax −$1,000, refundable $1,000 |
 | **Loan/debt aggregation (interest)** | 500,000 × 0.0625/12 = 2,604.17/mo; ×12 = 31,250/yr |
 | **Declared expense aggregation** | $1,200 ANNUAL → $100/mo; $500 MONTHLY + $1,200 ANNUAL → $600/mo |
 | **Declared income aggregation (gross / net / PAYG)** | SALARY GROSS $120k/yr + rental $2k/mo → grossTotal $12,000/mo; PAYG $30k → $2,500/mo; SALARY NET grossAmount $100k (annual target) → grossTotal $100,000 |
@@ -98,7 +102,7 @@
 |---|---|---|---|
 | **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
-| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets) |
+| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out |
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in) |
 | **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
 | **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
@@ -231,6 +235,9 @@
 | Transaction (date / amount / direction) | → | Money Story 12-month trend (earned vs spent) | feeds | AUD→AUD | verified | moneyStoryTrend.ts:77 prisma.transaction.findMany; :107-108 IN earned / OUT abs spent |
 | Money Story 12-month trend (earned vs spent) | → | Money Story kept margin (displayed) | feeds | —→% | verified | moneyStoryTrend.ts:156,181 currentMargin/marginDeltaPoints |
 | Money Story kept margin (displayed) | → | Dashboard — Money Story hero + KPI strip | rendered-at | %→% | verified | app/api/dashboard/insights/route.ts:173 |
+| Low Income Tax Offset (config) | → | Low Income Tax Offset (LITO) — two-tier phase-out | feeds | — | verified | taxOffsets.ts:41 const { lito } = config |
+| Low Income Tax Offset (LITO) — two-tier phase-out | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | ATO Individual income tax rates — LITO (law.itaa1997.incomeTax covers brackets + LITO) |
+| Low Income Tax Offset (LITO) — two-tier phase-out | → | Apply offsets to gross tax (refundable vs non-refundable) | feeds | AUD→AUD | verified | taxOffsets.ts:443 nonRefundableOffsets includes offsets.lito |
 
 ---
 

@@ -48,6 +48,7 @@ import {
   UNATTRIBUTED_ENTITY_ID,
   type EntityBreakdownInput,
 } from '@/lib/calculations/entityBreakdown';
+import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -732,6 +733,70 @@ const CASES: AuditCase[] = [
       return ps[ps.length - 1].netWorth;
     },
     expected: 50000,
+  },
+
+  // ── Tax: LITO — ATO FY24-25 two-tier phase-out (taxOffsets.ts) ───────────────
+  {
+    node: 'engine.taxOffsets.calculateLITO',
+    law: 'ATO FY24-25 LITO: full $700 offset for income ≤ $37,500',
+    derivation: '$30,000 ≤ $37,500 → $700',
+    actual: () => calculateLITO(30000, TAX_YEAR_2024_25).offset,
+    expected: 700,
+  },
+  {
+    node: 'engine.taxOffsets.calculateLITO',
+    law: 'ATO FY24-25 LITO tier 1: reduce 5c per $1 over $37,500',
+    derivation: '$40,000: 700 − (40,000 − 37,500) × 0.05 = 700 − 125 = 575',
+    actual: () => calculateLITO(40000, TAX_YEAR_2024_25).offset,
+    expected: 575,
+  },
+  {
+    node: 'engine.taxOffsets.calculateLITO',
+    law: 'ATO FY24-25 LITO at the tier-1/tier-2 boundary $45,000 (full tier-1 reduction $375)',
+    derivation: '$45,000: 700 − (45,000 − 37,500) × 0.05 = 700 − 375 = 325',
+    actual: () => calculateLITO(45000, TAX_YEAR_2024_25).offset,
+    expected: 325,
+  },
+  {
+    node: 'engine.taxOffsets.calculateLITO',
+    law: 'ATO FY24-25 LITO tier 2: 5c/$ to $45,000 then 1.5c/$ above',
+    derivation: '$50,000: 700 − [375 + (50,000 − 45,000) × 0.015] = 700 − 450 = 250',
+    actual: () => calculateLITO(50000, TAX_YEAR_2024_25).offset,
+    expected: 250,
+  },
+  {
+    node: 'engine.taxOffsets.calculateLITO',
+    law: 'ATO FY24-25 LITO: nil at or above the $66,667 cutoff',
+    derivation: '$66,667 ≥ cutoff → $0',
+    actual: () => calculateLITO(66667, TAX_YEAR_2024_25).offset,
+    expected: 0,
+  },
+
+  // ── Tax: applyOffsets — non-refundable (LITO) vs refundable (franking) ───────
+  {
+    node: 'engine.taxOffsets.applyOffsets',
+    law: 'LITO is non-refundable — reduces tax but only down toward $0',
+    derivation: 'gross $1,000 − LITO $700 = net $300',
+    actual: () =>
+      applyOffsets(1000, { lito: 700, sapto: 0, frankingCredits: 0, foreignTax: 0, other: 0, total: 700 }).netTax,
+    expected: 300,
+  },
+  {
+    node: 'engine.taxOffsets.applyOffsets',
+    law: 'Non-refundable offset floors net tax at $0 (cannot create a refund)',
+    derivation: 'gross $500, LITO $700 → nonRefundableUsed = min(700, 500) = 500 → net $0 (NOT −$200)',
+    actual: () =>
+      applyOffsets(500, { lito: 700, sapto: 0, frankingCredits: 0, foreignTax: 0, other: 0, total: 700 }).netTax,
+    expected: 0,
+  },
+  {
+    node: 'engine.taxOffsets.applyOffsets',
+    law: 'Franking credits (Div 207) are refundable — can produce a refund below $0',
+    derivation: 'gross $0, franking $1,000 → net −$1,000 → refundableAmount $1,000',
+    actual: () =>
+      applyOffsets(0, { lito: 0, sapto: 0, frankingCredits: 1000, foreignTax: 0, other: 0, total: 1000 })
+        .refundableAmount,
+    expected: 1000,
   },
 ];
 
