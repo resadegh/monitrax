@@ -51,6 +51,7 @@ import {
 import { calculateLITO, applyOffsets } from '@/lib/tax-engine/core/taxOffsets';
 import { calculateStampDuty, NSW_STAMP_DUTY_FY2024_25 } from '@/lib/tax-engine/stampDuty/stateStampDuty';
 import { calculateLandTax, NSW_LAND_TAX_CY2025 } from '@/lib/tax-engine/landTax/stateLandTax';
+import { calculateCrossStateLandTax } from '@/lib/tax-engine/landTax/crossStateAggregator';
 import { Decimal } from '@/lib/decimal';
 import { TAX_YEAR_2024_25 } from '@/lib/tax-engine/config/taxYearConfig';
 
@@ -936,6 +937,70 @@ const CASES: AuditCase[] = [
         NSW_LAND_TAX_CY2025,
       ).totalTax,
     expected: 94900,
+  },
+
+  // ── Tax: cross-state land-tax aggregator — within-state grouping ─────────────
+  {
+    node: 'engine.crossStateAggregator.calculateCrossStateLandTax',
+    law: 'NSW Land Tax Mgmt Act 1956 Pt 4: a single owner\'s parcels in ONE state are aggregated against that state\'s threshold',
+    derivation: 'two NSW parcels $700,000 + $500,000 → one NSW assessment of $1,200,000',
+    actual: () =>
+      calculateCrossStateLandTax({
+        properties: [
+          { propertyId: 'p1', state: 'NSW', taxableLandValue: 700000, isResidential: true },
+          { propertyId: 'p2', state: 'NSW', taxableLandValue: 500000, isResidential: true },
+        ],
+        ownershipType: 'INDIVIDUAL',
+        isForeignOwner: false,
+      }).perStateAssessments.find((a) => a.state === 'NSW')!.aggregatedValue,
+    expected: 1200000,
+  },
+  {
+    node: 'engine.crossStateAggregator.calculateCrossStateLandTax',
+    law: 'Grouping is material: aggregated $1.2M is ABOVE the $1.075M NSW threshold and IS taxed — whereas each parcel alone ($700k, $500k) is below threshold → $0',
+    derivation: 'NSW $1,200,000: 100 + (1,200,000 − 1,075,001 + 1) × 0.016 = 100 + 125,000 × 0.016 = 100 + 2,000 = 2,100',
+    actual: () =>
+      calculateCrossStateLandTax({
+        properties: [
+          { propertyId: 'p1', state: 'NSW', taxableLandValue: 700000, isResidential: true },
+          { propertyId: 'p2', state: 'NSW', taxableLandValue: 500000, isResidential: true },
+        ],
+        ownershipType: 'INDIVIDUAL',
+        isForeignOwner: false,
+      }).grandTotalGeneralTax,
+    expected: 2100,
+  },
+  {
+    node: 'engine.crossStateAggregator.calculateCrossStateLandTax',
+    law: 'Across states, assessment is INDEPENDENT — grand total = Σ per-state (no federal aggregation)',
+    derivation: 'NSW $1.2M → $2,100; VIC $400k → $2,050 (1,100 + 100,000 × 0.0095); grand total $4,150',
+    actual: () =>
+      calculateCrossStateLandTax({
+        properties: [
+          { propertyId: 'p1', state: 'NSW', taxableLandValue: 700000, isResidential: true },
+          { propertyId: 'p2', state: 'NSW', taxableLandValue: 500000, isResidential: true },
+          { propertyId: 'p3', state: 'VIC', taxableLandValue: 400000, isResidential: true },
+        ],
+        ownershipType: 'INDIVIDUAL',
+        isForeignOwner: false,
+      }).grandTotalGeneralTax,
+    expected: 4150,
+  },
+  {
+    node: 'engine.crossStateAggregator.calculateCrossStateLandTax',
+    law: 'statesAssessed counts distinct states with at least one parcel',
+    derivation: 'NSW (2 parcels) + VIC (1 parcel) → 2 states',
+    actual: () =>
+      calculateCrossStateLandTax({
+        properties: [
+          { propertyId: 'p1', state: 'NSW', taxableLandValue: 700000, isResidential: true },
+          { propertyId: 'p2', state: 'NSW', taxableLandValue: 500000, isResidential: true },
+          { propertyId: 'p3', state: 'VIC', taxableLandValue: 400000, isResidential: true },
+        ],
+        ownershipType: 'INDIVIDUAL',
+        isForeignOwner: false,
+      }).statesAssessed,
+    expected: 2,
   },
 ];
 

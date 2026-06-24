@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -1672,13 +1672,26 @@
       "regime": null,
       "semanticKey": null,
       "produces": "Household-wide land-tax position.",
-      "formula": "Aggregates land by state, then calls calculateLandTax per state (:136); sums the household land-tax position.",
+      "formula": "Group parcels by state; sum taxableLandValue per state (within-state aggregation — NSW Land Tax Mgmt Act 1956 Pt 4 grouping); call calculateLandTax on each state aggregate; sum per-state totals (across-state independence — no federal aggregation). grandTotalTax = Σ(general + trust + foreign). statesAssessed = distinct states.",
       "authority": "State Land Tax Acts (per-state aggregation)",
-      "inputs": [],
+      "inputs": [
+        {
+          "name": "properties[] {state, taxableLandValue, isResidential}",
+          "unit": "AUD",
+          "type": "object",
+          "note": "multi-state portfolio"
+        },
+        {
+          "name": "ownershipType/isForeignOwner",
+          "unit": "enum/bool",
+          "type": "mixed",
+          "note": "applied uniformly across parcels"
+        }
+      ],
       "astHash": null,
-      "verifiedBy": "lib/tax-engine/landTax/crossStateAggregator.ts:105 (read this session)",
-      "workedExample": null,
-      "verifiedDate": "2026-06-23",
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced, within-state grouping + across-state independence) + lib/tax-engine/landTax/crossStateAggregator.ts:105",
+      "workedExample": "Two NSW parcels $700k+$500k → aggregated $1.2M (>threshold) → NSW general $2,100 (would be $0+$0 if assessed separately!); + VIC $400k → $2,050; grandTotal $4,150, statesAssessed 2",
+      "verifiedDate": "2026-06-24",
       "status": "documented"
     },
     {
