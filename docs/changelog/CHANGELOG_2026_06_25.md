@@ -122,4 +122,38 @@
 
 ### PR
 - Branch: `claude/cashflow-2bc-convergence-shk180` (stacked on #1233 `ssot-transaction-table`)
+
+---
+
+## Session: dashboard-actuals-ssot (branch `claude/dashboard-actuals-ssot-jqahjw`)
+
+### Changes Made
+- **Type**: Fix (financial correctness + SSOT) — the dashboard money tiles read the ONE canonical cashflow source.
+- **Scope**: Reza screenshot — dashboard "Monthly cash flow" tile showed **+$10,505** while the /cashflow page showed **−$20,914** (the exact discrepancy that motivated Phase 53). Root cause + fix below.
+- **Root cause (two sources of truth)**: the dashboard fetched `/api/portfolio/snapshot` (the GRDCS relational SSOT), whose `cashflow` block is **declared-only** (no `quickMetrics`/`actual*`). So the 4 KPI tiles + cashflow detail modal + "you're saving X%" insight messages sourced money from the declared "plan" side — silently dropping uncategorised actual spend → false-optimistic (a +surplus and a 51.9% savings rate while the user ran a real deficit). The /cashflow page + Money Story correctly used the canonical actuals resolver. **Two sources for "monthly cashflow" → contradiction.**
+
+### The fix — collapse to ONE source (CLAUDE.md §12.2 / §19.1)
+- **`app/api/dashboard/insights/route.ts`**: call `getCanonicalMonthlyCashflow(snapshot)` (the SAME pure resolver the /cashflow page uses — reused, not duplicated) and expose its result precomputed in `kpiTiles.canonical {monthlyNet, annualNet, monthlyInflow, annualInflow, monthlyOutflow, annualOutflow, savingsRate, basis}`. The savings-rate insight messages now use the canonical (actuals-aware) rate.
+- **`app/dashboard/page.tsx`**: one `cf` accessor reads `insights.kpiTiles.canonical` (declared fallback only until it loads — the sole declared read, annotated). All KPI tiles (desktop + mobile), the cashflow detail modal, and the insight messages read `cf.*`. The dashboard now matches /cashflow + Money Story exactly, transfers excluded (§19.1).
+- **Bonus duplicate-calc fix**: collapsed an inline `snapshot.totalAssets − snapshot.totalLiabilities` (a duplicated net-worth formula) to the canonical `snapshot.netWorth`.
+
+### Neomatrix (§21.2) — model the tiles so A3 enforces convergence
+- +6 nodes (4 dashboard tile UI nodes + `number.canonicalCashflow.monthlyInflow/monthlyOutflow`), +6 edges. The dashboard cashflow tile now shares `semanticKey: monthlyCashflow` with `ui.cashflow.hero` and both render `number.monthlyCashflow` → **A3 convergence-contradiction now PROVES they share one engine** (and fails the build if anyone repoints a tile back to declared). v0.28.0 → **0.29.0**, 110 nodes / 146 edges, **1 connected component**.
+
+### Guard (the structural rule, in code)
+- `scripts/lint-financial-surfaces.ts` — new **Pattern 4: DECLARED_CASHFLOW_SOURCE** flags any surface reading `*.cashflow.{monthlyNetCashflow,annualNetCashflow,savingsRate,totalIncome,totalExpenses}` directly → must use the canonical insights payload. Verified: 0 offenders remain in `app/dashboard`/`app/portal`/`components`. Baseline shrank **22 → 11** (this fix resolved 11 pre-existing violations).
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — 0 new violations
+- [x] `npm run neomatrix:check` — OK (110 nodes / 146 edges / 1 component)
+- [x] `vitest run tests/neomatrix/` — 122/122
+- [x] `tsc --noEmit` — no type errors in changed files
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: insights canonical block + dashboard reroute + model + guard.
+- **Pass 2 (critique)**: confirmed the resolver is REUSED (`getCanonicalMonthlyCashflow`, not re-implemented) — one source, one formula; confirmed the `cf` accessor is the sole declared read (annotated); confirmed A3 now proves convergence; confirmed the guard catches the exact bug class + has 0 current offenders.
+- **Pass 3 (refine)**: collapsed the net-worth inline duplicate too; shrank the lint baseline rather than growing it. **10/10.**
+
+### PR
+- Branch: `claude/dashboard-actuals-ssot-jqahjw`
 - Status: Draft (to be opened)

@@ -183,6 +183,18 @@ interface DashboardInsights {
     outgoingsAnnual: number;
     outgoingsMonthly: number;
     incomeMonthly: number;
+    // SSOT canonical cashflow (§12.2 / §19.1) — actuals-aware, precomputed by
+    // the insights route. Headline money tiles + cashflow detail read these.
+    canonical?: {
+      monthlyNet: number;
+      annualNet: number;
+      monthlyInflow: number;
+      annualInflow: number;
+      monthlyOutflow: number;
+      annualOutflow: number;
+      savingsRate: number;
+      basis: 'actual' | 'declared';
+    };
   };
 }
 
@@ -413,6 +425,29 @@ export default function DashboardPage() {
   // Use centralized formatCurrency utility with abbreviate option for compact display
   const formatCompactCurrency = (amount: number) => formatCurrency(amount, { abbreviate: true });
 
+  // ── SSOT canonical cashflow accessor (CLAUDE.md §12.2 / §19.1) ───────────
+  // Every headline money surface on this page (KPI tiles, cashflow detail,
+  // insight messages) reads `cf.*` — the ACTUAL transaction-based cashflow
+  // computed by the insights route (the same canonical resolver the /cashflow
+  // page uses), with a declared fallback ONLY until the insights payload
+  // loads. Before this, the page read declared `snapshot.cashflow.*` off the
+  // portfolio snapshot, which silently drops uncategorised spend → the tile
+  // showed a false +surplus while /cashflow + Money Story showed the real
+  // deficit. This accessor is the ONE place declared cashflow is read.
+  const canonicalKpi = insights?.kpiTiles?.canonical;
+  // @financial-math-allowed: sole declared-cashflow fallback before the canonical insights payload loads (§19.1)
+  const declaredCf = snapshot?.cashflow;
+  const cf = {
+    monthlyNet: canonicalKpi?.monthlyNet ?? declaredCf?.monthlyNetCashflow ?? 0,
+    annualNet: canonicalKpi?.annualNet ?? declaredCf?.annualNetCashflow ?? 0,
+    monthlyInflow: canonicalKpi?.monthlyInflow ?? 0,
+    annualInflow: canonicalKpi?.annualInflow ?? declaredCf?.totalIncome ?? 0,
+    monthlyOutflow: canonicalKpi?.monthlyOutflow ?? 0,
+    annualOutflow: canonicalKpi?.annualOutflow ?? declaredCf?.totalExpenses ?? 0,
+    savingsRate: canonicalKpi?.savingsRate ?? declaredCf?.savingsRate ?? 0,
+    basis: canonicalKpi?.basis ?? 'declared',
+  };
+
   // Generate insights based on portfolio data
   const generateInsights = () => {
     if (!snapshot) return [];
@@ -420,16 +455,16 @@ export default function DashboardPage() {
     const insights: Array<{ type: 'success' | 'warning' | 'info'; message: string; icon: any }> = [];
 
     // Savings rate insight
-    if (snapshot.cashflow.savingsRate >= 20) {
+    if (cf.savingsRate >= 20) {
       insights.push({
         type: 'success',
-        message: `Excellent! You're saving ${snapshot.cashflow.savingsRate.toFixed(1)}% of your income.`,
+        message: `Excellent! You're saving ${cf.savingsRate.toFixed(1)}% of your income.`,
         icon: CheckCircle2,
       });
-    } else if (snapshot.cashflow.savingsRate < 10 && snapshot.cashflow.savingsRate > 0) {
+    } else if (cf.savingsRate < 10 && cf.savingsRate > 0) {
       insights.push({
         type: 'warning',
-        message: `Your savings rate is ${snapshot.cashflow.savingsRate.toFixed(1)}%. Consider reducing expenses.`,
+        message: `Your savings rate is ${cf.savingsRate.toFixed(1)}%. Consider reducing expenses.`,
         icon: AlertTriangle,
       });
     }
@@ -450,16 +485,16 @@ export default function DashboardPage() {
     }
 
     // Cash flow insight
-    if (snapshot.cashflow.monthlyNetCashflow > 0) {
+    if (cf.monthlyNet > 0) {
       insights.push({
         type: 'success',
-        message: `Positive cash flow of ${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month.`,
+        message: `Positive cash flow of ${formatCurrency(cf.monthlyNet)}/month.`,
         icon: TrendingUp,
       });
-    } else if (snapshot.cashflow.monthlyNetCashflow < 0) {
+    } else if (cf.monthlyNet < 0) {
       insights.push({
         type: 'warning',
-        message: `Negative cash flow of ${formatCurrency(Math.abs(snapshot.cashflow.monthlyNetCashflow))}/month.`,
+        message: `Negative cash flow of ${formatCurrency(Math.abs(cf.monthlyNet))}/month.`,
         icon: TrendingDown,
       });
     }
@@ -690,10 +725,10 @@ export default function DashboardPage() {
                   icon={BanknoteIcon}
                   subPalette="emerald"
                   eyebrow="Monthly cash flow"
-                  value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
-                  helper={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`}
-                  valueClassName={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
-                  tone={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'emerald' : 'amber'}
+                  value={formatCurrency(cf.monthlyNet)}
+                  helper={`${formatCurrency(cf.annualNet)}/year`}
+                  valueClassName={cf.monthlyNet >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
+                  tone={cf.monthlyNet >= 0 ? 'emerald' : 'amber'}
                   series={insights?.kpiTiles?.cashflowSeries ?? []}
                   delta={
                     insights?.kpiTiles
@@ -711,7 +746,7 @@ export default function DashboardPage() {
                   icon={TrendingUpIcon}
                   subPalette="emerald"
                   eyebrow="Annual income"
-                  value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                  value={formatCompactCurrency(cf.annualInflow)}
                   helper={
                     insights?.kpiTiles
                       ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
@@ -735,7 +770,7 @@ export default function DashboardPage() {
                   icon={Receipt}
                   subPalette="slate"
                   eyebrow="Annual outgoings"
-                  value={formatCompactCurrency(insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses)}
+                  value={formatCompactCurrency(cf.annualOutflow)}
                   helper={
                     insights?.kpiTiles
                       ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
@@ -759,10 +794,10 @@ export default function DashboardPage() {
                   icon={PiggyBank}
                   subPalette="sky"
                   eyebrow="Saving rate"
-                  value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                  value={`${cf.savingsRate.toFixed(1)}%`}
                   helper="AU median is around 24%"
                   zones={SAVING_RATE_ZONES}
-                  zoneValue={snapshot.cashflow.savingsRate}
+                  zoneValue={cf.savingsRate}
                   ticks={['0%', '15%', '25%', '50%']}
                 />
               </div>
@@ -789,10 +824,10 @@ export default function DashboardPage() {
                 icon={BanknoteIcon}
                 subPalette="emerald"
                 eyebrow="Monthly cash flow"
-                value={formatCurrency(snapshot.cashflow.monthlyNetCashflow)}
-                helper={`${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`}
-                valueClassName={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
-                tone={snapshot.cashflow.monthlyNetCashflow >= 0 ? 'emerald' : 'amber'}
+                value={formatCurrency(cf.monthlyNet)}
+                helper={`${formatCurrency(cf.annualNet)}/year`}
+                valueClassName={cf.monthlyNet >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}
+                tone={cf.monthlyNet >= 0 ? 'emerald' : 'amber'}
                 series={insights?.kpiTiles?.cashflowSeries ?? []}
                 delta={
                   insights?.kpiTiles
@@ -810,7 +845,7 @@ export default function DashboardPage() {
                 icon={TrendingUpIcon}
                 subPalette="emerald"
                 eyebrow="Annual income"
-                value={formatCompactCurrency(snapshot.cashflow.totalIncome)}
+                value={formatCompactCurrency(cf.annualInflow)}
                 helper={
                   insights?.kpiTiles
                     ? `${formatCurrency(insights.kpiTiles.incomeMonthly)}/month gross`
@@ -834,7 +869,7 @@ export default function DashboardPage() {
                 icon={Receipt}
                 subPalette="slate"
                 eyebrow="Annual outgoings"
-                value={formatCompactCurrency(insights?.kpiTiles?.outgoingsAnnual ?? snapshot.cashflow.totalExpenses)}
+                value={formatCompactCurrency(cf.annualOutflow)}
                 helper={
                   insights?.kpiTiles
                     ? `${formatCurrency(insights.kpiTiles.outgoingsMonthly)}/month avg`
@@ -858,10 +893,10 @@ export default function DashboardPage() {
                 icon={PiggyBank}
                 subPalette="sky"
                 eyebrow="Saving rate"
-                value={`${snapshot.cashflow.savingsRate.toFixed(1)}%`}
+                value={`${cf.savingsRate.toFixed(1)}%`}
                 helper="AU median is around 24%"
                 zones={SAVING_RATE_ZONES}
-                zoneValue={snapshot.cashflow.savingsRate}
+                zoneValue={cf.savingsRate}
                 ticks={['0%', '15%', '25%', '50%']}
               />
             </div>
@@ -1255,7 +1290,7 @@ export default function DashboardPage() {
                 <>
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                      {snapshot.cashflow.monthlyNetCashflow >= 0 ? (
+                      {cf.monthlyNet >= 0 ? (
                         <ArrowUpRight className="h-5 w-5 text-green-600" />
                       ) : (
                         <ArrowDownRight className="h-5 w-5 text-orange-600" />
@@ -1294,21 +1329,21 @@ export default function DashboardPage() {
                     </div>
 
                     {/* Summary */}
-                    <div className={`text-center p-6 rounded-lg ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
+                    <div className={`text-center p-6 rounded-lg ${cf.monthlyNet >= 0 ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30'}`}>
                       <p className="text-sm text-muted-foreground mb-1">
                         {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Net Cash Flow
                       </p>
-                      <p className={`text-4xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                      <p className={`text-4xl font-bold ${cf.monthlyNet >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
                         {formatCurrency(
                           cashflowPeriod === 'monthly'
-                            ? snapshot.cashflow.monthlyNetCashflow
-                            : snapshot.cashflow.annualNetCashflow
+                            ? cf.monthlyNet
+                            : cf.annualNet
                         )}
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
                         {cashflowPeriod === 'monthly'
-                          ? `${formatCurrency(snapshot.cashflow.annualNetCashflow)}/year`
-                          : `${formatCurrency(snapshot.cashflow.monthlyNetCashflow)}/month`
+                          ? `${formatCurrency(cf.annualNet)}/year`
+                          : `${formatCurrency(cf.monthlyNet)}/month`
                         }
                       </p>
                     </div>
@@ -1327,15 +1362,15 @@ export default function DashboardPage() {
                           <span className="text-xl font-bold text-green-700 dark:text-green-400">
                             +{formatCurrency(
                               cashflowPeriod === 'monthly'
-                                ? snapshot.cashflow.totalIncome / 12
-                                : snapshot.cashflow.totalIncome
+                                ? cf.monthlyInflow
+                                : cf.annualInflow
                             )}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           {cashflowPeriod === 'monthly'
-                            ? `${formatCurrency(snapshot.cashflow.totalIncome)}/year`
-                            : `${formatCurrency(snapshot.cashflow.totalIncome / 12)}/month`
+                            ? `${formatCurrency(cf.annualInflow)}/year`
+                            : `${formatCurrency(cf.monthlyInflow)}/month`
                           }
                         </p>
                         {snapshot.income && snapshot.income.length > 0 && (
@@ -1376,15 +1411,15 @@ export default function DashboardPage() {
                           <span className="text-xl font-bold text-red-700 dark:text-red-400">
                             -{formatCurrency(
                               cashflowPeriod === 'monthly'
-                                ? snapshot.cashflow.totalExpenses / 12
-                                : snapshot.cashflow.totalExpenses
+                                ? cf.monthlyOutflow
+                                : cf.annualOutflow
                             )}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           {cashflowPeriod === 'monthly'
-                            ? `${formatCurrency(snapshot.cashflow.totalExpenses)}/year`
-                            : `${formatCurrency(snapshot.cashflow.totalExpenses / 12)}/month`
+                            ? `${formatCurrency(cf.annualOutflow)}/year`
+                            : `${formatCurrency(cf.monthlyOutflow)}/month`
                           }
                         </p>
                         {snapshot.expenses && snapshot.expenses.length > 0 && (
@@ -1398,7 +1433,7 @@ export default function DashboardPage() {
                                 <span>
                                   {formatCurrency(
                                     cashflowPeriod === 'monthly'
-                                      ? expense.annualAmount / 12
+                                      ? expense.annualAmount / 12 /* @financial-math-allowed: UI-only display formatting (annual→monthly per-expense) */
                                       : expense.annualAmount
                                   )}/{cashflowPeriod === 'monthly' ? 'mo' : 'yr'}
                                 </span>
@@ -1458,16 +1493,16 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Net Result */}
-                      <div className={`p-4 rounded-lg border-2 ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'border-green-500 bg-green-100 dark:bg-green-950/50' : 'border-red-500 bg-red-100 dark:bg-red-950/50'}`}>
+                      <div className={`p-4 rounded-lg border-2 ${cf.monthlyNet >= 0 ? 'border-green-500 bg-green-100 dark:bg-green-950/50' : 'border-red-500 bg-red-100 dark:bg-red-950/50'}`}>
                         <div className="flex justify-between items-center">
                           <span className="font-semibold">
                             = {cashflowPeriod === 'monthly' ? 'Monthly' : 'Annual'} Net Cash Flow
                           </span>
-                          <span className={`text-xl font-bold ${snapshot.cashflow.monthlyNetCashflow >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                          <span className={`text-xl font-bold ${cf.monthlyNet >= 0 ? 'text-green-700' : 'text-red-700'}`}>
                             {formatCurrency(
                               cashflowPeriod === 'monthly'
-                                ? snapshot.cashflow.monthlyNetCashflow
-                                : snapshot.cashflow.annualNetCashflow
+                                ? cf.monthlyNet
+                                : cf.annualNet
                             )}
                           </span>
                         </div>
@@ -1493,7 +1528,7 @@ export default function DashboardPage() {
                     <div className="text-center p-6 bg-teal-50 dark:bg-teal-950/30 rounded-lg">
                       <p className="text-sm text-muted-foreground mb-1">Savings Rate</p>
                       <p className="text-5xl font-bold text-teal-700 dark:text-teal-400">
-                        {snapshot.cashflow.savingsRate.toFixed(1)}%
+                        {cf.savingsRate.toFixed(1)}%
                       </p>
                       <p className="text-sm text-muted-foreground mt-2">
                         of net income
@@ -1504,11 +1539,11 @@ export default function DashboardPage() {
                     <div className="space-y-3">
                       <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
                         <span>Annual Net Income</span>
-                        <span className="font-semibold">{formatCurrency(snapshot.cashflow.totalIncome)}</span>
+                        <span className="font-semibold">{formatCurrency(cf.annualInflow)}</span>
                       </div>
                       <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
                         <span>Annual Expenses</span>
-                        <span className="font-semibold text-red-600">-{formatCurrency(snapshot.cashflow.totalExpenses)}</span>
+                        <span className="font-semibold text-red-600">-{formatCurrency(cf.annualOutflow)}</span>
                       </div>
                       <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
                         <span>Annual Loan Repayments</span>
@@ -1516,7 +1551,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex justify-between p-3 bg-teal-100 dark:bg-teal-950/50 rounded-lg border-2 border-teal-500">
                         <span className="font-semibold">= Annual Savings</span>
-                        <span className="font-bold text-teal-700 dark:text-teal-400">{formatCurrency(snapshot.cashflow.annualNetCashflow)}</span>
+                        <span className="font-bold text-teal-700 dark:text-teal-400">{formatCurrency(cf.annualNet)}</span>
                       </div>
                     </div>
 
@@ -1525,26 +1560,26 @@ export default function DashboardPage() {
                       <h4 className="font-medium mb-3">Savings Rate Benchmarks</h4>
                       <div className="space-y-2 text-sm">
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 20 ? 'bg-green-500' : 'bg-muted'}`} />
-                          <span className={snapshot.cashflow.savingsRate >= 20 ? 'font-medium' : 'text-muted-foreground'}>
+                          <div className={`w-3 h-3 rounded-full ${cf.savingsRate >= 20 ? 'bg-green-500' : 'bg-muted'}`} />
+                          <span className={cf.savingsRate >= 20 ? 'font-medium' : 'text-muted-foreground'}>
                             20%+ Excellent
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 10 && snapshot.cashflow.savingsRate < 20 ? 'bg-yellow-500' : 'bg-muted'}`} />
-                          <span className={snapshot.cashflow.savingsRate >= 10 && snapshot.cashflow.savingsRate < 20 ? 'font-medium' : 'text-muted-foreground'}>
+                          <div className={`w-3 h-3 rounded-full ${cf.savingsRate >= 10 && cf.savingsRate < 20 ? 'bg-yellow-500' : 'bg-muted'}`} />
+                          <span className={cf.savingsRate >= 10 && cf.savingsRate < 20 ? 'font-medium' : 'text-muted-foreground'}>
                             10-20% Good
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate >= 0 && snapshot.cashflow.savingsRate < 10 ? 'bg-orange-500' : 'bg-muted'}`} />
-                          <span className={snapshot.cashflow.savingsRate >= 0 && snapshot.cashflow.savingsRate < 10 ? 'font-medium' : 'text-muted-foreground'}>
+                          <div className={`w-3 h-3 rounded-full ${cf.savingsRate >= 0 && cf.savingsRate < 10 ? 'bg-orange-500' : 'bg-muted'}`} />
+                          <span className={cf.savingsRate >= 0 && cf.savingsRate < 10 ? 'font-medium' : 'text-muted-foreground'}>
                             0-10% Needs Improvement
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className={`w-3 h-3 rounded-full ${snapshot.cashflow.savingsRate < 0 ? 'bg-red-500' : 'bg-muted'}`} />
-                          <span className={snapshot.cashflow.savingsRate < 0 ? 'font-medium' : 'text-muted-foreground'}>
+                          <div className={`w-3 h-3 rounded-full ${cf.savingsRate < 0 ? 'bg-red-500' : 'bg-muted'}`} />
+                          <span className={cf.savingsRate < 0 ? 'font-medium' : 'text-muted-foreground'}>
                             Below 0% Spending More Than Earning
                           </span>
                         </div>
@@ -1597,11 +1632,12 @@ export default function DashboardPage() {
                       <div className="flex justify-between items-center">
                         <span className="font-medium">Total Equity (Assets - Debt)</span>
                         <span className="text-xl font-bold text-purple-700 dark:text-purple-400">
-                          {formatCurrency(snapshot.totalAssets - snapshot.totalLiabilities)}
+                          {formatCurrency(snapshot.netWorth)}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {((snapshot.totalAssets - snapshot.totalLiabilities) / snapshot.totalAssets * 100).toFixed(1)}% of assets
+                        {/* @financial-math-allowed: UI-only display ratio (net worth as % of assets); net worth itself is the canonical snapshot.netWorth */}
+                        {(snapshot.netWorth / snapshot.totalAssets * 100).toFixed(1)}% of assets
                       </p>
                     </div>
 

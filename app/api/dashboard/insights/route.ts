@@ -19,6 +19,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { getExpenseDataMaturity } from '@/lib/dashboard/expenseDataMaturity';
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { quickHealthCheck, scoreToRiskBand, FinancialHealthInput, PropertyData, LoanData, AccountData, InvestmentData, IncomeData, ExpenseData } from '@/lib/health';
@@ -150,6 +151,20 @@ interface DashboardInsights {
     outgoingsAnnual: number;
     outgoingsMonthly: number;
     incomeMonthly: number;
+    // SSOT canonical cashflow (CLAUDE.md §12.2 / §19.1) — actuals when the
+    // user has transactions, declared fallback otherwise. The dashboard money
+    // tiles + cashflow detail read THESE (precomputed; zero inline arithmetic
+    // per the surface linter) so they match the /cashflow page exactly.
+    canonical: {
+      monthlyNet: number;
+      annualNet: number;
+      monthlyInflow: number;
+      annualInflow: number;
+      monthlyOutflow: number;
+      annualOutflow: number;
+      savingsRate: number;
+      basis: 'actual' | 'declared';
+    };
   };
 }
 
@@ -159,6 +174,15 @@ export const GET = withPermission('report.read', async (request, auth) => {
 
       // Get canonical Phase-28 snapshot (single source of truth)
       const snapshot = await getMasterFinancialSnapshot(userId);
+
+      // SSOT for headline cashflow (CLAUDE.md §12.2 / §19.1): the canonical
+      // monthly cashflow — ACTUAL transaction-based when `hasActualData`,
+      // declared fallback otherwise — the SAME resolver the /cashflow page
+      // uses. Dashboard money tiles read this (precomputed, below) so they can
+      // never diverge from the cashflow page or Money Story again. (Before:
+      // the dashboard read declared `snapshot.cashflow.*` off the portfolio
+      // snapshot, which silently drops uncategorised spend → false-optimistic.)
+      const canonicalCashflow = getCanonicalMonthlyCashflow(snapshot);
 
       // Phase 43.4 — two-mode expense-data maturity gate. Replaces the
       // cheap `monthlyExpenses > 0` check with ≥90-day UnifiedTransaction
@@ -266,7 +290,10 @@ export const GET = withPermission('report.read', async (request, auth) => {
       const monthsCovered = snapshot.emergencyFund.monthsCovered;
       const emergencyFundGap = snapshot.emergencyFund.gap;
       const emergencyFundStatus = snapshot.emergencyFund.status;
-      const savingsRate = snapshot.quickMetrics.savingsRate;
+      // Canonical (actuals-aware) savings rate — §19.1. Was the declared
+      // `quickMetrics.savingsRate`, which made the "you're saving X%" insight
+      // messages falsely optimistic when actual spend exceeds declared.
+      const savingsRate = canonicalCashflow.savingsRate;
       const debtToIncome = snapshot.healthScore.components.debtToIncome.value;
 
       // Score calculations (0-100 for each component) - for breakdown display
@@ -465,6 +492,18 @@ export const GET = withPermission('report.read', async (request, auth) => {
           outgoingsMonthly:
             snapshot.cashflow.monthlyExpenses + snapshot.cashflow.monthlyLoanRepayments,
           incomeMonthly: snapshot.quickMetrics.monthlyGrossIncome,
+          // SSOT canonical cashflow (§12.2 / §19.1) — precomputed actuals-aware
+          // figures the dashboard headline tiles read verbatim.
+          canonical: {
+            monthlyNet: canonicalCashflow.net,
+            annualNet: canonicalCashflow.net * 12,
+            monthlyInflow: canonicalCashflow.inflow,
+            annualInflow: canonicalCashflow.inflow * 12,
+            monthlyOutflow: canonicalCashflow.outflow,
+            annualOutflow: canonicalCashflow.outflow * 12,
+            savingsRate: canonicalCashflow.savingsRate,
+            basis: canonicalCashflow.basis,
+          },
         },
       };
 
