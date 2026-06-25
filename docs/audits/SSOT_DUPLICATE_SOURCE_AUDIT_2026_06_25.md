@@ -93,14 +93,31 @@ Canonical: `lib/tax-engine/config/taxYearConfig.ts`.
 1. **Extend `scripts/lint-financial-surfaces.ts` `SCAN_DIRS`** to include `lib/` and `app/api/`. Almost every finding above is invisible to the current scan. Add the new violations to the baseline, then burn it down. (Adds the frequency/formatter/declared-cashflow patterns app-wide as build-gated.)
 2. **Model the un-modelled surfaces into the Neomatrix** (§21.2) with `semanticKey`s — so A3 convergence-contradiction flags any two surfaces of the same concept tracing to different engines as a build failure (the mechanism that would have caught the +$10,505 bug).
 
+### 7.1 W1 outcome — how the linter was extended (PR #1240, 2026-06-25)
+
+A blanket extension of all four patterns to `lib/` flagged **215 matches**, but a measured triage showed **~70% were legitimate engine domain math** (an engine is *supposed* to compute `assets − liabilities` and annualise `× 12` — §12.3), not duplication. Baselining 215 noisy entries would have buried the real signal. So the extension is **layer-aware**:
+
+| Layer | Dirs | Patterns applied |
+|---|---|---|
+| **surface** | `app/dashboard`, `app/portal`, `components` | all four, **loose** FREQUENCY (a surface must never do `× 12` at all) — *unchanged; existing baseline preserved exactly* |
+| **route** | `app/api` | all four, **enum-tightened** FREQUENCY (routes must be thin — §12.3 — but legitimately annualise a canonical value now and then; only a `case 'WEEKLY'`-style converter re-impl is a dup) |
+| **engine** | `lib` | **only** `DECLARED_CASHFLOW_SOURCE` (a §19.1 declared-vs-actual bypass) **+ enum-tightened** FREQUENCY (a genuine `toMonthly`/`toAnnual` shadow). Inline-arithmetic + hardcoded-constant patterns are NOT applied — engines legitimately compute + hold config. Canonical homes (`lib/utils/frequencies.ts`) + audit/test harnesses (`lib/calc-audit/`, `lib/testing/`) are skipped. |
+
+**Enum-tightening:** in route/engine layers a FREQUENCY match only counts when the line carries a frequency period as a **value** — a quoted `'monthly'` / `case 'WEEKLY'` or an ALL-CAPS `ANNUALLY` token — not a lowercase identifier like `monthly.income` (which is just a variable). Precision pass also skips `.length`/`.count`/`.size` counting and `.sort()` comparators in INLINE_ARITHMETIC.
+
+**Result:** 215 → **30 genuine route+engine known-debt entries** baselined (the W2–W7 worklist; 0 false positives), surface baseline unchanged (11). New duplication in `lib/` or `app/api/` now fails the build.
+
+> **⚠️ Suspected stale-constant find (raised with Reza per §21.2 — NOT silently fixed):** `app/api/cashflow/intelligence/route.ts:481` —
+> `potentialSaving: Math.min(27500, annualGrossIncome * 0.05) * 0.34` — `27500` is the **FY23-24** concessional cap (FY24-25/25-26 is **$30,000**) and `0.34` is a magic approximate marginal+Medicare rate. Baselined as known-debt for a follow-up financial PR (§19.2 worked-example + §20.4 10/10); flagged here so it isn't lost. Lower severity than W0 (it sizes a *suggestion's* "approx saving", not a core tax position) but it is a genuine stale-constant smell.
+
 ---
 
 ## 8. Recommended remediation roadmap (sequenced, each its own PR — §20.4 10/10 + §19.2 per financial PR)
 
 | Wave | Scope | Why first |
 |---|---|---|
-| **W0** | P0-1 stale tax brackets → `getTaxYearConfig` (after Reza confirms — wrong number) | Live wrong number |
-| **W1** | Structural lever §7 (extend linter + baseline) | Stops the bleeding; makes the rest enforceable |
+| **W0** ✅ | P0-1 stale tax brackets → `getTaxYearConfig` (after Reza confirms — wrong number) | Live wrong number — **DONE (PR #1238)** |
+| **W1** ✅ | Structural lever §7 (extend linter + baseline) | Stops the bleeding; makes the rest enforceable — **DONE (PR #1240)** |
 | **W2** | Declared-vs-actual §3 (insightsEngine + portal ClientCanonicalDashboard) | §19.1 false-optimistic to users + advisers |
 | **W3** | Collapse `buildHealthInput` (the two route copies → one shared canonical builder) | Worst single duplication; §12.3 |
 | **W4** | Emergency-fund-months + savings-rate + LVR → canonical (incl. delete `loanAggregator.calculateLVR`, create net-yield/debt-to-asset canonical homes) | Most-duplicated formulas |
