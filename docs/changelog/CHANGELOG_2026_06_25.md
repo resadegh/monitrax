@@ -336,3 +336,27 @@ Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix
 - **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
 - `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
 - **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).
+
+---
+
+## Session: adoring-davinci-e2wb4d (follow-up) — Neobrain scope-growth plan documented + paused
+
+### Changes Made
+- **Type**: Docs (planning) — no code, no graph data, no behaviour change
+- **Scope**: Record the agreed Neobrain scope-growth roadmap so the next session picks it up cleanly; pause the workstream at the user's request.
+- **Description**: After PR #1243 merged (umbrella + SSOT + Neomatrix `neobrain` domain), Reza signed off on the scope-growth plan and asked to pause and pick up tomorrow.
+
+### Files Modified
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` — §10 rewritten as the AGREED 3-horizon roadmap with the north-star constraint (*fewer confirmations, not a chattier AI*) and **Step 1 (instrument Neobrain) marked ▶ NEXT**.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOBRAIN` flipped to ⏸️ PAUSED; "next session starts here → Step 1" pointer; node count corrected to the post-rebase 152/196.
+- `docs/changelog/CHANGELOG_2026_06_25.md` — this entry.
+
+### The agreed plan (one-line)
+H1 (foundation): **1 instrument** → 2 unify learning stores → 3 retire `AILearningPattern`. H2 (smarter perception): 4 KB embeddings → 5 Gemini-on-miss on. H3 (understanding): 6 insight layer → 7 CDR/Basiq. Cross-cutting: 8 backfill Neomatrix nodes. North star: every step reduces confirmations; autonomy contract (AI suggests, user confirms) preserved.
+
+### Build Status
+- [x] Docs/planning only — no code, no graph data changed (`neomatrix:check` unaffected).
+
+### PR
+- Branch: `claude/adoring-davinci-e2wb4d` (follow-up commit on the now-merged branch; base `main`)
+- Status: Draft (to be opened)
