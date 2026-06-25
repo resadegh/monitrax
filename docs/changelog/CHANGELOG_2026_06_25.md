@@ -251,4 +251,52 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 
 ### PR
 - Branch: `claude/w1-linter-lib-coverage-jqahjw`
+- Status: Merged (PR #1240)
+
+---
+
+## Session: Trust Engine L2 — invariant locks for the two triggering bugs
+
+### Changes Made
+- **Type**: Enhancement (financial-correctness verification — `0·TRUST-ENGINE` workstream, Layer 2)
+- **Scope**: new test suite `tests/regression/invariants/trustEngine.invariants.test.ts` (no production code changed)
+- **Description**: First slice of the Financial Trust Engine (Reza directive 2026-06-25: *"a system to check and be 100% sure the results are valid, correct and trustworthy"*). Adds the L2 invariant/property laws whose **absence** let two production bugs ship — extending the Phase 4 invariant suite, not rebuilding it (§12.2.1; research confirmed Phase 4 L2/L3 + the Neomatrix A1 audit + `lib/calc-audit` shadow harness already exist).
+
+### The invariants (laws checked over fine deterministic sweeps)
+- **L2.1 income tax** — monotone non-decreasing across a 137-step sweep + every bracket boundary ±1 (locks the **$0-at-every-bracket-boundary cliff**, P0 fixed 2026-06-23); positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equal to the bracket rate AT each boundary.
+- **L2.2 actual cashflow** — `Σ outflowByCategory === currentMonthOutflow` (locks the **dropped-uncategorised-spend** bug); Uncategorised bucketed never dropped; transfers excluded; holds over a 40-trial random sweep; no NaN/Infinity.
+- **L2.3 frequency converters** — `toAnnual(x,f) === x × periodsPerYear(f)` + `toMonthly === toAnnual/12` + round-trip (catches the divergent-converter class, e.g. a 4.33-weekly drift).
+
+### Demonstrated catches (§19/§20 — an invariant that can't fail is worthless)
+- Reintroduced the $0-cliff (strict `<` → `<=`) → **monotonicity lock FAILED**; reverted → passes (engine 0-diff).
+- Reintroduced dropped-uncategorised → **category-sum lock FAILED** (both cases); reverted → passes (engine 0-diff).
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.invariants.test.ts` — NEW (9 tests)
+
+### Build Status
+- [x] `vitest run tests/regression/invariants/trustEngine.invariants.test.ts` — 9/9
+- [x] `vitest run tests/regression` — 279 passed / 43 skipped (no regression)
+- [x] No production logic changed — verification only
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: write the two invariant locks + frequency consistency. **Pass 2 (critique)**: research-first confirmed I was extending (not duplicating) Phase 4 L2/L3 + the A1 audit; verified the engine's `incomeInBracket+1` convention so continuity bounds are correct not over-strict; verified `Σcategory===total` is by-construction so the lock is exact; fixed my own wrong meta-assertion (sweep tops at 399,903). **Pass 3 (refine)**: mutation-tested BOTH locks to prove they catch the real bugs, reverted the engines, ran the full regression suite. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/changelog/CHANGELOG_2026_06_25.md` — this entry
+- `0·TRUST-ENGINE` workstream L2 item → ticks when #1241 (workstream registration) merges
+
+### PR
+- Branch: `claude/trust-engine-l2-invariants-jqahjw`
 - Status: Draft (to be opened)
+
+### Addendum — Trust Engine modelled INTO the Neomatrix (§21.2.1 ZERO-DRIFT)
+
+Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix."* The Trust Engine is now first-class in the graph — the Neomatrix maps not just *what produces* each number but *what proves it correct*.
+
+- **Schema extension** (`scripts/neomatrix/graphlib.mjs`): new node kind **`verification`** (a Trust Engine assurance node — golden case L0 / independent recompute L1 / invariant L2 / reconciliation L3) + new edge type **`verified-by`** (engine/number IS PROVEN by a verification node; parallels `governed-by`). Additive — existing nodes/edges unaffected.
+- **New rendered section** "Assurance — the Trust Engine (what proves each number correct)" in `GENERATED_CORE.md` — table of each verification node: layer, what it proves, the bug it catches, the engine it covers, the test evidence.
+- **2 verification nodes + 2 `verified-by` edges** for the L2 slice: income-tax monotonicity/continuity → `engine.incomeTaxCalculator.calculateIncomeTax`; cashflow category-sum → `engine.actualCashflow.computeActualCashflow`. Each cites the test file:line + the mutation-proof. Graph v0.30.0 → **0.31.0** (113 nodes, 149 edges).
+- **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
+- `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
+- **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).
