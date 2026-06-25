@@ -44,6 +44,15 @@ describe('cashflow surfaces use the canonical accessor (SSOT drift guard)', () =
     expect(src).not.toMatch(/monthlyExpenses:\s*totalMonthlyExpenses/);
   });
 
+  it('the /activity "this month" tiles read the canonical accessor (current month), not the rolling-30-day analytics window', () => {
+    const src = read('app/dashboard/activity/page.tsx');
+    // The summary tiles must resolve through the canonical monthly cashflow
+    // (same engine as the /cashflow hero), so In/Out/Net match it exactly.
+    expect(src).toContain('getCanonicalMonthlyCashflow');
+    // The old rolling window must be gone from the summary fetch.
+    expect(src).not.toContain("analytics?months=1");
+  });
+
   it('the canonical accessor exposes the single actuals-vs-declared rule', () => {
     const src = read('lib/calculations/canonicalCashflow.ts');
     expect(src).toContain('export function getCanonicalMonthlyCashflow');

@@ -24,10 +24,15 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
       const { searchParams } = new URL(request.url);
       const userId = auth.userId;
 
-      // Date range (default: last 6 months)
+      // Date range. `from` (ISO date) sets an explicit window start — used by
+      // the Activity "this month" tiles (start-of-calendar-month) so the count
+      // matches the canonical month. Otherwise default to the last `months`.
       const months = parseInt(searchParams.get('months') || '6');
-      const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - months);
+      const fromParam = searchParams.get('from');
+      const startDate = fromParam ? new Date(fromParam) : new Date();
+      if (!fromParam) {
+        startDate.setMonth(startDate.getMonth() - months);
+      }
 
       // Fetch transactions
       const transactions = await prisma.unifiedTransaction.findMany({

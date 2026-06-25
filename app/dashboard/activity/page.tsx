@@ -63,6 +63,7 @@ import { BulkActionToolbar } from '@/components/bookkeeping/BulkActionToolbar';
 import { CompletionCelebration } from '@/components/bookkeeping/CompletionCelebration';
 import { CategoryPickerSheet } from '@/components/bookkeeping/CategoryPickerSheet';
 import { ConsumerMoneyFlowSankey } from '@/components/bookkeeping/ConsumerMoneyFlowSankey';
+import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import { ReviewQueueCards } from '@/components/bookkeeping/ReviewQueueCards';
 import { TransferDestinationSheet } from '@/components/bookkeeping/TransferDestinationSheet';
 import { useSwipeGesture, SWIPE_THRESHOLD_PX } from '@/hooks/useSwipeGesture';
@@ -514,13 +515,34 @@ function ActivityPageContent() {
   const fetchSummary = useCallback(async () => {
     if (!token) return;
     try {
-      const response = await fetch('/api/unified-transactions/analytics?months=1', {
-        headers: { Authorization: `Bearer ${token}` },
+      // Phase 2c (cashflow-SSOT) — the "This month" tiles read the CANONICAL
+      // current-calendar-month cashflow (the same `getCanonicalMonthlyCashflow`
+      // the /cashflow hero uses), so In/Out/Net match the hero exactly instead
+      // of a separate rolling-30-day window. Transaction count is the
+      // current-calendar-month count. CLAUDE.md §19.1.
+      const now = new Date();
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      const [snapRes, countRes] = await Promise.all([
+        fetch('/api/master-snapshot', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`/api/unified-transactions/analytics?from=${encodeURIComponent(startOfMonth)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const snapJson = await snapRes.json();
+      if (!snapRes.ok || !snapJson.success) return;
+      const cf = getCanonicalMonthlyCashflow(
+        snapJson.data as Parameters<typeof getCanonicalMonthlyCashflow>[0]
+      );
+      const countJson = await countRes.json().catch(() => null);
+      const transactionCount =
+        countRes.ok && countJson?.success ? countJson.data.summary.transactionCount : 0;
+      setSummary({
+        totalSpend: cf.outflow,
+        totalIncome: cf.inflow,
+        netCashflow: cf.net,
+        transactionCount,
+        topCategories: [],
       });
-      const json = await response.json();
-      if (response.ok && json.success) {
-        setSummary(json.data.summary);
-      }
     } catch (err) {
       console.error('Failed to fetch summary:', err);
     }
@@ -683,6 +705,9 @@ function ActivityPageContent() {
             1.2-tile peek + page-dot indicator below sm; 4-col grid at sm+. */}
         {summary && (
           <div className="mb-6">
+            <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              This month
+            </p>
             <div
               ref={kpiStripRef}
               onScroll={handleKpiScroll}
