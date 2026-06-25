@@ -289,3 +289,14 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 ### PR
 - Branch: `claude/trust-engine-l2-invariants-jqahjw`
 - Status: Draft (to be opened)
+
+### Addendum — Trust Engine modelled INTO the Neomatrix (§21.2.1 ZERO-DRIFT)
+
+Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix."* The Trust Engine is now first-class in the graph — the Neomatrix maps not just *what produces* each number but *what proves it correct*.
+
+- **Schema extension** (`scripts/neomatrix/graphlib.mjs`): new node kind **`verification`** (a Trust Engine assurance node — golden case L0 / independent recompute L1 / invariant L2 / reconciliation L3) + new edge type **`verified-by`** (engine/number IS PROVEN by a verification node; parallels `governed-by`). Additive — existing nodes/edges unaffected.
+- **New rendered section** "Assurance — the Trust Engine (what proves each number correct)" in `GENERATED_CORE.md` — table of each verification node: layer, what it proves, the bug it catches, the engine it covers, the test evidence.
+- **2 verification nodes + 2 `verified-by` edges** for the L2 slice: income-tax monotonicity/continuity → `engine.incomeTaxCalculator.calculateIncomeTax`; cashflow category-sum → `engine.actualCashflow.computeActualCashflow`. Each cites the test file:line + the mutation-proof. Graph v0.30.0 → **0.31.0** (113 nodes, 149 edges).
+- **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
+- `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
+- **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).

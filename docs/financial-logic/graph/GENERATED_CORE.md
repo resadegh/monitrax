@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.30.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.31.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 111 · **Edges:** 147
-- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 11 · ui-surface 12 · law 21
-- **By status:** documented 111
-- **Edge provenance:** verified 147 *(verified > graphify > inferred)*
+- **Nodes:** 113 · **Edges:** 149
+- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 11 · ui-surface 12 · law 21 · verification 2
+- **By status:** documented 113
+- **Edge provenance:** verified 149 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -129,6 +129,13 @@
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
 | **Report aggregation rules** | total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n | Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values) | Property portfolio report |
 | **Loan interest = principal × annual rate** | monthlyInterest = P × r/12 | Standard interest formula | Loan/debt aggregation (interest) |
+
+## Assurance — the Trust Engine (what proves each number correct)
+
+| Verification | Layer | Domain | Proves | Catches (the bug it locks) | Covers | Evidence |
+|---|---|---|---|---|---|---|
+| **Income tax — monotone + continuous + progressive (L2)** | L2 | tax | Property laws over a 137-step income sweep + every bracket boundary: tax non-decreasing; positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equals the bracket rate AT each boundary. | The $0-at-every-bracket-boundary cliff (P0, fixed 2026-06-23). Mutation-proven: reintroducing strict-< → <= fails the monotonicity lock. | Income tax (marginal brackets) | `tests/regression/invariants/trustEngine.invariants.test.ts:57` |
+| **Actual cashflow — category breakdown sums to total (L2)** | L2 | core | Σ outflowByCategory === currentMonthOutflow (to the cent), over a fixed fixture + a 40-trial random sweep; Uncategorised bucketed never dropped; transfers excluded; no NaN/Infinity. | The dropped-uncategorised-spend bug (cashflow-SSOT, 2026-06-23) that produced false-optimistic surplus. Mutation-proven: dropping uncategorised from the map fails the reconciliation lock. | Actual cashflow | `tests/regression/invariants/trustEngine.invariants.test.ts:139` |
 
 ## Edges (verified, with evidence)
 
@@ -281,6 +288,8 @@
 | Monthly outflow (canonical, actuals-aware) | → | Dashboard — Annual outgoings KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualOutflow → page cf.annualOutflow |
 | Saving rate | → | Dashboard — Saving rate KPI tile | rendered-at | %→% | verified | insights kpiTiles.canonical.savingsRate → page cf.savingsRate |
 | Income tax (marginal brackets) | → | Cashflow-intelligence tax estimate (canonical) | feeds | AUD/year→AUD/year | verified | cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table) |
+| Income tax (marginal brackets) | → | Income tax — monotone + continuous + progressive (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.invariants.test.ts:57 — monotone/continuous/progressive sweep over every bracket boundary; mutation-proven (strict-< → <= fails it). |
+| Actual cashflow | → | Actual cashflow — category breakdown sums to total (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.invariants.test.ts:139 — Σ outflowByCategory === currentMonthOutflow; mutation-proven (dropping uncategorised fails it). |
 
 ---
 

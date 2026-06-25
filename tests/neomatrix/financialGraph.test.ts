@@ -46,6 +46,32 @@ describe('Neomatrix — financial-graph.json', () => {
     const committed = readFileSync(resolve(ROOT, 'docs/financial-logic/graph/GENERATED_CORE.md'), 'utf8');
     expect(committed).toBe(renderMarkdown(graph));
   });
+
+  // Trust Engine ↔ Neomatrix (2026-06-25). A `verification` node PROVES an
+  // engine/number — it is useless unwired. Lock the convention so every future
+  // Trust Engine layer (L0/L1/L3) connects to what it verifies (§21.2.1).
+  it('every verification node connects to an engine/number it proves (no orphan assurance)', () => {
+    const proved = new Set(
+      graph.edges.filter((e: any) => e.type === 'verified-by').map((e: any) => e.to),
+    );
+    const orphans = graph.nodes
+      .filter((n: any) => n.kind === 'verification' && !proved.has(n.id))
+      .map((n: any) => n.id);
+    expect(orphans).toEqual([]);
+  });
+
+  it('every verified-by edge targets a verification node and sources an engine/number', () => {
+    const byId = new Map(graph.nodes.map((n: any) => [n.id, n]));
+    const bad: string[] = [];
+    for (const e of graph.edges.filter((x: any) => x.type === 'verified-by')) {
+      if ((byId.get(e.to) as any)?.kind !== 'verification') bad.push(`${e.from}→${e.to}: target not a verification node`);
+      const fromKind = (byId.get(e.from) as any)?.kind;
+      if (fromKind !== 'engine' && fromKind !== 'number' && fromKind !== 'orchestrator') {
+        bad.push(`${e.from}→${e.to}: source is ${fromKind}, expected engine/number/orchestrator`);
+      }
+    }
+    expect(bad).toEqual([]);
+  });
 });
 
 describe('Neomatrix — the audit catches real drift (negative tests)', () => {
