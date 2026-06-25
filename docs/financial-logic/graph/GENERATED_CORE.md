@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.30.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.31.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 111 · **Edges:** 147
-- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 11 · ui-surface 12 · law 21
-- **By status:** documented 111
-- **Edge provenance:** verified 147 *(verified > graphify > inferred)*
+- **Nodes:** 150 · **Edges:** 194
+- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28
+- **By status:** documented 150
+- **Edge provenance:** verified 194 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -65,6 +65,30 @@
 | **Declared income aggregation (gross / net / PAYG)** | `lib/calculations/incomeAggregator.ts:143` | engine | core | IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT. | CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143 | documented |
 | **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:171` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:156,161,173 (read this session) | documented |
 | **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:519` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
+| **Transaction categoriser (hybrid cascade)** | `lib/tie/categorisation.ts:692` | engine | neobrain | CategoryResult — categoryLevel1/2, subcategory, isEssential, isRecurring, confidence, source (USER\|RULE\|KB\|AI\|FALLBACK). The categorised label for one transaction. | CLAUDE.md §12.2.1 (one source) + Phase 52 §2 (two-layer KB) |  | documented |
+| **Import categoriser (learning-aware)** | `lib/bank/aiCategorisation.ts:571` | engine | neobrain | Per-transaction predictions enriched with the user's learned MerchantMappings + adjusted confidence, for the import pipeline. | Phase 29 (AI transaction categorisation & smart import) |  | documented |
+| **Confidence-band classifier** | `lib/bank/aiCategorisation.ts:530` | engine | neobrain | Partition of results into autoAccept (≥0.90) / needsReview (0.70–0.90) / requiresManual (<0.70). | Phase 29 + UserCategorizationSettings defaults |  | documented |
+| **Per-user learning loop** | `lib/bank/aiCategorisation.ts:705` | engine | neobrain | Learning write: updates the per-user MerchantMapping + logs prediction-vs-final in AICategorizationLearning; optionally applies the category to similar past transactions. | Phase 29 (learn from confirmations) |  | documented |
+| **Review-queue confirm (SSOT)** | `lib/bank/reviewQueue.ts:140` | engine | neobrain | Creates the confirmed UnifiedTransaction from a review-queue item and fires the learning writes (KB contribution + per-user confirmation). | Phase 51.2 + CLAUDE.md §12.3 (SSOT) |  | documented |
+| **Shared-KB lookup (free, instant)** | `lib/categorisation/kb/lookupCategory.ts:74` | engine | neobrain | KbMatch\|null — a community category prior for a transaction signature, only when graduated (isGlobal, ≥k users) and ≥ KB_MIN_CONFIDENCE. | Phase 52 §2 (deterministic lookup) |  | documented |
+| **Gemini-on-miss (RAG)** | `lib/categorisation/kb/geminiOnMiss.ts:83` | engine | neobrain | GeminiCategoryResult\|null — an LLM category for a genuinely unknown signature, RAG-seeded with the closest known KB patterns. | Phase 52 §2 (Gemini-on-miss, RAG not fine-tuning) |  | documented |
+| **KB vote aggregation + graduation** | `lib/categorisation/kb/recordContribution.ts:66` | engine | neobrain | Vote aggregation + graduation: upserts the signature, records the per-(signature,user) vote, recomputes topCategory/confidence/distinctUserCount, sets isGlobal at k. | Phase 52 §3 (k-anon graduation, k=5) |  | documented |
+| **KB write gate (human-only)** | `lib/categorisation/kb/recordFromConfirmation.ts:35` | engine | neobrain | Fire-and-forget gate that records a HUMAN confirmation into the shared KB (never AI auto-accepts — echo-chamber-safe). | Phase 52 (echo-chamber safety) |  | documented |
+| **De-identifier (PII scrub)** | `lib/categorisation/kb/scrubSignature.ts:46` | engine | neobrain | ScrubResult — a de-identified merchant signature (e.g. 'WOOLWORTHS METRO'), or rejection when no safe merchant token remains. | CLAUDE.md §13.3 (CDR sanitisation) + Phase 52 |  | documented |
+| **Transfer / repayment matcher** | `lib/bookkeeping/resolveTransaction.ts:78` | engine | neobrain | ResolutionResult — candidate transfer pairs + loan-repayment matches for a transaction under review. | Phase 51 + CLAUDE.md §19.1 (transfers excluded) |  | documented |
+| **Transfer auto-pairer** | `lib/bookkeeping/transferPairing.ts:127` | engine | neobrain | Symmetric transfer tag — marks BOTH sides isTransfer=true when exactly one safe counterpart exists (else leaves it to the user). | Phase 51 (no false pairs) + §19.1 |  | documented |
+| **Document Intelligence Engine (DIE)** | `lib/documents/intelligence/DocumentIntelligenceEngine.ts:102` | engine | neobrain | AnalysisResponse — document type + per-field extraction + confidence + suggestedActions; persisted to DocumentAnalysis. | Phase 26 (DIE) + Phase 50 |  | documented |
+| **OCR (Google Cloud Vision)** | `lib/documents/intelligence/services/visionService.ts:166` | engine | neobrain | OCRResult — full text + per-paragraph confidence + bounding boxes, via Google Cloud Vision (REST transport for serverless). | Phase 26 + Google Cloud Vision API |  | documented |
+| **Document type classifier** | `lib/documents/intelligence/classifiers/documentClassifier.ts:204` | engine | neobrain | Document type (RECEIPT/INVOICE/RATE_NOTICE/LOAN_CONTRACT/…) + confidence, from keyword/regex/label scoring. | Phase 26 (classification rules) |  | documented |
+| **Receipt extractor (pattern)** | `lib/documents/intelligence/analyzers/receiptAnalyzer.ts:180` | engine | neobrain | ReceiptExtraction — vendor, ABN(+checksum), date, total, subtotal, GST, payment method, line items (each with confidence + source); suggests CREATE_EXPENSE. | Phase 26 + ATO ABN/GST formats |  | documented |
+| **Complex-doc extractor (Gemini)** | `lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts:139` | engine | neobrain | Structured extraction for complex docs (loan contract / insurance / lease) via Gemini, each field with its own confidence; suggests CREATE_LOAN/CREATE_EXPENSE/LINK. | Phase 26.6 + Phase 50 |  | documented |
+| **Routing memory (write)** | `lib/documents/intelligence/learnedRouting.ts:78` | engine | neobrain | Routing memory write — increments (userId, vendorKey, entityType, entityId) so a vendor's documents pre-select the same asset next time (suggestion only). | Phase 50 D.4 (learned routing) |  | documented |
+| **Routing memory (read)** | `lib/documents/intelligence/learnedRouting.ts:123` | engine | neobrain | Most-used entity hint for a vendor (or null) — the pre-selection for 'What is this for?' on a new scan/upload. Suggestion, never auto-applied. | Phase 50 D.4 |  | documented |
+| **Document Management Engine (DME)** | `lib/documents/engine/DocumentManagementEngine.ts:79` | engine | neobrain | EngineResult — stores the file (GCS/Monitrax), dedups by SHA256, routes to the right Vault path/folder, creates entity DocumentLinks. | Phase 25 (DME) + Phase 50 |  | documented |
+| **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:105` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
+| **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
+| **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
+| **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -92,16 +116,16 @@
 
 | Number (semanticKey) | Engine ancestor(s) | Rendered at | Formula | Authority |
 |---|---|---|---|---|
-| **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots), Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
-| **Money Story kept margin (displayed)** (`moneyStoryMargin`) | Money Story 12-month trend (earned vs spent) | Dashboard — Money Story hero + KPI strip | = getMoneyStoryTrend(...).{ currentMargin, marginDeltaPoints } | CLAUDE.md §0 honesty contract |
-| **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
-| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, /activity — This month tiles (Spending / Income / Net), Dashboard — Monthly cash flow KPI tile | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
-| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, Dashboard — Saving rate KPI tile | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
+| **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots), Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view), Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
+| **Money Story kept margin (displayed)** (`moneyStoryMargin`) | Money Story 12-month trend (earned vs spent), Review-queue confirm (SSOT), Transfer auto-pairer, Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop | Dashboard — Money Story hero + KPI strip | = getMoneyStoryTrend(...).{ currentMargin, marginDeltaPoints } | CLAUDE.md §0 honesty contract |
+| **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view), Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
+| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, /activity — This month tiles (Spending / Income / Net), Dashboard — Monthly cash flow KPI tile | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
+| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, Dashboard — Saving rate KPI tile | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 | **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
-| **CFO score** (`cfoScore`) | CFO score (orchestrator) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
-| **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
-| **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
+| **CFO score** (`cfoScore`) | CFO score (orchestrator), Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
+| **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
+| **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Document Intelligence Engine (DIE), OCR (Google Cloud Vision), Document type classifier, Receipt extractor (pattern), Complex-doc extractor (Gemini), Review-queue confirm (SSOT), Transfer auto-pairer, Import categoriser (learning-aware), Confidence-band classifier, Per-user learning loop, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Cashflow-intelligence tax estimate (canonical)** (`—`) | Income tax (marginal brackets), FY tax thresholds (canonical) |  | calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable | CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25) |
 
 ## Governing laws / authorities (B6)
@@ -129,6 +153,13 @@
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
 | **Report aggregation rules** | total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n | Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values) | Property portfolio report |
 | **Loan interest = principal × annual rate** | monthlyInterest = P × r/12 | Standard interest formula | Loan/debt aggregation (interest) |
+| **Lookup-first categorisation cascade** | Cheapest source wins, first match: user MerchantMapping → AU rules → graduated shared-KB prior → Gemini-on-miss (RAG) → Uncategorised. The LLM only ever sees the unknown tail (cost + drift control). | CLAUDE.md §12.2.1 + Phase 52 §2 | Transaction categoriser (hybrid cascade) |
+| **Categorisation confidence bands** | autoAccept ≥ 0.90 (write straight to ledger); 0.70–0.90 → review queue; < 0.70 → manual. Thresholds are per-user (UserCategorizationSettings). | Phase 29 + UserCategorizationSettings defaults | Confidence-band classifier |
+| **k-anonymity KB graduation** | A signature→category pattern becomes a shared cross-user prior only after ≥ k distinct users confirm it (k=5, KB_GRADUATION_K); graduation is sticky (never demoted). Private mappings stay authoritative for their owner. | Phase 52 §3 (hybrid private + k-anon shared) | KB vote aggregation + graduation |
+| **Echo-chamber safety (human-only learning)** | Only HUMAN confirmations/corrections write to the shared KB; AI auto-accepts never re-train it; an edit weighs more than a passive confirm. | Phase 52 (echo-chamber safety) | KB write gate (human-only) |
+| **De-identification before shared KB** | Every description is scrubbed to a merchant-only signature (strip names, BSBs, card masks, transfer/payid markers) before any shared-KB read or write. No PII/CDR ever enters the community brain. | CLAUDE.md §13.3 + Phase 52 | De-identifier (PII scrub) |
+| **Transfer match + exclusion** | A transfer pair = opposite direction, different account, same user, \|Δamount\| ≤ tolerance, \|Δdate\| ≤ window; auto-pair only when exactly one candidate; isTransfer rows are excluded from all spend/income. | Phase 51 + CLAUDE.md §19.1 | Transfer / repayment matcher, Transfer auto-pairer |
+| **Document extraction confidence bands** | Extraction confidence ≥0.90 AUTO / 0.70–0.90 CONFIRM / <0.70 ASK; AUTO auto-write is gated (not yet wired) and downgraded to CONFIRM for TRACK/REDUCE stages — the user confirms before any entity is created. | Phase 50 D.1 (confidencePolicy.ts) | Document Intelligence Engine (DIE) |
 
 ## Edges (verified, with evidence)
 
@@ -281,6 +312,53 @@
 | Monthly outflow (canonical, actuals-aware) | → | Dashboard — Annual outgoings KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualOutflow → page cf.annualOutflow |
 | Saving rate | → | Dashboard — Saving rate KPI tile | rendered-at | %→% | verified | insights kpiTiles.canonical.savingsRate → page cf.savingsRate |
 | Income tax (marginal brackets) | → | Cashflow-intelligence tax estimate (canonical) | feeds | AUD/year→AUD/year | verified | cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table) |
+| UnifiedTransaction.description (raw text) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:692 |
+| MerchantMapping (per-user learned map) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:700 |
+| De-identifier (PII scrub) | → | Shared-KB lookup (free, instant) | feeds | — | verified | lib/categorisation/kb/lookupCategory.ts:77 |
+| TransactionSignature (shared KB) | → | Shared-KB lookup (free, instant) | feeds | — | verified | lib/categorisation/kb/lookupCategory.ts:81 |
+| Shared-KB lookup (free, instant) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:717 |
+| De-identifier (PII scrub) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:87 |
+| TransactionSignature (shared KB) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:93 |
+| Transaction categoriser (hybrid cascade) | → | Gemini-on-miss (RAG) | falls-back-to | — | verified | lib/tie/categorisation.ts:732 |
+| UnifiedTransaction.description (raw text) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:571 |
+| MerchantMapping (per-user learned map) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:600 |
+| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:247 |
+| UserCategorizationSettings (thresholds) | → | Confidence-band classifier | feeds | — | verified | lib/bank/aiCategorisation.ts:539 |
+| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:254 |
+| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:338 |
+| Review-queue confirm (SSOT) | → | UnifiedTransaction | feeds | — | verified | lib/bank/reviewQueue.ts:194 |
+| Review-queue confirm (SSOT) | → | KB write gate (human-only) | feeds | — | verified | lib/bank/reviewQueue.ts:244 |
+| Review-queue confirm (SSOT) | → | Per-user learning loop | feeds | — | verified | lib/bank/reviewQueue.ts:282 |
+| KB write gate (human-only) | → | KB vote aggregation + graduation | feeds | — | verified | lib/categorisation/kb/recordFromConfirmation.ts:45 |
+| De-identifier (PII scrub) | → | KB vote aggregation + graduation | feeds | — | verified | lib/categorisation/kb/recordContribution.ts:75 |
+| KB vote aggregation + graduation | → | TransactionSignature (shared KB) | feeds | — | verified | lib/categorisation/kb/recordContribution.ts:82 |
+| KB vote aggregation + graduation | → | SignatureContribution (private vote ledger) | feeds | — | verified | lib/categorisation/kb/recordContribution.ts:109 |
+| Per-user learning loop | → | MerchantMapping (per-user learned map) | feeds | — | verified | lib/bank/aiCategorisation.ts:727 |
+| Per-user learning loop | → | AICategorizationLearning (accuracy trail) | feeds | — | verified | lib/bank/aiLearning.ts:394 |
+| UnifiedTransaction | → | Transfer / repayment matcher | feeds | — | verified | lib/bookkeeping/resolveTransaction.ts:78 |
+| Transfer auto-pairer | → | UnifiedTransaction | feeds | — | verified | lib/bookkeeping/transferPairing.ts:191 |
+| Document upload intake | → | Document Management Engine (DME) | feeds | — | verified | app/api/documents/upload/route.ts:137 |
+| Document upload intake | → | Document Intelligence Engine (DIE) | feeds | — | verified | app/api/documents/upload/route.ts:166 |
+| Document (re)analysis | → | Document Intelligence Engine (DIE) | feeds | — | verified | app/api/documents/analyze/route.ts:67 |
+| OCR (Google Cloud Vision) | → | Document Intelligence Engine (DIE) | feeds | — | verified | lib/documents/intelligence/DocumentIntelligenceEngine.ts:160 |
+| Document type classifier | → | Document Intelligence Engine (DIE) | feeds | — | verified | lib/documents/intelligence/DocumentIntelligenceEngine.ts:174 |
+| Receipt extractor (pattern) | → | Document Intelligence Engine (DIE) | feeds | — | verified | lib/documents/intelligence/DocumentIntelligenceEngine.ts:249 |
+| Complex-doc extractor (Gemini) | → | Document Intelligence Engine (DIE) | feeds | — | verified | lib/documents/intelligence/DocumentIntelligenceEngine.ts:195 |
+| Document Intelligence Engine (DIE) | → | DocumentAnalysis (recognised document) | feeds | — | verified | lib/documents/intelligence/DocumentIntelligenceEngine.ts:130 |
+| DocumentAnalysis (recognised document) | → | Document confirm → create entity | feeds | — | verified | app/api/documents/analyze/confirm/route.ts:71 |
+| Document confirm → create entity | → | Expense (declared) | feeds | — | verified | app/api/documents/analyze/confirm/route.ts:383 |
+| Document confirm → create entity | → | Loan.principal | feeds | — | verified | app/api/documents/analyze/confirm/route.ts:503 |
+| DocumentAnalysis (recognised document) | → | Routing memory (write) | feeds | — | verified | lib/documents/intelligence/learnedRouting.ts:154 |
+| Routing memory (write) | → | VendorEntityHint (routing memory) | feeds | — | verified | lib/documents/intelligence/learnedRouting.ts:88 |
+| VendorEntityHint (routing memory) | → | Routing memory (read) | feeds | — | verified | lib/documents/intelligence/learnedRouting.ts:130 |
+| Transaction categoriser (hybrid cascade) | → | Lookup-first categorisation cascade | governed-by | — | verified | lib/tie/categorisation.ts:692 |
+| Confidence-band classifier | → | Categorisation confidence bands | governed-by | — | verified | lib/bank/aiCategorisation.ts:539 |
+| KB vote aggregation + graduation | → | k-anonymity KB graduation | governed-by | — | verified | lib/categorisation/kb/recordContribution.ts:55 |
+| KB write gate (human-only) | → | Echo-chamber safety (human-only learning) | governed-by | — | verified | lib/bank/reviewQueue.ts:243 |
+| De-identifier (PII scrub) | → | De-identification before shared KB | governed-by | — | verified | lib/categorisation/kb/scrubSignature.ts:46 |
+| Transfer / repayment matcher | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/resolveTransaction.ts:135 |
+| Transfer auto-pairer | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/transferPairing.ts:127 |
+| Document Intelligence Engine (DIE) | → | Document extraction confidence bands | governed-by | — | verified | lib/documents/intelligence/confidencePolicy.ts:1 |
 
 ---
 

@@ -29,7 +29,7 @@
 | `file` | string\|null | ✅* | Source path. Required+non-null `line` for a `documented` engine/orchestrator (§19.2 file:line). |
 | `line` | number\|null | — | Anchor line of the symbol. |
 | `layer` | enum | ✅ | `db` · `engine` · `service` · `route` · `ui` · `null` (axis: DB→engine→service→route→ui). |
-| `domain` | enum | ✅ | `core` · `tax` · `health` · `cfo` · `intelligence` · `reports`. |
+| `domain` | enum | ✅ | `core` · `tax` · `health` · `cfo` · `intelligence` · `reports` · `neobrain`. |
 | `trailStage` | enum | — | `T` · `R` · `A` · `I` · `L` · `null` (never guessed — `null` until verified). |
 | `regime` | enum | — | `pre-reform` · `post-reform` · `null` (Phase 41E / B8). |
 | `semanticKey` | string\|null | — | For `number`/`ui-surface`: the logical concept (e.g. `monthlyCashflow`). Drives the A3 convergence audit — two tiles of the same key MUST trace to the same engine. |

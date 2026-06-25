@@ -14,7 +14,7 @@
 export const ENUMS = {
   kind: ['engine', 'number', 'input-field', 'law', 'route', 'ui-surface', 'orchestrator'],
   layer: ['db', 'engine', 'service', 'route', 'ui', null],
-  domain: ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports'],
+  domain: ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'],
   trailStage: ['T', 'R', 'A', 'I', 'L', null],
   regime: ['pre-reform', 'post-reform', null],
   edgeType: ['feeds', 'depends-on', 'governed-by', 'rendered-at', 'falls-back-to'],
