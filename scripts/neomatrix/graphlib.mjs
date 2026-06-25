@@ -171,12 +171,36 @@ export function coverageSummary(graph) {
   for (const n of graph.nodes) byStatus[n.status] = (byStatus[n.status] ?? 0) + 1;
   const bySource = {};
   for (const e of graph.edges) bySource[e.source] = (bySource[e.source] ?? 0) + 1;
+
+  // Trust Engine assurance coverage (2026-06-25) — so we can KEEP TRACK of how
+  // much of the financial architecture is provably correct, and what's left.
+  // An engine/number is "covered" if a `verified-by` edge points from it to a
+  // verification node. Reported overall + per Trust Engine layer (L0/L1/L2/L3).
+  const provenTargets = new Set(
+    graph.edges.filter((e) => e.type === 'verified-by').map((e) => e.from),
+  );
+  const provable = graph.nodes.filter(
+    (n) => n.kind === 'engine' || n.kind === 'orchestrator' || n.kind === 'number',
+  );
+  const byLayer = {};
+  for (const v of graph.nodes.filter((n) => n.kind === 'verification')) {
+    const L = v.trustLayer ?? '?';
+    byLayer[L] = (byLayer[L] ?? 0) + 1;
+  }
+  const assurance = {
+    verifications: graph.nodes.filter((n) => n.kind === 'verification').length,
+    coveredTargets: provable.filter((n) => provenTargets.has(n.id)).length,
+    totalTargets: provable.length,
+    byLayer,
+  };
+
   return {
     nodes: graph.nodes.length,
     edges: graph.edges.length,
     byKind,
     byStatus,
     bySource,
+    assurance,
   };
 }
 
@@ -203,6 +227,14 @@ export function renderMarkdown(graph) {
   L.push(`- **By kind:** ${Object.entries(cov.byKind).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
   L.push(`- **By status:** ${Object.entries(cov.byStatus).map(([k, v]) => `${k} ${v}`).join(' · ')}`);
   L.push(`- **Edge provenance:** ${Object.entries(cov.bySource).map(([k, v]) => `${k} ${v}`).join(' · ')} *(verified > graphify > inferred)*`);
+  {
+    const a = cov.assurance;
+    const pct = a.totalTargets ? Math.round((a.coveredTargets / a.totalTargets) * 100) : 0;
+    const layers = Object.keys(a.byLayer).length
+      ? Object.entries(a.byLayer).sort().map(([k, v]) => `${k} ${v}`).join(' · ')
+      : '—';
+    L.push(`- **Trust Engine assurance:** ${a.coveredTargets}/${a.totalTargets} engines+numbers proven (${pct}%) · ${a.verifications} verification node(s) · by layer ${layers} *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*`);
+  }
   L.push('');
 
   // Engine registry

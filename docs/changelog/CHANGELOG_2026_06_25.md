@@ -336,3 +336,66 @@ Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix
 - **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
 - `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
 - **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).
+
+---
+
+## Session: Neomatrix — Trust Engine assurance-coverage readout (keep-track view)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix tracking — follow-up to #1242)
+- **Scope**: `scripts/neomatrix/graphlib.mjs` (coverage dashboard) + regenerated `GENERATED_CORE.md`
+- **Description**: Reza directive 2026-06-25: *"the trust engine should also be added to neomatrix so we can keep track."* #1242 added the Trust Engine to the graph (verification nodes + verified-by edges + Assurance section). This adds the **at-a-glance progress readout** so coverage is trackable as layers land.
+- The Neomatrix "Coverage & trust (C10)" dashboard now shows: **Trust Engine assurance: X/N engines+numbers proven (P%) · K verification node(s) · by layer L0/L1/L2/L3**. Today: 2/59 (3%), L2 ×2 — climbs as L0/L1/L3 ship.
+
+### Files Modified
+- `scripts/neomatrix/graphlib.mjs` — `coverageSummary()` computes `assurance` {coveredTargets, totalTargets, verifications, byLayer from verified-by edges}; `renderMarkdown()` dashboard line.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated (assurance readout line).
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema valid, invariants hold, markdown fresh)
+- [x] `vitest run tests/neomatrix/` — 124/124
+- [x] Documentation/model only — no financial logic, no graph data semantics changed (pure derived metric)
+
+### §20 self-review (3× → 10/10)
+- **P1**: add assurance metric + dashboard line. **P2 (critique)**: counted engines+orchestrators+numbers as the provable denominator (not laws/inputs/ui — those aren't "numbers to prove"); derived purely from `verified-by` edges so it can't drift from the actual graph. **P3 (refine)**: byLayer sorted deterministically (markdown-fresh stable); reads "X/N proven (P%)" so the GAP is as visible as the coverage. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/financial-logic/graph/GENERATED_CORE.md` — the readout is the tracking surface
+- `0·TRUST-ENGINE` workstream — the keep-track mechanism is now live
+
+### PR
+- Branch: `claude/trust-engine-assurance-coverage-jqahjw`
+- Status: Draft (to be opened)
+
+---
+
+## Session: Trust Engine L3 — reconciliation tie-outs (+ modelled into the Neomatrix)
+
+### Changes Made
+- **Type**: Enhancement (financial-correctness verification — `0·TRUST-ENGINE`, Layer 3)
+- **Scope**: new `tests/regression/invariants/trustEngine.reconciliation.test.ts` + Neomatrix L3 nodes (no production logic changed)
+- **Description**: L3 of the Trust Engine — the accounting discipline that aggregates equal the sum of their parts and flows reconcile to their components (the class of bug where money is silently created/lost in aggregation). Extends the Phase 4 invariant suite (which already locks net-worth=assets−liabilities + per-entity additivity) with the tie-outs NOT yet covered.
+
+### The tie-outs (laws over 6 archetypes + 40 random portfolios)
+- **L3.1 net-worth class additivity** — `assets.total === Σ(property/account/investment/super/personalAsset)`; `liabilities.total === Σ(mortgages/personalLoans/creditCards)`; `netWorth === assets.total − liabilities.total`.
+- **L3.2 cashflow statement + net tie-out** — `Σ current-month non-transfer OUT === currentMonthOutflow` (statement sum); `currentMonthNet === currentMonthInflow − currentMonthOutflow`; transfers excluded (§19.1 roll-forward seed).
+
+### Demonstrated catch (§19/§20)
+- Dropped `personalAssets` from the net-worth total → **L3.1 additivity lock FAILED (28 tie-outs)**; reverted → passes (engine 0-diff).
+
+### Neomatrix (§21.2.1 ZERO-DRIFT, same PR)
+- +2 L3 verification nodes (`netWorthClassAdditivity` → `calculateNetWorth`; `cashflowStatementTieOut` → `computeActualCashflow`) + 2 `verified-by` edges. Graph v0.31.0 → **0.32.0** (115 nodes, 151 edges).
+- **Assurance readout climbed 2/59 (3%) → 3/59 (5%)**, now `L2 2 · L3 2` — the keep-track view reflecting the new layer live.
+
+### Build Status
+- [x] `vitest run tests/regression/invariants/trustEngine.reconciliation.test.ts` — 140/140
+- [x] `vitest run tests/neomatrix tests/regression/invariants` — 519/519
+- [x] `npm run neomatrix:check` — OK
+- [x] No production logic changed — verification only
+
+### §20.4 self-review (financial build → 10/10)
+- **P1** write the tie-outs. **P2 (critique)** confirmed not duplicating existing invariants (those lock net=assets−liabilities + per-entity; this adds class-additivity + statement/net tie-out — genuinely new); reused the shared archetypes + random sweep. **P3 (refine)** mutation-proved the additivity lock (28 fail), modelled L3 into the graph, confirmed the assurance readout climbs. **10/10.**
+
+### PR
+- Branch: `claude/trust-engine-l3-reconciliation-jqahjw` (stacked on #1244)
+- Status: Draft
