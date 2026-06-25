@@ -12,12 +12,18 @@
  */
 
 export const ENUMS = {
-  kind: ['engine', 'number', 'input-field', 'law', 'route', 'ui-surface', 'orchestrator'],
+  // `verification` (2026-06-25) — a Trust Engine assurance node: a golden case
+  // (L0), independent recompute (L1), invariant/property law (L2), or
+  // reconciliation tie-out (L3) that PROVES an engine/number is correct. It
+  // does not produce a number; it audits one. Connected via `verified-by`.
+  kind: ['engine', 'number', 'input-field', 'law', 'route', 'ui-surface', 'orchestrator', 'verification'],
   layer: ['db', 'engine', 'service', 'route', 'ui', null],
   domain: ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'],
   trailStage: ['T', 'R', 'A', 'I', 'L', null],
   regime: ['pre-reform', 'post-reform', null],
-  edgeType: ['feeds', 'depends-on', 'governed-by', 'rendered-at', 'falls-back-to'],
+  // `verified-by` (2026-06-25) — an engine/number IS PROVEN by a verification
+  // node (parallels `governed-by` for laws). The Trust Engine ↔ Neomatrix link.
+  edgeType: ['feeds', 'depends-on', 'governed-by', 'rendered-at', 'falls-back-to', 'verified-by'],
   source: ['verified', 'graphify', 'inferred'],
   status: ['documented', 'pending', 'suspected-issue', 'unverified'],
 };
@@ -246,6 +252,24 @@ export function renderMarkdown(graph) {
     for (const law of laws) {
       const governs = graph.edges.filter((e) => e.to === law.id && e.type === 'governed-by').map((e) => m.get(e.from)?.label ?? e.from).join(', ');
       L.push(`| **${esc(law.label)}** | ${esc(law.formula)} | ${esc(law.authority)} | ${esc(governs)} |`);
+    }
+    L.push('');
+  }
+
+  // Assurance — the Trust Engine layer (what PROVES each number is correct)
+  const verifications = graph.nodes.filter((n) => n.kind === 'verification');
+  if (verifications.length) {
+    L.push('## Assurance — the Trust Engine (what proves each number correct)');
+    L.push('');
+    L.push('| Verification | Layer | Domain | Proves | Catches (the bug it locks) | Covers | Evidence |');
+    L.push('|---|---|---|---|---|---|---|');
+    for (const v of verifications) {
+      const covers = graph.edges
+        .filter((e) => e.to === v.id && e.type === 'verified-by')
+        .map((e) => m.get(e.from)?.label ?? e.from)
+        .join(', ');
+      const ev = v.file ? `\`${v.file}${v.line != null ? ':' + v.line : ''}\`` : '—';
+      L.push(`| **${esc(v.label)}** | ${esc(v.trustLayer ?? '—')} | ${v.domain} | ${esc(v.produces)} | ${esc(v.catches)} | ${esc(covers)} | ${ev} |`);
     }
     L.push('');
   }

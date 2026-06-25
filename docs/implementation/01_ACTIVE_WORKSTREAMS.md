@@ -8,6 +8,50 @@
 
 ## 🟡 Active Workstreams
 
+### 0·TRUST-ENGINE. Financial Trust Engine — provable, audit-grade number correctness (Reza directive 2026-06-25)
+
+- **Status:** 🟡 ACTIVE — **design + research in flight** (this session). Reza chose **"build the safety-critical core first"** (Layers 0–3 + 5).
+- **Started:** 2026-06-25.
+- **Owner:** Reza (decisions + sign-off) + Claude (build).
+- **Last touched:** 2026-06-25 — workstream registered; research agent mapping existing verification infra (Phase 4 test-rail L2/L3, Neomatrix A1 audit, `lib/calc-audit`, FIN-LOGIC-INDEX) so the Trust Engine EXTENDS rather than duplicates (§12.2.1).
+- **Why this matters (Reza, verbatim 2026-06-25):** *"I am not sure what numbers to check and how to verify it is correct. This is the reason I built this app to do this for me… I need to be able to trust the numbers presented by Monitrax… you need to have a system to check and be 100% sure the results are valid, correct and trustworthy."* Trust cannot rest on Reza or Claude hand-checking — it must be **structural**: every money number anchored to **external authority** (ATO / standard formula / accounting identity), **independently cross-checked**, **invariant-enforced**, **reconciled**, **drift-blocked at build time**. This is also the prerequisite that makes the W2–W7 dedup waves provably safe (a dedup is safe iff the surviving source passes the same golden cases + invariants + reconciliation the duplicate did).
+- **The Trust Engine = the AUDITOR that sits over the Neomatrix (the MAP).** Neomatrix says *what produces each number*; the Trust Engine *proves each number is correct and fails the build on drift.*
+- **Phase checklist (Layers 0–3 + 5 — the safety-critical core):**
+  - [ ] **L-RESEARCH — reconcile with existing infra (§12.2.1 SEARCH-FIRST):** map Phase 4 test-rail (L2 golden-master #1116, L3 invariants #1117), Neomatrix A1 audit (`tests/neomatrix/financialAudit.test.ts`), `lib/calc-audit/`, `0·FIN-LOGIC-INDEX`. Build ON these; document exactly what exists vs the gap. *(research agent running)*
+  - [ ] **L0 — Authority-anchored golden cases.** Every core money number gets worked examples whose **expected output comes from the external authority** (ATO published examples / tax-calculator outputs / standard amortisation formula / accounting identity), stored with **citation + URL + financial year + date-verified** next to the test. FY-versioned. *(extends Phase 4 L2 + the A1 audit — fill coverage gaps, not rebuild.)*
+  - [ ] **L1 — Independent recomputation (differential).** Highest-stakes numbers (net worth, cashflow, tax) computed two unrelated ways; must agree to the cent. Catches single-implementation bugs without a human.
+  - [ ] **L2 — Invariants / property tests.** Laws that hold for ANY input, checked on thousands of random ones: tax monotonic + **continuous at every bracket boundary** (the exact $0-cliff bug); category breakdowns **sum to the total** (the dropped-uncategorised bug); annualise∘monthly round-trips; savings-rate = net/income; no NaN/Infinity/impossible-negative. *(extends Phase 4 L3 — add the invariants whose absence let known bugs ship.)*
+  - [ ] **L3 — Reconciliation (accounting tie-outs).** opening + inflows − outflows = closing; Σ per-account = total; Σ per-category spend = total spend; transactions sum = statement total. A non-tie-out is surfaced, never hidden.
+  - [ ] **L5 — Build gate.** L0–L3 run in `vercel-build` / CI; any failure blocks the deploy. Neither Reza nor Claude has to remember to check — the system checks itself on every change.
+  - [ ] **Trust Engine Phase doc** (`docs/blueprint/PHASE_54_*.md` or fold into Phase 4/53 — decide after L-RESEARCH) + MASTER_BLUEPRINT row + §16 doc-sync.
+- **Deferred (Reza decision — fast-follow, NOT in this core):**
+  - **L6 — Show-the-working (user-facing provenance UI):** tap any number → its formula + the actual transactions/entities that fed it + the ATO citation + "verified FY25-26 on [date]". Trust made *visible*. (Behaviour-psychology + design lens — the part Reza actually SEES.)
+  - **L7 — Scheduled re-anchoring:** each FY re-pull ATO figures, re-verify golden cases, flag stale constants (ties to Phase 41E reform).
+- **Risk:** scope is large; mitigated by building ONE engine fully across L0–L3 as the reference template, then fanning out. Honest calibration: not absolute 100% (no software is) — the target is **financial-grade / audit-defensible**: anchored + cross-checked + invariant-enforced + reconciled + drift-blocked + transparent.
+- **Blocking:** none. **Gates:** the W2–W7 dedup waves are **PARKED behind this core** (see `1·SSOT-DEDUP` below) so every wave runs behind the harness.
+
+### 1·SSOT-DEDUP. SSOT duplicate-source remediation (audit 2026-06-25) — W0–W7
+
+- **Status:** 🟡 ACTIVE — **W0 + W1 DONE**; **W2–W7 PARKED behind `0·TRUST-ENGINE`** (Reza: build the verification core first so each wave is provably safe).
+- **Started:** 2026-06-25.
+- **Owner:** Reza (sign-off on any number that would change) + Claude (build).
+- **Last touched:** 2026-06-25 — W1 shipped (PR #1240, draft).
+- **Source of truth:** [`docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md`](../audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md) (findings + §8 worklist + §7.1 W1 outcome) · [`docs/audits/LESSONS_LEARNED_SSOT_2026_06_25.md`](../audits/LESSONS_LEARNED_SSOT_2026_06_25.md) (PR #1239, merged).
+- **Origin:** the dashboard +$10,505 vs /cashflow −$20,914 discrepancy → comprehensive 4-sweep audit found ~60 confirmed duplications (emergency-fund ×9, savings-rate ×7, LVR ×7, net-worth ×6, ~30 private formatters, ~13 frequency converters, ~20 hardcoded constants, declared-vs-actual bypasses, a P0 stale-tax-bracket wrong number).
+- **Wave checklist:**
+  - [x] **W0 — stale tax brackets → canonical `calculateIncomeTax` engine** (PR #1238, merged + prod-verified). FY23-24 table commented "2024-25" removed; verified $100k→$20,788 / $200k→$56,138 against the A1-locked values.
+  - [x] **W1 — extend the surface linter to `lib/` + `app/api/` (layer-aware)** (PR #1240, draft). 215 raw → 30 genuine known-debt baselined (0 FP); surface baseline preserved. New duplication in those dirs now fails the build. See audit §7.1.
+  - [ ] **W2 — declared-vs-actual (§19.1):** `lib/intelligence/insightsEngine.ts` ("you're saving X%" + emergency-buffer narratives from declared cashflow) + portal `ClientCanonicalDashboard.tsx`. *(behind Trust Engine.)*
+  - [ ] **W3 — collapse `buildHealthInput`** (two route copies → one shared canonical builder; §12.3). Worst single duplication.
+  - [ ] **W4 — emergency-fund-months + savings-rate + LVR + yield + equity dedup** to canonical (incl. delete `loanAggregator.calculateLVR`, **create canonical homes for net-yield + debt-to-asset** which have none).
+  - [ ] **W5 — super 15% / SG / cap constants → `taxYearConfig`** (drift risk + some FY25-26 thresholds already wrong).
+  - [ ] **W6 — data-source re-aggregation** (cashflow routes, portfolio totals, budget-analysis) → master snapshot (§12.3 thin-wrapper).
+  - [ ] **W7 — frequency-converter + ~30 formatter dedup → canonical utils; retire `lib/testing/exporter.ts` engine shadow.**
+- **Follow-up financial PR (flagged, NOT silently fixed — §21.2):** `app/api/cashflow/intelligence/route.ts:481` — `Math.min(27500, annualGrossIncome*0.05)*0.34`: `27500` is the FY23-24 super cap (now $30,000) + `0.34` magic rate. Baselined as known-debt; needs §19.2 worked-example + §20.4 10/10. Lower severity than W0 (sizes a *suggestion's* "approx saving", not a core position).
+- **Deferred:** DROP the dead legacy `Transaction` table (§12.11/§12.12 migration) — after the waves land.
+- **Each wave:** its own draft PR · §19.2 worked-example before/after evidence · §20.4 10/10 · model touched surfaces into the Neomatrix same-PR (§21.2.1) · pause for Reza sign-off on any number that would change.
+- **Risk:** dedup can change a displayed number; mitigated by the Trust Engine harness (a wave only ships if the surviving source passes the same golden cases + invariants + reconciliation) + per-wave worked-example evidence.
+
 ### 0·CASHFLOW-ACTUALS. Headline cashflow correctness — actual vs declared (Phase 1)
 
 - **Status:** 🟡 ACTIVE — **Phase 1 shipped**; **Phase 2 SSOT-convergence in flight** (this PR).

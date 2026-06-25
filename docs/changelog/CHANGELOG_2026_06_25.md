@@ -221,7 +221,7 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 - **Description**: Brought every Monitrax AI engine (transaction categorisation, the per-user + k-anon shared-KB learning loop, transfer/loan-repayment detection, document/receipt intelligence) under one **"Neobrain"** umbrella, modelled it into the Neomatrix as a new `neobrain` domain, and consolidated nine source phase docs into a single design SSOT.
 
 ### Files Modified / Created
-- `docs/financial-logic/graph/financial-graph.json` — +39 verified nodes (20 engines, 4 orchestrators, 8 data stores, 7 governing laws) + 47 verified edges; every node/edge anchored to a `file:line` read in source (§19.2/§21.2). Bridges to core via `UnifiedTransaction`/`Expense`/`Loan`. No `number` nodes (Neobrain classifies; A3 stays clean). v0.30.0 → v0.31.0.
+- `docs/financial-logic/graph/financial-graph.json` — +39 verified nodes (20 engines, 4 orchestrators, 8 data stores, 7 governing laws) + 47 verified edges; every node/edge anchored to a `file:line` read in source (§19.2/§21.2). Bridges to core via `UnifiedTransaction`/`Expense`/`Loan`. No `number` nodes (Neobrain classifies; A3 stays clean). Graph rebased onto main's Trust Engine additions: v0.31.0 → v0.32.0 (152 nodes / 196 edges total).
 - `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
 - `scripts/neomatrix/graphlib.mjs` — `neobrain` added to the `domain` enum (the validator).
 - `docs/financial-logic/graph/schema/financial-graph.schema.md` — `neobrain` added to the domain enum row.
@@ -232,7 +232,7 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 - `docs/IMPLEMENTATION_PLAN.md` — hub `Last updated` bumped.
 
 ### Build Status
-- [x] `npm run neomatrix:check` — **green** (150 nodes / 194 edges, all `verified`; schema valid, A3 invariants hold, file:line anchors resolve, markdown fresh). This is the `vercel-build` gate (plain Node).
+- [x] `npm run neomatrix:check` — **green** (152 nodes / 196 edges after rebasing onto main, all `verified`; schema valid, A3 invariants hold, file:line anchors resolve, markdown fresh). This is the `vercel-build` gate (plain Node).
 - [ ] `npm run build` / `npm run lint` / `vitest` — **not runnable in this env** (`node_modules` not installed in the fresh clone). The Vercel preview build runs the full suite; the TS edits are trivial (one enum string, one colour key + array element). Documented per §11.2.
 
 ### Doc-sync (CLAUDE.md §16)
@@ -246,3 +246,93 @@ Surfaces changed: architecture-level (new Neomatrix domain) + design-system-adja
 ### PR
 - Branch: `claude/adoring-davinci-e2wb4d`
 - Status: Draft (to be opened)
+
+---
+
+## Session: W1 — extend the financial-surfaces linter to `lib/` + `app/api/` (layer-aware)
+
+### Changes Made
+- **Type**: Enhancement (build gate / SSOT enforcement — structural lever §7 of the SSOT audit)
+- **Scope**: `scripts/lint-financial-surfaces.ts` + its unit tests + the grandfather baseline
+- **Description**: Extended the financial-surfaces linter — which previously scanned only `app/dashboard`/`app/portal`/`components` — to also cover `app/api/` (route layer) and `lib/` (engine layer), where the SSOT audit found the overwhelming majority of duplication. Made the scan **layer-aware** so the gate stays signal-rich.
+
+### Why layer-aware (the measurement that drove it)
+- Blanket-extending all four patterns to `lib/` flagged **215 matches**, but a measured triage showed **~70% were legitimate engine domain math** (engines are *supposed* to compute `assets − liabilities` and annualise `× 12` per §12.3), plus test fixtures + sort comparators. Baselining 215 noisy entries would bury real signal.
+- **Surface layer** (unchanged): all four patterns, loose FREQUENCY (a surface must never do `× 12`). Existing baseline preserved byte-for-byte (0 stale entries).
+- **Route layer** (`app/api`): all four patterns, FREQUENCY enum-tightened (routes must be thin — §12.3).
+- **Engine layer** (`lib`): only `DECLARED_CASHFLOW_SOURCE` (§19.1 bypass) + enum-tightened FREQUENCY (genuine `toMonthly`/`toAnnual` shadows). Inline-arithmetic + hardcoded-constant patterns NOT applied (engines legitimately compute + hold config). Canonical homes (`lib/utils/frequencies.ts`) + audit/test harnesses (`lib/calc-audit/`, `lib/testing/`) skipped.
+- **Enum-tightening**: a FREQUENCY match in route/engine only counts when the line carries a frequency period as a **value** (quoted `'monthly'` / `case 'WEEKLY'` / ALL-CAPS `ANNUALLY`), not a lowercase identifier like `monthly.income`. Precision pass also skips `.length`/`.count`/`.size` counts + `.sort()` comparators in INLINE_ARITHMETIC.
+- **Result**: 215 → **30 genuine route+engine known-debt entries** baselined (the W2–W7 worklist, 0 false positives); surface baseline unchanged (11). New duplication in `lib/` or `app/api/` now fails the build.
+
+### Files Modified
+- `scripts/lint-financial-surfaces.ts` — `Layer` type + `SCAN_TARGETS` (dir→layer) + `ENGINE_SCAN_SKIP` + `FREQUENCY_ENUM_LITERAL` + layer-aware `scanFile(file, content, layer)` + INLINE_ARITHMETIC precision (skip counts/sort) + `runLint` iterates targets w/ engine skip
+- `tests/calc-audit/surfaces/lintFinancialSurfaces.test.ts` — +10 tests for layer-aware behaviour (23 → 33)
+- `.audit/financial-math-baseline.json` — regenerated: 11 → 41 (11 surface unchanged + 30 genuine route/engine debt)
+- `docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md` — W0/W1 ticked ✅; new §7.1 documenting the layer-aware extension + the suspected stale-constant find
+
+### Suspected stale-constant find (raised, NOT silently fixed — §21.2)
+- `app/api/cashflow/intelligence/route.ts:481` — `Math.min(27500, annualGrossIncome * 0.05) * 0.34`: `27500` is the FY23-24 concessional cap (now $30,000); `0.34` is a magic tax rate. Baselined as known-debt; flagged to Reza for a follow-up financial PR (§19.2 + §20.4). Lower severity than W0 (sizes a *suggestion's* "approx saving", not a core tax position).
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — Scanned 1266 files; 42 matches (1 annotated, 41 grandfathered, **0 new**) → build proceeds
+- [x] `vitest run tests/calc-audit/surfaces/lintFinancialSurfaces.test.ts` — **33/33**
+- [x] No financial logic changed — this PR only changes detection + baseline (cannot alter runtime numbers)
+
+### §20.4 self-review (build gate touching financial surfaces → 10/10)
+- **Pass 1**: extend SCAN_DIRS to `lib` + `app/api`, regenerate baseline. **Pass 2 (critique)**: measured the naive extension = 215 / ~70% noise → would bury signal + fail to be 10/10. Redesigned as layer-aware (engines compute per §12.3; surfaces/routes don't). Found + fixed 3 false positives (2 `.length` counts, 1 sort comparator) and the `monthly.income` identifier false-match. **Pass 3 (refine)**: verified each of the 30 baselined entries is a genuine dup/smell (not FP) by reading source; confirmed surface baseline preserved (0 stale); added 10 unit tests locking the layer rules; raised the stale-constant find rather than burying it. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md:§7.1` — layer-aware extension + outcome + suspected-constant find
+- `scripts/lint-financial-surfaces.ts` (file-header JSDoc) — documents the layer-aware rules
+
+### PR
+- Branch: `claude/w1-linter-lib-coverage-jqahjw`
+- Status: Merged (PR #1240)
+
+---
+
+## Session: Trust Engine L2 — invariant locks for the two triggering bugs
+
+### Changes Made
+- **Type**: Enhancement (financial-correctness verification — `0·TRUST-ENGINE` workstream, Layer 2)
+- **Scope**: new test suite `tests/regression/invariants/trustEngine.invariants.test.ts` (no production code changed)
+- **Description**: First slice of the Financial Trust Engine (Reza directive 2026-06-25: *"a system to check and be 100% sure the results are valid, correct and trustworthy"*). Adds the L2 invariant/property laws whose **absence** let two production bugs ship — extending the Phase 4 invariant suite, not rebuilding it (§12.2.1; research confirmed Phase 4 L2/L3 + the Neomatrix A1 audit + `lib/calc-audit` shadow harness already exist).
+
+### The invariants (laws checked over fine deterministic sweeps)
+- **L2.1 income tax** — monotone non-decreasing across a 137-step sweep + every bracket boundary ±1 (locks the **$0-at-every-bracket-boundary cliff**, P0 fixed 2026-06-23); positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equal to the bracket rate AT each boundary.
+- **L2.2 actual cashflow** — `Σ outflowByCategory === currentMonthOutflow` (locks the **dropped-uncategorised-spend** bug); Uncategorised bucketed never dropped; transfers excluded; holds over a 40-trial random sweep; no NaN/Infinity.
+- **L2.3 frequency converters** — `toAnnual(x,f) === x × periodsPerYear(f)` + `toMonthly === toAnnual/12` + round-trip (catches the divergent-converter class, e.g. a 4.33-weekly drift).
+
+### Demonstrated catches (§19/§20 — an invariant that can't fail is worthless)
+- Reintroduced the $0-cliff (strict `<` → `<=`) → **monotonicity lock FAILED**; reverted → passes (engine 0-diff).
+- Reintroduced dropped-uncategorised → **category-sum lock FAILED** (both cases); reverted → passes (engine 0-diff).
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.invariants.test.ts` — NEW (9 tests)
+
+### Build Status
+- [x] `vitest run tests/regression/invariants/trustEngine.invariants.test.ts` — 9/9
+- [x] `vitest run tests/regression` — 279 passed / 43 skipped (no regression)
+- [x] No production logic changed — verification only
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: write the two invariant locks + frequency consistency. **Pass 2 (critique)**: research-first confirmed I was extending (not duplicating) Phase 4 L2/L3 + the A1 audit; verified the engine's `incomeInBracket+1` convention so continuity bounds are correct not over-strict; verified `Σcategory===total` is by-construction so the lock is exact; fixed my own wrong meta-assertion (sweep tops at 399,903). **Pass 3 (refine)**: mutation-tested BOTH locks to prove they catch the real bugs, reverted the engines, ran the full regression suite. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/changelog/CHANGELOG_2026_06_25.md` — this entry
+- `0·TRUST-ENGINE` workstream L2 item → ticks when #1241 (workstream registration) merges
+
+### PR
+- Branch: `claude/trust-engine-l2-invariants-jqahjw`
+- Status: Draft (to be opened)
+
+### Addendum — Trust Engine modelled INTO the Neomatrix (§21.2.1 ZERO-DRIFT)
+
+Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix."* The Trust Engine is now first-class in the graph — the Neomatrix maps not just *what produces* each number but *what proves it correct*.
+
+- **Schema extension** (`scripts/neomatrix/graphlib.mjs`): new node kind **`verification`** (a Trust Engine assurance node — golden case L0 / independent recompute L1 / invariant L2 / reconciliation L3) + new edge type **`verified-by`** (engine/number IS PROVEN by a verification node; parallels `governed-by`). Additive — existing nodes/edges unaffected.
+- **New rendered section** "Assurance — the Trust Engine (what proves each number correct)" in `GENERATED_CORE.md` — table of each verification node: layer, what it proves, the bug it catches, the engine it covers, the test evidence.
+- **2 verification nodes + 2 `verified-by` edges** for the L2 slice: income-tax monotonicity/continuity → `engine.incomeTaxCalculator.calculateIncomeTax`; cashflow category-sum → `engine.actualCashflow.computeActualCashflow`. Each cites the test file:line + the mutation-proof. Graph v0.30.0 → **0.31.0** (113 nodes, 149 edges).
+- **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
+- `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
+- **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).

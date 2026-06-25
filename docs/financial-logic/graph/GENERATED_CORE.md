@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.31.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.32.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 150 · **Edges:** 194
-- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28
-- **By status:** documented 150
-- **Edge provenance:** verified 194 *(verified > graphify > inferred)*
+- **Nodes:** 152 · **Edges:** 196
+- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 2
+- **By status:** documented 152
+- **Edge provenance:** verified 196 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -160,6 +160,13 @@
 | **De-identification before shared KB** | Every description is scrubbed to a merchant-only signature (strip names, BSBs, card masks, transfer/payid markers) before any shared-KB read or write. No PII/CDR ever enters the community brain. | CLAUDE.md §13.3 + Phase 52 | De-identifier (PII scrub) |
 | **Transfer match + exclusion** | A transfer pair = opposite direction, different account, same user, \|Δamount\| ≤ tolerance, \|Δdate\| ≤ window; auto-pair only when exactly one candidate; isTransfer rows are excluded from all spend/income. | Phase 51 + CLAUDE.md §19.1 | Transfer / repayment matcher, Transfer auto-pairer |
 | **Document extraction confidence bands** | Extraction confidence ≥0.90 AUTO / 0.70–0.90 CONFIRM / <0.70 ASK; AUTO auto-write is gated (not yet wired) and downgraded to CONFIRM for TRACK/REDUCE stages — the user confirms before any entity is created. | Phase 50 D.1 (confidencePolicy.ts) | Document Intelligence Engine (DIE) |
+
+## Assurance — the Trust Engine (what proves each number correct)
+
+| Verification | Layer | Domain | Proves | Catches (the bug it locks) | Covers | Evidence |
+|---|---|---|---|---|---|---|
+| **Income tax — monotone + continuous + progressive (L2)** | L2 | tax | Property laws over a 137-step income sweep + every bracket boundary: tax non-decreasing; positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equals the bracket rate AT each boundary. | The $0-at-every-bracket-boundary cliff (P0, fixed 2026-06-23). Mutation-proven: reintroducing strict-< → <= fails the monotonicity lock. | Income tax (marginal brackets) | `tests/regression/invariants/trustEngine.invariants.test.ts:57` |
+| **Actual cashflow — category breakdown sums to total (L2)** | L2 | core | Σ outflowByCategory === currentMonthOutflow (to the cent), over a fixed fixture + a 40-trial random sweep; Uncategorised bucketed never dropped; transfers excluded; no NaN/Infinity. | The dropped-uncategorised-spend bug (cashflow-SSOT, 2026-06-23) that produced false-optimistic surplus. Mutation-proven: dropping uncategorised from the map fails the reconciliation lock. | Actual cashflow | `tests/regression/invariants/trustEngine.invariants.test.ts:139` |
 
 ## Edges (verified, with evidence)
 
@@ -312,6 +319,8 @@
 | Monthly outflow (canonical, actuals-aware) | → | Dashboard — Annual outgoings KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualOutflow → page cf.annualOutflow |
 | Saving rate | → | Dashboard — Saving rate KPI tile | rendered-at | %→% | verified | insights kpiTiles.canonical.savingsRate → page cf.savingsRate |
 | Income tax (marginal brackets) | → | Cashflow-intelligence tax estimate (canonical) | feeds | AUD/year→AUD/year | verified | cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table) |
+| Income tax (marginal brackets) | → | Income tax — monotone + continuous + progressive (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.invariants.test.ts:57 — monotone/continuous/progressive sweep over every bracket boundary; mutation-proven (strict-< → <= fails it). |
+| Actual cashflow | → | Actual cashflow — category breakdown sums to total (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.invariants.test.ts:139 — Σ outflowByCategory === currentMonthOutflow; mutation-proven (dropping uncategorised fails it). |
 | UnifiedTransaction.description (raw text) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:692 |
 | MerchantMapping (per-user learned map) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:700 |
 | De-identifier (PII scrub) | → | Shared-KB lookup (free, instant) | feeds | — | verified | lib/categorisation/kb/lookupCategory.ts:77 |

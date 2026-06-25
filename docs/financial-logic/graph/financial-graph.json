@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -2640,6 +2640,38 @@
       "status": "documented"
     },
     {
+      "id": "verification.trustEngine.L2.incomeTaxMonotoneContinuous",
+      "kind": "verification",
+      "label": "Income tax — monotone + continuous + progressive (L2)",
+      "file": "tests/regression/invariants/trustEngine.invariants.test.ts",
+      "line": 57,
+      "layer": null,
+      "domain": "tax",
+      "trustLayer": "L2",
+      "produces": "Property laws over a 137-step income sweep + every bracket boundary: tax non-decreasing; positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equals the bracket rate AT each boundary.",
+      "catches": "The $0-at-every-bracket-boundary cliff (P0, fixed 2026-06-23). Mutation-proven: reintroducing strict-< → <= fails the monotonicity lock.",
+      "authority": "Progressive-tax invariants — a marginal-rate schedule is monotone non-decreasing and continuous in income (ITAA 1997 bracket structure).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.invariants.test.ts (Trust Engine L2)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L2.cashflowCategorySumReconciles",
+      "kind": "verification",
+      "label": "Actual cashflow — category breakdown sums to total (L2)",
+      "file": "tests/regression/invariants/trustEngine.invariants.test.ts",
+      "line": 139,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L2",
+      "produces": "Σ outflowByCategory === currentMonthOutflow (to the cent), over a fixed fixture + a 40-trial random sweep; Uncategorised bucketed never dropped; transfers excluded; no NaN/Infinity.",
+      "catches": "The dropped-uncategorised-spend bug (cashflow-SSOT, 2026-06-23) that produced false-optimistic surplus. Mutation-proven: dropping uncategorised from the map fails the reconciliation lock.",
+      "authority": "Reconciliation identity (§19.1): a category breakdown of a total must sum back to that total — money is neither created nor lost in aggregation.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.invariants.test.ts (Trust Engine L2)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
+    },
+    {
       "id": "engine.tieCategorisation.categoriseTransaction",
       "kind": "engine",
       "label": "Transaction categoriser (hybrid cascade)",
@@ -4942,6 +4974,20 @@
       "toUnit": "AUD/year",
       "evidence": "cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table)",
       "verifiedDate": "2026-06-25"
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "verification.trustEngine.L2.incomeTaxMonotoneContinuous",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.invariants.test.ts:57 — monotone/continuous/progressive sweep over every bracket boundary; mutation-proven (strict-< → <= fails it)."
+    },
+    {
+      "from": "engine.actualCashflow.computeActualCashflow",
+      "to": "verification.trustEngine.L2.cashflowCategorySumReconciles",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.invariants.test.ts:139 — Σ outflowByCategory === currentMonthOutflow; mutation-proven (dropping uncategorised fails it)."
     },
     {
       "from": "input.UnifiedTransaction.description",
