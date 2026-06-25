@@ -76,6 +76,21 @@
 - **Risk:** maintenance drift if hand-kept (mitigated by derive-from-code + CI freshness); Graphify egress (mitigated by N0 security pre-check); gold-plating the 3D (mitigated by value-before-visuals ordering).
 - **Why this matters:** drift is a graph problem; this is the artefact that makes every number traceable + provable-correct, and machine-enforces it. The structural fix for the recurring correctness failures.
 
+### 0·NEOBRAIN. Neobrain — AI Perception & Learning Layer (Phase 54)
+
+- **Status:** 🟡 ACTIVE — **umbrella named + consolidation SSOT shipped + modelled into the Neomatrix** (this PR). No behaviour change.
+- **Started:** 2026-06-25.
+- **Owner:** Reza (direction) + Claude (research + build).
+- **Last touched:** 2026-06-25 — Reza: *"bring all its functionality under Neobrain umbrella and add it to neomatrix"* + *"read from all documents which have created the ai engines before … consolidate into 1 design document … that is the SSOT rule in practice."*
+- **What it is:** the umbrella name for **every AI engine that turns raw inputs (transactions, documents, receipts) into categorised, linked, trustworthy financial facts — and gets smarter on every user confirmation.** Three pillars: (A) transaction categorisation + the per-user + k-anon shared-KB learning loop, (B) transfer/loan-repayment detection + exclusion, (C) document/receipt intelligence (Vision OCR + Gemini → route/create). Neobrain **perceives**; the Neomatrix **calculates** on what it perceived.
+- **Phase checklist:**
+  - [x] **Research** — two code deep-dives (transaction + document engines, file:line) + a phase-doc digest across 13/18/25/26/29/42/50/51/52.
+  - [x] **Neomatrix `neobrain` domain** — 39 verified nodes (20 engines, 4 orchestrators, 8 stores, 7 laws) + 47 verified edges in `financial-graph.json`; bridges to core via `UnifiedTransaction`/`Expense`/`Loan`; domain enum extended in `graphlib.mjs` + schema doc + explorer (`#EC4899`); `neomatrix:check` green (150 nodes / 194 edges, all verified).
+  - [x] **Consolidation SSOT** — `docs/blueprint/PHASE_54_NEOBRAIN.md`: one design doc that supersedes the nine source phase docs' design content + resolves the six scattered-threshold/duplicate contradictions (confidence policy, taxonomy, merchant learning, transfer precedence, receipt matching, analyze routes).
+  - [ ] **Scope growth (roadmap §10):** unify the two learning stores (MerchantMapping ↔ learnedRouting); retire legacy `AILearningPattern`; KB embeddings (52.5b); categorise→explain→anticipate; CDR/Basiq (51.3); backfill more Neobrain nodes (ui-surfaces, retention/receipt-matcher).
+- **Risk:** the consolidation SSOT documenting stale behaviour if an engine changes without same-PR update — mitigated by §16 doc-sync + §21.2.1 zero-drift (every Neobrain engine change updates its Neomatrix node in the same PR).
+- **Why this matters:** this whole subsystem was the one major part of Monitrax the Neomatrix couldn't see — an unmodelled blind spot (exactly the class that hid the +$10,505 dashboard bug). Naming it + modelling it makes the AI layer provably tied to every downstream number, and gives "make it smarter as we go" a foundation to grow from. Psychology lens: every increment must mean *fewer* confirmations, never a chattier AI.
+
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).
