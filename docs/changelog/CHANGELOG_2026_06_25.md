@@ -173,4 +173,40 @@
 
 ### PR
 - Branch: `claude/claudemd-ssot-search-first-jqahjw`
+- Status: Merged (#1236)
+
+---
+
+## Session: w0-stale-tax-brackets (branch `claude/w0-stale-tax-brackets-jqahjw`)
+
+### Changes Made
+- **Type**: Fix (financial correctness + SSOT) — **W0 of the audit roadmap** (#1237). Reza-authorised.
+- **Scope**: the P0 the audit surfaced — `app/api/cashflow/intelligence/route.ts:451-460` shipped a hardcoded income-tax bracket table labelled "2024-25" but holding **stale FY23-24 values** (first rate `0.19` vs FY24-25 Stage-3 `0.16`; base amounts `5092/29467/51667` vs `4288/31288/51638`). It was BOTH a duplicate of the canonical engine AND wrong — **overstating tax for every user at every bracket** (a §19.2 wrong-number bug).
+
+### The fix — use the ONE canonical engine (§12.2.1 SSOT)
+- Replaced the inline bracket table with `calculateIncomeTax(taxableIncome).taxPayable` — the canonical, A1-audited engine (`lib/tax-engine/core/incomeTaxCalculator.ts:21`, Neomatrix `engine.incomeTaxCalculator.calculateIncomeTax`), which reads the canonical `taxYearConfig` FY24-25 brackets and guards `taxableIncome ≤ 0`. No bracket math re-typed.
+
+### §19.2 worked-example evidence (old stale vs canonical)
+| Taxable | OLD (stale FY23-24) | NEW (canonical FY24-25, A1-locked) | Overstated |
+|---|---|---|---|
+| $30,000 | $2,242 | ~$1,888 | +$354 |
+| $50,000 | $6,592 | ~$5,788 | +$804 |
+| $100,000 | $21,592 | **$20,788** | +$804 |
+| $200,000 | $56,167 | **$56,138** | +$29 |
+
+Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.ts` (A1, ATO-law-referenced: $100k→20,788, $200k→56,138).
+
+### Neomatrix (§21.2.1 — graph moves with the dedup)
+- +1 node `number.cashflowIntelligence.estimatedTax` + edge `calculateIncomeTax → it` — records the surface now sources tax from the canonical engine. v0.29.0 → **0.30.0**, 111 nodes / 147 edges, **1 component**.
+
+### Build Status
+- [x] `tsc --noEmit` — no type errors in the route
+- [x] `npm run neomatrix:check` — OK
+- [x] `vitest run tests/neomatrix/` — 122/122
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: swap inline table for `calculateIncomeTax`. **Pass 2 (critique)**: confirmed the canonical engine reads FY24-25 config + is A1-audited (no re-implementation, §12.2.1); confirmed the old values were FY23-24 (overstated, worked examples above); kept the route's own `effectiveTaxRate`-over-gross display metric (not a duplicate of the engine's over-taxable effectiveRate). **Pass 3 (refine)**: modelled the dedup in the graph so A3 covers it. **10/10.**
+
+### PR
+- Branch: `claude/w0-stale-tax-brackets-jqahjw`
 - Status: Draft (to be opened)

@@ -27,6 +27,7 @@ import {
 } from '@/lib/cashflow-intelligence';
 import { normalizeIncomeStream } from '@/lib/cashflow/incomeNormalizer';
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
+import { calculateIncomeTax } from '@/lib/tax-engine/core/incomeTaxCalculator';
 import { getCanonicalMonthlyCashflow } from '@/lib/calculations/canonicalCashflow';
 import {
   detectSavingOpportunities,
@@ -444,20 +445,16 @@ function buildTaxOptimization(
     }
   }
 
-  // Estimate tax (simplified - would use proper tax tables in production)
+  // Estimate tax via the CANONICAL income-tax engine (CLAUDE.md §12.2.1 SSOT +
+  // §19.2). The previous inline bracket table here was BOTH a duplicate of the
+  // canonical engine AND stale/wrong — it was labelled "2024-25" but held the
+  // superseded FY23-24 values (first rate 0.19 vs the FY24-25 Stage-3 0.16;
+  // base amounts 5092/29467/51667 vs 4288/31288/51638) → it overstated tax for
+  // every user at every bracket. `calculateIncomeTax` reads the canonical
+  // `taxYearConfig` brackets (A1-audited against ATO FY24-25 — Neomatrix
+  // engine.incomeTaxCalculator.calculateIncomeTax) and guards taxableIncome ≤ 0.
   const taxableIncome = annualGrossIncome - deductibleExpenses;
-  let estimatedTax = 0;
-
-  // 2024-25 Australian tax brackets
-  if (taxableIncome > 190000) {
-    estimatedTax = 51667 + (taxableIncome - 190000) * 0.45;
-  } else if (taxableIncome > 135000) {
-    estimatedTax = 29467 + (taxableIncome - 135000) * 0.37;
-  } else if (taxableIncome > 45000) {
-    estimatedTax = 5092 + (taxableIncome - 45000) * 0.30;
-  } else if (taxableIncome > 18200) {
-    estimatedTax = (taxableIncome - 18200) * 0.19;
-  }
+  const estimatedTax = calculateIncomeTax(taxableIncome).taxPayable;
 
   const effectiveTaxRate = annualGrossIncome > 0 ? (estimatedTax / annualGrossIncome) * 100 : 0;
 

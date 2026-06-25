@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -2617,6 +2617,27 @@
       "workedExample": null,
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "number.cashflowIntelligence.estimatedTax",
+      "kind": "number",
+      "label": "Cashflow-intelligence tax estimate (canonical)",
+      "file": "app/api/cashflow/intelligence/route.ts",
+      "line": 456,
+      "layer": "route",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "The annual income-tax estimate behind the cashflow-intelligence tax-optimization insight.",
+      "formula": "calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable",
+      "authority": "CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/api/cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (read 2026-06-25)",
+      "workedExample": "taxable $100k → 20,788 (canonical FY24-25) vs the old stale $21,592 — overstated $804",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -4078,6 +4099,16 @@
       "fromUnit": "%",
       "toUnit": "%",
       "evidence": "insights kpiTiles.canonical.savingsRate → page cf.savingsRate",
+      "verifiedDate": "2026-06-25"
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "number.cashflowIntelligence.estimatedTax",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": "AUD/year",
+      "toUnit": "AUD/year",
+      "evidence": "cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table)",
       "verifiedDate": "2026-06-25"
     }
   ]

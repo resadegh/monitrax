@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.29.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.30.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 110 · **Edges:** 146
-- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 10 · ui-surface 12 · law 21
-- **By status:** documented 110
-- **Edge provenance:** verified 146 *(verified > graphify > inferred)*
+- **Nodes:** 111 · **Edges:** 147
+- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 11 · ui-surface 12 · law 21
+- **By status:** documented 111
+- **Edge provenance:** verified 147 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -102,6 +102,7 @@
 | **CFO score** (`cfoScore`) | CFO score (orchestrator) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
 | **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 | **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
+| **Cashflow-intelligence tax estimate (canonical)** (`—`) | Income tax (marginal brackets), FY tax thresholds (canonical) |  | calculateIncomeTax(annualGrossIncome − deductibleExpenses).taxPayable | CLAUDE.md §12.2.1 — sources tax from the ONE canonical engine (was a stale inline FY23-24 bracket table, W0 fix 2026-06-25) |
 
 ## Governing laws / authorities (B6)
 
@@ -279,6 +280,7 @@
 | Monthly inflow (canonical, actuals-aware) | → | Dashboard — Annual income KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualInflow → page cf.annualInflow |
 | Monthly outflow (canonical, actuals-aware) | → | Dashboard — Annual outgoings KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualOutflow → page cf.annualOutflow |
 | Saving rate | → | Dashboard — Saving rate KPI tile | rendered-at | %→% | verified | insights kpiTiles.canonical.savingsRate → page cf.savingsRate |
+| Income tax (marginal brackets) | → | Cashflow-intelligence tax estimate (canonical) | feeds | AUD/year→AUD/year | verified | cashflow/intelligence/route.ts:456 calculateIncomeTax(taxableIncome).taxPayable (W0 dedup — replaced a stale inline bracket table) |
 
 ---
 
