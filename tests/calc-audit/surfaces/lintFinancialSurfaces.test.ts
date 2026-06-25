@@ -151,6 +151,80 @@ describe('Phase 41i.6b — financial-math lint detector', () => {
     });
   });
 
+  // ===========================================================================
+  // W1 (2026-06-25) — layer-aware scanning. Surface = all four patterns, loose
+  // FREQUENCY. Route = all four, enum-tightened FREQUENCY. Engine = only
+  // DECLARED_CASHFLOW_SOURCE + enum-tightened FREQUENCY (engines legitimately
+  // compute arithmetic + hold domain constants per §12.3).
+  // ===========================================================================
+  describe('W1 — engine layer suppresses legitimate engine domain math', () => {
+    const ENGINE = 'lib/calculations/engine.ts';
+
+    it('does NOT flag inline arithmetic in the engine layer (`assets.total - liabilities.total` IS the net-worth definition)', () => {
+      const v = scanFile(ENGINE, 'netWorth: assets.total - liabilities.total,', 'engine');
+      expect(v.some((x) => x.pattern === 'INLINE_ARITHMETIC')).toBe(false);
+    });
+
+    it('does NOT flag a hardcoded constant in the engine layer (config lives here)', () => {
+      const v = scanFile(ENGINE, 'const gst = revenue * 0.10;', 'engine');
+      expect(v.some((x) => x.pattern === 'HARDCODED_FINANCIAL_CONSTANT')).toBe(false);
+    });
+
+    it('does NOT flag bare annualisation in the engine layer (`monthly.income * 12` is legitimate domain math)', () => {
+      const v = scanFile(ENGINE, 'annualIncome: monthly.income * 12,', 'engine');
+      expect(v).toHaveLength(0);
+    });
+
+    it('STILL flags a genuine converter re-implementation in the engine layer (quoted period + division)', () => {
+      const v = scanFile(
+        ENGINE,
+        "return targetFrequency === 'monthly' ? income.amount / 12 : income.amount;",
+        'engine',
+      );
+      expect(v.some((x) => x.pattern === 'FREQUENCY_CONVERSION')).toBe(true);
+    });
+
+    it('STILL flags a declared-cashflow source bypass in the engine layer', () => {
+      const v = scanFile(ENGINE, 'savingsRate: snapshot.cashflow.savingsRate,', 'engine');
+      expect(v.some((x) => x.pattern === 'DECLARED_CASHFLOW_SOURCE')).toBe(true);
+    });
+  });
+
+  describe('W1 — route layer is thin: enum-tightened frequency, arithmetic still flagged', () => {
+    const ROUTE = 'app/api/widget/route.ts';
+
+    it('does NOT flag bare annualisation in a route (`income.amount * 12` without a period literal)', () => {
+      const v = scanFile(ROUTE, 'const annual = income.amount * 12;', 'route');
+      expect(v.some((x) => x.pattern === 'FREQUENCY_CONVERSION')).toBe(false);
+    });
+
+    it('flags a genuine `case \'WEEKLY\'` converter re-implementation in a route', () => {
+      const v = scanFile(ROUTE, "case 'WEEKLY': return amount * 52 / 12;", 'route');
+      expect(v.some((x) => x.pattern === 'FREQUENCY_CONVERSION')).toBe(true);
+    });
+
+    it('still flags inline financial arithmetic in a route (routes must be thin, §12.3)', () => {
+      const v = scanFile(ROUTE, 'const net = total.income - total.expenses;', 'route');
+      expect(v.some((x) => x.pattern === 'INLINE_ARITHMETIC')).toBe(true);
+    });
+  });
+
+  describe('W1 — INLINE_ARITHMETIC precision: skip counts + sort comparators', () => {
+    it('does NOT flag array-length counting (`loans.length + income.length`)', () => {
+      const v = scanFile('app/api/x/route.ts', 'const n = loans.length + income.length;', 'route');
+      expect(v.some((x) => x.pattern === 'INLINE_ARITHMETIC')).toBe(false);
+    });
+
+    it('does NOT flag a sort comparator (`b.unitCost - a.unitCost`)', () => {
+      const v = scanFile(
+        'app/api/x/route.ts',
+        'sortedLots.sort((a, b) => b.unitCost - a.unitCost);',
+        'route',
+      );
+      expect(v.some((x) => x.pattern === 'INLINE_ARITHMETIC')).toBe(false);
+    });
+  });
+
   describe('Source-line context capture', () => {
     it('captures the full source line on every violation', () => {
       const code = '    const annualIncome = income.amount * 12;';

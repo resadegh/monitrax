@@ -2,9 +2,17 @@
 /**
  * Phase 41i.6b — Static-analysis pass for inline financial math.
  *
- * Walks every component file under `app/dashboard/`, `app/portal/`,
- * `components/` looking for three patterns that violate CLAUDE.md
- * §6.1 (canonical-source SSOT) + §6.2 (canonical-utility SSOT):
+ * W1 extension (2026-06-25): scanning is now LAYER-AWARE — `app/dashboard/`,
+ * `app/portal/`, `components/` (surface), `app/api/` (route), and `lib/`
+ * (engine). The engine + route layers apply a tightened pattern set so that
+ * legitimate engine domain math (`assets − liabilities`, `× 12` annualisation)
+ * is NOT flagged while genuine duplicate-source smells (converter
+ * re-implementations, declared-cashflow bypasses, thin-route violations) still
+ * are. See the `Layer` type doc + docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md §7.1.
+ *
+ * Walks files under the scan targets looking for four patterns that violate
+ * CLAUDE.md §6.1 (canonical-source SSOT) + §6.2 (canonical-utility SSOT) +
+ * §12.2 / §19.1 (one cashflow source, actuals-aware):
  *
  *   1. Inline frequency conversion (`income.amount * 12`,
  *      `expense.weekly * 52`) — must use `lib/utils/frequencies.ts`
@@ -40,10 +48,56 @@ import * as path from 'node:path';
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
-const SCAN_DIRS = [
-  'app/dashboard',
-  'app/portal',
-  'components',
+/**
+ * Layer of the scanned file — drives WHICH patterns apply (W1, 2026-06-25).
+ *
+ *   surface — UI (`app/dashboard`, `app/portal`, `components`). MUST never
+ *             compute money. All four patterns, loose FREQUENCY.
+ *   route   — API routes (`app/api`). MUST be thin wrappers (§12.3) — a route
+ *             doing financial math is a smell. All four patterns, but
+ *             FREQUENCY tightened to genuine converter re-implementations
+ *             (a thin route legitimately annualises a canonical value now and
+ *             then; only an enum-switch `toMonthly`/`toAnnual` shadow is a dup).
+ *   engine  — calc/service engines (`lib`). These are the SSOT homes that are
+ *             SUPPOSED to compute domain math (§12.3): `assets - liabilities`
+ *             in the net-worth engine IS the definition, `* 12` annualisation
+ *             in the cashflow engine is legitimate. Applying the inline-
+ *             arithmetic / hardcoded-constant regexes here is ~70% false
+ *             positives (legitimate math + sort comparators + test fixtures).
+ *             So the engine layer runs ONLY the two patterns an engine can
+ *             genuinely get WRONG in a duplicate-source way:
+ *               • DECLARED_CASHFLOW_SOURCE — a §19.1 declared-vs-actual bypass
+ *               • FREQUENCY (enum-tightened) — a genuine `toMonthly`/`toAnnual`
+ *                 converter re-implemented instead of imported from
+ *                 `lib/utils/frequencies.ts`.
+ *
+ * Measurement (2026-06-25) that drove this split: blanket-extending all four
+ * patterns to `lib` flagged 215 matches, ~70% of them legitimate engine
+ * domain math. The layer-aware scope keeps the gate signal-rich.
+ */
+type Layer = 'surface' | 'route' | 'engine';
+
+const SCAN_TARGETS: Array<{ dir: string; layer: Layer }> = [
+  { dir: 'app/dashboard', layer: 'surface' },
+  { dir: 'app/portal', layer: 'surface' },
+  { dir: 'components', layer: 'surface' },
+  { dir: 'app/api', layer: 'route' },
+  { dir: 'lib', layer: 'engine' },
+];
+
+/** Back-compat: the legacy surface-only scan dirs (used by callers/tests that
+ *  pass no explicit targets). */
+const SCAN_DIRS = SCAN_TARGETS.map((t) => t.dir);
+
+/**
+ * Engine-layer files/dirs excluded from the engine scan — either the canonical
+ * SSOT home of a pattern (so it doesn't flag its own definition) or audit/test
+ * harnesses that carry test fixtures (not production engines). W1, 2026-06-25.
+ */
+const ENGINE_SCAN_SKIP: RegExp[] = [
+  /^lib\/utils\/frequencies\.ts$/, // THE canonical frequency converter (its job)
+  /^lib\/calc-audit\//, // decimal-engine audit harnesses + embedded test fixtures
+  /^lib\/testing\//, // test/export harness (W6 retire target, tracked in the audit doc)
 ];
 
 const EXTENSIONS = new Set(['.ts', '.tsx']);
@@ -116,6 +170,21 @@ const FREQUENCY_PATTERNS: Array<{ regex: RegExp; description: string }> = [
 ];
 
 /**
+ * Frequency-enum literal — the fingerprint of a `toMonthly`/`toAnnual`
+ * RE-IMPLEMENTATION (a `switch (frequency)` / map / ternary chain that
+ * multiplies by 12/52/26 per period) as opposed to a one-off legitimate
+ * annualisation (`monthlyIncome * 12`) or amortisation (`rate / 12`).
+ *
+ * In the route + engine layers a FREQUENCY match only counts when the SAME
+ * line also names a period — that's what separates a re-implemented converter
+ * (a genuine duplicate of `lib/utils/frequencies.ts`) from legitimate engine
+ * domain math. Surfaces keep the loose rule (they must never do `* 12` at all).
+ * W1, 2026-06-25.
+ */
+const FREQUENCY_ENUM_LITERAL =
+  /(['"])(?:weekly|fortnightly|fortnight|bi-?weekly|monthly|quarterly|annually|annual|yearly|daily)\1|\b(?:WEEKLY|FORTNIGHTLY|BI-?WEEKLY|MONTHLY|QUARTERLY|ANNUALLY|ANNUAL|YEARLY|DAILY)\b/;
+
+/**
  * Pattern 2 — Inline arithmetic on financial fields.
  * Detects expressions like `total.income - total.expenses`,
  * `revenue - opex`, `income.gross - tax`. Both operands must look
@@ -179,9 +248,22 @@ function walkDir(dir: string, files: string[] = []): string[] {
 // File scanner
 // =============================================================================
 
-export function scanFile(filePath: string, content: string): Violation[] {
+export function scanFile(
+  filePath: string,
+  content: string,
+  layer: Layer = 'surface',
+): Violation[] {
   const violations: Violation[] = [];
   const lines = content.split('\n');
+
+  // Which patterns run in this layer (W1, 2026-06-25 — see the `Layer` doc).
+  //   surface → all four, loose FREQUENCY
+  //   route   → all four, enum-tightened FREQUENCY
+  //   engine  → DECLARED_CASHFLOW_SOURCE + enum-tightened FREQUENCY only
+  //             (engines legitimately compute arithmetic + hold domain math)
+  const runArithmetic = layer !== 'engine';
+  const runConstants = layer !== 'engine';
+  const tightenFrequency = layer !== 'surface';
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -190,47 +272,65 @@ export function scanFile(filePath: string, content: string): Violation[] {
     const annotation = line.match(ANNOTATION_REGEX);
     const annotationReason = annotation ? annotation[1].trim() : undefined;
 
-    // Pattern 1 — Frequency
-    for (const { regex } of FREQUENCY_PATTERNS) {
-      regex.lastIndex = 0;
-      let m;
-      while ((m = regex.exec(line)) !== null) {
-        violations.push({
-          file: filePath,
-          line: lineNo,
-          column: m.index + 1,
-          pattern: 'FREQUENCY_CONVERSION',
-          match: m[0],
-          sourceLine: line,
-          annotated: !!annotation,
-          annotationReason,
-        });
+    // Pattern 1 — Frequency.
+    // In route + engine layers, a match only counts as a converter
+    // re-implementation when the line also names a period — bare `* 12`
+    // annualisation / `rate / 12` amortisation is legitimate domain math.
+    if (!tightenFrequency || FREQUENCY_ENUM_LITERAL.test(line)) {
+      for (const { regex } of FREQUENCY_PATTERNS) {
+        regex.lastIndex = 0;
+        let m;
+        while ((m = regex.exec(line)) !== null) {
+          violations.push({
+            file: filePath,
+            line: lineNo,
+            column: m.index + 1,
+            pattern: 'FREQUENCY_CONVERSION',
+            match: m[0],
+            sourceLine: line,
+            annotated: !!annotation,
+            annotationReason,
+          });
+        }
       }
     }
 
-    // Pattern 2 — Inline arithmetic on financial fields
-    INLINE_ARITHMETIC_REGEX.lastIndex = 0;
-    let arithMatch;
-    while ((arithMatch = INLINE_ARITHMETIC_REGEX.exec(line)) !== null) {
-      const left = arithMatch[1];
-      const right = arithMatch[3];
-      // Only flag when BOTH sides look financial — avoids false positives
-      // on `node.left - node.right`, `position.x + position.y`, etc.
-      if (FINANCIAL_FIELD_HINT.test(left) && FINANCIAL_FIELD_HINT.test(right)) {
-        violations.push({
-          file: filePath,
-          line: lineNo,
-          column: arithMatch.index + 1,
-          pattern: 'INLINE_ARITHMETIC',
-          match: arithMatch[0],
-          sourceLine: line,
-          annotated: !!annotation,
-          annotationReason,
-        });
+    // Pattern 2 — Inline arithmetic on financial fields (surface + route only)
+    if (runArithmetic) {
+      INLINE_ARITHMETIC_REGEX.lastIndex = 0;
+      let arithMatch;
+      while ((arithMatch = INLINE_ARITHMETIC_REGEX.exec(line)) !== null) {
+        const left = arithMatch[1];
+        const right = arithMatch[3];
+        // Only flag when BOTH sides look financial — avoids false positives
+        // on `node.left - node.right`, `position.x + position.y`, etc.
+        // Also skip count/size members (`loans.length + income.length`) and
+        // sort comparators (`b.unitCost - a.unitCost`) — these are array
+        // bookkeeping, not money arithmetic (W1 precision pass, 2026-06-25).
+        const isCountish =
+          /\.(?:length|count|size)$/.test(left) || /\.(?:length|count|size)$/.test(right);
+        const isSortComparator = /\.sort\s*\(/.test(line);
+        if (
+          FINANCIAL_FIELD_HINT.test(left) &&
+          FINANCIAL_FIELD_HINT.test(right) &&
+          !isCountish &&
+          !isSortComparator
+        ) {
+          violations.push({
+            file: filePath,
+            line: lineNo,
+            column: arithMatch.index + 1,
+            pattern: 'INLINE_ARITHMETIC',
+            match: arithMatch[0],
+            sourceLine: line,
+            annotated: !!annotation,
+            annotationReason,
+          });
+        }
       }
     }
 
-    // Pattern 4 — Declared-cashflow source bypass (§12.2 / §19.1 SSOT)
+    // Pattern 4 — Declared-cashflow source bypass (§12.2 / §19.1 SSOT) — all layers
     DECLARED_CASHFLOW_REGEX.lastIndex = 0;
     let cashflowMatch;
     while ((cashflowMatch = DECLARED_CASHFLOW_REGEX.exec(line)) !== null) {
@@ -246,9 +346,9 @@ export function scanFile(filePath: string, content: string): Violation[] {
       });
     }
 
-    // Pattern 3 — Hardcoded financial constants (only when adjacent
-    // to a financial field name on the same line)
-    if (FINANCIAL_FIELD_HINT.test(line)) {
+    // Pattern 3 — Hardcoded financial constants (surface + route only; only
+    // when adjacent to a financial field name on the same line)
+    if (runConstants && FINANCIAL_FIELD_HINT.test(line)) {
       HARDCODED_CONSTANT_REGEX.lastIndex = 0;
       let constMatch;
       while ((constMatch = HARDCODED_CONSTANT_REGEX.exec(line)) !== null) {
@@ -345,16 +445,39 @@ function matchesBaseline(v: Violation, baseline: BaselineEntry[]): boolean {
   );
 }
 
-export function runLint(scanDirs: string[] = SCAN_DIRS): RunResult {
-  const allFiles: string[] = [];
-  for (const dir of scanDirs) {
-    walkDir(path.join(REPO_ROOT, dir), allFiles);
-  }
+function isEngineSkipped(file: string): boolean {
+  const rel = path.relative(REPO_ROOT, file);
+  return ENGINE_SCAN_SKIP.some((p) => p.test(rel));
+}
+
+/**
+ * @param targets - directories to scan with their layer. Accepts either the
+ *   structured `{dir, layer}[]` form (default) or a legacy `string[]` of dirs
+ *   (each inferred from SCAN_TARGETS, defaulting to 'surface') for back-compat.
+ */
+export function runLint(
+  targets: Array<{ dir: string; layer: Layer }> | string[] = SCAN_TARGETS,
+): RunResult {
+  const resolved: Array<{ dir: string; layer: Layer }> =
+    typeof targets[0] === 'string'
+      ? (targets as string[]).map((dir) => ({
+          dir,
+          layer: SCAN_TARGETS.find((t) => t.dir === dir)?.layer ?? 'surface',
+        }))
+      : (targets as Array<{ dir: string; layer: Layer }>);
 
   const violations: Violation[] = [];
-  for (const file of allFiles) {
-    const content = fs.readFileSync(file, 'utf8');
-    violations.push(...scanFile(file, content));
+  let scannedCount = 0;
+  for (const { dir, layer } of resolved) {
+    const files: string[] = [];
+    walkDir(path.join(REPO_ROOT, dir), files);
+    for (const file of files) {
+      // Engine layer skips canonical-source homes + audit/test harnesses.
+      if (layer === 'engine' && isEngineSkipped(file)) continue;
+      scannedCount++;
+      const content = fs.readFileSync(file, 'utf8');
+      violations.push(...scanFile(file, content, layer));
+    }
   }
 
   const baseline = loadBaseline();
@@ -378,7 +501,7 @@ export function runLint(scanDirs: string[] = SCAN_DIRS): RunResult {
   );
 
   return {
-    scannedFiles: allFiles.length,
+    scannedFiles: scannedCount,
     violations,
     annotated,
     unannotated,
