@@ -2,7 +2,8 @@
  * Neomatrix A1 — moneyStoryTrend (DB-bound engine; prisma boundary mocked +
  * deterministic clock).
  *
- * `getMoneyStoryTrend` reads `prisma.transaction` and buckets it into a 12-month
+ * `getMoneyStoryTrend` reads `prisma.unifiedTransaction` (the SSOT — §12.2; the
+ * legacy `Transaction` table it used to read was dead/empty) and buckets it into a 12-month
  * earned-vs-spent ribbon + KPI deltas. Its month window is anchored to "now", so
  * we (a) mock ONLY the DB boundary and (b) pin the clock with fake timers — then
  * run the REAL engine over law-derived fixtures. This is an audit, NOT a
@@ -26,13 +27,13 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 vi.mock('@/lib/db', () => ({
-  prisma: { transaction: { findMany: vi.fn() } },
+  prisma: { unifiedTransaction: { findMany: vi.fn() } },
 }));
 
 import { getMoneyStoryTrend } from '@/lib/calculations/moneyStoryTrend';
 import { prisma } from '@/lib/db';
 
-const findMany = prisma.transaction.findMany as unknown as ReturnType<typeof vi.fn>;
+const findMany = prisma.unifiedTransaction.findMany as unknown as ReturnType<typeof vi.fn>;
 
 const graph = JSON.parse(
   readFileSync(resolve(process.cwd(), 'docs/financial-logic/graph/financial-graph.json'), 'utf8'),
@@ -67,7 +68,7 @@ describe('Neomatrix A1 — moneyStoryTrend (model refs the code; DB + clock pinn
   it('the engine node exists in financial-graph.json (audit tied to the model)', () => {
     expect(nodeIds.has('engine.moneyStoryTrend.getMoneyStoryTrend')).toBe(true);
     expect(nodeIds.has('number.moneyStoryMargin')).toBe(true);
-    expect(nodeIds.has('input.Transaction')).toBe(true);
+    expect(nodeIds.has('input.UnifiedTransaction')).toBe(true);
   });
 
   it('currentMargin = round(last.kept / (kept+spent) × 100)', async () => {

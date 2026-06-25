@@ -274,7 +274,10 @@ export async function resolveOwnerEntityId(
       return holding?.investmentAccount?.ownerEntityId ?? null;
     }
     case 'transaction': {
-      const tx = await prisma.transaction.findFirst({
+      // SSOT fix (CLAUDE.md §12.2): resolve ownership against the canonical
+      // `UnifiedTransaction` table (the legacy `Transaction` table is dead —
+      // zero writers). `account.ownerEntityId` exists identically on both.
+      const tx = await prisma.unifiedTransaction.findFirst({
         where: { id: objectId, userId },
         select: { account: { select: { ownerEntityId: true } } },
       });

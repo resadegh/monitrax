@@ -74,10 +74,18 @@ export async function getMoneyStoryTrend(
   const now = new Date();
   const windowStart = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
 
-  const transactions = await prisma.transaction.findMany({
+  // SSOT fix (CLAUDE.md §12.2 / §19.1): read the canonical `UnifiedTransaction`
+  // table — the single source every actuals surface uses (master snapshot,
+  // actualCashflow, spending). The legacy `Transaction` table this used to read
+  // has ZERO writers (verified 2026-06-25) — it was dead, so Money Story showed
+  // empty/stale data while the rest of the app read real transactions.
+  // Excludes internal transfers (`isTransfer`) per §19.1, matching the actuals
+  // engine — a transfer is neither earned nor spent.
+  const transactions = await prisma.unifiedTransaction.findMany({
     where: {
       userId,
       date: { gte: windowStart },
+      isTransfer: false,
     },
     select: {
       date: true,
