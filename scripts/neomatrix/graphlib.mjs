@@ -18,7 +18,7 @@ export const ENUMS = {
   // does not produce a number; it audits one. Connected via `verified-by`.
   kind: ['engine', 'number', 'input-field', 'law', 'route', 'ui-surface', 'orchestrator', 'verification'],
   layer: ['db', 'engine', 'service', 'route', 'ui', null],
-  domain: ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports'],
+  domain: ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'],
   trailStage: ['T', 'R', 'A', 'I', 'L', null],
   regime: ['pre-reform', 'post-reform', null],
   // `verified-by` (2026-06-25) — an engine/number IS PROVEN by a verification

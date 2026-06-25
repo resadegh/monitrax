@@ -36,9 +36,10 @@ const DOMAIN_COLORS: Record<string, string> = {
   cfo: '#F59E0B',
   intelligence: '#06B6D4',
   reports: '#E11D48',
+  neobrain: '#EC4899',
 };
 const NEUTRAL = '#64748B';
-const DOMAINS = ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports'] as const;
+const DOMAINS = ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'] as const;
 const LAYERS = ['db', 'engine', 'ui'] as const;
 const TRAIL = ['T', 'R', 'A', 'I', 'L'] as const;
 

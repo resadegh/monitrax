@@ -213,6 +213,42 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 
 ---
 
+## Session: adoring-davinci-e2wb4d — Neobrain (AI perception & learning layer): umbrella + Neomatrix + consolidation SSOT
+
+### Changes Made
+- **Type**: Feature (documentation/model only — no behaviour change)
+- **Scope**: Neomatrix graph (`financial-graph.json`) + new consolidation SSOT doc + doc-sync
+- **Description**: Brought every Monitrax AI engine (transaction categorisation, the per-user + k-anon shared-KB learning loop, transfer/loan-repayment detection, document/receipt intelligence) under one **"Neobrain"** umbrella, modelled it into the Neomatrix as a new `neobrain` domain, and consolidated nine source phase docs into a single design SSOT.
+
+### Files Modified / Created
+- `docs/financial-logic/graph/financial-graph.json` — +39 verified nodes (20 engines, 4 orchestrators, 8 data stores, 7 governing laws) + 47 verified edges; every node/edge anchored to a `file:line` read in source (§19.2/§21.2). Bridges to core via `UnifiedTransaction`/`Expense`/`Loan`. No `number` nodes (Neobrain classifies; A3 stays clean). Graph rebased onto main's Trust Engine additions: v0.31.0 → v0.32.0 (152 nodes / 196 edges total).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated from the JSON.
+- `scripts/neomatrix/graphlib.mjs` — `neobrain` added to the `domain` enum (the validator).
+- `docs/financial-logic/graph/schema/financial-graph.schema.md` — `neobrain` added to the domain enum row.
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — `neobrain` domain colour (`#EC4899`) + filter chip (without it, neobrain nodes would be filtered invisible).
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` — **NEW** consolidation SSOT: defines Neobrain, the three pillars, the cascade, the two-layer learning loop, transfer detection, document intelligence, the data model (~25 tables), the consolidated config/thresholds, current live status, the Neomatrix domain, the roadmap, and the six resolved cross-doc contradictions. Supersedes the design content of Phases 13/18/25/26/29/42/50/51/52.
+- `docs/blueprint/MASTER_BLUEPRINT.md` — Phase 54 row added.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOBRAIN` workstream registered.
+- `docs/IMPLEMENTATION_PLAN.md` — hub `Last updated` bumped.
+
+### Build Status
+- [x] `npm run neomatrix:check` — **green** (152 nodes / 196 edges after rebasing onto main, all `verified`; schema valid, A3 invariants hold, file:line anchors resolve, markdown fresh). This is the `vercel-build` gate (plain Node).
+- [ ] `npm run build` / `npm run lint` / `vitest` — **not runnable in this env** (`node_modules` not installed in the fresh clone). The Vercel preview build runs the full suite; the TS edits are trivial (one enum string, one colour key + array element). Documented per §11.2.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed: architecture-level (new Neomatrix domain) + design-system-adjacent (explorer palette). Docs updated in this PR: `PHASE_54_NEOBRAIN.md` (new), `MASTER_BLUEPRINT.md`, `01_ACTIVE_WORKSTREAMS.md`, `IMPLEMENTATION_PLAN.md`, `financial-graph.schema.md`, this changelog. No CDR/infra/identity/destructive-write/schema-migration surface touched.
+
+### §20 self-review (3× → presented)
+- **Pass 1**: drafted the node/edge set from the two code deep-dives.
+- **Pass 2 (critique)**: re-verified every engine anchor + every edge call-site in source myself (not trusting the prior audit, §19.2) — corrected the document-cluster bridge from a client-side guess to the verified server lineage (`analyzeDocument` writes `DocumentAnalysis` → `confirm` reads it → creates Expense/Loan). Dropped `number`/`ui-surface` nodes to keep A3 honest and avoid guessed UI paths.
+- **Pass 3 (refine)**: ran `neomatrix:check` green; confirmed full connectivity to core (no islands); resolved the six cross-doc contradictions explicitly in the SSOT.
+
+### PR
+- Branch: `claude/adoring-davinci-e2wb4d`
+- Status: Draft (to be opened)
+
+---
+
 ## Session: W1 — extend the financial-surfaces linter to `lib/` + `app/api/` (layer-aware)
 
 ### Changes Made
