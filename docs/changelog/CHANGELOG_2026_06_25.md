@@ -210,3 +210,45 @@ Canonical outputs are the values locked in `tests/neomatrix/financialAudit.test.
 ### PR
 - Branch: `claude/w0-stale-tax-brackets-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: W1 — extend the financial-surfaces linter to `lib/` + `app/api/` (layer-aware)
+
+### Changes Made
+- **Type**: Enhancement (build gate / SSOT enforcement — structural lever §7 of the SSOT audit)
+- **Scope**: `scripts/lint-financial-surfaces.ts` + its unit tests + the grandfather baseline
+- **Description**: Extended the financial-surfaces linter — which previously scanned only `app/dashboard`/`app/portal`/`components` — to also cover `app/api/` (route layer) and `lib/` (engine layer), where the SSOT audit found the overwhelming majority of duplication. Made the scan **layer-aware** so the gate stays signal-rich.
+
+### Why layer-aware (the measurement that drove it)
+- Blanket-extending all four patterns to `lib/` flagged **215 matches**, but a measured triage showed **~70% were legitimate engine domain math** (engines are *supposed* to compute `assets − liabilities` and annualise `× 12` per §12.3), plus test fixtures + sort comparators. Baselining 215 noisy entries would bury real signal.
+- **Surface layer** (unchanged): all four patterns, loose FREQUENCY (a surface must never do `× 12`). Existing baseline preserved byte-for-byte (0 stale entries).
+- **Route layer** (`app/api`): all four patterns, FREQUENCY enum-tightened (routes must be thin — §12.3).
+- **Engine layer** (`lib`): only `DECLARED_CASHFLOW_SOURCE` (§19.1 bypass) + enum-tightened FREQUENCY (genuine `toMonthly`/`toAnnual` shadows). Inline-arithmetic + hardcoded-constant patterns NOT applied (engines legitimately compute + hold config). Canonical homes (`lib/utils/frequencies.ts`) + audit/test harnesses (`lib/calc-audit/`, `lib/testing/`) skipped.
+- **Enum-tightening**: a FREQUENCY match in route/engine only counts when the line carries a frequency period as a **value** (quoted `'monthly'` / `case 'WEEKLY'` / ALL-CAPS `ANNUALLY`), not a lowercase identifier like `monthly.income`. Precision pass also skips `.length`/`.count`/`.size` counts + `.sort()` comparators in INLINE_ARITHMETIC.
+- **Result**: 215 → **30 genuine route+engine known-debt entries** baselined (the W2–W7 worklist, 0 false positives); surface baseline unchanged (11). New duplication in `lib/` or `app/api/` now fails the build.
+
+### Files Modified
+- `scripts/lint-financial-surfaces.ts` — `Layer` type + `SCAN_TARGETS` (dir→layer) + `ENGINE_SCAN_SKIP` + `FREQUENCY_ENUM_LITERAL` + layer-aware `scanFile(file, content, layer)` + INLINE_ARITHMETIC precision (skip counts/sort) + `runLint` iterates targets w/ engine skip
+- `tests/calc-audit/surfaces/lintFinancialSurfaces.test.ts` — +10 tests for layer-aware behaviour (23 → 33)
+- `.audit/financial-math-baseline.json` — regenerated: 11 → 41 (11 surface unchanged + 30 genuine route/engine debt)
+- `docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md` — W0/W1 ticked ✅; new §7.1 documenting the layer-aware extension + the suspected stale-constant find
+
+### Suspected stale-constant find (raised, NOT silently fixed — §21.2)
+- `app/api/cashflow/intelligence/route.ts:481` — `Math.min(27500, annualGrossIncome * 0.05) * 0.34`: `27500` is the FY23-24 concessional cap (now $30,000); `0.34` is a magic tax rate. Baselined as known-debt; flagged to Reza for a follow-up financial PR (§19.2 + §20.4). Lower severity than W0 (sizes a *suggestion's* "approx saving", not a core tax position).
+
+### Build Status
+- [x] `npm run lint:financial-surfaces` — Scanned 1266 files; 42 matches (1 annotated, 41 grandfathered, **0 new**) → build proceeds
+- [x] `vitest run tests/calc-audit/surfaces/lintFinancialSurfaces.test.ts` — **33/33**
+- [x] No financial logic changed — this PR only changes detection + baseline (cannot alter runtime numbers)
+
+### §20.4 self-review (build gate touching financial surfaces → 10/10)
+- **Pass 1**: extend SCAN_DIRS to `lib` + `app/api`, regenerate baseline. **Pass 2 (critique)**: measured the naive extension = 215 / ~70% noise → would bury signal + fail to be 10/10. Redesigned as layer-aware (engines compute per §12.3; surfaces/routes don't). Found + fixed 3 false positives (2 `.length` counts, 1 sort comparator) and the `monthly.income` identifier false-match. **Pass 3 (refine)**: verified each of the 30 baselined entries is a genuine dup/smell (not FP) by reading source; confirmed surface baseline preserved (0 stale); added 10 unit tests locking the layer rules; raised the stale-constant find rather than burying it. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/audits/SSOT_DUPLICATE_SOURCE_AUDIT_2026_06_25.md:§7.1` — layer-aware extension + outcome + suspected-constant find
+- `scripts/lint-financial-surfaces.ts` (file-header JSDoc) — documents the layer-aware rules
+
+### PR
+- Branch: `claude/w1-linter-lib-coverage-jqahjw`
+- Status: Draft (to be opened)
