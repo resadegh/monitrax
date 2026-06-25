@@ -503,3 +503,34 @@ The Activity "Uncategorised" pill is driven by `categoryLevel1` (null → "Uncat
 ### PR
 - Branch: `claude/trust-engine-l0-golden-metadata-jqahjw`
 - Status: Draft
+
+---
+
+## Session: Trust Engine L1 — independent-recomputation differentials
+
+### Changes Made
+- **Type**: Enhancement (financial-correctness verification — `0·TRUST-ENGINE`, Layer 1)
+- **Scope**: new `tests/regression/invariants/trustEngine.differential.test.ts` + Neomatrix L1 nodes. No production logic changed.
+- **Description**: L1 computes a high-stakes number TWO genuinely-independent ways and asserts they agree. Existing differential coverage is float-vs-decimal (same algorithm) — a logic bug in both paths would survive it; a structurally-different second algorithm catches it.
+
+### The differentials (6 archetypes + 40 random portfolios / full income sweep)
+- **L1.1 net worth** — canonical class-bucketed engine === independent row-by-row raw sum (market-value fallback + SMSF exclusion replicated). Sensitivity: a reference that forgets SMSF exclusion does NOT match.
+- **L1.2 income tax** — canonical find-bracket+baseAmount engine === independent marginal-slice summation `Σ (min(income,upper)−lower)×rate`. Sensitivity: a wrong top rate does NOT match.
+
+### Why "sensitivity" checks
+An always-equal differential is worthless. Each differential ships a positive control proving a deliberately-wrong reference diverges — so the differential genuinely catches discrepancies.
+
+### Neomatrix (§21.2.1)
+- +2 L1 verification nodes (`netWorthIndependentRecompute` → `calculateNetWorth`; `incomeTaxIndependentRecompute` → `calculateIncomeTax`) + edges. Graph → v0.35.0.
+
+### Build Status
+- [x] `vitest run tests/regression/invariants/trustEngine.differential.test.ts` — 49/49
+- [x] `vitest run tests/neomatrix/ + differential` — 173/173
+- [x] `npm run neomatrix:check` — OK
+
+### §20.4 self-review (financial build → 10/10)
+- **P1** two independent reference algorithms. **P2 (critique)** verified the marginal-slice reference is algebraically distinct from the engine (slice-sum vs base-amount lookup) yet equal only if brackets are consistent — a real cross-check, not the same formula twice; the net-worth reference re-derives from raw rows, not the engine's buckets. **P3 (refine)** added sensitivity self-checks (wrong-SMSF, wrong-rate) so each differential is provably falsifiable; modelled L1. **10/10.**
+
+### PR
+- Branch: `claude/trust-engine-l1-differential-jqahjw`
+- Status: Draft. **Completes the Trust Engine core (L0–L3 + L5 build gate).**

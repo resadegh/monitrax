@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.34.0",
+  "version": "0.35.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3550,6 +3550,38 @@
       "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced audit, L0 authority metadata)",
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.netWorthIndependentRecompute",
+      "kind": "verification",
+      "label": "Net worth — engine vs independent raw sum (L1)",
+      "file": "tests/regression/invariants/trustEngine.differential.test.ts",
+      "line": 109,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L1",
+      "produces": "The canonical class-bucketed engine equals an independent row-by-row sum (market-value fallback + SMSF exclusion replicated) over 6 archetypes + 40 random portfolios. Sensitivity: a reference that forgets SMSF exclusion does NOT match.",
+      "catches": "A single-implementation aggregation/bucketing bug that float-vs-decimal (same algorithm) would not catch.",
+      "authority": "Differential testing: two independent algorithms for the same quantity must agree.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.differential.test.ts (Trust Engine L1)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.incomeTaxIndependentRecompute",
+      "kind": "verification",
+      "label": "Income tax — engine vs independent marginal-slice (L1)",
+      "file": "tests/regression/invariants/trustEngine.differential.test.ts",
+      "line": 144,
+      "layer": null,
+      "domain": "tax",
+      "trustLayer": "L1",
+      "produces": "The canonical find-bracket+baseAmount engine equals an independent marginal-slice summation across the whole income sweep. Sensitivity: a wrong top rate does NOT match.",
+      "catches": "A drifted baseAmount / threshold / rate present in the engine but not re-derivable from first-principles slices.",
+      "authority": "Differential testing: the marginal-slice sum and the base-amount lookup are algebraically equal only if the brackets are internally consistent.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.differential.test.ts (Trust Engine L1)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5527,6 +5559,20 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/neomatrix/financialAudit.test.ts:114 — 7 ATO-anchored bracket cases (FY24-25 rates URL + fy + verifiedDate); engine output == law-derived value."
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "verification.trustEngine.L1.netWorthIndependentRecompute",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.differential.test.ts:109 — engine === independent raw sum over 46 portfolios; sensitivity-checked."
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "verification.trustEngine.L1.incomeTaxIndependentRecompute",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.differential.test.ts:144 — engine === independent marginal-slice over the income sweep; sensitivity-checked."
     }
   ]
 }
