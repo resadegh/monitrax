@@ -82,7 +82,7 @@ export interface Violation {
   file: string;
   line: number;
   column: number;
-  pattern: 'FREQUENCY_CONVERSION' | 'INLINE_ARITHMETIC' | 'HARDCODED_FINANCIAL_CONSTANT';
+  pattern: 'FREQUENCY_CONVERSION' | 'INLINE_ARITHMETIC' | 'HARDCODED_FINANCIAL_CONSTANT' | 'DECLARED_CASHFLOW_SOURCE';
   match: string;
   /** The full line of source for context. */
   sourceLine: string;
@@ -138,6 +138,24 @@ const INLINE_ARITHMETIC_REGEX = /\b(\w+(?:\.\w+)+)\s*([\+\-])\s*(\w+(?:\.\w+)+)/
  * (avoids false positives on UI percentages or pagination).
  */
 const HARDCODED_CONSTANT_REGEX = /\b(?:0\.10|0\.15|0\.50|0\.0837|30000|27500|110000|220000|1\.10)\b/g;
+
+/**
+ * Pattern 4 — Declared-cashflow source bypass (CLAUDE.md §12.2 / §19.1).
+ *
+ * A surface that reads a DECLARED headline-cashflow field directly off a
+ * snapshot (`snapshot.cashflow.monthlyNetCashflow`, `.savingsRate`,
+ * `.totalIncome`, `.totalExpenses`, `.annualNetCashflow`) is sourcing money
+ * numbers from the "plan" side, silently dropping uncategorised actual spend
+ * → false-optimistic surplus/savings. Added 2026-06-25 after the dashboard
+ * KPI tiles showed +$10,505 while /cashflow + Money Story showed −$20,914.
+ *
+ * Headline money surfaces MUST read the canonical (actuals-aware) cashflow —
+ * the `getCanonicalMonthlyCashflow()` result, surfaced precomputed via the
+ * insights payload (`insights.kpiTiles.canonical.*`). The ONE legitimate
+ * declared fallback (before the canonical payload loads) carries an
+ * `@financial-math-allowed` annotation.
+ */
+const DECLARED_CASHFLOW_REGEX = /\.cashflow\.(?:monthlyNetCashflow|annualNetCashflow|savingsRate|totalIncome|totalExpenses)\b/g;
 
 // =============================================================================
 // Walker
@@ -210,6 +228,22 @@ export function scanFile(filePath: string, content: string): Violation[] {
           annotationReason,
         });
       }
+    }
+
+    // Pattern 4 — Declared-cashflow source bypass (§12.2 / §19.1 SSOT)
+    DECLARED_CASHFLOW_REGEX.lastIndex = 0;
+    let cashflowMatch;
+    while ((cashflowMatch = DECLARED_CASHFLOW_REGEX.exec(line)) !== null) {
+      violations.push({
+        file: filePath,
+        line: lineNo,
+        column: cashflowMatch.index + 1,
+        pattern: 'DECLARED_CASHFLOW_SOURCE',
+        match: cashflowMatch[0],
+        sourceLine: line,
+        annotated: !!annotation,
+        annotationReason,
+      });
     }
 
     // Pattern 3 — Hardcoded financial constants (only when adjacent

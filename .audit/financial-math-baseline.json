@@ -1,7 +1,7 @@
 {
-  "comment": "Phase 41i.6b \u2014 pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny \u2014 adding entries here suppresses bugs the lint is designed to catch).",
-  "generatedAt": "2026-06-01T09:27:48.722Z",
-  "count": 22,
+  "comment": "Phase 41i.6b — pre-existing financial-math violations grandfathered at the time the lint shipped. Resolve over time + remove the entry. Regenerate via BASELINE_REGENERATE=1 npm run lint:financial-surfaces (with reviewer scrutiny — adding entries here suppresses bugs the lint is designed to catch).",
+  "generatedAt": "2026-06-25T08:47:23.704Z",
+  "count": 11,
   "entries": [
     {
       "file": "app/dashboard/cfo/page.tsx",
@@ -14,48 +14,6 @@
       "line": 1985,
       "pattern": "INLINE_ARITHMETIC",
       "match": "selectedIncome.amount + selectedIncome.frankingCredits"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1330,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "cashflow.totalIncome / 12"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1338,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "cashflow.totalIncome / 12"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1379,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "cashflow.totalExpenses / 12"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1387,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "cashflow.totalExpenses / 12"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1401,
-      "pattern": "FREQUENCY_CONVERSION",
-      "match": "expense.annualAmount / 12"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1600,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "snapshot.totalAssets - snapshot.totalLiabilities"
-    },
-    {
-      "file": "app/dashboard/page.tsx",
-      "line": 1604,
-      "pattern": "INLINE_ARITHMETIC",
-      "match": "snapshot.totalAssets - snapshot.totalLiabilities"
     },
     {
       "file": "app/dashboard/tax/page.tsx",

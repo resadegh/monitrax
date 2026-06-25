@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.28.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.29.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 104 · **Edges:** 140
-- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 8 · ui-surface 8 · law 21
-- **By status:** documented 104
-- **Edge provenance:** verified 140 *(verified > graphify > inferred)*
+- **Nodes:** 110 · **Edges:** 146
+- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 10 · ui-surface 12 · law 21
+- **By status:** documented 110
+- **Edge provenance:** verified 146 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -63,7 +63,7 @@
 | **Loan/debt aggregation (interest)** | `lib/calculations/loanAggregator.ts:69` | engine | core | LoanAggregation — totalPrincipal, totalRepayments, totalInterest, weightedInterestRate, byType. The §6.2 debt SSOT. | Standard interest = principal × annual rate; CLAUDE.md §19.2 (interestRateAnnual decimal — the prior 100× bug, P0-fixed 2026-06-23) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced — locks the 100× class) + lib/calculations/loanAggregator.ts:69 | documented |
 | **Declared expense aggregation** | `lib/calculations/expenseAggregator.ts:76` | engine | core | ExpenseAggregation — total, essential, discretionary, taxDeductible, byCategory. The §6.2 expense SSOT. | CLAUDE.md §6.2 (expense SSOT) + lib/utils/frequencies.ts toMonthly | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/expenseAggregator.ts:76 | documented |
 | **Declared income aggregation (gross / net / PAYG)** | `lib/calculations/incomeAggregator.ts:143` | engine | core | IncomeAggregation — grossTotal, netTotal, paygWithholding, byType, taxableIncome, nonTaxableIncome. The §6.2 income SSOT. | CLAUDE.md §6.2 (income SSOT) + lib/utils/frequencies.ts toMonthly/toAnnual | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/incomeAggregator.ts:143 | documented |
-| **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:156` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:156,161,173 (read this session) | documented |
+| **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:171` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:156,161,173 (read this session) | documented |
 | **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:519` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
@@ -95,11 +95,13 @@
 | **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots), Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
 | **Money Story kept margin (displayed)** (`moneyStoryMargin`) | Money Story 12-month trend (earned vs spent) | Dashboard — Money Story hero + KPI strip | = getMoneyStoryTrend(...).{ currentMargin, marginDeltaPoints } | CLAUDE.md §0 honesty contract |
 | **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
-| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, /activity — This month tiles (Spending / Income / Net) | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
-| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
+| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, /activity — This month tiles (Spending / Income / Net), Dashboard — Monthly cash flow KPI tile | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
+| **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, Dashboard — Saving rate KPI tile | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 | **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
 | **CFO score** (`cfoScore`) | CFO score (orchestrator) | /dashboard/cfo — CFO score | = calculateCFOScore(...).overall | Monitrax CFO methodology |
+| **Monthly inflow (canonical, actuals-aware)** (`monthlyInflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual income KPI tile | resolveCanonicalCashflow().inflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
+| **Monthly outflow (canonical, actuals-aware)** (`monthlyOutflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Annual outgoings KPI tile | resolveCanonicalCashflow().outflow | CLAUDE.md §12.2 SSOT + §19.1 actuals |
 
 ## Governing laws / authorities (B6)
 
@@ -271,6 +273,12 @@
 | Expense (declared) | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:559 prisma.expense.findMany |
 | Investment units × price | → | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | feeds | AUD→AUD | verified | app/api/portfolio/snapshot/route.ts:568 prisma.investmentAccount.findMany |
 | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | GRDCS linkage health | feeds | — | verified | app/api/linkage/health/route.ts:45 calculateLinkageHealth(snapshot) — snapshot is this route's SnapshotV2 (fetchSnapshot :33) |
+| Canonical monthly cashflow | → | Monthly inflow (canonical, actuals-aware) | feeds | AUD/month→AUD/month | verified | canonicalCashflow.ts:104 returns .inflow |
+| Canonical monthly cashflow | → | Monthly outflow (canonical, actuals-aware) | feeds | AUD/month→AUD/month | verified | canonicalCashflow.ts:104 returns .outflow |
+| Monthly cash flow (this month) | → | Dashboard — Monthly cash flow KPI tile | rendered-at | AUD/month→AUD/month | verified | app/api/dashboard/insights/route.ts kpiTiles.canonical.monthlyNet → page cf.monthlyNet (2026-06-25 SSOT fix) |
+| Monthly inflow (canonical, actuals-aware) | → | Dashboard — Annual income KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualInflow → page cf.annualInflow |
+| Monthly outflow (canonical, actuals-aware) | → | Dashboard — Annual outgoings KPI tile | rendered-at | AUD/month→AUD | verified | insights kpiTiles.canonical.annualOutflow → page cf.annualOutflow |
+| Saving rate | → | Dashboard — Saving rate KPI tile | rendered-at | %→% | verified | insights kpiTiles.canonical.savingsRate → page cf.savingsRate |
 
 ---
 
