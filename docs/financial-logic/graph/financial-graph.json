@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.33.0",
+  "version": "0.34.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3534,6 +3534,22 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.reconciliation.test.ts (Trust Engine L3)",
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L0.incomeTaxGoldenCases",
+      "kind": "verification",
+      "label": "Income tax — ATO authority-anchored golden cases (L0)",
+      "file": "tests/neomatrix/financialAudit.test.ts",
+      "line": 114,
+      "layer": null,
+      "domain": "tax",
+      "trustLayer": "L0",
+      "produces": "7 bracket cases (tax-free threshold, each boundary, $100k/$190k/$200k) whose EXPECTED value is hand-derived from the ATO published FY24-25 rates and tagged with the ATO rates URL + FY + verifiedDate (re-anchorable). The real engine must match the law-derived number.",
+      "catches": "Engine drifting from the published ATO brackets (incl. the stale-FY23-24-bracket class, W0) + the $0-cliff. The authority is external (ATO), not the code.",
+      "authority": "ATO Individual income tax rates FY2024-25 — https://www.ato.gov.au/rates/individual-income-tax-rates/",
+      "verifiedBy": "tests/neomatrix/financialAudit.test.ts (A1 law-referenced audit, L0 authority metadata)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5504,6 +5520,13 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.reconciliation.test.ts:127 — statement sum + net tie-out; transfers excluded."
+    },
+    {
+      "from": "engine.incomeTaxCalculator.calculateIncomeTax",
+      "to": "verification.trustEngine.L0.incomeTaxGoldenCases",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/neomatrix/financialAudit.test.ts:114 — 7 ATO-anchored bracket cases (FY24-25 rates URL + fy + verifiedDate); engine output == law-derived value."
     }
   ]
 }

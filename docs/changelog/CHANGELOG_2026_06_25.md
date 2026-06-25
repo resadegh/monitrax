@@ -398,4 +398,39 @@ Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix
 
 ### PR
 - Branch: `claude/trust-engine-l3-reconciliation-jqahjw` (stacked on #1244)
+- Status: Merged (PR #1245, brought #1244)
+
+---
+
+## Session: Trust Engine L0 — authority-anchored golden-case metadata
+
+### Changes Made
+- **Type**: Enhancement (financial-correctness verification — `0·TRUST-ENGINE`, Layer 0)
+- **Scope**: `tests/neomatrix/financialAudit.test.ts` (A1 audit metadata) + Neomatrix L0 node. No production logic changed.
+- **Description**: L0 of the Trust Engine — make the existing A1 law-referenced golden cases **re-verifiable + re-anchorable** by tagging each with its external authority. The A1 audit already derives expected values from the law; L0 adds the citation metadata the research flagged as missing (FY + source URL + verified-date).
+
+### What was added
+- `AuditCase` gains optional `fy` / `sourceUrl` / `verifiedDate`.
+- `AUTHORITY_SOURCES` registry — only REAL ATO URLs already cited in the repo tax config (income-tax rates, medicare, super); **no invented URLs (§19.2)**.
+- 9 golden cases anchored: income-tax ×7 (every bracket boundary — the $0-cliff golden lock), medicare, super-guarantee.
+- **L0 completeness lock**: any case with a `sourceUrl` must use a registry URL, be an official ATO/gov domain, and carry `fy` + `verifiedDate`. Plus a lock that the 7 income-tax bracket cases stay ATO-anchored.
+
+### Neomatrix (§21.2.1)
+- +1 L0 verification node `incomeTaxGoldenCases` → `engine.incomeTaxCalculator.calculateIncomeTax` + edge. Graph → v0.34.0. (income-tax engine now carries L0 golden + L2 invariant assurance.)
+
+### Build Status
+- [x] `vitest run tests/neomatrix/financialAudit.test.ts` — 102/102 (incl. L0 locks)
+- [x] `vitest run tests/neomatrix/` — 126/126
+- [x] `npm run neomatrix:check` — OK
+- [x] No production logic changed — test metadata + graph only
+
+### §20.4 self-review (financial build → 10/10)
+- **P1** add metadata + registry + populate. **P2 (critique)** ensured ZERO invented URLs — every sourceUrl is grep-verified as already cited in `lib/tax-engine/` config; metadata is opt-in so un-annotated cases don't falsely claim anchoring. **P3 (refine)** added the domain-allowlist lock so a future invented URL fails; modelled L0 into the graph. **10/10.**
+
+### Doc-sync (§16)
+- `docs/audits/OVERNIGHT_PR_HANDOFF_2026_06_25.md` — created (the merge list)
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated
+
+### PR
+- Branch: `claude/trust-engine-l0-golden-metadata-jqahjw`
 - Status: Draft
