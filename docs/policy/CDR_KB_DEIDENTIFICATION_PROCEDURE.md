@@ -82,8 +82,8 @@ Disclosed to users in: Privacy Policy §4.1 (+ §6.2 for CDR-derived patterns), 
 |---|---|---|
 | Procedure reviewed | Reza (+ compliance adviser if engaged) | ☐ pending |
 | Privacy Policy + consent-notice PDFs regenerated from updated `.md` and served | Reza | ☐ pending |
-| `KB_WRITE_ENABLED=true` set (Vercel Production) | Reza | ☐ pending |
+| `KB_WRITE_ENABLED=true` set (Vercel Production) | Reza | ✅ set on Prod+Preview 2026-06-22 (confirmed 2026-06-25) |
 | Housekeeping Cloud Scheduler job created | Reza | ☐ pending |
-| `KB_READ_ENABLED=true` set (after patterns graduate) | Reza | ☐ pending |
+| `KB_READ_ENABLED=true` set (after patterns graduate) | Reza | ✅ set on Prod+Preview 2026-06-22 (confirmed 2026-06-25) |
 
-Until row 1 is signed off, `KB_WRITE_ENABLED` and `KB_READ_ENABLED` remain **false** (the code default).
+`KB_WRITE_ENABLED` and `KB_READ_ENABLED` are **live (`true`) on Production + Preview** as of 2026-06-22 (Reza-confirmed 2026-06-25). `KB_GEMINI_ENABLED` remains unset (`false`). ⚠️ Compliance note: rows 1–2 above (procedure review + privacy/consent-PDF regen) are still marked pending — confirm these were completed before/at write-enablement, since `KB_WRITE_ENABLED` is now live.

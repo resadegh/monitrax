@@ -23,6 +23,7 @@ import {
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
 import { pairTransferIfPossible } from '@/lib/bookkeeping/transferPairing';
+import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -225,6 +226,13 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
       // destination so the user can later trace where the money went.
       if (body.isTransfer !== undefined) {
         updateData.isTransfer = body.isTransfer;
+        // Confirming a transfer (without an explicit category from the caller)
+        // → fully categorise + confirm it so the source row leaves the
+        // Uncategorised / Not-confirmed / low-confidence-band review surfaces
+        // (§12.2.1 — same field-set every transfer-marking path now writes).
+        if (body.isTransfer === true && body.categoryLevel1 === undefined) {
+          Object.assign(updateData, confirmedTransferFields());
+        }
       }
       if (body.transferToAccountId !== undefined) {
         updateData.transferToAccountId = body.transferToAccountId || null;

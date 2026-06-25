@@ -44,6 +44,7 @@
 
 import prisma from '@/lib/db';
 import type { UnifiedTransaction, TransactionDirection } from '@prisma/client';
+import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 
 /** Match window in days (± from source date). */
 export const TRANSFER_PAIR_WINDOW_DAYS = 3;
@@ -190,12 +191,9 @@ export async function pairTransferIfPossible(
   const match = matches[0];
   await prisma.unifiedTransaction.update({
     where: { id: match.id },
-    data: {
-      isTransfer: true,
-      transferToAccountId: source.accountId,
-      categoryLevel1: 'Transfer',
-      categoryLevel2: 'Internal',
-    },
+    // Paired side is definitively a transfer → fully categorise + confirm it
+    // (§12.2.1) so it doesn't surface as "Uncategorised / Not confirmed yet".
+    data: { ...confirmedTransferFields({ level2: 'Internal' }), transferToAccountId: source.accountId },
   });
   return match.id;
 }

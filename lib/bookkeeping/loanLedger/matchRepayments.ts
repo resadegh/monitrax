@@ -19,6 +19,7 @@
 
 import prisma from '@/lib/db';
 import { LoanMatchStatus } from '@prisma/client';
+import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 
 export interface RepaymentRow {
   id: string;
@@ -193,7 +194,9 @@ export async function resolveRepaymentMatch(
         // Mark the funding offset outflow as a transfer (out of spending).
         await tx.unifiedTransaction.updateMany({
           where: { id: row.matchedTransactionId, userId },
-          data: { isTransfer: true },
+          // Loan repayment confirmed → fully categorise + confirm it so it
+          // leaves the Uncategorised / Not-confirmed review surfaces (§12.2.1).
+          data: confirmedTransferFields({ level2: 'Loan repayment' }),
         });
       }
     });
@@ -247,7 +250,9 @@ export async function linkRepaymentToTransaction(
     });
     await tx.unifiedTransaction.updateMany({
       where: { id: transactionId, userId },
-      data: { isTransfer: true, loanId: row.loanId },
+      // Loan repayment linked → fully categorise + confirm (§12.2.1) so it
+      // doesn't linger as "Uncategorised / Not confirmed yet".
+      data: { ...confirmedTransferFields({ level2: 'Loan repayment' }), loanId: row.loanId },
     });
   });
   return { ok: true };

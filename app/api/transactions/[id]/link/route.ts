@@ -13,6 +13,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
+import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
@@ -868,7 +869,9 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
           await prisma.unifiedTransaction.update({
             where: { id: transactionId },
             data: {
-              isTransfer: true,
+              // Fully categorise + confirm the transfer (§12.2.1) so it leaves
+              // the Uncategorised / Not-confirmed review surfaces.
+              ...confirmedTransferFields(),
               transferToAccountId: body.transferToAccountId || null,
               isRecurring: false,
               isEssential: false,
@@ -876,7 +879,6 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               incomeId: null,
               expenseId: null,
               loanId: null,
-              categoryLevel1: 'Transfer',
             },
           });
 
