@@ -12,6 +12,7 @@
 - **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 2
 - **By status:** documented 152
 - **Edge provenance:** verified 196 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 2/83 engines+numbers proven (2%) · 2 verification node(s) · by layer L2 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 

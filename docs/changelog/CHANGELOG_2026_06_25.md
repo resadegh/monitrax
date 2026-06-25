@@ -336,3 +336,33 @@ Reza directive 2026-06-25: *"this trust engine should also be added to neomatrix
 - **2 new CI convention locks** (`tests/neomatrix/financialGraph.test.ts`): every `verification` node must connect to what it proves (no orphan assurance); every `verified-by` edge targets a verification node from an engine/number. So future L0/L1/L3 layers stay wired (§21.2.1).
 - `npm run neomatrix:check` OK (schema valid, invariants hold, markdown fresh); neomatrix suite 122→124-equiv (8/8 graph tests, full dir green).
 - **Follow-up:** frequency-converter consistency (L2.3) has no engine node yet — add a `lib/utils/frequencies.ts` node + its verification edge in a later slice (noted so it isn't lost).
+
+---
+
+## Session: Neomatrix — Trust Engine assurance-coverage readout (keep-track view)
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix tracking — follow-up to #1242)
+- **Scope**: `scripts/neomatrix/graphlib.mjs` (coverage dashboard) + regenerated `GENERATED_CORE.md`
+- **Description**: Reza directive 2026-06-25: *"the trust engine should also be added to neomatrix so we can keep track."* #1242 added the Trust Engine to the graph (verification nodes + verified-by edges + Assurance section). This adds the **at-a-glance progress readout** so coverage is trackable as layers land.
+- The Neomatrix "Coverage & trust (C10)" dashboard now shows: **Trust Engine assurance: X/N engines+numbers proven (P%) · K verification node(s) · by layer L0/L1/L2/L3**. Today: 2/59 (3%), L2 ×2 — climbs as L0/L1/L3 ship.
+
+### Files Modified
+- `scripts/neomatrix/graphlib.mjs` — `coverageSummary()` computes `assurance` {coveredTargets, totalTargets, verifications, byLayer from verified-by edges}; `renderMarkdown()` dashboard line.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated (assurance readout line).
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema valid, invariants hold, markdown fresh)
+- [x] `vitest run tests/neomatrix/` — 124/124
+- [x] Documentation/model only — no financial logic, no graph data semantics changed (pure derived metric)
+
+### §20 self-review (3× → 10/10)
+- **P1**: add assurance metric + dashboard line. **P2 (critique)**: counted engines+orchestrators+numbers as the provable denominator (not laws/inputs/ui — those aren't "numbers to prove"); derived purely from `verified-by` edges so it can't drift from the actual graph. **P3 (refine)**: byLayer sorted deterministically (markdown-fresh stable); reads "X/N proven (P%)" so the GAP is as visible as the coverage. **10/10.**
+
+### Doc-sync (CLAUDE.md §16)
+- `docs/financial-logic/graph/GENERATED_CORE.md` — the readout is the tracking surface
+- `0·TRUST-ENGINE` workstream — the keep-track mechanism is now live
+
+### PR
+- Branch: `claude/trust-engine-assurance-coverage-jqahjw`
+- Status: Draft (to be opened)
