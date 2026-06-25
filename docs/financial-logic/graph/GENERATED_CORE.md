@@ -8,10 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 152 · **Edges:** 196
-- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 2
-- **By status:** documented 152
-- **Edge provenance:** verified 196 *(verified > graphify > inferred)*
+- **Nodes:** 154 · **Edges:** 198
+- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 4
+- **By status:** documented 154
+- **Edge provenance:** verified 198 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/83 engines+numbers proven (4%) · 4 verification node(s) · by layer L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -167,6 +168,8 @@
 |---|---|---|---|---|---|---|
 | **Income tax — monotone + continuous + progressive (L2)** | L2 | tax | Property laws over a 137-step income sweep + every bracket boundary: tax non-decreasing; positive above the tax-free threshold; tax ≤ income; effective rate ∈ [0, top marginal]; continuous (no step > top-rate × income-step); marginal rate progressive + equals the bracket rate AT each boundary. | The $0-at-every-bracket-boundary cliff (P0, fixed 2026-06-23). Mutation-proven: reintroducing strict-< → <= fails the monotonicity lock. | Income tax (marginal brackets) | `tests/regression/invariants/trustEngine.invariants.test.ts:57` |
 | **Actual cashflow — category breakdown sums to total (L2)** | L2 | core | Σ outflowByCategory === currentMonthOutflow (to the cent), over a fixed fixture + a 40-trial random sweep; Uncategorised bucketed never dropped; transfers excluded; no NaN/Infinity. | The dropped-uncategorised-spend bug (cashflow-SSOT, 2026-06-23) that produced false-optimistic surplus. Mutation-proven: dropping uncategorised from the map fails the reconciliation lock. | Actual cashflow | `tests/regression/invariants/trustEngine.invariants.test.ts:139` |
+| **Net worth — class subtotals tie out to total (L3)** | L3 | core | assets.total === Σ(property/account/investment/super/personalAsset) subtotals; liabilities.total === Σ(mortgages/personalLoans/creditCards); netWorth === assets.total − liabilities.total. Over 6 archetypes + 40 random portfolios. | A silently dropped asset/liability class understating wealth. Mutation-proven: removing personalAssets from the total fails 28 tie-outs. | Net worth | `tests/regression/invariants/trustEngine.reconciliation.test.ts:101` |
+| **Actual cashflow — statement sum + net tie out (L3)** | L3 | core | Σ current-month non-transfer OUT transactions === currentMonthOutflow (statement tie-out); currentMonthNet === currentMonthInflow − currentMonthOutflow; transfers never enter the totals. Fixture + 40-trial random sweep. | Money created/lost between the transaction stream and the period total (the roll-forward seed, §19.1). | Actual cashflow | `tests/regression/invariants/trustEngine.reconciliation.test.ts:127` |
 
 ## Edges (verified, with evidence)
 
@@ -368,6 +371,8 @@
 | Transfer / repayment matcher | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/resolveTransaction.ts:135 |
 | Transfer auto-pairer | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/transferPairing.ts:127 |
 | Document Intelligence Engine (DIE) | → | Document extraction confidence bands | governed-by | — | verified | lib/documents/intelligence/confidencePolicy.ts:1 |
+| Net worth | → | Net worth — class subtotals tie out to total (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.reconciliation.test.ts:101 — class additivity over 46 portfolios; mutation-proven (drop a class → 28 fail). |
+| Actual cashflow | → | Actual cashflow — statement sum + net tie out (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.reconciliation.test.ts:127 — statement sum + net tie-out; transfers excluded. |
 
 ---
 

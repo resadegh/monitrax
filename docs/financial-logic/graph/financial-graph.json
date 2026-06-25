@@ -3502,6 +3502,38 @@
       "workedExample": null,
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L3.netWorthClassAdditivity",
+      "kind": "verification",
+      "label": "Net worth — class subtotals tie out to total (L3)",
+      "file": "tests/regression/invariants/trustEngine.reconciliation.test.ts",
+      "line": 101,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L3",
+      "produces": "assets.total === Σ(property/account/investment/super/personalAsset) subtotals; liabilities.total === Σ(mortgages/personalLoans/creditCards); netWorth === assets.total − liabilities.total. Over 6 archetypes + 40 random portfolios.",
+      "catches": "A silently dropped asset/liability class understating wealth. Mutation-proven: removing personalAssets from the total fails 28 tie-outs.",
+      "authority": "Reconciliation identity: an aggregate equals the sum of its parts (the accounting summation discipline).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.reconciliation.test.ts (Trust Engine L3)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L3.cashflowStatementTieOut",
+      "kind": "verification",
+      "label": "Actual cashflow — statement sum + net tie out (L3)",
+      "file": "tests/regression/invariants/trustEngine.reconciliation.test.ts",
+      "line": 127,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L3",
+      "produces": "Σ current-month non-transfer OUT transactions === currentMonthOutflow (statement tie-out); currentMonthNet === currentMonthInflow − currentMonthOutflow; transfers never enter the totals. Fixture + 40-trial random sweep.",
+      "catches": "Money created/lost between the transaction stream and the period total (the roll-forward seed, §19.1).",
+      "authority": "Reconciliation identity (§19.1): a period total equals the sum of its source transactions; net = inflow − outflow.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.reconciliation.test.ts (Trust Engine L3)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5458,6 +5490,20 @@
       "toUnit": null,
       "evidence": "lib/documents/intelligence/confidencePolicy.ts:1",
       "verifiedDate": "2026-06-25"
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "verification.trustEngine.L3.netWorthClassAdditivity",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.reconciliation.test.ts:101 — class additivity over 46 portfolios; mutation-proven (drop a class → 28 fail)."
+    },
+    {
+      "from": "engine.actualCashflow.computeActualCashflow",
+      "to": "verification.trustEngine.L3.cashflowStatementTieOut",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.reconciliation.test.ts:127 — statement sum + net tie-out; transfers excluded."
     }
   ]
 }
