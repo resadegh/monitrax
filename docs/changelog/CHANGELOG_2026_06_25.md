@@ -157,3 +157,19 @@
 ### PR
 - Branch: `claude/dashboard-actuals-ssot-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: claudemd-ssot-search-first (branch `claude/claudemd-ssot-search-first-jqahjw`)
+
+### Changes Made
+- **Type**: Governance (CLAUDE.md critical rule; no code).
+- **Scope**: Reza directive 2026-06-25 — *"two sources of truth is never a single source of truth … never ever calculate the same formula in different places … always check for similar sources before ever attempting to build a new one. Non-negotiable critical rule, add to claude.md."*
+- **Added**: **§12.2.1 SEARCH-FIRST — the duplicate-source rule (NON-NEGOTIABLE/CRITICAL)**: one datum / one calculation / one formula = exactly ONE source; the mandatory SEARCH-FIRST protocol (Neomatrix + `lib/` + SSOT table before building anything); the 2026-06-25 dashboard +$10,505-vs-−$20,914 case study (the bug was the duplication, not a wrong number); detection via Neomatrix A3 convergence + surface-linter Pattern 4; reviewer enforcement. + §12.13 checklist lead item. Footer → 2.9.
+
+### Build Status
+- [x] Docs/governance only — no code, no graph data, no financial logic changed.
+
+### PR
+- Branch: `claude/claudemd-ssot-search-first-jqahjw`
+- Status: Draft (to be opened)
