@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.27.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.28.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 103 · **Edges:** 139
-- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 8 · ui-surface 7 · law 21
-- **By status:** documented 103
-- **Edge provenance:** verified 139 *(verified > graphify > inferred)*
+- **Nodes:** 104 · **Edges:** 140
+- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 8 · ui-surface 8 · law 21
+- **By status:** documented 104
+- **Edge provenance:** verified 140 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
 
@@ -95,7 +95,7 @@
 | **Net-worth trend Δ / Δ% (displayed)** (`netWorthTrend`) | Net-worth history trend (honest, from stored snapshots), Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Dashboard — Net Worth Trend tile | = getNetWorthHistory(...).{ deltaAbsolute, deltaPct } | CLAUDE.md §0 honesty contract |
 | **Money Story kept margin (displayed)** (`moneyStoryMargin`) | Money Story 12-month trend (earned vs spent) | Dashboard — Money Story hero + KPI strip | = getMoneyStoryTrend(...).{ currentMargin, marginDeltaPoints } | CLAUDE.md §0 honesty contract |
 | **Net worth (displayed)** (`netWorth`) | Net worth, Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | Home — Net worth tile | = calculateNetWorth(...).netWorth | Accounting identity |
-| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
+| **Monthly cash flow (this month)** (`monthlyCashflow`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero, /activity — This month tiles (Spending / Income / Net) | = getCanonicalMonthlyCashflow(snapshot).net | CLAUDE.md §19.1 |
 | **Saving rate** (`savingsRate`) | Canonical monthly cashflow, Actual cashflow, Declared cashflow, Net worth, Loan/debt aggregation (interest), Declared expense aggregation, Declared income aggregation (gross / net / PAYG), Holding market value (canonical helper), Loan current balance (canonical helper), Per-entity position breakdown (additive view) | /cashflow — hero | = getCanonicalMonthlyCashflow(snapshot).savingsRate | CLAUDE.md §19.1 |
 | **Net tax payable** (`taxPayable`) | Income tax position, FY tax thresholds (canonical), Income tax (marginal brackets), Medicare levy (2% + shade-in) | Tax position surface | = calculateTaxPosition(...).netTaxPayable (gross tax − offsets − PAYG) | ITAA 1997 + Medicare Levy Act 1986 |
 | **Financial health score** (`healthScore`) | Health score (with trend/band), Health aggregate score | Home — Health tile | = generateHealthScore(...).score | Monitrax health methodology |
@@ -155,6 +155,7 @@
 | Net worth (displayed) | → | Home — Net worth tile | rendered-at | AUD→AUD | verified | 00b §3 Home Net worth |
 | Canonical monthly cashflow | → | Monthly cash flow (this month) | feeds | AUD/month→AUD/month | verified | 00b §3 monthly cash flow lineage (canonical .net) |
 | Monthly cash flow (this month) | → | /cashflow — hero | rendered-at | AUD/month→AUD/month | verified | 00b §3 /cashflow hero (converged) |
+| Monthly cash flow (this month) | → | /activity — This month tiles (Spending / Income / Net) | rendered-at | AUD/month→AUD/month | verified | activity/page.tsx fetchSummary getCanonicalMonthlyCashflow(masterSnapshot) → Spending/Income/Net 'This month' tiles (Phase 2c — was rolling-30-day analytics) |
 | Canonical monthly cashflow | → | Saving rate | feeds | %→% | verified | 00b §3 saving rate (canonical .savingsRate) |
 | Saving rate | → | /cashflow — hero | rendered-at | %→% | verified | 00b §3 /cashflow hero |
 | Marginal tax brackets (config) | → | FY tax thresholds (canonical) | feeds | — | verified | taxYearConfig.ts:41 brackets are part of the returned config (:370) |

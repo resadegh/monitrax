@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
@@ -857,6 +857,27 @@
       "verifiedBy": "docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md §3",
       "workedExample": null,
       "verifiedDate": "2026-06-23",
+      "status": "documented"
+    },
+    {
+      "id": "ui.activity.cashflowTiles",
+      "kind": "ui-surface",
+      "label": "/activity — This month tiles (Spending / Income / Net)",
+      "file": "app/dashboard/activity/page.tsx",
+      "line": null,
+      "layer": "ui",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": "monthlyCashflow",
+      "produces": "Renders current-calendar-month money in/out/net via getCanonicalMonthlyCashflow on /api/master-snapshot — the same canonical number as the /cashflow hero (Phase 2c; previously a rolling-30-day analytics window that disagreed with the hero).",
+      "formula": null,
+      "authority": "CLAUDE.md §19.1; docs/financial-logic/00b_RELATIONSHIPS_AND_LINEAGE.md §3",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "app/dashboard/activity/page.tsx fetchSummary → getCanonicalMonthlyCashflow(masterSnapshot)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-25",
       "status": "documented"
     },
     {
@@ -2712,6 +2733,16 @@
       "toUnit": "AUD/month",
       "evidence": "00b §3 /cashflow hero (converged)",
       "verifiedDate": "2026-06-23"
+    },
+    {
+      "from": "number.monthlyCashflow",
+      "to": "ui.activity.cashflowTiles",
+      "type": "rendered-at",
+      "source": "verified",
+      "fromUnit": "AUD/month",
+      "toUnit": "AUD/month",
+      "evidence": "activity/page.tsx fetchSummary getCanonicalMonthlyCashflow(masterSnapshot) → Spending/Income/Net 'This month' tiles (Phase 2c — was rolling-30-day analytics)",
+      "verifiedDate": "2026-06-25"
     },
     {
       "from": "engine.canonicalCashflow.getCanonicalMonthlyCashflow",

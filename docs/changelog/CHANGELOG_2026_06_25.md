@@ -81,3 +81,45 @@
 ### PR
 - Branch: `claude/ssot-transaction-table-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: cashflow-2c-activity-window (branch `claude/cashflow-2bc-convergence-shk180`)
+
+### Changes Made
+- **Type**: Fix (financial correctness / SSOT) — Phase 2c window reconciliation.
+- **Scope**: the `/activity` "this month" tiles (Spending / Income / Net cashflow) showed a **rolling-30-day** window (`/api/unified-transactions/analytics?months=1`) while the `/cashflow` hero shows the **current calendar month** — so they disagreed (tiles Net −$11,445 vs hero Net −$20,914). Reza-reported. Decision **1a** (current calendar month everywhere).
+- **Root cause**: two surfaces of the same number ("money in/out/net this month") used different windows AND different engines (tiles → `calculateSpendingSummary` over rolling 30d; hero → `getCanonicalMonthlyCashflow` over the calendar month).
+- **Fix**: the activity money tiles now read the **canonical** current-calendar-month cashflow — `getCanonicalMonthlyCashflow(masterSnapshot)` (the SAME function the hero uses) — so In/Out/Net match the hero exactly (the Neomatrix A3 convergence gate *requires* one engine per `semanticKey`). Transaction count is the current-calendar-month count via a new `from` param on the analytics route. Added a "This month" eyebrow above the tiles.
+
+### §19.1 / §19.2 evidence
+- **Input contract** (verified this session): `getCanonicalMonthlyCashflow` reads `snapshot.quickMetrics.actualMonthly{Inflow,Outflow}/actualNetCashflow` (current calendar month, transfers excluded, uncategorised included) when `hasActualData`, declared fallback otherwise (CLAUDE.md §19.1). `calculateSpendingSummary` (analytics, now only powering the count) verified to exclude transfers (`analytics.ts:109`) and be direction-based — same basis.
+- **Worked example**: actual current month In 25,827 / Out 46,741 → tiles now show Income 25,827 / Spending −46,741 / **Net −20,914**, identical to the hero. Previously (rolling 30d) the tiles showed Income 36,403 / Spending −47,848 / Net −11,445. No formula changed — only the window + the source engine (parallel aggregator → canonical SSOT).
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `fetchSummary` reads `/api/master-snapshot` → `getCanonicalMonthlyCashflow` for In/Out/Net; current-month count via `analytics?from=<startOfMonth>`; "This month" eyebrow.
+- `app/api/unified-transactions/analytics/route.ts` — added optional `from` (ISO) window-start param (backward-compatible; `months` default unchanged).
+- `docs/financial-logic/graph/financial-graph.json` — **§21.2 Neomatrix update**: new `ui.activity.cashflowTiles` node (semanticKey `monthlyCashflow`) + `number.monthlyCashflow → ui.activity.cashflowTiles` rendered-at edge; v0.27.0 → **0.28.0** (104 nodes / 140 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+- `tests/calculations/cashflowSurfacesUseCanonical.test.ts` — guard: activity tiles use the canonical accessor; no `analytics?months=1` summary call.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema, **A3 convergence** now covers the activity tiles, anchors, freshness)
+- [x] `vitest run tests/neomatrix tests/calculations` — 241/241 (+ the new guard)
+- [x] `tsc --noEmit` — no errors in the changed files (2 pre-existing errors in `components/admin/neomatrix/NeomatrixExplorer.tsx` — another session's `react-force-graph-3d` typings, unrelated)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: repoint tiles to a calendar-month analytics window.
+- **Pass 2 (critique)**: a parallel `calculateSpendingSummary` call would *numerically* match but fail the Neomatrix A3 convergence gate (two engines, one `semanticKey`) and could drift again — the #1201 lesson. Repointed to the canonical `getCanonicalMonthlyCashflow` instead (one engine, guaranteed equal). Verified `getCanonicalMonthlyCashflow` is pure (type-only import) so it's client-safe.
+- **Pass 3 (refine)**: kept the analytics call only for the current-month count (not a money SSOT concern); added the §21.2 graph node so A3 permanently guards the tiles↔hero convergence; added the structural guard test. **10/10.**
+
+### Still pending (Phase 2 follow-ups — Stitch-gated, separate PR)
+- **#4 `/activity` donut** ("Where your money goes — YTD"): declared annual + `max(0)` + omits actual uncategorised spend → fictional 20% surplus. Decision **2a** (real actual YTD + no floor). Needs a Stitch deficit-state pass (§18.2.1).
+- **#3 Money Story ribbon** (`moneyStoryTrend.ts:118,156`): `kept = max(0, …)` floors deficits on the ribbon + `currentMargin`. Design-gated.
+
+### Doc-sync (CLAUDE.md §16)
+- No §16.2 design/infra surface changed beyond a copy eyebrow. Financial-correctness code fix + §21.2 Neomatrix lineage update.
+
+### PR
+- Branch: `claude/cashflow-2bc-convergence-shk180` (stacked on #1233 `ssot-transaction-table`)
+- Status: Draft (to be opened)
