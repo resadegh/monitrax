@@ -1,10 +1,10 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.26.0",
+  "version": "0.27.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-06-24",
+  "lastReviewed": "2026-06-25",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -273,27 +273,6 @@
       "status": "documented"
     },
     {
-      "id": "input.Transaction",
-      "kind": "input-field",
-      "label": "Transaction (date / amount / direction)",
-      "file": "prisma/schema.prisma",
-      "line": 1986,
-      "layer": "db",
-      "domain": "core",
-      "trailStage": null,
-      "regime": null,
-      "semanticKey": null,
-      "produces": "Per-transaction date, amount (Float), direction (IN/OUT). The raw rows behind the Money Story 12-month earned-vs-spent ribbon.",
-      "formula": null,
-      "authority": "prisma/schema.prisma — Transaction model",
-      "inputs": [],
-      "astHash": null,
-      "verifiedBy": "prisma/schema.prisma:1986",
-      "workedExample": null,
-      "verifiedDate": "2026-06-24",
-      "status": "documented"
-    },
-    {
       "id": "engine.moneyStoryTrend.getMoneyStoryTrend",
       "kind": "engine",
       "label": "Money Story 12-month trend (earned vs spent)",
@@ -309,10 +288,10 @@
       "authority": "CLAUDE.md §0 financial-adviser honesty contract (never invent data; zero months render zero, never interpolated) + §19.1 (actual transactions)",
       "inputs": [
         {
-          "name": "transactions (Transaction[])",
+          "name": "transactions (UnifiedTransaction[], isTransfer=false)",
           "unit": "AUD",
           "type": "number",
-          "note": "literal user transactions in the window; IN earned / OUT spent (abs)"
+          "note": "canonical UnifiedTransaction rows in the window; internal transfers excluded (§19.1); IN earned / OUT spent (abs)"
         },
         {
           "name": "monthsBack",
@@ -322,9 +301,9 @@
         }
       ],
       "astHash": null,
-      "verifiedBy": "tests/neomatrix/moneyStoryTrendAudit.test.ts (A1 law-referenced, prisma-mocked + fake timers) + lib/calculations/moneyStoryTrend.ts:68",
+      "verifiedBy": "tests/neomatrix/moneyStoryTrendAudit.test.ts (A1 law-referenced, prisma-mocked + fake timers) + lib/calculations/moneyStoryTrend.ts:77 (SSOT: reads UnifiedTransaction, transfers excluded — 2026-06-25)",
       "workedExample": "May earned 10k/spent 6k, June earned 12k/spent 6k → currentMargin 50, baselineMargin 40, marginΔ +10pts, incomeΔ +20.0%, cashflowΔ +2,000, outgoingsΔvsAvg +5,000; kept clamps ≥0; <2 months → empty",
-      "verifiedDate": "2026-06-24",
+      "verifiedDate": "2026-06-25",
       "status": "documented"
     },
     {
@@ -3555,14 +3534,14 @@
       "verifiedDate": "2026-06-24"
     },
     {
-      "from": "input.Transaction",
+      "from": "input.UnifiedTransaction",
       "to": "engine.moneyStoryTrend.getMoneyStoryTrend",
       "type": "feeds",
       "source": "verified",
       "fromUnit": "AUD",
       "toUnit": "AUD",
-      "evidence": "moneyStoryTrend.ts:77 prisma.transaction.findMany; :107-108 IN earned / OUT abs spent",
-      "verifiedDate": "2026-06-24"
+      "evidence": "moneyStoryTrend.ts:77 prisma.unifiedTransaction.findMany (isTransfer:false) — SSOT repoint 2026-06-25 (legacy Transaction table was dead)",
+      "verifiedDate": "2026-06-25"
     },
     {
       "from": "engine.moneyStoryTrend.getMoneyStoryTrend",

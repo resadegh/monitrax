@@ -35,3 +35,49 @@
 ### PR
 - Branch: `claude/claudemd-neomatrix-first-jqahjw`
 - Status: Draft (to be opened)
+
+---
+
+## Session: ssot-transaction-table (branch `claude/ssot-transaction-table-jqahjw`)
+
+### Changes Made
+- **Type**: Fix (financial correctness + SSOT) — repoint dead-table readers to the canonical `UnifiedTransaction`.
+- **Scope**: Reza directive 2026-06-25 — *"follow the critical SSOT rule … make sure every part of the app references the same data."* Follows the two-transaction-tables finding surfaced by the Neomatrix connectivity audit (#1231).
+- **Root cause**: the legacy `Transaction` table (`prisma/schema.prisma` `model Transaction`, `@@map("transactions")`) is **dead — ZERO writers** in `app/`+`lib/`+`scripts/` (only a test-reset `deleteMany`). Meanwhile `UnifiedTransaction` is the SSOT (**32 writers**; rich schema — `isTransfer`, category hierarchy, source/Basiq, GRDCS linking — read by the master-snapshot actuals engine + ~56 sites). Three readers were stuck on the dead table → they returned **empty/stale** data:
+  - `lib/calculations/moneyStoryTrend.ts:77` — the **Money Story hero** showed nothing/stale for every user.
+  - `app/api/account/export/route.ts:60` — the user data export returned empty transactions.
+  - `lib/utils/ownership.ts:277` — the ownership resolver for `transaction` objects.
+
+### §19.1 / §19.2 evidence (financial correctness)
+- **Input contract** (verified, `UnifiedTransaction` schema `prisma/schema.prisma:2715`): `date: DateTime`, `amount: Float` (AUD), `direction: IN|OUT`, `isTransfer: Boolean @default(false)` (non-null). Money Story buckets by month: `IN → earned`, `OUT → +|amount| spent`.
+- **Law**: §12.2 SSOT (one canonical source = `UnifiedTransaction`) + §19.1 (numbers derive from ACTUAL transactions; **transfers excluded** — a transfer is neither earned nor spent). The repoint adds `isTransfer: false` to Money Story's query, matching `computeActualCashflow`'s `isTransfer !== true` exactly.
+- **Worked example / verify**: the bucketing + margin/delta MATH is unchanged — only the source table changed. The A1 audit (`tests/neomatrix/moneyStoryTrendAudit.test.ts`, mock repointed to `unifiedTransaction`) still passes all cases (currentMargin 50, baseline 40, marginΔ +10, incomeΔ +20.0%, cashflowΔ +2,000, outgoingsΔvsAvg +5,000; <2 months → empty). **No formula changed; no suspected-issue.**
+
+### Files Modified
+- `lib/calculations/moneyStoryTrend.ts` — `prisma.transaction` → `prisma.unifiedTransaction`; `+ isTransfer: false` (§19.1); SSOT comment.
+- `app/api/account/export/route.ts` — `prisma.transaction` → `prisma.unifiedTransaction`.
+- `lib/utils/ownership.ts` — `prisma.transaction` → `prisma.unifiedTransaction` (the `account.ownerEntityId` select is identical on both).
+- `docs/financial-logic/graph/financial-graph.json` — **§21.2 lineage update**: repointed `input.Transaction → getMoneyStoryTrend` to `input.UnifiedTransaction → getMoneyStoryTrend`; removed the now-orphaned `input.Transaction` node (dead table, no consumer); updated the engine's input note. v0.26.0 → **0.27.0**, 103 nodes / 139 edges, **still 1 connected component**.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+- `tests/neomatrix/moneyStoryTrendAudit.test.ts` — mock + node assertion repointed to `unifiedTransaction` / `input.UnifiedTransaction`.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (schema, A3 invariants, file:line anchors, freshness)
+- [x] `vitest run tests/neomatrix/` — 122/122
+- [x] `tsc --noEmit` — no type errors in the 3 changed files
+- [x] No remaining `prisma.transaction` reader in `app/`+`lib/` (only a test-reset `deleteMany`)
+
+### §20.4 self-review (financial build → 10/10)
+- **Pass 1**: repoint 3 readers + graph lineage + test mock.
+- **Pass 2 (critique)**: verified the legacy table is truly dead (0 create/update/upsert across app+lib+scripts); confirmed the export is an additive JSON dump (richer rows don't break it); confirmed the ownership `account` relation exists on `UnifiedTransaction`; confirmed the bucketing math is untouched (math is audit-locked, 122/122); confirmed `isTransfer: false` ≡ the actuals engine's `!== true` (non-null default-false column).
+- **Pass 3 (refine)**: kept the destructive table-DROP OUT of this PR (Reza decision: repoint now, drop separately) so the behaviour fix and the schema change stay atomic/independently reversible. **10/10.**
+
+### 🗑️ Dead code / tech debt (follow-up PR — Reza approved "drop table separately")
+- `prisma/schema.prisma` `model Transaction` (`@@map("transactions")`) — now read by NOTHING. Pending a dedicated DROP PR: §12.11 destructive-write checklist + §12.12 migration. Also retire the test-reset `lib/testing/reset.ts:72 prisma.transaction.deleteMany` and any back-relations (`User`/`Account`/`Income`/`Expense` → `Transaction`) at the same time.
+
+### Doc-sync (CLAUDE.md §16)
+- No §16.2 design/infra/config surface changed — financial-correctness code fix + the §21.2 Neomatrix lineage update.
+
+### PR
+- Branch: `claude/ssot-transaction-table-jqahjw`
+- Status: Draft (to be opened)

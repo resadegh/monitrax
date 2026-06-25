@@ -3,14 +3,14 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.26.0, reviewed 2026-06-24). 
+> Rendered from `financial-graph.json` (v0.27.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 104 · **Edges:** 139
-- **By kind:** orchestrator 4 · engine 44 · input-field 20 · number 8 · ui-surface 7 · law 21
-- **By status:** documented 104
+- **Nodes:** 103 · **Edges:** 139
+- **By kind:** orchestrator 4 · engine 44 · input-field 19 · number 8 · ui-surface 7 · law 21
+- **By status:** documented 103
 - **Edge provenance:** verified 139 *(verified > graphify > inferred)*
 
 ## Engine / orchestrator registry
@@ -23,7 +23,7 @@
 | **Loan current balance (canonical helper)** | `lib/calculations/assetValuation.ts:71` | engine | core | Current outstanding loan balance = principal ?? currentBalance ?? balance. The §12.2 read-model SSOT mirroring netWorthCalculator. | lib/calculations/netWorthCalculator.ts calculateTotalLiabilities — Number(loan.principal\|\|0); prisma schema: Loan.principal = current balance | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/assetValuation.ts:71 | documented |
 | **Net-worth history trend (honest, from stored snapshots)** | `lib/calculations/netWorthHistory.ts:47` | engine | core | NetWorthHistoryResult — trend[] (oldest→newest, literal stored rows), deltaAbsolute, deltaPct. The §12.2 single canonical reader of NetWorthSnapshot. | CLAUDE.md §0 financial-adviser lens (honesty: never invent data) + §12.2 SSOT | tests/neomatrix/netWorthHistoryAudit.test.ts (A1 law-referenced, prisma-mocked boundary) + lib/calculations/netWorthHistory.ts:47 | documented |
 | **Per-entity position breakdown (additive view)** | `lib/calculations/entityBreakdown.ts:86` | engine | core | EntityPosition[] — per owning-entity netWorth/assets/liabilities/monthlyIncome/expenses/cashflow. ADDITIVE: only adds the byEntity view beside the flat household numbers. | Phase 47 Stage C1 additivity contract (Σ per-entity == household) + §12.2/§12.3 (reuse calculateNetWorth, never re-implement) | tests/neomatrix/financialAudit.test.ts (A1 law-referenced) + lib/calculations/entityBreakdown.ts:86 | documented |
-| **Money Story 12-month trend (earned vs spent)** | `lib/calculations/moneyStoryTrend.ts:68` | engine | core | MoneyStoryTrendResult — per-month RibbonPoint{spent, kept}, currentMargin, baselineMargin, marginDeltaPoints, monthly earned/spent/netCashflow series + KPI deltas. Powers the Money Story v2 hero + KPI sparklines. | CLAUDE.md §0 financial-adviser honesty contract (never invent data; zero months render zero, never interpolated) + §19.1 (actual transactions) | tests/neomatrix/moneyStoryTrendAudit.test.ts (A1 law-referenced, prisma-mocked + fake timers) + lib/calculations/moneyStoryTrend.ts:68 | documented |
+| **Money Story 12-month trend (earned vs spent)** | `lib/calculations/moneyStoryTrend.ts:68` | engine | core | MoneyStoryTrendResult — per-month RibbonPoint{spent, kept}, currentMargin, baselineMargin, marginDeltaPoints, monthly earned/spent/netCashflow series + KPI deltas. Powers the Money Story v2 hero + KPI sparklines. | CLAUDE.md §0 financial-adviser honesty contract (never invent data; zero months render zero, never interpolated) + §19.1 (actual transactions) | tests/neomatrix/moneyStoryTrendAudit.test.ts (A1 law-referenced, prisma-mocked + fake timers) + lib/calculations/moneyStoryTrend.ts:77 (SSOT: reads UnifiedTransaction, transfers excluded — 2026-06-25) | documented |
 | **Declared cashflow** | `lib/calculations/cashflowOrchestrator.ts:302` | engine | core | CashflowResult — monthly/annual gross+net income, PAYG, expenses, loan repayments, cashflow (surplus), ratios (savingsRate/expenseRatio/debtServiceRatio), essential/discretionary split. DECLARED basis (records × frequency), NOT actual bank spend. | CLAUDE.md §19.1 (declared = the 'plan' side; fallback only when no transactions) | tests/calculations/aggregators.decimal.test.ts | documented |
 | **Actual cashflow** | `lib/calculations/actualCashflow.ts:104` | engine | core | ActualCashflowResult — current-month outflow/inflow/net, trailing-avg monthly outflow+inflow, current-month outflow-by-category (incl. 'Uncategorised'), hasActualData. From actual UnifiedTransaction rows. | CLAUDE.md §19.1 (actuals; transfers excluded; uncategorised INCLUDED) | tests/calculations/actualCashflow.test.ts | documented |
 | **Canonical monthly cashflow** | `lib/calculations/canonicalCashflow.ts:114` | engine | core | CanonicalMonthlyCashflow { inflow, outflow, net, savingsRate, avgMonthlyOutflow, basis } where basis ∈ {actual, declared}. THE SSOT for 'money in/out/net this month'. | CLAUDE.md §19.1 (actuals-vs-declared SSOT) | tests/calculations/canonicalCashflow.test.ts, tests/calculations/cashflowSurfacesUseCanonical.test.ts | documented |
@@ -237,7 +237,7 @@
 | Per-entity position breakdown (additive view) | → | Net worth | depends-on | — | verified | entityBreakdown.ts:134 calculateNetWorth per partition (SSOT reuse) |
 | Property.currentValue | → | Per-entity position breakdown (additive view) | feeds | AUD→AUD | verified | entityBreakdown.ts:118 partition by ownerEntityId |
 | Loan.principal | → | Per-entity position breakdown (additive view) | feeds | AUD→AUD | verified | entityBreakdown.ts:123 partition by ownerEntityId |
-| Transaction (date / amount / direction) | → | Money Story 12-month trend (earned vs spent) | feeds | AUD→AUD | verified | moneyStoryTrend.ts:77 prisma.transaction.findMany; :107-108 IN earned / OUT abs spent |
+| UnifiedTransaction | → | Money Story 12-month trend (earned vs spent) | feeds | AUD→AUD | verified | moneyStoryTrend.ts:77 prisma.unifiedTransaction.findMany (isTransfer:false) — SSOT repoint 2026-06-25 (legacy Transaction table was dead) |
 | Money Story 12-month trend (earned vs spent) | → | Money Story kept margin (displayed) | feeds | —→% | verified | moneyStoryTrend.ts:156,181 currentMargin/marginDeltaPoints |
 | Money Story kept margin (displayed) | → | Dashboard — Money Story hero + KPI strip | rendered-at | %→% | verified | app/api/dashboard/insights/route.ts:173 |
 | Low Income Tax Offset (config) | → | Low Income Tax Offset (LITO) — two-tier phase-out | feeds | — | verified | taxOffsets.ts:41 const { lito } = config |

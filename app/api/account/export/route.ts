@@ -57,7 +57,10 @@ export const GET = withPermission('cdr_data.read', async (request, auth) => {
     prisma.account.findMany({ where: { userId } }),
     prisma.income.findMany({ where: { userId } }),
     prisma.expense.findMany({ where: { userId } }),
-    prisma.transaction.findMany({
+    // SSOT fix (CLAUDE.md §12.2): export the canonical `UnifiedTransaction`
+    // table — the legacy `Transaction` table has zero writers (dead), so the
+    // export previously returned empty/stale transaction data.
+    prisma.unifiedTransaction.findMany({
       where: { userId },
       orderBy: { date: 'desc' },
       take: 5000, // soft cap; users can re-export with a date range later
