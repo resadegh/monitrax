@@ -360,3 +360,49 @@ H1 (foundation): **1 instrument** → 2 unify learning stores → 3 retire `AILe
 ### PR
 - Branch: `claude/adoring-davinci-e2wb4d` (follow-up commit on the now-merged branch; base `main`)
 - Status: Draft (to be opened)
+
+---
+
+## Session: adoring-davinci-e2wb4d (follow-up 2) — fix: loan-repayment / transfer shows "Uncategorised / Not confirmed yet" + document KB env state
+
+### Changes Made
+- **Type**: Fix (financial correctness — categorisation/transfer SSOT) + Docs (env state)
+- **Scope**: Neobrain Pillar B (transfer/loan-repayment detection). Reza prod report 2026-06-25: a Bankwest loan repayment marked as a transfer still showed "Uncategorised / Not confirmed yet".
+
+### Root cause (verified, §19.2)
+The Activity "Uncategorised" pill is driven by `categoryLevel1` (null → "Uncategorised", `activity/page.tsx:1941`); "Not confirmed yet" by `userCorrectedCategory` (`page.tsx:1947`); the confidence band-lens by `confidenceScore`. **Five** code paths mark a transfer, each setting a *different subset* of fields — the two loan-ledger link paths set **only `isTransfer`** (`matchRepayments.ts:194,248`), never `categoryLevel1`/`userCorrectedCategory`/`confidenceScore`. So a correctly-`isTransfer` loan repayment kept a null category (→ "Uncategorised") and `userCorrectedCategory=false` (→ "Not confirmed yet"), and its stale low `confidenceScore` kept it in the band-lens. (The perception of "worked last week" is the band-lens shipping ~06-22 *revealing* a pre-existing field gap — import-time transfer auto-detection has never existed; `resolveTransaction.ts:22` documents it as a TODO.)
+
+### Fix (one SSOT field-set, §12.2.1)
+- **NEW** `lib/bookkeeping/transferCategorisation.ts` → `confirmedTransferFields({level2?})`: the single definition of the field-set a confirmed transfer writes — `isTransfer:true, categoryLevel1:'Transfer', categoryLevel2:'Internal'|'Loan repayment', userCorrectedCategory:true, confidenceScore:1.0`.
+- Applied at all five transfer-marking paths: `matchRepayments.ts` (resolveRepaymentMatch + linkRepaymentToTransaction, level2='Loan repayment'), `transferPairing.ts` (paired side), `app/api/transactions/[id]/link/route.ts` (dialog 'transfer'), `app/api/unified-transactions/[id]/route.ts` (PATCH swipe-right, when no explicit category supplied).
+- Result: a confirmed transfer/loan-repayment renders 'Transfer' + '✓ Confirmed' and leaves the low/medium band (confidenceScore 1.0).
+
+### §19 evidence
+- **Input contract**: writes categorisation metadata on the specific matched/paired/marked `UnifiedTransaction` (by `id` + `userId`); fields are `isTransfer`(bool), `categoryLevel1/2`(string), `userCorrectedCategory`(bool), `confidenceScore`(float 0-1, schema `prisma/schema.prisma:2734-2752`). No amount/date touched.
+- **Rule/authority**: §19.1 (transfer excluded from spend/income) + §12.2.1 (one definition of "marked transfer") — mirrors the most-complete pre-existing path (`transferPairing` already set categoryLevel1='Transfer').
+- **Worked example**: link the 18-Jun Bankwest repayment → txn = {isTransfer:true, categoryLevel1:'Transfer', categoryLevel2:'Loan repayment', userCorrectedCategory:true, confidenceScore:1.0} → Activity shows 'Transfer' + '✓ Confirmed', drops out of the low/medium band and the uncategorised tile.
+
+### §12.11 destructive-write checklist
+- Ops: `prisma.unifiedTransaction.update/updateMany` at the 5 sites.
+  1. **`where` matches**: the single transaction the user is linking/marking (`id` + `userId`) — no broader match.
+  2. **Columns overwritten**: categorisation metadata only (category labels, isTransfer, userCorrectedCategory, confidenceScore) — never balances/dates/amounts. Overwriting an existing AI category is the intent (it's a transfer now).
+  3. **Guard**: scoped to the exact matched/marked row id (+userId); these are explicit user confirm actions.
+- User confirmation: NOT REQUIRED — non-destructive metadata write on the row the user is actively confirming; reasoning above.
+
+### Documentation (Reza directive "the vercel keys are true, document this")
+- `docs/operational/runbooks/14_CATEGORISATION_KB_OPERATIONS.md` — verified prod state: `KB_READ_ENABLED`/`KB_WRITE_ENABLED` = **true** (Prod+Preview, since 06-22); `KB_GEMINI_ENABLED` **not set → OFF** (no LLM fallback; unknown descriptions fall through to 'Uncategorised').
+- `docs/policy/CDR_KB_DEIDENTIFICATION_PROCEDURE.md` + `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — flipped the stale "GATED OFF / pending" rows to live; flagged that the de-id procedure-review + privacy-PDF rows are still marked pending while write is live (compliance confirm needed).
+
+### Neomatrix (§21.2.1 zero-drift)
+- `financial-graph.json` v0.32.0 → 0.33.0: `engine.transferPairing.pairTransferIfPossible` formula+authority updated to the new confirmed-transfer field-set; line re-anchored (128). `neomatrix:check` green (152/196, all verified). `matchRepayments` is not yet modelled — noted as a backfill (a coverage gap, not drift).
+
+### Build Status
+- [x] `npm run neomatrix:check` — green.
+- [ ] `npm run build`/`lint`/`vitest` — not runnable locally (`node_modules` absent in fresh clone). New test `tests/bookkeeping/transferCategorisation.test.ts` runs in CI; Vercel preview runs build+lint. **Runtime verification is via CI + Reza review (draft PR).**
+
+### §20.4 self-review (financial build)
+- Pass 1: fix the loan-link paths. Pass 2 (critique): found the SAME gap in 3 sibling paths → centralised into one helper (§12.2.1) so the class can't drift, not just the reported instance; confirmed §12.11-safe + §19.1 alignment. Pass 3: re-anchored the Neomatrix node, confirmed the helper is the only definition. Held back the bigger Root-Cause #3 (wire transfer auto-detection into import) + the user's "regenerate" button as a follow-up workstream (Stitch-gated) rather than over-reach overnight.
+
+### PR
+- Branch: `claude/adoring-davinci-e2wb4d` → PR #1246 (now carries the Neobrain plan docs + this fix).
+- Status: Draft — for Reza review.
