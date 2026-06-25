@@ -13,12 +13,15 @@ users**. Seeded with ~275 curated AU merchants. The shared table holds **no user
 merchant patterns + aggregate votes.
 
 ## 2. Feature flags (Vercel → monitrax → Settings → Environment Variables → Production)
-| Flag | Default | Effect | Notes |
-|---|---|---|---|
-| `KB_WRITE_ENABLED` | `false` | confirmations write de-identified votes to the KB | enable only after the de-id procedure sign-off + privacy-PDF regen |
-| `KB_READ_ENABLED` | `false` | categoriser consults the shared-KB prior | safe to enable with no data (returns null); useful once patterns graduate/seeded |
-| `KB_GEMINI_ENABLED` | `false` | Gemini-on-miss runs for the unknown tail (cost) | leave off until you want the LLM tail; ~per-call cost |
-| `CRON_SECRET` | (set) | bearer for the operator endpoints below | same secret as the CDR-lifecycle job |
+
+> **Verified prod state (2026-06-25, Reza-confirmed):** `KB_READ_ENABLED=true` and `KB_WRITE_ENABLED=true` are **set on Production + Preview** (added 2026-06-22). `KB_GEMINI_ENABLED` is **not set → OFF** (no LLM "Gemini-on-miss" fallback runs in prod; the categoriser is deterministic only: user mapping → rules → shared-KB prior → fallback). The `Default` column below is the **code default** when the env var is absent — it is NOT the current prod state.
+
+| Flag | Default (code) | Prod state (2026-06-25) | Effect | Notes |
+|---|---|---|---|---|
+| `KB_WRITE_ENABLED` | `false` | **`true`** (Prod+Preview, since 06-22) | confirmations write de-identified votes to the KB | enable only after the de-id procedure sign-off + privacy-PDF regen |
+| `KB_READ_ENABLED` | `false` | **`true`** (Prod+Preview, since 06-22) | categoriser consults the shared-KB prior | safe to enable with no data (returns null); useful once patterns graduate/seeded |
+| `KB_GEMINI_ENABLED` | `false` | **not set → `false`** | Gemini-on-miss runs for the unknown tail (cost) | leave off until you want the LLM tail; ~per-call cost. **Currently OFF → unknown/cryptic descriptions get NO LLM categorisation; they fall through to 'Uncategorised'.** |
+| `CRON_SECRET` | (set) | (set) | bearer for the operator endpoints below | same secret as the CDR-lifecycle job |
 
 **Flags are read at module load → an env change needs a REDEPLOY to take effect.** Rollback = set back to `false` + redeploy (no data loss).
 

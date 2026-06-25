@@ -232,16 +232,31 @@ Core spine in **bold**. ~25 tables; each has a single, clear purpose (no bloat).
 
 ---
 
-## 10. Roadmap — growing Neobrain smarter (the scope the user wants)
+## 10. Roadmap — growing Neobrain smarter (AGREED 2026-06-25)
 
-Ordered cheapest/safest first. Each increment must mean **fewer confirmations**, behind the same confirm-gated contract (§0.2 psychology lens).
+> **The north star (the constraint every step is measured against):** *smarter = **fewer confirmations** asked of the user, at equal-or-higher accuracy.* Not a chattier AI, not more silent auto-magic. The autonomy contract (AI suggests, the user always confirms — §4.3) is preserved at every step. And every new engine is modelled into the Neomatrix `neobrain` domain **in the same PR** (§21.2.1 zero-drift).
+>
+> Status: this plan is **agreed (Reza, 2026-06-25)**. Work paused; to be picked up next session starting at **Step 1**.
 
-1. **Unify the two learning stores.** Transaction-side (`MerchantMapping`) and document-side (`learnedRouting`/`VendorEntityHint`) are the same idea ("the user taught us X"). Converge their write/read into one Neobrain memory API.
-2. **Retire the legacy `AILearningPattern`** in favour of `TransactionSignature`/`SignatureContribution` (cheaper, k-safe, auditable) — §12.3.
-3. **KB embeddings (Phase 52.5b, deferred):** pgvector in Cloud SQL vs Vertex Vector Search (§12.7 evaluation) for semantic near-miss matching beyond token-prefix.
-4. **From categorising → explaining → anticipating:** recurring-bill detection, anomaly flags, "this looks tax-deductible" — each a *suggestion* surfaced at the right TRAIL stage.
-5. **CDR/Basiq ingestion (Phase 51.3):** the same store/engine, source-agnostic (QIF now → Basiq later).
-6. **Backfill the Neobrain Neomatrix domain** as engines are added (learned-routing read/retention-clock/receipt-matcher nodes; ui-surface nodes for the review inbox + scan flow).
+### Horizon 1 — make "smarter" *measurable*, then consolidate (cheap, safe, foundational)
+
+- **▶ Step 1 — Instrument Neobrain (AGREED NEXT — start here).** An admin-only metrics panel + accuracy/coverage signals: auto-accept rate, **correction rate**, KB-graduation count, **% of transactions that touch the LLM**, document AUTO/CONFIRM/ASK split. *Why first:* "smarter as we go" needs a baseline — you can't prove an improvement you can't measure, and the numbers will likely reveal whether the cross-user KB is data-starved (k=5 needs scale), which re-orders everything after it. Small, admin-only, zero user-risk. Lenses: architect → behaviour.
+- **Step 2 — Unify the two learning stores.** Transaction-side (`MerchantMapping`) and document-side (`learnedRouting`/`VendorEntityHint`) are the same idea ("the user taught us about this vendor"). Converge write/read into one Neobrain memory API (§12.2.1 SSOT).
+- **Step 3 — Retire the legacy `AILearningPattern`** in favour of `TransactionSignature`/`SignatureContribution` (cheaper, k-safe, auditable) — §12.3 / §12.1 hygiene.
+
+### Horizon 2 — make the *perception* genuinely smarter
+
+- **Step 4 — KB embeddings (Phase 52.5b, deferred):** pgvector in Cloud SQL vs Vertex Vector Search (§12.7 evaluation) for semantic near-miss matching beyond token-prefix. The single biggest hit-rate lever → fewer LLM calls **and** fewer confirmations.
+- **Step 5 — Turn Gemini-on-miss fully on** (`KB_GEMINI_ENABLED`) once embeddings shrink the unknown tail enough to bound cost.
+
+### Horizon 3 — from *categorising* to *understanding*
+
+- **Step 6 — Insight layer:** recurring-bill / anomaly detection + "this looks tax-deductible" — each a *suggestion* surfaced at the right TRAIL stage, never an auto-action. Lenses: financial-adviser + behaviour.
+- **Step 7 — CDR/Basiq ingestion (Phase 51.3):** the same store/engine, source-agnostic (QIF now → Basiq later); real-time volume compounds the shared KB faster.
+
+### Cross-cutting (every step)
+
+- **Step 8 — Backfill the Neobrain Neomatrix domain** as engines are added (learned-routing read / retention-clock / receipt-matcher nodes; ui-surface nodes for the review inbox + scan flow) so coverage trends toward the whole subsystem.
 
 ---
 
