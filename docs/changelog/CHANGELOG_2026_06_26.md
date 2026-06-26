@@ -130,3 +130,27 @@ The honest gap to 100% is now exact and named — Reza can read `npm run neomatr
 ### PR
 - Branch: `claude/neo-inventory-ni3a-reconcile-jqahjw` (stacked on NI-2 — merge #1260→#1261 first).
 - Status: Draft.
+
+---
+
+## Session: Neo Inventory NI-3b — backfill property primitives (branch `claude/neo-inventory-ni3b-property-jqahjw`)
+
+### Changes Made
+- **Type**: Neomatrix modelling (semantic nodes only; NO production code / financial logic changed — §21.2 modelling).
+- Modelled the 3 PROVEN-but-unmodelled property primitives in `lib/utils/calculations.ts` as verified semantic engine nodes: `engine.calculations.calculateLVR` (:9), `calculateEquity` (:20), `calculateRentalYield` (:30). Anchors **re-verified in source 2026-06-26** (§19.2 — not from memory); `verifiedBy` cites the EXISTING calc-audit `property.LVR/equity/rentalYield` fixtures (the proof already exists — this adds the map node so reconciliation counts them).
+- **Coverage: 56% → 60%** (47 → 50 modelled · worklist 37 → 34). `neomatrix:check` green (binding 78/78 resolve).
+
+### Why this is correct (no parallel silo — §12.2.1/Part 22)
+These engines are already PROVEN by calc-audit fixtures; NI-3b adds only the missing semantic MAP node, citing that fixture. No new test. (The offset/interest/PI primitives in the same file are NOT separately fixtured — deferred to NI-3c with the loan domain where their #1255 golden/parity tests are re-homed as calc-audit fixtures.)
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK. `npm run neomatrix:coverage` — 84 / 50 (60%) / 34.
+
+### §20.4 self-review → 10/10
+Anchors re-verified in current source (not D.1 memory); `verifiedBy` cites a fixture that actually exists (checked); the 3 unfixtured primitives in the same file deliberately NOT claimed as proven (accuracy over coverage-vanity). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-property-jqahjw` (stacked on NI-3a). Status: Draft.
