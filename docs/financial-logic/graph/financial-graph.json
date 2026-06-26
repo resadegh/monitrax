@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.48.0",
+  "version": "0.49.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4479,6 +4479,69 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.cashflow.forecasting.generateForecast",
+      "kind": "engine",
+      "label": "Cashflow Forecasting Engine (CFE)",
+      "file": "lib/cashflow/forecasting.ts",
+      "line": 42,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "CFEOutput — daily balance projection over the forecast horizon per account + globally, from spending patterns, recurring/income/loan timelines and planned expenses.",
+      "formula": "spendingPatterns = calculateSpendingPatterns(transactions); recurring/income/loan timelines over forecastDays; per-account forecast walks the opening balance forward applying each timeline; global = Σ accounts.",
+      "authority": "Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/cashflow/forecasting.ts:42 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.cashflow.optimisation.generateOptimisations",
+      "kind": "engine",
+      "label": "Cashflow Optimisation Engine (COE)",
+      "file": "lib/cashflow/optimisation.ts",
+      "line": 60,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "COEOutput — spending inefficiencies, subscription analysis + price increases, fund-movement recommendations, payment-schedule optimisations.",
+      "formula": "detectInefficiencies(spendingProfile, recurring); analyseSubscriptions(recurring); generateFundMovements(forecast, offsetAccounts, loans); optimisePaymentSchedules(recurring, forecast).",
+      "authority": "Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/cashflow/optimisation.ts:60 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.cashflow.stressTesting.runStressTests",
+      "kind": "engine",
+      "label": "Cashflow Stress-Testing Engine",
+      "file": "lib/cashflow/stressTesting.ts",
+      "line": 128,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "StressTestOutput — baseline forecast vs each stress scenario, with the delta to runway/shortfall per scenario.",
+      "formula": "baseline = generateForecast(input); for each scenario: stressedInput = applyStress(input, params); stressedForecast = generateForecast(stressedInput); analyse delta vs baseline.",
+      "authority": "Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/cashflow/stressTesting.ts:128 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6869,6 +6932,55 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:186-210 — composes per-entity income-tax positions + cross-cutting state taxes"
+    },
+    {
+      "from": "input.UnifiedTransaction",
+      "to": "engine.cashflow.forecasting.generateForecast",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/forecasting.ts:49 — calculateSpendingPatterns(input.transactions)"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.cashflow.forecasting.generateForecast",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/forecasting.ts:60 — generateIncomeTimeline(input.incomeStreams)"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.cashflow.forecasting.generateForecast",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/forecasting.ts:66 — input.accounts.map(generateAccountForecast)"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.cashflow.forecasting.generateForecast",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/forecasting.ts:63 — generateLoanTimeline(input.loanSchedules)"
+    },
+    {
+      "from": "engine.cashflow.forecasting.generateForecast",
+      "to": "engine.cashflow.optimisation.generateOptimisations",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/optimisation.ts:76 — generateFundMovements(input.forecast, …)"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.cashflow.optimisation.generateOptimisations",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/optimisation.ts:78 — input.loans"
+    },
+    {
+      "from": "engine.cashflow.forecasting.generateForecast",
+      "to": "engine.cashflow.stressTesting.runStressTests",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/stressTesting.ts:136,142 — generateForecast(baseline + stressed input)"
     }
   ]
 }

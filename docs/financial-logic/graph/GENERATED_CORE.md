@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.48.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.49.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 200 · **Edges:** 258
-- **By kind:** orchestrator 9 · engine 97 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 200
-- **Edge provenance:** verified 258 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/117 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 203 · **Edges:** 265
+- **By kind:** orchestrator 9 · engine 100 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
+- **By status:** documented 203
+- **Edge provenance:** verified 265 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/120 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -124,6 +124,9 @@
 | **Trust loss quarantining (Sch 2F)** | `lib/tax-engine/divisions/trustLossRules.ts:128` | engine | tax | TrustLossResult — whether a trust loss is deductible, given the trust type and the required Sch 2F test outcomes. | ITAA 1936 Sch 2F (trust loss tests: income injection, 50% stake, pattern of distributions, control, same business) | calc-audit registry (proven) + lib/tax-engine/divisions/trustLossRules.ts:128 | documented |
 | **Trust net income distribution (Div 6)** | `lib/tax-engine/divisions/trustDistribution.ts:275` | engine | tax | TrustDistributionResult — allocates trust net income to beneficiaries by present-entitlement share (s97), with validation that shares are ≥0 and sum ≤ 1. | ITAA 1936 Div 6, s95 (net income), s97 (present entitlement → beneficiary assessment) | calc-audit registry (proven) + lib/tax-engine/divisions/trustDistribution.ts:275 | documented |
 | **Master tax position (per-entity + cross-cutting)** | `lib/tax-engine/orchestrator/masterTaxPosition.ts:186` | engine | tax | MasterTaxPositionV2 — per-entity tax positions (dispatched via entityTaxRouter) + cross-cutting modules (land tax, stamp duty). | ITAA 1997/1936 — composition of the per-entity tax engines + state cross-cutting taxes. | calc-audit engine tax.masterTaxPosition (proven, Float/Decimal shadow) + lib/tax-engine/orchestrator/masterTaxPosition.ts:186 | documented |
+| **Cashflow Forecasting Engine (CFE)** | `lib/cashflow/forecasting.ts:42` | engine | core | CFEOutput — daily balance projection over the forecast horizon per account + globally, from spending patterns, recurring/income/loan timelines and planned expenses. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/forecasting.ts:42 (NI-4 modelled; fixture pending) | documented |
+| **Cashflow Optimisation Engine (COE)** | `lib/cashflow/optimisation.ts:60` | engine | core | COEOutput — spending inefficiencies, subscription analysis + price increases, fund-movement recommendations, payment-schedule optimisations. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/optimisation.ts:60 (NI-4 modelled; fixture pending) | documented |
+| **Cashflow Stress-Testing Engine** | `lib/cashflow/stressTesting.ts:128` | engine | core | StressTestOutput — baseline forecast vs each stress scenario, with the delta to runway/shortfall per scenario. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/stressTesting.ts:128 (NI-4 modelled; fixture pending) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -479,6 +482,13 @@
 | Trust loss quarantining (Sch 2F) | → | ITAA 1936 Sch 2F — trust loss quarantining tests | governed-by | — | verified | lib/tax-engine/divisions/trustLossRules.ts:128 BASE_CITATIONS |
 | Trust net income distribution (Div 6) | → | ITAA 1936 Div 6 — trust net income distribution (s95/s97) | governed-by | — | verified | lib/tax-engine/divisions/trustDistribution.ts:275 BASE_CITATIONS |
 | Master tax position (per-entity + cross-cutting) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | lib/tax-engine/orchestrator/masterTaxPosition.ts:186-210 — composes per-entity income-tax positions + cross-cutting state taxes |
+| UnifiedTransaction | → | Cashflow Forecasting Engine (CFE) | feeds | — | verified | lib/cashflow/forecasting.ts:49 — calculateSpendingPatterns(input.transactions) |
+| Income (declared) | → | Cashflow Forecasting Engine (CFE) | feeds | — | verified | lib/cashflow/forecasting.ts:60 — generateIncomeTimeline(input.incomeStreams) |
+| Account.currentBalance | → | Cashflow Forecasting Engine (CFE) | feeds | — | verified | lib/cashflow/forecasting.ts:66 — input.accounts.map(generateAccountForecast) |
+| Loan.principal | → | Cashflow Forecasting Engine (CFE) | feeds | — | verified | lib/cashflow/forecasting.ts:63 — generateLoanTimeline(input.loanSchedules) |
+| Cashflow Forecasting Engine (CFE) | → | Cashflow Optimisation Engine (COE) | feeds | — | verified | lib/cashflow/optimisation.ts:76 — generateFundMovements(input.forecast, …) |
+| Loan.principal | → | Cashflow Optimisation Engine (COE) | feeds | — | verified | lib/cashflow/optimisation.ts:78 — input.loans |
+| Cashflow Forecasting Engine (CFE) | → | Cashflow Stress-Testing Engine | feeds | — | verified | lib/cashflow/stressTesting.ts:136,142 — generateForecast(baseline + stressed input) |
 
 ---
 

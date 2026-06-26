@@ -420,3 +420,22 @@ These divisions are classifiers/loss-rule engines; the reform-affected one (nega
 
 ### Milestone
 **NI-3 complete.** Next per plan (§10): NI-4 — drive the census UNCOVERED queue (200) → 0, then NI-5 explorer dual-view, then flip reconcile to a hard build gate.
+
+---
+
+## Session: neo-inventory-ni4-cashflow (NI-4 begins — model the 3 cashflow engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2). NI-4 = drive census UNCOVERED → 0.
+- **Key insight**: the census is per-FILE — one semantic node flips the whole file from UNCOVERED → MODELLED. So NI-4 is "one verified entry node per genuine financial file" (~20-25 files), not 200 individual nodes.
+- Modelled the 3 cashflow engines (Phase 14), as a verified chain:
+  - `engine.cashflow.forecasting.generateForecast` (:42) — CFE; fed by `input.UnifiedTransaction` (:49), `input.Income.declared` (:60), `input.Account.currentBalance` (:66), `input.Loan.principal` (:63).
+  - `engine.cashflow.optimisation.generateOptimisations` (:60) — COE; fed by the forecast (`optimisation.ts:76`) + `input.Loan.principal` (:78).
+  - `engine.cashflow.stressTesting.runStressTests` (:128) — fed by the forecast (`stressTesting.ts:136,142`).
+- **Census: 56% → 62%** (UNCOVERED 200 → 170 — 3 files / 30 candidates flipped). `neomatrix:check` green (203 nodes / 265 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes, +7 verified edges, version 0.48.0→0.49.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Each entry's body read in source; the forecast→optimisation/stress-test chain verified by the actual `generateForecast(...)` calls; every input feed backed by the verbatim `input.X` read. NI-4 nodes carry `verifiedBy: "…fixture pending"` (honest — they're MODELLED not yet PROVEN). 10/10.
