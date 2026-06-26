@@ -36,6 +36,21 @@
 | `lib/share/tokens.ts` | same secret-name skip. Share-token helpers, no calc. |
 | `app/api/entities/[id]/accounting/snapshots/route.ts` | full-corpus node-id collision (verified: extracts in isolation). Route handler, no calc. NI-2 collision-handling candidate. |
 
-## Next (NI-2)
+## NI-2 — binding + coverage readout (shipped)
 
-Bind each L1 semantic node to its L0 structural node by `file:line` → compute the A2 `astHash` drift sentinel (build fails when an engine's body changes but its node didn't); surface the `modelled ÷ structural` coverage in the readout; begin folding the calc-audit registry into the reconciliation so the three layers share one inventory.
+The three layers are now reconciled at the file level and the coverage is a build output (`scripts/neomatrix/check-binding-coverage.mjs`, in `neomatrix:check`):
+
+| Layer | Count |
+|---|---|
+| **L0 structural (Graphify)** | 1,062 files · 8,587 nodes — whole codebase, **gated** |
+| **Proven (calc-audit registry)** | **84** engines (tax 50 · cfo 24 · core 5 · property 3 · cashflow 2) |
+| **Modelled (semantic Neomatrix)** | **64** engines · 157 nodes |
+| **Semantic→L0 binding** | **75/75** code-node (engine/orchestrator/number) file anchors resolve — **gated** |
+
+**The binding gate** fails the build if any engine/orchestrator/number node's `file` is no longer in the Layer-0 map (code moved/renamed/deleted but the node didn't follow) — the structural drift sentinel. `law` nodes (cite a module) and `ui-surface` nodes (cite a page dir) use coarser anchors by design and are exempt.
+
+**Honest coverage read:** structurally **100%** (gated); the proven money-producer surface is **84 engines**; the semantic layer models **64**. The exact proven↔modelled match + the backfill that closes the gap toward 100% is **NI-3** (it also re-homes the closed #1250–#1257 properties as calc-audit fixtures). No precise overlap % is claimed here — that requires the exact name/file reconciliation NI-3 does.
+
+## Next (NI-3)
+
+Exact `calc-audit registry ↔ semantic` reconciliation (match each of the 84 proven engines to its semantic node by file:line; the unmatched are the named backfill worklist); re-home the #1250–#1257 net-new properties as calc-audit fixtures; add the per-engine `astHash` body-drift sentinel (A2) now that nodes are bound to structural symbols.
