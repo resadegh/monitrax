@@ -129,7 +129,56 @@ So no future session repeats the 2026-06-25 mistake of building verification in 
 
 ---
 
+---
+
+## 8. THE CORRECTION — restore Graphify as Layer 0 (Reza, 2026-06-26)
+
+> Reza's recollection was checked against the Phase 53 design + the live generator. **It is true of the design and false of the implementation** — and that gap is the real root cause.
+
+**Designed (Phase 53):** Neomatrix = **Layer 0 (Graphify — auto AST extraction from code, "the bones")** + **Layer 1 (semantic meaning — formula/law/lineage, "the meaning")** + presentation. N0 trial result: **GO, adopted** — Graphify extracted **6,120 nodes / 12,866 edges** from `lib/` alone, code-only/offline, no egress.
+
+**Built:** only Layer 1 — `financial-graph.json` is **hand-authored** (the generator `scripts/neomatrix/generate-financial-logic.mjs` *reads* it as input and only renders `GENERATED_CORE.md`; it never touches code). **Graphify (Layer 0) was trialled and never wired in** — its output sat in a one-off `graphify-out/`, the A2 `astHash` drift-sentinel is still "pending" (the `N engine nodes not bound to astHash` build warning). So the live graph is a **hand-typed ~190-node financial subset**, not the **~6,120-node code-generated whole-codebase** map that was designed.
+
+**This is why it drifts and undercounts** — and why it can't be the always-in-sync reference for the whole of Monitrax. The fix is to **finish the design**: restore Graphify as Layer 0.
+
+### The corrected model (supersedes §1 framing — same destination, truer mechanism)
+
+| Layer | Source | Job | Coverage |
+|---|---|---|---|
+| **L0 — Graphify (RESTORE)** | **code → AST**, regenerated on build | complete structural skeleton (functions, calls, imports) at `file:line`, drift-proof by construction | **whole codebase, 100% by construction** |
+| **L1 — semantic** | curated **on top of** L0 | formula / law / units / lineage *meaning* | financial first; gaps **visible** against the complete L0 |
+| **Proof** | calc-audit `calcEngineRegistry` + fixtures | "is each number correct?" | already CI-gated |
+
+Graphify is the missing **generated source** that answers your Q1 (*"why can't the Neomatrix be the inventory AND the generated view?"*) — **it can, and it was the design**: code → graph generator. One source (the code), the graph is its projection, whole-codebase, zero drift.
+
+**Honest caveat:** Graphify gives *structure*, not *meaning* — the L1 formula/law layer still needs curation. But the skeleton becomes complete + auto, so "is everything captured?" is a build fact, and missing *meaning* is visible against a complete map instead of silently absent.
+
+### Do you need to install the Graphify MCP? — **No.**
+- **To build/complete Layer 0:** the Graphify **CLI is already installed in the environment** (`graphify 0.8.45`, `uv`-managed) and runs **code-only/offline** (verified 2026-06-26: extracted `lib/utils` with all LLM keys unset, no egress). The CLI does the extraction — **no MCP required.**
+- **The Graphify MCP (`graphify-mcp`)** is the *optional, later* C9 "query surface" — it would let a future Claude session *query* the committed graph live as a tool. It is **not** needed to build Layer 0, and in this **ephemeral remote environment** an MCP needs per-session config. **Recommendation: skip the MCP for now**; instead **commit the generated structural graph + a thin query helper into the repo** so every session can read it with zero setup (more robust than an MCP that must be reconnected each session). Revisit the MCP only once the committed graph proves valuable (C9, fast-follow).
+
+### Build steps (NI-1 → NI-2, restated around Graphify)
+- **NI-1 — Restore + commit Layer 0.** `npm run neomatrix:graphify` runs `graphify update lib app` (code-only/offline, keys-unset guard per §13.6) → commit the structural graph under `docs/financial-logic/graph/structural/`; a **baseline report** `docs/audits/NEO_INVENTORY_BASELINE.md` prints `structural(L0) vs registry vs semantic(L1)` deltas — **the true denominator on screen for the first time.** Read-only over production code.
+- **NI-2 — Bind + gate.** Bind each L1 semantic node to its L0 structural node by `file:line` (compute the A2 `astHash` from the symbol's source range → the drift sentinel that fails the build when an engine's body changes but its node didn't); make the graph generated where derivable, declared-on-source where not (one source either way); add the coverage readout to `neomatrix:check`.
+- **NI-3 / NI-4** unchanged (§5): re-home tonight's net-new properties as calc-audit fixtures; harden completeness.
+
+---
+
+## 9. Disposition of PRs #1250–#1258 (documented per Reza request)
+
+**No DEV↔PROD risk in any of these:** #1250–#1257 contain ONLY test files + Neomatrix graph JSON + changelog (zero production code / financial logic / schema — the engines were mutation-tested then restored 0-diff). PROD behaves identically merged or not.
+
+| PR | Contents | Disposition | Why |
+|---|---|---|---|
+| **#1258** (NI-0 docs) | this design doc + CLAUDE.md Part 22 + plan | **KEEP / merge when model approved** | it *is* the plan; docs-only |
+| **#1250–#1257** (Trust Engine A.1–D.3) | hand-added graph nodes + parallel verification test files + changelog | **HOLD now → CLOSE under NI-3** | their *graph nodes* are superseded by L0 (auto-generated); their *verification tests* mostly re-prove calc-audit fixtures (§4). NI-3 lifts the genuinely-new properties (identities, refuse-to-compute guards, breakdown additivity, Float⇄Decimal parity, interest+PI) into calc-audit fixtures, then these close. |
+
+**Action for Reza:** do **not** merge #1250–#1257. Leave them open as the reference for NI-3's salvage list; they close automatically as NI-3 re-homes their net-new parts. Merge **#1258** once you approve the model (it changes no code). The already-merged core (the L0–L3 Trust-Engine infra + the W1 linter, #1240/#1242/#1245/#1247/#1248/#1249) stays — it's additive test/tooling, no duplication of calc-audit's *inventory*.
+
+---
+
 *Sign-off block (to be completed by Reza):*
-- [ ] Neo Inventory model approved (calc-audit registry = single inventory; Neomatrix = generated view).
-- [ ] Approve **holding** #1250–#1257 (reconcile via NI-3 rather than merge as-is).
-- [ ] Approve the NI-0 → NI-4 sequence (one PR each, gated).
+- [ ] Neo Inventory model approved — **restore Graphify as Layer 0** (code-generated structural source) + L1 semantic + calc-audit proofs.
+- [ ] Approve **holding then closing** #1250–#1257 (re-home net-new properties via NI-3; do not merge as-is).
+- [ ] Approve the NI-1 (restore+commit Layer 0) → NI-4 sequence (one PR each, gated).
+- [ ] Graphify MCP: **not now** (CLI suffices; commit the graph + query helper instead) — or override if you want the MCP query surface early.
