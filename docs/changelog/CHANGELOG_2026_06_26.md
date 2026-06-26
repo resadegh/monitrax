@@ -537,3 +537,28 @@ Financial-adviser + behaviour-psychology: an estimate shown as a hard figure ero
 
 ### §20.4 self-review → 10/10
 No number changed (label only); the disclosure is accurate to the engine's actual method (verified in source: 4%/2% franking proxy); consistent with existing tile vocabulary. 10/10.
+
+---
+
+## Session: neomatrix-deisland-tax-classifiers (fix isolated islands + add A6 connectivity gate)
+
+### Changes Made
+- **Type**: Neomatrix modelling + invariant gate (NO production code / financial logic changed — §21.2). Reza-reported: isolated node pairs visible on `/admin/neomatrix`.
+- **Root cause**: the 9 NI-3d tax engines were each wired ONLY to their law node (`governed-by`), with no data-flow lineage — forming 9 disconnected 2-node islands. **A5 passed them** (each had 1 edge) but A5 only catches ZERO-edge orphans, not islands.
+- **Fix — de-island via REAL lineage (all verified in source §19.2, no faked edges):**
+  - 5 master-flow engines `--feeds--> orchestrator.tax.masterTaxPosition`: trustLossRules (`masterTaxPosition.ts:234`), companyLossRules (`:242`), capitalLossNetting / trustDistribution / div7a (via `entityTaxRouter.ts:239/373/539` within `calculateEntityTaxPosition`, composed at `:192`).
+  - 4 standalone proven engines: `cgtDiscount --feeds--> div152` (gainAfterDiv115 = post-Div-115 gain), `input.Superannuation.balance --feeds--> smsf` (totalFundValue), `input.Income.declared --feeds--> psi` (totalPsiIncome) + `--> fteIee` (beneficiary distributions).
+  - Result: **1 connected component, 208/208 nodes — 0 islands.**
+- **New A6 invariant** in `graphlib.mjs`: any `number`/`engine`/`orchestrator` node outside the MAIN connected component is a build ERROR. Verified it fires on a synthetic island. This is the control A5 was missing.
+
+### Why A5 didn't catch it (the honest answer to "why errors after all controls")
+A5 = "no zero-edge node." These nodes had exactly one edge (to their law), so A5 passed — but one edge to an otherwise-disconnected law node is still an island. A6 = "every calc node in the main component" closes that gap.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +9 verified feed edges, version 0.51.x→0.52.0. `scripts/neomatrix/graphlib.mjs` — +A6 connectivity invariant. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (208 nodes, 1 component, 0 islands, 0 orphans). A6 fires on synthetic island.
+
+### §20.4 self-review → 10/10
+Every de-island edge traced to a real call site / input read in source (not faked to satisfy the gate — the §19.2 discipline that connectivity must reflect real data flow); A6 verified firing; the 4 production-unwired classifiers honestly connected via their inputs (not a fake consumer). 10/10.

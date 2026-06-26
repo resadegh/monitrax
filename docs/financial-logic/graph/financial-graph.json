@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.51.1",
+  "version": "0.52.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -7142,6 +7142,69 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/health/categoryScoring.ts:165,171 — reads metrics.liquidity.emergencyBuffer / liquidNetWorthRatio / savingsRate"
+    },
+    {
+      "from": "engine.tax.trustLossRules.applyTrustLossRules",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:234 — crossCutting.trustLossByEntity = applyTrustLossRules(...)"
+    },
+    {
+      "from": "engine.tax.companyLossRules.applyCompanyLossRules",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:242 — crossCutting.companyLossByEntity = applyCompanyLossRules(...)"
+    },
+    {
+      "from": "engine.tax.capitalLossNetting.applyCapitalLossNetting",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:239 — applyCapitalLossNetting within calculateEntityTaxPosition, composed by buildMasterTaxPosition:192"
+    },
+    {
+      "from": "engine.tax.trustDistribution.allocateTrustDistribution",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:373 — allocateTrustDistribution within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192"
+    },
+    {
+      "from": "engine.tax.div7a.classifyDiv7ALoans",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:539 — classifyDiv7ALoans within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192"
+    },
+    {
+      "from": "engine.cgtDiscount.calculateCgtDiscount",
+      "to": "engine.tax.div152.applyDiv152",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:152 — input.gainAfterDiv115 = the capital gain AFTER the Div 115 50% discount"
+    },
+    {
+      "from": "input.Superannuation.balance",
+      "to": "engine.tax.smsf.classifySmsfTriumvirate",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/smsfTriumvirateClassifier.ts:85,160 — input.totalFundValue"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.tax.psi.classifyPsi",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/psiClassifier.ts:42,142 — input.totalPsiIncome (personal services income)"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.tax.fteIee.classifyFteIeeDistributions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/fteIeeClassifier.ts:166 — beneficiaries[].distributionAmount (trust distributions)"
     }
   ]
 }

@@ -3,15 +3,15 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.51.1, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.52.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 208 · **Edges:** 273
+- **Nodes:** 208 · **Edges:** 282
 - **By kind:** orchestrator 9 · engine 105 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
 - **By status:** documented 208
-- **Edge provenance:** verified 273 *(verified > graphify > inferred)*
+- **Edge provenance:** verified 282 *(verified > graphify > inferred)*
 - **Trust Engine assurance:** 3/125 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
@@ -502,6 +502,15 @@
 | Income (declared) | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:34 — prisma.income.findMany |
 | Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | Health liquidity metrics (+ cashflow/debt siblings) | feeds | — | verified | lib/health/metricAggregation.ts:167,181 — reads input.portfolioSnapshot.netWorth / .accounts |
 | Health liquidity metrics (+ cashflow/debt siblings) | → | Health category scoring (liquidity/cashflow/debt) | feeds | — | verified | lib/health/categoryScoring.ts:165,171 — reads metrics.liquidity.emergencyBuffer / liquidNetWorthRatio / savingsRate |
+| Trust loss quarantining (Sch 2F) | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/orchestrator/masterTaxPosition.ts:234 — crossCutting.trustLossByEntity = applyTrustLossRules(...) |
+| Company prior-year loss (Div 165) | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/orchestrator/masterTaxPosition.ts:242 — crossCutting.companyLossByEntity = applyCompanyLossRules(...) |
+| Capital loss netting & ordering | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/entity/entityTaxRouter.ts:239 — applyCapitalLossNetting within calculateEntityTaxPosition, composed by buildMasterTaxPosition:192 |
+| Trust net income distribution (Div 6) | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/entity/entityTaxRouter.ts:373 — allocateTrustDistribution within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192 |
+| Div 7A deemed-dividend classifier | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/entity/entityTaxRouter.ts:539 — classifyDiv7ALoans within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192 |
+| CGT discount (Div 115 / reform Measure 2) | → | Div 152 small business CGT concessions | feeds | — | verified | lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:152 — input.gainAfterDiv115 = the capital gain AFTER the Div 115 50% discount |
+| Superannuation.balance | → | SMSF triumvirate compliance classifier | feeds | — | verified | lib/tax-engine/divisions/smsfTriumvirateClassifier.ts:85,160 — input.totalFundValue |
+| Income (declared) | → | Personal Services Income classifier | feeds | — | verified | lib/tax-engine/divisions/psiClassifier.ts:42,142 — input.totalPsiIncome (personal services income) |
+| Income (declared) | → | FTE/IEE distribution classifier | feeds | — | verified | lib/tax-engine/divisions/fteIeeClassifier.ts:166 — beneficiaries[].distributionAmount (trust distributions) |
 
 ---
 

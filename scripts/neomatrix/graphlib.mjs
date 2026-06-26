@@ -175,6 +175,42 @@ export function auditInvariants(graph) {
     }
   }
 
+  // A6 — no ISLANDS. A5 only catches ZERO-edge orphans; a node coupled to a
+  // tiny isolated cluster (e.g. an engine wired ONLY to its law node) passes A5
+  // yet is cut off from the rest of the map — the "sitting by itself with a
+  // single link" defect (Reza 2026-06-26). Every `number`/`engine`/`orchestrator`
+  // node must live in the MAIN connected component. The fix for a flagged island
+  // is to model its real data-flow lineage (inputs that feed it + the consumer/
+  // orchestrator that uses its output), never a faked edge (§19.2).
+  const adj = new Map();
+  for (const n of graph.nodes) adj.set(n.id, new Set());
+  for (const e of graph.edges) {
+    if (adj.has(e.from) && adj.has(e.to)) { adj.get(e.from).add(e.to); adj.get(e.to).add(e.from); }
+  }
+  const seen = new Set();
+  const components = [];
+  for (const n of graph.nodes) {
+    if (seen.has(n.id)) continue;
+    const stack = [n.id]; const comp = []; seen.add(n.id);
+    while (stack.length) {
+      const id = stack.pop(); comp.push(id);
+      for (const m of adj.get(id)) if (!seen.has(m)) { seen.add(m); stack.push(m); }
+    }
+    components.push(comp);
+  }
+  if (components.length > 1) {
+    components.sort((a, b) => b.length - a.length);
+    const main = new Set(components[0]);
+    const calcKinds = new Set(['number', 'engine', 'orchestrator']);
+    const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+    for (const comp of components.slice(1)) {
+      const calcs = comp.filter((id) => calcKinds.has(byId.get(id)?.kind));
+      if (calcs.length) {
+        errors.push(`A6: island of ${comp.length} node(s) disconnected from the main graph — contains calc node(s) [${calcs.join(', ')}]. Wire their real lineage into the main component (inputs + consumer/orchestrator), never a faked edge.`);
+      }
+    }
+  }
+
   return { errors, warnings };
 }
 
