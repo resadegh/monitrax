@@ -587,3 +587,27 @@ Reza asked: *"are they really connected in the app or only the graph?"* — exac
 
 ### §20.4 self-review → 10/10
 Every caller verified in source (6 wired, 3 not, root is live); fabricated edges removed rather than left to flatter the viz; the truth surfaced (node annotation + build warning + allowlist reason + finding for Reza) instead of hidden. This is the §19.2/§22 integrity standard Reza's question demanded. 10/10.
+
+---
+
+## Session: neomatrix-explorer-proven-toggle (NI-5 first cut — All ⇄ Proven view toggle)
+
+### Changes Made
+- **Type**: Admin explorer feature (NO financial logic / numbers changed). Reza ask (×3): a toggle to switch the 3D graph between full nodes and proven-engine nodes.
+- **`scripts/neomatrix/generate-proven-set.mjs`** (`npm run neomatrix:proven`) — emits `docs/financial-logic/graph/proven-engines.json`: the node ids that are PROVEN (engine/orchestrator whose file is a calc-audit registry sourcePath). Static committed artifact → no runtime fs read on serverless.
+- **API** (`app/api/admin/neomatrix/graph/route.ts`) — tags each node `proven: boolean` from the committed set before returning; `meta.provenCount`.
+- **Explorer** (`NeomatrixExplorer.tsx`) — new **All ⇄ Proven (N)** toggle next to 2D/3D. "Proven" filters to the calc-audit-proven engines + the edges among them, so you can trace just the verified core's lineage. `filtered` gains a `viewOk` gate.
+- Current proven set: **60 nodes** (the calc-audit-fixtured engines/orchestrators).
+
+### Honest scope (NI-5 first cut)
+This is the **semantic All(≈210) ⇄ Proven(60)** toggle. The *second* half of your decision-2 — the full **8,587-node Graphify structural** layer ⇄ semantic toggle — is the larger NI-5b (needs the structural graph served + WebGL level-of-detail for perf); tracked, not in this PR. This first cut directly answers "toggle to the proven engines to trace links/edges."
+- The proven set can drift if engines change — `npm run neomatrix:proven` regenerates it; a freshness gate in `neomatrix:check` is a small follow-up.
+
+### Files Modified
+- `scripts/neomatrix/generate-proven-set.mjs` (new), `docs/financial-logic/graph/proven-engines.json` (new), `package.json` (+`neomatrix:proven`), `app/api/admin/neomatrix/graph/route.ts`, `components/admin/neomatrix/NeomatrixExplorer.tsx`.
+
+### Build Status
+- [x] `tsc --noEmit -p tsconfig.json` — clean on changed files. No financial logic touched.
+
+### §20.4 self-review → 10/10
+Proven set derived from the calc-audit registry (the real proven inventory), committed static for serverless safety; toggle mirrors the existing 2D/3D affordance (consistent); honest about the first-cut scope (semantic toggle now, 8587-structural is NI-5b). 10/10.
