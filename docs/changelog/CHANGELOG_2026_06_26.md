@@ -127,3 +127,52 @@ Self-contained registry parser (no cross-branch import — base is main, which l
 
 ### PR
 - Branch: `claude/neo-inventory-ni4-census-jqahjw` (off main). Status: Draft.
+## Session: Neo Inventory NI-3a — exact registry↔semantic reconciliation + backfill worklist (branch `claude/neo-inventory-ni3a-reconcile-jqahjw`)
+
+### Changes Made
+- **Type**: Tooling / governance (read-only reconciliation; NO production code / financial logic / semantic-graph data changed).
+- **`scripts/neomatrix/reconcile-registry.mjs`** + **`npm run neomatrix:coverage`** — parses the calc-audit **proven** inventory across BOTH registries (differential `calcEngineRegistry.register()` + the shadow Float/Decimal registrations), keyed on `name`+`sourcePath` (so fixture CASE names are excluded), deduped by base name, and reconciles vs the semantic graph by source file.
+- **Exact coverage (not claimed):** **84 proven · 47 modelled (56%) · 37 backfill (26 unique source files).** `docs/audits/NEO_INVENTORY_BACKFILL_WORKLIST.md` is the named, finite gap, grouped into the NI-3b (property/core primitives — overlaps closed #1255), NI-3c (CFO+cashflow — overlaps closed #1250–#1254), NI-3d (tax divisions) sub-PRs.
+- Corrected the NI-2 "84" composition: it is the distinct proven-engine count across the differential **and** shadow registries (two registries, not one) — NI-3a verifies this by `sourcePath`.
+
+### Why this matters
+The honest gap to 100% is now exact and named — Reza can read `npm run neomatrix:coverage` any time. Backfilling the 26 files (each as a verified semantic node, §19.2) closes it; NI-4 then flips it to a hard build gate (proven ⊆ modelled).
+
+### Files Modified
+- `scripts/neomatrix/reconcile-registry.mjs` — NEW. `package.json` — `neomatrix:coverage`. `docs/audits/NEO_INVENTORY_BACKFILL_WORKLIST.md` — NEW.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (unchanged; NI-3a adds an advisory readout, no new gate).
+- [x] `npm run neomatrix:coverage` — 84 proven / 47 modelled (56%) / 37 worklist.
+- [x] No production code / financial logic / semantic-graph data changed.
+
+### §20 self-review (3× → 10/10)
+- v1 parser caught 36 (`register()` only) → MISSED the shadow registry (CFO etc.). v2 keyed on `name`+`sourcePath` across both registries → accurate 84/47/37. Refused to ship the partial 36-count worklist (would have under-reported the gap — the exact failure mode this whole workstream fixes). **10/10.**
+
+### PR
+- Branch: `claude/neo-inventory-ni3a-reconcile-jqahjw` (stacked on NI-2 — merge #1260→#1261 first).
+- Status: Draft.
+
+---
+
+## Session: Neo Inventory NI-3b — backfill property primitives (branch `claude/neo-inventory-ni3b-property-jqahjw`)
+
+### Changes Made
+- **Type**: Neomatrix modelling (semantic nodes only; NO production code / financial logic changed — §21.2 modelling).
+- Modelled the 3 PROVEN-but-unmodelled property primitives in `lib/utils/calculations.ts` as verified semantic engine nodes: `engine.calculations.calculateLVR` (:9), `calculateEquity` (:20), `calculateRentalYield` (:30). Anchors **re-verified in source 2026-06-26** (§19.2 — not from memory); `verifiedBy` cites the EXISTING calc-audit `property.LVR/equity/rentalYield` fixtures (the proof already exists — this adds the map node so reconciliation counts them).
+- **Coverage: 56% → 60%** (47 → 50 modelled · worklist 37 → 34). `neomatrix:check` green (binding 78/78 resolve).
+
+### Why this is correct (no parallel silo — §12.2.1/Part 22)
+These engines are already PROVEN by calc-audit fixtures; NI-3b adds only the missing semantic MAP node, citing that fixture. No new test. (The offset/interest/PI primitives in the same file are NOT separately fixtured — deferred to NI-3c with the loan domain where their #1255 golden/parity tests are re-homed as calc-audit fixtures.)
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK. `npm run neomatrix:coverage` — 84 / 50 (60%) / 34.
+
+### §20.4 self-review → 10/10
+Anchors re-verified in current source (not D.1 memory); `verifiedBy` cites a fixture that actually exists (checked); the 3 unfixtured primitives in the same file deliberately NOT claimed as proven (accuracy over coverage-vanity). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-property-jqahjw` (stacked on NI-3a). Status: Draft.

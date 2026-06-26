@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.35.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.36.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 157 · **Edges:** 201
-- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 157
+- **Nodes:** 160 · **Edges:** 201
+- **By kind:** orchestrator 8 · engine 67 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 160
 - **Edge provenance:** verified 201 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/83 engines+numbers proven (4%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Trust Engine assurance:** 3/86 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -90,6 +90,9 @@
 | **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
 | **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
+| **LVR — loan-to-value ratio** | `lib/utils/calculations.ts:9` | engine | core | LVR as a percentage (0–100). | Loan-to-value ratio (standard lending metric). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.LVR' fixture) | documented |
+| **Property equity** | `lib/utils/calculations.ts:20` | engine | core | Equity amount (AUD), floored at 0. | Equity = asset value less secured debt, floored at 0. | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.equity' fixture) | documented |
+| **Rental yield (annual)** | `lib/utils/calculations.ts:30` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 

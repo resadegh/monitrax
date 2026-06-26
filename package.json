@@ -27,6 +27,7 @@
     "neomatrix:generate": "node scripts/neomatrix/generate-financial-logic.mjs",
     "neomatrix:check": "node scripts/neomatrix/generate-financial-logic.mjs --check && node scripts/neomatrix/check-layer0-coverage.mjs && node scripts/neomatrix/check-binding-coverage.mjs",
     "neomatrix:graphify": "node scripts/neomatrix/graphify-layer0.mjs",
+    "neomatrix:coverage": "node scripts/neomatrix/reconcile-registry.mjs",
     "neomatrix:census": "node scripts/neomatrix/calc-census.mjs"
   },
   "dependencies": {
