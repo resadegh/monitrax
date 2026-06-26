@@ -324,16 +324,19 @@ export function NeomatrixExplorer() {
               </span>
             ))}
           </div>
-          {/* View toggle (NI-5): All nodes ⇄ Proven engines only */}
+          {/* View toggle (NI-5): semantic graph ⇄ proven engines only. Labelled
+              "Semantic" (not "All") so it doesn't imply the 8,587-node Graphify
+              structural census — this explorer renders the verified SEMANTIC
+              Neomatrix; the structural layer is a separate view (NI-5b). */}
           <div className="flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 backdrop-blur-xl">
             {([
-              ['all', 'All'],
+              ['all', `Semantic (${graph?.nodes.length ?? 0})`],
               ['proven', `Proven (${provenCount})`],
             ] as const).map(([v, lbl]) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                title={v === 'proven' ? 'Only the calc-audit-proven engines + their lineage' : 'Every node in the graph'}
+                title={v === 'proven' ? 'Only the calc-audit-proven engines + their 1-hop lineage' : 'Every node in the verified semantic Neomatrix (not the 8,587-node structural census — that is NI-5b)'}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   view === v ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-400 hover:text-slate-200'
                 }`}
