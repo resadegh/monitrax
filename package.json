@@ -28,7 +28,8 @@
     "neomatrix:check": "node scripts/neomatrix/generate-financial-logic.mjs --check && node scripts/neomatrix/check-layer0-coverage.mjs && node scripts/neomatrix/check-binding-coverage.mjs",
     "neomatrix:graphify": "node scripts/neomatrix/graphify-layer0.mjs",
     "neomatrix:coverage": "node scripts/neomatrix/reconcile-registry.mjs",
-    "neomatrix:census": "node scripts/neomatrix/calc-census.mjs"
+    "neomatrix:census": "node scripts/neomatrix/calc-census.mjs",
+    "neomatrix:proven": "node scripts/neomatrix/generate-proven-set.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.30.1",

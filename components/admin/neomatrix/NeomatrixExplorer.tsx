@@ -61,6 +61,7 @@ interface RawNode {
   verifiedBy: string | null;
   verifiedDate: string | null;
   status: string | null;
+  proven?: boolean; // engine/orchestrator with a calc-audit fixture (tagged by the API)
 }
 interface RawEdge {
   from: string;
@@ -92,6 +93,10 @@ export function NeomatrixExplorer() {
   const [search, setSearch] = useState('');
   const [activeDomains, setActiveDomains] = useState<Set<string>>(new Set(DOMAINS));
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set([...LAYERS, 'other']));
+  // View toggle (NI-5): 'all' = every node · 'proven' = only the calc-audit-proven
+  // engines + the edges among them (trace the verified core's lineage).
+  const [view, setView] = useState<'all' | 'proven'>('all');
+  const provenCount = useMemo(() => graph?.nodes.filter((n) => n.proven).length ?? 0, [graph]);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -187,7 +192,8 @@ export function NeomatrixExplorer() {
       const domainOk = n.domain ? activeDomains.has(n.domain) : true;
       const layerOk = activeLayers.has(layerKey(n));
       const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
-      if (domainOk && layerOk && searchOk) {
+      const viewOk = view === 'all' || n.proven === true;
+      if (domainOk && layerOk && searchOk && viewOk) {
         visible.add(n.id);
         const deg = degree.get(n.id) ?? 0;
         nodes.push({ ...n, degree: deg, color: nodeColor(n), val: 2 + deg * 1.4 });
@@ -200,7 +206,7 @@ export function NeomatrixExplorer() {
       }
     }
     return { nodes, links };
-  }, [graph, search, activeDomains, activeLayers, degree]);
+  }, [graph, search, activeDomains, activeLayers, degree, view]);
 
   const selected = selectedId ? nodeById.get(selectedId) ?? null : null;
 
@@ -285,6 +291,24 @@ export function NeomatrixExplorer() {
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOMAIN_COLORS[d] }} />
                 {d}
               </span>
+            ))}
+          </div>
+          {/* View toggle (NI-5): All nodes ⇄ Proven engines only */}
+          <div className="flex rounded-full border border-white/10 bg-white/[0.04] p-0.5 backdrop-blur-xl">
+            {([
+              ['all', 'All'],
+              ['proven', `Proven (${provenCount})`],
+            ] as const).map(([v, lbl]) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                title={v === 'proven' ? 'Only the calc-audit-proven engines + their lineage' : 'Every node in the graph'}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                  view === v ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {lbl}
+              </button>
             ))}
           </div>
           {/* 2D / 3D toggle */}
