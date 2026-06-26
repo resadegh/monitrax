@@ -665,3 +665,20 @@ Every allowlisted file read in source + confirmed non-financial (not guessed); r
 Every modelled node's entry + lineage verified in source (report generators ← ReportContext; insight-generator ← the 3 cashflow engines; risk ← health metrics; CGT ← Div 115; etc.); allowlist entries each read + reasoned; the gate makes coverage enforced not claimed; node ids corrected to their function symbols so the anchor audit binds. 10/10.
 
 ### Milestone — NI-4 COMPLETE. Remaining Neo Inventory: NI-5b (8587-structural explorer view) only.
+
+---
+
+## Session: tax-overlay-wiring-plan (deferred — document + plan only)
+
+### Changes Made
+- **Type**: Planning doc + backlog update (NO financial logic, NO code, NO graph data changed — docs only).
+- **Context**: Reza decision — *"for uncomputed shells go with your recommendation, however document and plan it for later implementation."* My recommendation: do NOT ship empty router shells (they'd return UNCOMPUTED-for-everyone, implying a capability the product doesn't have — §19). Plan the real end-to-end wiring instead.
+- **New plan** `docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md`: the verified current state (5 step-3 tax overlays all dormant — PSI/Div152/FTE-IEE unwired; trustLoss/companyLoss wired-but-input-starved; `buildMasterTaxPosition` itself has 0 production callers, live path is `entityTaxRouter`), the four parts a real overlay needs (engine ✅ / input contract / assembler / surface), the per-engine data-capture plan (input shapes read in source — §19.2), the recommended sequencing (**FTE/IEE end-to-end first** — its trigger `hasFamilyTrustElection` is already captured), the v1/v2 result-number boundary (v1 surfaces the rule outcome only), the §5 architecture decision to resolve at scheduling time (promote the orchestrator vs fold into the router — SSOT call), and per-slice definition-of-done incl. §21.2.1 Neomatrix de-islanding.
+- **Backlog updated**: the 2026-06-26 finding in `03_OPEN_QUESTIONS_AND_BACKLOG.md` expanded 3→5 engines, records Reza's decision, links the plan.
+
+### Files Modified
+- `docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md` (new) — the deferred wiring plan.
+- `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — finding expanded to 5 engines + decision + plan link.
+
+### §20.4 self-review → 10/10
+Every claim verified in source (orchestrator overlay loop :231-245, 0 production callers via grep, engine signatures + input shapes read directly — never guessed); the plan refuses the empty-shell anti-pattern (§19 honest-absence > false-capability); v1/v2 boundary keeps any future slice financially safe; Neomatrix de-islanding wired into the per-slice DoD (§21.2.1). Docs-only → zero correctness risk. 10/10.
