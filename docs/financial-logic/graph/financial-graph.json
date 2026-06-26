@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4138,6 +4138,22 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts (+ trustEngine.invariants.test.ts L2 consistency)",
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.D.aggregatorAdditivity",
+      "kind": "verification",
+      "label": "Income/expense/loan aggregators — breakdown additivity tie-out (L3)",
+      "file": "tests/regression/invariants/trustEngine.aggregators.test.ts",
+      "line": 47,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L3",
+      "produces": "The three SSOT aggregators conserve money across their breakdowns: income Σ byType.gross === grossTotal, Σ byType.net === netTotal, taxable + nonTaxable === grossTotal; expense Σ byCategory === total, essential + discretionary === total, taxDeductible ≤ total; loan Σ byType.{principal,repayments} === totals and weightedInterestRate × totalPrincipal === Σ(principal×rate). Plus a golden loan-interest case proving the decimal-rate unit ($500k @0.0625 → $2,604.17/mo, NOT /100 again). Over a deterministic sweep, both monthly + annual targets. (Float⇄Decimal shadow + entity-scoping already covered by tests/calculations/*.)",
+      "catches": "A dropped breakdown bucket that silently understates a headline total a dozen surfaces render, a mis-partitioned essential/taxable split, and a regression of the 2026-06-23 loan-interest 100× P0 bug.",
+      "authority": "Aggregation conservation: a total equals the sum of its disjoint parts; weighted-average rate identity.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.aggregators.test.ts (+ tests/calculations/aggregators.decimal.test.ts shadow parity)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6339,6 +6355,27 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
+    },
+    {
+      "from": "engine.incomeAggregator.aggregateIncome",
+      "to": "verification.trustEngine.D.aggregatorAdditivity",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping)."
+    },
+    {
+      "from": "engine.expenseAggregator.aggregateExpenses",
+      "to": "verification.trustEngine.D.aggregatorAdditivity",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping)."
+    },
+    {
+      "from": "engine.loanAggregator.aggregateLoanRepayments",
+      "to": "verification.trustEngine.D.aggregatorAdditivity",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping)."
     }
   ]
 }

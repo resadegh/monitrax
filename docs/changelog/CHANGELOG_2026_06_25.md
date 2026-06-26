@@ -748,3 +748,33 @@ SEARCH-FIRST honoured (§12.2.1): found the definitional consistency already cov
 ### PR
 - Branch: `claude/trust-engine-ssot-d2-jqahjw` (stacked on #1255)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche D.3 — income/expense/loan aggregator breakdown additivity
+
+### Changes Made
+- **Type**: Enhancement (Trust Engine verification + Neomatrix edge-wiring — Tranche D continued). No production logic changed.
+- The three SSOT aggregators (`aggregateIncome`, `aggregateExpenses`, `aggregateLoanRepayments`) were **already modelled** as engine nodes and **already golden-verified** by the A1 audit (`financialAudit.test.ts` — totals checked against hand-derived values) — but they had **no `verified-by` edge**, so the assurance metric wasn't counting them as covered. D.3 fixes that AND adds the complementary property A1 doesn't check.
+- Added the **breakdown-additivity tie-out** (the genuinely missing coverage — SEARCH-FIRST confirmed A1 checks totals, the Float⇄Decimal shadow + entity-scoping live in `tests/calculations/*`, but none check Σ-breakdown === total): income `Σ byType.gross === grossTotal` / `Σ byType.net === netTotal` / `taxable + nonTaxable === grossTotal`; expense `Σ byCategory === total` / `essential + discretionary === total`; loan `Σ byType.{principal,repayments} === totals` + the weighted-rate identity `weightedRate × totalPrincipal === Σ(principal×rate)`.
+- **Golden loan-interest case** locks the decimal-rate unit ($500k @0.0625 → $2,604.17/mo, **not** /100 again) — a guard against regressing the 2026-06-23 100× P0 bug.
+- **Mutation-proven** all three (income additivity break, expense byCategory drift, loan `/100` P0 regression → caught; restored 0-diff).
+- One `verification.trustEngine.D.aggregatorAdditivity` (L3) node + 3 `verified-by` edges.
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.aggregators.test.ts` — NEW (5 tests).
+- `docs/financial-logic/graph/financial-graph.json` — v0.43.0 → **v0.44.0**, +1 verification node / +3 verified-by edges (189 nodes / 234 edges — engines pre-existed).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.aggregators` — 5/5
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **26/103 (25%) · 19 verification node(s) · L0 3 · L1 7 · L2 5 · L3 4** (graph v0.44.0).
+
+### §20.4 self-review → 10/10
+SEARCH-FIRST caught that the engines were already golden-verified (A1) — so the honest move was NOT another golden, but the *complementary* breakdown-additivity that nothing covered. The loan golden specifically re-locks the decimal-rate unit so the 100× P0 bug can't silently return. 10/10.
+
+### PR
+- Branch: `claude/trust-engine-ssot-d3-jqahjw` (stacked on #1256)
+- Status: Draft

@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.43.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.44.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 188 · **Edges:** 231
-- **By kind:** orchestrator 9 · engine 83 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 18
-- **By status:** documented 188
-- **Edge provenance:** verified 231 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 23/103 engines+numbers proven (22%) · 18 verification node(s) · by layer L0 3 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 189 · **Edges:** 234
+- **By kind:** orchestrator 9 · engine 83 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 19
+- **By status:** documented 189
+- **Edge provenance:** verified 234 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 26/103 engines+numbers proven (25%) · 19 verification node(s) · by layer L0 3 · L1 7 · L2 5 · L3 4 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -204,6 +204,7 @@
 | **What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2)** | L2 | cfo | Composition identities: taxable income drops by exactly the annual sacrifice, the concessional tile delta equals the sacrifice (after−before === delta), and take-home delta = (−annualSacrifice + the engine’s own reported tax saving)/12. SAFETY guards (the trust guarantee): the concessional-cap hard stop REFUSES (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the Div 296 FW-2 reform lock REFUSES when TSB > $3M and commencement is unverified; zero salary refuses. Cap boundary derived live from getCurrentTaxYearConfig() so it survives FY rollover. | The highest-stakes failure: silently modelling an ILLEGAL over-cap contribution, or a post-reform Div 296 number before Royal Assent (CLAUDE.md §12.14 FW-2). Mutation-proven by disabling the guard. | What-if: salary sacrifice to super | `tests/regression/invariants/trustEngine.scenarios.test.ts:639` |
 | **Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2)** | L0 | core | The six canonical primitives (LVR, equity, rental yield, offset effective-principal, periodic interest, P&I repayment) are proven by hand-derived golden cases (LVR $400k/$500k = 80%, equity $500k−$400k = $100k, yield $26k/$500k = 5.2%, effPrincipal $500k−$80k = $420k, interest $500k@6%/12 = $2,500, P&I $500k@6%/360 = $2,997.75), the domain invariants (non-negativity floors, divide-by-zero → 0, linearity, the LVR inverse identity, P&I total-paid ≥ principal), and Float ⇄ Decimal sibling parity so the SSOT twins can never silently diverge. | A wrong percent factor, a dropped non-negativity floor, a wrong periodic-rate divisor, or a Float/Decimal twin drifting — on the engines the W2–W7 dedup points every property/loan surface at. | LVR — loan-to-value ratio, Property equity, Rental yield (annual), Offset effective principal, Periodic interest, P&I repayment (amortising annuity) | `tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53` |
 | **Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2)** | L0 | core | The frequency converters are proven by golden per-frequency multipliers (×52/×26/×12/×4/×2/×1; $500/wk → $26,000/yr → $2,166.67/mo) and Float ⇄ Decimal sibling parity over a 50-case sweep (incl. the null/undefined → 0 guard). The DEFINITIONAL consistency (toAnnual === x × periodsPerYear, toMonthly === toAnnual/12) + annualise→de-annualise round-trip are additionally locked in trustEngine.invariants.test.ts (L2) — not duplicated here per §12.2.1. | A wrong period multiplier or a Float/Decimal frequency twin drifting — on the single most-duplicated formula in the app, the one the W2–W7 dedup routes every "× 12"/"/ 12" surface back to. | Frequency → annual, Frequency → monthly, Periods per year, Frequency → annual (Decimal), Frequency → monthly (Decimal) | `tests/regression/invariants/trustEngine.frequencies.test.ts:57` |
+| **Income/expense/loan aggregators — breakdown additivity tie-out (L3)** | L3 | core | The three SSOT aggregators conserve money across their breakdowns: income Σ byType.gross === grossTotal, Σ byType.net === netTotal, taxable + nonTaxable === grossTotal; expense Σ byCategory === total, essential + discretionary === total, taxDeductible ≤ total; loan Σ byType.{principal,repayments} === totals and weightedInterestRate × totalPrincipal === Σ(principal×rate). Plus a golden loan-interest case proving the decimal-rate unit ($500k @0.0625 → $2,604.17/mo, NOT /100 again). Over a deterministic sweep, both monthly + annual targets. (Float⇄Decimal shadow + entity-scoping already covered by tests/calculations/*.) | A dropped breakdown bucket that silently understates a headline total a dozen surfaces render, a mis-partitioned essential/taxable split, and a regression of the 2026-06-23 loan-interest 100× P0 bug. | Declared income aggregation (gross / net / PAYG), Declared expense aggregation, Loan/debt aggregation (interest) | `tests/regression/invariants/trustEngine.aggregators.test.ts:47` |
 
 ## Edges (verified, with evidence)
 
@@ -440,6 +441,9 @@
 | Periods per year | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
 | Frequency → annual (Decimal) | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
 | Frequency → monthly (Decimal) | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
+| Declared income aggregation (gross / net / PAYG) | → | Income/expense/loan aggregators — breakdown additivity tie-out (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping). |
+| Declared expense aggregation | → | Income/expense/loan aggregators — breakdown additivity tie-out (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping). |
+| Loan/debt aggregation (interest) | → | Income/expense/loan aggregators — breakdown additivity tie-out (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.aggregators.test.ts:47 — breakdown additivity tie-out (+ existing Float⇄Decimal shadow + entity-scoping). |
 
 ---
 
