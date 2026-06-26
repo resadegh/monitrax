@@ -1036,8 +1036,9 @@ export default function CFODashboardPage() {
                 trend={investmentInsights.portfolioSummary.unrealisedGain >= 0 ? 'up' : 'down'}
               />
               <MetricCard
-                label="Dividend Yield"
+                label="Dividend Yield (est.)"
                 value={`${investmentInsights.portfolioSummary.dividendYieldPercent.toFixed(1)}%`}
+                subValue="Estimated from franking"
               />
               <MetricCard
                 label="Franking Credits"

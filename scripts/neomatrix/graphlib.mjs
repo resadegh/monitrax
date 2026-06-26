@@ -160,6 +160,82 @@ export function auditInvariants(graph) {
   const transitions = graph.edges.filter((e) => e.fromUnit && e.toUnit && e.fromUnit !== e.toUnit).length;
   if (transitions) warnings.push(`A4: ${transitions} edge(s) carry a unit transition (e.g. AUD/period→AUD/month) — verify a conversion happens inside the target (full enforcement N3)`);
 
+  // A5 — no orphan calc nodes. A `number`/`engine`/`orchestrator` node with ZERO
+  // edges (neither inbound nor outbound) is disconnected from the graph and
+  // defeats its purpose: a calc the map can't trace to or from is exactly the
+  // blind spot the Neomatrix exists to kill (Reza 2026-06-26: "there are nodes
+  // sitting there by itself with no relations or link to any other nodes, like
+  // property equity"). Every calc node must participate in at least one edge.
+  const connected = new Set();
+  for (const e of graph.edges) { connected.add(e.from); connected.add(e.to); }
+  for (const n of graph.nodes) {
+    if (!['number', 'engine', 'orchestrator'].includes(n.kind)) continue;
+    if (!connected.has(n.id)) {
+      errors.push(`A5: ${n.kind} "${n.id}" is an orphan — it has no edges (model its lineage: inputs that --feeds--> it and/or what it --feeds--> next)`);
+    }
+  }
+
+  // A6 — no ISLANDS. A5 only catches ZERO-edge orphans; a node coupled to a
+  // tiny isolated cluster (e.g. an engine wired ONLY to its law node) passes A5
+  // yet is cut off from the rest of the map — the "sitting by itself with a
+  // single link" defect (Reza 2026-06-26). Every `number`/`engine`/`orchestrator`
+  // node must live in the MAIN connected component. The fix for a flagged island
+  // is to model its real data-flow lineage (inputs that feed it + the consumer/
+  // orchestrator that uses its output), NEVER a faked edge (§19.2).
+  //
+  // Reviewed exception allowlist (§22.2 — visible, reasoned, shrinking; never a
+  // silent drop). A node here is a KNOWN island because the underlying CODE is
+  // genuinely disconnected in the app — connecting it in the graph would be a
+  // lie. Each entry must cite WHY. Remove an entry the moment its engine is
+  // wired into a production flow. (Reza 2026-06-26: "are they really connected
+  // in the app or only the graph?" — these 3 are honestly NOT, so the graph
+  // shows them as islands rather than faking a data-flow.)
+  // Audited 2026-06-26: all 3 are a MISS, not dead code. masterTaxPosition.ts
+  // :24-39 designs them as step-3 "per-entity advanced overlays" (same list as
+  // trust-loss + company-loss, which WERE wired); the overlay wiring was only
+  // completed for 2 of 5. Fix = add input.{div152,psi,fteIee}ByEntity to
+  // buildMasterTaxPosition mirroring the loss-rule overlay. Remove from this
+  // allowlist when wired.
+  const A6_ISLAND_ALLOWLIST = {
+    'engine.tax.psi.classifyPsi': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.psiByEntity.',
+    'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.div152ByEntity.',
+    'engine.tax.fteIee.classifyFteIeeDistributions': 'MISS (not dead code): designed as a step-3 overlay; trust path captures hasFamilyTrustElection but never calls this engine. Fix: input.fteIeeByEntity.',
+  };
+  const adj = new Map();
+  for (const n of graph.nodes) adj.set(n.id, new Set());
+  for (const e of graph.edges) {
+    if (adj.has(e.from) && adj.has(e.to)) { adj.get(e.from).add(e.to); adj.get(e.to).add(e.from); }
+  }
+  const seen = new Set();
+  const components = [];
+  for (const n of graph.nodes) {
+    if (seen.has(n.id)) continue;
+    const stack = [n.id]; const comp = []; seen.add(n.id);
+    while (stack.length) {
+      const id = stack.pop(); comp.push(id);
+      for (const m of adj.get(id)) if (!seen.has(m)) { seen.add(m); stack.push(m); }
+    }
+    components.push(comp);
+  }
+  if (components.length > 1) {
+    components.sort((a, b) => b.length - a.length);
+    const main = new Set(components[0]);
+    const calcKinds = new Set(['number', 'engine', 'orchestrator']);
+    const byId = new Map(graph.nodes.map((n) => [n.id, n]));
+    for (const comp of components.slice(1)) {
+      const calcs = comp.filter((id) => calcKinds.has(byId.get(id)?.kind));
+      // An island is allowed ONLY if every calc node in it is on the reviewed
+      // production-unwired allowlist (then it's a known, explained exception —
+      // surfaced, not hidden). Any un-allowlisted calc node fails the build.
+      const unexplained = calcs.filter((id) => !A6_ISLAND_ALLOWLIST[id]);
+      if (unexplained.length) {
+        errors.push(`A6: island of ${comp.length} node(s) disconnected from the main graph — contains calc node(s) [${unexplained.join(', ')}]. Wire their real lineage into the main component (inputs + consumer/orchestrator), never a faked edge. If genuinely production-unwired, add to A6_ISLAND_ALLOWLIST with the verified reason.`);
+      } else if (calcs.length) {
+        warnings.push(`A6: allowed island [${calcs.join(', ')}] — production-unwired (reviewed allowlist). ${calcs.map((id) => A6_ISLAND_ALLOWLIST[id]).join(' ')}`);
+      }
+    }
+  }
+
   return { errors, warnings };
 }
 

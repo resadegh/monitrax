@@ -125,3 +125,25 @@
 
 ---
 
+
+---
+
+### 🔎 Finding (2026-06-26) — 3 proven tax engines are UNWIRED in production (a MISS, not dead code)
+
+**Surfaced by:** Reza's Neomatrix-explorer review ("are they really connected in the app or only the graph?") → audited in source.
+
+| Engine | File | Status |
+|---|---|---|
+| PSI classifier | `lib/tax-engine/divisions/psiClassifier.ts` | **MISS** — 0 production callers |
+| Div 152 small-business CGT | `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` | **MISS** — 0 production callers |
+| FTE/IEE distributions | `lib/tax-engine/divisions/fteIeeClassifier.ts` | **MISS** — 0 production callers |
+
+**Verdict (verified):** NOT dead code. `lib/tax-engine/orchestrator/masterTaxPosition.ts:24-39` designs them as **step-3 "per-entity advanced overlays"** — the *same list* as trust-loss + company-loss rules, which **were** wired (`masterTaxPosition.ts:230-246`). The overlay loop was completed for 2 of 5 engines; these 3 never got their `input.*ByEntity` wiring. The trust path even captures `hasFamilyTrustElection` (`entityTaxRouter.ts:387`) but never calls the FTE/IEE engine that consumes it.
+
+**Scope expanded to FIVE engines (2026-06-26):** the same audit found **trust loss rules** + **company loss rules** are *also* dormant — they ARE wired into the orchestrator loop (`masterTaxPosition.ts:231-245`) but their inputs (`input.trustLossByEntity` / `companyLossByEntity`) are **never populated**, AND `buildMasterTaxPosition` itself has **zero production callers** (`grep app/ → ∅`; the live per-entity path is `entityTaxRouter`). So all 5 step-3 overlays are dormant.
+
+**Fix (a real feature — DEFERRED + PLANNED):** wire the engines as step-3 overlays mirroring the loss-rule pattern. **v1 surfaces the rule outcome + citations + UNCOMPUTED flags only — does NOT change the result number** (per the documented v1/v2 boundary). The assembler (`entityTaxFactsAssembler.ts`) populates the inputs from entity data + new capture.
+
+**Reza decision (2026-06-26):** *"for uncomputed shells go with your recommendation, however document and plan it for later implementation."* → **Do NOT ship empty router shells now** (they'd return UNCOMPUTED-for-everyone, which implies a capability we don't have — §19). The full per-engine **data-capture + wiring + sequencing plan** is documented at **`docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md`** (recommended order: **FTE/IEE end-to-end first** as the proving slice — its trigger flag `hasFamilyTrustElection` is already captured, smallest new-capture gap). Implementation deferred until explicitly scheduled.
+
+**Surfaced in the graph:** the 3 unwired Neomatrix nodes are annotated with this verdict + flagged as allowed islands by the A6 connectivity gate (reviewed allowlist, §22.2) — they show honestly as disconnected (because they ARE unwired), not faked-connected. When a slice ships, the engine moves off the A6 allowlist + its lineage edges to the assembler/route are added in the **same PR** (§21.2.1 zero-drift) — the graph becoming connected is the proof the wiring is real.

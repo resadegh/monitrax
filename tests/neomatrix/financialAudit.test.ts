@@ -77,7 +77,39 @@ interface AuditCase {
   derivation: string; // how `expected` was hand-computed from `law`
   actual: () => number; // runs the REAL engine
   expected: number;
+  // Trust Engine L0 (2026-06-25) — authority-anchoring metadata so a golden
+  // case is re-verifiable + re-anchorable each financial year. `sourceUrl` MUST
+  // come from AUTHORITY_SOURCES (no invented URLs — §19). When the law changes
+  // (e.g. the Phase 41E reform), the verifiedDate is the re-anchor trigger.
+  fy?: string; // financial year the `expected` value is anchored to
+  sourceUrl?: string; // the external authority page (from AUTHORITY_SOURCES only)
+  verifiedDate?: string; // ISO date the value was last checked against the source
 }
+
+/**
+ * Trust Engine L0 — the authority catalog. Every URL here is REAL and already
+ * cited in the repo's tax config (no invented citations — §19.2). A golden
+ * case's `sourceUrl` must be one of these. Extend as cases adopt L0 metadata.
+ */
+const AUTHORITY_SOURCES = {
+  incomeTax: {
+    fy: 'FY2024-25',
+    sourceUrl: 'https://www.ato.gov.au/rates/individual-income-tax-rates/',
+    verifiedDate: '2026-06-25',
+  },
+  medicare: {
+    fy: 'FY2024-25',
+    sourceUrl: 'https://www.ato.gov.au/individuals/medicare-and-private-health-insurance/medicare-levy/',
+    verifiedDate: '2026-06-25',
+  },
+  super: {
+    fy: 'FY2024-25',
+    sourceUrl: 'https://www.ato.gov.au/rates/key-superannuation-rates-and-thresholds/',
+    verifiedDate: '2026-06-25',
+  },
+} as const;
+
+const AUTHORITY_URL_SET = new Set(Object.values(AUTHORITY_SOURCES).map((s) => s.sourceUrl));
 
 const CASES: AuditCase[] = [
   // ── Net worth — the accounting identity (assets − liabilities) ──────────────
@@ -160,6 +192,7 @@ const CASES: AuditCase[] = [
   // (base 4,288) · 37% 135,001–190,000 (base 31,288) · 45% 190,001+ (base 51,638).
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25: tax-free threshold $18,200',
     derivation: 'taxable income $18,200 → $0',
     actual: () => calculateIncomeTax(18200, TAX_YEAR_2024_25).taxPayable,
@@ -167,6 +200,7 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25: 16% on 18,201–45,000',
     derivation: '16% × (45,000 − 18,200) = 0.16 × 26,800 = 4,288',
     actual: () => calculateIncomeTax(45000, TAX_YEAR_2024_25).taxPayable,
@@ -176,6 +210,7 @@ const CASES: AuditCase[] = [
     // The P0 bug regression-lock: income exactly AT a bracket minimum used to
     // return $0 (broke out of the loop). Must now tax in the new bracket.
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25 bracket boundary $45,001 (base 4,288 + 30%): must NOT be $0',
     derivation: '4,288 + 30% × (45,001 − 45,000) = 4,288 + 0.30 = 4,288.30',
     actual: () => calculateIncomeTax(45001, TAX_YEAR_2024_25).taxPayable,
@@ -183,6 +218,7 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25: $100,000 in the 30% bracket (base 4,288)',
     derivation: '4,288 + 30% × (100,000 − 45,000) = 4,288 + 16,500 = 20,788',
     actual: () => calculateIncomeTax(100000, TAX_YEAR_2024_25).taxPayable,
@@ -190,6 +226,7 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25 bracket boundary $135,001 (base 31,288 + 37%): must NOT be $0',
     derivation: '31,288 + 37% × (135,001 − 135,000) = 31,288 + 0.37 = 31,288.37',
     actual: () => calculateIncomeTax(135001, TAX_YEAR_2024_25).taxPayable,
@@ -197,6 +234,7 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25: $190,000 (top of the 37% bracket, base 31,288)',
     derivation: '31,288 + 37% × (190,000 − 135,000) = 31,288 + 20,350 = 51,638',
     actual: () => calculateIncomeTax(190000, TAX_YEAR_2024_25).taxPayable,
@@ -204,6 +242,7 @@ const CASES: AuditCase[] = [
   },
   {
     node: 'engine.incomeTaxCalculator.calculateIncomeTax',
+    ...AUTHORITY_SOURCES.incomeTax,
     law: 'ATO FY24-25: $200,000 in the 45% bracket (base 51,638)',
     derivation: '51,638 + 45% × (200,000 − 190,000) = 51,638 + 4,500 = 56,138',
     actual: () => calculateIncomeTax(200000, TAX_YEAR_2024_25).taxPayable,
@@ -213,6 +252,7 @@ const CASES: AuditCase[] = [
   // ── Medicare levy — Medicare Levy Act (2% above the shade-out) ───────────────
   {
     node: 'engine.medicareLevyCalculator.calculateMedicareLevy',
+    ...AUTHORITY_SOURCES.medicare,
     law: 'Medicare Levy 2% of taxable income above the shade-out (single)',
     derivation: '$100,000 is above the shade-out → 2% × 100,000 = 2,000',
     actual: () => calculateMedicareLevy({ taxableIncome: 100000 }, TAX_YEAR_2024_25).total,
@@ -302,6 +342,7 @@ const CASES: AuditCase[] = [
   // ── Super guarantee — SGAA 1992 (11.5% FY24-25 on OTE, capped at max base) ───
   {
     node: 'engine.contributionCalculator.calculateSuperGuarantee',
+    ...AUTHORITY_SOURCES.super,
     law: 'SGAA 1992: SG = SG rate (11.5% FY24-25) × OTE, capped at the max contribution base',
     derivation: '$100,000 OTE (below the ~$260k annual max base) × 11.5% = $11,500',
     actual: () => calculateSuperGuarantee(100000, TAX_YEAR_2024_25).amount,
@@ -1101,6 +1142,33 @@ describe('Neomatrix A1 — executable law-referenced audit (model refs the code)
   it('every audited node exists in financial-graph.json (audit tied to the model)', () => {
     const missing = CASES.map((c) => c.node).filter((id) => !nodeIds.has(id));
     expect(missing).toEqual([]);
+  });
+
+  // Trust Engine L0 (2026-06-25) — authority-anchoring integrity. A golden case
+  // that cites an external authority must cite a REAL one (from AUTHORITY_SOURCES
+  // — no invented URLs, §19), tagged with the FY + verified-date it's anchored
+  // to, so it's re-verifiable + re-anchorable when the law changes.
+  it('L0: every golden case with a sourceUrl uses a real authority URL + carries fy + verifiedDate', () => {
+    const bad: string[] = [];
+    for (const c of CASES) {
+      if (!c.sourceUrl) continue; // metadata is opt-in per case
+      if (!AUTHORITY_URL_SET.has(c.sourceUrl)) bad.push(`${c.node}: sourceUrl not in AUTHORITY_SOURCES — ${c.sourceUrl}`);
+      if (!/^https:\/\/(www\.ato\.gov\.au|www\.revenue\.[a-z]+\.gov\.au|www\.legislation\.gov\.au)\//.test(c.sourceUrl)) {
+        bad.push(`${c.node}: sourceUrl is not an official ATO/gov authority — ${c.sourceUrl}`);
+      }
+      if (!c.fy) bad.push(`${c.node}: has sourceUrl but no fy`);
+      if (!c.verifiedDate) bad.push(`${c.node}: has sourceUrl but no verifiedDate`);
+    }
+    expect(bad).toEqual([]);
+  });
+
+  it('L0: at least the income-tax bracket boundary cases are authority-anchored (the $0-cliff golden lock)', () => {
+    const anchored = CASES.filter(
+      (c) => c.node === 'engine.incomeTaxCalculator.calculateIncomeTax' && c.sourceUrl,
+    );
+    // all 7 bracket cases carry the ATO rates page + FY + verified date
+    expect(anchored.length).toBeGreaterThanOrEqual(7);
+    expect(anchored.every((c) => c.sourceUrl === AUTHORITY_SOURCES.incomeTax.sourceUrl)).toBe(true);
   });
 
   for (const c of CASES) {

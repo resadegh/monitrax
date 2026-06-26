@@ -8,7 +8,29 @@
 
 ## 🟡 Active Workstreams
 
+### 0·NEO-INVENTORY. Neo Inventory — one inventory of every calculation & surface (Reza directive 2026-06-26)
+
+- **Status:** 🟡 ACTIVE — **NI-0 ✅, NI-1 ✅, NI-2 ✅ shipped; NI-3 next** (autonomous, per Reza go 2026-06-26).
+- **Started:** 2026-06-26.
+- **Owner:** Reza (sign-off + merge) + Claude (build).
+- **Last touched:** 2026-06-26 — NI-2 binding + coverage readout shipped.
+- **Source of truth:** [`docs/blueprint/NEO_INVENTORY.md`](../blueprint/NEO_INVENTORY.md) (design + §8 Graphify-Layer-0 correction + §9 PR disposition) · [`docs/audits/NEO_INVENTORY_BASELINE.md`](../audits/NEO_INVENTORY_BASELINE.md) (live coverage) · CLAUDE.md Part 22 · Phase doc [`PHASE_53_MONITRAX_NEOMATRIX.md`](../blueprint/PHASE_53_MONITRAX_NEOMATRIX.md) §17.
+- **Why this matters (Reza, 2026-06-26):** *"make sure (1) 100% of Monitrax is in the Neomatrix and (2) the Trust Engine covers all calculations — don't create multiple test engines and platforms, no more guesswork with multiple PRs."*
+- **Verified root cause:** FOUR overlapping, unreconciled inventories — `calc-audit` (Phase 41i registry + 84–92 CI-gated fixtures), the **Neomatrix** (hand-built subset), the **Trust Engine** (2026-06-25 nodes), the **Phase 4 rail / A1 / linter**. PLUS the deeper finding (§8): the Phase-53 design's **Layer 0 (Graphify — code-extracted structural skeleton) was trialled but never wired in**, so the live graph was hand-authored → drifts + undercounts.
+- **The model:** **L0 Graphify** (code → structural skeleton, whole-codebase, gated) + **L1 semantic** (curated meaning on top) + **calc-audit fixtures** (proof). One source (the code), the graph generated from it. No fifth platform.
+- **Phase checklist (NI-0 → NI-4 — one PR each, gated, no sprawl):**
+  - [x] **NI-0 — Design + instruction lock.** `NEO_INVENTORY.md` + CLAUDE.md Part 22 + #1250–#1257 comparison. **Merged #1258.**
+  - [x] **NI-1 — Restore Graphify as Layer 0 + completeness gate.** `npm run neomatrix:graphify` (code-only/offline) → committed structural graph (**1,064 files · 8,587 nodes**); pure-node disk-vs-graph gate in `neomatrix:check` (caught 3 graphify drops → allowlisted w/ verified reasons); `NEO_INVENTORY_BASELINE.md`. **PR #1260 (NI-1→main, corrective after the #1259 base-branch mis-merge).**
+  - [x] **NI-2 — Semantic↔structural binding + coverage readout.** `check-binding-coverage.mjs` binds engine/orchestrator/number nodes to L0 (gate: anchor must resolve); prints L0 8,587 / proven 84 / modelled 64 / binding 75/75. **PR (this) stacked on NI-1.**
+  - [ ] **NI-3 — Exact reconciliation + backfill toward 100%.** Match each of the 84 proven calc-audit engines to its semantic node by file:line (unmatched = named backfill worklist); model the gap as verified semantic nodes (file:line, §19.2); re-home the closed #1250–#1257 net-new properties as calc-audit fixtures; add the per-engine `astHash` body-drift sentinel (A2). Multiple gated sub-PRs by domain (tax/cfo/core).
+  - [~] **NI-4 — FULL calc census (Reza 2026-06-26: every calculation).** `npm run neomatrix:census` enumerates EVERY calc-shaped function in the financial dirs (from Layer 0) flagged PROVEN/MODELLED/UNCOVERED → `docs/audits/NEO_INVENTORY_CALC_CENSUS.md`. **v1: 451 candidates · 193 proven · 58 modelled · 200 UNCOVERED · 56%.** Drive UNCOVERED→0, then flip to a build gate (fail on a NEW uncovered calc).
+  - [ ] **NI-5 — Explorer dual-view (Reza 2026-06-26: show both).** `NeomatrixExplorer.tsx` default = full Layer-0 structural (8,587 nodes / 15,041 edges, real relationships), toggle → semantic ~84 to trace lineage. Perf: LOD/clustering for 8k nodes. First cut for Reza's UX direction. Admin → no Stitch.
+- **Risk:** none to production (inventory/reconciliation + tooling + docs; §19 still governs correctness — no financial logic changed). **Merge order:** #1260 (NI-1) → this (NI-2) → NI-3 sub-PRs. **Done:** #1258 merged; #1250–#1257 closed (salvage → NI-3).
+- **↩️ Supersedes `0·TRUST-ENGINE` below** — the Trust Engine *properties* are kept, re-homed as calc-audit fixtures under NI-3, not a parallel silo. #1250–#1257 closed 2026-06-26.
+
 ### 0·TRUST-ENGINE. Financial Trust Engine — provable, audit-grade number correctness (Reza directive 2026-06-25)
+
+> **⚠️ PIVOTED 2026-06-26 → folded into `0·NEO-INVENTORY` above.** Research (calc-audit inspection) showed `calcEngineRegistry` already inventories + fixtures ~90 engines (incl. all what-ifs/primitives/aggregators/tax this workstream was re-verifying). The Trust Engine's genuinely-new *properties* (accounting identities, refuse-to-compute guards, breakdown additivity, parity) are kept — re-homed as calc-audit fixtures under Neo Inventory NI-3, not a parallel test silo. The 8 overnight PRs (#1250–#1257) are **HELD** pending that reconciliation (see `NEO_INVENTORY.md` §4 comparison). History below retained for context.
 
 - **Status:** 🟡 ACTIVE — **design + research in flight** (this session). Reza chose **"build the safety-critical core first"** (Layers 0–3 + 5).
 - **Started:** 2026-06-25.

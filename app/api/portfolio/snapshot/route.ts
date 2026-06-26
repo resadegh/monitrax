@@ -14,6 +14,7 @@ import {
   extractHoldingLinks,
 } from '@/lib/grdcs';
 import { getNetAnnualIncome } from '@/lib/income/netIncomeCalculator';
+import { calculateLVR, calculateRentalYield } from '@/lib/utils/calculations';
 import { toAnnual, toMonthly } from '@/lib/utils/frequencies';
 import { Frequency } from '@/lib/types/prisma-enums';
 
@@ -88,17 +89,9 @@ function getNetIncomeAmount(incomeItem: {
   return getNetAnnualIncome(incomeItem);
 }
 
-// Calculate rental yield
-function calculateRentalYield(annualRent: number, propertyValue: number): number {
-  if (propertyValue <= 0) return 0;
-  return (annualRent / propertyValue) * 100;
-}
-
-// Calculate LVR
-function calculateLVR(loanBalance: number, propertyValue: number): number {
-  if (propertyValue <= 0) return 0;
-  return (loanBalance / propertyValue) * 100;
-}
+// LVR + rental yield come from the canonical SSOT (lib/utils/calculations.ts) —
+// the local copies that used to live here were deleted (§12.2.1: one formula,
+// one source). See import at the top of this file.
 
 // ============================================================================
 // LINKAGE HEALTH ENGINE
