@@ -254,3 +254,20 @@ Every export line re-verified in source; every `feeds` edge backed by a confirme
 
 ### §20.4 self-review → 10/10
 Each formula + each call-site field mapping re-verified in source (not memory); governed-by backed by reading the actual amortisation formula; principal-feeds backed by the verbatim call-site args. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-income (backfill 2 income-normalisation engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled 2 proven-but-unmodelled income engines in `lib/cashflow/incomeNormalizer.ts`, each WITH lineage (A5-green):
+  - `engine.incomeNormalizer.normalizeAllIncome` (:183) — per-stream gross→net + monthly aggregation; `input.Income.declared --feeds-->` it.
+  - `engine.incomeNormalizer.calculateTakeHomePay` (:221) — gross→take-home via PAYG + Medicare − LITO; `input.Income.declared --feeds-->` it; `--governed-by-->` `law.itaa1997.incomeTax` (:237 PAYG) AND `law.medicareLevyAct` (:243 Medicare).
+- **Coverage: 69% → 71%** (58 → 60 modelled · worklist 26 → 24). `neomatrix:check` green (170 nodes / 225 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +4 verified edges, version 0.39.0→0.40.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas re-verified in source; the two governed-by edges backed by the verbatim `TaxEngine.calculatePAYG` / `calculateMedicareLevy` calls at :237/:243; income-feeds backed by the param contract. 10/10.

@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.39.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.40.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 168 · **Edges:** 221
-- **By kind:** orchestrator 8 · engine 75 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 168
-- **Edge provenance:** verified 221 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/94 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 170 · **Edges:** 225
+- **By kind:** orchestrator 8 · engine 77 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 170
+- **Edge provenance:** verified 225 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/96 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -101,6 +101,8 @@
 | **Loan: monthly P&I payment** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:615` | engine | cfo | Monthly principal-and-interest repayment for a loan amortised over `months`. | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculateMonthlyPayment (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:615 | documented |
 | **Loan: months to payoff** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:635` | engine | cfo | Number of months to fully repay a loan at a given monthly payment (999 if payment ≤ interest; capped at 600). | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculatePayoffMonths (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:635 | documented |
 | **Loan: total interest over term** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:661` | engine | cfo | Total interest paid over the loan term for a given monthly payment and number of months. | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculateTotalInterest (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:661 | documented |
+| **Normalise all income streams** | `lib/cashflow/incomeNormalizer.ts:183` | engine | core | NormalizedIncomeResult — per-stream normalised income plus totalGrossMonthly, totalNetMonthly, totalMonthlyPayg. | Monitrax income normalisation — per-stream gross→net (PAYG) then monthly aggregation. | calc-audit engine cashflow.normalizeAllIncome (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:183 | documented |
+| **Take-home pay from gross salary** | `lib/cashflow/incomeNormalizer.ts:221` | engine | core | Take-home pay breakdown: grossAmount, netAmount, paygWithholding, medicareLevy, effectiveTaxRate. | ATO PAYG withholding + Medicare Levy + LITO offset (via lib/tax-engine). | calc-audit engine cashflow.calculateTakeHomePay (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:221 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -146,8 +148,8 @@
 |---|---|---|---|
 | **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
-| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out |
-| **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in) |
+| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out, Take-home pay from gross salary |
+| **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in), Take-home pay from gross salary |
 | **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
 | **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
 | **s295-485 — 15% taxed-in-fund** | Concessional contributions / fund income taxed at 15% in the fund. | ITAA 1997 s295-485 | Super contributions + tax saved, SMSF income tax (Div 295) |
@@ -410,6 +412,10 @@
 | Loan: months to payoff | → | Loan interest = principal × annual rate | governed-by | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:635-657 — standard P&I amortisation |
 | Loan.principal | → | Loan: total interest over term | feeds | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:465 — calculateTotalInterest(targetLoan.principal, targetLoan.interestRateAnnual, …) |
 | Loan: total interest over term | → | Loan interest = principal × annual rate | governed-by | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:661-668 — standard P&I amortisation |
+| Income (declared) | → | Normalise all income streams | feeds | — | verified | lib/cashflow/incomeNormalizer.ts:183-184 — maps incomeStreams (declared income records) into gross/net/PAYG monthly totals |
+| Income (declared) | → | Take-home pay from gross salary | feeds | — | verified | lib/cashflow/incomeNormalizer.ts:221,232 — grossAmount (gross salary/income) → annualGross via toAnnual |
+| Take-home pay from gross salary | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | lib/cashflow/incomeNormalizer.ts:237 — TaxEngine.calculatePAYG on annualGross |
+| Take-home pay from gross salary | → | Medicare Levy Act 1986 | governed-by | — | verified | lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy |
 
 ---
 

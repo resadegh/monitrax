@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.39.0",
+  "version": "0.40.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3807,6 +3807,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.incomeNormalizer.normalizeAllIncome",
+      "kind": "engine",
+      "label": "Normalise all income streams",
+      "file": "lib/cashflow/incomeNormalizer.ts",
+      "line": 183,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "NormalizedIncomeResult — per-stream normalised income plus totalGrossMonthly, totalNetMonthly, totalMonthlyPayg.",
+      "formula": "map each stream through normalizeIncomeStream; totals = Σ grossMonthlyAmount / Σ netMonthlyAmount / Σ monthlyPaygWithholding.",
+      "authority": "Monitrax income normalisation — per-stream gross→net (PAYG) then monthly aggregation.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cashflow.normalizeAllIncome (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:183",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.incomeNormalizer.calculateTakeHomePay",
+      "kind": "engine",
+      "label": "Take-home pay from gross salary",
+      "file": "lib/cashflow/incomeNormalizer.ts",
+      "line": 221,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Take-home pay breakdown: grossAmount, netAmount, paygWithholding, medicareLevy, effectiveTaxRate.",
+      "formula": "annualGross = toAnnual(gross, freq); grossTax = PAYG + Medicare; netTax = max(0, grossTax − LITO); annualNet = annualGross − netTax; converted back to the input frequency.",
+      "authority": "ATO PAYG withholding + Medicare Levy + LITO offset (via lib/tax-engine).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cashflow.calculateTakeHomePay (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:221",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5938,6 +5980,34 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:661-668 — standard P&I amortisation"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.incomeNormalizer.normalizeAllIncome",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/incomeNormalizer.ts:183-184 — maps incomeStreams (declared income records) into gross/net/PAYG monthly totals"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.incomeNormalizer.calculateTakeHomePay",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/incomeNormalizer.ts:221,232 — grossAmount (gross salary/income) → annualGross via toAnnual"
+    },
+    {
+      "from": "engine.incomeNormalizer.calculateTakeHomePay",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cashflow/incomeNormalizer.ts:237 — TaxEngine.calculatePAYG on annualGross"
+    },
+    {
+      "from": "engine.incomeNormalizer.calculateTakeHomePay",
+      "to": "law.medicareLevyAct",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy"
     }
   ]
 }
