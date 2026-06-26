@@ -24,6 +24,9 @@ import { addInvestmentScenario } from '@/lib/cfo/scenarios/addInvestment';
 import { redirectToOffsetScenario } from '@/lib/cfo/scenarios/redirectToOffset';
 import { refinanceLoanScenario } from '@/lib/cfo/scenarios/refinanceLoan';
 import { payDownLoanScenario } from '@/lib/cfo/scenarios/payDownLoan';
+import { cutSpendCategoryScenario } from '@/lib/cfo/scenarios/cutSpendCategory';
+import { salarySacrificeToSuperScenario } from '@/lib/cfo/scenarios/salarySacrificeToSuper';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import type { ScenarioContext } from '@/lib/cfo/scenarios/types';
 import { Decimal } from '@/lib/decimal';
 
@@ -516,5 +519,202 @@ describe('Trust Engine · what-if payDownLoan (extra-repayment amortisation)', (
       prevInterest = interest;
       prevMonths = months;
     }
+  });
+});
+
+// =============================================================================
+// A.5 — the budget + super what-ifs (cutSpendCategory + salarySacrificeToSuper).
+//
+// cutSpendCategory has clean composition identities (cap, cashflow, savings
+// rate, emergency-fund months). salarySacrifice is the highest-stakes lever in
+// this set: it must REFUSE to compute rather than silently model an illegal
+// contribution. So beyond its composition identities we lock its two
+// safety-critical guards — the concessional-cap hard-stop and the Div 296
+// (FW-2) reform UNCOMPUTED lock. A lever that refuses correctly is the trust
+// guarantee; a lever that silently produces an over-cap number is the failure.
+// =============================================================================
+
+function cutCtx(opts: {
+  category: string;
+  currentSpend: number;
+  monthlyCashflow: number;
+  monthlyExpenses: number;
+  monthlyIncome: number;
+  monthlyLoanRepayments: number;
+  savingsRate: number;
+  emergencyMonths: number;
+  liquidCash: number;
+}) {
+  return {
+    snapshot: {
+      expenses: { monthly: { byCategory: [{ category: opts.category, amount: opts.currentSpend }] } },
+      quickMetrics: {
+        monthlyCashflow: opts.monthlyCashflow,
+        monthlyExpenses: opts.monthlyExpenses,
+        monthlyIncome: opts.monthlyIncome,
+        monthlyLoanRepayments: opts.monthlyLoanRepayments,
+        savingsRate: opts.savingsRate,
+      },
+      emergencyFund: { monthsCovered: opts.emergencyMonths, liquidCash: opts.liquidCash },
+    },
+  } as unknown as ScenarioContext;
+}
+
+describe('Trust Engine · what-if cutSpendCategory (reduction identities)', () => {
+  const by = (r: ReturnType<typeof cutSpendCategoryScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix))!;
+
+  const base = {
+    category: 'Dining',
+    currentSpend: 800,
+    monthlyCashflow: 1_000,
+    monthlyExpenses: 5_000,
+    monthlyIncome: 8_000,
+    monthlyLoanRepayments: 1_500,
+    savingsRate: 18.75,
+    emergencyMonths: 4,
+    liquidCash: 20_000,
+  };
+
+  it('golden — cut $300/mo from Dining: cashflow +300, annual $3,600, savings-rate + emergency-fund recompute', () => {
+    const r = cutSpendCategoryScenario(cutCtx(base), { category: 'Dining', monthlyReduction: 300 });
+    expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(300, 6);
+    expect(by(r, 'Monthly cashflow').after).toBeCloseTo(1_300, 6);
+    expect(by(r, 'Annual saving').after).toBeCloseTo(3_600, 6);
+    // savings rate after = (income − (expenses − 300) − loanRepay) / income × 100
+    const expectedRate = ((8_000 - (5_000 - 300) - 1_500) / 8_000) * 100;
+    expect(by(r, 'Savings rate').after).toBeCloseTo(expectedRate, 6);
+    // emergency months after = liquidCash / (expenses − 300)
+    expect(by(r, 'Emergency fund months').after).toBeCloseTo(20_000 / (5_000 - 300), 6);
+  });
+
+  it('cap — over-cutting a category is capped at the actual spend (no phantom saving)', () => {
+    const r = cutSpendCategoryScenario(cutCtx(base), { category: 'Dining', monthlyReduction: 1_000 });
+    expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(800, 6); // capped at currentSpend
+    expect(by(r, 'Annual saving').after).toBeCloseTo(800 * 12, 6);
+  });
+
+  it('identities hold over a deterministic sweep (cap, cashflow, annual, savings-rate, emergency-fund)', () => {
+    const rand = rng(0xc075);
+    for (let i = 0; i < 50; i++) {
+      const currentSpend = Math.round(rand() * 2_000);
+      const requested = Math.round(rand() * 3_000);
+      const monthlyExpenses = 2_000 + Math.round(rand() * 6_000);
+      const monthlyIncome = 4_000 + Math.round(rand() * 8_000);
+      const monthlyLoanRepayments = Math.round(rand() * 3_000);
+      const liquidCash = Math.round(rand() * 60_000);
+      const ctx = cutCtx({ ...base, category: 'Dining', currentSpend, monthlyExpenses, monthlyIncome, monthlyLoanRepayments, liquidCash, monthlyCashflow: monthlyIncome - monthlyExpenses - monthlyLoanRepayments });
+      const r = cutSpendCategoryScenario(ctx, { category: 'Dining', monthlyReduction: requested });
+      const realised = Math.min(requested, currentSpend);
+      expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(realised, 6);
+      expect(by(r, 'Annual saving').after).toBeCloseTo(realised * 12, 6);
+      const expRate = ((monthlyIncome - (monthlyExpenses - realised) - monthlyLoanRepayments) / monthlyIncome) * 100;
+      expect(by(r, 'Savings rate').after).toBeCloseTo(expRate, 6);
+      expect(by(r, 'Emergency fund months').after).toBeCloseTo(liquidCash / (monthlyExpenses - realised), 6);
+    }
+  });
+
+  it('monotonicity — a larger realised reduction never lowers cashflow or savings rate', () => {
+    let prevCashflow = -Infinity;
+    let prevRate = -Infinity;
+    for (const reduction of [0, 100, 300, 600, 800]) {
+      const r = cutSpendCategoryScenario(cutCtx(base), { category: 'Dining', monthlyReduction: reduction });
+      const cf = (r.impacts.find((i) => i.label.startsWith('Monthly cashflow'))!).after;
+      const rate = (r.impacts.find((i) => i.label.startsWith('Savings rate'))!).after;
+      expect(cf).toBeGreaterThanOrEqual(prevCashflow - 1e-6);
+      expect(rate).toBeGreaterThanOrEqual(prevRate - 1e-6);
+      prevCashflow = cf;
+      prevRate = rate;
+    }
+  });
+});
+
+// salarySacrifice — minimal ctx (gross + super balance passed as params so the
+// engine never dereferences the deep income/netWorth paths; it only reads
+// quickMetrics.monthlyCashflow directly).
+function sacCtx(monthlyCashflow: number) {
+  return { snapshot: { quickMetrics: { monthlyCashflow } } } as unknown as ScenarioContext;
+}
+
+describe('Trust Engine · what-if salarySacrificeToSuper (composition + safety guards)', () => {
+  const by = (r: ReturnType<typeof salarySacrificeToSuperScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix));
+  const cfg = getCurrentTaxYearConfig();
+  const GROSS = 100_000;
+  const sg = GROSS * cfg.superGuaranteeRate;
+  // headroom for sacrifice before the cap: (cap − SG) per year
+  const annualHeadroom = cfg.concessionalCap - sg;
+  const monthlyHeadroom = annualHeadroom / 12;
+
+  it('composition — taxable income, take-home, and concessional impacts tie to the sacrifice', () => {
+    const monthly = Math.floor(monthlyHeadroom / 2); // comfortably under cap
+    const annual = monthly * 12;
+    const r = salarySacrificeToSuperScenario(sacCtx(2_000), {
+      monthlySacrifice: monthly,
+      grossSalaryAnnual: GROSS,
+      currentSuperBalance: 200_000, // below Div 296 threshold
+    });
+    expect(r.impacts.length).toBeGreaterThan(0);
+    // taxable income drops by exactly the annual sacrifice
+    expect(by(r, 'Annual taxable income')!.after).toBeCloseTo(GROSS - annual, 4);
+    expect(by(r, 'Annual taxable income')!.delta).toBeCloseTo(-annual, 4);
+    // concessional tile: displayed delta === annual sacrifice AND after−before === delta
+    const conc = by(r, 'Total concessional this FY')!;
+    expect(conc.delta).toBeCloseTo(annual, 4);
+    expect(conc.after - conc.before).toBeCloseTo(conc.delta, 4);
+    // take-home delta === (−annualSacrifice + the engine's own reported tax saving) / 12
+    const taxSaving = by(r, 'Year-1 tax savings')!.after;
+    const takeHome = by(r, 'Monthly take-home pay')!;
+    expect(takeHome.delta).toBeCloseTo((-annual + taxSaving) / 12, 4);
+    expect(takeHome.after).toBeCloseTo(2_000 + takeHome.delta, 4);
+  });
+
+  it('SAFETY — concessional-cap hard stop: just under computes, just over REFUSES (no impacts)', () => {
+    // just under the cap → computes
+    const under = salarySacrificeToSuperScenario(sacCtx(2_000), {
+      monthlySacrifice: Math.floor(monthlyHeadroom) - 1,
+      grossSalaryAnnual: GROSS,
+      currentSuperBalance: 200_000,
+    });
+    expect(under.impacts.length).toBeGreaterThan(0);
+
+    // comfortably over the cap → UNCOMPUTED: no impacts, a critical warning,
+    // and the summary names the cap. The engine must never silently model an
+    // over-cap (illegal) contribution.
+    const over = salarySacrificeToSuperScenario(sacCtx(2_000), {
+      monthlySacrifice: Math.ceil(monthlyHeadroom) + 200,
+      grossSalaryAnnual: GROSS,
+      currentSuperBalance: 200_000,
+    });
+    expect(over.impacts.length).toBe(0);
+    expect(over.warnings.some((w) => w.severity === 'critical')).toBe(true);
+    expect(over.summary.toLowerCase()).toContain('cap');
+  });
+
+  it('SAFETY — Div 296 (FW-2): TSB above $3M with commencement unverified LOCKS the lever (UNCOMPUTED)', () => {
+    // The current config has div296CommencementVerified === false, so a TSB
+    // above the $3M threshold must refuse to compute per CLAUDE.md §12.14 FW-2.
+    expect(cfg.div296CommencementVerified).toBe(false); // precondition for this guard
+    const locked = salarySacrificeToSuperScenario(sacCtx(2_000), {
+      monthlySacrifice: 100, // tiny, well under cap — the LOCK is about TSB, not the cap
+      grossSalaryAnnual: GROSS,
+      currentSuperBalance: cfg.div296TsbThreshold + 1_000_000, // $4M
+    });
+    expect(locked.impacts.length).toBe(0);
+    expect(locked.warnings.some((w) => w.severity === 'critical')).toBe(true);
+
+    // below the threshold → computes normally (regime UNAFFECTED)
+    const ok = salarySacrificeToSuperScenario(sacCtx(2_000), {
+      monthlySacrifice: 100,
+      grossSalaryAnnual: GROSS,
+      currentSuperBalance: cfg.div296TsbThreshold - 500_000,
+    });
+    expect(ok.impacts.length).toBeGreaterThan(0);
+  });
+
+  it('SAFETY — zero salary refuses to model the lever (no phantom sacrifice)', () => {
+    const r = salarySacrificeToSuperScenario(sacCtx(2_000), { monthlySacrifice: 500, grossSalaryAnnual: 0, currentSuperBalance: 100_000 });
+    expect(r.impacts.length).toBe(0);
+    expect(r.warnings.some((w) => w.severity === 'critical')).toBe(true);
   });
 });

@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.40.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.41.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 173 · **Edges:** 218
-- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 14
-- **By status:** documented 173
-- **Edge provenance:** verified 218 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 10/92 engines+numbers proven (11%) · 14 verification node(s) · by layer L0 1 · L1 7 · L2 3 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 175 · **Edges:** 220
+- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 16
+- **By status:** documented 175
+- **Edge provenance:** verified 220 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 12/92 engines+numbers proven (13%) · 16 verification node(s) · by layer L0 1 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -189,6 +189,8 @@
 | **What-if redirect-to-offset — interest-saved identity (L2)** | L2 | cfo | When the loan is not already offset below the parked amount, the monthly interest saved collapses to the clean identity amount × rate/12 (golden: $50k into a $500k loan @6% → exactly $250/mo, $3,000/yr), annual = ×12, and liquid cash is UNCHANGED (offset stays accessible). Holds over a 50-case sweep that preserves principal − offset ≥ amount. | A sign flip or wrong periodic-rate divisor on the offset saving, and the fully-offset edge (parking more must save nothing — no negative interest invented). | What-if: redirect cash to an offset | `tests/regression/invariants/trustEngine.scenarios.test.ts:313` |
 | **What-if refinance — PI repayment differential + savings identities (L1)** | L1 | cfo | The new monthly repayment matches (a) a hand-derived golden ($500k @5.5%/360mo → $2,838.95) and (b) an INDEPENDENT PI form M = P·m/(1−(1+m)⁻ⁿ) (the engine uses the +n form M = P·m(1+m)ⁿ/((1+m)ⁿ−1)) over a 50-case sweep; the savings identities hold (repayment delta = −saving, cashflow delta = +saving, lifetime = saving×term − switchingCosts) and savings are monotone in a lower rate. | A sign flip on monthly savings, a wrong annuity form, or a broken lifetime/break-even accounting that would misstate whether a refinance is worthwhile. | What-if: refinance a loan | `tests/regression/invariants/trustEngine.scenarios.test.ts:388` |
 | **What-if pay-down — amortisation conservation differential (L1)** | L1 | cfo | The amortisation walk matches a golden ($500k @6%, $3,000/mo, +$500 → 252 months / 108 sooner / ~$198,617 saved) and an INDEPENDENT accounting path that derives interest via the conservation identity totalPaid − principalRetired (the engine sums interest per-step) over a 50-case sweep — with principalRetired === starting principal (money conserved) and month counts agreeing. Monotonicity: more extra never increases interest or term; extra=0 is a no-op. | A walk error that silently creates or loses money (interest not conserved), a wrong payoff-month count, or a non-monotone response to extra repayments. | What-if: pay down a loan faster | `tests/regression/invariants/trustEngine.scenarios.test.ts:462` |
+| **What-if cut-spend — reduction identities + cap + monotonicity (L2)** | L2 | cfo | The reduction reconciles: realised = min(requested, currentSpend) (over-cut is capped — no phantom saving), cashflow delta = +realised, annual = realised×12, savings-rate after = (income − (expenses − realised) − loanRepay)/income×100, emergency months after = liquidCash/(expenses − realised). Golden ($300 off $800 Dining) + 50-case sweep + monotonicity (a larger realised reduction never lowers cashflow/savings-rate). | A dropped cap (phantom saving larger than the category spend), a wrong savings-rate or emergency-fund recompute, or a non-monotone response. | What-if: cut a spend category | `tests/regression/invariants/trustEngine.scenarios.test.ts:563` |
+| **What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2)** | L2 | cfo | Composition identities: taxable income drops by exactly the annual sacrifice, the concessional tile delta equals the sacrifice (after−before === delta), and take-home delta = (−annualSacrifice + the engine’s own reported tax saving)/12. SAFETY guards (the trust guarantee): the concessional-cap hard stop REFUSES (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the Div 296 FW-2 reform lock REFUSES when TSB > $3M and commencement is unverified; zero salary refuses. Cap boundary derived live from getCurrentTaxYearConfig() so it survives FY rollover. | The highest-stakes failure: silently modelling an ILLEGAL over-cap contribution, or a post-reform Div 296 number before Royal Assent (CLAUDE.md §12.14 FW-2). Mutation-proven by disabling the guard. | What-if: salary sacrifice to super | `tests/regression/invariants/trustEngine.scenarios.test.ts:639` |
 
 ## Edges (verified, with evidence)
 
@@ -412,6 +414,8 @@
 | What-if: redirect cash to an offset | → | What-if redirect-to-offset — interest-saved identity (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:313 — interest-saved identity amount×rate/12 golden + 50-case sweep + fully-offset edge. |
 | What-if: refinance a loan | → | What-if refinance — PI repayment differential + savings identities (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:388 — PI-form differential (independent −n form) + golden + savings identities + rate monotonicity over 50 cases. |
 | What-if: pay down a loan faster | → | What-if pay-down — amortisation conservation differential (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:462 — conservation-identity differential (totalPaid − principal) + golden + principal-retired conservation + monotonicity over 50 cases. |
+| What-if: cut a spend category | → | What-if cut-spend — reduction identities + cap + monotonicity (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:563 — reduction identities + cap + savings-rate/emergency-fund recompute + monotonicity over 50 cases. |
+| What-if: salary sacrifice to super | → | What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:639 — composition identities + cap hard-stop refuse + Div 296 FW-2 lock + zero-salary refuse; cap-guard mutation-proven. |
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3865,6 +3865,38 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if payDownLoan)",
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L2.cutSpendCategory",
+      "kind": "verification",
+      "label": "What-if cut-spend — reduction identities + cap + monotonicity (L2)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 563,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L2",
+      "produces": "The reduction reconciles: realised = min(requested, currentSpend) (over-cut is capped — no phantom saving), cashflow delta = +realised, annual = realised×12, savings-rate after = (income − (expenses − realised) − loanRepay)/income×100, emergency months after = liquidCash/(expenses − realised). Golden ($300 off $800 Dining) + 50-case sweep + monotonicity (a larger realised reduction never lowers cashflow/savings-rate).",
+      "catches": "A dropped cap (phantom saving larger than the category spend), a wrong savings-rate or emergency-fund recompute, or a non-monotone response.",
+      "authority": "Budget arithmetic: realised reduction is bounded by actual spend; downstream metrics recompute from the reduced expense base.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if cutSpendCategory)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L2.salarySacrificeToSuper",
+      "kind": "verification",
+      "label": "What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 639,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L2",
+      "produces": "Composition identities: taxable income drops by exactly the annual sacrifice, the concessional tile delta equals the sacrifice (after−before === delta), and take-home delta = (−annualSacrifice + the engine’s own reported tax saving)/12. SAFETY guards (the trust guarantee): the concessional-cap hard stop REFUSES (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the Div 296 FW-2 reform lock REFUSES when TSB > $3M and commencement is unverified; zero salary refuses. Cap boundary derived live from getCurrentTaxYearConfig() so it survives FY rollover.",
+      "catches": "The highest-stakes failure: silently modelling an ILLEGAL over-cap contribution, or a post-reform Div 296 number before Royal Assent (CLAUDE.md §12.14 FW-2). Mutation-proven by disabling the guard.",
+      "authority": "Concessional cap (config.concessionalCap; SG = gross × superGuaranteeRate); Div 296 high-balance super tax FW-2 commencement-verification (CLAUDE.md §12.14).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if salarySacrificeToSuper)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5975,6 +6007,20 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:462 — conservation-identity differential (totalPaid − principal) + golden + principal-retired conservation + monotonicity over 50 cases."
+    },
+    {
+      "from": "engine.cutSpendCategory.cutSpendCategoryScenario",
+      "to": "verification.trustEngine.L2.cutSpendCategory",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:563 — reduction identities + cap + savings-rate/emergency-fund recompute + monotonicity over 50 cases."
+    },
+    {
+      "from": "engine.salarySacrificeToSuper.salarySacrificeToSuperScenarioDecimal",
+      "to": "verification.trustEngine.L2.salarySacrificeToSuper",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:639 — composition identities + cap hard-stop refuse + Div 296 FW-2 lock + zero-salary refuse; cap-guard mutation-proven."
     }
   ]
 }

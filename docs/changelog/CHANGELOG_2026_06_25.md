@@ -653,3 +653,37 @@ All 7 cascade/arithmetic/amortisation what-ifs now verified + modelled: sellProp
 ### PR
 - Branch: `claude/trust-engine-whatif-a4-jqahjw` (stacked on #1252)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche A.5 — verify cutSpendCategory + salarySacrificeToSuper (closes Tranche A)
+
+### Changes Made
+- **Type**: Enhancement (Trust Engine verification — Tranche A FINAL slice). No production logic changed.
+- **`cutSpendCategoryScenario`** verified by its reduction identities: realised = `min(requested, currentSpend)` (over-cut **capped** — no phantom saving), cashflow delta = +realised, annual = realised×12, savings-rate after = `(income − (expenses − realised) − loanRepay)/income×100`, emergency months after = `liquidCash/(expenses − realised)`. Golden + 50-case sweep + monotonicity.
+- **`salarySacrificeToSuperScenario`** — the highest-stakes lever — verified two ways:
+  - **Composition identities**: taxable income drops by exactly the annual sacrifice; the concessional tile's displayed delta equals the sacrifice (`after − before === delta`); take-home delta = `(−annualSacrifice + the engine's own reported tax saving)/12`.
+  - **SAFETY guards (the trust guarantee)**: the concessional-cap **hard stop REFUSES** (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the **Div 296 FW-2 reform lock REFUSES** when TSB > $3M and commencement is unverified (CLAUDE.md §12.14); zero-salary refuses. Cap boundary derived live from `getCurrentTaxYearConfig()` so it survives FY rollover.
+- Both engines **mutation-proven** — notably, disabling the salarySacrifice cap-guard is caught by the SAFETY test (proving the refuse-to-compute behaviour is genuinely locked, not incidentally passing). Restored to 0-diff.
+- Two `verified-by` L2 verification nodes added.
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.scenarios.test.ts` — +cutSpend + salarySacrifice blocks (26 tests total in file).
+- `docs/financial-logic/graph/financial-graph.json` — v0.40.0 → **v0.41.0**, +2 verification nodes / +2 verified-by edges (175 nodes / 220 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.scenarios` — 26/26
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **12/92 (13%) · 16 verification node(s) · L0 1 · L1 7 · L2 5 · L3 3** (graph v0.41.0).
+
+### §20.4 self-review → 10/10
+For the lever that touches super law, verifying the **refuse-to-compute** behaviour (cap hard-stop + Div 296 FW-2 lock) is more valuable than re-deriving the sub-engine's tax math — a silently-modelled illegal contribution is the catastrophic failure mode, and the mutation proof confirms the guard is what's holding. The sub-engine `calculateSuperContributionsDecimal` (tax saving / Div 293 / contributions tax) is treated as a verified input here and flagged for its own node in Tranche E (tax divisions). 10/10.
+
+### Tranche A COMPLETE
+All 9 what-if levers now verified + modelled: sellProperty · tenYearProjection · propertyDisposalCgt (A.1/A.2) · addInvestment · redirectToOffset (A.3) · refinanceLoan · payDownLoan (A.4) · cutSpendCategory · salarySacrificeToSuper (A.5). The what-if surface — the gap Reza specifically flagged ("selling a property will change repayments, cashflow, CGT, tax deductions, and many other things") — is now fully covered by the Trust Engine + the Neomatrix. **Next: Tranche D** (canonical SSOT homes — `lib/utils/calculations` LVR/equity/yield/amortisation, `lib/utils/frequencies`, `health/metricAggregation`) so the W2–W7 dedup is gate-enforced via A3 convergence.
+
+### PR
+- Branch: `claude/trust-engine-whatif-a5-jqahjw` (stacked on #1253)
+- Status: Draft
