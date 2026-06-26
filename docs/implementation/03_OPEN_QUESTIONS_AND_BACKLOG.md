@@ -125,3 +125,21 @@
 
 ---
 
+
+---
+
+### 🔎 Finding (2026-06-26) — 3 proven tax engines are UNWIRED in production (a MISS, not dead code)
+
+**Surfaced by:** Reza's Neomatrix-explorer review ("are they really connected in the app or only the graph?") → audited in source.
+
+| Engine | File | Status |
+|---|---|---|
+| PSI classifier | `lib/tax-engine/divisions/psiClassifier.ts` | **MISS** — 0 production callers |
+| Div 152 small-business CGT | `lib/tax-engine/divisions/div152SmallBusinessConcessions.ts` | **MISS** — 0 production callers |
+| FTE/IEE distributions | `lib/tax-engine/divisions/fteIeeClassifier.ts` | **MISS** — 0 production callers |
+
+**Verdict (verified):** NOT dead code. `lib/tax-engine/orchestrator/masterTaxPosition.ts:24-39` designs them as **step-3 "per-entity advanced overlays"** — the *same list* as trust-loss + company-loss rules, which **were** wired (`masterTaxPosition.ts:230-246`). The overlay loop was completed for 2 of 5 engines; these 3 never got their `input.*ByEntity` wiring. The trust path even captures `hasFamilyTrustElection` (`entityTaxRouter.ts:387`) but never calls the FTE/IEE engine that consumes it.
+
+**Fix (a real feature — awaiting Reza go-ahead):** wire the 3 as step-3 overlays in `buildMasterTaxPosition`, mirroring the loss-rule pattern (add `input.div152ByEntity` / `psiByEntity` / `fteIeeByEntity` → loop → call engine → decorate `EntityTaxPosition` with citations + UNCOMPUTED flags). **v1 surfaces the rule outcome only — does NOT change the result number** (per the documented v1/v2 boundary). The assembler (`entityTaxFactsAssembler.ts`) then populates those inputs from entity data.
+
+**Surfaced in the graph:** the 3 Neomatrix nodes are annotated with this verdict + flagged as allowed islands by the A6 connectivity gate (reviewed allowlist, §22.2) — they show honestly as disconnected (because they ARE in the app), not faked-connected.
