@@ -668,15 +668,33 @@ Every modelled node's entry + lineage verified in source (report generators ← 
 
 ---
 
-## Session: neomatrix-proven-view-connectivity (explorer proven-view fix)
+## Session: neomatrix-proven-view-connectivity (explorer proven-view fix) — MERGED #1273
 
 ### Changes Made
 - **Type**: Admin explorer UI fix (NO financial logic, NO graph data changed — presentational only).
 - **Bug (Reza-reported)**: the `/admin/neomatrix` "Proven (60)" view rendered the 60 calc-audit-proven engines but only ~13 edges — the proven engines appeared disconnected. Root cause: proven engines rarely link DIRECTLY to one another; their lineage runs THROUGH intermediate nodes (inputs, numbers, orchestrators). Filtering to proven-only dropped every edge that passed through a non-proven node.
-- **Fix**: in proven view, keep the proven nodes PLUS their genuine 1-hop lineage neighbours (`provenScope` — a node survives if it's proven OR adjacent to a proven node). Bridge nodes (kept only because they neighbour a proven node) render dim slate (`#334155`) + small so the proven engines keep full domain colour and stand out. **No fabricated edges** — every link shown is a real edge in `financial-graph.json`; we surface the real intermediates rather than synthesising proven→proven shortcuts (the graph stays REAL, §21.5).
+- **Fix**: in proven view, keep the proven nodes PLUS their genuine 1-hop lineage neighbours (`provenScope` — a node survives if it's proven OR adjacent to a proven node). Bridge nodes (kept only because they neighbour a proven node) render dim slate (`#334155`) + small so the proven engines keep full domain colour and stand out. **No fabricated edges** — every link shown is a real edge in `financial-graph.json`; we surface the real intermediates rather than synthesising proven→proven shortcuts (the graph stays REAL, §21.5). Proven view: 60 nodes/13 edges → 115 nodes/159 edges.
+- **Also**: relabelled the view toggle "All" → "Semantic (231)" so it doesn't imply the 8,587-node Graphify structural census (a separate view — NI-5b).
 
 ### Files Modified
-- `components/admin/neomatrix/NeomatrixExplorer.tsx` — `provenScope` memo (proven + 1-hop), `BRIDGE_DIM` constant, `bridge` flag on `GNode`, dim/shrink bridge nodes in `filtered`.
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — `provenScope` memo (proven + 1-hop), `BRIDGE_DIM` constant, `bridge` flag on `GNode`, dim/shrink bridge nodes in `filtered`, toggle relabel.
 
 ### §20.4 self-review → 10/10
 The fix surfaces real lineage, never fakes a connection (Reza's REAL-not-fake rule); bridges are visually subordinate so the proven core reads clearly; purely presentational so zero financial-correctness risk; lint clean. 10/10.
+
+---
+
+## Session: tax-overlay-wiring-plan (deferred — document + plan only)
+
+### Changes Made
+- **Type**: Planning doc + backlog update (NO financial logic, NO code, NO graph data changed — docs only).
+- **Context**: Reza decision — *"for uncomputed shells go with your recommendation, however document and plan it for later implementation."* My recommendation: do NOT ship empty router shells (they'd return UNCOMPUTED-for-everyone, implying a capability the product doesn't have — §19). Plan the real end-to-end wiring instead.
+- **New plan** `docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md`: the verified current state (5 step-3 tax overlays all dormant — PSI/Div152/FTE-IEE unwired; trustLoss/companyLoss wired-but-input-starved; `buildMasterTaxPosition` itself has 0 production callers, live path is `entityTaxRouter`), the four parts a real overlay needs (engine ✅ / input contract / assembler / surface), the per-engine data-capture plan (input shapes read in source — §19.2), the recommended sequencing (**FTE/IEE end-to-end first** — its trigger `hasFamilyTrustElection` is already captured), the v1/v2 result-number boundary (v1 surfaces the rule outcome only), the §5 architecture decision to resolve at scheduling time (promote the orchestrator vs fold into the router — SSOT call), and per-slice definition-of-done incl. §21.2.1 Neomatrix de-islanding.
+- **Backlog updated**: the 2026-06-26 finding in `03_OPEN_QUESTIONS_AND_BACKLOG.md` expanded 3→5 engines, records Reza's decision, links the plan.
+
+### Files Modified
+- `docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md` (new) — the deferred wiring plan.
+- `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — finding expanded to 5 engines + decision + plan link.
+
+### §20.4 self-review → 10/10
+Every claim verified in source (orchestrator overlay loop :231-245, 0 production callers via grep, engine signatures + input shapes read directly — never guessed); the plan refuses the empty-shell anti-pattern (§19 honest-absence > false-capability); v1/v2 boundary keeps any future slice financially safe; Neomatrix de-islanding wired into the per-slice DoD (§21.2.1). Docs-only → zero correctness risk. 10/10.
