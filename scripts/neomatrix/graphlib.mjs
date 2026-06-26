@@ -181,7 +181,20 @@ export function auditInvariants(graph) {
   // single link" defect (Reza 2026-06-26). Every `number`/`engine`/`orchestrator`
   // node must live in the MAIN connected component. The fix for a flagged island
   // is to model its real data-flow lineage (inputs that feed it + the consumer/
-  // orchestrator that uses its output), never a faked edge (§19.2).
+  // orchestrator that uses its output), NEVER a faked edge (§19.2).
+  //
+  // Reviewed exception allowlist (§22.2 — visible, reasoned, shrinking; never a
+  // silent drop). A node here is a KNOWN island because the underlying CODE is
+  // genuinely disconnected in the app — connecting it in the graph would be a
+  // lie. Each entry must cite WHY. Remove an entry the moment its engine is
+  // wired into a production flow. (Reza 2026-06-26: "are they really connected
+  // in the app or only the graph?" — these 3 are honestly NOT, so the graph
+  // shows them as islands rather than faking a data-flow.)
+  const A6_ISLAND_ALLOWLIST = {
+    'engine.tax.psi.classifyPsi': 'PRODUCTION-UNWIRED: 0 production callers (only its calc-audit fixture invokes it). Proven, not yet wired into any user flow.',
+    'engine.tax.div152.applyDiv152': 'PRODUCTION-UNWIRED: 0 production callers (only calc-audit fixtures). Proven, not yet wired.',
+    'engine.tax.fteIee.classifyFteIeeDistributions': 'PRODUCTION-UNWIRED: 0 production callers (only its calc-audit fixture). Proven, not yet wired.',
+  };
   const adj = new Map();
   for (const n of graph.nodes) adj.set(n.id, new Set());
   for (const e of graph.edges) {
@@ -205,8 +218,14 @@ export function auditInvariants(graph) {
     const byId = new Map(graph.nodes.map((n) => [n.id, n]));
     for (const comp of components.slice(1)) {
       const calcs = comp.filter((id) => calcKinds.has(byId.get(id)?.kind));
-      if (calcs.length) {
-        errors.push(`A6: island of ${comp.length} node(s) disconnected from the main graph — contains calc node(s) [${calcs.join(', ')}]. Wire their real lineage into the main component (inputs + consumer/orchestrator), never a faked edge.`);
+      // An island is allowed ONLY if every calc node in it is on the reviewed
+      // production-unwired allowlist (then it's a known, explained exception —
+      // surfaced, not hidden). Any un-allowlisted calc node fails the build.
+      const unexplained = calcs.filter((id) => !A6_ISLAND_ALLOWLIST[id]);
+      if (unexplained.length) {
+        errors.push(`A6: island of ${comp.length} node(s) disconnected from the main graph — contains calc node(s) [${unexplained.join(', ')}]. Wire their real lineage into the main component (inputs + consumer/orchestrator), never a faked edge. If genuinely production-unwired, add to A6_ISLAND_ALLOWLIST with the verified reason.`);
+      } else if (calcs.length) {
+        warnings.push(`A6: allowed island [${calcs.join(', ')}] — production-unwired (reviewed allowlist). ${calcs.map((id) => A6_ISLAND_ALLOWLIST[id]).join(' ')}`);
       }
     }
   }
