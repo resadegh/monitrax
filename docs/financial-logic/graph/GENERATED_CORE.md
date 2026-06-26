@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.38.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.39.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 165 · **Edges:** 215
-- **By kind:** orchestrator 8 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 165
-- **Edge provenance:** verified 215 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/91 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 168 · **Edges:** 221
+- **By kind:** orchestrator 8 · engine 75 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 168
+- **Edge provenance:** verified 221 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/94 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -98,6 +98,9 @@
 | **What-if: park cash in offset** | `lib/cfo/scenarios/redirectToOffset.ts:22` | engine | cfo | ScenarioResult — annual interest saved by adding cash to a loan offset account (liquidity preserved — offset still counts as liquid). | Offset mechanics (effective principal = principal − offset) + Monitrax what-if annualisation (annual = monthly × 12). | calc-audit engine cfo.scenarios.redirectToOffset (proven) + lib/cfo/scenarios/redirectToOffset.ts:22 | documented |
 | **What-if: refinance a loan** | `lib/cfo/scenarios/refinanceLoan.ts:21` | engine | cfo | ScenarioResult — monthly/lifetime savings and break-even months from refinancing to a new rate, net of switching costs. | Standard P&I repayment formula (canonical lib/utils/calculations.calculatePIRepayment); break-even = cost / monthly saving. | calc-audit engine cfo.scenarios.refinanceLoan (proven) + lib/cfo/scenarios/refinanceLoan.ts:21 | documented |
 | **What-if: start a monthly investment** | `lib/cfo/scenarios/addInvestment.ts:20` | engine | cfo | ScenarioResult — projected future value and growth of a recurring monthly investment, plus the monthly cashflow impact of the contribution. | Future value of an ordinary monthly annuity; cashflow contribution held constant. | calc-audit engine cfo.scenarios.addInvestment (proven) + lib/cfo/scenarios/addInvestment.ts:20 | documented |
+| **Loan: monthly P&I payment** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:615` | engine | cfo | Monthly principal-and-interest repayment for a loan amortised over `months`. | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculateMonthlyPayment (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:615 | documented |
+| **Loan: months to payoff** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:635` | engine | cfo | Number of months to fully repay a loan at a given monthly payment (999 if payment ≤ interest; capped at 600). | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculatePayoffMonths (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:635 | documented |
+| **Loan: total interest over term** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:661` | engine | cfo | Total interest paid over the loan term for a given monthly payment and number of months. | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculateTotalInterest (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:661 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -161,7 +164,7 @@
 | **Cashflow health category weights** | overall = Σ category × weight | Monitrax cashflow-intelligence methodology | Cashflow health score (5-category) |
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
 | **Report aggregation rules** | total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n | Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values) | Property portfolio report |
-| **Loan interest = principal × annual rate** | monthlyInterest = P × r/12 | Standard interest formula | Loan/debt aggregation (interest) |
+| **Loan interest = principal × annual rate** | monthlyInterest = P × r/12 | Standard interest formula | Loan/debt aggregation (interest), Loan: monthly P&I payment, Loan: months to payoff, Loan: total interest over term |
 | **Lookup-first categorisation cascade** | Cheapest source wins, first match: user MerchantMapping → AU rules → graduated shared-KB prior → Gemini-on-miss (RAG) → Uncategorised. The LLM only ever sees the unknown tail (cost + drift control). | CLAUDE.md §12.2.1 + Phase 52 §2 | Transaction categoriser (hybrid cascade) |
 | **Categorisation confidence bands** | autoAccept ≥ 0.90 (write straight to ledger); 0.70–0.90 → review queue; < 0.70 → manual. Thresholds are per-user (UserCategorizationSettings). | Phase 29 + UserCategorizationSettings defaults | Confidence-band classifier |
 | **k-anonymity KB graduation** | A signature→category pattern becomes a shared cross-user prior only after ≥ k distinct users confirm it (k=5, KB_GRADUATION_K); graduation is sticky (never demoted). Private mappings stay authoritative for their owner. | Phase 52 §3 (hybrid private + k-anon shared) | KB vote aggregation + graduation |
@@ -401,6 +404,12 @@
 | Master financial snapshot | → | What-if: refinance a loan | feeds | — | verified | lib/cfo/scenarios/refinanceLoan.ts:47 — reads ctx.snapshot.quickMetrics.monthlyCashflow |
 | Master financial snapshot | → | What-if: start a monthly investment | feeds | — | verified | lib/cfo/scenarios/addInvestment.ts:24,38 — reads ctx.snapshot.quickMetrics.monthlyCashflow / emergencyFund.monthsCovered |
 | What-if: park cash in offset | → | What-if annualisation rule | governed-by | — | verified | lib/cfo/scenarios/redirectToOffset.ts:51 — annualInterestSaved = monthlyInterestSaved * 12 |
+| Loan.principal | → | Loan: monthly P&I payment | feeds | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:347 — calculateMonthlyPayment(loan.principal, loan.interestRateAnnual, 240) |
+| Loan: monthly P&I payment | → | Loan interest = principal × annual rate | governed-by | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:615-629 — standard P&I amortisation |
+| Loan.principal | → | Loan: months to payoff | feeds | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:449 — calculatePayoffMonths(targetLoan.principal, targetLoan.interestRateAnnual, …) |
+| Loan: months to payoff | → | Loan interest = principal × annual rate | governed-by | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:635-657 — standard P&I amortisation |
+| Loan.principal | → | Loan: total interest over term | feeds | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:465 — calculateTotalInterest(targetLoan.principal, targetLoan.interestRateAnnual, …) |
+| Loan: total interest over term | → | Loan interest = principal × annual rate | governed-by | — | verified | lib/cfo/decisionSupport/loanDecisionSupport.ts:661-668 — standard P&I amortisation |
 
 ---
 

@@ -235,3 +235,22 @@ Every export line re-verified in source; every `feeds` edge backed by a confirme
 
 ### PR
 - Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw` (PR #1265 — extends the orphan-fix PR with the first gate-green backfill batch). Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3c-loan-decision (backfill 3 loanDecisionSupport amortisation engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled the 3 proven-but-unmodelled loan amortisation helpers in `lib/cfo/decisionSupport/loanDecisionSupport.ts`, each WITH lineage (A5-green):
+  - `engine.loanDecisionSupport.calculateMonthlyPayment` (:615) — P&I annuity `P·r(1+r)ⁿ/((1+r)ⁿ−1)`
+  - `engine.loanDecisionSupport.calculatePayoffMonths` (:635) — `n = ceil(−log(1−P·r/M)/log(1+r))`, 999 if M≤interest, cap 600
+  - `engine.loanDecisionSupport.calculateTotalInterest` (:661) — `max(0, payment×months − principal)`
+- **Lineage (6 edges, verified §19.2):** `input.Loan.principal --feeds-->` each (confirmed at call sites :347/:449/:465 — each passes `loan.principal` + `loan.interestRateAnnual`); each `--governed-by--> law.standard.loanInterest` (they implement standard amortisation, formulas read in source).
+- **Coverage: 65% → 69%** (55 → 58 modelled · worklist 29 → 26). `neomatrix:check` green (168 nodes / 221 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes, +6 verified edges, version 0.38.0→0.39.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Each formula + each call-site field mapping re-verified in source (not memory); governed-by backed by reading the actual amortisation formula; principal-feeds backed by the verbatim call-site args. 10/10.

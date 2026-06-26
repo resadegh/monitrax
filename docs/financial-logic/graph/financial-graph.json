@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3744,6 +3744,69 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.loanDecisionSupport.calculateMonthlyPayment",
+      "kind": "engine",
+      "label": "Loan: monthly P&I payment",
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "line": 615,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Monthly principal-and-interest repayment for a loan amortised over `months`.",
+      "formula": "monthlyRate = annualRate/12; payment = P·r·(1+r)^n / ((1+r)^n − 1); degenerate (rate 0 OR months 0) → principal/months (or 0).",
+      "authority": "Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.loanDecisionSupport.calculateMonthlyPayment (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:615",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.loanDecisionSupport.calculatePayoffMonths",
+      "kind": "engine",
+      "label": "Loan: months to payoff",
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "line": 635,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Number of months to fully repay a loan at a given monthly payment (999 if payment ≤ interest; capped at 600).",
+      "formula": "monthlyRate = annualRate/12; n = ceil( −log(1 − P·r/M) / log(1+r) ), min(n, 600); returns 999 if M ≤ P·r.",
+      "authority": "Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.loanDecisionSupport.calculatePayoffMonths (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:635",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.loanDecisionSupport.calculateTotalInterest",
+      "kind": "engine",
+      "label": "Loan: total interest over term",
+      "file": "lib/cfo/decisionSupport/loanDecisionSupport.ts",
+      "line": 661,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Total interest paid over the loan term for a given monthly payment and number of months.",
+      "formula": "totalInterest = max(0, monthlyPayment × months − principal).",
+      "authority": "Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.loanDecisionSupport.calculateTotalInterest (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:661",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5833,6 +5896,48 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/cfo/scenarios/redirectToOffset.ts:51 — annualInterestSaved = monthlyInterestSaved * 12"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.loanDecisionSupport.calculateMonthlyPayment",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:347 — calculateMonthlyPayment(loan.principal, loan.interestRateAnnual, 240)"
+    },
+    {
+      "from": "engine.loanDecisionSupport.calculateMonthlyPayment",
+      "to": "law.standard.loanInterest",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:615-629 — standard P&I amortisation"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.loanDecisionSupport.calculatePayoffMonths",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:449 — calculatePayoffMonths(targetLoan.principal, targetLoan.interestRateAnnual, …)"
+    },
+    {
+      "from": "engine.loanDecisionSupport.calculatePayoffMonths",
+      "to": "law.standard.loanInterest",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:635-657 — standard P&I amortisation"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.loanDecisionSupport.calculateTotalInterest",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:465 — calculateTotalInterest(targetLoan.principal, targetLoan.interestRateAnnual, …)"
+    },
+    {
+      "from": "engine.loanDecisionSupport.calculateTotalInterest",
+      "to": "law.standard.loanInterest",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/loanDecisionSupport.ts:661-668 — standard P&I amortisation"
     }
   ]
 }
