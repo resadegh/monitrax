@@ -587,3 +587,23 @@ Reza asked: *"are they really connected in the app or only the graph?"* — exac
 
 ### §20.4 self-review → 10/10
 Every caller verified in source (6 wired, 3 not, root is live); fabricated edges removed rather than left to flatter the viz; the truth surfaced (node annotation + build warning + allowlist reason + finding for Reza) instead of hidden. This is the §19.2/§22 integrity standard Reza's question demanded. 10/10.
+
+---
+
+## Session: neomatrix-audit-3-unwired-engines (audit verdict — MISS, not dead code)
+
+### Changes Made
+- **Type**: Audit + Neomatrix annotation precision + finding tracking (NO production code / financial logic changed).
+- Reza directive: *"don't delete the 3 nodes, perform the detailed review and audit to see why they are not called — is it a miss or really dead code."*
+- **Verdict (verified in source): all 3 (PSI, Div 152, FTE/IEE) are a MISS, not dead code.** `masterTaxPosition.ts:24-39` designs them as step-3 per-entity overlays (same list as trust-loss + company-loss, which WERE wired at :230-246). The overlay loop was finished for 2 of 5; these 3 never got `input.*ByEntity` wiring. Trust path captures `hasFamilyTrustElection` (`entityTaxRouter.ts:387`) but never calls the FTE/IEE engine.
+- Updated the 3 Neomatrix node annotations + A6 allowlist reasons from vague "production-unwired / pending UI" to the precise MISS verdict + the exact fix.
+- Logged the finding in `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md`.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — 3 node annotations → MISS verdict, version →0.54.0. `scripts/neomatrix/graphlib.mjs` — A6 allowlist reasons. `docs/implementation/03_OPEN_QUESTIONS_AND_BACKLOG.md` — finding. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (1 main component + 3 allowed/explained islands; A6 prints the MISS verdict).
+
+### §20.4 self-review → 10/10
+Verdict traced to the orchestrator's own design comment + the wired-vs-unwired overlay diff (not guessed); graph annotations now state the audited truth + the exact fix; finding tracked. The fix itself (wiring) is held for Reza — it's a feature touching the assembler + (v2) result numbers. 10/10.
