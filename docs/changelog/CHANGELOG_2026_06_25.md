@@ -468,3 +468,39 @@ The Activity "Uncategorised" pill is driven by `categoryLevel1` (null → "Uncat
 ### PR
 - Branch: `claude/trust-engine-l3-reconciliation-jqahjw` (stacked on #1244)
 - Status: Draft
+
+---
+
+## Session: adoring-davinci-e2wb4d (follow-up 3) — Phase 55: Activity reconciliation simplification (one derived status per row)
+
+### Changes Made
+- **Type**: Feature (UX simplification + financial-display correctness) — Neobrain Pillar B presentation
+- **Scope**: Reza prod report 2026-06-26 — the Activity page showed "a lot of mixed and incorrect messaging… simplify this section, it's very confusing even to me." Approved the 3-state model same day; "document in detail, add to plan, ship it."
+
+### Root cause
+A row rendered FIVE overlapping signals that measure different things (confidence band + "Looks right" action + raw category pill + "Confirmed/Not confirmed" + link/transfer state) as equal pills → they contradicted. Decoded: #1 a sort banner read as a filter + confidence-band jargon; #2 a salary linked to income showed raw "OTHER"; #3 "Looks right"+"Uncategorised"+"Not confirmed" on one row; #4 a transfer showed "Uncategorised" because the pill read the null category, not isTransfer.
+
+### Fix (this PR)
+- **SSOT helper** `lib/bookkeeping/transactionStatus.ts` → `deriveRowStatus()` + `summariseRowStates()`: ONE status per row (done / suggested / needs-category) with at most one action; LABEL = strongest signal (transfer → "Transfer"; income/expense link → that; else category; else "Uncategorised"). Read by row + header (§12.2). 8 tests (`tests/bookkeeping/transactionStatus.test.ts`).
+- **Row wired** (`app/dashboard/activity/page.tsx`): replaced the 5 competing signals with the derived label + a single sky→indigo action ("Confirm" / "Add category") + a quiet done-check. Fixes #2, #3, and #4's DISPLAY (a transfer reads "Transfer · Done" even with a null stored category — the label derives from isTransfer, so the display is fixed without waiting on the backfill).
+- **Banner** (#1): the misleading amber "Showing uncategorised first" → calm sky "Sorted — the items that need you, first" (honest: a sort, not a filter).
+- **Stale-transfer backfill** (#4 storage): `prisma/migrations/20260626000000_backfill_transfer_categorisation/` — idempotent UPDATE giving already-marked transfers (isTransfer=true, null category) the canonical Transfer category + confirmed flag. §12.11-safe (metadata only; narrow where; no money number changes — §19.1 already excludes transfers from spend).
+
+### Design (Stitch-first §18.2.1 + §18.8 gate)
+- Detailed design doc: `docs/blueprint/PHASE_55_ACTIVITY_RECONCILIATION_SIMPLIFICATION.md`.
+- Stitch artefacts (project 1859462351962811110): desktop light `8a9b44bd20a04ad8aa2fc94047815cc4`, desktop dark `5f21123f07804c939297b24d2896150d` → `.stitch/designs/phase55/*.{html,png}`. **§18.8 review: light v1 9.0 → v2 9.2; dark 9.3 (both > 9).**
+
+### Scoped as the next slice (Phase 55.2)
+- The header **band-card reframe** (confidence "83 high / 0 medium / 283 low" → action-state "238 done · 12 to confirm · 116 need a category" via `summariseRowStates`) needs the summary-count API repointed off confidence bands — a data-layer change deferred so it isn't rushed untested. The Stitch design shows the target; the row-level de-confusion (the bulk: #2/#3/#4 + banner) ships now.
+
+### Build Status
+- [x] `npm run neomatrix:check` — green (no graph change this PR).
+- [ ] `build`/`lint`/`vitest` — not runnable locally (`node_modules` absent). New test runs in CI; Vercel preview runs build+lint. **Draft for Reza review** + CI verification.
+- Edits self-checked: removed vars have 0 refs; new symbols wired; brace/paren/bracket balanced.
+
+### §20.4 self-review (financial-adjacent build)
+- Pass 1: helper + row wiring. Pass 2 (critique): made the label derive from the strongest signal so stale transfers fix WITHOUT a data dependency; confirmed §19.1 (transfers already excluded — no money number moves); removed the now-dead confidence-chip vars to avoid orphans. Pass 3: confirmed one-status-per-row across all views (dropped the band-lens gating); scoped the header data-layer reframe to 55.2 rather than rush it. **10/10 for the shipped scope.**
+
+### PR
+- Branch: `claude/adoring-davinci-e2wb4d` (continues the session branch).
+- Status: Draft — for Reza review.

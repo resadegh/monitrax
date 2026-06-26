@@ -71,6 +71,7 @@ import { CashQuickAddButton } from '@/components/bookkeeping/CashQuickAddButton'
 import { ConfidenceReviewCard } from '@/components/bookkeeping/ConfidenceReviewCard';
 import { SubscriptionsReviewCard } from '@/components/bookkeeping/SubscriptionsReviewCard';
 import { formatCurrency } from '@/lib/utils/formatters';
+import { deriveRowStatus } from '@/lib/bookkeeping/transactionStatus';
 
 // ---------------------------------------------------------------------------
 // Types — mirror the API response shape from /api/unified-transactions
@@ -796,14 +797,15 @@ function ActivityPageContent() {
           }}
         />
 
-        {/* "Uncategorised first" pill — calmer than the legacy amber alert */}
+        {/* Phase 55 — honest, calm sort cue: this is a SORT (needs-you first),
+            not a filter. Neutral sky tone, not an amber alert. */}
         {tileFilter === 'uncategorized' && (
-          <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-100 text-sm text-amber-900 anim-fade-in">
+          <div className="mb-5 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-500/10 border border-sky-500/20 text-sm text-sky-800 dark:text-sky-300 anim-fade-in">
             <Sparkles className="w-3.5 h-3.5" />
-            <span className="font-medium">Showing uncategorised first</span>
+            <span className="font-medium">Sorted — the items that need you, first</span>
             <button
               onClick={() => { setTileFilter('all'); setPage(1); }}
-              className="text-amber-700 underline underline-offset-2 hover:text-amber-900"
+              className="underline underline-offset-2 hover:opacity-80"
             >
               Show all
             </button>
@@ -989,7 +991,6 @@ function ActivityPageContent() {
                         selected={selectedIds.has(tx.id)}
                         onToggleSelected={() => toggleSelected(tx.id)}
                         advancedView={advancedView}
-                        showConfirmState={confidenceBand !== null}
                         onConfirm={() => confirmRow(tx)}
                         onClick={() => {
                           setLinkingTransaction(tx);
@@ -1681,7 +1682,6 @@ function TransactionRow({
   selected,
   onToggleSelected,
   advancedView = false,
-  showConfirmState = false,
   onConfirm,
   onSwipeLeft,
   onSwipeRight,
@@ -1693,9 +1693,6 @@ function TransactionRow({
   selected: boolean;
   onToggleSelected: () => void;
   advancedView?: boolean;
-  /** Phase 49.14 — band-lens mode: show a plain ✓ Confirmed / Not confirmed
-      status chip on every row so the user can compare bands at a glance. */
-  showConfirmState?: boolean;
   /** Phase 49 — "✓ Looks right": confirm the AI's category for this row. */
   onConfirm?: () => void;
   onSwipeLeft?: () => void;
@@ -1721,19 +1718,24 @@ function TransactionRow({
   const uncertain =
     tx.confidenceScore !== null && tx.confidenceScore < 0.9 && tx.userCorrectedCategory !== true;
   const lowBand = tx.confidenceScore !== null && tx.confidenceScore < 0.7;
-  const confidencePillTone = lowBand
-    ? 'bg-rose-500/15 text-rose-700 border-rose-500/30 dark:text-rose-300'
-    : 'bg-amber-500/15 text-amber-700 border-amber-500/30 dark:text-amber-300';
   const showConfidence = advancedView && uncertain;
+  // Phase 55 — the ONE derived status for this row: a single label (the
+  // strongest signal — transfer/link wins over raw category) + at most one
+  // action. Read from the SSOT so the row + header can't disagree (§12.2).
+  const rowStatus = deriveRowStatus({
+    categoryLevel1: tx.categoryLevel1,
+    isTransfer: tx.isTransfer,
+    incomeId: tx.incomeId,
+    expenseId: tx.expenseId,
+    userCorrectedCategory: tx.userCorrectedCategory,
+  });
+  const runAction = (e: React.SyntheticEvent) => {
+    e.stopPropagation();
+    if (rowStatus.actionLabel === 'Confirm' && onConfirm) onConfirm();
+    else onClick();
+  };
   const confidenceLabel = lowBand ? 'Low confidence' : 'Medium confidence';
   const confidenceTone = lowBand ? 'text-rose-600' : 'text-amber-600';
-  // "✓ Looks right" quick-confirm chip: uncertain rows always; in band-lens
-  // mode (Phase 49.14) ANY unconfirmed row, so the user can sign off
-  // straight from the comparison view.
-  const showConfirmChip =
-    (uncertain || (showConfirmState && tx.userCorrectedCategory !== true)) &&
-    !!tx.categoryLevel1 &&
-    !!onConfirm;
   // Anomaly badge: also gated behind Advanced view per the same rule.
   const showAnomalyBadge = advancedView && hasAnomaly;
 
@@ -1893,67 +1895,55 @@ function TransactionRow({
             </>
           )}
         </div>
-        {/* Phase 49 — category pill moves UNDER the merchant on mobile
-            (per the Stitch mobile reflow); desktop keeps the inline pill. */}
-        {tx.categoryLevel1 && (
+        {/* Phase 55 — mobile shows the ONE derived label under the merchant
+            (strongest signal: transfer/link wins over raw category). */}
+        <span
+          className={`md:hidden mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+            rowStatus.state === 'needs-category'
+              ? 'border-foreground/15 bg-muted/50 text-muted-foreground'
+              : rowStatus.done
+                ? 'border-foreground/10 bg-foreground/[0.04] text-muted-foreground'
+                : getCategoryTone(rowStatus.label)
+          }`}
+        >
+          {rowStatus.done && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+          {rowStatus.label}
+        </span>
+      </div>
+
+      {/* Phase 55 — ONE derived status per row (desktop): the strongest-signal
+          label + AT MOST one action. Replaces the old "Looks right" chip + raw
+          category pill + "Confirmed / Not confirmed yet" trio that contradicted
+          each other (CLAUDE.md §12.2; design `PHASE_55_…`). */}
+      <div className="hidden md:flex items-center gap-1.5 shrink-0">
+        <span
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+            rowStatus.state === 'needs-category'
+              ? 'border-foreground/15 bg-muted/50 text-muted-foreground'
+              : rowStatus.done
+                ? 'border-foreground/10 bg-foreground/[0.04] text-muted-foreground'
+                : getCategoryTone(rowStatus.label)
+          }`}
+        >
+          {rowStatus.done && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
+          {rowStatus.label}
+        </span>
+        {rowStatus.actionLabel && (
           <span
-            className={`md:hidden mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-              uncertain ? confidencePillTone : getCategoryTone(tx.categoryLevel1)
-            }`}
+            role="button"
+            tabIndex={0}
+            onClick={runAction}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') runAction(e);
+            }}
+            className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold text-white bg-gradient-to-r from-sky-500 to-indigo-500 shadow-[0_2px_8px_rgba(14,165,233,0.25)] hover:opacity-90 transition-opacity shrink-0"
+            aria-label={`${rowStatus.actionLabel} — ${rowStatus.label}`}
+            title={rowStatus.actionLabel === 'Confirm' ? "Confirm the AI's category" : 'Add a category'}
           >
-            {tx.categoryLevel1}
+            {rowStatus.actionLabel}
           </span>
         )}
       </div>
-
-      {/* Phase 49 — quiet one-tap confirm for uncertain AI categories.
-          stopPropagation so it never opens the link dialog. */}
-      {showConfirmChip && (
-        <span
-          role="button"
-          tabIndex={0}
-          onClick={(e) => {
-            e.stopPropagation();
-            onConfirm?.();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              e.stopPropagation();
-              onConfirm?.();
-            }
-          }}
-          className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-full border border-foreground/10 bg-background/50 backdrop-blur text-[11px] font-medium text-muted-foreground hover:text-emerald-700 hover:border-emerald-500/30 hover:bg-emerald-500/10 transition-colors shrink-0 dark:hover:text-emerald-300"
-          aria-label={`Confirm category ${tx.categoryLevel1 ?? ''}`}
-          title="Confirm the AI's category"
-        >
-          ✓ Looks right
-        </span>
-      )}
-
-      {/* Category pill (desktop only) — Phase 49.12: confidence-tinted when
-          the AI was uncertain (amber medium / rose low). */}
-      <span
-        className={`hidden md:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
-          uncertain ? confidencePillTone : getCategoryTone(tx.categoryLevel1)
-        }`}
-      >
-        {tx.categoryLevel1 || 'Uncategorised'}
-      </span>
-
-      {/* Phase 49.14 — plain-English status chip in band-lens mode:
-          "✓ Confirmed" (user signed off) vs "Not confirmed yet". */}
-      {showConfirmState && (
-        tx.userCorrectedCategory ? (
-          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/12 text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25 shrink-0">
-            ✓ Confirmed
-          </span>
-        ) : (
-          <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border border-foreground/15 text-muted-foreground shrink-0">
-            Not confirmed yet
-          </span>
-        )
-      )}
 
       {/* Amount */}
       <div className="text-right shrink-0">
