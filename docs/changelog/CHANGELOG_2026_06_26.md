@@ -515,3 +515,25 @@ The dedup shifted source lines, so anchors were re-fixed in the same PR: `calcul
 
 ### §20.4 self-review → 10/10 (financial build)
 3× review: (1) behaviour-preservation proven by worked examples for all input classes; (2) the guard hardening only affects an impossible input (negative property value), strictly safer; (3) anchor drift caught + fixed in-PR (§21.2.1), surface-linter baseline line corrected (not masking a new violation). No number changes for real data. 10/10.
+
+---
+
+## Session: fix-dividend-yield-estimate-label (Issue #2 — honest estimate label, Reza-approved)
+
+### Changes Made
+- **Type**: UI honesty / copy edit (§18.2.1 Stitch-exempt — copy edit). Addresses §19.1 (estimate presented as fact).
+- The CFO investment tile showed `Dividend Yield` from `calculateDividendYield` — a HEURISTIC proxy (franked @ 4%, unfranked @ 2%), not actual distributions. Relabelled to **"Dividend Yield (est.)"** + a `subValue` caption **"Estimated from franking"** so it can no longer be mistaken for the user's actual yield.
+- Step (a) of the Issue-#2 recommendation. Step (b) — compute from ACTUAL dividend distributions when transactions exist (§19.1) — remains a follow-up (needs per-tx distribution data).
+
+### Files Modified
+- `app/dashboard/cfo/page.tsx` — dividend-yield `MetricCard` label + subValue.
+
+### Build Status
+- [x] `tsc --noEmit -p tsconfig.json` — clean on the changed file.
+- [x] No financial logic / number changed — disclosure label only.
+
+### Lenses (§0)
+Financial-adviser + behaviour-psychology: an estimate shown as a hard figure erodes trust the instant the user compares it to their statement; "(est.)" + "from franking" is honest without alarming, and doesn't invent precision. Designer: the `subValue` caption is the same affordance the Unrealised-Gain tile already uses — consistent, no new pattern.
+
+### §20.4 self-review → 10/10
+No number changed (label only); the disclosure is accurate to the engine's actual method (verified in source: 4%/2% franking proxy); consistent with existing tile vocabulary. 10/10.
