@@ -190,10 +190,16 @@ export function auditInvariants(graph) {
   // wired into a production flow. (Reza 2026-06-26: "are they really connected
   // in the app or only the graph?" — these 3 are honestly NOT, so the graph
   // shows them as islands rather than faking a data-flow.)
+  // Audited 2026-06-26: all 3 are a MISS, not dead code. masterTaxPosition.ts
+  // :24-39 designs them as step-3 "per-entity advanced overlays" (same list as
+  // trust-loss + company-loss, which WERE wired); the overlay wiring was only
+  // completed for 2 of 5. Fix = add input.{div152,psi,fteIee}ByEntity to
+  // buildMasterTaxPosition mirroring the loss-rule overlay. Remove from this
+  // allowlist when wired.
   const A6_ISLAND_ALLOWLIST = {
-    'engine.tax.psi.classifyPsi': 'PRODUCTION-UNWIRED: 0 production callers (only its calc-audit fixture invokes it). Proven, not yet wired into any user flow.',
-    'engine.tax.div152.applyDiv152': 'PRODUCTION-UNWIRED: 0 production callers (only calc-audit fixtures). Proven, not yet wired.',
-    'engine.tax.fteIee.classifyFteIeeDistributions': 'PRODUCTION-UNWIRED: 0 production callers (only its calc-audit fixture). Proven, not yet wired.',
+    'engine.tax.psi.classifyPsi': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.psiByEntity.',
+    'engine.tax.div152.applyDiv152': 'MISS (not dead code): designed as a step-3 overlay (masterTaxPosition:24-39), wiring never completed. Fix: input.div152ByEntity.',
+    'engine.tax.fteIee.classifyFteIeeDistributions': 'MISS (not dead code): designed as a step-3 overlay; trust path captures hasFamilyTrustElection but never calls this engine. Fix: input.fteIeeByEntity.',
   };
   const adj = new Map();
   for (const n of graph.nodes) adj.set(n.id, new Set());
