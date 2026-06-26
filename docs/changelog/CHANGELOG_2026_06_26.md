@@ -719,3 +719,19 @@ Every claim verified in source (orchestrator overlay loop :231-245, 0 production
 - v1: API + third view + lazy-load + dir-colour + perf tuning. tsc clean, eslint clean, `neomatrix:check` green (8,589 L0 nodes, 0 uncovered).
 - adversarial: 8.6k nodes is dense — but the ask was to SEE the scale, and search + dir-colour + click-to-inspect make it navigable; particles-OFF is the key perf win (15k animated edge-sprites would choke WebGL); cooldown capped so the sim stops; 2D fallback available. Honest scope: this is the **raw full graph** (scale + search + inspect), directory-clustering LOD noted as a possible v2 — not oversold.
 - refine: loading text made drift-proof ("~8.6k"); count label dynamic; semantic view's `cooldownTicks` left at default (Infinity would spin CPU). 10/10 for the stated requirement.
+
+---
+
+## Session: neomatrix-structural-clusters-islands (NI-5b fix — structural load + island clarity)
+
+### Changes Made
+- **Type**: Admin explorer fix (NO financial logic, NO graph data changed — presentational + interaction only).
+- **Reza-reported #1 — structural view not loading**: root cause = `warmupTicks={40}` ran 40 *synchronous* force-sim cycles on 8,589 nodes before first paint → froze the tab. Fix: the structural view now renders a **directory-cluster overview** (~97 top-level-dir super-nodes + aggregated cross-dir edges) by default — instant render, no freeze. **Click a directory → drill into its symbols** (capped at top-800 by connection count); **search matches across all 8,589 symbols** (bypasses clustering). Breadcrumb (`All directories / <dir>`) + drill hints. Removed the synchronous `warmupTicks` entirely.
+- **Reza-reported #2 — islanded nodes in the semantic view**: verified = exactly **3 islands**, each a 2-node pair (an unwired tax engine + its law node): `div152` / `psi` / `fteIee`. These are the **known production-unwired engines** (the documented MISS) — honestly disconnected because they have no production caller (never faked, per Reza's REAL-not-fake rule). Fix: detect islands **client-side** (largest-connected-component, zero graph edits) and render them **amber** + an inspector badge *"⚠ Unwired (planned)"* pointing at `TAX_OVERLAY_WIRING_PLAN.md` — so they read as intentional, not broken. They connect for real when wired.
+
+### Files Modified
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — directory clustering + drill-down + search for structural; client-side island detection + amber badge + inspector note; removed synchronous warmup.
+
+### §20.4 3× self-review → 10/10 (against requirement; not a financial build)
+- v1: clusters + drill + search + island badge. tsc + eslint clean.
+- adversarial: the freeze was the synchronous warmup on 8.6k nodes — clustering renders ~97 nodes (instant) and is genuinely more navigable than a hairball (the v2 LOD I'd flagged, now shipped); drill-down capped at 800 so app/api (1,301) can't re-freeze; search still reaches every symbol so nothing is hidden; islands are detected from the data (no graph edit, no drift) and surfaced honestly (amber + "planned", never faked-connected). 10/10.

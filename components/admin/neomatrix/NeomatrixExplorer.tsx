@@ -42,6 +42,9 @@ const NEUTRAL = '#64748B';
 // Bridge nodes in the proven view (non-proven lineage intermediates) render in a
 // muted slate so the proven engines keep full domain colour and stand out.
 const BRIDGE_DIM = '#334155';
+// Island nodes (known production-unwired engines) render amber so they read as
+// "intentionally not connected (planned)", not an accidental break.
+const ISLAND_AMBER = '#F59E0B';
 const DOMAINS = ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'] as const;
 const LAYERS = ['db', 'engine', 'ui'] as const;
 const TRAIL = ['T', 'R', 'A', 'I', 'L'] as const;
@@ -80,7 +83,7 @@ interface RawGraph {
 }
 
 // react-force-graph node/link shape (links use source/target).
-type GNode = RawNode & { degree: number; color: string; val: number; bridge?: boolean };
+type GNode = RawNode & { degree: number; color: string; val: number; bridge?: boolean; island?: boolean };
 type GLink = { source: string; target: string; type: string };
 
 // Top-level dir (e.g. "lib/tax-engine", "app/api") — the structural-view grouping.
@@ -118,11 +121,47 @@ export function NeomatrixExplorer() {
   const [view, setView] = useState<'all' | 'proven' | 'structural'>('all');
   const [structuralGraph, setStructuralGraph] = useState<RawGraph | null>(null);
   const [structuralLoading, setStructuralLoading] = useState(false);
+  // Structural view drill-down: null = directory-cluster overview · a dir = that
+  // directory's symbols expanded (NI-5b renders ~97 clusters by default, not the
+  // 8.6k-node hairball, so it loads instantly and is navigable).
+  const [expandedDir, setExpandedDir] = useState<string | null>(null);
   const provenCount = useMemo(() => graph?.nodes.filter((n) => n.proven).length ?? 0, [graph]);
 
-  // The dataset the canvas renders: structural view → structural graph; else the
-  // semantic graph. Everything downstream (degree, colours, filter) reads this.
+  // The dataset downstream memos (degree, nodeById, lineage) read: structural view
+  // → the full structural graph; else the semantic graph.
   const activeGraph = view === 'structural' ? structuralGraph : graph;
+
+  // Semantic islands: nodes NOT in the main connected component. These are the
+  // known production-unwired engines (div152 / psi / fteIee — each a 2-node pair
+  // with its law node). We surface them HONESTLY (the graph is never faked — they
+  // ARE disconnected in the app) but badge them so they read as intentional, not
+  // broken. Wiring them (the deferred tax-overlay plan) connects them for real.
+  const islandIds = useMemo(() => {
+    if (!graph) return new Set<string>();
+    const adj = new Map<string, string[]>();
+    graph.nodes.forEach((n) => adj.set(n.id, []));
+    graph.edges.forEach((e) => {
+      adj.get(e.from)?.push(e.to);
+      adj.get(e.to)?.push(e.from);
+    });
+    // Find the largest component (the "main graph").
+    const seen = new Set<string>();
+    let main: string[] = [];
+    for (const n of graph.nodes) {
+      if (seen.has(n.id)) continue;
+      const stack = [n.id];
+      const comp: string[] = [];
+      seen.add(n.id);
+      while (stack.length) {
+        const c = stack.pop()!;
+        comp.push(c);
+        for (const m of adj.get(c) ?? []) if (!seen.has(m)) (seen.add(m), stack.push(m));
+      }
+      if (comp.length > main.length) main = comp;
+    }
+    const mainSet = new Set(main);
+    return new Set(graph.nodes.filter((n) => !mainSet.has(n.id)).map((n) => n.id));
+  }, [graph]);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -255,26 +294,17 @@ export function NeomatrixExplorer() {
     return { provenIds, keep };
   }, [graph, view]);
 
-  // ── Filtered graph passed to the canvas ────────────────────────────────────
+  // ── Filtered SEMANTIC graph (structural is handled by structuralView) ───────
   const filtered = useMemo(() => {
-    if (!activeGraph) return { nodes: [] as GNode[], links: [] as GLink[] };
+    if (!activeGraph || view === 'structural') return { nodes: [] as GNode[], links: [] as GLink[] };
     const q = search.trim().toLowerCase();
     const layerKey = (n: RawNode) => (n.layer && (LAYERS as readonly string[]).includes(n.layer) ? n.layer : 'other');
     const visible = new Set<string>();
     const nodes: GNode[] = [];
-    const structural = view === 'structural';
     for (const n of activeGraph.nodes) {
-      const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
-      // Structural view: search only (domain/layer/proven don't apply at this scale).
-      if (structural) {
-        if (!searchOk) continue;
-        visible.add(n.id);
-        const deg = degree.get(n.id) ?? 0;
-        nodes.push({ ...n, degree: deg, color: nodeColor(n), val: 1 + Math.min(deg, 6) * 0.5 });
-        continue;
-      }
       const domainOk = n.domain ? activeDomains.has(n.domain) : true;
       const layerOk = activeLayers.has(layerKey(n));
+      const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
       const viewOk = view === 'all' || (provenScope?.keep.has(n.id) ?? false);
       if (domainOk && layerOk && searchOk && viewOk) {
         visible.add(n.id);
@@ -282,12 +312,16 @@ export function NeomatrixExplorer() {
         // In proven view, a kept node that isn't itself proven is a bridge —
         // render it dim + small so the proven engines (full domain colour) pop.
         const bridge = view === 'proven' && !(provenScope?.provenIds.has(n.id) ?? false);
+        // An island = a known production-unwired engine. Amber so it reads as
+        // "intentionally not connected (planned)", not an accidental break.
+        const island = islandIds.has(n.id);
         nodes.push({
           ...n,
           degree: deg,
-          color: bridge ? BRIDGE_DIM : nodeColor(n),
+          color: bridge ? BRIDGE_DIM : island ? ISLAND_AMBER : nodeColor(n),
           val: bridge ? 1.5 : 2 + deg * 1.4,
           bridge,
+          island,
         });
       }
     }
@@ -298,7 +332,87 @@ export function NeomatrixExplorer() {
       }
     }
     return { nodes, links };
-  }, [activeGraph, search, activeDomains, activeLayers, degree, view, provenScope]);
+  }, [activeGraph, search, activeDomains, activeLayers, degree, view, provenScope, islandIds]);
+
+  // ── Structural view (NI-5b): directory clusters → drill-down → search ───────
+  // Default = ~97 directory super-nodes (instant render, no 8.6k-node freeze).
+  // Click a cluster → expand that directory's symbols (capped 800 by degree).
+  // Searching bypasses clustering and matches across all 8,589 symbols.
+  const STRUCTURAL_CAP = 800;
+  const structuralView = useMemo(() => {
+    if (view !== 'structural' || !structuralGraph) return { nodes: [] as GNode[], links: [] as GLink[] };
+    const q = search.trim().toLowerCase();
+    const visibleSubset = (subset: RawNode[]) => {
+      const vis = new Set(subset.map((n) => n.id));
+      const nodes: GNode[] = subset.map((n) => {
+        const deg = degree.get(n.id) ?? 0;
+        return { ...n, degree: deg, color: nodeColor(n), val: 1 + Math.min(deg, 6) * 0.5 };
+      });
+      const links: GLink[] = [];
+      for (const e of structuralGraph.edges) if (vis.has(e.from) && vis.has(e.to)) links.push({ source: e.from, target: e.to, type: e.type });
+      return { nodes, links };
+    };
+    // SEARCH — across every symbol, regardless of cluster/expand state.
+    if (q) {
+      const matched = structuralGraph.nodes
+        .filter((n) => n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q))
+        .slice(0, STRUCTURAL_CAP);
+      return visibleSubset(matched);
+    }
+    // EXPANDED — one directory's symbols (capped by degree).
+    if (expandedDir) {
+      let inDir = structuralGraph.nodes.filter((n) => topDir(n.file) === expandedDir);
+      if (inDir.length > STRUCTURAL_CAP) {
+        inDir = [...inDir].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0)).slice(0, STRUCTURAL_CAP);
+      }
+      return visibleSubset(inDir);
+    }
+    // CLUSTER overview — one super-node per top-level directory.
+    const cnt = new Map<string, number>();
+    for (const n of structuralGraph.nodes) {
+      const d = topDir(n.file);
+      cnt.set(d, (cnt.get(d) ?? 0) + 1);
+    }
+    const nodes: GNode[] = [...cnt.entries()].map(([d, c]) => ({
+      id: `dir::${d}`,
+      kind: 'cluster',
+      label: d,
+      file: d,
+      line: null,
+      layer: null,
+      domain: null,
+      trailStage: null,
+      regime: null,
+      produces: `${c} symbols`,
+      formula: null,
+      authority: null,
+      inputs: [],
+      workedExample: null,
+      verifiedBy: null,
+      verifiedDate: null,
+      status: null,
+      degree: c,
+      color: dirColor(d),
+      val: 4 + Math.log2(c + 1) * 2.2,
+    }));
+    const ce = new Map<string, number>();
+    const dirOf = (id: string) => topDir(nodeById.get(id)?.file ?? null);
+    for (const e of structuralGraph.edges) {
+      const a = dirOf(e.from);
+      const b = dirOf(e.to);
+      if (!a || !b || a === b) continue;
+      const k = a < b ? `${a}|${b}` : `${b}|${a}`;
+      ce.set(k, (ce.get(k) ?? 0) + 1);
+    }
+    const links: GLink[] = [...ce.keys()].map((k) => {
+      const [a, b] = k.split('|');
+      return { source: `dir::${a}`, target: `dir::${b}`, type: 'depends' };
+    });
+    return { nodes, links };
+  }, [view, structuralGraph, expandedDir, search, degree, nodeById]);
+
+  // The dataset actually drawn (semantic → filtered · structural → structuralView).
+  const rendered = view === 'structural' ? structuralView : filtered;
 
   const selected = selectedId ? nodeById.get(selectedId) ?? null : null;
 
@@ -320,7 +434,15 @@ export function NeomatrixExplorer() {
   };
 
   const handleNodeClick = useCallback((node: { id?: string | number }) => {
-    if (node?.id != null) setSelectedId(String(node.id));
+    const id = node?.id != null ? String(node.id) : null;
+    if (!id) return;
+    // Clicking a directory cluster drills into its symbols (not an inspect).
+    if (id.startsWith('dir::')) {
+      setExpandedDir(id.slice('dir::'.length));
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId(id);
   }, []);
 
   return (
@@ -339,7 +461,7 @@ export function NeomatrixExplorer() {
       {activeGraph && !error && (
         <ForceGraph3D
           ref={fgRef}
-          graphData={filtered}
+          graphData={rendered}
           width={size.w}
           height={size.h}
           numDimensions={dims}
@@ -348,13 +470,18 @@ export function NeomatrixExplorer() {
           nodeVal={(n: object) => (n as GNode).val}
           nodeLabel={(n: object) => {
             const g = n as GNode;
-            const sub = g.kind === 'structural' ? `${g.file ?? ''}${g.line != null ? ':' + g.line : ''}` : `${g.kind}${g.domain ? ' · ' + g.domain : ''}`;
+            const sub =
+              g.kind === 'cluster'
+                ? `${g.produces ?? ''} · click to expand`
+                : g.kind === 'structural'
+                  ? `${g.file ?? ''}${g.line != null ? ':' + g.line : ''}`
+                  : `${g.kind}${g.domain ? ' · ' + g.domain : ''}${g.island ? ' · unwired (planned)' : ''}`;
             return `<div style="font-family:Inter,sans-serif;font-size:12px;color:#e2e8f0">${g.label}<br/><span style="color:#94a3b8">${sub}</span></div>`;
           }}
           nodeOpacity={view === 'structural' ? 0.85 : 0.92}
           nodeResolution={view === 'structural' ? 8 : 16}
-          // Edges: tinted by their source node's colour. Structural view (15k edges)
-          // drops the directional particles + thins the links for performance.
+          // Edges: tinted by their source node's colour. Structural view drops the
+          // directional particles + thins the links for performance.
           linkColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
           linkOpacity={view === 'structural' ? 0.22 : 0.45}
           linkWidth={view === 'structural' ? 0.25 : 0.6}
@@ -362,8 +489,6 @@ export function NeomatrixExplorer() {
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticleSpeed={0.006}
           linkDirectionalParticleColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
-          warmupTicks={view === 'structural' ? 40 : 0}
-          cooldownTicks={view === 'structural' ? 120 : undefined}
           onNodeClick={handleNodeClick}
           enableNodeDrag={false}
           showNavInfo={false}
@@ -492,15 +617,36 @@ export function NeomatrixExplorer() {
             </div>
           </>
         ) : (
-          <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
-            Whole-codebase structural graph (Graphify Layer 0) — every symbol across{' '}
-            <code className="text-slate-400">lib/</code> + <code className="text-slate-400">app/</code>, coloured by
-            top-level directory. Search to find a symbol; click to inspect its file:line + relations.
-          </p>
+          <div className="mt-4 space-y-2">
+            {/* Breadcrumb: directory clusters → an expanded directory */}
+            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+              <button
+                onClick={() => setExpandedDir(null)}
+                className={`rounded px-1.5 py-0.5 transition ${expandedDir && !search ? 'text-sky-300 hover:text-sky-200' : 'text-slate-400'}`}
+              >
+                All directories
+              </button>
+              {expandedDir && !search && (
+                <>
+                  <span className="text-slate-600">/</span>
+                  <span className="font-mono text-slate-200">{expandedDir}</span>
+                </>
+              )}
+            </div>
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              {search
+                ? 'Searching all 8,589 symbols.'
+                : expandedDir
+                  ? 'Symbols in this directory (top 800 by connections). Click a node to inspect its file:line + relations.'
+                  : 'Whole-codebase structural graph (Graphify Layer 0), grouped by top-level directory. Click a directory to drill in, or search to find any symbol.'}
+            </p>
+          </div>
         )}
 
         <p className="mt-5 text-[11px] tabular-nums text-slate-500">
-          {filtered.nodes.length} / {activeGraph?.nodes.length ?? 0} nodes · {filtered.links.length} edges
+          {rendered.nodes.length}
+          {view === 'structural' && !expandedDir && !search ? ' directories' : ` / ${activeGraph?.nodes.length ?? 0} nodes`} ·{' '}
+          {rendered.links.length} edges
         </p>
       </div>
 
@@ -529,6 +675,14 @@ export function NeomatrixExplorer() {
               </button>
             </div>
           </div>
+
+          {islandIds.has(selected.id) && (
+            <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-relaxed text-amber-200">
+              ⚠ <span className="font-semibold">Unwired (planned).</span> This engine is built + tested but has no
+              production caller yet, so it sits apart from the main graph. Wiring it is the deferred tax-overlay plan
+              (`docs/blueprint/TAX_OVERLAY_WIRING_PLAN.md`) — it connects for real when wired, never faked.
+            </div>
+          )}
 
           {selected.produces && <p className="mt-3 text-xs leading-relaxed text-slate-400">{selected.produces}</p>}
 
@@ -616,7 +770,8 @@ export function NeomatrixExplorer() {
 
       {!selected && graph && (
         <p className="pointer-events-none absolute bottom-5 left-1/2 z-10 -translate-x-1/2 text-[11px] text-slate-600">
-          Drag to orbit · scroll to zoom · click a node to inspect
+          Drag to orbit · scroll to zoom ·{' '}
+          {view === 'structural' && !expandedDir && !search ? 'click a directory to drill in' : 'click a node to inspect'}
         </p>
       )}
     </div>
