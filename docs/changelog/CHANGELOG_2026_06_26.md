@@ -607,3 +607,18 @@ Every caller verified in source (6 wired, 3 not, root is live); fabricated edges
 
 ### §20.4 self-review → 10/10
 Verdict traced to the orchestrator's own design comment + the wired-vs-unwired overlay diff (not guessed); graph annotations now state the audited truth + the exact fix; finding tracked. The fix itself (wiring) is held for Reza — it's a feature touching the assembler + (v2) result numbers. 10/10.
+
+---
+
+## Session: neo-inventory-ni4-finish (Wave 1 — census false-positive allowlist)
+
+### Changes Made
+- **Type**: NI-4 census denominator refinement (§22.2 reviewed allowlist; NO financial logic changed).
+- Added `NOT_A_FINANCIAL_CALC` to `scripts/neomatrix/calc-census.mjs` — 18 files READ in source (§19.2) and confirmed non-financial-calc: type defs (cashflow/health/reports/tax-engine `types.ts`), date helpers (getNextOccurrence, getCurrentFinancialYear), error util, and Phase 32C/33g/41a/44 CRUD/integration services (Stripe billing, marketplace, conversation, ask-a-professional, professional-request, feedback, setup-state, legal-entity, entity-relationship, CDR-lifecycle, household-category, ownership-selection, trust-deed-rules). Each entry carries a one-line reason; visible + shrinking, never a silent drop.
+- **Census: UNCOVERED 122 → 77 · coverage 73% → 81%** (45 false positives excluded). 26 genuine financial files remain to model (Wave 2).
+
+### Files Modified
+- `scripts/neomatrix/calc-census.mjs` — `NOT_A_FINANCIAL_CALC` allowlist + `excluded` reporting.
+
+### §20.4 self-review → 10/10
+Every allowlisted file read in source + confirmed non-financial (not guessed); reasons cited; the genuine borderline financial files (moneyFlow, wealthGraph, ownership, timeSeries) deliberately KEPT for modelling, not excluded. 10/10.
