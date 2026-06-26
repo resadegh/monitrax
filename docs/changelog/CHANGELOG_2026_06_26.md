@@ -665,3 +665,18 @@ Every allowlisted file read in source + confirmed non-financial (not guessed); r
 Every modelled node's entry + lineage verified in source (report generators ← ReportContext; insight-generator ← the 3 cashflow engines; risk ← health metrics; CGT ← Div 115; etc.); allowlist entries each read + reasoned; the gate makes coverage enforced not claimed; node ids corrected to their function symbols so the anchor audit binds. 10/10.
 
 ### Milestone — NI-4 COMPLETE. Remaining Neo Inventory: NI-5b (8587-structural explorer view) only.
+
+---
+
+## Session: neomatrix-proven-view-connectivity (explorer proven-view fix)
+
+### Changes Made
+- **Type**: Admin explorer UI fix (NO financial logic, NO graph data changed — presentational only).
+- **Bug (Reza-reported)**: the `/admin/neomatrix` "Proven (60)" view rendered the 60 calc-audit-proven engines but only ~13 edges — the proven engines appeared disconnected. Root cause: proven engines rarely link DIRECTLY to one another; their lineage runs THROUGH intermediate nodes (inputs, numbers, orchestrators). Filtering to proven-only dropped every edge that passed through a non-proven node.
+- **Fix**: in proven view, keep the proven nodes PLUS their genuine 1-hop lineage neighbours (`provenScope` — a node survives if it's proven OR adjacent to a proven node). Bridge nodes (kept only because they neighbour a proven node) render dim slate (`#334155`) + small so the proven engines keep full domain colour and stand out. **No fabricated edges** — every link shown is a real edge in `financial-graph.json`; we surface the real intermediates rather than synthesising proven→proven shortcuts (the graph stays REAL, §21.5).
+
+### Files Modified
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — `provenScope` memo (proven + 1-hop), `BRIDGE_DIM` constant, `bridge` flag on `GNode`, dim/shrink bridge nodes in `filtered`.
+
+### §20.4 self-review → 10/10
+The fix surfaces real lineage, never fakes a connection (Reza's REAL-not-fake rule); bridges are visually subordinate so the proven core reads clearly; purely presentational so zero financial-correctness risk; lint clean. 10/10.
