@@ -8,7 +8,28 @@
 
 ## 🟡 Active Workstreams
 
+### 0·NEO-INVENTORY. Neo Inventory — one inventory of every calculation & surface (Reza directive 2026-06-26)
+
+- **Status:** 🟡 ACTIVE — **NI-0 design/documentation (this PR)**; awaiting Reza sign-off before NI-1.
+- **Started:** 2026-06-26.
+- **Owner:** Reza (sign-off) + Claude (build).
+- **Last touched:** 2026-06-26 — NI-0 design doc + CLAUDE.md Part 22 + this workstream + the #1250–#1257 comparison.
+- **Source of truth:** [`docs/blueprint/NEO_INVENTORY.md`](../blueprint/NEO_INVENTORY.md) · CLAUDE.md Part 22.
+- **Why this matters (Reza, 2026-06-26):** *"I keep getting 'you covered everything' then the next audit finds many missed ones. Make sure (1) 100% of Monitrax is in the Neomatrix and (2) the Trust Engine covers all calculations including complex ones — don't create multiple test engines and platforms, no more guesswork with multiple PRs."*
+- **Verified root cause:** FOUR overlapping, unreconciled inventories of "what calculations exist" — `calc-audit` (Phase 41i: `calcEngineRegistry` + `surfaces/registry` + **92 CI-gated fixtures**, covering the entire tax engine + divisions + 8 states + CFO + scenarios + aggregators + primitives), the **Neomatrix** (103 hand-built nodes — a *subset*), the **Trust Engine** (2026-06-25 verification nodes), and the **Phase 4 rail / A1 / surface linter**. Coverage was measured against the smaller hand-built Neomatrix instead of the larger CI-gated registry → recurring "found more gaps." (§12.2.1 violation at the system level.)
+- **The model:** `calcEngineRegistry` = the SINGLE inventory (most complete + already gate-enforced "no engine without a fixture"); the Neomatrix = a **generated view** over it (lineage/law/`file:line`); calc-audit fixtures = the proof spine. No fifth platform.
+- **Phase checklist (NI-0 → NI-4 — one PR each, gated, no sprawl):**
+  - [x] **NI-0 — Design + instruction lock (this PR).** `NEO_INVENTORY.md` + CLAUDE.md Part 22 + this workstream + the #1250–#1257 comparison. Docs only.
+  - [ ] **NI-1 — Measure the real deltas.** Read-only script printing `registry vs graph vs fixtures` → `docs/audits/NEO_INVENTORY_BASELINE.md`. First time the true denominator is on screen. No production change.
+  - [ ] **NI-2 — Reconcile map → inventory.** Generate missing Neomatrix nodes so every registered engine is mapped; wire `verified-by` edges to the EXISTING fixtures; add the `neomatrix:check` reconciliation gate (registry − graph, allowlist).
+  - [ ] **NI-3 — Re-home the 2026-06-25 net-new properties.** Fold identities / refuse-to-compute guards / additivity / parity / interest+PI into calc-audit fixtures; retire the parallel Trust Engine test files; close #1250–#1257 in favour of this.
+  - [ ] **NI-4 — Harden inventory completeness.** Static check flagging an unregistered money-producer (with reviewed `known-unmodelled` allowlist).
+- **Risk:** none to production (inventory/reconciliation + docs only; §19 still governs correctness). **Blocking:** Reza sign-off on the model + on holding #1250–#1257.
+- **↩️ Supersedes the framing of `0·TRUST-ENGINE` below** — the Trust Engine *properties* are valuable and kept, but they live as calc-audit fixtures under Neo Inventory, not a parallel silo.
+
 ### 0·TRUST-ENGINE. Financial Trust Engine — provable, audit-grade number correctness (Reza directive 2026-06-25)
+
+> **⚠️ PIVOTED 2026-06-26 → folded into `0·NEO-INVENTORY` above.** Research (calc-audit inspection) showed `calcEngineRegistry` already inventories + fixtures ~90 engines (incl. all what-ifs/primitives/aggregators/tax this workstream was re-verifying). The Trust Engine's genuinely-new *properties* (accounting identities, refuse-to-compute guards, breakdown additivity, parity) are kept — re-homed as calc-audit fixtures under Neo Inventory NI-3, not a parallel test silo. The 8 overnight PRs (#1250–#1257) are **HELD** pending that reconciliation (see `NEO_INVENTORY.md` §4 comparison). History below retained for context.
 
 - **Status:** 🟡 ACTIVE — **design + research in flight** (this session). Reza chose **"build the safety-critical core first"** (Layers 0–3 + 5).
 - **Started:** 2026-06-25.
