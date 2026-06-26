@@ -486,3 +486,20 @@ Run a connected-components pass over `financial-graph.json` (`parent[from]=find(
 As of PR #1231 the graph is **one connected component of 104/104 nodes** (0 standalone). Re-run
 this check whenever nodes/edges are added — a new island is a signal to find its real bridge (or
 document why it's honestly standalone), never to fabricate one.
+
+---
+
+## 17. Neo Inventory — Layer 0 (Graphify) restored + coverage made provable (2026-06-26)
+
+> Reza directive 2026-06-26: *"100% of Monitrax in the Neomatrix; the Trust Engine covers all calculations; don't create multiple test engines/platforms; no more guesswork."* **Design SoT: [`NEO_INVENTORY.md`](NEO_INVENTORY.md). Standing rules: CLAUDE.md Part 22. Live coverage: [`../audits/NEO_INVENTORY_BASELINE.md`](../audits/NEO_INVENTORY_BASELINE.md).**
+
+**The correction.** This phase doc (§7, N0) recorded Graphify (Layer 0 — code→structural skeleton) as "GO, adopted." In practice it was **trialled but never wired in**: the live `financial-graph.json` was hand-authored (L1 semantic only), so it drifted + undercovered. Neo Inventory finishes the design.
+
+**The three layers (one source — the code):**
+- **L0 — Graphify structural** (`npm run neomatrix:graphify` → `docs/financial-logic/graph/structural/`): every file + symbol + call/import edge, code-only/offline. **Whole codebase, gated** — `scripts/neomatrix/check-layer0-coverage.mjs` fails the build on any uncovered `.ts(x)` under `lib/`+`app/` (reviewed allowlist for verified graphify limitations). Baseline: **1,064 files · 8,587 nodes**.
+- **L1 — semantic** (`financial-graph.json`): curated meaning (formula/law/lineage) on top of L0; bound to L0 by file (`scripts/neomatrix/check-binding-coverage.mjs` — a code node whose anchor no longer resolves fails the build).
+- **Proof** — calc-audit registry (84 engines) + fixtures.
+
+**Coverage is now a build output, not a claim:** structural 100% (gated) · proven 84 engines · modelled 64. The climb to 100% semantic coverage is the NI-3 backfill (matching each proven engine to a verified semantic node), tracked in `01_ACTIVE_WORKSTREAMS.md` `0·NEO-INVENTORY`.
+
+**Supersedes:** the §14 A2 "Graphify already emits ast_hash" assumption (graphify 0.8.45 does not — NI-2 binds by file:line; the per-engine astHash sentinel is NI-3). §7 N0 "adopted" is now actually wired (NI-1).
