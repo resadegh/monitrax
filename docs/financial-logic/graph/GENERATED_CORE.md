@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.35.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.37.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 157 · **Edges:** 201
-- **By kind:** orchestrator 8 · engine 64 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 157
-- **Edge provenance:** verified 201 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/83 engines+numbers proven (4%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 167 · **Edges:** 212
+- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 8
+- **By status:** documented 167
+- **Edge provenance:** verified 212 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 4/92 engines+numbers proven (4%) · 8 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -90,6 +90,15 @@
 | **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
 | **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
+| **What-if scenario dispatcher** | `lib/cfo/scenarios/index.ts:81` | engine | cfo | Dispatches a what-if request to the matching scenario engine and returns its ScenarioResult (the /dashboard/cfo/what-if/* levers + the AI advisor scenario tool-calls). | Monitrax what-if orchestration (CLAUDE.md §6.1 single dispatch). | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: sell a property** | `lib/cfo/scenarios/sellProperty.ts:35` | engine | cfo | netCashFreed, monthlyCashflowAfter, netWorthAfter, liquidCashAfter, your estimated CGT, portfolio-value delta. | ITAA 1997 s116-20/s110-25 (CGT proceeds/cost base) via the disposal CGT core; accounting identities for cashflow/net-worth deltas. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **Property disposal CGT (per-owner Div 115)** | `lib/cfo/scenarios/propertyDisposalCgt.ts:148` | engine | cfo | totalNominalGain, totalTaxableGain, per-owner taxable gain + discount rate, your estimated CGT, capital-loss flag, reform UNCOMPUTED flags. | ITAA 1997 Div 115 (CGT discount) + s116-20/s110-25 + Phase 41E reform gate. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: 10-year net-worth projection (the chart spine)** | `lib/cfo/scenarios/tenYearProjection.ts:43` | engine | cfo | Year-by-year net-worth trajectory, final net worth, total delta — the chart every what-if lever renders. | Compound-growth projection; assumptions documented in source (real returns). | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: salary sacrifice to super** | `lib/cfo/scenarios/salarySacrificeToSuper.ts:291` | engine | cfo | year-1 take-home delta, tax saved (marginal − 15%), net-to-super after contributions tax + Div 293, concessional-cap headroom, hard-stop reason. | ITAA 1997 super contributions (s291) + Div 293 + concessional caps + Phase 41E Div 296 gate. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: refinance a loan** | `lib/cfo/scenarios/refinanceLoan.ts:21` | engine | cfo | new monthly P&I, monthly + lifetime savings (net of switching costs), break-even months, cashflow-after. | Standard amortisation M = P·r(1+r)ⁿ/((1+r)ⁿ−1). | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: pay down a loan faster** | `lib/cfo/scenarios/payDownLoan.ts:19` | engine | cfo | lifetime interest saved, months reduced, cashflow-after. | Standard amortisation walk. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: redirect cash to an offset** | `lib/cfo/scenarios/redirectToOffset.ts:22` | engine | cfo | monthly + annual interest saved by parking cash in the offset. | Offset interest reduction (interest on net principal). | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **What-if: add a regular investment** | `lib/cfo/scenarios/addInvestment.ts:20` | engine | cfo | projected portfolio future value, compounding-growth portion, cashflow-after. | Future-value-of-annuity formula. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -173,6 +182,7 @@
 | **Income tax — ATO authority-anchored golden cases (L0)** | L0 | tax | 7 bracket cases (tax-free threshold, each boundary, $100k/$190k/$200k) whose EXPECTED value is hand-derived from the ATO published FY24-25 rates and tagged with the ATO rates URL + FY + verifiedDate (re-anchorable). The real engine must match the law-derived number. | Engine drifting from the published ATO brackets (incl. the stale-FY23-24-bracket class, W0) + the $0-cliff. The authority is external (ATO), not the code. | Income tax (marginal brackets) | `tests/neomatrix/financialAudit.test.ts:114` |
 | **Net worth — engine vs independent raw sum (L1)** | L1 | core | The canonical class-bucketed engine equals an independent row-by-row sum (market-value fallback + SMSF exclusion replicated) over 6 archetypes + 40 random portfolios. Sensitivity: a reference that forgets SMSF exclusion does NOT match. | A single-implementation aggregation/bucketing bug that float-vs-decimal (same algorithm) would not catch. | Net worth | `tests/regression/invariants/trustEngine.differential.test.ts:109` |
 | **Income tax — engine vs independent marginal-slice (L1)** | L1 | tax | The canonical find-bracket+baseAmount engine equals an independent marginal-slice summation across the whole income sweep. Sensitivity: a wrong top rate does NOT match. | A drifted baseAmount / threshold / rate present in the engine but not re-derivable from first-principles slices. | Income tax (marginal brackets) | `tests/regression/invariants/trustEngine.differential.test.ts:144` |
+| **What-if sell-property — cascade reconciliation (L3)** | L3 | cfo | The sell-property cascade ties out over a fixed case + 50 random portfolios: netCashFreed = proceeds − 2.5% costs − loan payoff; Δliquid = netCashFreed; Δcashflow = −property.monthlyCashflow; Δnet worth = −sellingCosts − yourCgt; Δportfolio = −currentValue. | A wrong sign or dropped term in the most consequential what-if (a real sell-or-keep decision). Mutation-proven: flipping the loan-payoff sign fails the lock. | What-if: sell a property | `tests/regression/invariants/trustEngine.scenarios.test.ts:73` |
 
 ## Edges (verified, with evidence)
 
@@ -379,6 +389,17 @@
 | Income tax (marginal brackets) | → | Income tax — ATO authority-anchored golden cases (L0) | verified-by | — | verified | tests/neomatrix/financialAudit.test.ts:114 — 7 ATO-anchored bracket cases (FY24-25 rates URL + fy + verifiedDate); engine output == law-derived value. |
 | Net worth | → | Net worth — engine vs independent raw sum (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.differential.test.ts:109 — engine === independent raw sum over 46 portfolios; sensitivity-checked. |
 | Income tax (marginal brackets) | → | Income tax — engine vs independent marginal-slice (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.differential.test.ts:144 — engine === independent marginal-slice over the income sweep; sensitivity-checked. |
+| CGT discount (Div 115 / reform Measure 2) | → | Property disposal CGT (per-owner Div 115) | feeds | — | verified | lib/cfo/scenarios/propertyDisposalCgt.ts — composes calculateCgtDiscountDecimal per owner (Div 115 split). |
+| Property disposal CGT (per-owner Div 115) | → | What-if: sell a property | feeds | — | verified | lib/cfo/scenarios/sellProperty.ts:65 — buildCgtForSellProperty → yourCgt feeds netWorthAfter. |
+| Master financial snapshot | → | What-if: sell a property | feeds | — | verified | lib/cfo/scenarios/sellProperty.ts:38 — reads ctx.snapshot (properties, quickMetrics, netWorth). |
+| What-if: sell a property | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts:81 — dispatcher returns the scenario result. |
+| What-if: refinance a loan | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
+| What-if: pay down a loan faster | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
+| What-if: redirect cash to an offset | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
+| What-if: add a regular investment | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
+| What-if: salary sacrifice to super | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
+| What-if: sell a property | → | What-if: 10-year net-worth projection (the chart spine) | feeds | — | verified | tenYearProjection consumes a scenario year-1 cashflow/tax delta (lib/cfo/scenarios/tenYearProjection.ts:43). |
+| What-if: sell a property | → | What-if sell-property — cascade reconciliation (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:73 — cascade reconciliation over 51 cases; mutation-proven (loan-payoff sign flip fails). |
 
 ---
 

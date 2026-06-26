@@ -534,3 +534,37 @@ An always-equal differential is worthless. Each differential ships a positive co
 ### PR
 - Branch: `claude/trust-engine-l1-differential-jqahjw`
 - Status: Draft. **Completes the Trust Engine core (L0–L3 + L5 build gate).**
+
+---
+
+## Session: Trust Engine Tranche A.1 — what-if scenarios modelled + sell-property cascade verified
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix coverage + Trust Engine verification — Tranche A of the coverage-gap remediation)
+- **Scope**: `financial-graph.json` (+9 what-if engine nodes, +1 verification node) + new `tests/regression/invariants/trustEngine.scenarios.test.ts`. No production logic changed.
+- **Description**: First slice closing the gap the coverage audit (`NEOMATRIX_COVERAGE_GAP_AUDIT_2026_06_25.md`) found: the what-if surface had 1 of ~20 engines modelled. Models the 9 what-if scenario engines into the Neomatrix with their cascade lineage, and verifies the flagship `sellProperty` cascade.
+
+### Modelled into the Neomatrix (the what-if surface)
+- `orchestrator.scenarioRunner.runScenario` (dispatcher) + 8 scenario engines: sellProperty, propertyDisposalCgt (per-owner Div 115), tenYearProjection (the chart spine), salarySacrificeToSuper, refinanceLoan, payDownLoan, redirectToOffset, addInvestment — each verified `file:line` + formula + authority.
+- Cascade lineage edges: `calculateCgtDiscount → propertyDisposalCgt → sellProperty → tenYearProjection`; snapshot → sellProperty; all scenarios → runScenario.
+
+### Verified (Trust Engine — what-if cascade reconciliation)
+- `sellProperty` cascade tie-outs over a fixed case + 50 random portfolios (incl. positive/negative gearing, negative equity): netCashFreed = proceeds − 2.5% costs − loan payoff; Δliquid = netCashFreed; Δcashflow = −property.monthlyCashflow; Δnet worth = −sellingCosts − yourCgt; Δportfolio = −currentValue.
+- **Mutation-proven**: flipping the loan-payoff sign fails the lock; reverted → passes (engine 0-diff).
+- Assurance readout climbed to **L3 3** (8 verification nodes; income-tax/net-worth/cashflow + now sellProperty).
+
+### Build Status
+- [x] `vitest run tests/regression/invariants/trustEngine.scenarios.test.ts` — 2/2 (51 reconciliations)
+- [x] `vitest run tests/neomatrix/ + scenarios` — 128/128
+- [x] `npm run neomatrix:check` — OK (anchors resolve, A3 holds)
+
+### §20.4 self-review (financial build → 10/10)
+- **P1** model the 9 what-if engines + verify sellProperty. **P2 (critique)** modelled each from verified source (read the cascade formulas, not guessed); confirmed the back-compat CGT=0 path so the net-worth tie-out is exact; only claimed edges I verified in source. **P3 (refine)** mutation-proved the cascade lock; confirmed neomatrix:check anchors resolve. **10/10.**
+
+### Doc-sync (§16 / §21.2.1)
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated (9 what-if engines + Assurance L3 entry)
+- Next Tranche A slices: verify tenYearProjection + salarySacrifice cap-guard + the CGT core (golden §19.2).
+
+### PR
+- Branch: `claude/trust-engine-whatif-modelling-jqahjw`
+- Status: Draft
