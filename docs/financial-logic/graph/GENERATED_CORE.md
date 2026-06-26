@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.37.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.38.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 160 · **Edges:** 209
-- **By kind:** orchestrator 8 · engine 67 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 160
-- **Edge provenance:** verified 209 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/86 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 165 · **Edges:** 215
+- **By kind:** orchestrator 8 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 165
+- **Edge provenance:** verified 215 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/91 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -93,6 +93,11 @@
 | **LVR — loan-to-value ratio** | `lib/utils/calculations.ts:9` | engine | core | LVR as a percentage (0–100). | Loan-to-value ratio (standard lending metric). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.LVR' fixture) | documented |
 | **Property equity** | `lib/utils/calculations.ts:20` | engine | core | Equity amount (AUD), floored at 0. | Equity = asset value less secured debt, floored at 0. | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.equity' fixture) | documented |
 | **Rental yield (annual)** | `lib/utils/calculations.ts:30` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture) | documented |
+| **What-if: sell a property** | `lib/cfo/scenarios/sellProperty.ts:35` | engine | cfo | ScenarioResult — cash freed, cashflow delta and net-worth delta of disposing a property at its recorded value. CGT is flagged, not computed (the canonical CGT lives in lib/tax-engine — §12.2 SSOT). | Monitrax what-if methodology (dispose at currentValue; selling costs as % of gross; CGT delegated to the tax engine). | calc-audit engine cfo.scenarios.sellProperty (proven) + lib/cfo/scenarios/sellProperty.ts:35 | documented |
+| **What-if: extra loan repayments** | `lib/cfo/scenarios/payDownLoan.ts:19` | engine | cfo | ScenarioResult — interest saved and months reduced from adding an extra monthly repayment, plus the monthly cashflow impact. | Standard amortisation (M = P·r(1+r)ⁿ/((1+r)ⁿ−1)); interest per period via the canonical lib/utils/calculations primitive. | calc-audit engine cfo.scenarios.payDownLoan (proven) + lib/cfo/scenarios/payDownLoan.ts:19 | documented |
+| **What-if: park cash in offset** | `lib/cfo/scenarios/redirectToOffset.ts:22` | engine | cfo | ScenarioResult — annual interest saved by adding cash to a loan offset account (liquidity preserved — offset still counts as liquid). | Offset mechanics (effective principal = principal − offset) + Monitrax what-if annualisation (annual = monthly × 12). | calc-audit engine cfo.scenarios.redirectToOffset (proven) + lib/cfo/scenarios/redirectToOffset.ts:22 | documented |
+| **What-if: refinance a loan** | `lib/cfo/scenarios/refinanceLoan.ts:21` | engine | cfo | ScenarioResult — monthly/lifetime savings and break-even months from refinancing to a new rate, net of switching costs. | Standard P&I repayment formula (canonical lib/utils/calculations.calculatePIRepayment); break-even = cost / monthly saving. | calc-audit engine cfo.scenarios.refinanceLoan (proven) + lib/cfo/scenarios/refinanceLoan.ts:21 | documented |
+| **What-if: start a monthly investment** | `lib/cfo/scenarios/addInvestment.ts:20` | engine | cfo | ScenarioResult — projected future value and growth of a recurring monthly investment, plus the monthly cashflow impact of the contribution. | Future value of an ordinary monthly annuity; cashflow contribution held constant. | calc-audit engine cfo.scenarios.addInvestment (proven) + lib/cfo/scenarios/addInvestment.ts:20 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -152,7 +157,7 @@
 | **GST Act 1999** | 10% GST on taxable supplies; $75k registration threshold. | A New Tax System (Goods and Services Tax) Act 1999 — s9-70, s23-15 | GST / BAS |
 | **Monitrax health-score methodology** | score = round(clamp(0,100, Σ(catScore×catWeight) − totalPenalty)) | Monitrax health methodology (Phase 12 Financial Health Engine) | Health aggregate score |
 | **CFO score component weights** | overall = Σ component_i × weight_i | Monitrax CFO methodology (Phase 17 Personal CFO Engine) | CFO overall score (weighted), CFO score (orchestrator) |
-| **What-if annualisation rule** | annual = monthlyDelta × 12 | Monitrax CFO what-if methodology | What-if: cut a spend category |
+| **What-if annualisation rule** | annual = monthlyDelta × 12 | Monitrax CFO what-if methodology | What-if: cut a spend category, What-if: park cash in offset |
 | **Cashflow health category weights** | overall = Σ category × weight | Monitrax cashflow-intelligence methodology | Cashflow health score (5-category) |
 | **GRDCS linkage severity thresholds** | severity = f(orphanPct, missingPct) by Blueprint thresholds | Monitrax GRDCS Blueprint (docs/architecture/04_GRDCS_SPECIFICATION.md) | GRDCS linkage health |
 | **Report aggregation rules** | total = Σ value; growth% = (value−cost)/cost×100; avg = Σ/n | Monitrax reporting methodology + §12.2 SSOT (reports consume canonical values) | Property portfolio report |
@@ -390,6 +395,12 @@
 | LVR — loan-to-value ratio | → | Master financial snapshot | feeds | — | verified | lib/services/masterFinancialService.ts:1111 — calculateLVR(loanBalance, property.currentValue) |
 | Property equity | → | Master financial snapshot | feeds | — | verified | lib/services/masterFinancialService.ts:1110 — calculateEquity(property.currentValue, loanBalance) |
 | Rental yield (annual) | → | Master financial snapshot | feeds | — | verified | lib/services/masterFinancialService.ts:1120 — calculateRentalYield(annualRentalIncome, property.currentValue) |
+| Master financial snapshot | → | What-if: sell a property | feeds | — | verified | lib/cfo/scenarios/sellProperty.ts:39,57 — reads ctx.snapshot.properties / quickMetrics.monthlyCashflow |
+| Master financial snapshot | → | What-if: extra loan repayments | feeds | — | verified | lib/cfo/scenarios/payDownLoan.ts:47 — reads ctx.snapshot.quickMetrics.monthlyCashflow |
+| Master financial snapshot | → | What-if: park cash in offset | feeds | — | verified | lib/cfo/scenarios/redirectToOffset.ts:54 — reads ctx.snapshot.quickMetrics.liquidCash |
+| Master financial snapshot | → | What-if: refinance a loan | feeds | — | verified | lib/cfo/scenarios/refinanceLoan.ts:47 — reads ctx.snapshot.quickMetrics.monthlyCashflow |
+| Master financial snapshot | → | What-if: start a monthly investment | feeds | — | verified | lib/cfo/scenarios/addInvestment.ts:24,38 — reads ctx.snapshot.quickMetrics.monthlyCashflow / emergencyFund.monthsCovered |
+| What-if: park cash in offset | → | What-if annualisation rule | governed-by | — | verified | lib/cfo/scenarios/redirectToOffset.ts:51 — annualInterestSaved = monthlyInterestSaved * 12 |
 
 ---
 

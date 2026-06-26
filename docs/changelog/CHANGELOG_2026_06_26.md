@@ -205,3 +205,33 @@ All 6 anchors re-verified in current source (not memory); edges follow the `inpu
 
 ### PR
 - Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw`. Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3c-cfo-scenarios (backfill the 5 CFO what-if scenario engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling (semantic nodes + verified lineage edges; NO production code / financial logic changed — §21.2).
+- Modelled the 5 PROVEN-but-unmodelled CFO what-if scenario engines, each WITH verified lineage (the new A5 rule — no node ships an orphan):
+  - `engine.sellProperty.sellPropertyScenario` (`sellProperty.ts:35`)
+  - `engine.payDownLoan.payDownLoanScenario` (`payDownLoan.ts:19`)
+  - `engine.redirectToOffset.redirectToOffsetScenario` (`redirectToOffset.ts:22`)
+  - `engine.refinanceLoan.refinanceLoanScenario` (`refinanceLoan.ts:21`)
+  - `engine.addInvestment.addInvestmentScenario` (`addInvestment.ts:20`)
+- **Lineage (6 edges, all verified in source §19.2):** the master snapshot `--feeds-->` each scenario (every one reads `ctx.snapshot.quickMetrics`); `redirectToOffset --governed-by--> law.monitrax.whatIfAnnualisation` (its `annualInterestSaved = monthlyInterestSaved * 12` at `redirectToOffset.ts:51` is the law's exact formula, matching the `cutSpendCategory` precedent).
+- **Coverage: 60% → 65%** (50 → 55 modelled · worklist 34 → 29). `neomatrix:check` green (165 nodes / 215 edges, 0 orphans, binding 83/83).
+
+### Discipline note (accuracy over edge-count — §19.2/§20.4)
+`governed-by whatIfAnnualisation` attached ONLY to `redirectToOffset`, where the law's `monthly × 12` formula appears verbatim. The other four use amortisation / annuity-FV / disposal methods, so they are NOT claimed to be governed by the simple-annualisation law — the verified `master --feeds-->` edge is their incontestable lineage and clears A5. Loan-primitive `depends-on` edges (calculateInterestForPeriod / calculateEffectivePrincipal / calculatePIRepayment) deferred to the NI-3c-loan batch where those primitives get their own nodes.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +5 engine nodes, +6 verified edges, version 0.37.0→0.38.0. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (165 nodes, 215 edges, 0 orphans). `npm run neomatrix:coverage` — 84 / 55 (65%) / 29.
+
+### §20.4 self-review → 10/10
+Every export line re-verified in source; every `feeds` edge backed by a confirmed `ctx.snapshot` read; the single `governed-by` edge backed by the verbatim `×12` formula; under-claimed governance rather than assert a law that doesn't match the engine's method; gate stays green (0 orphans). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw` (PR #1265 — extends the orphan-fix PR with the first gate-green backfill batch). Status: Draft.

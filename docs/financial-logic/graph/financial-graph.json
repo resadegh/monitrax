@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3639,6 +3639,111 @@
       "verifiedBy": "lib/calc-audit/engines/property.ts (calcEngineRegistry 'property.rentalYield' fixture)",
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.sellProperty.sellPropertyScenario",
+      "kind": "engine",
+      "label": "What-if: sell a property",
+      "file": "lib/cfo/scenarios/sellProperty.ts",
+      "line": 35,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — cash freed, cashflow delta and net-worth delta of disposing a property at its recorded value. CGT is flagged, not computed (the canonical CGT lives in lib/tax-engine — §12.2 SSOT).",
+      "formula": "netCashFreed = grossProceeds − sellingCosts − loanPayoff; sellingCosts = grossProceeds × sellingCostsPct (default 0.025); cashflow delta = lose rental income + lose mortgage repayment + lose property expenses.",
+      "authority": "Monitrax what-if methodology (dispose at currentValue; selling costs as % of gross; CGT delegated to the tax engine).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.scenarios.sellProperty (proven) + lib/cfo/scenarios/sellProperty.ts:35",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.payDownLoan.payDownLoanScenario",
+      "kind": "engine",
+      "label": "What-if: extra loan repayments",
+      "file": "lib/cfo/scenarios/payDownLoan.ts",
+      "line": 19,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — interest saved and months reduced from adding an extra monthly repayment, plus the monthly cashflow impact.",
+      "formula": "Two amortisation walks (baseline vs +extraMonthly) via walkAmortisation→calculateInterestForPeriod; interestSaved = baseline.totalInterest − accelerated.totalInterest; monthsReduced = baseline.months − accelerated.months; monthlyCashflowAfter = before − extraMonthly.",
+      "authority": "Standard amortisation (M = P·r(1+r)ⁿ/((1+r)ⁿ−1)); interest per period via the canonical lib/utils/calculations primitive.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.scenarios.payDownLoan (proven) + lib/cfo/scenarios/payDownLoan.ts:19",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.redirectToOffset.redirectToOffsetScenario",
+      "kind": "engine",
+      "label": "What-if: park cash in offset",
+      "file": "lib/cfo/scenarios/redirectToOffset.ts",
+      "line": 22,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — annual interest saved by adding cash to a loan offset account (liquidity preserved — offset still counts as liquid).",
+      "formula": "interestBefore/After = calculateInterestForPeriod(calculateEffectivePrincipal(principal, offset[+amount]), rate, 12); monthlyInterestSaved = before − after; annualInterestSaved = monthlyInterestSaved × 12.",
+      "authority": "Offset mechanics (effective principal = principal − offset) + Monitrax what-if annualisation (annual = monthly × 12).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.scenarios.redirectToOffset (proven) + lib/cfo/scenarios/redirectToOffset.ts:22",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.refinanceLoan.refinanceLoanScenario",
+      "kind": "engine",
+      "label": "What-if: refinance a loan",
+      "file": "lib/cfo/scenarios/refinanceLoan.ts",
+      "line": 21,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "R",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — monthly/lifetime savings and break-even months from refinancing to a new rate, net of switching costs.",
+      "formula": "newMonthlyRepayment = calculatePIRepayment(principal, newRate, remainingMonths); monthlySavings = currentRepayment − newRepayment; lifetimeSavings = monthlySavings × remainingMonths − switchingCosts; breakEvenMonths = ceil(switchingCosts / monthlySavings).",
+      "authority": "Standard P&I repayment formula (canonical lib/utils/calculations.calculatePIRepayment); break-even = cost / monthly saving.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.scenarios.refinanceLoan (proven) + lib/cfo/scenarios/refinanceLoan.ts:21",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.addInvestment.addInvestmentScenario",
+      "kind": "engine",
+      "label": "What-if: start a monthly investment",
+      "file": "lib/cfo/scenarios/addInvestment.ts",
+      "line": 20,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ScenarioResult — projected future value and growth of a recurring monthly investment, plus the monthly cashflow impact of the contribution.",
+      "formula": "months = years × 12; monthlyReturn = annualReturn/12; FV = monthlyAmount × ((1+monthlyReturn)^months − 1)/monthlyReturn (ordinary annuity); projectedGrowth = FV − totalContributions; monthlyCashflowAfter = before − monthlyAmount.",
+      "authority": "Future value of an ordinary monthly annuity; cashflow contribution held constant.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.scenarios.addInvestment (proven) + lib/cfo/scenarios/addInvestment.ts:20",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5686,6 +5791,48 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/services/masterFinancialService.ts:1120 — calculateRentalYield(annualRentalIncome, property.currentValue)"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.sellProperty.sellPropertyScenario",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/sellProperty.ts:39,57 — reads ctx.snapshot.properties / quickMetrics.monthlyCashflow"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.payDownLoan.payDownLoanScenario",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/payDownLoan.ts:47 — reads ctx.snapshot.quickMetrics.monthlyCashflow"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.redirectToOffset.redirectToOffsetScenario",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/redirectToOffset.ts:54 — reads ctx.snapshot.quickMetrics.liquidCash"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.refinanceLoan.refinanceLoanScenario",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/refinanceLoan.ts:47 — reads ctx.snapshot.quickMetrics.monthlyCashflow"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.addInvestment.addInvestmentScenario",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/addInvestment.ts:24,38 — reads ctx.snapshot.quickMetrics.monthlyCashflow / emergencyFund.monthsCovered"
+    },
+    {
+      "from": "engine.redirectToOffset.redirectToOffsetScenario",
+      "to": "law.monitrax.whatIfAnnualisation",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cfo/scenarios/redirectToOffset.ts:51 — annualInterestSaved = monthlyInterestSaved * 12"
     }
   ]
 }
