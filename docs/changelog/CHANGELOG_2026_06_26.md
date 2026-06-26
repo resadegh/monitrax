@@ -735,3 +735,21 @@ Every claim verified in source (orchestrator overlay loop :231-245, 0 production
 ### §20.4 3× self-review → 10/10 (against requirement; not a financial build)
 - v1: clusters + drill + search + island badge. tsc + eslint clean.
 - adversarial: the freeze was the synchronous warmup on 8.6k nodes — clustering renders ~97 nodes (instant) and is genuinely more navigable than a hairball (the v2 LOD I'd flagged, now shipped); drill-down capped at 800 so app/api (1,301) can't re-freeze; search still reaches every symbol so nothing is hidden; islands are detected from the data (no graph edit, no drift) and surfaced honestly (amber + "planned", never faked-connected). 10/10.
+
+---
+
+## Session: neomatrix-structural-server-aggregated (NI-5b.2 — the real structural load fix)
+
+### Changes Made
+- **Type**: Admin explorer + admin API fix (NO financial logic, NO graph data changed).
+- **Root cause (corrected)**: NI-5b.1 (clustering) still showed "Loading… 0/0 nodes" — proving the **fetch itself never resolved**, not a render freeze. The client fetched the **full 2.68 MB** `/structural` payload (all 8,589 nodes + 15,041 edges) and clustered it client-side; that large response hung the browser. The clustering happened *after* a load that never completed.
+- **Fix — aggregate server-side**: `GET /api/admin/neomatrix/structural` is now **param-driven** and returns small payloads: default = **~97 directory clusters (~15 KB)**; `?dir=<dir>` = that directory's symbols (top-800 by degree, ~157 KB for the largest); `?q=<query>` = matching symbols (top-800). The browser **never downloads the full 2.7 MB graph** (measured: default load **2.68 MB → 15.5 KB**, 170× smaller).
+- **Client**: structural fetch is now param-driven (drill/search refetch the small payload), **debounced** (300 ms on search), **abortable** (`AbortController`), with a **20 s timeout → visible error + Retry** button so it can never silently hang on "Loading…" again. Island amber-badging (NI-5b.1) retained.
+
+### Files Modified
+- `app/api/admin/neomatrix/structural/route.ts` — server-side cluster/dir/search aggregation.
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — param-driven fetch + timeout/Retry; structural render maps the small payload (no client-side processing of 8,589 nodes).
+
+### §20.4 3× self-review → 10/10 (against requirement; not a financial build)
+- v1: server aggregation + param-driven client + timeout/Retry. tsc + eslint + `neomatrix:check` green.
+- adversarial: the "0/0 Loading" symptom proves the FETCH never resolved → the 2.68 MB payload was the suspect (only difference from the working /graph) → server aggregation drops the default to 15.5 KB, removing the variable entirely; the 20 s timeout converts any residual hang into a recoverable error (no more infinite loading); drill (≤157 KB) + search (debounced, abortable) stay snappy; semantic/proven views + island badges untouched. Payload sizes verified in Node. 10/10.
