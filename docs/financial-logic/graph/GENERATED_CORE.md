@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.54.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.56.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 208 · **Edges:** 279
-- **By kind:** orchestrator 9 · engine 105 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 208
-- **Edge provenance:** verified 279 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/125 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 231 · **Edges:** 307
+- **By kind:** orchestrator 9 · engine 128 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
+- **By status:** documented 231
+- **Edge provenance:** verified 307 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/148 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -132,6 +132,29 @@
 | **CFO action prioritisation** | `lib/cfo/actionEngine.ts:23` | engine | cfo | ActionPrioritisationOutput — prioritised CFO actions generated from detected risks + score-improvement analysis, over the user’s accounts/loans/expenses/incomes. | Monitrax CFO action methodology (TRAIL stage-matched). | lib/cfo/actionEngine.ts:23 (NI-4 modelled; fixture pending) | documented |
 | **Health liquidity metrics (+ cashflow/debt siblings)** | `lib/health/metricAggregation.ts:163` | engine | health | LiquidityMetrics — emergency-buffer months, savings rate, liquid-net-worth ratio, short-term-debt ratio. Sibling entries in the file compute cashflow metrics (:219) and debt metrics (:273). | Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores. | lib/health/metricAggregation.ts:163 (NI-4 modelled; fixture pending) | documented |
 | **Health category scoring (liquidity/cashflow/debt)** | `lib/health/categoryScoring.ts:165` | engine | health | HealthCategory — weighted category score from the aggregated metrics. Sibling entries score cashflow (:198) and debt (:231). | Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores. | lib/health/categoryScoring.ts:165 (NI-4 modelled; fixture pending) | documented |
+| **Foreign-resident CGT (Div 855, Measure 4)** | `lib/tax-engine/divisions/foreignResidentCgt.ts:100` | engine | tax | ForeignResidentCgtResult — CGT treatment for foreign residents on Taxable Australian Real Property (TARP). | ITAA 1997 Div 855 (foreign-resident CGT) + s855-25 (TARP); Phase 41E Measure 4 (announced). | lib/tax-engine/divisions/foreignResidentCgt.ts:100 (NI-4 modelled; fixture pending) | documented |
+| **Loss refundability / carry-back (Measure 5)** | `lib/tax-engine/divisions/lossRefundability.ts:112` | engine | tax | LossRefundabilityResult — company loss carry-back refundability for the current FY. | ITAA 1997 loss carry-back amendments (proposed Phase 41E Measure 5). | lib/tax-engine/divisions/lossRefundability.ts:112 (NI-4 modelled; fixture pending) | documented |
+| **Per-entity property-disposal CGT** | `lib/cfo/scenarios/propertyDisposalCgt.ts:148` | engine | cfo | PropertyDisposalCgtResult — per-owner CGT on a property disposal (nominal gain, discount, taxable gain) feeding the sellProperty what-if. | ITAA 1997 Div 100/102 (CGT) + Div 115 (50% discount). Phase 47 Stage D. | lib/cfo/scenarios/propertyDisposalCgt.ts:148 (NI-4 modelled; fixture pending) | documented |
+| **Money flow (income → spend → save)** | `lib/services/moneyFlowService.ts:219` | engine | core | MoneyFlow — the user’s money movement (inflows, outflows, distribution detail) over a period. | Monitrax money-flow aggregation over actual transactions (§19.1 actuals). | lib/services/moneyFlowService.ts:219 (NI-4 modelled; fixture pending) | documented |
+| **Cashflow insight generator** | `lib/cashflow/insightGenerator.ts:36` | engine | core | CashflowInsight[] — narrative insights derived from the forecast / optimisation / stress-test engine outputs. | Monitrax cashflow-intelligence methodology (Phase 14). | lib/cashflow/insightGenerator.ts:36 (NI-4 modelled; fixture pending) | documented |
+| **Report context builder** | `lib/reports/contextBuilder.ts:32` | engine | reports | ReportContext — the assembled financial dataset (period-scoped) that report generators render. | Monitrax report context assembly. | lib/reports/contextBuilder.ts:32 (NI-4 modelled; fixture pending) | documented |
+| **Report generator (dispatch)** | `lib/reports/generators/index.ts:27` | engine | reports | GeneratedReport — dispatches a report type to its section generators over the ReportContext. | Monitrax report engine. | lib/reports/generators/index.ts:27 (NI-4 modelled; fixture pending) | documented |
+| **Report: financial overview** | `lib/reports/generators/financialOverview.ts:9` | engine | reports | Financial-overview report section (net worth, assets, liabilities, cashflow summary). | Monitrax report engine. | lib/reports/generators/financialOverview.ts:9 (NI-4 modelled; fixture pending) | documented |
+| **Report: income & expense** | `lib/reports/generators/incomeExpense.ts:8` | engine | reports | Income/expense report section. | Monitrax report engine. | lib/reports/generators/incomeExpense.ts:8 (NI-4 modelled; fixture pending) | documented |
+| **Report: investments** | `lib/reports/generators/investment.ts:8` | engine | reports | Investment report section (holdings, returns, allocation). | Monitrax report engine. | lib/reports/generators/investment.ts:8 (NI-4 modelled; fixture pending) | documented |
+| **Report: loans & debt** | `lib/reports/generators/loanDebt.ts:8` | engine | reports | Loan/debt report section (balances, LVR, repayments). | Monitrax report engine. | lib/reports/generators/loanDebt.ts:8 (NI-4 modelled; fixture pending) | documented |
+| **Report: tax time** | `lib/reports/generators/taxTime.ts:10` | engine | reports | Tax-time report section (deductions, income, CGT, franking). | Monitrax report engine. | lib/reports/generators/taxTime.ts:10 (NI-4 modelled; fixture pending) | documented |
+| **Report: per-entity breakdown** | `lib/reports/generators/entityBreakdownSection.ts:23` | engine | reports | Per-entity breakdown sections for the report. | Monitrax report engine. | lib/reports/generators/entityBreakdownSection.ts:23 (NI-4 modelled; fixture pending) | documented |
+| **Per-entity value breakdown** | `lib/calculations/entityValueBreakdown.ts:53` | engine | core | EntityValueRow[] — value attributed to each legal entity (assets/liabilities/net). | Monitrax entity-value attribution. | lib/calculations/entityValueBreakdown.ts:53 (NI-4 modelled; fixture pending) | documented |
+| **Entity insight severity score** | `lib/intelligence/entityInsights.ts:114` | engine | intelligence | Aggregate severity score for an entity from its insight items. | Monitrax GRDCS entity-insight scoring. | lib/intelligence/entityInsights.ts:114 (NI-4 modelled; fixture pending) | documented |
+| **Wealth graph snapshot** | `lib/services/wealthGraphService.ts:253` | engine | intelligence | WealthGraphSnapshot — the relational wealth graph (entities, holdings, links) for a user. | Monitrax wealth-graph assembly. | lib/services/wealthGraphService.ts:253 (NI-4 modelled; fixture pending) | documented |
+| **Entity tax-facts: Div 7A loans** | `lib/services/entityTaxFactsAssembler.ts:79` | engine | tax | Div7ALoanInput[] — assembles Div 7A loan facts from recorded benefits/loans for the tax router. | Feeds the Div 7A classifier (ITAA 1936 Div 7A). | lib/services/entityTaxFactsAssembler.ts:79 (NI-4 modelled; fixture pending) | documented |
+| **Health: spending risk signals** | `lib/health/riskModelling.ts:119` | engine | health | RiskSignal[] — spending-related risk signals from the aggregated health metrics. | Monitrax financial-health risk methodology. | lib/health/riskModelling.ts:119 (NI-4 modelled; fixture pending) | documented |
+| **CFO AI advice** | `lib/cfo/aiAdvisor.ts:160` | engine | cfo | AI-generated (or cached) CFO advice grounded in the user’s financial snapshot. | Monitrax CFO advisor (grounded in canonical snapshot). | lib/cfo/aiAdvisor.ts:160 (NI-4 modelled; fixture pending) | documented |
+| **Time-series builder** | `lib/utils/timeSeries.ts:52` | engine | core | Date[] / value series — the time axis + series math (trend, volatility, coefficient of variation) for financial charts/forecasts. | Monitrax time-series utilities. | lib/utils/timeSeries.ts:52 (NI-4 modelled; fixture pending) | documented |
+| **Transaction frequency detection** | `lib/utils/reconciliation.ts:90` | engine | core | frequency + confidence — detects the recurring frequency of a transaction stream from its dates. | Monitrax transaction reconciliation. | lib/utils/reconciliation.ts:90 (NI-4 modelled; fixture pending) | documented |
+| **What-if: salary sacrifice to super** | `lib/cfo/scenarios/salarySacrificeToSuper.ts:519` | engine | cfo | ScenarioResult — take-home, tax saving, and super-balance impact of salary-sacrificing to super (with concessional-cap guard). | ITAA 1997 super concessional contributions + Monitrax what-if methodology. | lib/cfo/scenarios/salarySacrificeToSuper.ts:519 (NI-4 modelled; fixture pending) | documented |
+| **What-if: 10-year projection** | `lib/cfo/scenarios/tenYearProjection.ts:43` | engine | cfo | TenYearProjectionResult — net-worth / cashflow trajectory projected forward 10 years. | Monitrax projection methodology. | lib/cfo/scenarios/tenYearProjection.ts:43 (NI-4 modelled; fixture pending) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -179,8 +202,8 @@
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
 | **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out, Take-home pay from gross salary, PAYG withholding (ATO Schedule 1), Franking credits (imputation gross-up), Negative gearing (Div 36, reform-aware), Master tax position (per-entity + cross-cutting) |
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in), Take-home pay from gross salary |
-| **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1), Negative gearing (Div 36, reform-aware) |
-| **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
+| **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1), Negative gearing (Div 36, reform-aware), Foreign-resident CGT (Div 855, Measure 4), Loss refundability / carry-back (Measure 5) |
+| **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2), Per-entity property-disposal CGT |
 | **s295-485 — 15% taxed-in-fund** | Concessional contributions / fund income taxed at 15% in the fund. | ITAA 1997 s295-485 | Super contributions + tax saved, SMSF income tax (Div 295) |
 | **Contribution caps + carry/bring-forward** | Concessional cap (s291), non-concessional cap (s292), carry-forward (s291-20), bring-forward (s292-85). | ITAA 1997 s291 / s292 | Super guarantee (SG), Concessional carry-forward, Non-concessional bring-forward |
 | **Div 293 — extra 15% (high income)** | Additional 15% tax on concessional contributions for income above the threshold. | ITAA 1997 Div 293 (s293-15) | Div 293 + Div 296 high-income/balance tax |
@@ -508,6 +531,34 @@
 | Trust net income distribution (Div 6) | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/entity/entityTaxRouter.ts:373 — allocateTrustDistribution within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192 |
 | Div 7A deemed-dividend classifier | → | Master tax position (per-entity + cross-cutting) | feeds | — | verified | lib/tax-engine/entity/entityTaxRouter.ts:539 — classifyDiv7ALoans within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192 |
 | Superannuation.balance | → | SMSF triumvirate compliance classifier | feeds | — | verified | lib/tax-engine/divisions/smsfTriumvirateClassifier.ts:85,160 — input.totalFundValue |
+| Foreign-resident CGT (Div 855, Measure 4) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | foreignResidentCgt.ts:16-17 — ITAA 1997 Div 855 / s855-25; Phase 41E Measure 4 |
+| Property.currentValue | → | Foreign-resident CGT (Div 855, Measure 4) | feeds | — | verified | foreignResidentCgt.ts:100 — TARP (Taxable Australian Real Property) asset value |
+| Loss refundability / carry-back (Measure 5) | → | 2026-27 reform cut-over (Phase 41E) | governed-by | — | verified | lossRefundability.ts:100-101 — Phase 41E Measure 5 loss carry-back |
+| Per-entity property-disposal CGT | → | What-if: sell a property | feeds | — | verified | lib/cfo/scenarios/sellProperty.ts imports computePropertyDisposalCgt from ./propertyDisposalCgt |
+| Per-entity property-disposal CGT | → | ITAA 1997 Div 115 — CGT 50% discount | governed-by | — | verified | propertyDisposalCgt.ts:148 — Div 115 50% discount on held≥12mo |
+| UnifiedTransaction | → | Money flow (income → spend → save) | feeds | — | verified | moneyFlowService.ts:219 — aggregates actual transactions |
+| Cashflow Forecasting Engine (CFE) | → | Cashflow insight generator | feeds | — | verified | insightGenerator.ts:38 — cfeOutput: CFEOutput param |
+| Cashflow Optimisation Engine (COE) | → | Cashflow insight generator | feeds | — | verified | insightGenerator.ts:39 — coeOutput: COEOutput param |
+| Cashflow Stress-Testing Engine | → | Cashflow insight generator | feeds | — | verified | insightGenerator.ts:40 — stressOutput: StressTestOutput param |
+| Master financial snapshot | → | Report context builder | feeds | — | verified | contextBuilder.ts:32 — assembles the financial snapshot/aggregations for reports |
+| Report context builder | → | Report generator (dispatch) | feeds | — | verified | reports/generators/index.ts:27 — generateReport(context: ReportContext) |
+| Report context builder | → | Report: financial overview | feeds | — | verified | financialOverview.ts:9 — generateFinancialOverviewReport(context) |
+| Report context builder | → | Report: income & expense | feeds | — | verified | incomeExpense.ts:8 — generateIncomeExpenseReport(context) |
+| Report context builder | → | Report: investments | feeds | — | verified | investment.ts:8 — generateInvestmentReport(context) |
+| Report context builder | → | Report: loans & debt | feeds | — | verified | loanDebt.ts:8 — generateLoanDebtReport(context) |
+| Report context builder | → | Report: tax time | feeds | — | verified | taxTime.ts:10 — generateTaxTimeReport(context) |
+| Report context builder | → | Report: per-entity breakdown | feeds | — | verified | entityBreakdownSection.ts:23 — buildEntityBreakdownSections(context) |
+| Master financial snapshot | → | Per-entity value breakdown | feeds | — | verified | entityValueBreakdown.ts:53 — per-entity value over the canonical snapshot |
+| Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | Entity insight severity score | feeds | — | verified | entityInsights.ts:114 — scores InsightItem[] from the relational snapshot |
+| Master financial snapshot | → | Wealth graph snapshot | feeds | — | verified | wealthGraphService.ts:253 — assembles the wealth graph from the canonical snapshot |
+| Loan.principal | → | Entity tax-facts: Div 7A loans | feeds | — | verified | entityTaxFactsAssembler.ts:79 — builds Div 7A loan facts from loan/benefit rows |
+| Entity tax-facts: Div 7A loans | → | Div 7A deemed-dividend classifier | feeds | — | verified | entityTaxFactsAssembler assembles Div7ALoanInput[] consumed by classifyDiv7ALoans |
+| Health liquidity metrics (+ cashflow/debt siblings) | → | Health: spending risk signals | feeds | — | verified | riskModelling.ts:119 — analyzeSpendingRisk(metrics: AggregatedMetrics) |
+| Master financial snapshot | → | CFO AI advice | feeds | — | verified | aiAdvisor.ts:160 — grounds advice in the canonical snapshot |
+| UnifiedTransaction | → | Time-series builder | feeds | — | verified | timeSeries.ts:52 — series/trend over transaction history |
+| UnifiedTransaction | → | Transaction frequency detection | feeds | — | verified | reconciliation.ts:90 — detects frequency from transaction dates |
+| Master financial snapshot | → | What-if: salary sacrifice to super | feeds | — | verified | salarySacrificeToSuper.ts:519 — reads ctx.snapshot |
+| Master financial snapshot | → | What-if: 10-year projection | feeds | — | verified | tenYearProjection.ts:43 — projects the snapshot forward |
 
 ---
 

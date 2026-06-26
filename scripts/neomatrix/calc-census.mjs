@@ -87,6 +87,9 @@ const NOT_A_FINANCIAL_CALC = {
   'lib/services/householdCategoryService.ts': 'household category record management (codes/templates), not a financial calc',
   'lib/services/ownershipSelectionService.ts': 'ownership selection/resolution plumbing (the canonical ownership calc is lib/utils/ownership.ts)',
   'lib/services/trustDeedRulesService.ts': 'trust-deed rule fetch/getters (CRUD), not a calc',
+  'lib/cfo/trailStage.ts': 'TRAIL stage → display-info mapping (getTrailStageInfo), not a money calc',
+  'lib/reports/exporters/index.ts': 'report serialization/export (PDF/xlsx), not a financial-position calc',
+  'lib/utils/ownership.ts': 'ownership VALIDATION guard (verifyOwnership) — auth check, not a money calc; ownership shares are computed in masterFinancialService',
 };
 const isExcluded = (f) => Object.prototype.hasOwnProperty.call(NOT_A_FINANCIAL_CALC, f);
 

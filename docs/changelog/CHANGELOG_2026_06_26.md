@@ -622,3 +622,22 @@ Verdict traced to the orchestrator's own design comment + the wired-vs-unwired o
 
 ### §20.4 self-review → 10/10
 Every allowlisted file read in source + confirmed non-financial (not guessed); reasons cited; the genuine borderline financial files (moneyFlow, wealthGraph, ownership, timeSeries) deliberately KEPT for modelling, not excluded. 10/10.
+
+---
+
+## Session: neo-inventory-ni4-finish (Wave 2 + gate — census UNCOVERED → 0, NI-4 COMPLETE)
+
+### Changes Made
+- **Type**: Neomatrix modelling + census hard gate (NO financial logic changed — §21.2).
+- **Wave 2 — modelled the 23 remaining genuine financial files** (one verified node + lineage each): 3 reform tax engines (foreignResidentCgt Div 855 / Measure 4, lossRefundability Measure 5, propertyDisposalCgt Div 115 — feeds sellProperty), money-flow, cashflow insight-generator (fed by the forecast/optimise/stress engines), report context-builder + 7 report generators (fed by the context), entity-value breakdown, entity-insight severity, wealth-graph snapshot, entity-tax-facts assembler (feeds Div 7A), spending-risk modelling (fed by health metrics), CFO AI advisor, time-series + reconciliation utilities, salary-sacrifice + 10-year-projection scenarios.
+- **3 more allowlist entries** (trailStage label-map, report exporter/serializer, ownership validation guard).
+- **NI-4-final — census hard gate**: `scripts/neomatrix/check-census.mjs` wired into `neomatrix:check` (→ `vercel-build`). A new UNCOVERED financial calc now **fails the build** — "every calculation is in the Neomatrix" is a build output, not a claim (§22.2).
+- **Census: UNCOVERED 122 → 0 · coverage 73% → 100%** (of the financial-calc denominator; 49 false positives on the reviewed allowlist). Graph: 231 nodes / 307 edges, `neomatrix:check` green.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +23 engine nodes (Wave 1+2), +28 verified edges, version →0.56.x. `scripts/neomatrix/calc-census.mjs` — allowlist. `scripts/neomatrix/check-census.mjs` (new) + `package.json` — the gate. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Every modelled node's entry + lineage verified in source (report generators ← ReportContext; insight-generator ← the 3 cashflow engines; risk ← health metrics; CGT ← Div 115; etc.); allowlist entries each read + reasoned; the gate makes coverage enforced not claimed; node ids corrected to their function symbols so the anchor audit binds. 10/10.
+
+### Milestone — NI-4 COMPLETE. Remaining Neo Inventory: NI-5b (8587-structural explorer view) only.
