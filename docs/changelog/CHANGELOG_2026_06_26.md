@@ -439,3 +439,23 @@ These divisions are classifiers/loss-rule engines; the reform-affected one (nega
 
 ### §20.4 self-review → 10/10
 Each entry's body read in source; the forecast→optimisation/stress-test chain verified by the actual `generateForecast(...)` calls; every input feed backed by the verbatim `input.X` read. NI-4 nodes carry `verifiedBy: "…fixture pending"` (honest — they're MODELLED not yet PROVEN). 10/10.
+
+---
+
+## Session: neo-inventory-ni4-intelligence (model net-worth adapter + insights + actions)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.portfolioEngine.calculateNetWorth` (`portfolioEngine.ts:308`) — thin adapter that DELEGATES to the canonical `netWorthCalculator` (§12.2.1 safe — NOT a second calc); `engine.netWorthCalculator.calculateNetWorth --feeds-->` it.
+- `engine.insightsEngine.getInsightsForDashboard` (`insightsEngine.ts:776`) — 8-generator GRDCS insights; `orchestrator.portfolioSnapshot.GET --feeds-->` it.
+- `engine.actionEngine.generateActions` (`actionEngine.ts:23`) — CFO action prioritisation; fed by `input.Account/Loan/Expense/Income` (prisma fetches :31-34).
+- **Census: 62% → 68%** (UNCOVERED 170 → 143). `neomatrix:check` green (206 nodes / 271 edges, 0 orphans).
+
+### Note (§12.2.1 — verified NOT a duplicate)
+`portfolioEngine.calculateNetWorth` imports the canonical as `canonicalCalculateNetWorth` (line 32) and only reshapes the output — confirmed in source it's a presentational adapter, modelled as `feeds` from the canonical engine (no parallel net-worth math).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes, +6 verified edges, version 0.49.0→0.50.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Adapter-vs-duplicate distinction verified in source (the import + delegation); snapshot + prisma-fetch feeds backed by verbatim reads. 10/10.

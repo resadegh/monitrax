@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.49.0",
+  "version": "0.50.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4542,6 +4542,69 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.portfolioEngine.calculateNetWorth",
+      "kind": "engine",
+      "label": "Portfolio net-worth adapter",
+      "file": "lib/intelligence/portfolioEngine.ts",
+      "line": 308,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "NetWorthAnalysis — net worth + asset/liability breakdown for the portfolio engine, RESHAPED from the canonical net-worth result (thin adapter, NOT a second calculation — §12.2.1 safe).",
+      "formula": "delegates to the canonical calculateNetWorth(properties, accounts, investments, loans, super, personalAssets); reshapes assets/liabilities into the NetWorthAnalysis breakdown.",
+      "authority": "SSOT: lib/calculations/netWorthCalculator.ts (this is a presentational adapter over it; net worth = Σassets − Σliabilities).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/intelligence/portfolioEngine.ts:308 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.insightsEngine.getInsightsForDashboard",
+      "kind": "engine",
+      "label": "GRDCS insights engine",
+      "file": "lib/intelligence/insightsEngine.ts",
+      "line": 776,
+      "layer": "engine",
+      "domain": "intelligence",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "InsightsResult — dashboard insights composed from 8 generators: orphaned-entity, missing-link, cross-module, completeness, structural-gap, financial-metric, risk, opportunity.",
+      "formula": "concatenate the 8 insight generators over the SnapshotV2 relational graph; rank + categorise into InsightsResult.",
+      "authority": "Monitrax GRDCS relational-insights methodology (Phase: portfolio snapshot / SnapshotV2).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/intelligence/insightsEngine.ts:776 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.actionEngine.generateActions",
+      "kind": "engine",
+      "label": "CFO action prioritisation",
+      "file": "lib/cfo/actionEngine.ts",
+      "line": 23,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "ActionPrioritisationOutput — prioritised CFO actions generated from detected risks + score-improvement analysis, over the user’s accounts/loans/expenses/incomes.",
+      "formula": "actions = Σ generateActionsFromRisk(risk) over risks + generateScoreImprovementActions(scoreComponents); prioritise.",
+      "authority": "Monitrax CFO action methodology (TRAIL stage-matched).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/cfo/actionEngine.ts:23 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6981,6 +7044,48 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/cashflow/stressTesting.ts:136,142 — generateForecast(baseline + stressed input)"
+    },
+    {
+      "from": "engine.netWorthCalculator.calculateNetWorth",
+      "to": "engine.portfolioEngine.calculateNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/intelligence/portfolioEngine.ts:309,32 — calls canonical calculateNetWorth (imported as canonicalCalculateNetWorth)"
+    },
+    {
+      "from": "orchestrator.portfolioSnapshot.GET",
+      "to": "engine.insightsEngine.getInsightsForDashboard",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/intelligence/insightsEngine.ts:776 — getInsightsForDashboard(snapshot: SnapshotV2)"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.actionEngine.generateActions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/actionEngine.ts:31 — prisma.account.findMany"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.actionEngine.generateActions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/actionEngine.ts:32 — prisma.loan.findMany"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.actionEngine.generateActions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/actionEngine.ts:33 — prisma.expense.findMany"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.actionEngine.generateActions",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/actionEngine.ts:34 — prisma.income.findMany"
     }
   ]
 }

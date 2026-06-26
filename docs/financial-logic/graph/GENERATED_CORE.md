@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.49.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.50.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 203 · **Edges:** 265
-- **By kind:** orchestrator 9 · engine 100 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 203
-- **Edge provenance:** verified 265 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/120 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 206 · **Edges:** 271
+- **By kind:** orchestrator 9 · engine 103 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
+- **By status:** documented 206
+- **Edge provenance:** verified 271 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/123 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -127,6 +127,9 @@
 | **Cashflow Forecasting Engine (CFE)** | `lib/cashflow/forecasting.ts:42` | engine | core | CFEOutput — daily balance projection over the forecast horizon per account + globally, from spending patterns, recurring/income/loan timelines and planned expenses. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/forecasting.ts:42 (NI-4 modelled; fixture pending) | documented |
 | **Cashflow Optimisation Engine (COE)** | `lib/cashflow/optimisation.ts:60` | engine | core | COEOutput — spending inefficiencies, subscription analysis + price increases, fund-movement recommendations, payment-schedule optimisations. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/optimisation.ts:60 (NI-4 modelled; fixture pending) | documented |
 | **Cashflow Stress-Testing Engine** | `lib/cashflow/stressTesting.ts:128` | engine | core | StressTestOutput — baseline forecast vs each stress scenario, with the delta to runway/shortfall per scenario. | Monitrax Cashflow Forecasting/Optimisation/Stress methodology (Phase 14). | lib/cashflow/stressTesting.ts:128 (NI-4 modelled; fixture pending) | documented |
+| **Portfolio net-worth adapter** | `lib/intelligence/portfolioEngine.ts:308` | engine | core | NetWorthAnalysis — net worth + asset/liability breakdown for the portfolio engine, RESHAPED from the canonical net-worth result (thin adapter, NOT a second calculation — §12.2.1 safe). | SSOT: lib/calculations/netWorthCalculator.ts (this is a presentational adapter over it; net worth = Σassets − Σliabilities). | lib/intelligence/portfolioEngine.ts:308 (NI-4 modelled; fixture pending) | documented |
+| **GRDCS insights engine** | `lib/intelligence/insightsEngine.ts:776` | engine | intelligence | InsightsResult — dashboard insights composed from 8 generators: orphaned-entity, missing-link, cross-module, completeness, structural-gap, financial-metric, risk, opportunity. | Monitrax GRDCS relational-insights methodology (Phase: portfolio snapshot / SnapshotV2). | lib/intelligence/insightsEngine.ts:776 (NI-4 modelled; fixture pending) | documented |
+| **CFO action prioritisation** | `lib/cfo/actionEngine.ts:23` | engine | cfo | ActionPrioritisationOutput — prioritised CFO actions generated from detected risks + score-improvement analysis, over the user’s accounts/loans/expenses/incomes. | Monitrax CFO action methodology (TRAIL stage-matched). | lib/cfo/actionEngine.ts:23 (NI-4 modelled; fixture pending) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -489,6 +492,12 @@
 | Cashflow Forecasting Engine (CFE) | → | Cashflow Optimisation Engine (COE) | feeds | — | verified | lib/cashflow/optimisation.ts:76 — generateFundMovements(input.forecast, …) |
 | Loan.principal | → | Cashflow Optimisation Engine (COE) | feeds | — | verified | lib/cashflow/optimisation.ts:78 — input.loans |
 | Cashflow Forecasting Engine (CFE) | → | Cashflow Stress-Testing Engine | feeds | — | verified | lib/cashflow/stressTesting.ts:136,142 — generateForecast(baseline + stressed input) |
+| Net worth | → | Portfolio net-worth adapter | feeds | — | verified | lib/intelligence/portfolioEngine.ts:309,32 — calls canonical calculateNetWorth (imported as canonicalCalculateNetWorth) |
+| Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | GRDCS insights engine | feeds | — | verified | lib/intelligence/insightsEngine.ts:776 — getInsightsForDashboard(snapshot: SnapshotV2) |
+| Account.currentBalance | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:31 — prisma.account.findMany |
+| Loan.principal | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:32 — prisma.loan.findMany |
+| Expense (declared) | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:33 — prisma.expense.findMany |
+| Income (declared) | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:34 — prisma.income.findMany |
 
 ---
 
