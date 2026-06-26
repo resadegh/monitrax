@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.42.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.43.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 174 · **Edges:** 229
-- **By kind:** orchestrator 8 · engine 81 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 174
-- **Edge provenance:** verified 229 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/100 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 176 · **Edges:** 233
+- **By kind:** orchestrator 8 · engine 83 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 176
+- **Edge provenance:** verified 233 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/102 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -107,6 +107,8 @@
 | **Investment: max holding concentration %** | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:549` | engine | cfo | Largest single-holding concentration as a % of total portfolio value. | Concentration-risk measure (largest position share of portfolio). | calc-audit engine cfo.investmentDecisionSupport.calculateMaxConcentration (proven, Decimal) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:549 | documented |
 | **Property portfolio summary** | `lib/cfo/decisionSupport/propertyDecisionSupport.ts:248` | engine | cfo | CFOPropertyPortfolioSummary — totalProperties, totalValue, totalEquity, averageLVR, totalMonthlyIncome, totalMonthlyCashflow. | Portfolio aggregation (sum across properties; LVR = loan/value). | calc-audit engine cfo.propertyDecisionSupport.portfolioSummary (proven, Decimal) + lib/cfo/decisionSupport/propertyDecisionSupport.ts:248 | documented |
 | **Risk radar summary** | `lib/cfo/riskRadar.ts:601` | engine | cfo | RiskSummary — counts by severity (critical/high/medium/low), totalImpact (Σ impact), topRisk. | Risk aggregation over the 10 detectors (categorical severity + dollar-impact roll-up). | calc-audit engine cfo.riskRadar.summary (proven, Decimal) + lib/cfo/riskRadar.ts:601 | documented |
+| **CFO: negative-gearing benefit (estimate)** | `lib/cfo/decisionSupport/taxIntegration.ts:293` | engine | cfo | Estimated annual tax benefit from negatively-geared investment properties. | ITAA1997 rental-loss deductibility at marginal rate (PRE-reform). NOT gated for the Phase 41E reform (neg gearing → new builds only, 1 Jul 2027) — flagged for Reza (§12.14). | calc-audit engine cfo.taxIntegration.calculateNegativeGearingBenefit (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:293 | documented |
+| **CFO: unrealised CGT (simplified estimate)** | `lib/cfo/decisionSupport/taxIntegration.ts:276` | engine | cfo | Estimated unrealised CGT exposure across investment holdings (a SIMPLIFIED projection). | SIMPLIFIED — applies the 50% CGT discount to ALL positive gains with NO 12-month holding-period check and NO Phase 41E reform gating (post-reform = indexation + 30% floor). Canonical CGT is lib/tax-engine. Flagged for Reza (§19.1/§12.14). | calc-audit engine cfo.taxIntegration.calculateUnrealisedCGT (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:276 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -424,6 +426,10 @@
 | Investment units × price | → | Investment: max holding concentration % | feeds | — | verified | lib/cfo/decisionSupport/investmentDecisionSupport.ts:559-561 — pct = h.currentValue / totalValue × 100 |
 | Property.currentValue | → | Property portfolio summary | feeds | — | verified | lib/cfo/decisionSupport/propertyDecisionSupport.ts:265,269 — reduces p.currentValue / p.equity across properties |
 | Master financial snapshot | → | Risk radar summary | feeds | — | verified | lib/cfo/riskRadar.ts:70-76,89 — risks[] built from snapshot loans/incomes/expenses/properties/investments, then calculateSummary aggregates them (:601) |
+| Income (declared) | → | CFO: negative-gearing benefit (estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:298 — Σ toAnnual(property.income) |
+| Expense (declared) | → | CFO: negative-gearing benefit (estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:303 — Σ toAnnual(property.expenses) |
+| Loan.principal | → | CFO: negative-gearing benefit (estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:308 — Σ l.principal × l.interestRateAnnual |
+| Investment units × price | → | CFO: unrealised CGT (simplified estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:280-281 — units × currentPrice / averagePrice |
 
 ---
 

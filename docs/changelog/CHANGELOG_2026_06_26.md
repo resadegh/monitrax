@@ -307,3 +307,23 @@ Both formulas read in source; the estimate honestly labelled rather than dressed
 
 ### §20.4 self-review → 10/10
 Both aggregations read line-by-line in source; portfolioSummary feed backed by the `p.currentValue` reduce; riskRadar feed honestly labelled as transitive (snapshot → detectors → summary). 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-taxintegration (backfill 2 CFO↔tax bridge engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.taxIntegration.calculateNegativeGearingBenefit` (`taxIntegration.ts:293`) — `input.Income/Expense.declared` + `input.Loan.principal --feeds-->` it. Confirms `interestRateAnnual` is a decimal (§19.2).
+- `engine.taxIntegration.calculateUnrealisedCGT` (`taxIntegration.ts:276`) — `input.Investment.value --feeds-->` it.
+- **Coverage: 76% → 79%** (64 → 66 modelled · worklist 20 → 18). `neomatrix:check` green (176 nodes / 233 edges, 0 orphans).
+
+### ⚠️ Flagged for Reza (§12.14 reform + §19.1 estimate — modelled honestly, NOT changed)
+- **Negative-gearing benefit is NOT reform-gated.** Computes the classic marginal-rate deduction unconditionally; the Phase 41E reform restricts neg gearing to new builds from 1 Jul 2027. Modelled `regime: 'pre-reform'`. Whether the CFO surface should regime-gate is a code decision for Reza.
+- **Unrealised CGT is a SIMPLIFIED estimate.** Applies the 50% discount to ALL positive gains with NO 12-month holding-period check and NO reform gating (post-reform = indexation + 30% floor). Canonical CGT lives in `lib/tax-engine`. Modelled `regime: 'pre-reform'` with authority noting the simplification.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +4 verified edges, version 0.42.0→0.43.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas read line-by-line; `interestRateAnnual` decimal-unit confirmed in source; both simplifications/regime-gaps surfaced for Reza rather than blessed; feeds backed by the actual income/expense/loan/holding reads. 10/10.
