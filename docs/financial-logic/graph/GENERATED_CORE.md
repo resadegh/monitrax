@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.44.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.46.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 178 · **Edges:** 239
-- **By kind:** orchestrator 8 · engine 85 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 178
-- **Edge provenance:** verified 239 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/104 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 180 · **Edges:** 244
+- **By kind:** orchestrator 8 · engine 87 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 180
+- **Edge provenance:** verified 244 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/106 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -111,6 +111,8 @@
 | **CFO: unrealised CGT (simplified estimate)** | `lib/cfo/decisionSupport/taxIntegration.ts:276` | engine | cfo | Estimated unrealised CGT exposure across investment holdings (a SIMPLIFIED projection). | SIMPLIFIED — applies the 50% CGT discount to ALL positive gains with NO 12-month holding-period check and NO Phase 41E reform gating (post-reform = indexation + 30% floor). Canonical CGT is lib/tax-engine. Flagged for Reza (§19.1/§12.14). | calc-audit engine cfo.taxIntegration.calculateUnrealisedCGT (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:276 | documented |
 | **CFO: projected month-end balance** | `lib/cfo/intelligenceEngine.ts:354` | engine | cfo | Projected liquid balance at month-end given current liquid balance and daily burn rate. | Linear runway projection (no compounding). | calc-audit engine cfo.intelligenceEngine.calculateProjectedMonthEndBalance (proven, Decimal) + lib/cfo/intelligenceEngine.ts:354 | documented |
 | **CFO: monthly-progress net worth (local)** | `lib/cfo/intelligenceEngine.ts:377` | engine | cfo | Net worth for the intelligence-engine monthly-progress composition. | Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth (this simplified copy exists for local composition; downstream uses a ×0.98 placeholder, per source comment). Noted for Reza (§12.2.1). | calc-audit engine cfo.intelligenceEngine.calculateMonthlyProgressNetWorth (proven, Decimal) + lib/cfo/intelligenceEngine.ts:377 | documented |
+| **PAYG withholding (ATO Schedule 1)** | `lib/tax-engine/core/paygCalculator.ts:149` | engine | tax | PAYGResult — weekly/fortnightly/monthly/annual PAYG withholding for a gross income at a pay frequency. | ATO Schedule 1 (NAT 1004) "Statement of formulas for calculating amounts to be withheld" — §3 weekly earnings + §4 formula y = a·x − b; scale 1 (no tax-free threshold) / scale 2 (with TFT); FY24-25 coefficients. (Standard PAYG — NOT the Phase 41E opt-in dynamic-PAYG reform, measure #9, 1 Jul 2027.) | calc-audit engine tax.payg (proven, Float/Decimal shadow; audit MA.1-002/005) + lib/tax-engine/core/paygCalculator.ts:149 | documented |
+| **Franking credits (imputation gross-up)** | `lib/tax-engine/income/taxabilityRules.ts:250` | engine | tax | Franking credit attached to a franked dividend (the imputation gross-up amount). | ATO dividend imputation — franking credit = dividend × franked-fraction × rate/(1−rate). Assumes a 30% corporate tax rate (standard for large companies; base-rate entities frank at their lower rate). Grossed-up amount = dividend + credit is the assessable income. | calc-audit engine tax.income.frankingCredits (proven, Float/Decimal shadow) + lib/tax-engine/income/taxabilityRules.ts:250 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -156,7 +158,7 @@
 |---|---|---|---|
 | **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth, CFO: monthly-progress net worth (local) |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
-| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out, Take-home pay from gross salary |
+| **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out, Take-home pay from gross salary, PAYG withholding (ATO Schedule 1), Franking credits (imputation gross-up) |
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in), Take-home pay from gross salary |
 | **2026-27 reform cut-over (Phase 41E)** | asset acquired after the cut-over → post-reform regime (per measure commencement). | 2026-27 Federal Budget; CLAUDE.md §12.14 | CGT discount (Div 115 / reform Measure 2), CGT indexation (post-reform), CGT minimum rate (30% floor, post-reform), Negative-gearing regime classifier (Measure 1) |
 | **ITAA 1997 Div 115 — CGT 50% discount** | Capital gains 50% discount for assets held ≥ 12 months (pre-reform). | ITAA 1997 Div 115 | CGT discount (Div 115 / reform Measure 2) |
@@ -438,6 +440,11 @@
 | Investment units × price | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:391-393 — Σ units × averagePrice |
 | Loan.principal | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:396 — totalDebt |
 | CFO: monthly-progress net worth (local) | → | Net worth = assets − liabilities | governed-by | — | verified | lib/cfo/intelligenceEngine.ts:397 — accounts + properties + investments − debt |
+| Income (declared) | → | PAYG withholding (ATO Schedule 1) | feeds | — | verified | lib/tax-engine/core/paygCalculator.ts:150,153 — grossIncome (gross salary/income) at a pay frequency |
+| PAYG withholding (ATO Schedule 1) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | lib/tax-engine/core/paygCalculator.ts:3-5,11 + :184 — ATO Schedule 1 NAT 1004 formula y = a·x − b |
+| PAYG withholding (ATO Schedule 1) | → | Take-home pay from gross salary | feeds | — | verified | lib/cashflow/incomeNormalizer.ts:237 calls TaxEngine.calculatePAYG (re-export of this fn — lib/tax-engine/index.ts:32,80) |
+| Income (declared) | → | Franking credits (imputation gross-up) | feeds | — | verified | lib/tax-engine/income/taxabilityRules.ts:251,258 — dividendAmount (franked dividend income) × frankingPercentage |
+| Franking credits (imputation gross-up) | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | lib/tax-engine/income/taxabilityRules.ts:244-247 — ATO imputation gross-up formula (corporate rate 0.30/0.70) |
 
 ---
 

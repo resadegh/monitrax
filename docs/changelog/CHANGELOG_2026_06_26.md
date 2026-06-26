@@ -349,3 +349,22 @@ tax divisions (negativeGearing, trustDistribution, capitalLossNetting, div152, d
 
 ### §20.4 self-review → 10/10
 Both formulas read line-by-line; accountingIdentity governance backed by the verbatim assets−debt sum; local-net-worth duplicate surfaced with its canonical pointer; all 6 feeds backed by actual reduce reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3d-tax-payg-franking (backfill PAYG + franking credits — tax domain begins)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.tax.payg.calculatePAYG` (`paygCalculator.ts:149`) — ATO Schedule 1 (NAT 1004) withholding `y = max(0, a·x − b)`, `x = floor(weekly)+0.99`, scale 1/2. Lineage: `input.Income.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax`; **cross-domain** `--feeds--> engine.incomeNormalizer.calculateTakeHomePay` (verified: `incomeNormalizer.ts:237` calls `TaxEngine.calculatePAYG`, re-export at `index.ts:32,80`).
+- `engine.tax.income.calculateFrankingCredits` (`taxabilityRules.ts:250`) — imputation gross-up `dividend × (frankingPct/100) × (0.30/0.70)`. Lineage: `input.Income.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax`.
+- **Coverage: 81% → 83%** (68 → 70 modelled · worklist 16 → 14). `neomatrix:check` green (180 nodes / 244 edges, 0 orphans).
+
+### Note (documented assumption, not a flag)
+`calculateFrankingCredits` assumes a 30% corporate rate (standard for large companies; base-rate entities frank at their lower rate) — noted in the node authority. PAYG modelled as the standard engine, with a note that the Phase 41E opt-in dynamic-PAYG reform (measure #9, 1 Jul 2027) is NOT this engine.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +5 verified edges (incl. 1 cross-domain tax→cashflow), version 0.44.0→0.46.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+PAYG formula + the `x = floor+0.99` ATO mechanic read in source; the cross-domain edge proven by tracing the re-export chain; franking formula matched to the source comment + constant; corporate-rate assumption surfaced honestly. 10/10.

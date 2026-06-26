@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.44.0",
+  "version": "0.46.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4017,6 +4017,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.tax.payg.calculatePAYG",
+      "kind": "engine",
+      "label": "PAYG withholding (ATO Schedule 1)",
+      "file": "lib/tax-engine/core/paygCalculator.ts",
+      "line": 149,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "PAYGResult — weekly/fortnightly/monthly/annual PAYG withholding for a gross income at a pay frequency.",
+      "formula": "weekly = toWeekly(gross, freq); scale = hasTaxFreeThreshold ? SCALE_2 : SCALE_1; x = floor(weekly) + 0.99; for the matching band [min,max]: weeklyWithholding = max(0, a·x − b), rounded to $; annual = weekly × 52.",
+      "authority": "ATO Schedule 1 (NAT 1004) \"Statement of formulas for calculating amounts to be withheld\" — §3 weekly earnings + §4 formula y = a·x − b; scale 1 (no tax-free threshold) / scale 2 (with TFT); FY24-25 coefficients. (Standard PAYG — NOT the Phase 41E opt-in dynamic-PAYG reform, measure #9, 1 Jul 2027.)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine tax.payg (proven, Float/Decimal shadow; audit MA.1-002/005) + lib/tax-engine/core/paygCalculator.ts:149",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.tax.income.calculateFrankingCredits",
+      "kind": "engine",
+      "label": "Franking credits (imputation gross-up)",
+      "file": "lib/tax-engine/income/taxabilityRules.ts",
+      "line": 250,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Franking credit attached to a franked dividend (the imputation gross-up amount).",
+      "formula": "credit = dividend × (frankingPercentage/100) × (corporateRate/(1−corporateRate)) = dividend × (frankingPct/100) × (0.30/0.70), rounded to cents; 0 if frankingPct≤0 or dividend≤0.",
+      "authority": "ATO dividend imputation — franking credit = dividend × franked-fraction × rate/(1−rate). Assumes a 30% corporate tax rate (standard for large companies; base-rate entities frank at their lower rate). Grossed-up amount = dividend + credit is the assessable income.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine tax.income.frankingCredits (proven, Float/Decimal shadow) + lib/tax-engine/income/taxabilityRules.ts:250",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6274,6 +6316,41 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/cfo/intelligenceEngine.ts:397 — accounts + properties + investments − debt"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.tax.payg.calculatePAYG",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/core/paygCalculator.ts:150,153 — grossIncome (gross salary/income) at a pay frequency"
+    },
+    {
+      "from": "engine.tax.payg.calculatePAYG",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/tax-engine/core/paygCalculator.ts:3-5,11 + :184 — ATO Schedule 1 NAT 1004 formula y = a·x − b"
+    },
+    {
+      "from": "engine.tax.payg.calculatePAYG",
+      "to": "engine.incomeNormalizer.calculateTakeHomePay",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cashflow/incomeNormalizer.ts:237 calls TaxEngine.calculatePAYG (re-export of this fn — lib/tax-engine/index.ts:32,80)"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.tax.income.calculateFrankingCredits",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/income/taxabilityRules.ts:251,258 — dividendAmount (franked dividend income) × frankingPercentage"
+    },
+    {
+      "from": "engine.tax.income.calculateFrankingCredits",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/tax-engine/income/taxabilityRules.ts:244-247 — ATO imputation gross-up formula (corporate rate 0.30/0.70)"
     }
   ]
 }
