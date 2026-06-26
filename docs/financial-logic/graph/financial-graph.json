@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.43.0",
+  "version": "0.44.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3975,6 +3975,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.intelligenceEngine.calculateProjectedMonthEndBalance",
+      "kind": "engine",
+      "label": "CFO: projected month-end balance",
+      "file": "lib/cfo/intelligenceEngine.ts",
+      "line": 354,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Projected liquid balance at month-end given current liquid balance and daily burn rate.",
+      "formula": "projected = liquidBalance − dailyBurn × daysRemaining (linear burn).",
+      "authority": "Linear runway projection (no compounding).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.intelligenceEngine.calculateProjectedMonthEndBalance (proven, Decimal) + lib/cfo/intelligenceEngine.ts:354",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "kind": "engine",
+      "label": "CFO: monthly-progress net worth (local)",
+      "file": "lib/cfo/intelligenceEngine.ts",
+      "line": 377,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Net worth for the intelligence-engine monthly-progress composition.",
+      "formula": "netWorth = Σ accountBalances + Σ propertyValues + Σ(units×averagePrice) − totalDebt.",
+      "authority": "Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth (this simplified copy exists for local composition; downstream uses a ×0.98 placeholder, per source comment). Noted for Reza (§12.2.1).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.intelligenceEngine.calculateMonthlyProgressNetWorth (proven, Decimal) + lib/cfo/intelligenceEngine.ts:377",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6190,6 +6232,48 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/cfo/decisionSupport/taxIntegration.ts:280-281 — units × currentPrice / averagePrice"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.intelligenceEngine.calculateProjectedMonthEndBalance",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:360 — liquidBalance param"
+    },
+    {
+      "from": "input.Account.currentBalance",
+      "to": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:383 — Σ accountBalances.currentBalance"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:387 — Σ propertyValues.currentValue"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:391-393 — Σ units × averagePrice"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:396 — totalDebt"
+    },
+    {
+      "from": "engine.intelligenceEngine.calculateMonthlyProgressNetWorth",
+      "to": "law.accountingIdentity",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/cfo/intelligenceEngine.ts:397 — accounts + properties + investments − debt"
     }
   ]
 }

@@ -327,3 +327,25 @@ Both aggregations read line-by-line in source; portfolioSummary feed backed by t
 
 ### §20.4 self-review → 10/10
 Both formulas read line-by-line; `interestRateAnnual` decimal-unit confirmed in source; both simplifications/regime-gaps surfaced for Reza rather than blessed; feeds backed by the actual income/expense/loan/holding reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-intelligence (backfill 2 intelligenceEngine engines — CFO domain complete)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.intelligenceEngine.calculateProjectedMonthEndBalance` (`intelligenceEngine.ts:354`) — `liquidBalance − dailyBurn×daysRemaining`; `input.Account.currentBalance --feeds-->` it.
+- `engine.intelligenceEngine.calculateMonthlyProgressNetWorth` (`intelligenceEngine.ts:377`) — `Σaccounts + Σproperties + Σ(units×avgPrice) − totalDebt`; fed by Account/Property/Investment/Loan inputs; `--governed-by--> law.accountingIdentity`.
+- **Coverage: 79% → 81%** (66 → 68 modelled · worklist 18 → 16). **All CFO-domain proven engines now modelled.** `neomatrix:check` green (178 nodes / 239 edges, 0 orphans).
+
+### Note for Reza (§12.2.1 — documented local duplicate, not a drift bug)
+`calculateMonthlyProgressNetWorth` is a LOCAL net-worth helper; the canonical engine is `lib/calculations/netWorthCalculator.calculateNetWorth`. Source comment explains it exists for the intelligence-engine's local composition (downstream uses a ×0.98 placeholder making the canonical engine's extra precision moot). Modelled with the canonical pointer in the authority field.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +6 verified edges, version 0.43.0→0.44.0. `GENERATED_CORE.md` — regenerated.
+
+### Remaining backfill (worklist 16 — all tax domain)
+tax divisions (negativeGearing, trustDistribution, capitalLossNetting, div152, div7a, companyLossRules, trustLossRules, psiClassifier, fteIeeClassifier, smsfTriumvirate), frankingCredits, payg, masterTaxPosition. These need ATO-law worked-example verification (§19.2) + reform-awareness (§12.14) — queued for the hourly cron's careful per-engine pass.
+
+### §20.4 self-review → 10/10
+Both formulas read line-by-line; accountingIdentity governance backed by the verbatim assets−debt sum; local-net-worth duplicate surfaced with its canonical pointer; all 6 feeds backed by actual reduce reads. 10/10.

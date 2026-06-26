@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.43.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.44.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 176 · **Edges:** 233
-- **By kind:** orchestrator 8 · engine 83 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 176
-- **Edge provenance:** verified 233 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/102 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 178 · **Edges:** 239
+- **By kind:** orchestrator 8 · engine 85 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 178
+- **Edge provenance:** verified 239 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/104 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -109,6 +109,8 @@
 | **Risk radar summary** | `lib/cfo/riskRadar.ts:601` | engine | cfo | RiskSummary — counts by severity (critical/high/medium/low), totalImpact (Σ impact), topRisk. | Risk aggregation over the 10 detectors (categorical severity + dollar-impact roll-up). | calc-audit engine cfo.riskRadar.summary (proven, Decimal) + lib/cfo/riskRadar.ts:601 | documented |
 | **CFO: negative-gearing benefit (estimate)** | `lib/cfo/decisionSupport/taxIntegration.ts:293` | engine | cfo | Estimated annual tax benefit from negatively-geared investment properties. | ITAA1997 rental-loss deductibility at marginal rate (PRE-reform). NOT gated for the Phase 41E reform (neg gearing → new builds only, 1 Jul 2027) — flagged for Reza (§12.14). | calc-audit engine cfo.taxIntegration.calculateNegativeGearingBenefit (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:293 | documented |
 | **CFO: unrealised CGT (simplified estimate)** | `lib/cfo/decisionSupport/taxIntegration.ts:276` | engine | cfo | Estimated unrealised CGT exposure across investment holdings (a SIMPLIFIED projection). | SIMPLIFIED — applies the 50% CGT discount to ALL positive gains with NO 12-month holding-period check and NO Phase 41E reform gating (post-reform = indexation + 30% floor). Canonical CGT is lib/tax-engine. Flagged for Reza (§19.1/§12.14). | calc-audit engine cfo.taxIntegration.calculateUnrealisedCGT (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/taxIntegration.ts:276 | documented |
+| **CFO: projected month-end balance** | `lib/cfo/intelligenceEngine.ts:354` | engine | cfo | Projected liquid balance at month-end given current liquid balance and daily burn rate. | Linear runway projection (no compounding). | calc-audit engine cfo.intelligenceEngine.calculateProjectedMonthEndBalance (proven, Decimal) + lib/cfo/intelligenceEngine.ts:354 | documented |
+| **CFO: monthly-progress net worth (local)** | `lib/cfo/intelligenceEngine.ts:377` | engine | cfo | Net worth for the intelligence-engine monthly-progress composition. | Accounting identity (assets − liabilities). LOCAL helper — the canonical net-worth engine is lib/calculations/netWorthCalculator.calculateNetWorth (this simplified copy exists for local composition; downstream uses a ×0.98 placeholder, per source comment). Noted for Reza (§12.2.1). | calc-audit engine cfo.intelligenceEngine.calculateMonthlyProgressNetWorth (proven, Decimal) + lib/cfo/intelligenceEngine.ts:377 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -152,7 +154,7 @@
 
 | Law | Statement | Authority | Governs |
 |---|---|---|---|
-| **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth |
+| **Net worth = assets − liabilities** | net worth = total assets − total liabilities | Standard accounting identity | Net worth, CFO: monthly-progress net worth (local) |
 | **Actuals-vs-declared SSOT** | actuals win when present; declared is fallback only | CLAUDE.md §19.1 | Canonical monthly cashflow, Resolve canonical cashflow (the rule) |
 | **ITAA 1997 — income tax + ATO rates** | tax on income via marginal brackets; LITO offset applied. | ITAA 1997; ATO Individual income tax rates (https://www.ato.gov.au/rates/individual-income-tax-rates/) | Income tax position, Salary take-home (PAYG), Income tax (marginal brackets), Low Income Tax Offset (LITO) — two-tier phase-out, Take-home pay from gross salary |
 | **Medicare Levy Act 1986** | levy = 2% of taxable income above the threshold (shade-in to 125%). | Medicare Levy Act 1986; ATO Medicare Levy | Income tax position, Medicare levy (2% + shade-in), Take-home pay from gross salary |
@@ -430,6 +432,12 @@
 | Expense (declared) | → | CFO: negative-gearing benefit (estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:303 — Σ toAnnual(property.expenses) |
 | Loan.principal | → | CFO: negative-gearing benefit (estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:308 — Σ l.principal × l.interestRateAnnual |
 | Investment units × price | → | CFO: unrealised CGT (simplified estimate) | feeds | — | verified | lib/cfo/decisionSupport/taxIntegration.ts:280-281 — units × currentPrice / averagePrice |
+| Account.currentBalance | → | CFO: projected month-end balance | feeds | — | verified | lib/cfo/intelligenceEngine.ts:360 — liquidBalance param |
+| Account.currentBalance | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:383 — Σ accountBalances.currentBalance |
+| Property.currentValue | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:387 — Σ propertyValues.currentValue |
+| Investment units × price | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:391-393 — Σ units × averagePrice |
+| Loan.principal | → | CFO: monthly-progress net worth (local) | feeds | — | verified | lib/cfo/intelligenceEngine.ts:396 — totalDebt |
+| CFO: monthly-progress net worth (local) | → | Net worth = assets − liabilities | governed-by | — | verified | lib/cfo/intelligenceEngine.ts:397 — accounts + properties + investments − debt |
 
 ---
 
