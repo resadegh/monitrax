@@ -125,7 +125,7 @@
     },
     {
       "file": "app/api/portfolio/snapshot/route.ts",
-      "line": 844,
+      "line": 837,
       "pattern": "INLINE_ARITHMETIC",
       "match": "asset.purchasePrice - asset.currentValue"
     },

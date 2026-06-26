@@ -477,3 +477,41 @@ Adapter-vs-duplicate distinction verified in source (the import + delegation); s
 Liquidity-metric formulas read in source; the metric→scoring chain verified by the `metrics.liquidity.*` reads in the scorer; snapshot feed backed by the `input.portfolioSnapshot` reads. 10/10.
 
 ### NI-4 progress this session: census 56% → 73% (8 genuine financial files modelled: 3 cashflow + 3 intelligence/cfo + 2 health). Remaining UNCOVERED (122) is a mix of genuine financial files (reports, timeSeries, entityInsights, riskModelling, aiAdvisor, entityTaxFactsAssembler) AND census false positives (types/errors/CRUD service fns) to be triaged into the reviewed exclusion allowlist (§22.2 rule 4).
+
+---
+
+## Session: fix-portfolio-snapshot-lvr-yield-dedup (Issue #1 — SSOT dedup, Reza-approved)
+
+### Changes Made
+- **Type**: Fix / SSOT dedup (§12.2.1). Financial build — §19/§20.4 applied.
+- **Root cause**: `app/api/portfolio/snapshot/route.ts` defined LOCAL `calculateLVR` + `calculateRentalYield` duplicating the canonical `lib/utils/calculations.ts`, and they had DRIFTED (`<= 0` local guard vs `=== 0` canonical).
+- **Fix**: hardened the canonical `calculateLVR` + `calculateRentalYield` guards to `<= 0` (defensive — identical output to the locals for ALL inputs), imported them in the route, deleted the two local copies. One formula → one source.
+
+### §19.2 worked-example evidence (behaviour-preserving)
+| Input | Local (old) | Canonical (new) | Match |
+|---|---|---|---|
+| `calculateLVR(400000, 500000)` | 80.0% | 80.0% | ✅ |
+| `calculateRentalYield(26000, 500000)` | 5.2% | 5.2% | ✅ |
+| `propertyValue = 0` | 0 | 0 | ✅ |
+| `propertyValue < 0` (never occurs) | 0 | 0 (was −x with `===0`) | ✅ safer |
+The `=== 0` → `<= 0` hardening changes output ONLY for a negative property value, which cannot occur — so no real-world number changes. The canonical is now strictly ≥ as safe.
+
+### Actuals-vs-declared (§19.1)
+N/A — LVR/yield are structural ratios of `Property.currentValue` + `Loan.principal` + rental income (not transaction-derived); unchanged by this PR.
+
+### Neomatrix (§21.2.1 zero-drift)
+The dedup shifted source lines, so anchors were re-fixed in the same PR: `calculateEquity` :20→:24, `calculateRentalYield` :30→:34, `orchestrator.portfolioSnapshot.GET` :519→:512 + 3 edge evidences. `neomatrix:check` green (208 nodes, 0 orphans).
+
+### Files Modified
+- `lib/utils/calculations.ts` — `<= 0` guards on LVR + rental yield.
+- `app/api/portfolio/snapshot/route.ts` — import canonical, delete local dupes.
+- `.audit/financial-math-baseline.json` — one pre-existing INLINE_ARITHMETIC entry's line 844→837 (shifted by the deletion; not a new violation).
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — anchor fixes.
+
+### Build Status
+- [x] `tsc --noEmit -p tsconfig.json` — 0 errors in changed files.
+- [x] `npm run lint:financial-surfaces` — ✓ no new violations.
+- [x] `npm run neomatrix:check` — OK (208 nodes, 0 orphans, anchors resolve).
+
+### §20.4 self-review → 10/10 (financial build)
+3× review: (1) behaviour-preservation proven by worked examples for all input classes; (2) the guard hardening only affects an impossible input (negative property value), strictly safer; (3) anchor drift caught + fixed in-PR (§21.2.1), surface-linter baseline line corrected (not masking a new violation). No number changes for real data. 10/10.

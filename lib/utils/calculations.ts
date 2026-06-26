@@ -7,7 +7,11 @@ import { Decimal, toDecimal } from '@/lib/decimal';
  * @returns LVR as percentage (0-100)
  */
 export function calculateLVR(loanBalance: number, propertyValue: number): number {
-  if (propertyValue === 0) return 0;
+  // Guard `<= 0` (not just `=== 0`): a zero OR negative property value has no
+  // meaningful LVR — return 0 rather than a negative ratio. This makes this the
+  // single source for every LVR surface (the portfolio-snapshot route kept a
+  // `<= 0` local copy — now deleted; SSOT §12.2.1).
+  if (propertyValue <= 0) return 0;
   return (loanBalance / propertyValue) * 100;
 }
 
@@ -28,7 +32,9 @@ export function calculateEquity(propertyValue: number, loanBalance: number): num
  * @returns Yield as percentage
  */
 export function calculateRentalYield(annualRent: number, propertyValue: number): number {
-  if (propertyValue === 0) return 0;
+  // Guard `<= 0` (not just `=== 0`) — SSOT for every rental-yield surface (the
+  // portfolio-snapshot route kept a `<= 0` local copy — now deleted; §12.2.1).
+  if (propertyValue <= 0) return 0;
   return (annualRent / propertyValue) * 100;
 }
 
