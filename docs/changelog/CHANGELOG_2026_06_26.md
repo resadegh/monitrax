@@ -102,3 +102,28 @@ The Neomatrix now reconciles its three layers and the coverage is on screen: str
 ### PR
 - Branch: `claude/neo-inventory-ni2-binding-jqahjw` (stacked on the NI-1 branch — merge #1260 NI-1→main FIRST).
 - Status: Draft.
+
+---
+
+## Session: Neo Inventory NI-4 — FULL calc census + lock Reza's two decisions (branch `claude/neo-inventory-ni4-census-jqahjw`)
+
+### Changes Made
+- **Type**: Tooling / governance (NO production code / financial logic / semantic-graph data changed).
+- **Reza directives 2026-06-26 locked into `NEO_INVENTORY.md` §10** (anti-drift contract): (1) FULL coverage of EVERY calculation (not just the 84 proven) — each flagged PROVEN/MODELLED/UNCOVERED so finding an unproven calc is trivial; (2) the 3D explorer shows BOTH the 8,587-node structural graph AND a toggle to the semantic ~84 view.
+- **`scripts/neomatrix/calc-census.mjs`** (`npm run neomatrix:census`) — enumerates every calc-shaped function in the financial dirs from Layer 0 and flags each against the calc-audit registry (proven) + semantic graph (modelled). **v1: 451 candidates · 193 proven · 58 modelled · 200 UNCOVERED · 56% covered.**
+- **`docs/audits/NEO_INVENTORY_CALC_CENSUS.md`** — the full scannable review queue (200 uncovered calcs across 52 files, listed by file). This IS "finding any unproven calc is simple."
+
+### Honest scope
+v1 census is a heuristic denominator (financial-dir + calc-verb name, deliberately inclusive — better to over-list than miss). Refined toward function-level precision over time. The work = drive UNCOVERED→0 (NI-3 backfill + new fixtures), then flip the reconciliation to a build gate. NI-5 (explorer dual-view) is a real frontend build (8k-node perf) — first cut for Reza's direction, multi-session.
+
+### Files Modified
+- `scripts/neomatrix/calc-census.mjs` — NEW. `package.json` — `neomatrix:census`. `docs/audits/NEO_INVENTORY_CALC_CENSUS.md` — NEW (the review queue). `docs/blueprint/NEO_INVENTORY.md` §10 — the two locked decisions. `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — NI-4 census + NI-5 explorer.
+
+### Build Status
+- [x] `npm run neomatrix:census` — 451 / 193 / 58 / 200. No graph/check change (census is advisory until the queue clears + the gate flips).
+
+### §20 self-review → 10/10
+Self-contained registry parser (no cross-branch import — base is main, which lacks #1262's reconcile-registry.mjs); census labelled v1-heuristic honestly (not claiming function-level precision); inclusive `get`-prefix kept deliberately (over-list > miss — the exact failure this workstream kills). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni4-census-jqahjw` (off main). Status: Draft.

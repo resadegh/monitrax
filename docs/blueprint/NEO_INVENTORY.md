@@ -182,3 +182,25 @@ Graphify is the missing **generated source** that answers your Q1 (*"why can't t
 - [ ] Approve **holding then closing** #1250–#1257 (re-home net-new properties via NI-3; do not merge as-is).
 - [ ] Approve the NI-1 (restore+commit Layer 0) → NI-4 sequence (one PR each, gated).
 - [ ] Graphify MCP: **not now** (CLI suffices; commit the graph + query helper instead) — or override if you want the MCP query surface early.
+
+---
+
+## 10. Reza decisions 2026-06-26 — FULL coverage + dual-view explorer (LOCKED SCOPE)
+
+> Captured verbatim-intent so there is no drift. These expand the target beyond the 84 "proven" engines.
+
+### Decision 1 — the goal is FULL coverage of EVERY calculation (not just the 84 proven)
+*"every calculation, so that way finding any unproven calc from the list is simple, I want a FULL coverage of Monitrax on Neomatrix."*
+
+- The denominator is **every calculation in the codebase**, each flagged **PROVEN** (calc-audit fixture) / **MODELLED** (semantic node) / **UNCOVERED** (neither).
+- **NI-4 = the full calc census** (`scripts/neomatrix/calc-census.mjs`, `npm run neomatrix:census`) — enumerates all calc-shaped functions in the financial dirs from Layer 0 and flags each. **v1 baseline: 451 candidates · 193 proven · 58 modelled · 200 UNCOVERED · 56% covered** (`docs/audits/NEO_INVENTORY_CALC_CENSUS.md` — the full scannable review queue). Honest: v1 is a heuristic denominator (dir + calc-verb name, deliberately inclusive), refined toward function-level precision over time.
+- The work is to **drive UNCOVERED → 0** (model each + ensure a fixture), with the census the live worklist. The reconciliation gate (NI-4 final) flips to **fail the build** on a NEW uncovered calc once the queue is cleared — so a future unproven calc can't merge silently.
+
+### Decision 2 — the 3D explorer shows BOTH layers, toggleable
+*"I rather see both. I like to see the detailed 8587 nodes and their real relationships and links but also have the option to toggle to 84 when needed so I can trace the links and edges."*
+
+- **NI-5 = explorer dual-view** (`components/admin/neomatrix/NeomatrixExplorer.tsx`, `react-force-graph-3d`): default to the **full Layer-0 structural graph (8,587 nodes / 15,041 edges — real call/import relationships)**, with a **toggle to the semantic ~84 view** to trace lineage/edges.
+- **Honest perf caveat:** 8,587 nodes + 15,041 edges in WebGL needs level-of-detail / domain-filtering / clustering — not a naive render. First cut will be functional + perf-rough, for Reza's UX direction (Phase-53 §14 C11 "3D done right" was deferred for exactly this reason). Admin surface → no Stitch (§18.2).
+
+### Sequence (updated)
+NI-3c/d (backfill the 34 proven engines) → **NI-4 census (this PR) + drive UNCOVERED→0** → **NI-5 explorer dual-view (first cut)** → NI-4-final gate (fail on new uncovered calc). Multi-session — the census + the climbing numbers are the live record; nothing is "done by a claim."
