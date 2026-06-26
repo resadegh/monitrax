@@ -719,3 +719,32 @@ v1 used invalid node fields (`note`/`units`) — the schema gate caught it (prov
 ### PR
 - Branch: `claude/trust-engine-ssot-d1-jqahjw` (stacked on #1254)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche D.2 — model + verify the canonical frequency converters
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix coverage + Trust Engine verification — Tranche D continued). No production logic changed.
+- Modelled the **frequency converters** in `lib/utils/frequencies.ts` as Neomatrix engine nodes: `toAnnual`, `toMonthly`, `periodsPerYear`, `toAnnualDecimal`, `toMonthlyDecimal`. Frequency conversion is the **single most-duplicated formula in the app** (the `×12`/`/12`/`×52` shapes the surface linter flags everywhere) — and it was unmodelled.
+- Added the coverage that was **missing** (no duplication per §12.2.1 — the definitional consistency + round-trip are already locked in `trustEngine.invariants.test.ts`): **L0 golden** per-frequency multipliers (×52/×26/×12/×4/×2/×1; $500/wk → $26,000/yr → $2,166.67/mo) and **Float ⇄ Decimal parity** (the SSOT's two sibling sets must never diverge) incl. the null/undefined → 0 guard.
+- **Mutation-proven** (WEEKLY ×52→×50, toMonthlyDecimal /12→/13 → 3 failures caught; restored 0-diff).
+- One `verification.trustEngine.D.frequencyConverters` node with 5 `verified-by` edges.
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.frequencies.test.ts` — NEW (9 tests).
+- `docs/financial-logic/graph/financial-graph.json` — v0.42.0 → **v0.43.0**, +5 engine nodes / +1 verification node / +5 verified-by edges (188 nodes / 231 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.frequencies` — 9/9
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **23/103 (22%) · 18 verification node(s) · L0 3 · L1 7 · L2 5 · L3 3** (graph v0.43.0).
+
+### §20.4 self-review → 10/10
+SEARCH-FIRST honoured (§12.2.1): found the definitional consistency already covered, so this PR adds ONLY golden + parity rather than re-testing what exists. The parity check is again the high-value add — it's the only thing that catches a Decimal frequency twin drifting. 10/10.
+
+### PR
+- Branch: `claude/trust-engine-ssot-d2-jqahjw` (stacked on #1255)
+- Status: Draft

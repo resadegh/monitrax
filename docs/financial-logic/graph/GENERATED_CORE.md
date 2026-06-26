@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.42.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.43.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 182 · **Edges:** 226
-- **By kind:** orchestrator 9 · engine 78 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 17
-- **By status:** documented 182
-- **Edge provenance:** verified 226 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 18/98 engines+numbers proven (18%) · 17 verification node(s) · by layer L0 2 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 188 · **Edges:** 231
+- **By kind:** orchestrator 9 · engine 83 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 18
+- **By status:** documented 188
+- **Edge provenance:** verified 231 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 23/103 engines+numbers proven (22%) · 18 verification node(s) · by layer L0 3 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -105,6 +105,11 @@
 | **Offset effective principal** | `lib/utils/calculations.ts:42` | engine | core | Interest-bearing principal after offset (AUD), floored at 0. | Offset reduces interest-bearing principal, floored at 0. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
 | **Periodic interest** | `lib/utils/calculations.ts:53` | engine | core | Interest for one period (AUD). | Simple periodic interest accrual. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
 | **P&I repayment (amortising annuity)** | `lib/utils/calculations.ts:69` | engine | core | Monthly principal-and-interest repayment (AUD). | Standard amortising-annuity payment formula. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **Frequency → annual** | `lib/utils/frequencies.ts:7` | engine | core | Annual-equivalent amount (AUD). | Calendar period counts. | tests/regression/invariants/trustEngine.frequencies.test.ts | documented |
+| **Frequency → monthly** | `lib/utils/frequencies.ts:29` | engine | core | Monthly-equivalent amount (AUD). | Annual ÷ 12. | tests/regression/invariants/trustEngine.frequencies.test.ts | documented |
+| **Periods per year** | `lib/utils/frequencies.ts:50` | engine | core | Number of periods per year for a frequency. | Calendar period counts. | tests/regression/invariants/trustEngine.frequencies.test.ts | documented |
+| **Frequency → annual (Decimal)** | `lib/utils/frequencies.ts:85` | engine | core | Annual-equivalent amount as Decimal (null/undefined → 0). | Decimal sibling — must agree with the Float twin. | tests/regression/invariants/trustEngine.frequencies.test.ts | documented |
+| **Frequency → monthly (Decimal)** | `lib/utils/frequencies.ts:113` | engine | core | Monthly-equivalent amount as Decimal. | Decimal sibling — must agree with the Float twin. | tests/regression/invariants/trustEngine.frequencies.test.ts | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -198,6 +203,7 @@
 | **What-if cut-spend — reduction identities + cap + monotonicity (L2)** | L2 | cfo | The reduction reconciles: realised = min(requested, currentSpend) (over-cut is capped — no phantom saving), cashflow delta = +realised, annual = realised×12, savings-rate after = (income − (expenses − realised) − loanRepay)/income×100, emergency months after = liquidCash/(expenses − realised). Golden ($300 off $800 Dining) + 50-case sweep + monotonicity (a larger realised reduction never lowers cashflow/savings-rate). | A dropped cap (phantom saving larger than the category spend), a wrong savings-rate or emergency-fund recompute, or a non-monotone response. | What-if: cut a spend category | `tests/regression/invariants/trustEngine.scenarios.test.ts:563` |
 | **What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2)** | L2 | cfo | Composition identities: taxable income drops by exactly the annual sacrifice, the concessional tile delta equals the sacrifice (after−before === delta), and take-home delta = (−annualSacrifice + the engine’s own reported tax saving)/12. SAFETY guards (the trust guarantee): the concessional-cap hard stop REFUSES (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the Div 296 FW-2 reform lock REFUSES when TSB > $3M and commencement is unverified; zero salary refuses. Cap boundary derived live from getCurrentTaxYearConfig() so it survives FY rollover. | The highest-stakes failure: silently modelling an ILLEGAL over-cap contribution, or a post-reform Div 296 number before Royal Assent (CLAUDE.md §12.14 FW-2). Mutation-proven by disabling the guard. | What-if: salary sacrifice to super | `tests/regression/invariants/trustEngine.scenarios.test.ts:639` |
 | **Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2)** | L0 | core | The six canonical primitives (LVR, equity, rental yield, offset effective-principal, periodic interest, P&I repayment) are proven by hand-derived golden cases (LVR $400k/$500k = 80%, equity $500k−$400k = $100k, yield $26k/$500k = 5.2%, effPrincipal $500k−$80k = $420k, interest $500k@6%/12 = $2,500, P&I $500k@6%/360 = $2,997.75), the domain invariants (non-negativity floors, divide-by-zero → 0, linearity, the LVR inverse identity, P&I total-paid ≥ principal), and Float ⇄ Decimal sibling parity so the SSOT twins can never silently diverge. | A wrong percent factor, a dropped non-negativity floor, a wrong periodic-rate divisor, or a Float/Decimal twin drifting — on the engines the W2–W7 dedup points every property/loan surface at. | LVR — loan-to-value ratio, Property equity, Rental yield (annual), Offset effective principal, Periodic interest, P&I repayment (amortising annuity) | `tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53` |
+| **Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2)** | L0 | core | The frequency converters are proven by golden per-frequency multipliers (×52/×26/×12/×4/×2/×1; $500/wk → $26,000/yr → $2,166.67/mo) and Float ⇄ Decimal sibling parity over a 50-case sweep (incl. the null/undefined → 0 guard). The DEFINITIONAL consistency (toAnnual === x × periodsPerYear, toMonthly === toAnnual/12) + annualise→de-annualise round-trip are additionally locked in trustEngine.invariants.test.ts (L2) — not duplicated here per §12.2.1. | A wrong period multiplier or a Float/Decimal frequency twin drifting — on the single most-duplicated formula in the app, the one the W2–W7 dedup routes every "× 12"/"/ 12" surface back to. | Frequency → annual, Frequency → monthly, Periods per year, Frequency → annual (Decimal), Frequency → monthly (Decimal) | `tests/regression/invariants/trustEngine.frequencies.test.ts:57` |
 
 ## Edges (verified, with evidence)
 
@@ -429,6 +435,11 @@
 | Offset effective principal | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
 | Periodic interest | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
 | P&I repayment (amortising annuity) | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| Frequency → annual | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
+| Frequency → monthly | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
+| Periods per year | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
+| Frequency → annual (Decimal) | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
+| Frequency → monthly (Decimal) | → | Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts). |
 
 ---
 

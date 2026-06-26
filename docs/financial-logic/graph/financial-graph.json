@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.42.0",
+  "version": "0.43.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4027,6 +4027,117 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts",
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.toAnnual",
+      "kind": "engine",
+      "label": "Frequency → annual",
+      "file": "lib/utils/frequencies.ts",
+      "line": 7,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Annual-equivalent amount (AUD).",
+      "formula": "toAnnual(x, f) = x × periodsPerYear(f) [WEEKLY 52 / FORTNIGHTLY 26 / MONTHLY 12 / QUARTERLY 4 / HALF_YEARLY 2 / ANNUAL 1]",
+      "authority": "Calendar period counts.",
+      "inputs": [],
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.toMonthly",
+      "kind": "engine",
+      "label": "Frequency → monthly",
+      "file": "lib/utils/frequencies.ts",
+      "line": 29,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Monthly-equivalent amount (AUD).",
+      "formula": "toMonthly(x, f) = toAnnual(x, f) / 12",
+      "authority": "Annual ÷ 12.",
+      "inputs": [],
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.periodsPerYear",
+      "kind": "engine",
+      "label": "Periods per year",
+      "file": "lib/utils/frequencies.ts",
+      "line": 50,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Number of periods per year for a frequency.",
+      "formula": "WEEKLY 52 / FORTNIGHTLY 26 / MONTHLY 12 / QUARTERLY 4 / HALF_YEARLY 2 / ANNUAL 1 (default 12)",
+      "authority": "Calendar period counts.",
+      "inputs": [],
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.toAnnualDecimal",
+      "kind": "engine",
+      "label": "Frequency → annual (Decimal)",
+      "file": "lib/utils/frequencies.ts",
+      "line": 85,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Annual-equivalent amount as Decimal (null/undefined → 0).",
+      "formula": "toAnnualDecimal twin of toAnnual; null/undefined → Decimal(0)",
+      "authority": "Decimal sibling — must agree with the Float twin.",
+      "inputs": [],
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.frequencies.toMonthlyDecimal",
+      "kind": "engine",
+      "label": "Frequency → monthly (Decimal)",
+      "file": "lib/utils/frequencies.ts",
+      "line": 113,
+      "layer": "engine",
+      "domain": "core",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Monthly-equivalent amount as Decimal.",
+      "formula": "toMonthlyDecimal(x, f) = toAnnualDecimal(x, f) / 12",
+      "authority": "Decimal sibling — must agree with the Float twin.",
+      "inputs": [],
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.D.frequencyConverters",
+      "kind": "verification",
+      "label": "Frequency converters — golden multipliers + Float⇄Decimal parity (L0/L2)",
+      "file": "tests/regression/invariants/trustEngine.frequencies.test.ts",
+      "line": 57,
+      "layer": null,
+      "domain": "core",
+      "trustLayer": "L0",
+      "produces": "The frequency converters are proven by golden per-frequency multipliers (×52/×26/×12/×4/×2/×1; $500/wk → $26,000/yr → $2,166.67/mo) and Float ⇄ Decimal sibling parity over a 50-case sweep (incl. the null/undefined → 0 guard). The DEFINITIONAL consistency (toAnnual === x × periodsPerYear, toMonthly === toAnnual/12) + annualise→de-annualise round-trip are additionally locked in trustEngine.invariants.test.ts (L2) — not duplicated here per §12.2.1.",
+      "catches": "A wrong period multiplier or a Float/Decimal frequency twin drifting — on the single most-duplicated formula in the app, the one the W2–W7 dedup routes every \"× 12\"/\"/ 12\" surface back to.",
+      "authority": "Calendar period counts (weeks/fortnights/months/quarters/half-years per year).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.frequencies.test.ts (+ trustEngine.invariants.test.ts L2 consistency)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6193,6 +6304,41 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity."
+    },
+    {
+      "from": "engine.frequencies.toAnnual",
+      "to": "verification.trustEngine.D.frequencyConverters",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
+    },
+    {
+      "from": "engine.frequencies.toMonthly",
+      "to": "verification.trustEngine.D.frequencyConverters",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
+    },
+    {
+      "from": "engine.frequencies.periodsPerYear",
+      "to": "verification.trustEngine.D.frequencyConverters",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
+    },
+    {
+      "from": "engine.frequencies.toAnnualDecimal",
+      "to": "verification.trustEngine.D.frequencyConverters",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
+    },
+    {
+      "from": "engine.frequencies.toMonthlyDecimal",
+      "to": "verification.trustEngine.D.frequencyConverters",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.frequencies.test.ts:57 — golden multipliers + Float⇄Decimal parity (definitional consistency in trustEngine.invariants.test.ts)."
     }
   ]
 }
