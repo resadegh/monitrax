@@ -39,6 +39,9 @@ const DOMAIN_COLORS: Record<string, string> = {
   neobrain: '#EC4899',
 };
 const NEUTRAL = '#64748B';
+// Bridge nodes in the proven view (non-proven lineage intermediates) render in a
+// muted slate so the proven engines keep full domain colour and stand out.
+const BRIDGE_DIM = '#334155';
 const DOMAINS = ['core', 'tax', 'health', 'cfo', 'intelligence', 'reports', 'neobrain'] as const;
 const LAYERS = ['db', 'engine', 'ui'] as const;
 const TRAIL = ['T', 'R', 'A', 'I', 'L'] as const;
@@ -77,7 +80,7 @@ interface RawGraph {
 }
 
 // react-force-graph node/link shape (links use source/target).
-type GNode = RawNode & { degree: number; color: string; val: number };
+type GNode = RawNode & { degree: number; color: string; val: number; bridge?: boolean };
 type GLink = { source: string; target: string; type: string };
 
 function nodeColor(n: RawNode): string {
@@ -181,6 +184,25 @@ export function NeomatrixExplorer() {
     [colorById],
   );
 
+  // ── Proven view: proven nodes + their 1-hop lineage neighbours ─────────────
+  // Proven engines rarely link DIRECTLY to one another — their lineage runs
+  // THROUGH intermediate nodes (inputs, numbers, orchestrators). Showing only
+  // the 60 proven nodes therefore drops almost every edge (the "disconnected
+  // proven view" bug). The honest fix is to also keep the real bridging nodes
+  // adjacent to a proven node (a node is `bridge` if it's pulled in only because
+  // it neighbours a proven node). We never fabricate direct proven→proven edges
+  // — we surface the genuine intermediates so the lineage is legible.
+  const provenScope = useMemo(() => {
+    if (!graph || view !== 'proven') return null;
+    const provenIds = new Set(graph.nodes.filter((n) => n.proven).map((n) => n.id));
+    const keep = new Set(provenIds);
+    for (const e of graph.edges) {
+      if (provenIds.has(e.from)) keep.add(e.to);
+      if (provenIds.has(e.to)) keep.add(e.from);
+    }
+    return { provenIds, keep };
+  }, [graph, view]);
+
   // ── Filtered graph passed to the canvas ────────────────────────────────────
   const filtered = useMemo(() => {
     if (!graph) return { nodes: [] as GNode[], links: [] as GLink[] };
@@ -192,11 +214,20 @@ export function NeomatrixExplorer() {
       const domainOk = n.domain ? activeDomains.has(n.domain) : true;
       const layerOk = activeLayers.has(layerKey(n));
       const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
-      const viewOk = view === 'all' || n.proven === true;
+      const viewOk = view === 'all' || (provenScope?.keep.has(n.id) ?? false);
       if (domainOk && layerOk && searchOk && viewOk) {
         visible.add(n.id);
         const deg = degree.get(n.id) ?? 0;
-        nodes.push({ ...n, degree: deg, color: nodeColor(n), val: 2 + deg * 1.4 });
+        // In proven view, a kept node that isn't itself proven is a bridge —
+        // render it dim + small so the proven engines (full domain colour) pop.
+        const bridge = view === 'proven' && !(provenScope?.provenIds.has(n.id) ?? false);
+        nodes.push({
+          ...n,
+          degree: deg,
+          color: bridge ? BRIDGE_DIM : nodeColor(n),
+          val: bridge ? 1.5 : 2 + deg * 1.4,
+          bridge,
+        });
       }
     }
     const links: GLink[] = [];
@@ -206,7 +237,7 @@ export function NeomatrixExplorer() {
       }
     }
     return { nodes, links };
-  }, [graph, search, activeDomains, activeLayers, degree, view]);
+  }, [graph, search, activeDomains, activeLayers, degree, view, provenScope]);
 
   const selected = selectedId ? nodeById.get(selectedId) ?? null : null;
 
