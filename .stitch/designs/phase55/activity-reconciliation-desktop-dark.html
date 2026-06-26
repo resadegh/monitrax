@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Activity — Transaction Reconciliation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(14, 20, 36, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        body {
+            background-color: #050913;
+            -webkit-font-smoothing: antialiased;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .btn-action {
+            background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 100%);
+            color: white;
+        }
+    </style>
+<!-- Tailwind Config from theme instructions -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                "surface-container-high": "#2a2a2b",
+                "on-tertiary": "#3d2d23",
+                "surface-dim": "#131314",
+                "secondary-container": "#414659",
+                "primary-fixed-dim": "#c2c6d5",
+                "inverse-primary": "#5a5e6b",
+                "on-primary-container": "#747986",
+                "on-background": "#e5e2e2",
+                "surface-bright": "#39393a",
+                "on-error": "#690005",
+                "secondary-fixed": "#dde2f9",
+                "tertiary-container": "#120702",
+                "secondary": "#c0c6dc",
+                "on-secondary-fixed": "#151b2b",
+                "secondary-fixed-dim": "#c0c6dc",
+                "background": "#050913",
+                "surface-tint": "#c2c6d5",
+                "on-surface-variant": "#94A3B8",
+                "on-secondary": "#2a3041",
+                "tertiary-fixed": "#f8ddcd",
+                "on-secondary-fixed-variant": "#414659",
+                "tertiary": "#dbc2b2",
+                "surface-container-highest": "#353435",
+                "surface-container-lowest": "#0e0e0f",
+                "on-tertiary-fixed-variant": "#554338",
+                "on-primary": "#2c303c",
+                "error-container": "#93000a",
+                "tertiary-fixed-dim": "#dbc2b2",
+                "surface-container-low": "#1c1b1c",
+                "primary": "#22C55E",
+                "inverse-on-surface": "#313031",
+                "on-tertiary-container": "#8a7568",
+                "on-error-container": "#ffdad6",
+                "primary-fixed": "#dee2f1",
+                "surface": "#050913",
+                "on-tertiary-fixed": "#26190f",
+                "on-secondary-container": "#afb4ca",
+                "outline-variant": "rgba(255, 255, 255, 0.08)",
+                "on-primary-fixed-variant": "#424753",
+                "surface-container": "#201f20",
+                "error": "#fda4af",
+                "primary-container": "#050913",
+                "on-primary-fixed": "#171c26",
+                "surface-variant": "#353435",
+                "inverse-surface": "#e5e2e2",
+                "on-surface": "#FAFAF7",
+                "outline": "#909096"
+            },
+            "fontFamily": {
+                "body-lg": ["Inter"],
+                "label-sm": ["Inter"],
+                "label-md": ["Inter"],
+                "body-md": ["Inter"],
+                "headline-md": ["Inter"],
+                "headline-lg": ["Inter"],
+                "display": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary-fixed">
+<!-- Shared SideNavBar -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 h-full w-64 bg-[#0E1424] border-r border-white/5">
+<div class="p-8 pb-4">
+<h1 class="font-headline-md text-headline-md font-bold text-[#FAFAF7]">Monitrax</h1>
+<p class="font-label-md text-label-md text-[#94A3B8] uppercase tracking-widest mt-1">Wealth OS</p>
+</div>
+<nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto hide-scrollbar">
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">home</span>
+<span class="font-medium">Home</span>
+</a>
+<a class="flex items-center h-11 bg-emerald-500/10 text-emerald-400 font-medium border-l-4 border-emerald-500 px-4" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Reports</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">group</span>
+<span>My Household</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance</span>
+<span>My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance_wallet</span>
+<span>My Budget</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">health_and_safety</span>
+<span>My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">trending_up</span>
+<span>My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-[#94A3B8] hover:bg-white/5 transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">map</span>
+<span>My Guide</span>
+</a>
+</nav>
+<div class="p-6 mt-auto">
+<button class="w-full bg-white/10 text-white font-label-md py-3 rounded-full hover:bg-white/20 transition-all border border-white/10">
+            Update Plan
+        </button>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-[#050913]/80 border-b border-white/5">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] text-[20px]">search</span>
+<input class="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-[#FAFAF7] focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all placeholder-[#94A3B8]/50" placeholder="Search transactions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-[#94A3B8] hover:text-[#FAFAF7] transition-colors">notifications</button>
+<button class="material-symbols-outlined text-[#94A3B8] hover:text-[#FAFAF7] transition-colors">settings</button>
+</div>
+<div class="h-8 w-px bg-white/10"></div>
+<div class="flex items-center space-x-3 cursor-pointer group">
+<div class="w-8 h-8 rounded-full bg-slate-800 overflow-hidden border border-white/10">
+<img alt="Alex Sterling" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC58XHVZueOvZ_jwBmg4J6IiQV7eXkoYmE8Uf8XMGyj88bNTdKwuGZy8wzHTmvM70F1yvZO4Xnj5fRwMmxijKrpz0xxTkr44_qUPCcKYfxdlcTT3qvUBDYWWRHzLRtDGEtsEr6ppiyfXiz8V0nl36qXoWUINCgoYG4yiWHq7Rz8K6bn2wi3ILUpA6NE4LDePbbVKXVjJHKfqV9C81-loRvlFdIZ28wBDP1HgbiAI6X6vXBKkidxv7m0xtj0EZ_AJ8-WILQmvAzSvUg"/>
+</div>
+<span class="font-label-md text-label-md font-medium text-[#FAFAF7] group-hover:text-emerald-400">Alex Sterling</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen px-12 pb-24 max-w-[1200px]">
+<!-- Glass Header Card -->
+<section class="mt-8 mb-12">
+<div class="glass-card rounded-[22px] p-8 relative overflow-hidden">
+<div class="relative z-10">
+<span class="font-label-md text-[#94A3B8] text-xs uppercase tracking-[0.2em] block mb-3">YOUR MONEY, RECONCILED</span>
+<h2 class="font-headline-lg text-3xl font-bold text-[#FAFAF7] mb-6">Activity Snapshot</h2>
+<div class="flex items-center justify-between mb-2">
+<div class="flex gap-4 text-sm text-[#94A3B8]">
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-emerald-500 mr-2"></span> 238 done</span>
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-sky-400 mr-2"></span> 12 to confirm</span>
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-slate-600 mr-2"></span> 116 need a category</span>
+</div>
+<span class="font-label-md text-label-md text-[#FAFAF7]">66% complete</span>
+</div>
+<!-- Progress Bar -->
+<div class="h-2 w-full bg-white/5 rounded-full flex overflow-hidden">
+<div class="h-full bg-emerald-500" style="width: 66%;"></div>
+<div class="h-full bg-sky-400" style="width: 5%;"></div>
+<div class="h-full bg-slate-600" style="width: 29%;"></div>
+</div>
+</div>
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px]"></div>
+</div>
+</section>
+<!-- Filters Section -->
+<section class="flex flex-wrap items-center justify-between gap-4 mb-8">
+<div class="flex flex-wrap gap-2">
+<button class="px-5 py-2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-medium transition-all">Done · 238</button>
+<button class="px-5 py-2 rounded-full bg-white/5 border border-white/10 text-[#FAFAF7] text-sm font-medium hover:bg-white/10 flex items-center transition-all">
+                To confirm · 12
+                <span class="w-1.5 h-1.5 rounded-full bg-sky-400 ml-2"></span>
+</button>
+<button class="px-5 py-2 rounded-full bg-white/5 border border-white/10 text-[#FAFAF7] text-sm font-medium hover:bg-white/10 transition-all">Needs a category · 116</button>
+</div>
+<div class="flex items-center text-[#94A3B8]">
+<button class="flex items-center gap-2 px-4 py-2 hover:text-[#FAFAF7] transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+<span class="text-sm font-medium">Filter</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 hover:text-[#FAFAF7] transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span class="text-sm font-medium">Export</span>
+</button>
+</div>
+</section>
+<!-- Transaction List Grouped by Date -->
+<section class="space-y-12">
+<!-- Date Group 1 -->
+<div>
+<h3 class="font-label-md text-[#94A3B8] text-xs uppercase tracking-widest mb-6 opacity-80">THURSDAY 18 JUNE</h3>
+<div class="glass-card rounded-[22px] divide-y divide-white/5 overflow-hidden">
+<!-- Row 1: Salary (Done) -->
+<div class="flex items-center p-5 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-500 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_downward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-[#FAFAF7] leading-tight">Income · Salary</p>
+<p class="text-xs text-[#94A3B8]">Commonwealth Bank Personal Account</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="opacity-60 group-hover:opacity-100 transition-opacity">
+<span class="px-3 py-1 bg-emerald-500/5 text-emerald-400 text-[10px] font-bold tracking-wider uppercase rounded-full border border-emerald-500/10 flex items-center">
+                                SALARY
+                                <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-[#22C55E] tabular-nums text-right w-24">+$1,919.00</span>
+</div>
+</div>
+<!-- Row 2: Loan Repayment (Done) -->
+<div class="flex items-center p-5 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-slate-400 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">swap_horiz</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-[#FAFAF7] leading-tight">Transfer / Loan Repayment</p>
+<p class="text-xs text-[#94A3B8]">Westpac Home Loan Account</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="opacity-60 group-hover:opacity-100 transition-opacity">
+<span class="px-3 py-1 bg-white/5 text-slate-400 text-[10px] font-bold tracking-wider uppercase rounded-full border border-white/5 flex items-center">
+                                LOANS
+                                <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-slate-300 tabular-nums text-right w-24">-$1,295.00</span>
+</div>
+</div>
+<!-- Row 3: Avenue Cafe (To Confirm - ACTIONABLE) -->
+<div class="flex items-center p-5 bg-white/[0.03] border-l-2 border-sky-400 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-rose-400/10 flex items-center justify-center text-rose-300 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-[#FAFAF7] leading-tight">Avenue Cafe</p>
+<p class="text-xs text-[#94A3B8]">AMEX Platinum Card</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-white/5 text-[#94A3B8] font-bold text-[10px] uppercase tracking-wider rounded-full border border-white/10">DINING</span>
+<button class="px-4 py-1.5 rounded-full btn-action text-[10px] font-bold hover:opacity-90 transition-all uppercase tracking-wider shadow-lg">Confirm</button>
+</div>
+<span class="font-medium text-rose-300 tabular-nums text-right w-24">-$42.50</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Date Group 2 -->
+<div>
+<h3 class="font-label-md text-[#94A3B8] text-xs uppercase tracking-widest mb-6 opacity-80">WEDNESDAY 17 JUNE</h3>
+<div class="glass-card rounded-[22px] divide-y divide-white/5 overflow-hidden">
+<!-- Row 4: Telstra (Done) -->
+<div class="flex items-center p-5 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-rose-400/10 flex items-center justify-center text-rose-300 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-[#FAFAF7] leading-tight">Telstra</p>
+<p class="text-xs text-[#94A3B8]">Direct Debit · CBA Everyday</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="opacity-60 group-hover:opacity-100 transition-opacity">
+<span class="px-3 py-1 bg-emerald-500/5 text-emerald-400 text-[10px] font-bold tracking-wider uppercase rounded-full border border-emerald-500/10 flex items-center">
+                                UTILITIES
+                                <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-rose-300 tabular-nums text-right w-24">-$115.00</span>
+</div>
+</div>
+<!-- Row 5: Groceries (Done) -->
+<div class="flex items-center p-5 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-rose-400/10 flex items-center justify-center text-rose-300 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-[#FAFAF7] leading-tight">Woolworths Metro</p>
+<p class="text-xs text-[#94A3B8]">AMEX Platinum Card</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="opacity-60 group-hover:opacity-100 transition-opacity">
+<span class="px-3 py-1 bg-emerald-500/5 text-emerald-400 text-[10px] font-bold tracking-wider uppercase rounded-full border border-emerald-500/10 flex items-center">
+                                GROCERIES
+                                <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-rose-300 tabular-nums text-right w-24">-$12.80</span>
+</div>
+</div>
+<!-- Row 6: Unknown Merchant (Needs Category - ACTIONABLE) -->
+<div class="flex items-center p-5 bg-white/[0.03] border-l-2 border-sky-400 hover:bg-white/5 transition-all group">
+<div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">question_mark</span>
+</div>
+<div class="ml-4 flex-grow">
+<div class="flex items-center gap-2">
+<p class="font-medium text-[#FAFAF7] leading-tight">Unknown Merchant · 029348</p>
+<span class="material-symbols-outlined text-[#94A3B8] text-[14px]">info</span>
+</div>
+<p class="text-xs text-[#94A3B8]">CBA Everyday</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-white/5 text-[#94A3B8] font-bold text-[10px] uppercase tracking-wider rounded-full border border-white/10">UNCATEGORISED</span>
+<button class="px-4 py-1.5 rounded-full btn-action text-[10px] font-bold hover:opacity-90 transition-all uppercase tracking-wider shadow-lg">Add category</button>
+</div>
+<span class="font-medium text-rose-300 tabular-nums text-right w-24">-$84.20</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action for Quick Add -->
+<button class="fixed bottom-10 right-10 w-14 h-14 btn-action rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-[24px]">add</span>
+</button>
+<script>
+    // Simple micro-interactions
+    document.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', () => {
+            btn.style.transform = 'scale(0.97)';
+            setTimeout(() => btn.style.transform = '', 100);
+        });
+    });
+</script>
+</body></html>

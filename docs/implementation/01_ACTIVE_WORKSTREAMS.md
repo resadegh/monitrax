@@ -159,6 +159,23 @@
 - **Risk:** the consolidation SSOT documenting stale behaviour if an engine changes without same-PR update — mitigated by §16 doc-sync + §21.2.1 zero-drift (every Neobrain engine change updates its Neomatrix node in the same PR).
 - **Why this matters:** this whole subsystem was the one major part of Monitrax the Neomatrix couldn't see — an unmodelled blind spot (exactly the class that hid the +$10,505 dashboard bug). Naming it + modelling it makes the AI layer provably tied to every downstream number, and gives "make it smarter as we go" a foundation to grow from. Psychology lens: every increment must mean *fewer* confirmations, never a chattier AI.
 
+### 0·ACTIVITY-SIMPLIFY. Activity / reconciliation — one clear status per row (Phase 55)
+
+- **Status:** 🟡 ACTIVE — **row-level simplification + helper + backfill shipping** (this PR); header band-card reframe queued as 55.2.
+- **Started:** 2026-06-26.
+- **Owner:** Reza (direction + design sign-off) + Claude (build).
+- **Last touched:** 2026-06-26 — Reza prod report: *"a lot of mixed and incorrect messaging… simplify this section, it's very confusing even to me."* Approved the 3-state model; "document in detail, add to plan, ship it."
+- **What it is:** the Activity page showed up to FIVE overlapping status signals per row (confidence band + "Looks right" + raw category pill + "Confirmed/Not confirmed" + link/transfer) that contradicted each other. Phase 55 collapses them to ONE derived status per row (done / suggested / needs-category) with at most one action, where the label is the strongest signal (transfer/link wins over raw category). Design doc: `PHASE_55_ACTIVITY_RECONCILIATION_SIMPLIFICATION.md`.
+- **Phase checklist:**
+  - [x] **SSOT helper** `lib/bookkeeping/transactionStatus.ts` (`deriveRowStatus` + `summariseRowStates`) + 8 tests.
+  - [x] **Row wired** to the helper — derived label + single sky→indigo action + quiet done-check (fixes the "OTHER vs income-link", the three-competing-chips, and the transfer-shows-Uncategorised issues).
+  - [x] **Banner** honest sort cue (was misleading amber "uncategorised first").
+  - [x] **Stale-transfer backfill** migration `20260626000000_backfill_transfer_categorisation`.
+  - [x] **Stitch-first** (§18.2.1) desktop light+dark, §18.8 gate light 9.2 / dark 9.3.
+  - [ ] **55.2 — header band-card reframe:** confidence "high/med/low" counts → action-state "done · to confirm · need a category" via `summariseRowStates` (needs the summary-count source repointed off confidence bands). Stitch design already shows the target.
+- **Risk:** the header still shows confidence bands until 55.2; the row + banner carry the bulk of the de-confusion meanwhile.
+- **Why this matters:** a reconciliation screen has one job — "is this done, or does it need me?" The five-signal row failed that so badly Reza couldn't parse his own product. Behaviour lens: one status per row gives back the cognitive tax the contradiction was charging.
+
 ### 0·LOAN. Loan Ledger, Repayment Matching & Low-Effort Categorisation (Phase 51)
 
 - **Status:** 🟡 ACTIVE — **design phase** (research complete; Stitch-first surfaces next, no code yet).

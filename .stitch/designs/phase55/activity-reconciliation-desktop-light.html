@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Activity — Transaction Reconciliation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 4px 24px -1px rgba(11, 18, 32, 0.03);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        body {
+            background-color: #FAFAF7; /* Warm Ivory as requested */
+            -webkit-font-smoothing: antialiased;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+<!-- Tailwind Config from instructions -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-background": "#0b1c30",
+                    "surface-dim": "#cbdbf5",
+                    "outline": "#6e7b6c",
+                    "on-secondary-container": "#5c6274",
+                    "surface-tint": "#006e2d",
+                    "inverse-on-surface": "#eaf1ff",
+                    "background": "#f8f9ff",
+                    "secondary-fixed-dim": "#c0c6da",
+                    "tertiary-fixed": "#e2e3e0",
+                    "surface-container-high": "#dce9ff",
+                    "primary-container": "#00873a",
+                    "on-primary-fixed-variant": "#005320",
+                    "on-error": "#ffffff",
+                    "on-tertiary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface": "#f8f9ff",
+                    "on-secondary-fixed": "#151b2a",
+                    "tertiary-fixed-dim": "#c6c7c4",
+                    "on-secondary-fixed-variant": "#404757",
+                    "error-container": "#ffdad6",
+                    "tertiary": "#5b5c5a",
+                    "primary": "#006b2c",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "error": "#ba1a1a",
+                    "secondary-container": "#d9dff4",
+                    "tertiary-container": "#737573",
+                    "outline-variant": "#bdcaba",
+                    "inverse-surface": "#213145",
+                    "on-secondary": "#ffffff",
+                    "on-tertiary-fixed-variant": "#454745",
+                    "primary-fixed": "#7ffc97",
+                    "on-surface-variant": "#3e4a3d",
+                    "on-surface": "#0b1c30",
+                    "on-tertiary-fixed": "#1a1c1b",
+                    "on-primary-container": "#f7fff2",
+                    "primary-fixed-dim": "#62df7d",
+                    "on-tertiary-container": "#fdfdfa",
+                    "surface-bright": "#f8f9ff",
+                    "secondary-fixed": "#dce2f6",
+                    "on-primary-fixed": "#002109",
+                    "surface-container-low": "#eff4ff",
+                    "secondary": "#585e6f",
+                    "inverse-primary": "#62df7d",
+                    "surface-container": "#e5eeff",
+                    "surface-variant": "#d3e4fe",
+                    "surface-ivory": "#FAFAF7"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "eyebrow": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "label-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "body-md": ["Inter"]
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="font-body-md text-on-surface selection:bg-primary-fixed">
+<!-- Shared SideNavBar -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 docked left-0 h-full w-64 bg-surface-ivory border-r border-outline-variant">
+<div class="p-8 pb-4">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="font-label-md text-label-md text-on-surface-variant uppercase tracking-widest mt-1">Wealth OS</p>
+</div>
+<nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto hide-scrollbar">
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">home</span>
+<span class="font-medium">Home</span>
+</a>
+<!-- Active Tab: Reports / Activity falls under Reports or Guides in this schema -->
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span>Reports</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">group</span>
+<span>My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance</span>
+<span>My Accounts</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">account_balance_wallet</span>
+<span>My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">health_and_safety</span>
+<span>My Safety Net</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">trending_up</span>
+<span>My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg" href="#">
+<span class="material-symbols-outlined mr-3 text-[20px]">map</span>
+<span>My Guide</span>
+</a>
+</nav>
+<div class="p-6 mt-auto">
+<button class="w-full bg-on-background text-white font-label-md py-3 rounded-full hover:opacity-90 transition-all">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center flex-1 max-w-md">
+<div class="relative w-full group">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+<input class="w-full bg-white/50 border border-outline-variant rounded-full py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary focus:border-primary transition-all" placeholder="Search transactions..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">settings</button>
+</div>
+<div class="h-8 w-px bg-outline-variant"></div>
+<div class="flex items-center space-x-3 cursor-pointer group">
+<div class="w-8 h-8 rounded-full bg-secondary-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional portrait of a woman with a confident smile, wearing a designer navy blazer against a soft cream studio background. The lighting is sophisticated and warm, capturing a premium, high-end editorial feel with shallow depth of field and soft ambient highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC58XHVZueOvZ_jwBmg4J6IiQV7eXkoYmE8Uf8XMGyj88bNTdKwuGZy8wzHTmvM70F1yvZO4Xnj5fRwMmxijKrpz0xxTkr44_qUPCcKYfxdlcTT3qvUBDYWWRHzLRtDGEtsEr6ppiyfXiz8V0nl36qXoWUINCgoYG4yiWHq7Rz8K6bn2wi3ILUpA6NE4LDePbbVKXVjJHKfqV9C81-loRvlFdIZ28wBDP1HgbiAI6X6vXBKkidxv7m0xtj0EZ_AJ8-WILQmvAzSvUg"/>
+</div>
+<span class="font-label-md text-label-md font-medium group-hover:text-primary">Alex Sterling</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen px-12 pb-24 max-w-[1200px]">
+<!-- Glass Header Card -->
+<section class="mt-8 mb-12">
+<div class="glass-card rounded-[22px] p-8 relative overflow-hidden">
+<div class="relative z-10">
+<span class="font-eyebrow text-eyebrow text-secondary uppercase tracking-[0.2em] block mb-3">Your Money, Reconciled</span>
+<h2 class="font-headline-lg text-headline-lg font-bold text-on-surface mb-6">Activity Snapshot</h2>
+<div class="flex items-center justify-between mb-2">
+<div class="flex gap-4 text-sm text-on-surface-variant">
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-primary mr-2"></span> 238 done</span>
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-surface-dim mr-2"></span> 12 to confirm</span>
+<span class="flex items-center"><span class="w-2 h-2 rounded-full bg-slate-300 mr-2"></span> 116 need a category</span>
+</div>
+<span class="font-label-md text-label-md text-on-surface">66% complete</span>
+</div>
+<!-- Segmented Progress Bar -->
+<div class="h-2 w-full bg-slate-100 rounded-full flex overflow-hidden">
+<div class="h-full bg-primary" style="width: 65%;"></div>
+<div class="h-full bg-surface-dim" style="width: 5%;"></div>
+<div class="h-full bg-slate-300" style="width: 30%;"></div>
+</div>
+</div>
+<!-- Subtle texture/glow in background -->
+<div class="absolute -right-20 -top-20 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+</div>
+</section>
+<!-- Filters Section -->
+<section class="flex flex-wrap items-center justify-between gap-4 mb-8">
+<div class="flex flex-wrap gap-2">
+<button class="px-5 py-2 rounded-full bg-primary text-white text-sm font-medium transition-all">Done · 238</button>
+<button class="px-5 py-2 rounded-full bg-white border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-ivory flex items-center transition-all">
+                    To confirm · 12
+                    <span class="w-1.5 h-1.5 rounded-full bg-surface-dim ml-2"></span>
+</button>
+<button class="px-5 py-2 rounded-full bg-white border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-ivory transition-all">Needs a category · 116</button>
+</div>
+<div class="flex items-center text-on-surface-variant">
+<button class="flex items-center gap-2 px-4 py-2 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">filter_list</span>
+<span class="text-sm font-medium">Filter</span>
+</button>
+<button class="flex items-center gap-2 px-4 py-2 hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[20px]">download</span>
+<span class="text-sm font-medium">Export</span>
+</button>
+</div>
+</section>
+<!-- Transaction List Grouped by Date -->
+<section class="space-y-12">
+<!-- Date Group 1 -->
+<div>
+<h3 class="font-label-md text-on-surface-variant text-sm uppercase tracking-widest mb-6 opacity-60">Thursday 18 June</h3>
+<div class="bg-white rounded-[22px] border border-outline-variant/30 divide-y divide-outline-variant/10 overflow-hidden shadow-sm">
+<!-- Row 1: Salary -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_downward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-on-surface leading-tight">Income · Salary</p>
+<p class="text-xs text-on-surface-variant">Commonwealth Bank Personal Account</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-primary/5 text-primary text-[11px] font-semibold tracking-wider uppercase rounded-full flex items-center border border-primary/10">
+                                    Salary
+                                    <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-primary tabular-nums text-right w-24">+$1,919.00</span>
+</div>
+</div>
+<!-- Row 2: Loan Repayment -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">swap_horiz</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-on-surface leading-tight">Transfer / Loan Repayment</p>
+<p class="text-xs text-on-surface-variant">Westpac Home Loan Account</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-slate-50 text-slate-600 text-[11px] font-semibold tracking-wider uppercase rounded-full flex items-center border border-slate-100">
+                                    Loans
+                                    <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-slate-500 tabular-nums text-right w-24">-$1,295.00</span>
+</div>
+</div>
+<!-- Row 3: Avenue Cafe (To Confirm) -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-error/5 flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-on-surface leading-tight">Avenue Cafe</p>
+<p class="text-xs text-on-surface-variant">AMEX Platinum Card</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-surface-dim/10 text-surface-dim font-semibold text-[11px] uppercase tracking-wider rounded-full border border-surface-dim/20">Dining</span>
+<button class="px-3 py-1 rounded-full border border-surface-dim text-surface-dim text-[11px] font-bold hover:bg-surface-dim hover:text-white transition-all uppercase tracking-wider">Confirm</button>
+</div>
+<span class="font-medium text-error tabular-nums text-right w-24">-$42.50</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Date Group 2 -->
+<div>
+<h3 class="font-label-md text-on-surface-variant text-sm uppercase tracking-widest mb-6 opacity-60">Wednesday 17 June</h3>
+<div class="bg-white rounded-[22px] border border-outline-variant/30 divide-y divide-outline-variant/10 overflow-hidden shadow-sm">
+<!-- Row 4: Telstra -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-error/5 flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-on-surface leading-tight">Telstra</p>
+<p class="text-xs text-on-surface-variant">Direct Debit · CBA Everyday</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-primary/5 text-primary text-[11px] font-semibold tracking-wider uppercase rounded-full flex items-center border border-primary/10">
+                                    Utilities
+                                    <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-error tabular-nums text-right w-24">-$115.00</span>
+</div>
+</div>
+<!-- Row 5: Groceries -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-error/5 flex items-center justify-center text-error flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+</div>
+<div class="ml-4 flex-grow">
+<p class="font-medium text-on-surface leading-tight">Woolworths Metro</p>
+<p class="text-xs text-on-surface-variant">AMEX Platinum Card</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-primary/5 text-primary text-[11px] font-semibold tracking-wider uppercase rounded-full flex items-center border border-primary/10">
+                                    Groceries
+                                    <span class="material-symbols-outlined text-[12px] ml-1">check_circle</span>
+</span>
+</div>
+<span class="font-medium text-error tabular-nums text-right w-24">-$12.80</span>
+</div>
+</div>
+<!-- Row 6: Unknown Merchant (Needs Category) -->
+<div class="flex items-center p-5 hover:bg-surface-ivory transition-all group">
+<div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-on-surface-variant flex-shrink-0">
+<span class="material-symbols-outlined text-[20px]">question_mark</span>
+</div>
+<div class="ml-4 flex-grow">
+<div class="flex items-center gap-2">
+<p class="font-medium text-on-surface leading-tight">Unknown Merchant · 029348</p>
+<span class="material-symbols-outlined text-on-surface-variant text-[14px]">info</span>
+</div>
+<p class="text-xs text-on-surface-variant">CBA Everyday</p>
+</div>
+<div class="flex items-center gap-8 min-w-[280px] justify-end">
+<div class="flex items-center gap-2">
+<span class="px-3 py-1 bg-slate-100 text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider rounded-full">Uncategorised</span>
+<button class="px-3 py-1 rounded-full border border-surface-dim text-surface-dim text-[11px] font-bold hover:bg-surface-dim hover:text-white transition-all uppercase tracking-wider">Add category</button>
+</div>
+<span class="font-medium text-error tabular-nums text-right w-24">-$84.20</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Floating Action for Quick Add -->
+<button class="fixed bottom-10 right-10 w-14 h-14 bg-on-background text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-50">
+<span class="material-symbols-outlined text-[24px]">add</span>
+</button>
+<script>
+        // Simple micro-interactions
+        document.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.style.transform = 'scale(0.97)';
+                setTimeout(() => btn.style.transform = '', 100);
+            });
+        });
+    </script>
+</body></html>
