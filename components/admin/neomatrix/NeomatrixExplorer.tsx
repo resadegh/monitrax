@@ -86,6 +86,13 @@ interface RawGraph {
 type GNode = RawNode & { degree: number; color: string; val: number; bridge?: boolean; island?: boolean };
 type GLink = { source: string; target: string; type: string };
 
+// Structural view (NI-5b) — server-AGGREGATED payloads (the browser never
+// downloads the full 2.7 MB graph; that was the load hang). `clusters` = ~97
+// directory super-nodes; `dir`/`search` = up-to-800 symbols + their edges.
+type StructuralPayload =
+  | { mode: 'clusters'; nodes: Array<{ id: string; label: string; count: number }>; edges: Array<{ from: string; to: string; weight: number }> }
+  | { mode: 'dir' | 'search'; dir?: string; nodes: Array<{ id: string; label: string; file: string; line: number }>; edges: Array<{ from: string; to: string; type: string }>; capped: number };
+
 // Top-level dir (e.g. "lib/tax-engine", "app/api") — the structural-view grouping.
 function topDir(file: string | null): string {
   if (!file) return '';
@@ -119,17 +126,18 @@ export function NeomatrixExplorer() {
   // calc-audit-proven engines + their 1-hop lineage · 'structural' (NI-5b) = the
   // whole-codebase Graphify structural graph (8,587 nodes, lazy-loaded).
   const [view, setView] = useState<'all' | 'proven' | 'structural'>('all');
-  const [structuralGraph, setStructuralGraph] = useState<RawGraph | null>(null);
+  // Structural view (NI-5b): server-aggregated payload for the current drill /
+  // search state. Default = directory clusters; drilling/searching refetches.
+  const [structuralData, setStructuralData] = useState<StructuralPayload | null>(null);
   const [structuralLoading, setStructuralLoading] = useState(false);
-  // Structural view drill-down: null = directory-cluster overview · a dir = that
-  // directory's symbols expanded (NI-5b renders ~97 clusters by default, not the
-  // 8.6k-node hairball, so it loads instantly and is navigable).
+  const [structuralError, setStructuralError] = useState<string | null>(null);
+  // Drill-down: null = directory-cluster overview · a dir = that directory's symbols.
   const [expandedDir, setExpandedDir] = useState<string | null>(null);
   const provenCount = useMemo(() => graph?.nodes.filter((n) => n.proven).length ?? 0, [graph]);
 
-  // The dataset downstream memos (degree, nodeById, lineage) read: structural view
-  // → the full structural graph; else the semantic graph.
-  const activeGraph = view === 'structural' ? structuralGraph : graph;
+  // Semantic memos (degree, colourById, filtered, islands) read the semantic graph;
+  // the structural view is fed separately from `structuralData`.
+  const activeGraph = graph;
 
   // Semantic islands: nodes NOT in the main connected component. These are the
   // known production-unwired engines (div152 / psi / fteIee — each a 2-node pair
@@ -188,32 +196,53 @@ export function NeomatrixExplorer() {
     };
   }, []);
 
-  // ── Lazy-load the structural graph (NI-5b) on first switch ─────────────────
-  // ~2 MB / 8,587 nodes — fetched only when the user opens the Structural view,
-  // never on the default page load.
+  // ── Structural fetch (NI-5b) — server-aggregated, param-driven, abortable ───
+  // Refetches the small payload for the current (drill, search) state. The
+  // browser never downloads the full graph. A timeout converts any hang into a
+  // visible error + Retry instead of an infinite "Loading…".
+  const [structuralReloadKey, setStructuralReloadKey] = useState(0);
   useEffect(() => {
-    if (view !== 'structural' || structuralGraph || structuralLoading) return;
+    if (view !== 'structural') return;
+    const q = search.trim();
+    let url = '/api/admin/neomatrix/structural';
+    if (q) url += `?q=${encodeURIComponent(q)}`;
+    else if (expandedDir) url += `?dir=${encodeURIComponent(expandedDir)}`;
+
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 20000);
     let cancelled = false;
     setStructuralLoading(true);
-    fetch('/api/admin/neomatrix/structural')
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`Structural graph request failed (${r.status})`);
-        const json = await r.json();
-        return (json.data ?? json) as RawGraph;
-      })
-      .then((g) => {
-        if (!cancelled) setStructuralGraph(g);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load structural graph');
-      })
-      .finally(() => {
-        if (!cancelled) setStructuralLoading(false);
-      });
+    setStructuralError(null);
+    // Debounce search keystrokes; drill/cluster fetch immediately.
+    const delay = q ? 300 : 0;
+    const run = setTimeout(() => {
+      fetch(url, { signal: ctrl.signal })
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`Structural request failed (${r.status})`);
+          const json = await r.json();
+          return (json.data ?? json) as StructuralPayload;
+        })
+        .then((d) => {
+          if (!cancelled) setStructuralData(d);
+        })
+        .catch((e) => {
+          if (cancelled) return;
+          const msg = e instanceof DOMException && e.name === 'AbortError' ? 'Structural graph timed out — Retry.' : e instanceof Error ? e.message : 'Failed to load structural graph';
+          setStructuralError(msg);
+        })
+        .finally(() => {
+          clearTimeout(timeout);
+          if (!cancelled) setStructuralLoading(false);
+        });
+    }, delay);
+
     return () => {
       cancelled = true;
+      clearTimeout(run);
+      clearTimeout(timeout);
+      ctrl.abort();
     };
-  }, [view, structuralGraph, structuralLoading]);
+  }, [view, expandedDir, search, structuralReloadKey]);
 
   // ── Size to container ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -253,13 +282,28 @@ export function NeomatrixExplorer() {
     return d;
   }, [activeGraph]);
 
+  // id → node, for the inspector + lineage labels. Structural symbols come from
+  // the loaded payload; semantic nodes from the graph.
   const nodeById = useMemo(() => {
     const m = new Map<string, RawNode>();
-    activeGraph?.nodes.forEach((n) => m.set(n.id, n));
+    if (view === 'structural') {
+      if (structuralData && structuralData.mode !== 'clusters') {
+        for (const n of structuralData.nodes) {
+          m.set(n.id, {
+            id: n.id, kind: 'structural', label: n.label, file: n.file, line: n.line,
+            layer: null, domain: null, trailStage: null, regime: null, produces: null,
+            formula: null, authority: null, inputs: [], workedExample: null, verifiedBy: null,
+            verifiedDate: null, status: null,
+          });
+        }
+      }
+    } else {
+      activeGraph?.nodes.forEach((n) => m.set(n.id, n));
+    }
     return m;
-  }, [activeGraph]);
+  }, [view, activeGraph, structuralData]);
 
-  // id → colour, for tinting edges + particles by their source node.
+  // id → colour (semantic), used as a fallback by linkSourceColor.
   const colorById = useMemo(() => {
     const m = new Map<string, string>();
     activeGraph?.nodes.forEach((n) => m.set(n.id, nodeColor(n)));
@@ -267,12 +311,17 @@ export function NeomatrixExplorer() {
   }, [activeGraph]);
 
   // A link's source can be a string id (pre-simulation) or a node object (post).
+  // Structural: cluster ids (dir::X) + symbol ids both colour by directory.
   const linkSourceColor = useCallback(
     (l: { source: string | { id?: string } }) => {
       const id = typeof l.source === 'object' ? l.source?.id : l.source;
-      return (id && colorById.get(id)) || NEUTRAL;
+      if (!id) return NEUTRAL;
+      if (id.startsWith('dir::')) return dirColor(id.slice('dir::'.length));
+      const n = nodeById.get(id);
+      if (n?.kind === 'structural') return dirColor(n.file);
+      return colorById.get(id) || NEUTRAL;
     },
-    [colorById],
+    [colorById, nodeById],
   );
 
   // ── Proven view: proven nodes + their 1-hop lineage neighbours ─────────────
@@ -334,82 +383,39 @@ export function NeomatrixExplorer() {
     return { nodes, links };
   }, [activeGraph, search, activeDomains, activeLayers, degree, view, provenScope, islandIds]);
 
-  // ── Structural view (NI-5b): directory clusters → drill-down → search ───────
-  // Default = ~97 directory super-nodes (instant render, no 8.6k-node freeze).
-  // Click a cluster → expand that directory's symbols (capped 800 by degree).
-  // Searching bypasses clustering and matches across all 8,589 symbols.
-  const STRUCTURAL_CAP = 800;
+  // ── Structural view (NI-5b): map the server-aggregated payload to GNodes ────
+  // The server already did the clustering / drill / search + capping; the client
+  // just shapes the small payload for the canvas. No 8.6k-node client work.
+  const baseRaw = {
+    layer: null, domain: null, trailStage: null, regime: null, produces: null,
+    formula: null, authority: null, inputs: [] as RawNode['inputs'], workedExample: null,
+    verifiedBy: null, verifiedDate: null, status: null,
+  };
   const structuralView = useMemo(() => {
-    if (view !== 'structural' || !structuralGraph) return { nodes: [] as GNode[], links: [] as GLink[] };
-    const q = search.trim().toLowerCase();
-    const visibleSubset = (subset: RawNode[]) => {
-      const vis = new Set(subset.map((n) => n.id));
-      const nodes: GNode[] = subset.map((n) => {
-        const deg = degree.get(n.id) ?? 0;
-        return { ...n, degree: deg, color: nodeColor(n), val: 1 + Math.min(deg, 6) * 0.5 };
-      });
-      const links: GLink[] = [];
-      for (const e of structuralGraph.edges) if (vis.has(e.from) && vis.has(e.to)) links.push({ source: e.from, target: e.to, type: e.type });
+    if (view !== 'structural' || !structuralData) return { nodes: [] as GNode[], links: [] as GLink[] };
+    if (structuralData.mode === 'clusters') {
+      const nodes: GNode[] = structuralData.nodes.map((c) => ({
+        ...baseRaw, id: c.id, kind: 'cluster', label: c.label, file: c.label, line: null,
+        produces: `${c.count} symbols`, degree: c.count, color: dirColor(c.label),
+        val: 4 + Math.log2(c.count + 1) * 2.2,
+      }));
+      const links: GLink[] = structuralData.edges.map((e) => ({ source: e.from, target: e.to, type: 'depends' }));
       return { nodes, links };
-    };
-    // SEARCH — across every symbol, regardless of cluster/expand state.
-    if (q) {
-      const matched = structuralGraph.nodes
-        .filter((n) => n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q))
-        .slice(0, STRUCTURAL_CAP);
-      return visibleSubset(matched);
     }
-    // EXPANDED — one directory's symbols (capped by degree).
-    if (expandedDir) {
-      let inDir = structuralGraph.nodes.filter((n) => topDir(n.file) === expandedDir);
-      if (inDir.length > STRUCTURAL_CAP) {
-        inDir = [...inDir].sort((a, b) => (degree.get(b.id) ?? 0) - (degree.get(a.id) ?? 0)).slice(0, STRUCTURAL_CAP);
-      }
-      return visibleSubset(inDir);
+    // dir / search — symbols. Size by the degree within the returned subset.
+    const deg = new Map<string, number>();
+    for (const e of structuralData.edges) {
+      deg.set(e.from, (deg.get(e.from) ?? 0) + 1);
+      deg.set(e.to, (deg.get(e.to) ?? 0) + 1);
     }
-    // CLUSTER overview — one super-node per top-level directory.
-    const cnt = new Map<string, number>();
-    for (const n of structuralGraph.nodes) {
-      const d = topDir(n.file);
-      cnt.set(d, (cnt.get(d) ?? 0) + 1);
-    }
-    const nodes: GNode[] = [...cnt.entries()].map(([d, c]) => ({
-      id: `dir::${d}`,
-      kind: 'cluster',
-      label: d,
-      file: d,
-      line: null,
-      layer: null,
-      domain: null,
-      trailStage: null,
-      regime: null,
-      produces: `${c} symbols`,
-      formula: null,
-      authority: null,
-      inputs: [],
-      workedExample: null,
-      verifiedBy: null,
-      verifiedDate: null,
-      status: null,
-      degree: c,
-      color: dirColor(d),
-      val: 4 + Math.log2(c + 1) * 2.2,
+    const nodes: GNode[] = structuralData.nodes.map((n) => ({
+      ...baseRaw, id: n.id, kind: 'structural', label: n.label, file: n.file, line: n.line,
+      degree: deg.get(n.id) ?? 0, color: dirColor(n.file), val: 1 + Math.min(deg.get(n.id) ?? 0, 6) * 0.5,
     }));
-    const ce = new Map<string, number>();
-    const dirOf = (id: string) => topDir(nodeById.get(id)?.file ?? null);
-    for (const e of structuralGraph.edges) {
-      const a = dirOf(e.from);
-      const b = dirOf(e.to);
-      if (!a || !b || a === b) continue;
-      const k = a < b ? `${a}|${b}` : `${b}|${a}`;
-      ce.set(k, (ce.get(k) ?? 0) + 1);
-    }
-    const links: GLink[] = [...ce.keys()].map((k) => {
-      const [a, b] = k.split('|');
-      return { source: `dir::${a}`, target: `dir::${b}`, type: 'depends' };
-    });
+    const links: GLink[] = structuralData.edges.map((e) => ({ source: e.from, target: e.to, type: e.type }));
     return { nodes, links };
-  }, [view, structuralGraph, expandedDir, search, degree, nodeById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view, structuralData]);
 
   // The dataset actually drawn (semantic → filtered · structural → structuralView).
   const rendered = view === 'structural' ? structuralView : filtered;
@@ -419,12 +425,19 @@ export function NeomatrixExplorer() {
   // Lineage of the selected node (in / out edges with the other node's label).
   // Capped at 40 each — a structural file node can have 100+ `contains` edges.
   const lineage = useMemo(() => {
-    if (!activeGraph || !selected) return { out: [] as RawEdge[], inc: [] as RawEdge[] };
+    if (!selected) return { out: [] as RawEdge[], inc: [] as RawEdge[] };
+    // Structural: the loaded subset's edges; semantic: the graph's edges.
+    const edges: Array<{ from: string; to: string; type: string }> =
+      view === 'structural'
+        ? structuralData && structuralData.mode !== 'clusters'
+          ? structuralData.edges
+          : []
+        : activeGraph?.edges ?? [];
     return {
-      out: activeGraph.edges.filter((e) => e.from === selected.id).slice(0, 40),
-      inc: activeGraph.edges.filter((e) => e.to === selected.id).slice(0, 40),
+      out: edges.filter((e) => e.from === selected.id).slice(0, 40) as RawEdge[],
+      inc: edges.filter((e) => e.to === selected.id).slice(0, 40) as RawEdge[],
     };
-  }, [activeGraph, selected]);
+  }, [view, activeGraph, structuralData, selected]);
 
   const toggleSet = (set: Set<string>, key: string, setter: (s: Set<string>) => void) => {
     const next = new Set(set);
@@ -524,7 +537,7 @@ export function NeomatrixExplorer() {
             {([
               ['all', `Semantic (${graph?.nodes.length ?? 0})`],
               ['proven', `Proven (${provenCount})`],
-              ['structural', `Structural (${structuralGraph?.nodes.length ?? '8.6k'})`],
+              ['structural', `Structural (8.6k)`],
             ] as const).map(([v, lbl]) => (
               <button
                 key={v}
@@ -645,8 +658,12 @@ export function NeomatrixExplorer() {
 
         <p className="mt-5 text-[11px] tabular-nums text-slate-500">
           {rendered.nodes.length}
-          {view === 'structural' && !expandedDir && !search ? ' directories' : ` / ${activeGraph?.nodes.length ?? 0} nodes`} ·{' '}
-          {rendered.links.length} edges
+          {view === 'structural'
+            ? !expandedDir && !search
+              ? ' directories'
+              : ' symbols'
+            : ` / ${activeGraph?.nodes.length ?? 0} nodes`}{' '}
+          · {rendered.links.length} edges
         </p>
       </div>
 
@@ -757,9 +774,20 @@ export function NeomatrixExplorer() {
           Loading knowledge graph…
         </div>
       )}
-      {view === 'structural' && structuralLoading && !structuralGraph && !error && (
+      {view === 'structural' && structuralLoading && !structuralData && !structuralError && (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-slate-500">
-          Loading structural graph (~8.6k nodes)…
+          Loading structural graph…
+        </div>
+      )}
+      {view === 'structural' && structuralError && (
+        <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3">
+          <p className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-300">{structuralError}</p>
+          <button
+            onClick={() => setStructuralReloadKey((k) => k + 1)}
+            className="rounded-full border border-white/10 bg-white/[0.06] px-4 py-1.5 text-xs text-slate-200 hover:bg-white/[0.12]"
+          >
+            Retry
+          </button>
         </div>
       )}
       {error && (
