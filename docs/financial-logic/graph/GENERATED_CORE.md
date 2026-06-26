@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.38.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.39.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 169 · **Edges:** 214
-- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 10
-- **By status:** documented 169
-- **Edge provenance:** verified 214 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 6/92 engines+numbers proven (7%) · 10 verification node(s) · by layer L0 1 · L1 4 · L2 2 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 171 · **Edges:** 216
+- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 12
+- **By status:** documented 171
+- **Edge provenance:** verified 216 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 8/92 engines+numbers proven (9%) · 12 verification node(s) · by layer L0 1 · L1 5 · L2 3 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -185,6 +185,8 @@
 | **What-if sell-property — cascade reconciliation (L3)** | L3 | cfo | The sell-property cascade ties out over a fixed case + 50 random portfolios: netCashFreed = proceeds − 2.5% costs − loan payoff; Δliquid = netCashFreed; Δcashflow = −property.monthlyCashflow; Δnet worth = −sellingCosts − yourCgt; Δportfolio = −currentValue. | A wrong sign or dropped term in the most consequential what-if (a real sell-or-keep decision). Mutation-proven: flipping the loan-payoff sign fails the lock. | What-if: sell a property | `tests/regression/invariants/trustEngine.scenarios.test.ts:73` |
 | **What-if 10-year projection — golden + independent recurrence (L1)** | L1 | cfo | The projection spine matches (a) hand-derived golden compounding ($100k@4%→$148,024.43; $100k super@6%→$179,084.77) and (b) an INDEPENDENT re-implementation of the per-year recurrence over a 50-case random sweep; year-0 = baseNetWorth + totalDelta = final − base identities hold. | A wrong growth factor / recurrence error that would mis-project EVERY what-if at once (this engine feeds every lever chart). | What-if: 10-year net-worth projection (the chart spine) | `tests/regression/invariants/trustEngine.scenarios.test.ts:145` |
 | **Property disposal CGT — per-owner Div 115 reconciliation (L1)** | L1 | cfo | Each owner share + discount rate + taxable gain reconciles to the canonical attributeAsset + calculateCgtDiscountDecimal (Div 115) over the 6 archetypes; ownership weights sum to 1; nominal gain splits exactly. | A wrong per-owner CGT split or discount rate in the sell-property cascade (the classic CGT foot-gun). | Property disposal CGT (per-owner Div 115) | `tests/regression/invariants/invariants.test.ts:215` |
+| **What-if add-investment — annuity FV golden + independent compounding sum (L1)** | L1 | cfo | The projected future value matches (a) hand-derived golden annuity values ($1,000/mo @8%/10y → $182,946.04, $62,946.04 of it growth; $500/mo @7%/20y → $260,463.33) and (b) an INDEPENDENT term-by-term compounding sum (Σ m·(1+r/12)^k) over a 50-case sweep; growth = FV − contributions, FV ≥ contributions (no money invented), portfolio-after = before + FV, cashflow loses exactly the contribution. | A wrong exponent / annuity term that would over- or under-state the "start investing" projection, plus the zero-return edge (FV must equal contributions exactly). | What-if: add a regular investment | `tests/regression/invariants/trustEngine.scenarios.test.ts:250` |
+| **What-if redirect-to-offset — interest-saved identity (L2)** | L2 | cfo | When the loan is not already offset below the parked amount, the monthly interest saved collapses to the clean identity amount × rate/12 (golden: $50k into a $500k loan @6% → exactly $250/mo, $3,000/yr), annual = ×12, and liquid cash is UNCHANGED (offset stays accessible). Holds over a 50-case sweep that preserves principal − offset ≥ amount. | A sign flip or wrong periodic-rate divisor on the offset saving, and the fully-offset edge (parking more must save nothing — no negative interest invented). | What-if: redirect cash to an offset | `tests/regression/invariants/trustEngine.scenarios.test.ts:313` |
 
 ## Edges (verified, with evidence)
 
@@ -404,6 +406,8 @@
 | What-if: sell a property | → | What-if sell-property — cascade reconciliation (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:73 — cascade reconciliation over 51 cases; mutation-proven (loan-payoff sign flip fails). |
 | What-if: 10-year net-worth projection (the chart spine) | → | What-if 10-year projection — golden + independent recurrence (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:145 — golden compounding + independent-recurrence differential over 50 cases. |
 | Property disposal CGT (per-owner Div 115) | → | Property disposal CGT — per-owner Div 115 reconciliation (L1) | verified-by | — | verified | tests/regression/invariants/invariants.test.ts:215 — per-owner Div 115 split reconciles to calculateCgtDiscountDecimal over 6 archetypes. |
+| What-if: add a regular investment | → | What-if add-investment — annuity FV golden + independent compounding sum (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:250 — annuity-FV golden + independent term-by-term compounding differential over 50 cases + zero-return edge. |
+| What-if: redirect cash to an offset | → | What-if redirect-to-offset — interest-saved identity (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:313 — interest-saved identity amount×rate/12 golden + 50-case sweep + fully-offset edge. |
 
 ---
 

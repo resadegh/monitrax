@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3801,6 +3801,38 @@
       "verifiedBy": "tests/regression/invariants/invariants.test.ts Invariant 4 (existing reconciliation)",
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.addInvestment",
+      "kind": "verification",
+      "label": "What-if add-investment — annuity FV golden + independent compounding sum (L1)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 250,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L1",
+      "produces": "The projected future value matches (a) hand-derived golden annuity values ($1,000/mo @8%/10y → $182,946.04, $62,946.04 of it growth; $500/mo @7%/20y → $260,463.33) and (b) an INDEPENDENT term-by-term compounding sum (Σ m·(1+r/12)^k) over a 50-case sweep; growth = FV − contributions, FV ≥ contributions (no money invented), portfolio-after = before + FV, cashflow loses exactly the contribution.",
+      "catches": "A wrong exponent / annuity term that would over- or under-state the \"start investing\" projection, plus the zero-return edge (FV must equal contributions exactly).",
+      "authority": "Ordinary-annuity future-value identity FV = m·((1+r/12)^n − 1)/(r/12).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if addInvestment)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L2.redirectToOffset",
+      "kind": "verification",
+      "label": "What-if redirect-to-offset — interest-saved identity (L2)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 313,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L2",
+      "produces": "When the loan is not already offset below the parked amount, the monthly interest saved collapses to the clean identity amount × rate/12 (golden: $50k into a $500k loan @6% → exactly $250/mo, $3,000/yr), annual = ×12, and liquid cash is UNCHANGED (offset stays accessible). Holds over a 50-case sweep that preserves principal − offset ≥ amount.",
+      "catches": "A sign flip or wrong periodic-rate divisor on the offset saving, and the fully-offset edge (parking more must save nothing — no negative interest invented).",
+      "authority": "Simple periodic-interest accrual on effective principal: interest = max(0, principal − offset) × rate/12.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if redirectToOffset)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5883,6 +5915,20 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/invariants.test.ts:215 — per-owner Div 115 split reconciles to calculateCgtDiscountDecimal over 6 archetypes."
+    },
+    {
+      "from": "engine.addInvestment.addInvestmentScenario",
+      "to": "verification.trustEngine.L1.addInvestment",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:250 — annuity-FV golden + independent term-by-term compounding differential over 50 cases + zero-return edge."
+    },
+    {
+      "from": "engine.redirectToOffset.redirectToOffsetScenario",
+      "to": "verification.trustEngine.L2.redirectToOffset",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:313 — interest-saved identity amount×rate/12 golden + 50-case sweep + fully-offset edge."
     }
   ]
 }

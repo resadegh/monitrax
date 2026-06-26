@@ -589,3 +589,35 @@ Golden values hand-derived from the documented rates; the independent recurrence
 ### PR
 - Branch: `claude/trust-engine-whatif-a2-jqahjw` (stacked on #1250)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche A.3 — verify addInvestment + redirectToOffset (the arithmetic what-ifs)
+
+### Changes Made
+- **Type**: Enhancement (Trust Engine verification — Tranche A continued). No production logic changed.
+- **`addInvestmentScenario`** (the "start investing" lever) verified three ways: golden annuity FV (hand-derived — $1,000/mo @8%/10y → **$182,946.04** of which **$62,946.04** is growth; $500/mo @7%/20y → **$260,463.33**), an **independent term-by-term compounding sum** (`Σ m·(1+r/12)^k`, structurally distinct from the engine's closed form) over a 50-case sweep, the zero-return edge (FV must equal contributions exactly), plus the accounting identities (growth = FV − contributions, FV ≥ contributions so no money is invented, portfolio-after = before + FV, cashflow loses exactly the contribution).
+- **`redirectToOffsetScenario`** (park cash in an offset) verified by its clean identity: when `principal − offset ≥ amount`, monthly interest saved = **`amount × rate/12`** exactly (golden: $50k into a $500k loan @6% → **$250/mo, $3,000/yr**), annual = ×12, liquid cash UNCHANGED (offset stays accessible). 50-case sweep preserves the headroom; fully-offset edge proves parking more saves nothing (no negative interest invented).
+- Both engines **mutation-proven** (addInvestment exponent break + redirectToOffset sign flip → 5 test failures caught; restored to 0-diff).
+- Two `verified-by` verification nodes added to the Neomatrix (`verification.trustEngine.L1.addInvestment`, `verification.trustEngine.L2.redirectToOffset`) with verified `file:line` anchors; graph regenerated.
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.scenarios.test.ts` — +addInvestment + redirectToOffset blocks (12 tests total in file).
+- `docs/financial-logic/graph/financial-graph.json` — v0.38.0 → **v0.39.0**, +2 verification nodes, +2 verified-by edges (171 nodes / 216 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.scenarios` — 12/12
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **8/92 (9%) · 12 verification node(s) · L0 1 · L1 5 · L2 3 · L3 3** (graph v0.39.0).
+
+### §20.4 self-review → 10/10
+v1 used the closed form as the "independent" check — **rejected** (not independent; same algebra as the engine). v2 swaps in a genuine term-by-term compounding loop so agreement is a real differential. redirectToOffset assigned **L2** (algebraic identity, not a differential) rather than L1. Edge cases (zero-return, fully-offset) added so the sweep can't hide a boundary bug. Golden values independently computed + cited (§19.2). 10/10.
+
+### Note — refinance / payDown deferred to A.4
+The remaining loan what-ifs (`refinanceLoanScenario`, `payDownLoanScenario`) walk an amortisation schedule (`walkAmortisation` / `calculatePIRepayment`), so verifying them needs an independent amortisation re-implementation — a focused A.4 slice rather than bundling here.
+
+### PR
+- Branch: `claude/trust-engine-whatif-a3-jqahjw` (stacked on #1251)
+- Status: Draft

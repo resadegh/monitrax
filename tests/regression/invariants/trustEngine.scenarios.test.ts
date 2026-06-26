@@ -20,6 +20,8 @@
 import { describe, it, expect } from 'vitest';
 import { sellPropertyScenario } from '@/lib/cfo/scenarios/sellProperty';
 import { tenYearProjection } from '@/lib/cfo/scenarios/tenYearProjection';
+import { addInvestmentScenario } from '@/lib/cfo/scenarios/addInvestment';
+import { redirectToOffsetScenario } from '@/lib/cfo/scenarios/redirectToOffset';
 import type { ScenarioContext } from '@/lib/cfo/scenarios/types';
 import { Decimal } from '@/lib/decimal';
 
@@ -208,5 +210,145 @@ describe('Trust Engine · what-if tenYearProjection (the chart spine)', () => {
         expect(Number.isFinite(pt.netWorth.toNumber())).toBe(true);
       }
     }
+  });
+});
+
+// =============================================================================
+// addInvestment — future value of a regular contribution (the "start
+// investing" lever). The engine uses the ordinary-annuity closed form
+//   FV = m × ((1+r/12)^months − 1) / (r/12)
+// which is the documented law of a periodic-contribution annuity. This locks
+// it three ways:
+//   • golden FV (hand-derivable from the formula)
+//   • an INDEPENDENT term-by-term compounding sum (Σ m·(1+r/12)^k) — a
+//     genuinely different computation than the closed form (differential)
+//   • the cashflow + growth accounting identities
+// =============================================================================
+
+/** Independent FV — sum each month's contribution compounded forward to the
+ *  horizon. End-of-month (ordinary annuity): the LAST contribution earns 0
+ *  periods. Mathematically equal to the engine's closed form, computed a
+ *  different way, so agreement cross-validates the engine. */
+function independentAnnuityFv(monthlyAmount: number, annualReturn: number, years: number): number {
+  const r = annualReturn / 12;
+  const months = years * 12;
+  let fv = 0;
+  for (let k = 1; k <= months; k++) fv += monthlyAmount * Math.pow(1 + r, months - k);
+  return fv;
+}
+
+function invCtx(investmentsTotalValue: number, monthlyCashflow: number, emergencyMonths: number) {
+  return {
+    snapshot: {
+      investments: { totalValue: investmentsTotalValue },
+      quickMetrics: { monthlyCashflow },
+      emergencyFund: { monthsCovered: emergencyMonths },
+    },
+  } as unknown as ScenarioContext;
+}
+
+describe('Trust Engine · what-if addInvestment (future value of a contribution)', () => {
+  const by = (r: ReturnType<typeof addInvestmentScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix))!;
+
+  it('golden — $1,000/mo at 8% for 10y grows to $182,946.04 ($62,946.04 of it growth)', () => {
+    const r = addInvestmentScenario(invCtx(0, 5_000, 6), { monthlyAmount: 1_000, expectedAnnualReturn: 0.08, years: 10 });
+    expect(by(r, 'Projected portfolio').delta).toBeCloseTo(182946.04, 2);
+    expect(by(r, 'Of which is compounding growth').delta).toBeCloseTo(62946.04, 2); // FV − 120,000 contributed
+  });
+
+  it('golden — $500/mo at 7% for 20y grows to $260,463.33', () => {
+    const r = addInvestmentScenario(invCtx(0, 5_000, 6), { monthlyAmount: 500, expectedAnnualReturn: 0.07, years: 20 });
+    expect(by(r, 'Projected portfolio').delta).toBeCloseTo(260463.33, 2);
+  });
+
+  it('zero-return edge — FV is exactly contributions, growth is exactly 0', () => {
+    const r = addInvestmentScenario(invCtx(0, 5_000, 6), { monthlyAmount: 250, expectedAnnualReturn: 0, years: 10 });
+    expect(by(r, 'Projected portfolio').delta).toBeCloseTo(250 * 120, 6);
+    expect(by(r, 'Of which is compounding growth').delta).toBeCloseTo(0, 6);
+  });
+
+  it('agrees with an independent compounding sum + holds the accounting identities over a sweep', () => {
+    const rand = rng(0x1a3f);
+    for (let i = 0; i < 50; i++) {
+      const monthlyAmount = Math.round(rand() * 5_000);
+      const annualReturn = rand() * 0.12; // 0–12%
+      const years = 1 + Math.floor(rand() * 39);
+      const portfolioBefore = Math.round(rand() * 500_000);
+      const cashflowBefore = Math.round((rand() - 0.3) * 8_000);
+      const r = addInvestmentScenario(invCtx(portfolioBefore, cashflowBefore, 6), { monthlyAmount, expectedAnnualReturn: annualReturn, years });
+
+      const fvInd = independentAnnuityFv(monthlyAmount, annualReturn, years);
+      const contributed = monthlyAmount * years * 12;
+      // differential: engine closed form === independent term-by-term sum
+      expect(by(r, 'Projected portfolio').delta).toBeCloseTo(fvInd, 2);
+      // growth = FV − contributions
+      expect(by(r, 'Of which is compounding growth').delta).toBeCloseTo(fvInd - contributed, 2);
+      // FV always ≥ contributions for non-negative returns (no money invented/lost)
+      expect(by(r, 'Projected portfolio').delta).toBeGreaterThanOrEqual(contributed - 1e-6);
+      // portfolio after === before + FV
+      expect(by(r, 'Projected portfolio').after).toBeCloseTo(portfolioBefore + fvInd, 2);
+      // cashflow loses exactly the contribution
+      expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(-monthlyAmount, 6);
+      expect(by(r, 'Monthly cashflow').after).toBeCloseTo(cashflowBefore - monthlyAmount, 6);
+    }
+  });
+});
+
+// =============================================================================
+// redirectToOffset — parking cash in an offset reduces interest accrual. When
+// the loan isn't already offset below the parked amount, the saving collapses
+// to a clean identity (both max(0,…) terms stay positive):
+//   monthlyInterestSaved === amount × rate/12     annual === × 12
+//   liquid cash UNCHANGED  (offset is still accessible)
+// =============================================================================
+
+function offsetCtx(loan: { id: string; name: string; principal: number; interestRate: number; offsetBalance: number }, liquidCash: number) {
+  return {
+    snapshot: { quickMetrics: { liquidCash } },
+    loans: [{ termMonths: 360, remainingMonths: 360, monthlyRepayment: 0, loanType: 'INVESTMENT', ...loan }],
+  } as unknown as ScenarioContext;
+}
+
+describe('Trust Engine · what-if redirectToOffset (interest-saved identity)', () => {
+  const by = (r: ReturnType<typeof redirectToOffsetScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix))!;
+
+  it('golden — $50k into the offset of a $500k loan at 6% saves exactly $250/mo, $3,000/yr', () => {
+    const r = redirectToOffsetScenario(
+      offsetCtx({ id: 'l1', name: 'IP loan', principal: 500_000, interestRate: 0.06, offsetBalance: 0 }, 80_000),
+      { loanId: 'l1', amount: 50_000 },
+    );
+    expect(by(r, 'Interest saved (monthly)').delta).toBeCloseTo(250, 6); // 50,000 × 0.06/12
+    expect(by(r, 'Interest saved (annual)').delta).toBeCloseTo(3_000, 6);
+    expect(by(r, 'Liquid cash').delta).toBeCloseTo(0, 6); // offset still accessible
+  });
+
+  it('saving === amount × rate/12 over a sweep (while principal − offset ≥ amount)', () => {
+    const rand = rng(0x0ff5);
+    for (let i = 0; i < 50; i++) {
+      const principal = 200_000 + Math.round(rand() * 1_300_000);
+      const rate = 0.02 + rand() * 0.07;
+      const existingOffset = Math.round(rand() * (principal * 0.2));
+      // keep principal − (offset + amount) ≥ 0 so the clean identity applies
+      const headroom = principal - existingOffset;
+      const amount = Math.round(rand() * headroom * 0.5);
+      const r = redirectToOffsetScenario(
+        offsetCtx({ id: 'l1', name: 'Loan', principal, interestRate: rate, offsetBalance: existingOffset }, 500_000),
+        { loanId: 'l1', amount },
+      );
+      expect(by(r, 'Interest saved (monthly)').delta).toBeCloseTo((amount * rate) / 12, 4);
+      expect(by(r, 'Interest saved (annual)').delta).toBeCloseTo(by(r, 'Interest saved (monthly)').delta * 12, 4);
+      expect(by(r, 'Liquid cash').delta).toBeCloseTo(0, 6);
+    }
+  });
+
+  it('fully-offset edge — parking more cash saves nothing (no negative interest invented)', () => {
+    const r = redirectToOffsetScenario(
+      offsetCtx({ id: 'l1', name: 'Loan', principal: 300_000, interestRate: 0.06, offsetBalance: 300_000 }, 50_000),
+      { loanId: 'l1', amount: 20_000 },
+    );
+    expect(by(r, 'Interest saved (monthly)').delta).toBeCloseTo(0, 6);
+    expect(by(r, 'Interest saved (annual)').delta).toBeCloseTo(0, 6);
   });
 });
