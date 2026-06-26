@@ -271,3 +271,23 @@ Each formula + each call-site field mapping re-verified in source (not memory); 
 
 ### §20.4 self-review → 10/10
 Both formulas re-verified in source; the two governed-by edges backed by the verbatim `TaxEngine.calculatePAYG` / `calculateMedicareLevy` calls at :237/:243; income-feeds backed by the param contract. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-investment (backfill 2 investmentDecisionSupport engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled 2 proven-but-unmodelled engines in `lib/cfo/decisionSupport/investmentDecisionSupport.ts`, each WITH `input.Investment.value --feeds-->` lineage (A5-green):
+  - `engine.investmentDecisionSupport.calculateDividendYield` (:450)
+  - `engine.investmentDecisionSupport.calculateMaxConcentration` (:549, Decimal — the only impl)
+- **Coverage: 71% → 74%** (60 → 62 modelled · worklist 24 → 22). `neomatrix:check` green (172 nodes / 227 edges, 0 orphans).
+
+### ⚠️ Flagged for Reza (§19.1 estimate, NOT actual data)
+`calculateDividendYield` is a HEURISTIC PROXY, not a real yield: it assumes franked holdings yield 4% and unfranked 2% (`frankedValue×0.04 + (totalValue−frankedValue)×0.02`), explicitly a "rough approximation" in source (:455). It feeds `portfolioSummary.dividendYieldPercent`. Per §19.1 (actuals over estimates), if any surface presents this as the user's ACTUAL dividend yield it should be labelled an estimate or sourced from actual distributions. Modelled honestly (authority field says "heuristic proxy, NOT actual"); surfaced for Reza — not changed (code change needs sign-off).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +2 verified edges, version 0.40.0→0.41.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas read in source; the estimate honestly labelled rather than dressed as real; concentration formula verified line-by-line; input-feeds backed by the actual `h.currentValue` reads. 10/10.

@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.40.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.41.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 170 · **Edges:** 225
-- **By kind:** orchestrator 8 · engine 77 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 170
-- **Edge provenance:** verified 225 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/96 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 172 · **Edges:** 227
+- **By kind:** orchestrator 8 · engine 79 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 172
+- **Edge provenance:** verified 227 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/98 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -103,6 +103,8 @@
 | **Loan: total interest over term** | `lib/cfo/decisionSupport/loanDecisionSupport.ts:661` | engine | cfo | Total interest paid over the loan term for a given monthly payment and number of months. | Standard loan amortisation (P&I annuity) — ATO/industry-standard formulas. | calc-audit engine cfo.loanDecisionSupport.calculateTotalInterest (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/loanDecisionSupport.ts:661 | documented |
 | **Normalise all income streams** | `lib/cashflow/incomeNormalizer.ts:183` | engine | core | NormalizedIncomeResult — per-stream normalised income plus totalGrossMonthly, totalNetMonthly, totalMonthlyPayg. | Monitrax income normalisation — per-stream gross→net (PAYG) then monthly aggregation. | calc-audit engine cashflow.normalizeAllIncome (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:183 | documented |
 | **Take-home pay from gross salary** | `lib/cashflow/incomeNormalizer.ts:221` | engine | core | Take-home pay breakdown: grossAmount, netAmount, paygWithholding, medicareLevy, effectiveTaxRate. | ATO PAYG withholding + Medicare Levy + LITO offset (via lib/tax-engine). | calc-audit engine cashflow.calculateTakeHomePay (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:221 | documented |
+| **Investment: estimated dividend yield** | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:450` | engine | cfo | Estimated portfolio dividend yield % (a HEURISTIC PROXY, not actual distributions). | Monitrax heuristic proxy (franked @ 4%, unfranked @ 2%) — explicitly a "rough approximation" in source, NOT actual dividend data. Flagged for Reza (§19.1). | calc-audit engine cfo.investmentDecisionSupport.calculateDividendYield (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:450 | documented |
+| **Investment: max holding concentration %** | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:549` | engine | cfo | Largest single-holding concentration as a % of total portfolio value. | Concentration-risk measure (largest position share of portfolio). | calc-audit engine cfo.investmentDecisionSupport.calculateMaxConcentration (proven, Decimal) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:549 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -416,6 +418,8 @@
 | Income (declared) | → | Take-home pay from gross salary | feeds | — | verified | lib/cashflow/incomeNormalizer.ts:221,232 — grossAmount (gross salary/income) → annualGross via toAnnual |
 | Take-home pay from gross salary | → | ITAA 1997 — income tax + ATO rates | governed-by | — | verified | lib/cashflow/incomeNormalizer.ts:237 — TaxEngine.calculatePAYG on annualGross |
 | Take-home pay from gross salary | → | Medicare Levy Act 1986 | governed-by | — | verified | lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy |
+| Investment units × price | → | Investment: estimated dividend yield | feeds | — | verified | lib/cfo/decisionSupport/investmentDecisionSupport.ts:456,460 — reads h.currentValue (+ h.frankingPercentage) of holdings |
+| Investment units × price | → | Investment: max holding concentration % | feeds | — | verified | lib/cfo/decisionSupport/investmentDecisionSupport.ts:559-561 — pct = h.currentValue / totalValue × 100 |
 
 ---
 

@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.40.0",
+  "version": "0.41.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3849,6 +3849,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.investmentDecisionSupport.calculateDividendYield",
+      "kind": "engine",
+      "label": "Investment: estimated dividend yield",
+      "file": "lib/cfo/decisionSupport/investmentDecisionSupport.ts",
+      "line": 450,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Estimated portfolio dividend yield % (a HEURISTIC PROXY, not actual distributions).",
+      "formula": "frankedValue = Σ currentValue of holdings with frankingPercentage>0; estimatedDividends = frankedValue×0.04 + (totalValue−frankedValue)×0.02; yield = estimatedDividends/totalValue×100.",
+      "authority": "Monitrax heuristic proxy (franked @ 4%, unfranked @ 2%) — explicitly a \"rough approximation\" in source, NOT actual dividend data. Flagged for Reza (§19.1).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.investmentDecisionSupport.calculateDividendYield (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:450",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.investmentDecisionSupport.calculateMaxConcentration",
+      "kind": "engine",
+      "label": "Investment: max holding concentration %",
+      "file": "lib/cfo/decisionSupport/investmentDecisionSupport.ts",
+      "line": 549,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Largest single-holding concentration as a % of total portfolio value.",
+      "formula": "maxPct = max over holdings of (currentValue / totalValue × 100); 0 if totalValue is 0 or no holdings.",
+      "authority": "Concentration-risk measure (largest position share of portfolio).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.investmentDecisionSupport.calculateMaxConcentration (proven, Decimal) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:549",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6008,6 +6050,20 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.investmentDecisionSupport.calculateDividendYield",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/investmentDecisionSupport.ts:456,460 — reads h.currentValue (+ h.frankingPercentage) of holdings"
+    },
+    {
+      "from": "input.Investment.value",
+      "to": "engine.investmentDecisionSupport.calculateMaxConcentration",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/investmentDecisionSupport.ts:559-561 — pct = h.currentValue / totalValue × 100"
     }
   ]
 }
