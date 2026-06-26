@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.51.1",
+  "version": "0.53.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4325,7 +4325,7 @@
       "semanticKey": null,
       "produces": "Div152Result — applies the four small-business CGT concessions (15-year, 50% active asset reduction, retirement, rollover) after the Div 115 discount.",
       "formula": "basic conditions: MNAV ≤ $6M OR aggregated turnover ≤ $2M AND active asset (s152-10); then elected concessions reduce the gain in statutory order.",
-      "authority": "ITAA 1997 Div 152, s152-10 (basic conditions), s152-15/105",
+      "authority": "ITAA 1997 Div 152, s152-10 (basic conditions), s152-15/105 ⚠ PRODUCTION-UNWIRED (2026-06-26): proven by a calc-audit fixture but invoked by ZERO production code paths (only its test). Pending UI/flow wiring or a dead-code decision — finding for Reza.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/div152SmallBusinessConcessions.ts:150",
@@ -4367,7 +4367,7 @@
       "semanticKey": null,
       "produces": "FteIeeClassificationResult — per-beneficiary: inside/outside family group, Family Trust Distribution Tax payable by trustee, and TFN withholding.",
       "formula": "if FTE in force: distributions outside the family group → FTDT at 47%; TFN withholding (47%) where beneficiary did not quote a TFN.",
-      "authority": "ITAA 1936 Sch 2F s272-75 (FTE), s272-95 (family group); Pt VA TFN withholding; Family Trust Distribution Tax",
+      "authority": "ITAA 1936 Sch 2F s272-75 (FTE), s272-95 (family group); Pt VA TFN withholding; Family Trust Distribution Tax ⚠ PRODUCTION-UNWIRED (2026-06-26): proven by a calc-audit fixture but invoked by ZERO production code paths (only its test). Pending UI/flow wiring or a dead-code decision — finding for Reza.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/fteIeeClassifier.ts:166",
@@ -4388,7 +4388,7 @@
       "semanticKey": null,
       "produces": "PsiClassificationResult — whether income is PSI and whether the taxpayer is a Personal Services Business (PSB) via the four tests.",
       "formula": "tests: 80%-one-client, results test, unrelated-clients (+ advertising), employment, business-premises; PSB if results test OR (≤80% + another test) OR a PSB determination.",
-      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3",
+      "authority": "ITAA 1997 Part 2-42 (PSI), s84-5, s87-15 (PSB); TR 2022/3 ⚠ PRODUCTION-UNWIRED (2026-06-26): proven by a calc-audit fixture but invoked by ZERO production code paths (only its test). Pending UI/flow wiring or a dead-code decision — finding for Reza.",
       "inputs": [],
       "astHash": null,
       "verifiedBy": "calc-audit registry (proven) + lib/tax-engine/divisions/psiClassifier.ts:141",
@@ -7142,6 +7142,48 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/health/categoryScoring.ts:165,171 — reads metrics.liquidity.emergencyBuffer / liquidNetWorthRatio / savingsRate"
+    },
+    {
+      "from": "engine.tax.trustLossRules.applyTrustLossRules",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:234 — crossCutting.trustLossByEntity = applyTrustLossRules(...)"
+    },
+    {
+      "from": "engine.tax.companyLossRules.applyCompanyLossRules",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/orchestrator/masterTaxPosition.ts:242 — crossCutting.companyLossByEntity = applyCompanyLossRules(...)"
+    },
+    {
+      "from": "engine.tax.capitalLossNetting.applyCapitalLossNetting",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:239 — applyCapitalLossNetting within calculateEntityTaxPosition, composed by buildMasterTaxPosition:192"
+    },
+    {
+      "from": "engine.tax.trustDistribution.allocateTrustDistribution",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:373 — allocateTrustDistribution within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192"
+    },
+    {
+      "from": "engine.tax.div7a.classifyDiv7ALoans",
+      "to": "orchestrator.tax.masterTaxPosition.buildMasterTaxPosition",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/entity/entityTaxRouter.ts:539 — classifyDiv7ALoans within calculateEntityTaxPosition (:300), composed at buildMasterTaxPosition:192"
+    },
+    {
+      "from": "input.Superannuation.balance",
+      "to": "engine.tax.smsf.classifySmsfTriumvirate",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/smsfTriumvirateClassifier.ts:85,160 — input.totalFundValue"
     }
   ]
 }
