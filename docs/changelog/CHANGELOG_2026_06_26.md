@@ -386,3 +386,37 @@ This is the CANONICAL reform-aware negative-gearing engine. The earlier-flagged 
 
 ### §20.4 self-review → 10/10
 Regime branches read line-by-line; both governed-by laws backed by the in-source citations; regime:null correct (parametric, not fixed); income/expense feeds backed by the param contract. 10/10.
+
+---
+
+## Session: neo-inventory-ni3d-tax-classifiers (NI-3 COMPLETE — 100% proven engines modelled)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage + a reconcile-script correctness fix (NO production code / financial logic changed — §21.2).
+- Modelled the final **10 tax-domain files** (9 division engines + the master tax orchestrator), each WITH a verified `governed-by` edge to its ITAA law, and created **9 ITAA division law nodes** (citations read from each file's `BASE_CITATIONS` — §19.2, never recalled):
+  - `applyCapitalLossNetting` (:125) → `law.itaa1997.div102Cgt` (s100-50 FIFO ordering)
+  - `applyCompanyLossRules` (:83) → `law.itaa1997.div165CompanyLoss` (COT/BCT)
+  - `applyDiv152` (:150) → `law.itaa1997.div152SbCgt` (small-business CGT concessions)
+  - `classifyDiv7ALoans` (:269) → `law.itaa1936.div7a` (deemed dividends)
+  - `classifyFteIeeDistributions` (:166) → `law.itaa1936.sch2fFte` (FTE/IEE + FTDT + TFN withholding)
+  - `classifyPsi` (:141) → `law.itaa1997.psiPart2_42` (PSI/PSB four tests)
+  - `classifySmsfTriumvirate` (:159) → `law.sisAct.smsf` (sole purpose / in-house / LRBA / NALI)
+  - `applyTrustLossRules` (:128) → `law.itaa1936.sch2fTrustLoss`
+  - `allocateTrustDistribution` (:275) → `law.itaa1936.div6Trust` (s97 present-entitlement)
+  - `orchestrator.tax.masterTaxPosition.buildMasterTaxPosition` (:186) → `law.itaa1997.incomeTax`
+- **Reconcile fix**: `reconcile-registry.mjs` now counts a proven engine as "modelled" if an `engine` OR `orchestrator` node lives at its sourcePath (masterTaxPosition is correctly an orchestrator, not an engine — the prior filter under-counted it).
+- **Coverage: 85% → 100% (84/84 proven engines modelled · worklist 0).** `neomatrix:check` green (200 nodes / 258 edges, 0 orphans, A5 holds).
+
+### Reform-awareness (§12.14)
+These divisions are classifiers/loss-rule engines; the reform-affected one (negative gearing) was modelled in the prior batch as regime-parametric. Div 152 / capital-loss-netting interact with the CGT reform (measure #2) at the discount layer (`law.itaa1997.div115Cgt`, already modelled) — noted, not duplicated here.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +19 nodes (9 laws + 9 engines + 1 orchestrator), +10 verified edges, version 0.47.0→0.48.0.
+- `scripts/neomatrix/reconcile-registry.mjs` — count orchestrator nodes as modelled.
+- `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10 (financial build)
+3× review: (1) every engine's input contract + return shape + cited division read in source; (2) every law node's `authority` matched verbatim to the file's `BASE_CITATIONS` (not recalled — caught Part 2-42 for PSI, s67A/PCG 2016/5 for SMSF, Sch 2F split into FTE vs trust-loss); (3) reconcile fix is a denominator-correctness fix (orchestrator IS a valid modelling kind), not number-gaming — masterTaxPosition genuinely has a node. 0 orphans, gate green. 10/10.
+
+### Milestone
+**NI-3 complete.** Next per plan (§10): NI-4 — drive the census UNCOVERED queue (200) → 0, then NI-5 explorer dual-view, then flip reconcile to a hard build gate.
