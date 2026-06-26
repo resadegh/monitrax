@@ -83,8 +83,24 @@ interface RawGraph {
 type GNode = RawNode & { degree: number; color: string; val: number; bridge?: boolean };
 type GLink = { source: string; target: string; type: string };
 
+// Top-level dir (e.g. "lib/tax-engine", "app/api") — the structural-view grouping.
+function topDir(file: string | null): string {
+  if (!file) return '';
+  return file.split('/').slice(0, 2).join('/');
+}
+// Deterministic dir → hue, so the 8,587-node structural view colours by codebase
+// area (stable across renders, no palette to maintain).
+function dirColor(file: string | null): string {
+  const d = topDir(file);
+  if (!d) return NEUTRAL;
+  let h = 0;
+  for (let i = 0; i < d.length; i++) h = (h * 31 + d.charCodeAt(i)) % 360;
+  return `hsl(${h}, 68%, 62%)`;
+}
+
 function nodeColor(n: RawNode): string {
   if (n.domain && DOMAIN_COLORS[n.domain]) return DOMAIN_COLORS[n.domain];
+  if (n.kind === 'structural') return dirColor(n.file);
   return NEUTRAL;
 }
 
@@ -96,10 +112,17 @@ export function NeomatrixExplorer() {
   const [search, setSearch] = useState('');
   const [activeDomains, setActiveDomains] = useState<Set<string>>(new Set(DOMAINS));
   const [activeLayers, setActiveLayers] = useState<Set<string>>(new Set([...LAYERS, 'other']));
-  // View toggle (NI-5): 'all' = every node · 'proven' = only the calc-audit-proven
-  // engines + the edges among them (trace the verified core's lineage).
-  const [view, setView] = useState<'all' | 'proven'>('all');
+  // View toggle: 'all' = the verified semantic Neomatrix · 'proven' = only the
+  // calc-audit-proven engines + their 1-hop lineage · 'structural' (NI-5b) = the
+  // whole-codebase Graphify structural graph (8,587 nodes, lazy-loaded).
+  const [view, setView] = useState<'all' | 'proven' | 'structural'>('all');
+  const [structuralGraph, setStructuralGraph] = useState<RawGraph | null>(null);
+  const [structuralLoading, setStructuralLoading] = useState(false);
   const provenCount = useMemo(() => graph?.nodes.filter((n) => n.proven).length ?? 0, [graph]);
+
+  // The dataset the canvas renders: structural view → structural graph; else the
+  // semantic graph. Everything downstream (degree, colours, filter) reads this.
+  const activeGraph = view === 'structural' ? structuralGraph : graph;
 
   const wrapRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -126,6 +149,33 @@ export function NeomatrixExplorer() {
     };
   }, []);
 
+  // ── Lazy-load the structural graph (NI-5b) on first switch ─────────────────
+  // ~2 MB / 8,587 nodes — fetched only when the user opens the Structural view,
+  // never on the default page load.
+  useEffect(() => {
+    if (view !== 'structural' || structuralGraph || structuralLoading) return;
+    let cancelled = false;
+    setStructuralLoading(true);
+    fetch('/api/admin/neomatrix/structural')
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`Structural graph request failed (${r.status})`);
+        const json = await r.json();
+        return (json.data ?? json) as RawGraph;
+      })
+      .then((g) => {
+        if (!cancelled) setStructuralGraph(g);
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load structural graph');
+      })
+      .finally(() => {
+        if (!cancelled) setStructuralLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, structuralGraph, structuralLoading]);
+
   // ── Size to container ──────────────────────────────────────────────────────
   useEffect(() => {
     const el = wrapRef.current;
@@ -139,41 +189,43 @@ export function NeomatrixExplorer() {
   }, []);
 
   // ── Tighten the layout so connected nodes cluster (edges become legible) ────
+  // Structural (8,587 nodes) needs a looser charge + shorter links or the ball
+  // explodes; the semantic graph (~231) reads best tighter.
   useEffect(() => {
     const fg = fgRef.current;
-    if (!fg || !graph) return;
+    if (!fg || !activeGraph) return;
+    const structural = view === 'structural';
     try {
-      // Shorter links pull related nodes together; mild repulsion keeps spacing.
-      fg.d3Force('link')?.distance(34);
-      fg.d3Force('charge')?.strength(-55);
+      fg.d3Force('link')?.distance(structural ? 18 : 34);
+      fg.d3Force('charge')?.strength(structural ? -18 : -55);
       fg.d3ReheatSimulation?.();
     } catch {
       /* ref/forces unavailable — layout falls back to defaults */
     }
-  }, [graph]);
+  }, [activeGraph, view]);
 
   // ── Degree map (node size by connection count) ─────────────────────────────
   const degree = useMemo(() => {
     const d = new Map<string, number>();
-    graph?.edges.forEach((e) => {
+    activeGraph?.edges.forEach((e) => {
       d.set(e.from, (d.get(e.from) ?? 0) + 1);
       d.set(e.to, (d.get(e.to) ?? 0) + 1);
     });
     return d;
-  }, [graph]);
+  }, [activeGraph]);
 
   const nodeById = useMemo(() => {
     const m = new Map<string, RawNode>();
-    graph?.nodes.forEach((n) => m.set(n.id, n));
+    activeGraph?.nodes.forEach((n) => m.set(n.id, n));
     return m;
-  }, [graph]);
+  }, [activeGraph]);
 
-  // id → domain colour, for tinting edges + particles by their source node.
+  // id → colour, for tinting edges + particles by their source node.
   const colorById = useMemo(() => {
     const m = new Map<string, string>();
-    graph?.nodes.forEach((n) => m.set(n.id, nodeColor(n)));
+    activeGraph?.nodes.forEach((n) => m.set(n.id, nodeColor(n)));
     return m;
-  }, [graph]);
+  }, [activeGraph]);
 
   // A link's source can be a string id (pre-simulation) or a node object (post).
   const linkSourceColor = useCallback(
@@ -205,15 +257,24 @@ export function NeomatrixExplorer() {
 
   // ── Filtered graph passed to the canvas ────────────────────────────────────
   const filtered = useMemo(() => {
-    if (!graph) return { nodes: [] as GNode[], links: [] as GLink[] };
+    if (!activeGraph) return { nodes: [] as GNode[], links: [] as GLink[] };
     const q = search.trim().toLowerCase();
     const layerKey = (n: RawNode) => (n.layer && (LAYERS as readonly string[]).includes(n.layer) ? n.layer : 'other');
     const visible = new Set<string>();
     const nodes: GNode[] = [];
-    for (const n of graph.nodes) {
+    const structural = view === 'structural';
+    for (const n of activeGraph.nodes) {
+      const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
+      // Structural view: search only (domain/layer/proven don't apply at this scale).
+      if (structural) {
+        if (!searchOk) continue;
+        visible.add(n.id);
+        const deg = degree.get(n.id) ?? 0;
+        nodes.push({ ...n, degree: deg, color: nodeColor(n), val: 1 + Math.min(deg, 6) * 0.5 });
+        continue;
+      }
       const domainOk = n.domain ? activeDomains.has(n.domain) : true;
       const layerOk = activeLayers.has(layerKey(n));
-      const searchOk = !q || n.label.toLowerCase().includes(q) || n.id.toLowerCase().includes(q);
       const viewOk = view === 'all' || (provenScope?.keep.has(n.id) ?? false);
       if (domainOk && layerOk && searchOk && viewOk) {
         visible.add(n.id);
@@ -231,24 +292,25 @@ export function NeomatrixExplorer() {
       }
     }
     const links: GLink[] = [];
-    for (const e of graph.edges) {
+    for (const e of activeGraph.edges) {
       if (visible.has(e.from) && visible.has(e.to)) {
         links.push({ source: e.from, target: e.to, type: e.type });
       }
     }
     return { nodes, links };
-  }, [graph, search, activeDomains, activeLayers, degree, view, provenScope]);
+  }, [activeGraph, search, activeDomains, activeLayers, degree, view, provenScope]);
 
   const selected = selectedId ? nodeById.get(selectedId) ?? null : null;
 
   // Lineage of the selected node (in / out edges with the other node's label).
+  // Capped at 40 each — a structural file node can have 100+ `contains` edges.
   const lineage = useMemo(() => {
-    if (!graph || !selected) return { out: [] as RawEdge[], inc: [] as RawEdge[] };
+    if (!activeGraph || !selected) return { out: [] as RawEdge[], inc: [] as RawEdge[] };
     return {
-      out: graph.edges.filter((e) => e.from === selected.id),
-      inc: graph.edges.filter((e) => e.to === selected.id),
+      out: activeGraph.edges.filter((e) => e.from === selected.id).slice(0, 40),
+      inc: activeGraph.edges.filter((e) => e.to === selected.id).slice(0, 40),
     };
-  }, [graph, selected]);
+  }, [activeGraph, selected]);
 
   const toggleSet = (set: Set<string>, key: string, setter: (s: Set<string>) => void) => {
     const next = new Set(set);
@@ -274,7 +336,7 @@ export function NeomatrixExplorer() {
       />
 
       {/* ── 3D / 2D canvas ─────────────────────────────────────────────────── */}
-      {graph && !error && (
+      {activeGraph && !error && (
         <ForceGraph3D
           ref={fgRef}
           graphData={filtered}
@@ -286,19 +348,22 @@ export function NeomatrixExplorer() {
           nodeVal={(n: object) => (n as GNode).val}
           nodeLabel={(n: object) => {
             const g = n as GNode;
-            return `<div style="font-family:Inter,sans-serif;font-size:12px;color:#e2e8f0">${g.label}<br/><span style="color:#94a3b8">${g.kind}${g.domain ? ' · ' + g.domain : ''}</span></div>`;
+            const sub = g.kind === 'structural' ? `${g.file ?? ''}${g.line != null ? ':' + g.line : ''}` : `${g.kind}${g.domain ? ' · ' + g.domain : ''}`;
+            return `<div style="font-family:Inter,sans-serif;font-size:12px;color:#e2e8f0">${g.label}<br/><span style="color:#94a3b8">${sub}</span></div>`;
           }}
-          nodeOpacity={0.92}
-          nodeResolution={16}
-          // Edges: tinted by their source node's domain, clearly visible, with
-          // flowing directional particles so relationships read as "alive".
+          nodeOpacity={view === 'structural' ? 0.85 : 0.92}
+          nodeResolution={view === 'structural' ? 8 : 16}
+          // Edges: tinted by their source node's colour. Structural view (15k edges)
+          // drops the directional particles + thins the links for performance.
           linkColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
-          linkOpacity={0.45}
-          linkWidth={0.6}
-          linkDirectionalParticles={2}
+          linkOpacity={view === 'structural' ? 0.22 : 0.45}
+          linkWidth={view === 'structural' ? 0.25 : 0.6}
+          linkDirectionalParticles={view === 'structural' ? 0 : 2}
           linkDirectionalParticleWidth={1.6}
           linkDirectionalParticleSpeed={0.006}
           linkDirectionalParticleColor={(l: object) => linkSourceColor(l as { source: string | { id?: string } })}
+          warmupTicks={view === 'structural' ? 40 : 0}
+          cooldownTicks={view === 'structural' ? 120 : undefined}
           onNodeClick={handleNodeClick}
           enableNodeDrag={false}
           showNavInfo={false}
@@ -315,15 +380,17 @@ export function NeomatrixExplorer() {
           <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">Financial-logic knowledge graph</p>
         </div>
         <div className="pointer-events-auto flex items-center gap-3">
-          {/* Domain legend */}
-          <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl lg:flex">
-            {DOMAINS.map((d) => (
-              <span key={d} className="flex items-center gap-1.5 text-[11px] capitalize text-slate-300">
-                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOMAIN_COLORS[d] }} />
-                {d}
-              </span>
-            ))}
-          </div>
+          {/* Domain legend (semantic views only — structural colours by directory) */}
+          {view !== 'structural' && (
+            <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 backdrop-blur-xl lg:flex">
+              {DOMAINS.map((d) => (
+                <span key={d} className="flex items-center gap-1.5 text-[11px] capitalize text-slate-300">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: DOMAIN_COLORS[d] }} />
+                  {d}
+                </span>
+              ))}
+            </div>
+          )}
           {/* View toggle (NI-5): semantic graph ⇄ proven engines only. Labelled
               "Semantic" (not "All") so it doesn't imply the 8,587-node Graphify
               structural census — this explorer renders the verified SEMANTIC
@@ -332,11 +399,18 @@ export function NeomatrixExplorer() {
             {([
               ['all', `Semantic (${graph?.nodes.length ?? 0})`],
               ['proven', `Proven (${provenCount})`],
+              ['structural', `Structural (${structuralGraph?.nodes.length ?? '8.6k'})`],
             ] as const).map(([v, lbl]) => (
               <button
                 key={v}
                 onClick={() => setView(v)}
-                title={v === 'proven' ? 'Only the calc-audit-proven engines + their 1-hop lineage' : 'Every node in the verified semantic Neomatrix (not the 8,587-node structural census — that is NI-5b)'}
+                title={
+                  v === 'proven'
+                    ? 'Only the calc-audit-proven engines + their 1-hop lineage'
+                    : v === 'structural'
+                      ? 'The whole-codebase Graphify structural graph (8,587 symbols across lib/ + app/), coloured by directory'
+                      : 'Every node in the verified semantic Neomatrix'
+                }
                 className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                   view === v ? 'bg-emerald-500/20 text-emerald-200' : 'text-slate-400 hover:text-slate-200'
                 }`}
@@ -371,52 +445,62 @@ export function NeomatrixExplorer() {
           className="w-full rounded-[14px] border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-200 placeholder:text-slate-500 focus:border-sky-500/50 focus:outline-none"
         />
 
-        <div className="mt-4">
-          <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Domain</p>
-          <div className="space-y-1.5">
-            {DOMAINS.map((d) => (
-              <button
-                key={d}
-                onClick={() => toggleSet(activeDomains, d, setActiveDomains)}
-                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-sm capitalize transition ${
-                  activeDomains.has(d) ? 'text-slate-200' : 'text-slate-600'
-                }`}
-              >
-                <span
-                  className="h-2.5 w-2.5 rounded-full transition"
-                  style={{
-                    backgroundColor: activeDomains.has(d) ? DOMAIN_COLORS[d] : 'transparent',
-                    boxShadow: activeDomains.has(d) ? `0 0 8px ${DOMAIN_COLORS[d]}` : 'none',
-                    border: `1px solid ${DOMAIN_COLORS[d]}`,
-                  }}
-                />
-                {d}
-              </button>
-            ))}
-          </div>
-        </div>
+        {view !== 'structural' ? (
+          <>
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Domain</p>
+              <div className="space-y-1.5">
+                {DOMAINS.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => toggleSet(activeDomains, d, setActiveDomains)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-1 text-sm capitalize transition ${
+                      activeDomains.has(d) ? 'text-slate-200' : 'text-slate-600'
+                    }`}
+                  >
+                    <span
+                      className="h-2.5 w-2.5 rounded-full transition"
+                      style={{
+                        backgroundColor: activeDomains.has(d) ? DOMAIN_COLORS[d] : 'transparent',
+                        boxShadow: activeDomains.has(d) ? `0 0 8px ${DOMAIN_COLORS[d]}` : 'none',
+                        border: `1px solid ${DOMAIN_COLORS[d]}`,
+                      }}
+                    />
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        <div className="mt-4">
-          <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Layer</p>
-          <div className="flex flex-wrap gap-1.5">
-            {[...LAYERS, 'other'].map((l) => (
-              <button
-                key={l}
-                onClick={() => toggleSet(activeLayers, l, setActiveLayers)}
-                className={`rounded-full border px-2.5 py-1 text-xs transition ${
-                  activeLayers.has(l)
-                    ? 'border-sky-500/30 bg-sky-500/10 text-sky-200'
-                    : 'border-white/10 text-slate-500'
-                }`}
-              >
-                {l}
-              </button>
-            ))}
-          </div>
-        </div>
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">Layer</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...LAYERS, 'other'].map((l) => (
+                  <button
+                    key={l}
+                    onClick={() => toggleSet(activeLayers, l, setActiveLayers)}
+                    className={`rounded-full border px-2.5 py-1 text-xs transition ${
+                      activeLayers.has(l)
+                        ? 'border-sky-500/30 bg-sky-500/10 text-sky-200'
+                        : 'border-white/10 text-slate-500'
+                    }`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
+            Whole-codebase structural graph (Graphify Layer 0) — every symbol across{' '}
+            <code className="text-slate-400">lib/</code> + <code className="text-slate-400">app/</code>, coloured by
+            top-level directory. Search to find a symbol; click to inspect its file:line + relations.
+          </p>
+        )}
 
         <p className="mt-5 text-[11px] tabular-nums text-slate-500">
-          {filtered.nodes.length} / {graph?.nodes.length ?? 0} nodes · {filtered.links.length} edges
+          {filtered.nodes.length} / {activeGraph?.nodes.length ?? 0} nodes · {filtered.links.length} edges
         </p>
       </div>
 
@@ -517,6 +601,11 @@ export function NeomatrixExplorer() {
       {!graph && !error && (
         <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-slate-500">
           Loading knowledge graph…
+        </div>
+      )}
+      {view === 'structural' && structuralLoading && !structuralGraph && !error && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-slate-500">
+          Loading structural graph (~8.6k nodes)…
         </div>
       )}
       {error && (

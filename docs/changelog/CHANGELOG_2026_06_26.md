@@ -698,3 +698,24 @@ The fix surfaces real lineage, never fakes a connection (Reza's REAL-not-fake ru
 
 ### §20.4 self-review → 10/10
 Every claim verified in source (orchestrator overlay loop :231-245, 0 production callers via grep, engine signatures + input shapes read directly — never guessed); the plan refuses the empty-shell anti-pattern (§19 honest-absence > false-capability); v1/v2 boundary keeps any future slice financially safe; Neomatrix de-islanding wired into the per-slice DoD (§21.2.1). Docs-only → zero correctness risk. 10/10.
+
+---
+
+## Session: neomatrix-ni5b-structural-view (NI-5b — full 8,589-node structural explorer)
+
+### Changes Made
+- **Type**: Admin explorer feature + read-only metadata API (NO financial logic, NO semantic-graph data changed). The Layer-0 structural graph was mechanically regenerated (`npm run neomatrix:graphify`, offline/code-only) to include the new route file (8,587 → 8,589 nodes; +2 = the route file node + its GET symbol).
+- **Reza ask**: *"the full graph doesn't look like 8587 nodes"* → build the third explorer view that actually renders the whole-codebase structural graph (NI-5b).
+- **New API** `GET /api/admin/neomatrix/structural` (`app/api/admin/neomatrix/structural/route.ts`) — same admin/`audit:read` posture as `/graph`; expands the compact on-disk tuples (`[id,label,file,line]` / `[rel,from,to,…]`) → the `{nodes,edges}` shape the explorer reads. Metadata only (no CDR/user data, Phase 53 §9).
+- **Explorer** (`components/admin/neomatrix/NeomatrixExplorer.tsx`): third **"Structural (8,589)"** toggle; `activeGraph` swaps the dataset feeding degree/colour/filter/lineage; the structural graph is **lazy-loaded** on first switch (~2.7 MB, never on default page load); nodes coloured by **top-level directory** (deterministic hue); canvas tuned for scale (particles OFF, thinner/fainter links, `warmupTicks`/`cooldownTicks` capped, looser charge); domain/layer chips hidden + a "coloured by directory" note shown; inspector works for structural nodes (file:line + relations, capped at 40).
+
+### Files Modified
+- `app/api/admin/neomatrix/structural/route.ts` (new) — the structural graph API.
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — third view + lazy-load + dir-colour + perf tuning.
+- `docs/financial-logic/graph/structural/structural-graph.json` — regenerated (8,589 nodes; includes the new route).
+- `docs/blueprint/NEO_INVENTORY.md` — NI-5a + NI-5b marked SHIPPED; Neo Inventory feature-complete.
+
+### §20.4 3× self-review → 10/10 (against requirement; not a financial build — semantic graph + all calc engines untouched)
+- v1: API + third view + lazy-load + dir-colour + perf tuning. tsc clean, eslint clean, `neomatrix:check` green (8,589 L0 nodes, 0 uncovered).
+- adversarial: 8.6k nodes is dense — but the ask was to SEE the scale, and search + dir-colour + click-to-inspect make it navigable; particles-OFF is the key perf win (15k animated edge-sprites would choke WebGL); cooldown capped so the sim stops; 2D fallback available. Honest scope: this is the **raw full graph** (scale + search + inspect), directory-clustering LOD noted as a possible v2 — not oversold.
+- refine: loading text made drift-proof ("~8.6k"); count label dynamic; semantic view's `cooldownTicks` left at default (Infinity would spin CPU). 10/10 for the stated requirement.
