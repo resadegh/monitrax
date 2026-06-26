@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.41.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.42.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 175 · **Edges:** 220
-- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 16
-- **By status:** documented 175
-- **Edge provenance:** verified 220 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 12/92 engines+numbers proven (13%) · 16 verification node(s) · by layer L0 1 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 182 · **Edges:** 226
+- **By kind:** orchestrator 9 · engine 78 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 17
+- **By status:** documented 182
+- **Edge provenance:** verified 226 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 18/98 engines+numbers proven (18%) · 17 verification node(s) · by layer L0 2 · L1 7 · L2 5 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -99,6 +99,12 @@
 | **What-if: pay down a loan faster** | `lib/cfo/scenarios/payDownLoan.ts:19` | engine | cfo | lifetime interest saved, months reduced, cashflow-after. | Standard amortisation walk. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
 | **What-if: redirect cash to an offset** | `lib/cfo/scenarios/redirectToOffset.ts:22` | engine | cfo | monthly + annual interest saved by parking cash in the offset. | Offset interest reduction (interest on net principal). | (Trust Engine coverage pending — Tranche A verification slice) | documented |
 | **What-if: add a regular investment** | `lib/cfo/scenarios/addInvestment.ts:20` | engine | cfo | projected portfolio future value, compounding-growth portion, cashflow-after. | Future-value-of-annuity formula. | (Trust Engine coverage pending — Tranche A verification slice) | documented |
+| **LVR — loan-to-value ratio** | `lib/utils/calculations.ts:9` | engine | core | LVR as a percentage (0–100). | Loan-to-value ratio (standard lending metric). | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **Property equity** | `lib/utils/calculations.ts:20` | engine | core | Equity amount (AUD), floored at 0. | Equity = asset value less secured debt, floored at 0. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **Rental yield (annual)** | `lib/utils/calculations.ts:30` | engine | core | Gross annual rental yield as a percentage. | Gross rental yield (annual rent ÷ value). | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **Offset effective principal** | `lib/utils/calculations.ts:42` | engine | core | Interest-bearing principal after offset (AUD), floored at 0. | Offset reduces interest-bearing principal, floored at 0. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **Periodic interest** | `lib/utils/calculations.ts:53` | engine | core | Interest for one period (AUD). | Simple periodic interest accrual. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
+| **P&I repayment (amortising annuity)** | `lib/utils/calculations.ts:69` | engine | core | Monthly principal-and-interest repayment (AUD). | Standard amortising-annuity payment formula. | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -191,6 +197,7 @@
 | **What-if pay-down — amortisation conservation differential (L1)** | L1 | cfo | The amortisation walk matches a golden ($500k @6%, $3,000/mo, +$500 → 252 months / 108 sooner / ~$198,617 saved) and an INDEPENDENT accounting path that derives interest via the conservation identity totalPaid − principalRetired (the engine sums interest per-step) over a 50-case sweep — with principalRetired === starting principal (money conserved) and month counts agreeing. Monotonicity: more extra never increases interest or term; extra=0 is a no-op. | A walk error that silently creates or loses money (interest not conserved), a wrong payoff-month count, or a non-monotone response to extra repayments. | What-if: pay down a loan faster | `tests/regression/invariants/trustEngine.scenarios.test.ts:462` |
 | **What-if cut-spend — reduction identities + cap + monotonicity (L2)** | L2 | cfo | The reduction reconciles: realised = min(requested, currentSpend) (over-cut is capped — no phantom saving), cashflow delta = +realised, annual = realised×12, savings-rate after = (income − (expenses − realised) − loanRepay)/income×100, emergency months after = liquidCash/(expenses − realised). Golden ($300 off $800 Dining) + 50-case sweep + monotonicity (a larger realised reduction never lowers cashflow/savings-rate). | A dropped cap (phantom saving larger than the category spend), a wrong savings-rate or emergency-fund recompute, or a non-monotone response. | What-if: cut a spend category | `tests/regression/invariants/trustEngine.scenarios.test.ts:563` |
 | **What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2)** | L2 | cfo | Composition identities: taxable income drops by exactly the annual sacrifice, the concessional tile delta equals the sacrifice (after−before === delta), and take-home delta = (−annualSacrifice + the engine’s own reported tax saving)/12. SAFETY guards (the trust guarantee): the concessional-cap hard stop REFUSES (zero impacts + critical warning + summary names the cap) one step over the boundary while computing one step under; the Div 296 FW-2 reform lock REFUSES when TSB > $3M and commencement is unverified; zero salary refuses. Cap boundary derived live from getCurrentTaxYearConfig() so it survives FY rollover. | The highest-stakes failure: silently modelling an ILLEGAL over-cap contribution, or a post-reform Div 296 number before Royal Assent (CLAUDE.md §12.14 FW-2). Mutation-proven by disabling the guard. | What-if: salary sacrifice to super | `tests/regression/invariants/trustEngine.scenarios.test.ts:639` |
+| **Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2)** | L0 | core | The six canonical primitives (LVR, equity, rental yield, offset effective-principal, periodic interest, P&I repayment) are proven by hand-derived golden cases (LVR $400k/$500k = 80%, equity $500k−$400k = $100k, yield $26k/$500k = 5.2%, effPrincipal $500k−$80k = $420k, interest $500k@6%/12 = $2,500, P&I $500k@6%/360 = $2,997.75), the domain invariants (non-negativity floors, divide-by-zero → 0, linearity, the LVR inverse identity, P&I total-paid ≥ principal), and Float ⇄ Decimal sibling parity so the SSOT twins can never silently diverge. | A wrong percent factor, a dropped non-negativity floor, a wrong periodic-rate divisor, or a Float/Decimal twin drifting — on the engines the W2–W7 dedup points every property/loan surface at. | LVR — loan-to-value ratio, Property equity, Rental yield (annual), Offset effective principal, Periodic interest, P&I repayment (amortising annuity) | `tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53` |
 
 ## Edges (verified, with evidence)
 
@@ -416,6 +423,12 @@
 | What-if: pay down a loan faster | → | What-if pay-down — amortisation conservation differential (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:462 — conservation-identity differential (totalPaid − principal) + golden + principal-retired conservation + monotonicity over 50 cases. |
 | What-if: cut a spend category | → | What-if cut-spend — reduction identities + cap + monotonicity (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:563 — reduction identities + cap + savings-rate/emergency-fund recompute + monotonicity over 50 cases. |
 | What-if: salary sacrifice to super | → | What-if salary-sacrifice — composition + cap hard-stop + Div 296 lock (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:639 — composition identities + cap hard-stop refuse + Div 296 FW-2 lock + zero-salary refuse; cap-guard mutation-proven. |
+| LVR — loan-to-value ratio | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| Property equity | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| Rental yield (annual) | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| Offset effective principal | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| Periodic interest | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
+| P&I repayment (amortising annuity) | → | Canonical SSOT primitives — golden + invariants + Float⇄Decimal parity (L0/L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts:53 — golden + invariant + Float⇄Decimal parity. |
 
 ---
 

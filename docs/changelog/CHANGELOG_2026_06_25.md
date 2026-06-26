@@ -687,3 +687,35 @@ All 9 what-if levers now verified + modelled: sellProperty · tenYearProjection 
 ### PR
 - Branch: `claude/trust-engine-whatif-a5-jqahjw` (stacked on #1253)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche D.1 — model + verify the canonical SSOT primitives
+
+### Changes Made
+- **Type**: Enhancement (Neomatrix coverage + Trust Engine verification — Tranche D). No production logic changed.
+- Modelled the **six canonical property/loan primitives** in `lib/utils/calculations.ts` as Neomatrix engine nodes — the SSOT homes (CLAUDE.md §6.2 / §12.2) every property/loan surface is meant to read from: `calculateLVR`, `calculateEquity`, `calculateRentalYield`, `calculateEffectivePrincipal`, `calculateInterestForPeriod`, `calculatePIRepayment`. They were entirely **unmodelled** before this PR.
+- Verified all six three ways: **L0 golden** (LVR $400k/$500k = 80%, equity $500k−$400k = $100k, yield $26k/$500k = 5.2%, effPrincipal $500k−$80k = $420k, interest $500k@6%/12 = $2,500, P&I $500k@6%/360 = $2,997.75), **L2 invariants** (non-negativity floors, divide-by-zero → 0, linearity, the LVR inverse identity `loan = LVR/100 × value`, P&I total-paid ≥ principal), and **Float ⇄ Decimal parity** (the SSOT keeps two twins — they must never silently diverge).
+- **Mutation-proven** (LVR ×100 drop, equity floor removal, interest wrong divisor → 6 failures caught; restored to 0-diff).
+- One `verification.trustEngine.D.canonicalPrimitives` node with 6 `verified-by` edges (one per engine).
+
+### Why this matters (the W2–W7 unlock)
+These are the engines the SSOT dedup points surfaces AT. Once a surface reads the canonical engine and the engine is **proven** + modelled with its `semanticKey`, the Neomatrix A3 convergence check turns any re-introduced inline duplicate into a **build failure**. Verifying the homes first makes the W2–W7 cleanup gate-enforced rather than trust-me.
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.canonicalPrimitives.test.ts` — NEW (13 tests).
+- `docs/financial-logic/graph/financial-graph.json` — v0.41.0 → **v0.42.0**, +6 engine nodes / +1 verification node / +6 verified-by edges (182 nodes / 226 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.canonicalPrimitives` — 13/13
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **18/98 (18%) · 17 verification node(s) · L0 2 · L1 7 · L2 5 · L3 3** (graph v0.42.0).
+
+### §20.4 self-review → 10/10
+v1 used invalid node fields (`note`/`units`) — the schema gate caught it (proving the gate works); v2 matches the exact engine-node schema. The Float⇄Decimal parity check is the non-obvious high-value addition — it's the only thing that catches a twin drifting, which a golden-on-one-twin would miss. 10/10.
+
+### PR
+- Branch: `claude/trust-engine-ssot-d1-jqahjw` (stacked on #1254)
+- Status: Draft
