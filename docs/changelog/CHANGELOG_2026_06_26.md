@@ -74,3 +74,31 @@ This is the missing half of the Neomatrix (Reza, 2026-06-26): the graph was hand
 ### PR
 - Branch: `claude/neo-inventory-ni1-graphify-jqahjw` (stacked on the NI-0 doc PR #1258).
 - Status: Draft.
+
+---
+
+## Session: Neo Inventory NI-2 — semantic↔structural binding + coverage readout (branch `claude/neo-inventory-ni2-binding-jqahjw`)
+
+### Changes Made
+- **Type**: Tooling / governance (NO production code, NO financial logic, NO semantic-graph data changed).
+- **`scripts/neomatrix/check-binding-coverage.mjs`** (pure-node, wired into `neomatrix:check` → `vercel-build`) — binds every L1 semantic **code node** (engine/orchestrator/number) to the L0 structural map by file, and prints the three-layer coverage. **Gate:** a code node whose `file` is no longer in the Layer-0 map (code moved/renamed/deleted but the node didn't follow) **fails the build** — the structural drift sentinel. `law` (module-cite) + `ui-surface` (page-dir) nodes use coarser anchors by design and are exempt.
+- **Coverage readout (build output, not a claim):** L0 structural **1,062 files / 8,587 nodes (gated)** · proven calc-audit registry **84 engines** (tax 50 · cfo 24 · core 5 · property 3 · cashflow 2) · semantic modelled **64 engines** · binding **75/75** code-node anchors resolve.
+
+### Why this matters
+The Neomatrix now reconciles its three layers and the coverage is on screen: structurally **100% (gated)**; the proven money-producer surface is **84 engines**; semantic modelling is **64**. The figure Reza wants to watch climb toward 100% now has a real, finite denominator (the 84 proven engines) and a drift-proof binding to the complete code map. Honest: no precise overlap % is claimed — exact reconciliation + backfill is NI-3.
+
+### Files Modified
+- `scripts/neomatrix/check-binding-coverage.mjs` — NEW (binding gate + coverage). `package.json` — added to `neomatrix:check`. `docs/audits/NEO_INVENTORY_BASELINE.md` — NI-2 coverage section + NI-3 next-step.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (semantic + Layer-0 + binding/coverage gates, all green; 75/75 anchors resolve).
+- [x] No production code / financial logic / semantic-graph data changed.
+
+### §20 self-review (3× → 10/10)
+- v1 gate required every filed node to resolve → false-failed on `input.*` (prisma) + `verification.*` (tests) nodes outside L0's lib+app roots.
+- v2 scoped to lib/app → still false-failed on `law.*` + `ui.*` directory-anchored nodes.
+- v3 scoped to engine/orchestrator/number nodes at a specific `.ts(x)` file — the actual calc code whose anchors MUST stay valid. Correct + green. **10/10.**
+
+### PR
+- Branch: `claude/neo-inventory-ni2-binding-jqahjw` (stacked on the NI-1 branch — merge #1260 NI-1→main FIRST).
+- Status: Draft.

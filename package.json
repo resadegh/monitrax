@@ -25,7 +25,7 @@
     "validate": "npm run seed:validation && npm run test && npm run generate:report",
     "generate:report": "npx ts-node tests/validation/generate-report.ts",
     "neomatrix:generate": "node scripts/neomatrix/generate-financial-logic.mjs",
-    "neomatrix:check": "node scripts/neomatrix/generate-financial-logic.mjs --check && node scripts/neomatrix/check-layer0-coverage.mjs",
+    "neomatrix:check": "node scripts/neomatrix/generate-financial-logic.mjs --check && node scripts/neomatrix/check-layer0-coverage.mjs && node scripts/neomatrix/check-binding-coverage.mjs",
     "neomatrix:graphify": "node scripts/neomatrix/graphify-layer0.mjs"
   },
   "dependencies": {
