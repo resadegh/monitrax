@@ -368,3 +368,21 @@ Both formulas read line-by-line; accountingIdentity governance backed by the ver
 
 ### §20.4 self-review → 10/10
 PAYG formula + the `x = floor+0.99` ATO mechanic read in source; the cross-domain edge proven by tracing the re-export chain; franking formula matched to the source comment + constant; corporate-rate assumption surfaced honestly. 10/10.
+
+---
+
+## Session: neo-inventory-ni3d-neggearing (backfill reform-aware negative gearing)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.tax.negativeGearing.applyNegativeGearing` (`negativeGearing.ts:152`) — Div 36 loss treatment, **regime-parametric** (§12.14 FW-1): pre-reform offsets other income; POST_REFORM_RESTRICTED traps the loss at the entity with an UNCOMPUTED scope flag (FW-2). Lineage: `input.Income.declared` + `input.Expense.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax` (Div 36) AND `law.reform2026.cutOver` (Phase 41E Measure 1).
+- **Coverage: 83% → 85%** (70 → 71 modelled · worklist 14 → 13). `neomatrix:check` green (181 nodes / 248 edges, 0 orphans).
+
+### Contrast worth recording (§12.14)
+This is the CANONICAL reform-aware negative-gearing engine. The earlier-flagged `cfo.taxIntegration.calculateNegativeGearingBenefit` is a CFO *estimate* that is NOT reform-gated — the contrast is exactly why that one was flagged for Reza (the canonical engine handles the reform; the CFO quick-estimate doesn't).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +1 engine node, +4 verified edges, version 0.46.0→0.47.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Regime branches read line-by-line; both governed-by laws backed by the in-source citations; regime:null correct (parametric, not fixed); income/expense feeds backed by the param contract. 10/10.

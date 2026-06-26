@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.46.0",
+  "version": "0.47.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4059,6 +4059,27 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.tax.negativeGearing.applyNegativeGearing",
+      "kind": "engine",
+      "label": "Negative gearing (Div 36, reform-aware)",
+      "file": "lib/tax-engine/divisions/negativeGearing.ts",
+      "line": 152,
+      "layer": "engine",
+      "domain": "tax",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "NegativeGearingResult — net result, loss treatment (NO_LOSS / offset / TRAPPED_AT_ENTITY), loss absorbed this FY, loss carried forward, taxable income at entity, UNCOMPUTED flags.",
+      "formula": "netResult = grossIncome − deductibleExpenses. If ≥0 → NO_LOSS (taxable = otherIncome + netResult). If <0 (loss=|netResult|): PRE_REFORM_GRANDFATHERED → loss offsets other income (entity-aware); POST_REFORM_RESTRICTED → TRAPPED_AT_ENTITY (no offset, carried forward) + UNCOMPUTED scope flag; UC_* → conservative pre-reform fallback + UNCOMPUTED flag.",
+      "authority": "ITAA1997 Div 36 (loss provisions) + Phase 41E Measure 1 (neg gearing → new builds only from FY2027-28). Regime-PARAMETRIC per §12.14 FW-1 (regime defaults PRE_REFORM_GRANDFATHERED); post-reform branch gated behind UNCOMPUTED flags per FW-2 until the Treasury exposure draft pins the quarantine scope.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine tax.divisions.negativeGearing (proven, Float/Decimal shadow) + lib/tax-engine/divisions/negativeGearing.ts:152",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6351,6 +6372,34 @@
       "type": "governed-by",
       "source": "verified",
       "evidence": "lib/tax-engine/income/taxabilityRules.ts:244-247 — ATO imputation gross-up formula (corporate rate 0.30/0.70)"
+    },
+    {
+      "from": "input.Income.declared",
+      "to": "engine.tax.negativeGearing.applyNegativeGearing",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/negativeGearing.ts:156,160 — grossIncome (rental) + otherIncome"
+    },
+    {
+      "from": "input.Expense.declared",
+      "to": "engine.tax.negativeGearing.applyNegativeGearing",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/negativeGearing.ts:156,160 — deductibleExpenses (property expenses incl. loan interest)"
+    },
+    {
+      "from": "engine.tax.negativeGearing.applyNegativeGearing",
+      "to": "law.itaa1997.incomeTax",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/negativeGearing.ts:14-29 BASE_CITATIONS — ITAA1997 Div 36 loss provisions"
+    },
+    {
+      "from": "engine.tax.negativeGearing.applyNegativeGearing",
+      "to": "law.reform2026.cutOver",
+      "type": "governed-by",
+      "source": "verified",
+      "evidence": "lib/tax-engine/divisions/negativeGearing.ts:14-29,186 — Phase 41E Measure 1 (POST_REFORM_RESTRICTED branch)"
     }
   ]
 }
