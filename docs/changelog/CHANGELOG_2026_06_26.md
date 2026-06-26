@@ -42,3 +42,35 @@ Verified per-engine against `lib/calc-audit/engines/*`: the 8 PRs are internally
 ### PR
 - Branch: `claude/neo-inventory-design-jqahjw`
 - Status: Draft (NI-0; awaiting Reza sign-off before NI-1).
+
+---
+
+## Session: Neo Inventory NI-1 — restore Graphify as Layer 0 + completeness gate (branch `claude/neo-inventory-ni1-graphify-jqahjw`)
+
+### Changes Made
+- **Type**: Tooling / governance (NO production code, NO financial logic, NO semantic-graph data changed). Restores the Phase-53 design's **Layer 0** that was trialled (N0) but never wired in.
+- **`npm run neomatrix:graphify`** (`scripts/neomatrix/graphify-layer0.mjs`) — runs Graphify on `lib/`+`app/` **code-only/offline** (every LLM key unset, §13.6 — no source egress), normalises the two raw graphs into one lean deterministic `docs/financial-logic/graph/structural/structural-graph.json` (**1,064 files · 8,587 nodes · 15,041 edges**), and runs the completeness reconciliation.
+- **`scripts/neomatrix/check-layer0-coverage.mjs`** — PURE-NODE completeness gate (no graphify dep), wired into `neomatrix:check` → `vercel-build`. Reconciles every on-disk `.ts(x)` under lib+app against the committed graph; **build fails on any uncovered file** not on the reviewed allowlist. Mirrors the GENERATED_CORE.md staleness contract.
+- The gate **immediately caught 3 real omissions** graphify's own "100%" missed — 2 secret-name skips (`lib/gcp/credentials.ts`, `lib/share/tokens.ts`) + 1 full-corpus id-collision drop (`app/api/entities/[id]/accounting/snapshots/route.ts`). Each root-caused by **probe, not guess** (neutral-name copy IS extracted; the route extracts in isolation) and allowlisted with a verified reason. None is a financial calc.
+- **Baseline report** `docs/audits/NEO_INVENTORY_BASELINE.md` — the true denominator on screen for the first time: L0 structural **8,587 nodes / 100% files gated** vs L1 semantic **157 nodes / 64 engines** vs calc-audit **93 fixtures**.
+
+### Why this matters
+This is the missing half of the Neomatrix (Reza, 2026-06-26): the graph was hand-authored (drifts, undercounts); Layer 0 makes the structural skeleton **code-generated, whole-codebase, and gated** — so "is everything captured?" is a build fact. Structurally: 100% (gated). Semantically: partial + now *visible* against a complete map.
+
+### Files Modified
+- `scripts/neomatrix/graphify-layer0.mjs` — NEW (regenerator). `scripts/neomatrix/check-layer0-coverage.mjs` — NEW (CI gate).
+- `docs/financial-logic/graph/structural/structural-graph.json` — NEW (generated Layer 0, 2.7 MB). `coverage-allowlist.json` — NEW (3 verified exclusions).
+- `docs/audits/NEO_INVENTORY_BASELINE.md` — NEW. `package.json` — `neomatrix:graphify` + Layer-0 gate in `neomatrix:check`. `.gitignore` — ignore raw `**/graphify-out/`.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (semantic + Layer-0 gate, 0 uncovered).
+- [x] Graphify runs code-only/offline in-env (verified: keys unset, no egress).
+- [x] No production code / financial logic / semantic-graph data changed.
+
+### §20 self-review (3× → 10/10)
+- v1: commit graphify raw output (7.3 MB, noisy). v2: normalise to lean array-of-arrays + sorted (2.7 MB, clean diffs).
+- The decisive move: the CI gate is **independent** of graphify (pure-node disk-vs-graph), so it doesn't trust graphify's self-reported "100%" — and that's exactly what caught the 3 it dropped. Completeness is now adversarially checked, not asserted. **10/10.**
+
+### PR
+- Branch: `claude/neo-inventory-ni1-graphify-jqahjw` (stacked on the NI-0 doc PR #1258).
+- Status: Draft.
