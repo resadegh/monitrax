@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.41.0",
+  "version": "0.42.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3891,6 +3891,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.propertyDecisionSupport.calculatePortfolioSummary",
+      "kind": "engine",
+      "label": "Property portfolio summary",
+      "file": "lib/cfo/decisionSupport/propertyDecisionSupport.ts",
+      "line": 248,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": "I",
+      "regime": null,
+      "semanticKey": null,
+      "produces": "CFOPropertyPortfolioSummary — totalProperties, totalValue, totalEquity, averageLVR, totalMonthlyIncome, totalMonthlyCashflow.",
+      "formula": "totalValue = Σ p.currentValue; totalEquity = Σ p.equity; averageLVR = (totalValue−totalEquity)/totalValue×100; totalMonthlyIncome = Σ p.annualRentalIncome/12; totalMonthlyCashflow = Σ p.monthlyCashflow.",
+      "authority": "Portfolio aggregation (sum across properties; LVR = loan/value).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.propertyDecisionSupport.portfolioSummary (proven, Decimal) + lib/cfo/decisionSupport/propertyDecisionSupport.ts:248",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.riskRadar.calculateSummary",
+      "kind": "engine",
+      "label": "Risk radar summary",
+      "file": "lib/cfo/riskRadar.ts",
+      "line": 601,
+      "layer": "engine",
+      "domain": "cfo",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "RiskSummary — counts by severity (critical/high/medium/low), totalImpact (Σ impact), topRisk.",
+      "formula": "critical/high/medium/low = count(risks by severity); totalImpact = Σ r.impact; topRisk = risks[0] (severity-sorted).",
+      "authority": "Risk aggregation over the 10 detectors (categorical severity + dollar-impact roll-up).",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "calc-audit engine cfo.riskRadar.summary (proven, Decimal) + lib/cfo/riskRadar.ts:601",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -6064,6 +6106,20 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/cfo/decisionSupport/investmentDecisionSupport.ts:559-561 — pct = h.currentValue / totalValue × 100"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.propertyDecisionSupport.calculatePortfolioSummary",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/decisionSupport/propertyDecisionSupport.ts:265,269 — reduces p.currentValue / p.equity across properties"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.riskRadar.calculateSummary",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/cfo/riskRadar.ts:70-76,89 — risks[] built from snapshot loans/incomes/expenses/properties/investments, then calculateSummary aggregates them (:601)"
     }
   ]
 }

@@ -291,3 +291,19 @@ Both formulas re-verified in source; the two governed-by edges backed by the ver
 
 ### §20.4 self-review → 10/10
 Both formulas read in source; the estimate honestly labelled rather than dressed as real; concentration formula verified line-by-line; input-feeds backed by the actual `h.currentValue` reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-property-risk (backfill propertyDecisionSupport + riskRadar)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.propertyDecisionSupport.calculatePortfolioSummary` (`propertyDecisionSupport.ts:248`) — property portfolio aggregation (totalValue/equity/avgLVR/income/cashflow); `input.Property.currentValue --feeds-->` it.
+- `engine.riskRadar.calculateSummary` (`riskRadar.ts:601`) — risk severity counts + Σ impact + topRisk; master snapshot `--feeds-->` it (risks built from snapshot entities at :70-76, then aggregated).
+- **Coverage: 74% → 76%** (62 → 64 modelled · worklist 22 → 20). `neomatrix:check` green (174 nodes / 229 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +2 verified edges, version 0.41.0→0.42.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both aggregations read line-by-line in source; portfolioSummary feed backed by the `p.currentValue` reduce; riskRadar feed honestly labelled as transitive (snapshot → detectors → summary). 10/10.

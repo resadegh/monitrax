@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.41.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.42.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 172 · **Edges:** 227
-- **By kind:** orchestrator 8 · engine 79 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
-- **By status:** documented 172
-- **Edge provenance:** verified 227 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/98 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 174 · **Edges:** 229
+- **By kind:** orchestrator 8 · engine 81 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 7
+- **By status:** documented 174
+- **Edge provenance:** verified 229 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/100 engines+numbers proven (3%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -105,6 +105,8 @@
 | **Take-home pay from gross salary** | `lib/cashflow/incomeNormalizer.ts:221` | engine | core | Take-home pay breakdown: grossAmount, netAmount, paygWithholding, medicareLevy, effectiveTaxRate. | ATO PAYG withholding + Medicare Levy + LITO offset (via lib/tax-engine). | calc-audit engine cashflow.calculateTakeHomePay (proven, Float/Decimal shadow) + lib/cashflow/incomeNormalizer.ts:221 | documented |
 | **Investment: estimated dividend yield** | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:450` | engine | cfo | Estimated portfolio dividend yield % (a HEURISTIC PROXY, not actual distributions). | Monitrax heuristic proxy (franked @ 4%, unfranked @ 2%) — explicitly a "rough approximation" in source, NOT actual dividend data. Flagged for Reza (§19.1). | calc-audit engine cfo.investmentDecisionSupport.calculateDividendYield (proven, Float/Decimal shadow) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:450 | documented |
 | **Investment: max holding concentration %** | `lib/cfo/decisionSupport/investmentDecisionSupport.ts:549` | engine | cfo | Largest single-holding concentration as a % of total portfolio value. | Concentration-risk measure (largest position share of portfolio). | calc-audit engine cfo.investmentDecisionSupport.calculateMaxConcentration (proven, Decimal) + lib/cfo/decisionSupport/investmentDecisionSupport.ts:549 | documented |
+| **Property portfolio summary** | `lib/cfo/decisionSupport/propertyDecisionSupport.ts:248` | engine | cfo | CFOPropertyPortfolioSummary — totalProperties, totalValue, totalEquity, averageLVR, totalMonthlyIncome, totalMonthlyCashflow. | Portfolio aggregation (sum across properties; LVR = loan/value). | calc-audit engine cfo.propertyDecisionSupport.portfolioSummary (proven, Decimal) + lib/cfo/decisionSupport/propertyDecisionSupport.ts:248 | documented |
+| **Risk radar summary** | `lib/cfo/riskRadar.ts:601` | engine | cfo | RiskSummary — counts by severity (critical/high/medium/low), totalImpact (Σ impact), topRisk. | Risk aggregation over the 10 detectors (categorical severity + dollar-impact roll-up). | calc-audit engine cfo.riskRadar.summary (proven, Decimal) + lib/cfo/riskRadar.ts:601 | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -420,6 +422,8 @@
 | Take-home pay from gross salary | → | Medicare Levy Act 1986 | governed-by | — | verified | lib/cashflow/incomeNormalizer.ts:243 — TaxEngine.calculateMedicareLevy |
 | Investment units × price | → | Investment: estimated dividend yield | feeds | — | verified | lib/cfo/decisionSupport/investmentDecisionSupport.ts:456,460 — reads h.currentValue (+ h.frankingPercentage) of holdings |
 | Investment units × price | → | Investment: max holding concentration % | feeds | — | verified | lib/cfo/decisionSupport/investmentDecisionSupport.ts:559-561 — pct = h.currentValue / totalValue × 100 |
+| Property.currentValue | → | Property portfolio summary | feeds | — | verified | lib/cfo/decisionSupport/propertyDecisionSupport.ts:265,269 — reduces p.currentValue / p.equity across properties |
+| Master financial snapshot | → | Risk radar summary | feeds | — | verified | lib/cfo/riskRadar.ts:70-76,89 — risks[] built from snapshot loans/incomes/expenses/properties/investments, then calculateSummary aggregates them (:601) |
 
 ---
 
