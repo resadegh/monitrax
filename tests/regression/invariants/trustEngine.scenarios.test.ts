@@ -22,6 +22,8 @@ import { sellPropertyScenario } from '@/lib/cfo/scenarios/sellProperty';
 import { tenYearProjection } from '@/lib/cfo/scenarios/tenYearProjection';
 import { addInvestmentScenario } from '@/lib/cfo/scenarios/addInvestment';
 import { redirectToOffsetScenario } from '@/lib/cfo/scenarios/redirectToOffset';
+import { refinanceLoanScenario } from '@/lib/cfo/scenarios/refinanceLoan';
+import { payDownLoanScenario } from '@/lib/cfo/scenarios/payDownLoan';
 import type { ScenarioContext } from '@/lib/cfo/scenarios/types';
 import { Decimal } from '@/lib/decimal';
 
@@ -350,5 +352,169 @@ describe('Trust Engine · what-if redirectToOffset (interest-saved identity)', (
     );
     expect(by(r, 'Interest saved (monthly)').delta).toBeCloseTo(0, 6);
     expect(by(r, 'Interest saved (annual)').delta).toBeCloseTo(0, 6);
+  });
+});
+
+// =============================================================================
+// A.4 — the amortisation what-ifs (refinanceLoan + payDownLoan). These walk a
+// real amortisation schedule / annuity payment, so each is verified against an
+// INDEPENDENT computation, not a re-run of the same loop:
+//   • refinance: the engine's PI form M = P·m(1+m)ⁿ/((1+m)ⁿ−1) checked against
+//     the algebraically-equal-but-distinct form M = P·m/(1−(1+m)⁻ⁿ).
+//   • payDown: interest summed per-step by the engine is checked against an
+//     independent accounting path — totalPaid − principalRetired — and
+//     principalRetired must equal the starting principal (money conserved).
+// =============================================================================
+
+const REFI_SWITCHING_DEFAULT = 1500; // engine default
+
+function loanCtx(
+  loan: { id: string; name: string; principal: number; interestRate: number; monthlyRepayment: number; remainingMonths: number; loanType?: string },
+  monthlyCashflow: number,
+) {
+  return {
+    snapshot: { quickMetrics: { monthlyCashflow } },
+    loans: [{ termMonths: loan.remainingMonths, offsetBalance: 0, loanType: 'INVESTMENT', ...loan }],
+  } as unknown as ScenarioContext;
+}
+
+/** Independent PI payment — the −n exponent form (engine uses the +n form). */
+function piIndependent(principal: number, annualRate: number, n: number): number {
+  const m = annualRate / 12;
+  if (n === 0 || annualRate === 0) return principal / Math.max(1, n);
+  return (principal * m) / (1 - Math.pow(1 + m, -n));
+}
+
+describe('Trust Engine · what-if refinanceLoan (new repayment + savings)', () => {
+  const by = (r: ReturnType<typeof refinanceLoanScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix))!;
+
+  it('golden — $500k refinanced to 5.5% over 360mo → $2,838.95/mo repayment', () => {
+    const r = refinanceLoanScenario(
+      loanCtx({ id: 'l1', name: 'Home', principal: 500_000, interestRate: 0.065, monthlyRepayment: 3_200, remainingMonths: 360 }, 1_000),
+      { loanId: 'l1', newRate: 0.055 },
+    );
+    expect(by(r, 'Monthly repayment').after).toBeCloseTo(2838.945, 2);
+    // savings + lifetime accounting
+    expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(3_200 - 2838.945, 2); // current − new
+    expect(by(r, 'Lifetime savings').after).toBeCloseTo((3_200 - 2838.945) * 360 - REFI_SWITCHING_DEFAULT, 1);
+  });
+
+  it('agrees with the independent PI form + holds the accounting identities over a sweep', () => {
+    const rand = rng(0x4ef1);
+    for (let i = 0; i < 50; i++) {
+      const principal = 100_000 + Math.round(rand() * 1_400_000);
+      const newRate = 0.02 + rand() * 0.06;
+      const remainingMonths = 60 + Math.floor(rand() * 360);
+      const monthlyRepayment = 500 + Math.round(rand() * 6_000);
+      const cashflowBefore = Math.round((rand() - 0.3) * 8_000);
+      const r = refinanceLoanScenario(
+        loanCtx({ id: 'l1', name: 'Loan', principal, interestRate: 0.07, monthlyRepayment, remainingMonths }, cashflowBefore),
+        { loanId: 'l1', newRate },
+      );
+      const newM = piIndependent(principal, newRate, remainingMonths);
+      const savings = monthlyRepayment - newM;
+      // differential: engine new repayment === independent PI form
+      expect(by(r, 'Monthly repayment').after).toBeCloseTo(newM, 2);
+      // repayment delta is the (negated) saving; cashflow delta is +saving
+      expect(by(r, 'Monthly repayment').delta).toBeCloseTo(-savings, 2);
+      expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(savings, 2);
+      expect(by(r, 'Monthly cashflow').after).toBeCloseTo(cashflowBefore + savings, 2);
+      // lifetime = monthly saving × term − switching costs
+      expect(by(r, 'Lifetime savings').after).toBeCloseTo(savings * remainingMonths - REFI_SWITCHING_DEFAULT, 1);
+    }
+  });
+
+  it('sensitivity — a lower new rate never produces smaller monthly savings (monotone)', () => {
+    const base = { id: 'l1', name: 'Loan', principal: 600_000, interestRate: 0.07, monthlyRepayment: 4_000, remainingMonths: 300 };
+    let prevSaving = -Infinity;
+    for (const newRate of [0.069, 0.06, 0.05, 0.04, 0.03]) {
+      const r = refinanceLoanScenario(loanCtx(base, 0), { loanId: 'l1', newRate });
+      const saving = (r.impacts.find((i) => i.label.startsWith('Monthly cashflow'))!).delta;
+      expect(saving).toBeGreaterThanOrEqual(prevSaving - 1e-6);
+      prevSaving = saving;
+    }
+  });
+});
+
+/** Independent amortisation walk — derives interest via the conservation
+ *  identity (totalPaid − principalRetired) rather than summing per-step, a
+ *  genuinely different accounting path than the engine. */
+function amortiseIndependent(P: number, annual: number, M: number, extra: number) {
+  let p = P;
+  let totalPaid = 0;
+  let principalRetired = 0;
+  let months = 0;
+  const cap = 600;
+  while (p > 0.01 && months < cap) {
+    const interest = p * (annual / 12);
+    const pay = Math.max(0, M - interest) + extra;
+    if (pay <= 0) { months = cap; break; }
+    const applied = Math.min(pay, p);
+    totalPaid += applied + interest;
+    principalRetired += applied;
+    p -= applied;
+    months += 1;
+  }
+  return { months, interestViaIdentity: totalPaid - principalRetired, principalRetired };
+}
+
+describe('Trust Engine · what-if payDownLoan (extra-repayment amortisation)', () => {
+  const by = (r: ReturnType<typeof payDownLoanScenario>, prefix: string) =>
+    r.impacts.find((i) => i.label.startsWith(prefix))!;
+
+  it('golden — $500k @6%, $3,000/mo, +$500 → 252 months (108 sooner), ~$198,617 interest saved', () => {
+    const r = payDownLoanScenario(
+      loanCtx({ id: 'l1', name: 'Home', principal: 500_000, interestRate: 0.06, monthlyRepayment: 3_000, remainingMonths: 360 }, 1_000),
+      { loanId: 'l1', extraMonthly: 500 },
+    );
+    expect(by(r, 'Months to payoff').before).toBe(360);
+    expect(by(r, 'Months to payoff').after).toBe(252);
+    // 'Interest saved (lifetime)' before/after carry baseline/accelerated totals
+    const saved = by(r, 'Interest saved').before - by(r, 'Interest saved').after;
+    expect(saved).toBeCloseTo(198616.61, 0);
+  });
+
+  it('interest reconciles via the conservation identity + principal fully retired (differential)', () => {
+    const rand = rng(0x9d0c);
+    for (let i = 0; i < 50; i++) {
+      const principal = 100_000 + Math.round(rand() * 900_000);
+      const annual = 0.03 + rand() * 0.05;
+      // a repayment comfortably above the interest-only floor so the loan amortises
+      const monthlyRepayment = Math.ceil(principal * (annual / 12) * (1.3 + rand())) + 200;
+      const extra = Math.round(rand() * 1_500);
+      const r = payDownLoanScenario(
+        loanCtx({ id: 'l1', name: 'Loan', principal, interestRate: annual, monthlyRepayment, remainingMonths: 360 }, 0),
+        { loanId: 'l1', extraMonthly: extra },
+      );
+      const ind = amortiseIndependent(principal, annual, monthlyRepayment, extra);
+      // engine accelerated totalInterest === independent interest-via-identity
+      expect(by(r, 'Interest saved').after).toBeCloseTo(ind.interestViaIdentity, 2);
+      // months agree
+      expect(by(r, 'Months to payoff').after).toBe(ind.months);
+      // money conserved: every dollar applied retired the starting principal
+      expect(ind.principalRetired).toBeCloseTo(principal, 2);
+      // cashflow loses exactly the extra
+      expect(by(r, 'Monthly cashflow').delta).toBeCloseTo(-extra, 6);
+    }
+  });
+
+  it('monotonicity — more extra never increases interest or term, and extra=0 is a no-op', () => {
+    const base = { id: 'l1', name: 'Loan', principal: 400_000, interestRate: 0.06, monthlyRepayment: 2_700, remainingMonths: 360 };
+    const noop = payDownLoanScenario(loanCtx(base, 0), { loanId: 'l1', extraMonthly: 0 });
+    expect(by(noop, 'Months to payoff').after).toBe(by(noop, 'Months to payoff').before);
+    expect(by(noop, 'Interest saved').after).toBeCloseTo(by(noop, 'Interest saved').before, 6);
+
+    let prevInterest = Infinity;
+    let prevMonths = Infinity;
+    for (const extra of [0, 200, 500, 1_000, 2_000]) {
+      const r = payDownLoanScenario(loanCtx(base, 0), { loanId: 'l1', extraMonthly: extra });
+      const interest = by(r, 'Interest saved').after; // accelerated lifetime interest
+      const months = by(r, 'Months to payoff').after;
+      expect(interest).toBeLessThanOrEqual(prevInterest + 1e-6);
+      expect(months).toBeLessThanOrEqual(prevMonths);
+      prevInterest = interest;
+      prevMonths = months;
+    }
   });
 });

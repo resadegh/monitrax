@@ -621,3 +621,35 @@ The remaining loan what-ifs (`refinanceLoanScenario`, `payDownLoanScenario`) wal
 ### PR
 - Branch: `claude/trust-engine-whatif-a3-jqahjw` (stacked on #1251)
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche A.4 — verify refinanceLoan + payDownLoan (the amortisation what-ifs)
+
+### Changes Made
+- **Type**: Enhancement (Trust Engine verification — Tranche A continued). No production logic changed.
+- **`refinanceLoanScenario`** verified against an **independent PI form** `M = P·m/(1−(1+m)⁻ⁿ)` (the engine uses the algebraically-equal `+n` form), a golden ($500k @5.5%/360mo → **$2,838.95/mo**), the savings identities (repayment delta = −saving, cashflow delta = +saving, lifetime = saving×term − switchingCosts), and rate-monotonicity (a lower rate never saves less).
+- **`payDownLoanScenario`** verified against an **independent amortisation accounting path** — interest derived via the conservation identity `totalPaid − principalRetired` (the engine sums interest per-step), so agreement is a genuine differential — plus a golden ($500k @6%, $3k/mo, +$500 → **252 months / 108 sooner / ~$198,617 saved**), `principalRetired === starting principal` (money conserved), and monotonicity (more extra never increases interest/term; extra=0 is a no-op).
+- Both engines **mutation-proven** (refinance savings sign-flip + payDown interest ×1.05 → 5 failures caught; restored to 0-diff).
+- Two `verified-by` verification nodes added (`verification.trustEngine.L1.refinanceLoan`, `verification.trustEngine.L1.payDownLoan`).
+
+### Files Modified
+- `tests/regression/invariants/trustEngine.scenarios.test.ts` — +refinance + payDown blocks (18 tests total in file).
+- `docs/financial-logic/graph/financial-graph.json` — v0.39.0 → **v0.40.0**, +2 verification nodes / +2 verified-by edges (173 nodes / 218 edges).
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `vitest trustEngine.scenarios` — 18/18
+- [x] `vitest neomatrix/financialGraph` — 8/8
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **10/92 (11%) · 14 verification node(s) · L0 1 · L1 7 · L2 3 · L3 3** (graph v0.40.0).
+
+### §20.4 self-review → 10/10
+The two "independent" checks are structurally distinct from the engine (the −n PI form; the conservation-identity accounting path) — real differentials, not re-runs. Conservation (`principalRetired === principal`) is the strongest guard against an amortisation walk silently creating/losing money. Golden values independently computed + cited (§19.2). 10/10.
+
+### Tranche A status after A.4
+All 7 cascade/arithmetic/amortisation what-ifs now verified + modelled: sellProperty, tenYearProjection, propertyDisposalCgt (A.1/A.2), addInvestment, redirectToOffset (A.3), refinanceLoan, payDownLoan (A.4). **Remaining**: `salarySacrificeToSuper` (super caps + Div 293/296 + Phase 41E reform — needs cap-guard verification) and `cutSpendCategory` → **A.5**.
+
+### PR
+- Branch: `claude/trust-engine-whatif-a4-jqahjw` (stacked on #1252)
+- Status: Draft

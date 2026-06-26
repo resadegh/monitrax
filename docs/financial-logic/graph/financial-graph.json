@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.39.0",
+  "version": "0.40.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3833,6 +3833,38 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if redirectToOffset)",
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.refinanceLoan",
+      "kind": "verification",
+      "label": "What-if refinance — PI repayment differential + savings identities (L1)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 388,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L1",
+      "produces": "The new monthly repayment matches (a) a hand-derived golden ($500k @5.5%/360mo → $2,838.95) and (b) an INDEPENDENT PI form M = P·m/(1−(1+m)⁻ⁿ) (the engine uses the +n form M = P·m(1+m)ⁿ/((1+m)ⁿ−1)) over a 50-case sweep; the savings identities hold (repayment delta = −saving, cashflow delta = +saving, lifetime = saving×term − switchingCosts) and savings are monotone in a lower rate.",
+      "catches": "A sign flip on monthly savings, a wrong annuity form, or a broken lifetime/break-even accounting that would misstate whether a refinance is worthwhile.",
+      "authority": "Amortising-annuity payment formula M = P·r(1+r)ⁿ/((1+r)ⁿ−1).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if refinanceLoan)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.payDownLoan",
+      "kind": "verification",
+      "label": "What-if pay-down — amortisation conservation differential (L1)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 462,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L1",
+      "produces": "The amortisation walk matches a golden ($500k @6%, $3,000/mo, +$500 → 252 months / 108 sooner / ~$198,617 saved) and an INDEPENDENT accounting path that derives interest via the conservation identity totalPaid − principalRetired (the engine sums interest per-step) over a 50-case sweep — with principalRetired === starting principal (money conserved) and month counts agreeing. Monotonicity: more extra never increases interest or term; extra=0 is a no-op.",
+      "catches": "A walk error that silently creates or loses money (interest not conserved), a wrong payoff-month count, or a non-monotone response to extra repayments.",
+      "authority": "Amortisation conservation: every payment is interest on the outstanding balance + principal; total interest = total paid − principal retired.",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if payDownLoan)",
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5929,6 +5961,20 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:313 — interest-saved identity amount×rate/12 golden + 50-case sweep + fully-offset edge."
+    },
+    {
+      "from": "engine.refinanceLoan.refinanceLoanScenario",
+      "to": "verification.trustEngine.L1.refinanceLoan",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:388 — PI-form differential (independent −n form) + golden + savings identities + rate monotonicity over 50 cases."
+    },
+    {
+      "from": "engine.payDownLoan.payDownLoanScenario",
+      "to": "verification.trustEngine.L1.payDownLoan",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:462 — conservation-identity differential (totalPaid − principal) + golden + principal-retired conservation + monotonicity over 50 cases."
     }
   ]
 }

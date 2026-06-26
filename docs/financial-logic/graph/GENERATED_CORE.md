@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.39.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.40.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 171 · **Edges:** 216
-- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 12
-- **By status:** documented 171
-- **Edge provenance:** verified 216 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 8/92 engines+numbers proven (9%) · 12 verification node(s) · by layer L0 1 · L1 5 · L2 3 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 173 · **Edges:** 218
+- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 14
+- **By status:** documented 173
+- **Edge provenance:** verified 218 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 10/92 engines+numbers proven (11%) · 14 verification node(s) · by layer L0 1 · L1 7 · L2 3 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -187,6 +187,8 @@
 | **Property disposal CGT — per-owner Div 115 reconciliation (L1)** | L1 | cfo | Each owner share + discount rate + taxable gain reconciles to the canonical attributeAsset + calculateCgtDiscountDecimal (Div 115) over the 6 archetypes; ownership weights sum to 1; nominal gain splits exactly. | A wrong per-owner CGT split or discount rate in the sell-property cascade (the classic CGT foot-gun). | Property disposal CGT (per-owner Div 115) | `tests/regression/invariants/invariants.test.ts:215` |
 | **What-if add-investment — annuity FV golden + independent compounding sum (L1)** | L1 | cfo | The projected future value matches (a) hand-derived golden annuity values ($1,000/mo @8%/10y → $182,946.04, $62,946.04 of it growth; $500/mo @7%/20y → $260,463.33) and (b) an INDEPENDENT term-by-term compounding sum (Σ m·(1+r/12)^k) over a 50-case sweep; growth = FV − contributions, FV ≥ contributions (no money invented), portfolio-after = before + FV, cashflow loses exactly the contribution. | A wrong exponent / annuity term that would over- or under-state the "start investing" projection, plus the zero-return edge (FV must equal contributions exactly). | What-if: add a regular investment | `tests/regression/invariants/trustEngine.scenarios.test.ts:250` |
 | **What-if redirect-to-offset — interest-saved identity (L2)** | L2 | cfo | When the loan is not already offset below the parked amount, the monthly interest saved collapses to the clean identity amount × rate/12 (golden: $50k into a $500k loan @6% → exactly $250/mo, $3,000/yr), annual = ×12, and liquid cash is UNCHANGED (offset stays accessible). Holds over a 50-case sweep that preserves principal − offset ≥ amount. | A sign flip or wrong periodic-rate divisor on the offset saving, and the fully-offset edge (parking more must save nothing — no negative interest invented). | What-if: redirect cash to an offset | `tests/regression/invariants/trustEngine.scenarios.test.ts:313` |
+| **What-if refinance — PI repayment differential + savings identities (L1)** | L1 | cfo | The new monthly repayment matches (a) a hand-derived golden ($500k @5.5%/360mo → $2,838.95) and (b) an INDEPENDENT PI form M = P·m/(1−(1+m)⁻ⁿ) (the engine uses the +n form M = P·m(1+m)ⁿ/((1+m)ⁿ−1)) over a 50-case sweep; the savings identities hold (repayment delta = −saving, cashflow delta = +saving, lifetime = saving×term − switchingCosts) and savings are monotone in a lower rate. | A sign flip on monthly savings, a wrong annuity form, or a broken lifetime/break-even accounting that would misstate whether a refinance is worthwhile. | What-if: refinance a loan | `tests/regression/invariants/trustEngine.scenarios.test.ts:388` |
+| **What-if pay-down — amortisation conservation differential (L1)** | L1 | cfo | The amortisation walk matches a golden ($500k @6%, $3,000/mo, +$500 → 252 months / 108 sooner / ~$198,617 saved) and an INDEPENDENT accounting path that derives interest via the conservation identity totalPaid − principalRetired (the engine sums interest per-step) over a 50-case sweep — with principalRetired === starting principal (money conserved) and month counts agreeing. Monotonicity: more extra never increases interest or term; extra=0 is a no-op. | A walk error that silently creates or loses money (interest not conserved), a wrong payoff-month count, or a non-monotone response to extra repayments. | What-if: pay down a loan faster | `tests/regression/invariants/trustEngine.scenarios.test.ts:462` |
 
 ## Edges (verified, with evidence)
 
@@ -408,6 +410,8 @@
 | Property disposal CGT (per-owner Div 115) | → | Property disposal CGT — per-owner Div 115 reconciliation (L1) | verified-by | — | verified | tests/regression/invariants/invariants.test.ts:215 — per-owner Div 115 split reconciles to calculateCgtDiscountDecimal over 6 archetypes. |
 | What-if: add a regular investment | → | What-if add-investment — annuity FV golden + independent compounding sum (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:250 — annuity-FV golden + independent term-by-term compounding differential over 50 cases + zero-return edge. |
 | What-if: redirect cash to an offset | → | What-if redirect-to-offset — interest-saved identity (L2) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:313 — interest-saved identity amount×rate/12 golden + 50-case sweep + fully-offset edge. |
+| What-if: refinance a loan | → | What-if refinance — PI repayment differential + savings identities (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:388 — PI-form differential (independent −n form) + golden + savings identities + rate monotonicity over 50 cases. |
+| What-if: pay down a loan faster | → | What-if pay-down — amortisation conservation differential (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:462 — conservation-identity differential (totalPaid − principal) + golden + principal-retired conservation + monotonicity over 50 cases. |
 
 ---
 
