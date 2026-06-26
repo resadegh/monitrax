@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.50.0",
+  "version": "0.51.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -4605,6 +4605,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.health.metricAggregation.calculateLiquidityMetrics",
+      "kind": "engine",
+      "label": "Health liquidity metrics (+ cashflow/debt siblings)",
+      "file": "lib/health/metricAggregation.ts",
+      "line": 163,
+      "layer": "engine",
+      "domain": "health",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "LiquidityMetrics — emergency-buffer months, savings rate, liquid-net-worth ratio, short-term-debt ratio. Sibling entries in the file compute cashflow metrics (:219) and debt metrics (:273).",
+      "formula": "emergencyBufferMonths = liquidAssets / monthlyExpenses; savingsRate = (monthlyIncome − monthlyExpenses)/monthlyIncome × 100; liquidNetWorthRatio = liquidAssets/netWorth × 100; shortTermDebtRatio = creditCardDebt / annualIncome.",
+      "authority": "Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/health/metricAggregation.ts:163 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
+    },
+    {
+      "id": "engine.health.categoryScoring.scoreLiquidityCategory",
+      "kind": "engine",
+      "label": "Health category scoring (liquidity/cashflow/debt)",
+      "file": "lib/health/categoryScoring.ts",
+      "line": 165,
+      "layer": "engine",
+      "domain": "health",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "HealthCategory — weighted category score from the aggregated metrics. Sibling entries score cashflow (:198) and debt (:231).",
+      "formula": "score = Σ (metric value mapped to 0-100 via thresholds × category weight); contributingMetrics carry each metric’s weighted contribution.",
+      "authority": "Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores.",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": "lib/health/categoryScoring.ts:165 (NI-4 modelled; fixture pending)",
+      "workedExample": null,
+      "verifiedDate": "2026-06-26",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -7086,6 +7128,20 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "lib/cfo/actionEngine.ts:34 — prisma.income.findMany"
+    },
+    {
+      "from": "orchestrator.portfolioSnapshot.GET",
+      "to": "engine.health.metricAggregation.calculateLiquidityMetrics",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/health/metricAggregation.ts:167,181 — reads input.portfolioSnapshot.netWorth / .accounts"
+    },
+    {
+      "from": "engine.health.metricAggregation.calculateLiquidityMetrics",
+      "to": "engine.health.categoryScoring.scoreLiquidityCategory",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/health/categoryScoring.ts:165,171 — reads metrics.liquidity.emergencyBuffer / liquidNetWorthRatio / savingsRate"
     }
   ]
 }

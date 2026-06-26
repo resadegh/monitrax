@@ -459,3 +459,21 @@ Each entry's body read in source; the forecast→optimisation/stress-test chain 
 
 ### §20.4 self-review → 10/10
 Adapter-vs-duplicate distinction verified in source (the import + delegation); snapshot + prisma-fetch feeds backed by verbatim reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni4-health (model health metric + category-scoring engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.health.metricAggregation.calculateLiquidityMetrics` (`metricAggregation.ts:163`) — emergency-buffer / savings-rate / liquid-net-worth / short-term-debt metrics (+ sibling cashflow :219 / debt :273 entries noted); `orchestrator.portfolioSnapshot.GET --feeds-->` it.
+- `engine.health.categoryScoring.scoreLiquidityCategory` (`categoryScoring.ts:165`) — weighted category score from the aggregated metrics (+ sibling cashflow :198 / debt :231); the metrics engine `--feeds-->` it.
+- **Census: 68% → 73%** (UNCOVERED 143 → 122 — 2 files / 21 candidates flipped). `neomatrix:check` green (208 nodes / 273 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +2 verified edges, version 0.50.0→0.51.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Liquidity-metric formulas read in source; the metric→scoring chain verified by the `metrics.liquidity.*` reads in the scorer; snapshot feed backed by the `input.portfolioSnapshot` reads. 10/10.
+
+### NI-4 progress this session: census 56% → 73% (8 genuine financial files modelled: 3 cashflow + 3 intelligence/cfo + 2 health). Remaining UNCOVERED (122) is a mix of genuine financial files (reports, timeSeries, entityInsights, riskModelling, aiAdvisor, entityTaxFactsAssembler) AND census false positives (types/errors/CRUD service fns) to be triaged into the reviewed exclusion allowlist (§22.2 rule 4).

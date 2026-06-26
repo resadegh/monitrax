@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.50.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.51.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 206 · **Edges:** 271
-- **By kind:** orchestrator 9 · engine 103 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 206
-- **Edge provenance:** verified 271 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/123 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 208 · **Edges:** 273
+- **By kind:** orchestrator 9 · engine 105 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
+- **By status:** documented 208
+- **Edge provenance:** verified 273 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/125 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -130,6 +130,8 @@
 | **Portfolio net-worth adapter** | `lib/intelligence/portfolioEngine.ts:308` | engine | core | NetWorthAnalysis — net worth + asset/liability breakdown for the portfolio engine, RESHAPED from the canonical net-worth result (thin adapter, NOT a second calculation — §12.2.1 safe). | SSOT: lib/calculations/netWorthCalculator.ts (this is a presentational adapter over it; net worth = Σassets − Σliabilities). | lib/intelligence/portfolioEngine.ts:308 (NI-4 modelled; fixture pending) | documented |
 | **GRDCS insights engine** | `lib/intelligence/insightsEngine.ts:776` | engine | intelligence | InsightsResult — dashboard insights composed from 8 generators: orphaned-entity, missing-link, cross-module, completeness, structural-gap, financial-metric, risk, opportunity. | Monitrax GRDCS relational-insights methodology (Phase: portfolio snapshot / SnapshotV2). | lib/intelligence/insightsEngine.ts:776 (NI-4 modelled; fixture pending) | documented |
 | **CFO action prioritisation** | `lib/cfo/actionEngine.ts:23` | engine | cfo | ActionPrioritisationOutput — prioritised CFO actions generated from detected risks + score-improvement analysis, over the user’s accounts/loans/expenses/incomes. | Monitrax CFO action methodology (TRAIL stage-matched). | lib/cfo/actionEngine.ts:23 (NI-4 modelled; fixture pending) | documented |
+| **Health liquidity metrics (+ cashflow/debt siblings)** | `lib/health/metricAggregation.ts:163` | engine | health | LiquidityMetrics — emergency-buffer months, savings rate, liquid-net-worth ratio, short-term-debt ratio. Sibling entries in the file compute cashflow metrics (:219) and debt metrics (:273). | Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores. | lib/health/metricAggregation.ts:163 (NI-4 modelled; fixture pending) | documented |
+| **Health category scoring (liquidity/cashflow/debt)** | `lib/health/categoryScoring.ts:165` | engine | health | HealthCategory — weighted category score from the aggregated metrics. Sibling entries score cashflow (:198) and debt (:231). | Monitrax Financial Health methodology (lib/health) — category metrics + weighted category scores. | lib/health/categoryScoring.ts:165 (NI-4 modelled; fixture pending) | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -498,6 +500,8 @@
 | Loan.principal | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:32 — prisma.loan.findMany |
 | Expense (declared) | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:33 — prisma.expense.findMany |
 | Income (declared) | → | CFO action prioritisation | feeds | — | verified | lib/cfo/actionEngine.ts:34 — prisma.income.findMany |
+| Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT) | → | Health liquidity metrics (+ cashflow/debt siblings) | feeds | — | verified | lib/health/metricAggregation.ts:167,181 — reads input.portfolioSnapshot.netWorth / .accounts |
+| Health liquidity metrics (+ cashflow/debt siblings) | → | Health category scoring (liquidity/cashflow/debt) | feeds | — | verified | lib/health/categoryScoring.ts:165,171 — reads metrics.liquidity.emergencyBuffer / liquidNetWorthRatio / savingsRate |
 
 ---
 
