@@ -568,3 +568,24 @@ An always-equal differential is worthless. Each differential ships a positive co
 ### PR
 - Branch: `claude/trust-engine-whatif-modelling-jqahjw`
 - Status: Draft
+
+---
+
+## Session: Trust Engine Tranche A.2 — verify tenYearProjection + CGT core
+
+### Changes Made
+- **Type**: Enhancement (Trust Engine verification — Tranche A continued). No production logic changed.
+- **`tenYearProjection`** (the chart spine every what-if renders) verified three ways: golden compounding ($100k@4%/10y = $148,024.43; $100k super@6%/10y = $179,084.77), an **independent re-implementation of the per-year recurrence** (differential) over 50 random cases, and the year-0 / totalDelta identities. One wrong factor here mis-projects every scenario at once.
+- **`computePropertyDisposalCgt`** (per-owner Div 115 CGT — the sell-property foot-gun) verified by wiring a node to the **existing** `invariants.test.ts` Invariant 4 reconciliation (share + discount reconcile to `calculateCgtDiscountDecimal` over 6 archetypes) — modelling existing coverage, no new test needed.
+
+### Build Status
+- [x] `vitest scenarios + neomatrix + invariants` — 377/377
+- [x] `npm run neomatrix:check` — OK
+- Assurance readout: **6/92 (7%) · L0 1 · L1 4 · L2 2 · L3 3** (graph v0.38.0).
+
+### §20.4 self-review → 10/10
+Golden values hand-derived from the documented rates; the independent recurrence is structurally distinct from the engine's Decimal walk (a real differential); the CGT node cites verified existing coverage (no duplicate test). 10/10.
+
+### PR
+- Branch: `claude/trust-engine-whatif-a2-jqahjw` (stacked on #1250)
+- Status: Draft

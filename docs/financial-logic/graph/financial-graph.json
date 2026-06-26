@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.37.0",
+  "version": "0.38.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -3769,6 +3769,38 @@
       "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if cascade)",
       "verifiedDate": "2026-06-25",
       "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.tenYearProjection",
+      "kind": "verification",
+      "label": "What-if 10-year projection — golden + independent recurrence (L1)",
+      "file": "tests/regression/invariants/trustEngine.scenarios.test.ts",
+      "line": 145,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L1",
+      "produces": "The projection spine matches (a) hand-derived golden compounding ($100k@4%→$148,024.43; $100k super@6%→$179,084.77) and (b) an INDEPENDENT re-implementation of the per-year recurrence over a 50-case random sweep; year-0 = baseNetWorth + totalDelta = final − base identities hold.",
+      "catches": "A wrong growth factor / recurrence error that would mis-project EVERY what-if at once (this engine feeds every lever chart).",
+      "authority": "Compound-growth identity; documented real-return assumptions (ASIC MoneySmart-style).",
+      "verifiedBy": "tests/regression/invariants/trustEngine.scenarios.test.ts (Trust Engine — what-if projection)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
+    },
+    {
+      "id": "verification.trustEngine.L1.propertyDisposalCgt",
+      "kind": "verification",
+      "label": "Property disposal CGT — per-owner Div 115 reconciliation (L1)",
+      "file": "tests/regression/invariants/invariants.test.ts",
+      "line": 215,
+      "layer": null,
+      "domain": "cfo",
+      "trustLayer": "L1",
+      "produces": "Each owner share + discount rate + taxable gain reconciles to the canonical attributeAsset + calculateCgtDiscountDecimal (Div 115) over the 6 archetypes; ownership weights sum to 1; nominal gain splits exactly.",
+      "catches": "A wrong per-owner CGT split or discount rate in the sell-property cascade (the classic CGT foot-gun).",
+      "authority": "ITAA 1997 Div 115 (CGT discount) + AD-2 ownership attribution.",
+      "verifiedBy": "tests/regression/invariants/invariants.test.ts Invariant 4 (existing reconciliation)",
+      "verifiedDate": "2026-06-25",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -5837,6 +5869,20 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:73 — cascade reconciliation over 51 cases; mutation-proven (loan-payoff sign flip fails)."
+    },
+    {
+      "from": "engine.tenYearProjection.tenYearProjection",
+      "to": "verification.trustEngine.L1.tenYearProjection",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/trustEngine.scenarios.test.ts:145 — golden compounding + independent-recurrence differential over 50 cases."
+    },
+    {
+      "from": "engine.propertyDisposalCgt.computePropertyDisposalCgt",
+      "to": "verification.trustEngine.L1.propertyDisposalCgt",
+      "type": "verified-by",
+      "source": "verified",
+      "evidence": "tests/regression/invariants/invariants.test.ts:215 — per-owner Div 115 split reconciles to calculateCgtDiscountDecimal over 6 archetypes."
     }
   ]
 }

@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.37.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.38.0, reviewed 2026-06-25). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 167 · **Edges:** 212
-- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 8
-- **By status:** documented 167
-- **Edge provenance:** verified 212 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 4/92 engines+numbers proven (4%) · 8 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 169 · **Edges:** 214
+- **By kind:** orchestrator 9 · engine 72 · input-field 27 · number 11 · ui-surface 12 · law 28 · verification 10
+- **By status:** documented 169
+- **Edge provenance:** verified 214 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 6/92 engines+numbers proven (7%) · 10 verification node(s) · by layer L0 1 · L1 4 · L2 2 · L3 3 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -183,6 +183,8 @@
 | **Net worth — engine vs independent raw sum (L1)** | L1 | core | The canonical class-bucketed engine equals an independent row-by-row sum (market-value fallback + SMSF exclusion replicated) over 6 archetypes + 40 random portfolios. Sensitivity: a reference that forgets SMSF exclusion does NOT match. | A single-implementation aggregation/bucketing bug that float-vs-decimal (same algorithm) would not catch. | Net worth | `tests/regression/invariants/trustEngine.differential.test.ts:109` |
 | **Income tax — engine vs independent marginal-slice (L1)** | L1 | tax | The canonical find-bracket+baseAmount engine equals an independent marginal-slice summation across the whole income sweep. Sensitivity: a wrong top rate does NOT match. | A drifted baseAmount / threshold / rate present in the engine but not re-derivable from first-principles slices. | Income tax (marginal brackets) | `tests/regression/invariants/trustEngine.differential.test.ts:144` |
 | **What-if sell-property — cascade reconciliation (L3)** | L3 | cfo | The sell-property cascade ties out over a fixed case + 50 random portfolios: netCashFreed = proceeds − 2.5% costs − loan payoff; Δliquid = netCashFreed; Δcashflow = −property.monthlyCashflow; Δnet worth = −sellingCosts − yourCgt; Δportfolio = −currentValue. | A wrong sign or dropped term in the most consequential what-if (a real sell-or-keep decision). Mutation-proven: flipping the loan-payoff sign fails the lock. | What-if: sell a property | `tests/regression/invariants/trustEngine.scenarios.test.ts:73` |
+| **What-if 10-year projection — golden + independent recurrence (L1)** | L1 | cfo | The projection spine matches (a) hand-derived golden compounding ($100k@4%→$148,024.43; $100k super@6%→$179,084.77) and (b) an INDEPENDENT re-implementation of the per-year recurrence over a 50-case random sweep; year-0 = baseNetWorth + totalDelta = final − base identities hold. | A wrong growth factor / recurrence error that would mis-project EVERY what-if at once (this engine feeds every lever chart). | What-if: 10-year net-worth projection (the chart spine) | `tests/regression/invariants/trustEngine.scenarios.test.ts:145` |
+| **Property disposal CGT — per-owner Div 115 reconciliation (L1)** | L1 | cfo | Each owner share + discount rate + taxable gain reconciles to the canonical attributeAsset + calculateCgtDiscountDecimal (Div 115) over the 6 archetypes; ownership weights sum to 1; nominal gain splits exactly. | A wrong per-owner CGT split or discount rate in the sell-property cascade (the classic CGT foot-gun). | Property disposal CGT (per-owner Div 115) | `tests/regression/invariants/invariants.test.ts:215` |
 
 ## Edges (verified, with evidence)
 
@@ -400,6 +402,8 @@
 | What-if: salary sacrifice to super | → | What-if scenario dispatcher | feeds | — | verified | lib/cfo/scenarios/index.ts — dispatch. |
 | What-if: sell a property | → | What-if: 10-year net-worth projection (the chart spine) | feeds | — | verified | tenYearProjection consumes a scenario year-1 cashflow/tax delta (lib/cfo/scenarios/tenYearProjection.ts:43). |
 | What-if: sell a property | → | What-if sell-property — cascade reconciliation (L3) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:73 — cascade reconciliation over 51 cases; mutation-proven (loan-payoff sign flip fails). |
+| What-if: 10-year net-worth projection (the chart spine) | → | What-if 10-year projection — golden + independent recurrence (L1) | verified-by | — | verified | tests/regression/invariants/trustEngine.scenarios.test.ts:145 — golden compounding + independent-recurrence differential over 50 cases. |
+| Property disposal CGT (per-owner Div 115) | → | Property disposal CGT — per-owner Div 115 reconciliation (L1) | verified-by | — | verified | tests/regression/invariants/invariants.test.ts:215 — per-owner Div 115 split reconciles to calculateCgtDiscountDecimal over 6 archetypes. |
 
 ---
 
