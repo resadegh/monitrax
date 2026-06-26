@@ -53,7 +53,11 @@ export function provenEngines() {
 
 export function reconcile() {
   const sem = JSON.parse(readFileSync(SEM, 'utf8'));
-  const semEngineFiles = new Set(sem.nodes.filter((n) => n.kind === 'engine' && n.file).map((n) => n.file));
+  // A proven calc-audit engine is "modelled" if a semantic `engine` OR
+  // `orchestrator` node lives at its sourcePath — an orchestrator (e.g.
+  // masterTaxPosition, which composes the per-entity engines) is the correct
+  // kind for a registered composing calc, and still counts as modelled.
+  const semEngineFiles = new Set(sem.nodes.filter((n) => (n.kind === 'engine' || n.kind === 'orchestrator') && n.file).map((n) => n.file));
   const proven = provenEngines();
   const matched = proven.filter((r) => semEngineFiles.has(r.sourcePath));
   const unmatched = proven.filter((r) => !semEngineFiles.has(r.sourcePath));
