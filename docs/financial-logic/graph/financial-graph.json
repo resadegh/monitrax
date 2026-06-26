@@ -1,6 +1,6 @@
 {
   "$schema": "./schema/financial-graph.schema.md",
-  "version": "0.36.0",
+  "version": "0.37.0",
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
@@ -5630,6 +5630,62 @@
       "type": "verified-by",
       "source": "verified",
       "evidence": "tests/regression/invariants/trustEngine.differential.test.ts:144 — engine === independent marginal-slice over the income sweep; sensitivity-checked."
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.calculations.calculateLVR",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/utils/calculations.ts:9 — calculateLVR(loanBalance, propertyValue)"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.calculations.calculateLVR",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/utils/calculations.ts:9 — loanBalance arg; masterFinancialService.ts:1111 passes the loan balance"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.calculations.calculateEquity",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/utils/calculations.ts:20 — calculateEquity(propertyValue, loanBalance)"
+    },
+    {
+      "from": "input.Loan.principal",
+      "to": "engine.calculations.calculateEquity",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/utils/calculations.ts:20 — loanBalance arg; masterFinancialService.ts:1110"
+    },
+    {
+      "from": "input.Property.currentValue",
+      "to": "engine.calculations.calculateRentalYield",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/utils/calculations.ts:30 — calculateRentalYield(annualRent, propertyValue)"
+    },
+    {
+      "from": "engine.calculations.calculateLVR",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/services/masterFinancialService.ts:1111 — calculateLVR(loanBalance, property.currentValue)"
+    },
+    {
+      "from": "engine.calculations.calculateEquity",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/services/masterFinancialService.ts:1110 — calculateEquity(property.currentValue, loanBalance)"
+    },
+    {
+      "from": "engine.calculations.calculateRentalYield",
+      "to": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "type": "feeds",
+      "source": "verified",
+      "evidence": "lib/services/masterFinancialService.ts:1120 — calculateRentalYield(annualRentalIncome, property.currentValue)"
     }
   ]
 }

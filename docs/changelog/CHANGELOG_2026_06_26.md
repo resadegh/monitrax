@@ -176,3 +176,32 @@ Anchors re-verified in current source (not D.1 memory); `verifiedBy` cites a fix
 
 ### PR
 - Branch: `claude/neo-inventory-ni3b-property-jqahjw` (stacked on NI-3a). Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3b-fix-orphans (fix orphan calc nodes + A5 gate)
+
+### Changes Made
+- **Type**: Neomatrix modelling + invariant gate (semantic edges + audit rule only; NO production code / financial logic changed — §21.2 modelling).
+- **Root cause**: NI-3b (prior session) added the 3 property primitive nodes (`calculateLVR`/`calculateEquity`/`calculateRentalYield`) WITHOUT lineage edges, so they rendered as orphans on `/admin/neomatrix` — Reza: *"there are nodes sitting there by itself with no relations or link to any other nodes, like property equity."* A calc node with no edges is the exact blind spot the graph exists to kill.
+- **Fix (8 verified `feeds` edges, anchors re-verified in source 2026-06-26 — §19.2):**
+  - `input.Property.currentValue` → each of LVR / equity / rentalYield (`calculations.ts:9/20/30`)
+  - `input.Loan.principal` → LVR / equity (`calculations.ts:9/20`; passed at `masterFinancialService.ts:1111/1110`)
+  - each primitive → `orchestrator.masterFinancialService.getMasterFinancialSnapshot` (`masterFinancialService.ts:1110/1111/1120`)
+- **Recurrence guard — A5 invariant** in `graphlib.mjs` `auditInvariants`: any `number`/`engine`/`orchestrator` node with ZERO edges is now a **build ERROR** (`neomatrix:check` fails). Verified the gate fires on a synthetic orphan. This makes "every modelled calc carries verified lineage" structurally enforced, not a discipline.
+
+### Suspected-issue flagged for Reza (NOT fixed — §12.2.1 duplicate source)
+- `app/api/portfolio/snapshot/route.ts:92,98` define LOCAL `calculateRentalYield` + `calculateLVR` (used at :665/:671), duplicating the canonical `lib/utils/calculations.ts`. They even **drift behaviourally**: the locals guard `propertyValue <= 0`, the canonical guards `=== 0` (negative values diverge). This is a §12.2.1 one-formula-one-source violation. Raised for Reza — a code change requiring sign-off, not touched in this modelling PR.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +8 verified `feeds` edges (201→209), version 0.36.0→0.37.0. `GENERATED_CORE.md` — regenerated.
+- `scripts/neomatrix/graphlib.mjs` — +A5 orphan-detection invariant.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (160 nodes, 209 edges, 0 orphans, binding 78/78). A5 fires on synthetic orphan.
+
+### §20.4 self-review → 10/10
+All 6 anchors re-verified in current source (not memory); edges follow the `input --feeds--> engine --feeds--> orchestrator` convention; orphan count now provably 0 AND gated so it can't recur; the duplicate-source drift surfaced as a flag, never silently reconciled (§21.5). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw`. Status: Draft.

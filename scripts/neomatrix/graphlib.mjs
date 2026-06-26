@@ -160,6 +160,21 @@ export function auditInvariants(graph) {
   const transitions = graph.edges.filter((e) => e.fromUnit && e.toUnit && e.fromUnit !== e.toUnit).length;
   if (transitions) warnings.push(`A4: ${transitions} edge(s) carry a unit transition (e.g. AUD/period→AUD/month) — verify a conversion happens inside the target (full enforcement N3)`);
 
+  // A5 — no orphan calc nodes. A `number`/`engine`/`orchestrator` node with ZERO
+  // edges (neither inbound nor outbound) is disconnected from the graph and
+  // defeats its purpose: a calc the map can't trace to or from is exactly the
+  // blind spot the Neomatrix exists to kill (Reza 2026-06-26: "there are nodes
+  // sitting there by itself with no relations or link to any other nodes, like
+  // property equity"). Every calc node must participate in at least one edge.
+  const connected = new Set();
+  for (const e of graph.edges) { connected.add(e.from); connected.add(e.to); }
+  for (const n of graph.nodes) {
+    if (!['number', 'engine', 'orchestrator'].includes(n.kind)) continue;
+    if (!connected.has(n.id)) {
+      errors.push(`A5: ${n.kind} "${n.id}" is an orphan — it has no edges (model its lineage: inputs that --feeds--> it and/or what it --feeds--> next)`);
+    }
+  }
+
   return { errors, warnings };
 }
 
