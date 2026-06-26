@@ -176,3 +176,213 @@ Anchors re-verified in current source (not D.1 memory); `verifiedBy` cites a fix
 
 ### PR
 - Branch: `claude/neo-inventory-ni3b-property-jqahjw` (stacked on NI-3a). Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3b-fix-orphans (fix orphan calc nodes + A5 gate)
+
+### Changes Made
+- **Type**: Neomatrix modelling + invariant gate (semantic edges + audit rule only; NO production code / financial logic changed — §21.2 modelling).
+- **Root cause**: NI-3b (prior session) added the 3 property primitive nodes (`calculateLVR`/`calculateEquity`/`calculateRentalYield`) WITHOUT lineage edges, so they rendered as orphans on `/admin/neomatrix` — Reza: *"there are nodes sitting there by itself with no relations or link to any other nodes, like property equity."* A calc node with no edges is the exact blind spot the graph exists to kill.
+- **Fix (8 verified `feeds` edges, anchors re-verified in source 2026-06-26 — §19.2):**
+  - `input.Property.currentValue` → each of LVR / equity / rentalYield (`calculations.ts:9/20/30`)
+  - `input.Loan.principal` → LVR / equity (`calculations.ts:9/20`; passed at `masterFinancialService.ts:1111/1110`)
+  - each primitive → `orchestrator.masterFinancialService.getMasterFinancialSnapshot` (`masterFinancialService.ts:1110/1111/1120`)
+- **Recurrence guard — A5 invariant** in `graphlib.mjs` `auditInvariants`: any `number`/`engine`/`orchestrator` node with ZERO edges is now a **build ERROR** (`neomatrix:check` fails). Verified the gate fires on a synthetic orphan. This makes "every modelled calc carries verified lineage" structurally enforced, not a discipline.
+
+### Suspected-issue flagged for Reza (NOT fixed — §12.2.1 duplicate source)
+- `app/api/portfolio/snapshot/route.ts:92,98` define LOCAL `calculateRentalYield` + `calculateLVR` (used at :665/:671), duplicating the canonical `lib/utils/calculations.ts`. They even **drift behaviourally**: the locals guard `propertyValue <= 0`, the canonical guards `=== 0` (negative values diverge). This is a §12.2.1 one-formula-one-source violation. Raised for Reza — a code change requiring sign-off, not touched in this modelling PR.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +8 verified `feeds` edges (201→209), version 0.36.0→0.37.0. `GENERATED_CORE.md` — regenerated.
+- `scripts/neomatrix/graphlib.mjs` — +A5 orphan-detection invariant.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (160 nodes, 209 edges, 0 orphans, binding 78/78). A5 fires on synthetic orphan.
+
+### §20.4 self-review → 10/10
+All 6 anchors re-verified in current source (not memory); edges follow the `input --feeds--> engine --feeds--> orchestrator` convention; orphan count now provably 0 AND gated so it can't recur; the duplicate-source drift surfaced as a flag, never silently reconciled (§21.5). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw`. Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3c-cfo-scenarios (backfill the 5 CFO what-if scenario engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling (semantic nodes + verified lineage edges; NO production code / financial logic changed — §21.2).
+- Modelled the 5 PROVEN-but-unmodelled CFO what-if scenario engines, each WITH verified lineage (the new A5 rule — no node ships an orphan):
+  - `engine.sellProperty.sellPropertyScenario` (`sellProperty.ts:35`)
+  - `engine.payDownLoan.payDownLoanScenario` (`payDownLoan.ts:19`)
+  - `engine.redirectToOffset.redirectToOffsetScenario` (`redirectToOffset.ts:22`)
+  - `engine.refinanceLoan.refinanceLoanScenario` (`refinanceLoan.ts:21`)
+  - `engine.addInvestment.addInvestmentScenario` (`addInvestment.ts:20`)
+- **Lineage (6 edges, all verified in source §19.2):** the master snapshot `--feeds-->` each scenario (every one reads `ctx.snapshot.quickMetrics`); `redirectToOffset --governed-by--> law.monitrax.whatIfAnnualisation` (its `annualInterestSaved = monthlyInterestSaved * 12` at `redirectToOffset.ts:51` is the law's exact formula, matching the `cutSpendCategory` precedent).
+- **Coverage: 60% → 65%** (50 → 55 modelled · worklist 34 → 29). `neomatrix:check` green (165 nodes / 215 edges, 0 orphans, binding 83/83).
+
+### Discipline note (accuracy over edge-count — §19.2/§20.4)
+`governed-by whatIfAnnualisation` attached ONLY to `redirectToOffset`, where the law's `monthly × 12` formula appears verbatim. The other four use amortisation / annuity-FV / disposal methods, so they are NOT claimed to be governed by the simple-annualisation law — the verified `master --feeds-->` edge is their incontestable lineage and clears A5. Loan-primitive `depends-on` edges (calculateInterestForPeriod / calculateEffectivePrincipal / calculatePIRepayment) deferred to the NI-3c-loan batch where those primitives get their own nodes.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +5 engine nodes, +6 verified edges, version 0.37.0→0.38.0. `GENERATED_CORE.md` — regenerated.
+
+### Build Status
+- [x] `npm run neomatrix:check` — OK (165 nodes, 215 edges, 0 orphans). `npm run neomatrix:coverage` — 84 / 55 (65%) / 29.
+
+### §20.4 self-review → 10/10
+Every export line re-verified in source; every `feeds` edge backed by a confirmed `ctx.snapshot` read; the single `governed-by` edge backed by the verbatim `×12` formula; under-claimed governance rather than assert a law that doesn't match the engine's method; gate stays green (0 orphans). 10/10.
+
+### PR
+- Branch: `claude/neo-inventory-ni3b-fix-orphans-jqahjw` (PR #1265 — extends the orphan-fix PR with the first gate-green backfill batch). Status: Draft.
+
+---
+
+## Session: neo-inventory-ni3c-loan-decision (backfill 3 loanDecisionSupport amortisation engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled the 3 proven-but-unmodelled loan amortisation helpers in `lib/cfo/decisionSupport/loanDecisionSupport.ts`, each WITH lineage (A5-green):
+  - `engine.loanDecisionSupport.calculateMonthlyPayment` (:615) — P&I annuity `P·r(1+r)ⁿ/((1+r)ⁿ−1)`
+  - `engine.loanDecisionSupport.calculatePayoffMonths` (:635) — `n = ceil(−log(1−P·r/M)/log(1+r))`, 999 if M≤interest, cap 600
+  - `engine.loanDecisionSupport.calculateTotalInterest` (:661) — `max(0, payment×months − principal)`
+- **Lineage (6 edges, verified §19.2):** `input.Loan.principal --feeds-->` each (confirmed at call sites :347/:449/:465 — each passes `loan.principal` + `loan.interestRateAnnual`); each `--governed-by--> law.standard.loanInterest` (they implement standard amortisation, formulas read in source).
+- **Coverage: 65% → 69%** (55 → 58 modelled · worklist 29 → 26). `neomatrix:check` green (168 nodes / 221 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +3 engine nodes, +6 verified edges, version 0.38.0→0.39.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Each formula + each call-site field mapping re-verified in source (not memory); governed-by backed by reading the actual amortisation formula; principal-feeds backed by the verbatim call-site args. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-income (backfill 2 income-normalisation engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled 2 proven-but-unmodelled income engines in `lib/cashflow/incomeNormalizer.ts`, each WITH lineage (A5-green):
+  - `engine.incomeNormalizer.normalizeAllIncome` (:183) — per-stream gross→net + monthly aggregation; `input.Income.declared --feeds-->` it.
+  - `engine.incomeNormalizer.calculateTakeHomePay` (:221) — gross→take-home via PAYG + Medicare − LITO; `input.Income.declared --feeds-->` it; `--governed-by-->` `law.itaa1997.incomeTax` (:237 PAYG) AND `law.medicareLevyAct` (:243 Medicare).
+- **Coverage: 69% → 71%** (58 → 60 modelled · worklist 26 → 24). `neomatrix:check` green (170 nodes / 225 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +4 verified edges, version 0.39.0→0.40.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas re-verified in source; the two governed-by edges backed by the verbatim `TaxEngine.calculatePAYG` / `calculateMedicareLevy` calls at :237/:243; income-feeds backed by the param contract. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-investment (backfill 2 investmentDecisionSupport engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- Modelled 2 proven-but-unmodelled engines in `lib/cfo/decisionSupport/investmentDecisionSupport.ts`, each WITH `input.Investment.value --feeds-->` lineage (A5-green):
+  - `engine.investmentDecisionSupport.calculateDividendYield` (:450)
+  - `engine.investmentDecisionSupport.calculateMaxConcentration` (:549, Decimal — the only impl)
+- **Coverage: 71% → 74%** (60 → 62 modelled · worklist 24 → 22). `neomatrix:check` green (172 nodes / 227 edges, 0 orphans).
+
+### ⚠️ Flagged for Reza (§19.1 estimate, NOT actual data)
+`calculateDividendYield` is a HEURISTIC PROXY, not a real yield: it assumes franked holdings yield 4% and unfranked 2% (`frankedValue×0.04 + (totalValue−frankedValue)×0.02`), explicitly a "rough approximation" in source (:455). It feeds `portfolioSummary.dividendYieldPercent`. Per §19.1 (actuals over estimates), if any surface presents this as the user's ACTUAL dividend yield it should be labelled an estimate or sourced from actual distributions. Modelled honestly (authority field says "heuristic proxy, NOT actual"); surfaced for Reza — not changed (code change needs sign-off).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +2 verified edges, version 0.40.0→0.41.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas read in source; the estimate honestly labelled rather than dressed as real; concentration formula verified line-by-line; input-feeds backed by the actual `h.currentValue` reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-property-risk (backfill propertyDecisionSupport + riskRadar)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.propertyDecisionSupport.calculatePortfolioSummary` (`propertyDecisionSupport.ts:248`) — property portfolio aggregation (totalValue/equity/avgLVR/income/cashflow); `input.Property.currentValue --feeds-->` it.
+- `engine.riskRadar.calculateSummary` (`riskRadar.ts:601`) — risk severity counts + Σ impact + topRisk; master snapshot `--feeds-->` it (risks built from snapshot entities at :70-76, then aggregated).
+- **Coverage: 74% → 76%** (62 → 64 modelled · worklist 22 → 20). `neomatrix:check` green (174 nodes / 229 edges, 0 orphans).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +2 verified edges, version 0.41.0→0.42.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both aggregations read line-by-line in source; portfolioSummary feed backed by the `p.currentValue` reduce; riskRadar feed honestly labelled as transitive (snapshot → detectors → summary). 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-taxintegration (backfill 2 CFO↔tax bridge engines)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.taxIntegration.calculateNegativeGearingBenefit` (`taxIntegration.ts:293`) — `input.Income/Expense.declared` + `input.Loan.principal --feeds-->` it. Confirms `interestRateAnnual` is a decimal (§19.2).
+- `engine.taxIntegration.calculateUnrealisedCGT` (`taxIntegration.ts:276`) — `input.Investment.value --feeds-->` it.
+- **Coverage: 76% → 79%** (64 → 66 modelled · worklist 20 → 18). `neomatrix:check` green (176 nodes / 233 edges, 0 orphans).
+
+### ⚠️ Flagged for Reza (§12.14 reform + §19.1 estimate — modelled honestly, NOT changed)
+- **Negative-gearing benefit is NOT reform-gated.** Computes the classic marginal-rate deduction unconditionally; the Phase 41E reform restricts neg gearing to new builds from 1 Jul 2027. Modelled `regime: 'pre-reform'`. Whether the CFO surface should regime-gate is a code decision for Reza.
+- **Unrealised CGT is a SIMPLIFIED estimate.** Applies the 50% discount to ALL positive gains with NO 12-month holding-period check and NO reform gating (post-reform = indexation + 30% floor). Canonical CGT lives in `lib/tax-engine`. Modelled `regime: 'pre-reform'` with authority noting the simplification.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +4 verified edges, version 0.42.0→0.43.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Both formulas read line-by-line; `interestRateAnnual` decimal-unit confirmed in source; both simplifications/regime-gaps surfaced for Reza rather than blessed; feeds backed by the actual income/expense/loan/holding reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3c-intelligence (backfill 2 intelligenceEngine engines — CFO domain complete)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.intelligenceEngine.calculateProjectedMonthEndBalance` (`intelligenceEngine.ts:354`) — `liquidBalance − dailyBurn×daysRemaining`; `input.Account.currentBalance --feeds-->` it.
+- `engine.intelligenceEngine.calculateMonthlyProgressNetWorth` (`intelligenceEngine.ts:377`) — `Σaccounts + Σproperties + Σ(units×avgPrice) − totalDebt`; fed by Account/Property/Investment/Loan inputs; `--governed-by--> law.accountingIdentity`.
+- **Coverage: 79% → 81%** (66 → 68 modelled · worklist 18 → 16). **All CFO-domain proven engines now modelled.** `neomatrix:check` green (178 nodes / 239 edges, 0 orphans).
+
+### Note for Reza (§12.2.1 — documented local duplicate, not a drift bug)
+`calculateMonthlyProgressNetWorth` is a LOCAL net-worth helper; the canonical engine is `lib/calculations/netWorthCalculator.calculateNetWorth`. Source comment explains it exists for the intelligence-engine's local composition (downstream uses a ×0.98 placeholder making the canonical engine's extra precision moot). Modelled with the canonical pointer in the authority field.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +6 verified edges, version 0.43.0→0.44.0. `GENERATED_CORE.md` — regenerated.
+
+### Remaining backfill (worklist 16 — all tax domain)
+tax divisions (negativeGearing, trustDistribution, capitalLossNetting, div152, div7a, companyLossRules, trustLossRules, psiClassifier, fteIeeClassifier, smsfTriumvirate), frankingCredits, payg, masterTaxPosition. These need ATO-law worked-example verification (§19.2) + reform-awareness (§12.14) — queued for the hourly cron's careful per-engine pass.
+
+### §20.4 self-review → 10/10
+Both formulas read line-by-line; accountingIdentity governance backed by the verbatim assets−debt sum; local-net-worth duplicate surfaced with its canonical pointer; all 6 feeds backed by actual reduce reads. 10/10.
+
+---
+
+## Session: neo-inventory-ni3d-tax-payg-franking (backfill PAYG + franking credits — tax domain begins)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.tax.payg.calculatePAYG` (`paygCalculator.ts:149`) — ATO Schedule 1 (NAT 1004) withholding `y = max(0, a·x − b)`, `x = floor(weekly)+0.99`, scale 1/2. Lineage: `input.Income.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax`; **cross-domain** `--feeds--> engine.incomeNormalizer.calculateTakeHomePay` (verified: `incomeNormalizer.ts:237` calls `TaxEngine.calculatePAYG`, re-export at `index.ts:32,80`).
+- `engine.tax.income.calculateFrankingCredits` (`taxabilityRules.ts:250`) — imputation gross-up `dividend × (frankingPct/100) × (0.30/0.70)`. Lineage: `input.Income.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax`.
+- **Coverage: 81% → 83%** (68 → 70 modelled · worklist 16 → 14). `neomatrix:check` green (180 nodes / 244 edges, 0 orphans).
+
+### Note (documented assumption, not a flag)
+`calculateFrankingCredits` assumes a 30% corporate rate (standard for large companies; base-rate entities frank at their lower rate) — noted in the node authority. PAYG modelled as the standard engine, with a note that the Phase 41E opt-in dynamic-PAYG reform (measure #9, 1 Jul 2027) is NOT this engine.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +2 engine nodes, +5 verified edges (incl. 1 cross-domain tax→cashflow), version 0.44.0→0.46.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+PAYG formula + the `x = floor+0.99` ATO mechanic read in source; the cross-domain edge proven by tracing the re-export chain; franking formula matched to the source comment + constant; corporate-rate assumption surfaced honestly. 10/10.
+
+---
+
+## Session: neo-inventory-ni3d-neggearing (backfill reform-aware negative gearing)
+
+### Changes Made
+- **Type**: Neomatrix modelling + verified lineage (NO production code / financial logic changed — §21.2).
+- `engine.tax.negativeGearing.applyNegativeGearing` (`negativeGearing.ts:152`) — Div 36 loss treatment, **regime-parametric** (§12.14 FW-1): pre-reform offsets other income; POST_REFORM_RESTRICTED traps the loss at the entity with an UNCOMPUTED scope flag (FW-2). Lineage: `input.Income.declared` + `input.Expense.declared --feeds-->` it; `--governed-by--> law.itaa1997.incomeTax` (Div 36) AND `law.reform2026.cutOver` (Phase 41E Measure 1).
+- **Coverage: 83% → 85%** (70 → 71 modelled · worklist 14 → 13). `neomatrix:check` green (181 nodes / 248 edges, 0 orphans).
+
+### Contrast worth recording (§12.14)
+This is the CANONICAL reform-aware negative-gearing engine. The earlier-flagged `cfo.taxIntegration.calculateNegativeGearingBenefit` is a CFO *estimate* that is NOT reform-gated — the contrast is exactly why that one was flagged for Reza (the canonical engine handles the reform; the CFO quick-estimate doesn't).
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — +1 engine node, +4 verified edges, version 0.46.0→0.47.0. `GENERATED_CORE.md` — regenerated.
+
+### §20.4 self-review → 10/10
+Regime branches read line-by-line; both governed-by laws backed by the in-source citations; regime:null correct (parametric, not fixed); income/expense feeds backed by the param contract. 10/10.
