@@ -14,6 +14,7 @@ import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
+import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarUnified';
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
@@ -293,10 +294,35 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
           }
 
+          // Neobrain auto-apply (§ applyToSimilarUnified): propagate this
+          // user-confirmed category to OTHER uncategorised same-merchant rows.
+          // Gated on learnMerchant — un-ticking "remember" also disables the
+          // sweep. Loan repayments are excluded (merchant ≠ spend category).
+          let autoApplied = { count: 0, appliedIds: [] as string[] };
+          if (body.learnMerchant && body.type !== 'loan') {
+            autoApplied = await applyCategoryToSimilarUnified({
+              userId,
+              sourceTransactionId: transactionId,
+              merchantStandardised: transaction.merchantStandardised,
+              direction: transaction.direction,
+              data: {
+                // This block is gated on body.type !== 'loan', so type is
+                // narrowed to 'income' | 'expense' and loanId is always null.
+                incomeId: body.type === 'income' ? body.targetId : null,
+                expenseId: body.type === 'expense' ? body.targetId : null,
+                loanId: null,
+                isRecurring: true,
+                categoryLevel1: targetCategory,
+              },
+              excludeIds: body.additionalTransactionIds,
+            });
+          }
+
           return NextResponse.json({
             success: true,
             transaction: updated,
             batchCount,
+            autoApplied,
             message: batchCount > 0
               ? `Linked ${batchCount + 1} transactions to ${targetName}`
               : (body.updateAmount
@@ -447,10 +473,29 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               });
             }
 
+            // Neobrain auto-apply — propagate this income categorisation to
+            // other uncategorised same-merchant rows (§ applyToSimilarUnified).
+            let incomeAutoApplied = { count: 0, appliedIds: [] as string[] };
+            if (body.learnMerchant) {
+              incomeAutoApplied = await applyCategoryToSimilarUnified({
+                userId,
+                sourceTransactionId: transactionId,
+                merchantStandardised: transaction.merchantStandardised,
+                direction: transaction.direction,
+                data: {
+                  incomeId: income.id,
+                  isRecurring: true,
+                  categoryLevel1: body.category || 'Income',
+                },
+                excludeIds: body.additionalTransactionIds,
+              });
+            }
+
             return NextResponse.json({
               success: true,
               created: { type: 'income', id: income.id, name: income.name },
               batchCount,
+              autoApplied: incomeAutoApplied,
               message: batchCount > 0
                 ? `Categorized ${batchCount + 1} transactions as ${income.name}`
                 : 'New income created and linked',
@@ -617,10 +662,30 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               }
             }
 
+            // Neobrain auto-apply — propagate this expense categorisation to
+            // other uncategorised same-merchant rows (§ applyToSimilarUnified).
+            let expenseAutoApplied = { count: 0, appliedIds: [] as string[] };
+            if (body.learnMerchant) {
+              expenseAutoApplied = await applyCategoryToSimilarUnified({
+                userId,
+                sourceTransactionId: transactionId,
+                merchantStandardised: transaction.merchantStandardised,
+                direction: transaction.direction,
+                data: {
+                  expenseId: expense.id,
+                  isRecurring: body.isRecurring ?? false,
+                  isEssential: body.isEssential ?? false,
+                  categoryLevel1: body.category || 'Expense',
+                },
+                excludeIds: body.additionalTransactionIds,
+              });
+            }
+
             return NextResponse.json({
               success: true,
               created: { type: 'expense', id: expense.id, name: expense.name },
               batchCount,
+              autoApplied: expenseAutoApplied,
               message: batchCount > 0
                 ? `Categorized ${batchCount + 1} transactions as ${expense.name}`
                 : (body.isRecurring
@@ -843,9 +908,37 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             },
           });
 
+          // Batch unlink — powers the "Undo" on a Neobrain auto-apply sweep.
+          // Clears the same categorisation fields on the user-scoped ids
+          // (§12.11 — validate ownership before the write).
+          let unlinkBatchCount = 0;
+          if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+            const validIds = await prisma.unifiedTransaction.findMany({
+              where: { id: { in: body.additionalTransactionIds }, userId },
+              select: { id: true },
+            });
+            if (validIds.length > 0) {
+              await prisma.unifiedTransaction.updateMany({
+                where: { id: { in: validIds.map((t: { id: string }) => t.id) } },
+                data: {
+                  incomeId: null,
+                  expenseId: null,
+                  loanId: null,
+                  isRecurring: false,
+                  isEssential: false,
+                  categoryLevel1: null,
+                },
+              });
+              unlinkBatchCount = validIds.length;
+            }
+          }
+
           return NextResponse.json({
             success: true,
-            message: 'Transaction unlinked',
+            unlinkBatchCount,
+            message: unlinkBatchCount > 0
+              ? `Undone — cleared ${unlinkBatchCount + 1} transactions`
+              : 'Transaction unlinked',
           });
         }
 
