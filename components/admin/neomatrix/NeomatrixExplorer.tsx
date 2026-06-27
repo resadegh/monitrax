@@ -631,18 +631,32 @@ export function NeomatrixExplorer() {
           </>
         ) : (
           <div className="mt-4 space-y-2">
-            {/* Breadcrumb: directory clusters → an expanded directory */}
-            <div className="flex flex-wrap items-center gap-1 text-[11px]">
+            {/* Prominent back affordance — clears the drill + search → clusters */}
+            {(expandedDir || search) && (
               <button
-                onClick={() => setExpandedDir(null)}
-                className={`rounded px-1.5 py-0.5 transition ${expandedDir && !search ? 'text-sky-300 hover:text-sky-200' : 'text-slate-400'}`}
+                onClick={() => {
+                  setExpandedDir(null);
+                  setSearch('');
+                  setSelectedId(null);
+                }}
+                className="flex w-full items-center gap-1.5 rounded-[10px] border border-sky-500/30 bg-sky-500/10 px-2.5 py-1.5 text-xs font-medium text-sky-200 transition hover:bg-sky-500/20"
               >
-                All directories
+                <span aria-hidden>←</span> Back to all directories
               </button>
+            )}
+            {/* Current location */}
+            <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
+              <span>Directories</span>
               {expandedDir && !search && (
                 <>
                   <span className="text-slate-600">/</span>
                   <span className="font-mono text-slate-200">{expandedDir}</span>
+                </>
+              )}
+              {search && (
+                <>
+                  <span className="text-slate-600">/</span>
+                  <span className="text-slate-200">search “{search.trim()}”</span>
                 </>
               )}
             </div>

@@ -753,3 +753,18 @@ Every claim verified in source (orchestrator overlay loop :231-245, 0 production
 ### §20.4 3× self-review → 10/10 (against requirement; not a financial build)
 - v1: server aggregation + param-driven client + timeout/Retry. tsc + eslint + `neomatrix:check` green.
 - adversarial: the "0/0 Loading" symptom proves the FETCH never resolved → the 2.68 MB payload was the suspect (only difference from the working /graph) → server aggregation drops the default to 15.5 KB, removing the variable entirely; the 20 s timeout converts any residual hang into a recoverable error (no more infinite loading); drill (≤157 KB) + search (debounced, abortable) stay snappy; semantic/proven views + island badges untouched. Payload sizes verified in Node. 10/10.
+
+---
+
+## Session: neomatrix-structural-back-button (NI-5b.3 — obvious drill-back affordance)
+
+### Changes Made
+- **Type**: Admin explorer UI fix (NO financial logic, NO graph data).
+- **Reza-reported**: drilling into a directory (or searching) had no obvious way back to the cluster overview — the breadcrumb was a subtle text link that didn't read as a button.
+- **Fix**: a prominent full-width **"← Back to all directories"** button (sky-tinted pill) appears whenever a directory is expanded or a search is active; it clears the drill + search + selection → returns to the cluster overview. Plus a clearer current-location line (`Directories / <dir>` or `/ search "q"`).
+
+### Files Modified
+- `components/admin/neomatrix/NeomatrixExplorer.tsx` — prominent back button + location label.
+
+### §20.4 review → 10/10 (trivial UI affordance; not a financial build)
+Obvious, discoverable back affordance (full-width sky pill + arrow, not a subtle text link); clears both drill + search so one button always returns to the first layer. tsc + eslint clean. 10/10.
