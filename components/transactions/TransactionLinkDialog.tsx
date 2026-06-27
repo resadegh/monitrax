@@ -454,7 +454,12 @@ export function TransactionLinkDialog({
       const response = await fetch(`/api/transactions/${transaction.id}/link`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: 'transfer', transferToAccountId: accountId }),
+        body: JSON.stringify({
+          action: 'transfer',
+          transferToAccountId: accountId,
+          // Batch path (§12.2.1) — apply to all selected same-vendor rows too.
+          additionalTransactionIds: Array.from(selectedVendorTransactions),
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
@@ -496,6 +501,8 @@ export function TransactionLinkDialog({
             investmentContributionAccountId,
             investmentIsRecurring: isRecurringInvestment,
             investmentFrequency: isRecurringInvestment ? investmentFrequency : undefined,
+            // Batch path (§12.2.1) — apply to all selected same-vendor rows too.
+            additionalTransactionIds: Array.from(selectedVendorTransactions),
           }),
         });
 
@@ -535,6 +542,8 @@ export function TransactionLinkDialog({
           body: JSON.stringify({
             action: 'transfer',
             transferToAccountId,
+            // Batch path (§12.2.1) — apply to all selected same-vendor rows too.
+            additionalTransactionIds: Array.from(selectedVendorTransactions),
           }),
         });
 
