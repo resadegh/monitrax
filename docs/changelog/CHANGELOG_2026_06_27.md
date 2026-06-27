@@ -59,5 +59,54 @@ User confirmation: NOT REQUIRED — non-destructive (sets reconciliation state t
 - [x] Type review: `additionalTransactionIds?: string[]` already on `LinkRequest`; `confirmedTransferFields` already imported
 
 ### PR
+- PR URL: https://github.com/resadegh/monitrax/pull/1280 (merged)
+- Status: Merged
+
+---
+
+## Session: adoring-davinci-e2wb4d (2) — Neobrain on manual reconciliation
+
+### Changes Made
+- **Type**: Feature
+- **Scope**: Neobrain learning loop on the manual reconciliation surface (Activity page + link route)
+- **Root cause / gap**: Manual categorisation **recorded** the decision (private `merchantMapping` + shared KB via `learnCanonicalFromLink`) and the link dialog **suggested** the learned category on open — but the full AI cascade + `applyToSimilarTransactions` only ran on the **Basiq import** path, against a **different table** (`transactionReviewQueue`). On the live `unifiedTransaction` reconciliation page, categorising one transaction did **not** pick up other already-imported same-merchant rows. Reza: "if I categorise a transaction, next similar one should be picked up by neobrain."
+- **Solution (auto-apply, Reza decision 2026-06-27)**: when a user categorises a transaction, Neobrain auto-applies that **user-confirmed** decision to other uncategorised same-merchant rows, with four guardrails + an Undo:
+  1. EXACT standardised-merchant match (never fuzzy).
+  2. SAME direction (IN/OUT) — a refund never sweeps into an expense category.
+  3. Only still-uncategorised + unlinked rows — never overwrites an existing categorisation, never touches transfers/investments.
+  4. User-scoped (§12.11) + excludes the source row and any explicit batch ids.
+  Plus a learned-suggestion pill on uncategorised list rows (the read side of the same `merchantMapping`), and an "Applied to N similar · Undo" affordance (visible + reversible — never silent).
+
+### Files Modified
+- `lib/bookkeeping/applyToSimilarUnified.ts` — NEW. `applyCategoryToSimilarUnified()` (the sweep), `buildSimilarUncategorisedWhere()` (pure guardrail builder, unit-tested), `getLearnedCategorySuggestions()` (read side for the suggestion pill). SSOT (§12.2.1): reuses the same `merchantMapping` the link route writes — no parallel store.
+- `app/api/transactions/[id]/link/route.ts` — auto-apply wired into the expense/income/link branches (gated on `learnMerchant`; loan links excluded); `unlink` branch extended with `additionalTransactionIds` for the batch Undo. Each branch returns `autoApplied: { count, appliedIds }`.
+- `app/api/unified-transactions/route.ts` — GET enriches uncategorised rows with `suggestedCategoryLevel1` from the user's merchantMapping (one query/page, no N+1).
+- `components/transactions/TransactionLinkDialog.tsx` — captures `autoApplied`, shows "applied to N similar" in the success banner with an Undo (reverts only the swept siblings; the user's own pick stays), and holds the dialog open when a sweep happened so Undo is reachable.
+- `app/dashboard/activity/page.tsx` — `Transaction.suggestedCategoryLevel1`; uncategorised rows render a sky/indigo "Suggested" pill (one tap → dialog pre-filled) instead of the generic "Add" action.
+- `tests/bookkeeping/applyToSimilarUnified.test.ts` — NEW. Pins all four guardrails + the empty-merchant short-circuit.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage for the new file + zero-drift anchor refresh for the grown link route (§21.2.1).
+- `.stitch/designs/phase54/neobrain-reconciliation-desktop-light.{html,png}` — Stitch-first artefact (§18.2.1).
+
+### Destructive write checklist (CLAUDE.md §12.11)
+- `applyToSimilarUnified` (`updateMany`) and the `unlink` batch (`updateMany`): both scoped to the authenticated user via the guardrail where-clause / a user-scoped findMany validate. `where` matches only the user's own still-uncategorised same-merchant same-direction rows (auto-apply) or explicitly-validated ids (undo). Columns written are reconciliation-state only (category/link fields) — no user-entered balances/names/dates. Guard: the four guardrails + Undo. User confirmation: NOT REQUIRED — non-destructive; propagates the user's own just-made decision; fully reversible.
+
+### Financial correctness (CLAUDE.md §19)
+- No money-number formula changes. Direction guardrail preserves the §19.1 income/expense separation (a same-merchant refund is never swept into spend). The swept rows receive the identical categorisation payload as the primary (SSOT — one `data` object).
+
+### Neomatrix (CLAUDE.md §21)
+- Structural Layer-0 coverage added for the new file; link-route anchors refreshed (zero-drift §21.2.1). The new functions are categorisation-**propagation** (Neobrain perception layer), not money-number producers — structurally tracked, not modelled as semantic number nodes (§21.5). All gates green locally: `check-layer0-coverage` 0 uncovered · `check-binding-coverage` ✓ · `check-census` 0 uncovered · `generate-financial-logic --check` OK.
+
+### Design (CLAUDE.md §18)
+- Stitch-first pass (project `1859462351962811110`, screen `0bb2d04cebb54c4fb311436523481579`). §18.8 gate: v1 ~7/10 (missing post-confirm affordance + unsolicited photo) → v2 **9.2/10** (banner added, photo removed, glass strengthened, suggestion pill clarified). Shipped FE uses an inline "Applied to N · Undo" confirmation (lighter variant of the banner, consistent with the auto-apply decision). **Backfill pending:** refresh the Stitch artefact to the undo-toast variant + the 4-variant dark/mobile matrix (§18.7.2) in a fast-follow.
+
+### Self-review (CLAUDE.md §20.4)
+- 3× against the requirement. Pass 1: built suggest+one-tap. Pass 2 (Reza chose auto-apply): re-scoped to auto-apply with guardrails; caught that silent auto-apply risks income/expense mis-direction → added the direction guardrail + Undo. Pass 3: extracted the pure where-builder for unit-testing the guardrails; verified the source row is never reverted by Undo (sweeps siblings only). Outcome 10/10 against requirement (suggest+auto-apply+undo, guardrailed, SSOT-reusing).
+
+### Testing
+- [x] Neomatrix gates pass locally (all four)
+- [x] Guardrail unit tests written (pure where-builder)
+- [ ] Build passes (Vercel — verified post-push)
+
+### PR
 - PR URL: (to be filled after creation)
 - Status: Draft

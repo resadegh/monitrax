@@ -92,6 +92,9 @@ interface Transaction {
   confidenceScore: number | null;
   /** Phase 49.14 — true once the user has confirmed/corrected the category. */
   userCorrectedCategory?: boolean;
+  /** Neobrain (2026-06-27) — learned category for this merchant from the user's
+   *  own prior categorisations; present only on still-uncategorised rows. */
+  suggestedCategoryLevel1?: string | null;
   isRecurring: boolean;
   isTransfer: boolean;
   anomalyFlags: string[];
@@ -1928,7 +1931,29 @@ function TransactionRow({
           {rowStatus.done && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
           {rowStatus.label}
         </span>
-        {rowStatus.actionLabel && (
+        {/* Neobrain suggestion (2026-06-27) — when this row needs a category
+            and Neobrain has learned one for this merchant, show it as a
+            one-tap "Suggested" pill (sky/indigo §18.7.2) instead of the
+            generic "Add" action. Tapping opens the dialog pre-filled with the
+            suggestion (the link GET already returns the same learned category),
+            so the user confirms in one click — and the confirm auto-applies to
+            any further uncategorised same-merchant rows. */}
+        {rowStatus.state === 'needs-category' && tx.suggestedCategoryLevel1 ? (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={runAction}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') runAction(e);
+            }}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-sky-400/30 bg-sky-500/10 text-sky-700 dark:text-sky-300 hover:bg-sky-500/15 transition-colors shrink-0"
+            aria-label={`Neobrain suggests ${tx.suggestedCategoryLevel1} — tap to apply`}
+            title={`Neobrain suggests "${tx.suggestedCategoryLevel1}" from your past choices`}
+          >
+            <Sparkles className="w-3 h-3 opacity-80" />
+            {tx.suggestedCategoryLevel1}
+          </span>
+        ) : rowStatus.actionLabel ? (
           <span
             role="button"
             tabIndex={0}
@@ -1942,7 +1967,7 @@ function TransactionRow({
           >
             {rowStatus.actionLabel}
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Amount */}

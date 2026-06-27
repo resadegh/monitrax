@@ -150,6 +150,12 @@ export function TransactionLinkDialog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  // Neobrain auto-apply (2026-06-27) — when a confirm sweeps other
+  // uncategorised same-merchant rows, hold the swept ids so the user can Undo.
+  const [autoApplied, setAutoApplied] = useState<{ count: number; appliedIds: string[] }>({
+    count: 0,
+    appliedIds: [],
+  });
   // Phase 42 PR 5.6 — Vendor card drawer state.
   const [showVendorDrawer, setShowVendorDrawer] = useState(false);
 
@@ -303,6 +309,7 @@ export function TransactionLinkDialog({
       setMoreView('menu');
       setSuccess(null);
       setError(null);
+      setAutoApplied({ count: 0, appliedIds: [] });
     }
   }, [open, transaction]);
 
@@ -395,20 +402,28 @@ export function TransactionLinkDialog({
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
 
-      setSuccess(data.message || `Linked to ${type}`);
+      const sweptLink = (data.autoApplied?.count ?? 0) as number;
+      setAutoApplied(data.autoApplied ?? { count: 0, appliedIds: [] });
+      setSuccess(
+        sweptLink > 0
+          ? `${data.message || `Linked to ${type}`} · applied to ${sweptLink} similar`
+          : data.message || `Linked to ${type}`
+      );
       setCurrentLink({ type, id: targetId, name: data.message });
 
       // Wait for refresh to complete before navigating
       await onLinked?.();
 
-      // Auto-navigate to next transaction after a brief delay to show success
-      setTimeout(() => {
-        if (hasMoreTransactions && onNavigateNext) {
-          onNavigateNext();
-        } else {
-          onOpenChange(false);
-        }
-      }, 800);
+      // Hold open for Undo when Neobrain swept similar rows; otherwise advance.
+      if (sweptLink === 0) {
+        setTimeout(() => {
+          if (hasMoreTransactions && onNavigateNext) {
+            onNavigateNext();
+          } else {
+            onOpenChange(false);
+          }
+        }, 800);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to link');
     } finally {
@@ -658,21 +673,55 @@ export function TransactionLinkDialog({
         }
       }
 
-      setSuccess(data.message);
+      const swept = (data.autoApplied?.count ?? 0) as number;
+      setAutoApplied(data.autoApplied ?? { count: 0, appliedIds: [] });
+      setSuccess(
+        swept > 0 ? `${data.message} · applied to ${swept} similar` : data.message
+      );
 
       // Wait for refresh to complete before navigating
       await onLinked?.();
 
-      // Auto-navigate to next transaction after a brief delay to show success
-      setTimeout(() => {
-        if (hasMoreTransactions && onNavigateNext) {
-          onNavigateNext();
-        } else {
-          onOpenChange(false);
-        }
-      }, 800);
+      // Auto-navigate to next transaction after a brief delay to show success.
+      // When Neobrain swept similar rows, hold the dialog open so the user can
+      // Undo before moving on.
+      if (swept === 0) {
+        setTimeout(() => {
+          if (hasMoreTransactions && onNavigateNext) {
+            onNavigateNext();
+          } else {
+            onOpenChange(false);
+          }
+        }, 800);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Undo a Neobrain auto-apply sweep — clears the swept sibling rows only
+  // (the user's own categorisation on the source row is left intact). Batch
+  // unlink: first id is the URL target, the rest ride additionalTransactionIds.
+  const handleUndoAutoApply = async () => {
+    if (!transaction || autoApplied.appliedIds.length === 0) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const [first, ...rest] = autoApplied.appliedIds;
+      const response = await fetch(`/api/transactions/${first}/link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: 'unlink', additionalTransactionIds: rest }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setSuccess(`Undone — ${autoApplied.count} similar reverted`);
+      setAutoApplied({ count: 0, appliedIds: [] });
+      await onLinked?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to undo');
     } finally {
       setSaving(false);
     }
@@ -1856,9 +1905,24 @@ export function TransactionLinkDialog({
           </div>
         )}
         {success && (
-          <div className="p-2 bg-green-50 dark:bg-green-950/50 text-green-600 rounded text-sm flex items-center gap-2">
-            <Check className="h-4 w-4" />
-            {success}
+          <div className="p-2 bg-green-50 dark:bg-green-950/50 text-green-600 rounded text-sm flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <Check className="h-4 w-4" />
+              {success}
+            </span>
+            {/* Neobrain auto-apply Undo — visible + reversible sweep (never
+                silent). Reverts only the swept siblings; the user's own pick
+                on this row stays. */}
+            {autoApplied.count > 0 && (
+              <button
+                type="button"
+                onClick={handleUndoAutoApply}
+                disabled={saving}
+                className="shrink-0 text-sky-700 dark:text-sky-300 font-semibold underline-offset-2 hover:underline disabled:opacity-50"
+              >
+                Undo
+              </button>
+            )}
           </div>
         )}
 

@@ -26,6 +26,7 @@ import {
   computeDedupPreview,
 } from '@/lib/bookkeeping/importSanity';
 import { lookupMCC } from '@/lib/bank/mccCatalog';
+import { getLearnedCategorySuggestions } from '@/lib/bookkeeping/applyToSimilarUnified';
 
 // =============================================================================
 // GET - List Unified Transactions
@@ -33,6 +34,7 @@ import { lookupMCC } from '@/lib/bank/mccCatalog';
 
 export const GET = withPermission('transaction.read', async (request, auth) => {
     try {
+      const userId = auth.userId;
       const { searchParams } = new URL(request.url);
 
       // Pagination
@@ -145,9 +147,28 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
         prisma.unifiedTransaction.count({ where }),
       ]);
 
+      // Neobrain suggestion enrichment — for rows the user hasn't categorised,
+      // attach a learned-category suggestion from the user's own merchantMapping
+      // (§ getLearnedCategorySuggestions). The reconciliation UI shows this as a
+      // one-tap "Suggested" pill. One extra query for the whole page.
+      const uncategorisedRows = transactions.filter(
+        (t) => !t.userCorrectedCategory && !t.incomeId && !t.expenseId && !t.loanId && !t.isTransfer,
+      );
+      const suggestions = await getLearnedCategorySuggestions(
+        userId,
+        uncategorisedRows.map((t) => t.merchantStandardised),
+      );
+      const data = transactions.map((t) => {
+        const suggestedCategoryLevel1 =
+          !t.userCorrectedCategory && !t.incomeId && !t.expenseId && !t.loanId && !t.isTransfer && t.merchantStandardised
+            ? suggestions.get(t.merchantStandardised) ?? null
+            : null;
+        return { ...t, suggestedCategoryLevel1 };
+      });
+
       return NextResponse.json({
         success: true,
-        data: transactions,
+        data,
         pagination: {
           page,
           limit,

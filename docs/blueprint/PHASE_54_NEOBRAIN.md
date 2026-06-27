@@ -304,4 +304,21 @@ This document consolidates and supersedes the **design content** of the followin
 
 ---
 
-*Phase 54 v1.0 — Neobrain consolidation SSOT. Documentation/model only; no behaviour changed. Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*
+## 14. Neobrain on manual reconciliation — auto-apply (2026-06-27)
+
+The first **behaviour** addition since the v1.0 consolidation. Until now Neobrain's learning loop (cascade → `applyToSimilarTransactions`) ran only on the **Basiq import** path, against `transactionReviewQueue`. On the live `unifiedTransaction` reconciliation surface (the Activity page + link dialog), categorising one transaction recorded the merchant mapping but did **not** propagate to other already-imported same-merchant rows.
+
+**Added (Reza decision 2026-06-27 — auto-apply over suggest-only):** when a user categorises a transaction, Neobrain auto-applies that **user-confirmed** decision to other uncategorised same-merchant rows. This is not AI auto-execution — it extends the user's *own* decision to identical rows. Four guardrails bound it, and an Undo keeps it visible + reversible (refining the 2026-06-18 "AI suggests, user confirms" autonomy rule for the "propagate my own decision" case):
+
+| Guardrail | Rule |
+|---|---|
+| 1 — exact merchant | standardised-merchant equality, never fuzzy/contains |
+| 2 — same direction | IN/OUT must match — a same-merchant refund never sweeps into an expense category (§19.1) |
+| 3 — uncategorised only | still-uncategorised + unlinked rows only; never overwrites, never touches transfers/investments |
+| 4 — user-scoped | scoped to the authenticated user (§12.11); excludes the source row + explicit batch ids |
+
+**Surfaces:** `lib/bookkeeping/applyToSimilarUnified.ts` (`applyCategoryToSimilarUnified` sweep + pure `buildSimilarUncategorisedWhere` guardrail builder + `getLearnedCategorySuggestions` read side — all SSOT-reuse the `merchantMapping` the link route writes); link route returns `autoApplied{count,appliedIds}` + a batch `unlink` for Undo; `/api/unified-transactions` GET enriches `suggestedCategoryLevel1`; the link dialog shows "applied to N · Undo"; the Activity page shows a sky "Suggested" pill on uncategorised rows. **Not** included: routing file/QIF imports through the full cascade (deferred — the bigger option).
+
+---
+
+*Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop. Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

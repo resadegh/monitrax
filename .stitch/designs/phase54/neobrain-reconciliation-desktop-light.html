@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Monitrax | Transaction Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(15, 23, 42, 0.05);
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 30px rgba(15, 23, 42, 0.06);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .neobrain-pill {
+            background: rgba(14, 165, 233, 0.1);
+            box-shadow: inset 0 0 0 1px rgba(14, 165, 233, 0.25);
+        }
+        .row-hover:hover {
+            background-color: rgba(244, 252, 240, 0.5);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed-variant": "#005320",
+                        "outline-slate": "#94A3B8",
+                        "on-surface": "#171d16",
+                        "secondary-fixed": "#dce2f6",
+                        "on-tertiary-fixed": "#0b1c30",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "trail-emerald": "#16A34A",
+                        "surface-bright": "#f4fcf0",
+                        "on-primary": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-container-low": "#eff6ea",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#585e6f",
+                        "tertiary-container": "#66768d",
+                        "inverse-surface": "#2b322b",
+                        "surface-dim": "#F1EFE8",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-ivory": "#FAFAF7",
+                        "primary-fixed-dim": "#62df7d",
+                        "surface-container-high": "#e3eadf",
+                        "surface": "#f4fcf0",
+                        "tertiary-fixed": "#d3e4fe",
+                        "secondary-container": "#d9dff4",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "trail-violet": "#8B5CF6",
+                        "surface-container": "#e9f0e5",
+                        "outline": "#6e7b6c",
+                        "on-background": "#171d16",
+                        "on-tertiary": "#ffffff",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "tertiary": "#4d5d73",
+                        "trail-indigo": "#6366F1",
+                        "on-surface-variant": "#3e4a3d",
+                        "inverse-primary": "#62df7d",
+                        "primary": "#006b2c",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#dde5d9",
+                        "error-red": "#DC2626",
+                        "primary-fixed": "#7ffc97",
+                        "trail-amber": "#F59E0B",
+                        "surface-tint": "#006e2d",
+                        "on-primary-fixed": "#002109",
+                        "trail-sky": "#0EA5E9",
+                        "inverse-on-surface": "#ecf3e7",
+                        "primary-container": "#00873a",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-primary-container": "#f7fff2",
+                        "on-secondary-container": "#5c6274",
+                        "surface-variant": "#dde5d9",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "background": "#f4fcf0",
+                        "outline-variant": "#bdcaba",
+                        "on-tertiary-container": "#fdfcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "card": "26px"
+                    },
+                    "fontFamily": {
+                        "eyebrow": ["Inter"],
+                        "label-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "data-xl": ["Inter"]
+                    },
+                    "fontSize": {
+                        "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                        "label-md": ["14px", {"lineHeight": "1.2", "fontWeight": "500"}],
+                        "body-sm": ["14px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                        "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                        "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory font-body-md text-on-surface">
+<!-- Global Navigation Shell -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64 h-full">
+<div class="p-6 flex flex-col gap-1">
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</h1>
+<p class="text-label-md font-label-md text-outline">Wealth OS</p>
+</div>
+<nav class="flex-1 mt-4">
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="home">home</span>
+<span class="font-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="account_balance_wallet">account_balance_wallet</span>
+<span class="font-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="group">group</span>
+<span class="font-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="trending_up">trending_up</span>
+<span class="font-label-md">My Wealth</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:text-on-surface px-4 hover:bg-surface-container-high transition-colors" href="#">
+<span class="material-symbols-outlined mr-3" data-icon="analytics">analytics</span>
+<span class="font-label-md">Reports</span>
+</a>
+</nav>
+<div class="p-6">
+<button class="w-full bg-primary text-white font-label-md py-3 rounded-xl hover:opacity-90 transition-all">Update Plan</button>
+</div>
+</aside>
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center bg-surface-container-low px-4 py-2 rounded-full w-96 border border-outline-variant">
+<span class="material-symbols-outlined text-outline text-sm" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm ml-2 w-full" placeholder="Search transactions..." type="text"/>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="A professional headshot of a middle-aged Australian wealth manager with a friendly expression. The background is a blurred office with warm wooden textures and soft morning light. The overall aesthetic is clean, sophisticated, and trustworthy, matching the Monitrax brand's calm authority and editorial precision." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBEBusuDTCUkFGprMdgl3QRHqozLdtdLYqYzoa8mxkdeQNMuMHpYRMRIrZ9HIk2jmjRjyR0xJXOeuctC2WqzGiiqMAWb6ZSMCE1N404aVasMSJklnTQ7c3gG075gxHvRaKS3xTxEGmFaNXBGgjEsBBaP8NdHA6rJR0RUkIP2e43Wa7HcxrqbKLnRuhQWhficYJBC1V98KVCgcawES1pTrphnYYCbl7z1SiJ0SqDc0kGHMvRMUBCOJqRqjDQlWddACYXfwfyaAnZVdQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="ml-64 pt-24 px-gutter pb-margin-desktop min-h-screen flex flex-col items-center">
+<div class="w-full max-w-container-max">
+<!-- Header Section -->
+<div class="mb-8 ml-4">
+<h2 class="font-headline-md text-headline-md text-on-surface">Needs you</h2>
+<p class="font-body-sm text-body-sm text-outline-slate mt-1">Sorted — the items that need you, first.</p>
+</div>
+<!-- Transaction Glass Card -->
+<div class="glass-card rounded-card w-full overflow-hidden mb-12">
+<!-- Confirmed Banner (Initially Hidden / Post-Action State) -->
+<div class="flex items-center justify-between px-6 py-3 bg-gradient-to-r from-trail-sky/10 to-trail-indigo/10 border-b border-trail-sky/20 transition-all duration-500 ease-in-out" id="confirmation-banner">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-trail-sky" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<p class="font-body-sm text-on-surface-variant">Neobrain learned <span class="font-medium">Anthropic</span> → <span class="font-medium">Software</span></p>
+</div>
+<div class="flex items-center gap-4">
+<button class="bg-gradient-to-r from-trail-sky to-trail-indigo text-white px-4 py-1.5 rounded-full font-label-md text-sm hover:opacity-90 transition-all">Apply to 3 similar</button>
+<button class="text-outline-slate hover:text-on-surface font-label-md text-sm transition-colors">Dismiss</button>
+</div>
+</div>
+<!-- Transaction List -->
+<div class="flex flex-col">
+<!-- Row 1: Neobrain Suggested -->
+<div class="flex items-center px-6 py-5 border-b border-outline-variant row-hover transition-colors">
+<div class="flex items-center gap-4 flex-1">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100">
+<span class="material-symbols-outlined" data-icon="north_east">north_east</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">Anthropic PBC</p>
+<p class="text-xs text-outline-slate">12 Oct 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<!-- Hero Pill -->
+<div class="flex items-center gap-2 pr-2">
+<div class="neobrain-pill px-3 py-1.5 rounded-full flex items-center gap-2 border border-trail-sky/20">
+<span class="material-symbols-outlined text-[16px] text-trail-sky" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<span class="text-sm font-medium text-trail-sky">Software</span>
+<span class="text-[10px] uppercase tracking-wider text-trail-sky/70 font-bold ml-1">Suggested</span>
+</div>
+<button class="w-8 h-8 rounded-full bg-gradient-to-br from-trail-sky to-trail-indigo text-white flex items-center justify-center hover:scale-105 transition-transform">
+<span class="material-symbols-outlined text-[18px]" data-icon="check">check</span>
+</button>
+<span class="material-symbols-outlined text-outline-slate text-[20px] cursor-pointer hover:text-on-surface">chevron_right</span>
+</div>
+<p class="tabular-nums font-semibold text-lg text-on-surface w-24 text-right">-$20.00</p>
+</div>
+</div>
+<!-- Row 2: Medium Confidence -->
+<div class="flex items-center px-6 py-5 border-b border-outline-variant row-hover transition-colors">
+<div class="flex items-center gap-4 flex-1">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100">
+<span class="material-symbols-outlined" data-icon="north_east">north_east</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">Whole Foods Market</p>
+<p class="text-xs text-outline-slate">11 Oct 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="bg-trail-amber/10 border border-trail-amber/20 px-3 py-1.5 rounded-full flex items-center gap-2">
+<span class="text-sm font-medium text-trail-amber">Groceries</span>
+</div>
+<p class="tabular-nums font-semibold text-lg text-on-surface w-24 text-right">-$142.50</p>
+</div>
+</div>
+<!-- Row 3: Uncategorised -->
+<div class="flex items-center px-6 py-5 border-b border-outline-variant row-hover transition-colors">
+<div class="flex items-center gap-4 flex-1">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100">
+<span class="material-symbols-outlined" data-icon="north_east">north_east</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">AUD 142.12 Transfer</p>
+<p class="text-xs text-outline-slate">10 Oct 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<button class="bg-surface-container-low border border-outline-variant px-4 py-1.5 rounded-full text-sm font-medium text-secondary hover:bg-surface-container-high transition-colors">
+                                Pick category
+                            </button>
+<p class="tabular-nums font-semibold text-lg text-on-surface w-24 text-right">-$142.12</p>
+</div>
+</div>
+<!-- Row 4: Neobrain Suggested -->
+<div class="flex items-center px-6 py-5 border-b border-outline-variant row-hover transition-colors">
+<div class="flex items-center gap-4 flex-1">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100">
+<span class="material-symbols-outlined" data-icon="north_east">north_east</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">Amazon Australia</p>
+<p class="text-xs text-outline-slate">09 Oct 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="neobrain-pill px-3 py-1.5 rounded-full flex items-center gap-2 border border-trail-sky/20">
+<span class="material-symbols-outlined text-[16px] text-trail-sky" data-icon="psychology" style="font-variation-settings: 'FILL' 1;">psychology</span>
+<span class="text-sm font-medium text-trail-sky">Shopping</span>
+<span class="text-[10px] uppercase tracking-wider text-trail-sky/70 font-bold ml-1">Suggested</span>
+</div>
+<p class="tabular-nums font-semibold text-lg text-on-surface w-24 text-right">-$89.95</p>
+</div>
+</div>
+<!-- Row 5: Medium Confidence -->
+<div class="flex items-center px-6 py-5 row-hover transition-colors">
+<div class="flex items-center gap-4 flex-1">
+<input class="w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary" type="checkbox"/>
+<div class="w-10 h-10 bg-rose-50 rounded-lg flex items-center justify-center text-rose-500 border border-rose-100">
+<span class="material-symbols-outlined" data-icon="north_east">north_east</span>
+</div>
+<div>
+<p class="font-medium text-on-surface">Shell Melbourne</p>
+<p class="text-xs text-outline-slate">08 Oct 2023</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="bg-trail-amber/10 border border-trail-amber/20 px-3 py-1.5 rounded-full flex items-center gap-2">
+<span class="text-sm font-medium text-trail-amber">Transport</span>
+</div>
+<p class="tabular-nums font-semibold text-lg text-on-surface w-24 text-right">-$72.10</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="flex justify-between items-center px-4">
+<p class="text-body-sm text-outline-slate">Showing 5 items requiring immediate attention</p>
+<div class="flex gap-4">
+<button class="px-6 py-2.5 rounded-xl border border-outline-variant font-label-md text-on-surface hover:bg-surface-container-low transition-all">Bulk actions</button>
+<button class="px-6 py-2.5 rounded-xl bg-primary text-white font-label-md hover:shadow-lg transition-all">Confirm all</button>
+</div>
+</div>
+<!-- Decorative Visual Column (Editorial Touch) -->
+<div class="mt-24 grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<div class="bg-white/40 p-8 rounded-card border border-outline-variant/30 flex flex-col gap-4">
+<span class="font-eyebrow text-eyebrow text-trail-emerald">THE WEALTH JOURNEY</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Your Money Story is taking shape</h3>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                        By confirming these transactions, Monitrax's Neobrain engine creates a high-fidelity model of your lifestyle. This data fuels your future projections and wealth safety net calculations.
+                    </p>
+<div class="mt-4 flex items-center gap-3">
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xs" data-icon="done" style="font-variation-settings: 'wght' 700;">done</span>
+</div>
+<div class="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-xs" data-icon="done" style="font-variation-settings: 'wght' 700;">done</span>
+</div>
+<div class="w-6 h-6 rounded-full border-2 border-primary/20 flex items-center justify-center"></div>
+<div class="w-6 h-6 rounded-full border-2 border-primary/20 flex items-center justify-center"></div>
+<div class="w-6 h-6 rounded-full border-2 border-primary/20 flex items-center justify-center"></div>
+</div>
+</div>
+<div class="relative overflow-hidden rounded-card h-full min-h-[240px]">
+<div class="absolute inset-0 bg-gradient-to-br from-trail-sky/20 to-trail-indigo/20 z-10"></div>
+<img class="w-full h-full object-cover" data-alt="A serene, minimalist architectural photograph of a modern library with clean lines, high ceilings, and soft natural lighting. The color palette is composed of warm ivories, pale oaks, and subtle navy accents. This image represents the 'Restrained Editorial' and 'Calm Authority' of the Monitrax brand, creating a sense of organized precision and control over one's financial data." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSSERS6C1bIe6KKZL1UjQvNrI-HvetGxHUTWuKBVkcCeTVfn2wVTOUbVyBTatTGNX8_61uZ8jG3TEel7FJTd8njiCbvzbJkYoCep13Khgtdj2pfKgZRQrC-IXheuMctxknMicabYOBzpaekctc_5czhraQJUTwScuFWtSrrKyg64vypS544AFoemXInvwbhMRfo1R8DbfsAZgFcK-sFTSCD9TDfDNQzZfwciO40iIdpzmyNXv_WjgQFSKCHNBWMH7erIqdIVTJxEM"/>
+<div class="absolute bottom-8 left-8 z-20 max-w-[80%]">
+<p class="font-headline-sm text-headline-sm text-on-surface drop-shadow-sm">Precision meets peace of mind.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple micro-interaction for the Neobrain confirmation
+        document.querySelectorAll('.neobrain-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                pill.style.opacity = '0.5';
+                setTimeout(() => {
+                    pill.style.opacity = '1';
+                }, 300);
+            });
+        });
+
+        // Toggle the confirmation banner for demonstration (simulating a confirmation click)
+        const checkBtn = document.querySelector('button .material-symbols-outlined[data-icon="check"]')?.parentElement;
+        const banner = document.getElementById('confirmation-banner');
+        
+        if (checkBtn && banner) {
+            checkBtn.addEventListener('click', () => {
+                banner.classList.toggle('hidden');
+                checkBtn.closest('.row-hover').style.backgroundColor = 'rgba(22, 163, 74, 0.03)';
+            });
+        }
+        
+        // Hide banner by default for the initial state as requested
+        banner?.classList.add('hidden');
+    </script>
+</body></html>
