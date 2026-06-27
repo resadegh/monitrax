@@ -214,6 +214,12 @@ function ActivityPageContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const transactionsRef = useRef<Transaction[]>([]);
   transactionsRef.current = transactions;
+  // Reconciliation cursor (2026-06-27) — the list position of the row being
+  // categorised, captured BEFORE onLinked refetches (which removes the row).
+  // onNavigateNext reads it to continue from that slot instead of restarting
+  // at the top. null = no categorise pending (e.g. a Skip, where the list is
+  // unchanged and we advance by id).
+  const pendingAdvanceIdxRef = useRef<number | null>(null);
 
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1262,25 +1268,37 @@ function ActivityPageContent() {
           if (!open) setLinkingTransaction(null);
         }}
         onLinked={async () => {
+          // Capture the categorised row's position BEFORE the refetch removes
+          // it, so onNavigateNext can continue from that slot (Reza 2026-06-27:
+          // "the list goes from the beginning again rather than continue").
+          const cur = transactionsRef.current;
+          pendingAdvanceIdxRef.current = cur.findIndex(
+            (t) => t.id === linkingTransaction?.id
+          );
           await fetchTransactions();
           fetchSummary();
         }}
         hasMoreTransactions={transactions.length > 1}
         onNavigateNext={() => {
-          // Advance to the transaction AFTER the current one. Fix (2026-06-23):
-          // previously this always reopened current[0], so "Skip for now" (which
-          // doesn't change the list) re-opened the SAME transaction and looked
-          // broken. After a confirm/categorise the row is gone (idx === -1), so
-          // we fall back to current[0] (the new first) — that path still works.
           const current = transactionsRef.current;
-          const idx = current.findIndex((t) => t.id === linkingTransaction?.id);
-          const next = idx >= 0 ? current[idx + 1] : current[0];
-          if (next) {
-            setLinkingTransaction(next);
-          } else {
+          if (current.length === 0) {
             setShowLinkDialog(false);
             setLinkingTransaction(null);
+            return;
           }
+
+          // Disambiguate by whether the current row is STILL in the list:
+          //  - present  → this was a SKIP (list unchanged) → advance to idx+1.
+          //  - gone     → this was a CATEGORISE (refetch removed it) → continue
+          //               from the slot it occupied (its successor shifted in).
+          // Either way, wrap to the top at the end so SKIPPED rows get a second
+          // pass (Reza 2026-06-27: "if the list finish then goes back from start
+          // … for transactions that I have skipped").
+          const idx = current.findIndex((t) => t.id === linkingTransaction?.id);
+          const slot = idx >= 0 ? idx + 1 : pendingAdvanceIdxRef.current ?? 0;
+          pendingAdvanceIdxRef.current = null;
+          const next = slot < current.length ? current[slot] : current[0];
+          setLinkingTransaction(next);
         }}
       />
     </DashboardLayout>

@@ -1,5 +1,33 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (3) — reconciliation cursor (continue, don't restart)
+
+### Changes Made
+- **Type**: Fix (UX / navigation)
+- **Scope**: Activity reconciliation flow (`app/dashboard/activity/page.tsx` — link-dialog `onNavigateNext`)
+- **Root cause**: After categorising a transaction, `onLinked` refetches the list and the categorised row drops out of the uncategorised filter. `onNavigateNext` then did `findIndex(linkingTransaction.id)` → `-1` (row gone) → fell back to `current[0]` — so the dialog **jumped back to the top of the list** every time. The 2026-06-23 fix only covered *skip* (where the row stays, so `findIndex` succeeded). Reza: "after categorising a transaction the list goes from the beginning again rather than continue."
+- **Solution**: capture the categorised row's list position in `onLinked` **before** the refetch removes it (`pendingAdvanceIdxRef`); in `onNavigateNext`, disambiguate by whether the row is still present — **present** = skip → advance to `idx+1`; **gone** = categorise → continue from the captured slot (the successor has shifted into it). Both paths **wrap to `current[0]` at the end** so SKIPPED rows get a second pass (Reza: "if the list finish then goes back from start … for transactions that I have skipped"). Presence-based detection makes a stale captured index (e.g. a split-save that calls `onLinked` without navigating) harmless.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `pendingAdvanceIdxRef` cursor; rewrote `onLinked` (capture pre-refetch position) + `onNavigateNext` (continue + wrap).
+- `docs/financial-logic/graph/structural/structural-graph.json` — zero-drift (§21.2.1): recomputed 21 shifted `app/dashboard/activity/page.tsx` symbol anchors from source.
+
+### Neomatrix (CLAUDE.md §21)
+- Navigation-only change, no financial number/engine touched (§21.5). Structural anchors refreshed for the edited file. Gates green locally: `check-layer0-coverage` 0 uncovered · `generate-financial-logic --check` OK.
+
+### Self-review (CLAUDE.md §20.4)
+- 3× against the requirement, traced all four cases: categorise-mid (continue), categorise-last (wrap to start → skipped rows), skip-mid (forward), skip-last (wrap). Edge: split-save `onLinked`-without-navigate → presence check ignores the stale index. Outcome 10/10.
+
+### Testing
+- [x] Neomatrix gates pass locally
+- [ ] Build passes (Vercel — verified post-push)
+
+### PR
+- PR URL: (to be filled after creation)
+- Status: Draft
+
+---
+
 ## Session: adoring-davinci-e2wb4d
 
 ### Changes Made
