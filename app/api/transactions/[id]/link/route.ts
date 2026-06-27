@@ -866,27 +866,56 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             }
           }
 
+          const transferData = {
+            // Fully categorise + confirm the transfer (§12.2.1) so it leaves
+            // the Uncategorised / Not-confirmed review surfaces.
+            ...confirmedTransferFields(),
+            transferToAccountId: body.transferToAccountId || null,
+            isRecurring: false,
+            isEssential: false,
+            // Clear any existing links
+            incomeId: null,
+            expenseId: null,
+            loanId: null,
+          };
+
           await prisma.unifiedTransaction.update({
             where: { id: transactionId },
-            data: {
-              // Fully categorise + confirm the transfer (§12.2.1) so it leaves
-              // the Uncategorised / Not-confirmed review surfaces.
-              ...confirmedTransferFields(),
-              transferToAccountId: body.transferToAccountId || null,
-              isRecurring: false,
-              isEssential: false,
-              // Clear any existing links
-              incomeId: null,
-              expenseId: null,
-              loanId: null,
-            },
+            data: transferData,
           });
+
+          // Batch-mark additional transactions as the same transfer (§12.2.1 —
+          // the batch path must apply to transfers too, not just expense/income).
+          let transferBatchCount = 0;
+          if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+            // Verify all transactions belong to user (§12.11 — scope every write to userId).
+            const validIds = await prisma.unifiedTransaction.findMany({
+              where: {
+                id: { in: body.additionalTransactionIds },
+                userId,
+              },
+              select: { id: true },
+            });
+
+            if (validIds.length > 0) {
+              await prisma.unifiedTransaction.updateMany({
+                where: {
+                  id: { in: validIds.map((t: { id: string }) => t.id) },
+                },
+                data: transferData,
+              });
+              transferBatchCount = validIds.length;
+            }
+          }
 
           return NextResponse.json({
             success: true,
-            message: body.transferToAccountId
-              ? 'Marked as transfer to another account'
-              : 'Marked as transfer',
+            batchCount: transferBatchCount,
+            message: transferBatchCount > 0
+              ? `Marked ${transferBatchCount + 1} transactions as transfers`
+              : body.transferToAccountId
+                ? 'Marked as transfer to another account'
+                : 'Marked as transfer',
           });
         }
 
@@ -959,6 +988,66 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             },
           });
 
+          // Batch-mark additional transactions as investment contributions
+          // (§12.2.1 — the batch path must apply to investments too). Each
+          // contribution needs its OWN investment DEPOSIT (amounts differ), so
+          // we loop rather than updateMany.
+          let investmentBatchCount = 0;
+          if (body.additionalTransactionIds && body.additionalTransactionIds.length > 0) {
+            // Fetch + scope to the user (§12.11) in one query.
+            const additionalTxs = await prisma.unifiedTransaction.findMany({
+              where: {
+                id: { in: body.additionalTransactionIds },
+                userId,
+              },
+              select: {
+                id: true,
+                amount: true,
+                date: true,
+                description: true,
+                merchantStandardised: true,
+              },
+            });
+
+            for (const addTx of additionalTxs) {
+              const addInvestmentTransaction = await prisma.investmentTransaction.create({
+                data: {
+                  investmentAccountId: investmentAccount.id,
+                  date: addTx.date,
+                  type: 'DEPOSIT',
+                  price: addTx.amount,
+                  units: 1,
+                  totalAmount: addTx.amount,
+                  notes: isRecurring
+                    ? `Recurring ${frequency.toLowerCase()} contribution: ${addTx.merchantStandardised || addTx.description}`
+                    : `Bank transfer: ${addTx.merchantStandardised || addTx.description}`,
+                },
+              });
+
+              await prisma.investmentAccount.update({
+                where: { id: investmentAccount.id },
+                data: { cashBalance: { increment: addTx.amount } },
+              });
+
+              await prisma.unifiedTransaction.update({
+                where: { id: addTx.id },
+                data: {
+                  isInvestmentContribution: true,
+                  investmentAccountId: investmentAccount.id,
+                  investmentTransactionId: addInvestmentTransaction.id,
+                  isTransfer: false,
+                  isRecurring: isRecurring,
+                  isEssential: false,
+                  incomeId: null,
+                  expenseId: null,
+                  loanId: null,
+                  categoryLevel1: 'Investment',
+                },
+              });
+              investmentBatchCount += 1;
+            }
+          }
+
           // Learn merchant mapping for recurring investment contributions
           if (isRecurring && transaction.merchantStandardised) {
             await prisma.merchantMapping.upsert({
@@ -987,6 +1076,7 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
 
           return NextResponse.json({
             success: true,
+            batchCount: investmentBatchCount,
             investmentTransaction: {
               id: investmentTransaction.id,
               type: 'DEPOSIT',
@@ -994,9 +1084,11 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               isRecurring,
               frequency: isRecurring ? frequency : null,
             },
-            message: isRecurring
-              ? `Recurring ${frequency.toLowerCase()} investment of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`
-              : `Investment contribution of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`,
+            message: investmentBatchCount > 0
+              ? `Recorded ${investmentBatchCount + 1} investment contributions to ${investmentAccount.name}`
+              : isRecurring
+                ? `Recurring ${frequency.toLowerCase()} investment of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`
+                : `Investment contribution of $${transaction.amount.toFixed(2)} recorded to ${investmentAccount.name}`,
           });
         }
 
