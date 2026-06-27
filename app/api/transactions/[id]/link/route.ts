@@ -306,9 +306,11 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
               merchantStandardised: transaction.merchantStandardised,
               direction: transaction.direction,
               data: {
+                // This block is gated on body.type !== 'loan', so type is
+                // narrowed to 'income' | 'expense' and loanId is always null.
                 incomeId: body.type === 'income' ? body.targetId : null,
                 expenseId: body.type === 'expense' ? body.targetId : null,
-                loanId: body.type === 'loan' ? body.targetId : null,
+                loanId: null,
                 isRecurring: true,
                 categoryLevel1: targetCategory,
               },
