@@ -1,5 +1,35 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (6) — Neobrain §15 Phase A: the FactPack (Personal Financial Index) [2026-06-28]
+
+### Changes Made
+- **Type**: Feature (financial — §20.4 10/10 gate applies)
+- **Scope**: Neobrain grounding layer Phase A — `lib/neobrain/factPack.ts`
+- **What**: The Personal Financial Index the Gemini agent grounds on. A typed, **read-through** view over the existing SSOTs that **persists nothing** (Reza storage directive): user values ← `getMasterFinancialSnapshot()`; app values ← `CATEGORY_HIERARCHY` + `getCurrentTaxYearConfig()`; derived ← the snapshot's engine-computed fields. Provider-agnostic — does not touch Gemini/Vertex, so it builds + tests on the current (paid, no-training) gateway while Vertex is provisioned (Phase 0.5).
+- **The grounding contract encoded**: every `Fact` carries `state` ∈ {`value`/`zero`/`absent`}, a `ref` (snapshot-path convention — same one the CFO advisor's `resolveSnapshotPath` resolves, SSOT, no second resolver), `asOf` + `stale`. Count-gating distinguishes "not connected" (`absent`) from a real `$0` (`zero`); actual cash flow is `absent` when no transactions exist (§19.1 — never present declared as actual). Scoped per surface (minimal payload = storage + token cost).
+
+### Files
+- `lib/neobrain/factPack.ts` — NEW. Types (`Fact`/`FactPack`/`FactState`/`FactScope`) + pure `assembleFactPack(snapshot, {scopes})` (the testable core) + thin `assembleFactPackForUser(userId)` wrapper.
+- `tests/neobrain/factPack.test.ts` — NEW. 9 cases: value/zero/absent, count-gating, §19.1 actuals-absent, asOf/staleness propagation, scope minimisation, app reference block, the no-number-on-absent invariant.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage for the new file (6 nodes).
+
+### Financial correctness (§19/§20.4)
+- No new formula — reads the snapshot SSOT and tags provenance/state; every `ref` is a verified real snapshot path. §19.1 actuals-vs-declared honoured. Self-review 3×: covers the core slices (netWorth/cashflow/debt/emergencyFund/tax/app); per-entity property/investment detail deferred to when Phase C surfaces need it. 10/10 against the Phase A requirement (the Index contract + core slices + tests + zero storage).
+
+### Neomatrix (§21)
+- FactPack is the grounding **Index** (read-through assembler), not a money-number producer — structurally Layer-0 covered; not modelled as a semantic number node (§21.5). All gates green locally.
+
+### Testing
+- [x] Neomatrix gates (layer0 / semantic / census)
+- [x] 9 unit tests on the pure assembler
+- [ ] Build passes (Vercel — verify post-push)
+
+### PR
+- PR URL: (to be filled)
+- Status: Draft
+
+---
+
 ## Session: adoring-davinci-e2wb4d (5) — Neobrain §15 Phase 0 (privacy verify) + Vertex decision [2026-06-28]
 
 ### Changes Made
