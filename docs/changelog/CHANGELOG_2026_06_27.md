@@ -1,5 +1,95 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (7) — Neobrain §15 Phase B: the grounding validator [2026-06-28]
+
+### Changes Made
+- **Type**: Feature (financial — §20.4)
+- **Scope**: Neobrain grounding layer Phase B — `lib/neobrain/grounding.ts`
+- **What**: The validator that enforces the §15.2 rule — every number the AI emits must reference a FactPack fact; anything un-referenced is rejected. Generalises the proven CFO `resolveSnapshotPath` mechanism into ONE resolver over the FactPack (§12.2.1 — no second source).
+  - `resolveFactRef(pack, ref)` — resolve a ref (snapshot-path or fact key) to its Fact, or null.
+  - `validateGroundedNumbers(pack, claimedRefs)` — the anti-hallucination core: partitions cited refs into `resolved` (real, non-absent) vs `rejected` (`unknown` / `absent` / `non-numeric`). A rejected number must never reach the user.
+  - `renderFact(fact)` — display string by unit via the SSOT formatters (`formatCurrency`/`formatPercentageValue`); `—` for absent (never a number).
+  - `buildGroundingClause(pack)` — the canonical system-prompt clause (cite refs; refuse-never-estimate; "as of" + staleness) so every surface uses the same contract.
+
+### Files
+- `lib/neobrain/grounding.ts` — NEW (validator + resolver + render + prompt clause).
+- `tests/neobrain/grounding.test.ts` — NEW. Resolve-by-ref/key, REJECT unknown (invented), REJECT absent (not-connected), mixed keep/drop, render-by-unit (absent → `—`), grounding-clause NOT-AVAILABLE wording.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage (6 nodes).
+
+### Note on the lint gate
+The `lint:ai-grounding` BUILD gate (§15.5) is deliberately deferred to **Phase B.2 — after the Vertex gateway (Phase 0.5)** gives it one perimeter to enforce. Adding it now would either fail the build on the not-yet-migrated surfaces or be toothless. The validator (this PR) is the reusable core the gate + Phase C surfaces consume.
+
+### Financial correctness (§19/§20.4)
+- No money formula — the validator gates/renders existing FactPack values. Self-reviewed 3× → 10/10 vs the Phase B requirement (the resolver + reject-unreferenced guarantee + tests). All Neomatrix gates green.
+
+### Testing
+- [x] Neomatrix gates + grounding unit tests
+- [ ] Build passes (Vercel — verify on push)
+
+### PR
+- Part of PR #1284 (Neobrain §15 Phase 0 + A + B on one branch).
+
+---
+
+## Session: adoring-davinci-e2wb4d (6) — Neobrain §15 Phase A: the FactPack (Personal Financial Index) [2026-06-28]
+
+### Changes Made
+- **Type**: Feature (financial — §20.4 10/10 gate applies)
+- **Scope**: Neobrain grounding layer Phase A — `lib/neobrain/factPack.ts`
+- **What**: The Personal Financial Index the Gemini agent grounds on. A typed, **read-through** view over the existing SSOTs that **persists nothing** (Reza storage directive): user values ← `getMasterFinancialSnapshot()`; app values ← `CATEGORY_HIERARCHY` + `getCurrentTaxYearConfig()`; derived ← the snapshot's engine-computed fields. Provider-agnostic — does not touch Gemini/Vertex, so it builds + tests on the current (paid, no-training) gateway while Vertex is provisioned (Phase 0.5).
+- **The grounding contract encoded**: every `Fact` carries `state` ∈ {`value`/`zero`/`absent`}, a `ref` (snapshot-path convention — same one the CFO advisor's `resolveSnapshotPath` resolves, SSOT, no second resolver), `asOf` + `stale`. Count-gating distinguishes "not connected" (`absent`) from a real `$0` (`zero`); actual cash flow is `absent` when no transactions exist (§19.1 — never present declared as actual). Scoped per surface (minimal payload = storage + token cost).
+
+### Files
+- `lib/neobrain/factPack.ts` — NEW. Types (`Fact`/`FactPack`/`FactState`/`FactScope`) + pure `assembleFactPack(snapshot, {scopes})` (the testable core) + thin `assembleFactPackForUser(userId)` wrapper.
+- `tests/neobrain/factPack.test.ts` — NEW. 9 cases: value/zero/absent, count-gating, §19.1 actuals-absent, asOf/staleness propagation, scope minimisation, app reference block, the no-number-on-absent invariant.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage for the new file (6 nodes).
+
+### Financial correctness (§19/§20.4)
+- No new formula — reads the snapshot SSOT and tags provenance/state; every `ref` is a verified real snapshot path. §19.1 actuals-vs-declared honoured. Self-review 3×: covers the core slices (netWorth/cashflow/debt/emergencyFund/tax/app); per-entity property/investment detail deferred to when Phase C surfaces need it. 10/10 against the Phase A requirement (the Index contract + core slices + tests + zero storage).
+
+### Neomatrix (§21)
+- FactPack is the grounding **Index** (read-through assembler), not a money-number producer — structurally Layer-0 covered; not modelled as a semantic number node (§21.5). All gates green locally.
+
+### Testing
+- [x] Neomatrix gates (layer0 / semantic / census)
+- [x] 9 unit tests on the pure assembler
+- [ ] Build passes (Vercel — verify post-push)
+
+### PR
+- PR URL: (to be filled)
+- Status: Draft
+
+---
+
+## Session: adoring-davinci-e2wb4d (5) — Neobrain §15 Phase 0 (privacy verify) + Vertex decision [2026-06-28]
+
+### Changes Made
+- **Type**: Compliance finding + decision (docs)
+- **Scope**: Neobrain grounding-layer Phase 0 — AI model-provider data governance vs CDR
+- **What happened**: Phase 0 (the gate before any FactPack code) verified — against Google's published terms, not recalled — how the app sends data to Gemini. **Finding:** the app uses the **consumer Gemini Developer API** (`@google/generative-ai` + `GEMINI_API_KEY`, `lib/ai/google/geminiClient.ts:12,26`); some surfaces already pass real figures (cashflow summary, debt analysis). Free tier *trains* on data + human-reviews; **paid tier confirmed by Reza (no training)** but it caches *"in any country"* — which **conflicts with CDR matrix row 2.3** ("data stays in Australia").
+- **Decision (Reza 2026-06-28)**: **migrate the AI gateway to Vertex AI** (`australia-southeast1`, WIF auth, no API key) → contractual no-training + AU residency + DPA; GCP-first (§12.7), reuses the Cloud SQL WIF identity, and *is* the "one gateway" SSOT move. Recorded as CDR matrix **Finding F-AI-1**.
+
+### Files Modified
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — Finding F-AI-1 under Step 2 (the §16.3-mandated CDR-posture doc).
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` — §15.6 Phase 0 marked DONE + new Phase 0.5 (Vertex migration) + §15.6.1 operator provisioning runbook.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Phase 0 done, Phase 0.5 next (blocked on operator provisioning).
+- `docs/IMPLEMENTATION_PLAN.md` — hub date.
+
+### Verification (§19/§20 — no recalled claims)
+- Terms verified live: [Gemini API terms](https://ai.google.dev/gemini-api/terms) (free=train+human-review; paid=no-train but multi-region cache), [Vertex AI data governance](https://cloud.google.com/vertex-ai/generative-ai/docs/data-governance) (no-train), [GCP gen-AI residency](https://cloud.google.com/blog/products/ai-machine-learning/google-cloud-generative-ai-data-residency-guarantees-for-data-stored-at-rest).
+
+### Testing
+- Docs-only; no code/schema/financial-logic → no build gates triggered.
+
+### Next (operator action required before code)
+- Phase 0.5 provisioning (runbook §15.6.1): enable `aiplatform.googleapis.com`, grant the WIF SA `roles/aiplatform.user`, set `VERTEX_PROJECT`/`VERTEX_LOCATION=australia-southeast1`/`USE_VERTEX`. Then the provider-pluggable Vertex gateway cutover (safe fallback to current paid Gemini until configured).
+
+### PR
+- PR URL: (to be filled after creation)
+- Status: Draft
+
+---
+
 ## Session: adoring-davinci-e2wb4d (4) — Neobrain factual-grounding-layer design (§15)
 
 ### Changes Made
