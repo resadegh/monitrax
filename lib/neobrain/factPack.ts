@@ -214,10 +214,13 @@ export function assembleFactPack(
   // App reference data — the second dataset (Reza R1). Static, not user-scoped,
   // so it carries no asOf/stale and is never an invented number.
   const taxConfig = getCurrentTaxYearConfig();
+  // ALL_CATEGORIES is { level1, level2 }[] — flatten to unambiguous
+  // "Group > Category" path strings for the AI to ground category claims on.
+  const validCategories = ALL_CATEGORIES.map((c) => `${c.level1} > ${c.level2}`);
   const reference = {
     taxYear: taxConfig.financialYear,
     categoryGroups: Object.keys(CATEGORY_HIERARCHY),
-    validCategories: ALL_CATEGORIES,
+    validCategories,
   };
   if (want('app')) {
     facts.push(
