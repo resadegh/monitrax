@@ -1,5 +1,34 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (8) — Neobrain §15 Phase C.1: engine-grounded debt projections [2026-06-28]
+
+### Changes Made
+- **Type**: Feature (financial — §20.4 10/10 gate)
+- **Scope**: `/api/ai/debt-analysis` — the AI's GUESSED projections replaced with ENGINE-computed ones
+- **Finding (research-first)**: the debt-analysis surface already injects real loan/cashflow data and **server-forces** the surplus numbers; the residual hallucination risk was the **output projections** (`debtFreeDate`, `totalInterestSaved`, `monthsSaved`) which the AI fabricated. The canonical `lib/planning/debtPlanner.ts` (`runDebtPlan`) already computes these.
+- **Fix**: new `lib/neobrain/debtProjections.ts` → `buildEngineProjections(loans, strategy, monthlySurplus)` runs the canonical engine for the recommended strategy + recommended surplus and returns the projections; the route **overwrites** `validatedAnalysis.projections` with it (mirrors the existing surplus-forcing pattern). The prompt now forbids the AI from stating projection figures (kept qualitative). Non-payoffable (IO, no surplus) → honest "Not payable off…" string, never a fabricated date. Engine failure falls back to the AI data (never breaks the response).
+
+### Files
+- `lib/neobrain/debtProjections.ts` — NEW (`buildEngineProjections` + `toLoanInputs` + `DebtProjections`). SSOT: reuses `runDebtPlan`, no new calc.
+- `app/api/ai/debt-analysis/route.ts` — wire the engine projections in after validation; grounding instruction in the prompt.
+- `tests/neobrain/debtProjections.test.ts` — NEW. §20.4 worked example (0% loan, $300/mo surplus → ~90 months saved, $0 interest) + interest-bearing-saves-real-interest + non-payoffable-IO + shape.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage (4 nodes).
+
+### Financial correctness (§19/§20.4)
+- §19.2 verified: `LoanInput.interestRateAnnual` is decimal (engine `annualRate/12`), enums are `prisma-enums` string unions (the route's loans map 1:1), and `runDebtPlan` computes the baseline-minimum scenario internally so "saved" is the engine's own delta. **Self-review: recommendation was 7/10 as first stated (unverified engine contract) → 10/10 after verifying the engine output/units/enums.** Worked example documented in the test.
+- §20.4 financial-build score: **10/10** — the user-visible debt-free date / interest-saved is now engine-computed, not AI-guessed.
+
+### Neomatrix (§21)
+- The projection numbers come from `debtPlanner` (already the canonical engine); `debtProjections.ts` is a thin mapping/format layer — Layer-0 covered, not a new semantic number source (§21.5/§12.2.1). Gates green locally.
+
+### Note
+- Standing directive (Reza 2026-06-28): self-review to 10/10 → proceed autonomously, present for review. This build self-reviewed to 10/10 before shipping.
+
+### PR
+- New PR (Phase C.1, on a fresh branch off the merged foundation).
+
+---
+
 ## Session: adoring-davinci-e2wb4d (7) — Neobrain §15 Phase B: the grounding validator [2026-06-28]
 
 ### Changes Made

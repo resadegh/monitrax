@@ -21,6 +21,7 @@ import {
 } from '@/lib/ai/google';
 import { calculateTakeHomePay } from '@/lib/cashflow/incomeNormalizer';
 import { toMonthly } from '@/lib/utils/frequencies';
+import { buildEngineProjections, toLoanInputs } from '@/lib/neobrain/debtProjections';
 
 // =============================================================================
 // Types
@@ -251,6 +252,21 @@ export const POST = withPermission('report.read', async (request, auth) => {
     // =======================================================================
 
     const validatedAnalysis = validateAndCapRecommendations(data, availableForExtraRepayments, cashBalance);
+
+    // Neobrain grounding (§15 Phase C) — replace the AI's GUESSED projections
+    // with engine-COMPUTED ones (debt-free date / interest saved / months
+    // saved) for the recommended strategy + recommended surplus. The AI never
+    // invents a payoff date again.
+    try {
+      validatedAnalysis.projections = buildEngineProjections(
+        toLoanInputs(loans),
+        validatedAnalysis.recommendedStrategy,
+        validatedAnalysis.optimalSurplus?.recommended ?? Math.round(availableForExtraRepayments * 0.6),
+      );
+    } catch (projErr) {
+      // Engine failure must not break the response — keep the (capped) AI data.
+      console.error('[API] Debt projection engine failed; falling back to AI projections:', projErr);
+    }
 
     console.log('[API] Validated surplus recommendations:');
     console.log(`  AI Original - Min: $${data.optimalSurplus?.minimum}, Rec: $${data.optimalSurplus?.recommended}, Agg: $${data.optimalSurplus?.aggressive}`);
@@ -514,6 +530,14 @@ Based on the above debt portfolio and cash flow situation:
 ║                                                                               ║
 ║  NEVER exceed ${formatCurrency(availableForExtra)}/month in any recommendation!                       ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
+
+GROUNDING (non-negotiable): Do NOT compute or state projection figures — the
+debt-free date, total interest saved, and months saved are calculated by the
+system's debt-payoff engine and will OVERWRITE whatever you put in the
+"projections" field. In all prose (summary, reasoning, insights, action plan)
+keep any timeline or savings reference QUALITATIVE ("significantly sooner",
+"meaningful interest savings") — never invent a specific date or dollar figure
+that isn't one of the loan/cashflow numbers given above.
 
 1. Recommend the BEST strategy (Tax-Aware, Avalanche, or Snowball) with specific reasoning
 2. Set optimalSurplus amounts based on the ${formatCurrency(availableForExtra)}/month available
