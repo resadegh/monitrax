@@ -395,17 +395,23 @@ For Neobrain to be *the* reference (not a convention), bypass must be impossible
 
 Model the new modules in the Neomatrix `neobrain` domain (§21.2.1).
 
-#### 15.6.1 Phase 0.5 operator provisioning (Vertex AI cutover)
+#### 15.6.1 Phase 0.5 operator provisioning (Vertex AI cutover) — ⏸ PARKED to Basiq go-live
 
-The code migration (one Vertex-backed gateway behind the existing interface) is ready to write, but it can't be **tested/cut over** until these operator steps are done (mirrors the WIF/Cloud SQL + GCS provisioning pattern — operator provisions, then code cuts over). All non-secret identifiers, same as the existing Cloud SQL bootstrap vars (§13.6):
+> **⏸ PARKED (Reza 2026-06-28).** The canonical, self-contained playbook for this cutover is **`docs/compliance/CDR_BASIQ_GOLIVE_CUTOVER.md`** — read that when the Basiq trigger fires. This subsection is kept as the in-Phase summary; the cutover doc is the SSOT.
+>
+> **Why parked:** a live probe against `australia-southeast1` (Cloud Shell, 2026-06-28) showed Sydney **regional** serving only `gemini-2.5-flash` of our models — `gemini-3.5-flash` (current primary) and all pro models (`gemini-2.5-pro`, `gemini-3.1-pro-preview`) return **404** there. Cutting over today = a one-tier flash downgrade + loss of the pro tier. With **no Basiq plan**, Reza chose to keep the capable paid-tier (no-train) models now and defer the AU-residency cutover to go-live.
+>
+> **Already pre-staged (inert — no code reads these):** steps 1, 2, and 4-partial below are **done**. They cost nothing and are kept so the future cutover is a code+flag change, not a fresh provisioning round.
 
-1. **Enable the Vertex AI API** on the GCP project: `gcloud services enable aiplatform.googleapis.com`.
-2. **Grant the runtime SA Vertex access** — the same Workload-Identity SA Vercel already impersonates for Cloud SQL gets `roles/aiplatform.user` (least-privilege; not editor).
-3. **Region = `australia-southeast1`** (Sydney) for AU data residency → restores CDR matrix row 2.3.
-4. **Add non-secret env vars** on Vercel: `VERTEX_PROJECT`, `VERTEX_LOCATION=australia-southeast1`, and `USE_VERTEX=true`. No new secret — auth is the existing OIDC/WIF token, not an API key.
-5. Confirm the model id is available in-region (e.g. `gemini-2.x` in `australia-southeast1`); if a chosen model isn't AU-resident, pick the nearest AU-available model rather than silently falling back to a US region (that would re-break row 2.3).
+Operator steps (✅ = already done, pre-staged; ☐ = remaining at cutover). All non-secret identifiers, same as the existing Cloud SQL bootstrap vars (§13.6):
 
-**Code plan (safe, no-break):** a provider-pluggable gateway — Vertex when `USE_VERTEX=true` + project/location present, else the current **paid** Gemini API (the working path) as fallback. Same call interface, so no caller changes; the duplicate `lib/ai/gemini.ts` is repointed/removed in the same or the immediately-following PR (4 callers: `geminiOnMiss`, `trust-deed/geminiExtractor`, `analyze-for-form`, `entities/[id]/trust-deed`). `@google-cloud/vertexai` added to `package.json` (Approved-Dependencies §13.8). Update `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` + `docs/operational/security/02_IAM_AND_PERMISSIONS.md` in the cutover PR (§16.3).
+1. ✅ **Enable the Vertex AI API**: `gcloud services enable aiplatform.googleapis.com` (done 2026-06-28).
+2. ✅ **Grant the runtime SA Vertex access** — `roles/aiplatform.user` granted to `vercel-monitrax-db@monitrax-479700.iam.gserviceaccount.com` (the WIF SA Vercel already impersonates for Cloud SQL); least-privilege, not editor (done 2026-06-28).
+3. ✅ **Region = `australia-southeast1`** (Sydney) for AU data residency → restores CDR matrix row 2.3.
+4. ⚠️ **Env vars** — `VERTEX_PROJECT=monitrax-479700` + `VERTEX_LOCATION=australia-southeast1` are **set** on Vercel (Prod+Preview, 2026-06-28). `USE_VERTEX` is **deliberately unset** (the current Gemini path stays active until the gateway ships). No new secret — auth is the existing OIDC/WIF token.
+5. ☐ **At cutover: re-probe in-region model availability** (Sydney's roster changes over time) and pin `VERTEX_MODEL_FLASH`/`VERTEX_MODEL_PRO` to whatever is AU-resident then; never silently fall back to a US/global region (that re-breaks row 2.3). Verified roster as of 2026-06-28: only `gemini-2.5-flash`.
+
+**Code plan (safe, no-break) — to write at cutover:** a provider-pluggable gateway — Vertex when `USE_VERTEX=true` + project/location present, else the current **paid** Gemini API (the working path) as fallback. Same call interface, so no caller changes; the duplicate `lib/ai/gemini.ts` is repointed/removed in the same or the immediately-following PR (4 callers: `geminiOnMiss`, `trust-deed/geminiExtractor`, `analyze-for-form`, `entities/[id]/trust-deed`). `@google-cloud/vertexai` added to `package.json` (Approved-Dependencies §13.8). Model IDs come from configurable `VERTEX_MODEL_FLASH`/`VERTEX_MODEL_PRO` env vars (decouples the Sydney-resident model from code). Update `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` + `docs/operational/security/02_IAM_AND_PERMISSIONS.md` in the cutover PR (§16.3).
 
 ### 15.7 The fork (Reza decision) + deferred scope
 
