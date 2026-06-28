@@ -1,5 +1,36 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (7) — Neobrain §15 Phase B: the grounding validator [2026-06-28]
+
+### Changes Made
+- **Type**: Feature (financial — §20.4)
+- **Scope**: Neobrain grounding layer Phase B — `lib/neobrain/grounding.ts`
+- **What**: The validator that enforces the §15.2 rule — every number the AI emits must reference a FactPack fact; anything un-referenced is rejected. Generalises the proven CFO `resolveSnapshotPath` mechanism into ONE resolver over the FactPack (§12.2.1 — no second source).
+  - `resolveFactRef(pack, ref)` — resolve a ref (snapshot-path or fact key) to its Fact, or null.
+  - `validateGroundedNumbers(pack, claimedRefs)` — the anti-hallucination core: partitions cited refs into `resolved` (real, non-absent) vs `rejected` (`unknown` / `absent` / `non-numeric`). A rejected number must never reach the user.
+  - `renderFact(fact)` — display string by unit via the SSOT formatters (`formatCurrency`/`formatPercentageValue`); `—` for absent (never a number).
+  - `buildGroundingClause(pack)` — the canonical system-prompt clause (cite refs; refuse-never-estimate; "as of" + staleness) so every surface uses the same contract.
+
+### Files
+- `lib/neobrain/grounding.ts` — NEW (validator + resolver + render + prompt clause).
+- `tests/neobrain/grounding.test.ts` — NEW. Resolve-by-ref/key, REJECT unknown (invented), REJECT absent (not-connected), mixed keep/drop, render-by-unit (absent → `—`), grounding-clause NOT-AVAILABLE wording.
+- `docs/financial-logic/graph/structural/structural-graph.json` — Layer-0 coverage (6 nodes).
+
+### Note on the lint gate
+The `lint:ai-grounding` BUILD gate (§15.5) is deliberately deferred to **Phase B.2 — after the Vertex gateway (Phase 0.5)** gives it one perimeter to enforce. Adding it now would either fail the build on the not-yet-migrated surfaces or be toothless. The validator (this PR) is the reusable core the gate + Phase C surfaces consume.
+
+### Financial correctness (§19/§20.4)
+- No money formula — the validator gates/renders existing FactPack values. Self-reviewed 3× → 10/10 vs the Phase B requirement (the resolver + reject-unreferenced guarantee + tests). All Neomatrix gates green.
+
+### Testing
+- [x] Neomatrix gates + grounding unit tests
+- [ ] Build passes (Vercel — verify on push)
+
+### PR
+- Part of PR #1284 (Neobrain §15 Phase 0 + A + B on one branch).
+
+---
+
 ## Session: adoring-davinci-e2wb4d (6) — Neobrain §15 Phase A: the FactPack (Personal Financial Index) [2026-06-28]
 
 ### Changes Made
