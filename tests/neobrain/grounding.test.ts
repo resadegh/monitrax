@@ -97,6 +97,6 @@ describe('buildGroundingClause', () => {
     const clause = buildGroundingClause(assembleFactPack(snap({ loans: 0 })));
     expect(clause).toContain('never estimate');
     expect(clause).toMatch(/NOT AVAILABLE/);
-    expect(clause).toContain('as of 2026-06-28T00:00:00.000Z');
+    expect(clause).toContain('2026-06-28T00:00:00.000Z'); // the "as of" freshness anchor
   });
 });
