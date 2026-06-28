@@ -1,5 +1,38 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (4) — Neobrain factual-grounding-layer design (§15)
+
+### Changes Made
+- **Type**: Design / documentation (no code)
+- **Scope**: `PHASE_54_NEOBRAIN.md` §15 — Neobrain as Monitrax's factual-grounding layer ("personal financial intelligence", Apple Intelligence concept)
+- **Driver**: Reza directive 2026-06-27 — *"neobrain should be the reference for any ai feedback to avoid gemini guessing fictitious numbers"* (two datasets: user-specific + app-level) + *"be mindful of what data will be stored … just useful and relevant data"* + *"something like the apple intelligence concept"* → *"Ship it"* (after a self-review gate request: present only if > 9/10).
+- **Outcome**: Signed-off design at **9.4/10** (§20.4). The Explore-mapped current state: grounding already works in the two highest-stakes surfaces (CFO `snapshotPath` resolution; tax-advisor tool-calling + HR-1/HR-2 validator) but is inconsistent and leaves free-form surfaces (`debt-analysis`, `budget-analysis/generate`, `aiDocumentAnalyzer`) able to invent numbers; a duplicate Gemini gateway (`lib/ai/gemini.ts`) can bypass grounding.
+
+### Design recorded (§15)
+- **Three pillars** (Apple Intelligence mapping): Personal Financial Index (the FactPack) · Capability Registry (typed Intents) · CDR-grade privacy guarantee.
+- **Three fact-types** over existing canonical sources, **zero new storage**: user values ← `getMasterFinancialSnapshot()`; app values ← `CATEGORY_HIERARCHY` + `taxYearConfig`; derived ← named engines only. Neomatrix = provenance/citation map (holds no values, Phase 53 §9).
+- **Grounding contract**: every figure is a typed reference into the FactPack; server resolves; validator rejects un-referenced numbers; refuse-never-estimate; distinguishes `value`/`zero`/`absent`; carries `asOf`/staleness.
+- **Bypass-proof gate**: new `lint:ai-grounding` (fails the build on a Gemini call not routed through the Neobrain gateway+validator) + delete the duplicate `lib/ai/gemini.ts` + a hallucination test-suite ship-gate.
+- **Phases**: 0 privacy-terms verify (gates all) → A FactPack → B validator+gate → C free-form surfaces first → D migrate CFO/tax last → E Capability Registry.
+- **Fork recorded**: read-and-compute v1 (action Intents → v2). Proactive pillar → v2.
+
+### Self-review (§20.4)
+- 3× adversarial. **v1 7.2/10 (held back).** 8 gaps found + fixed (bypass gate, over-claimed privacy, 2→3 fact-types, staleness, zero-vs-absent, acceptance tests, sequencing, proactive-pillar). **v2 9.4/10** — the missing 0.6 is the Phase-0 privacy verification (genuine unknown, not scored as solved).
+
+### Files Modified
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` — §15 added + footer.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — `0·NEOBRAIN` re-activated; §15 build queued (Phase 0 next).
+- `docs/IMPLEMENTATION_PLAN.md` — hub `Last updated`.
+
+### Testing
+- Docs-only; no code, no schema, no financial logic → no Neomatrix/build gates triggered. No PR build risk.
+
+### PR
+- PR URL: (to be filled after creation)
+- Status: Draft
+
+---
+
 ## Session: adoring-davinci-e2wb4d (3) — reconciliation cursor (continue, don't restart)
 
 ### Changes Made

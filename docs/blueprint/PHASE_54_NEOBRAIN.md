@@ -321,4 +321,88 @@ The first **behaviour** addition since the v1.0 consolidation. Until now Neobrai
 
 ---
 
-*Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop. Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*
+## 15. Neobrain as the factual-grounding layer — Monitrax's "personal financial intelligence" (design, 2026-06-27)
+
+> **Status:** DESIGN / not yet built. Reza directive 2026-06-27: *"I want neobrain to have 2 sets of data that the gemini ai agent makes all the ai decision and feedbacks based on these factual numbers and data … neobrain should be the reference for any ai feedback to avoid ai gemini to assume or guess based on fictitious numbers"* + *"be mindful of what data will be stored … just useful and relevant data for neobrain"* + *"something like the apple intelligence concept."*
+>
+> This section is the signed-off (9.4/10, §20.4) corrected plan. The v1 plan scored 7.2 and was held back; the gaps it surfaced (§15.7) are baked into this version.
+
+### 15.1 The concept — three pillars (the Apple Intelligence mapping)
+
+Neobrain becomes Monitrax's personal financial intelligence layer. Apple Intelligence is three things; each has a clean Monitrax analog:
+
+| Apple Intelligence pillar | Neobrain pillar | State today |
+|---|---|---|
+| **Semantic Index** (structured personal data the model grounds on) | **Personal Financial Index** — the *FactPack*, a read-through assembled view over the canonical SSOTs | Mostly built (the snapshot is the index) |
+| **App Intents** (typed registry of what the model can do/answer) | **Capability Registry** — typed Intents Neobrain orchestrates over | Partially built (tax tools + scenarios, scattered) |
+| **Private Cloud Compute** (data stays private, never trains the model) | **CDR-grade privacy guarantee** | Enforced server-side (§13) — but the model-provider terms need explicit verification, see §15.6 Phase 0 |
+
+**Why this fits Monitrax better than a phone:** Apple indexes on-device because they hold no server copy. Monitrax already holds the canonical data server-side, so the Index is a **zero-storage assembled view, not a duplicated index** — the Apple concept without Apple's storage cost. And Apple's "never trains on your data" pitch is, for a CDR-regulated money app, a requirement Monitrax already designs for.
+
+### 15.2 The grounding contract (the anti-hallucination core)
+
+The proven pattern already lives in the two highest-stakes surfaces — generalise it to ONE contract every AI surface uses:
+
+- **CFO/Guide** (`lib/cfo/aiAdvisor.ts`): Gemini may not write a number; it attaches an `evidence.snapshotPath`, the server resolves it against `getMasterFinancialSnapshot()`, and any path that doesn't resolve is dropped (`resolveSnapshotPath`).
+- **Tax advisor** (`lib/ai/tax-advisor/`): tool-calling + a validator that rejects any bare number not referencing a tool result (HR-1/HR-2).
+
+**The one Neobrain rule:** *every figure in AI output is a typed reference into the FactPack; the server resolves it; a validator strips/rejects any un-referenced number. If a fact is not in the FactPack, the AI says it does not have it — it never estimates.*
+
+Three states the contract must distinguish (gap-fix, §15.7-G5):
+- **`value`** — present and fresh → render it.
+- **`zero`** — genuinely $0 (e.g. no debt) → render "$0", a real fact.
+- **`absent`** — not connected / not provided → refuse with a One Clear Action ("connect your loan to see this"), never "$0".
+
+Each FactPack slice carries **`asOf` + staleness** (gap-fix G4); the AI qualifies "as of <date>" and refuses on stale-beyond-threshold rather than presenting a stale number as current.
+
+### 15.3 The two datasets → three fact-types, mapped to existing canonical sources (zero new storage)
+
+Reza named two datasets; the correctness rule needs three fact-**types**, each with a single canonical source. **Neobrain references these at request time and stores nothing new.**
+
+| Fact-type | Canonical source (already exists) | New storage? |
+|---|---|---|
+| **1. User-specific values** (loans, properties, income, expenses, cashflow, debt, tax, super, emergency fund, health) | `getMasterFinancialSnapshot()` — the §6.1 SSOT | **None** — read-through |
+| **2. App-level values** (category taxonomy, ATO brackets/thresholds, super caps) | `CATEGORY_HIERARCHY` (`lib/tie/types.ts`) + `taxYearConfig.ts` | **None** — config |
+| **3. Derived facts** (projections, scenario outputs, health score) | Named engines ONLY (`lib/cfo/scenarios/*`, `lib/health/*`, `masterFinancialService`) — never AI prose | **None** — computed on demand |
+
+**Provenance:** the **Neomatrix is the citation map for all three** — it encodes formula → authority → `file:line`, and (Phase 53 §9) **holds no values itself**. So the Neomatrix answers *"why is this number what it is / where did it come from"*; the snapshot/config/engines hold the *values*. (Gap-fix G3 — v1 wrongly conflated "app facts" with the Neomatrix.)
+
+### 15.4 Storage discipline (Reza's explicit constraint)
+
+- **Persist nothing new.** The FactPack is assembled fresh per request from the snapshot + config + engines, then discarded. No raw transactions, no PII, no duplicated snapshot table.
+- **Reuse the one cache that already exists** (the 24h CFO advice cache + fingerprint). No second cache. Surfaces cache *rendered output*, never the raw FactPack.
+- **Scope per capability:** each Intent declares which FactPack slices it needs (a debt question doesn't load depreciation schedules). Minimal payload = your storage point AND lower token cost / egress on every Gemini call.
+
+### 15.5 Durability — bypass-proof at the build gate
+
+For Neobrain to be *the* reference (not a convention), bypass must be impossible at build time, like `lint-financial-surfaces` / `neomatrix:check`:
+
+- **`lint:ai-grounding`** (new gate) — fails the build if any `generateContent` / Gemini call is not routed through the single Neobrain gateway + grounding validator.
+- **One gateway** — delete the duplicate `lib/ai/gemini.ts` (self-flagged "known SSOT-violation duplicate" of `lib/ai/google/geminiClient.ts`); everything routes through one door.
+- **Acceptance gate (ship blocker, §19/§20):** a hallucination test suite — golden FactPacks + adversarial prompts that try to elicit invented figures — asserting **zero un-referenced numbers** in output. No surface ships grounded until it passes.
+
+### 15.6 Phased delivery (re-sequenced for risk — gap-fix G7)
+
+| Phase | Scope | Why this order |
+|---|---|---|
+| **0 — Privacy verify** | Confirm the Gemini/Vertex tier's no-training + data-residency terms; document in the CDR matrix. **Gates everything** — if the tier doesn't guarantee it, the feature stops here. | Don't send a single CDR-derived fact to the model until this is proven (§13). |
+| **A — Personal Financial Index** | `lib/neobrain/factPack.ts` — typed FactPack assembler over the 3 fact-types; `asOf`/staleness; `value`/`zero`/`absent`. | The Index everything grounds on. |
+| **B — Grounding validator + gate** | `lib/neobrain/grounding.ts` (generalises `resolveSnapshotPath` + the tax validator) + `lint:ai-grounding`. | One contract, enforced. |
+| **C — Close the free-form surfaces FIRST** | Migrate `app/api/ai/debt-analysis`, `app/api/budget-analysis/generate`, `aiDocumentAnalyzer` onto the FactPack. | These are where hallucination actually happens — net-new grounding = pure win, no regression risk. |
+| **D — Migrate the proven surfaces LAST** | Switch CFO + tax advisor to the shared validator (no behaviour change). | Don't destabilise trust-critical working code until the contract is proven on C. |
+| **E — Capability Registry** | Lift the tax tools + scenarios into one typed Intent catalog Neobrain orchestrates over. | The "App Intents" pillar. |
+
+Model the new modules in the Neomatrix `neobrain` domain (§21.2.1).
+
+### 15.7 The fork (Reza decision) + deferred scope
+
+- **Read-vs-act fork → recorded as READ-AND-COMPUTE for v1** (Reza "ship it" 2026-06-27, taking the recommended default). Neobrain v1 grounds answers + runs scenarios + suggests; it does **not** execute money-moving/data-changing actions except behind the existing "suggest → confirm → undo" model (the §14 auto-apply is the template). **Action Intents deferred to v2** — a finance app earns the right to act only after it has proven it never lies about a number. *Flip this by changing this line if the decision changes.*
+- **Proactive pillar deferred to v2** (gap-fix G8): Apple Intelligence is proactive + TRAIL-stage-matched, not just grounded Q&A. v1 is grounding (reactive); proactive contextual insight is named-deferred, not dropped.
+
+### 15.8 Self-review record (§20.4)
+
+3× adversarial review against requirements. **v1 = 7.2/10 (held back).** 8 gaps found and fixed: (G1) no bypass-proof gate → `lint:ai-grounding`; (G2) over-claimed privacy → Phase 0 verify-task; (G3) 2 fact-types → 3 + Neomatrix-is-provenance-not-values; (G4) no staleness → `asOf`/stale-refusal; (G5) zero-vs-absent → 3-state contract; (G6) no acceptance criteria → hallucination test suite; (G7) sequencing risk → free-form surfaces first, proven surfaces last; (G8) proactive pillar silently dropped → named-deferred. **v2 = 9.4/10** (the missing 0.6 is the Phase-0 privacy verification — a genuine unknown, not scored as solved until checked).
+
+---
+
+*Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*
