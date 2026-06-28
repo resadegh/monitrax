@@ -385,7 +385,8 @@ For Neobrain to be *the* reference (not a convention), bypass must be impossible
 
 | Phase | Scope | Why this order |
 |---|---|---|
-| **0 — Privacy verify** | Confirm the Gemini/Vertex tier's no-training + data-residency terms; document in the CDR matrix. **Gates everything** — if the tier doesn't guarantee it, the feature stops here. | Don't send a single CDR-derived fact to the model until this is proven (§13). |
+| **0 — Privacy verify ✅ DONE (2026-06-27)** | Verified Google's terms (not recalled). **Finding:** the app uses the **consumer Gemini Developer API** (`@google/generative-ai` + `GEMINI_API_KEY`); free tier *trains* on data + human-reviews (✅ confirmed NOT in use — paid tier, Reza 2026-06-27), paid tier doesn't train but *caches "in any country"* → conflicts with CDR matrix row 2.3 (AU-only). Recorded as CDR matrix Finding F-AI-1. | Gate cleared **with a remediation decision** (below), not a clean pass. |
+| **0.5 — Migrate AI gateway to Vertex AI (Reza decision 2026-06-27)** | Swap `@google/generative-ai` (API key) → `@google-cloud/vertexai` (project/location, WIF auth) behind ONE gateway interface; AU region (`australia-southeast1`) for data residency; no behaviour change to callers. **Operator provisioning required first** (see §15.6.1). | Vertex gives contractual no-training + **AU residency** + DPA — restores row 2.3 for the AI path. GCP-first (§12.7), reuses the Cloud SQL WIF identity. This IS the "one gateway" SSOT move (folds in old Phase D's dedupe of `lib/ai/gemini.ts`). |
 | **A — Personal Financial Index** | `lib/neobrain/factPack.ts` — typed FactPack assembler over the 3 fact-types; `asOf`/staleness; `value`/`zero`/`absent`. | The Index everything grounds on. |
 | **B — Grounding validator + gate** | `lib/neobrain/grounding.ts` (generalises `resolveSnapshotPath` + the tax validator) + `lint:ai-grounding`. | One contract, enforced. |
 | **C — Close the free-form surfaces FIRST** | Migrate `app/api/ai/debt-analysis`, `app/api/budget-analysis/generate`, `aiDocumentAnalyzer` onto the FactPack. | These are where hallucination actually happens — net-new grounding = pure win, no regression risk. |
@@ -393,6 +394,18 @@ For Neobrain to be *the* reference (not a convention), bypass must be impossible
 | **E — Capability Registry** | Lift the tax tools + scenarios into one typed Intent catalog Neobrain orchestrates over. | The "App Intents" pillar. |
 
 Model the new modules in the Neomatrix `neobrain` domain (§21.2.1).
+
+#### 15.6.1 Phase 0.5 operator provisioning (Vertex AI cutover)
+
+The code migration (one Vertex-backed gateway behind the existing interface) is ready to write, but it can't be **tested/cut over** until these operator steps are done (mirrors the WIF/Cloud SQL + GCS provisioning pattern — operator provisions, then code cuts over). All non-secret identifiers, same as the existing Cloud SQL bootstrap vars (§13.6):
+
+1. **Enable the Vertex AI API** on the GCP project: `gcloud services enable aiplatform.googleapis.com`.
+2. **Grant the runtime SA Vertex access** — the same Workload-Identity SA Vercel already impersonates for Cloud SQL gets `roles/aiplatform.user` (least-privilege; not editor).
+3. **Region = `australia-southeast1`** (Sydney) for AU data residency → restores CDR matrix row 2.3.
+4. **Add non-secret env vars** on Vercel: `VERTEX_PROJECT`, `VERTEX_LOCATION=australia-southeast1`, and `USE_VERTEX=true`. No new secret — auth is the existing OIDC/WIF token, not an API key.
+5. Confirm the model id is available in-region (e.g. `gemini-2.x` in `australia-southeast1`); if a chosen model isn't AU-resident, pick the nearest AU-available model rather than silently falling back to a US region (that would re-break row 2.3).
+
+**Code plan (safe, no-break):** a provider-pluggable gateway — Vertex when `USE_VERTEX=true` + project/location present, else the current **paid** Gemini API (the working path) as fallback. Same call interface, so no caller changes; the duplicate `lib/ai/gemini.ts` is repointed/removed in the same or the immediately-following PR (4 callers: `geminiOnMiss`, `trust-deed/geminiExtractor`, `analyze-for-form`, `entities/[id]/trust-deed`). `@google-cloud/vertexai` added to `package.json` (Approved-Dependencies §13.8). Update `09_INFRASTRUCTURE_AND_DEPLOYMENT.md` + `docs/operational/security/02_IAM_AND_PERMISSIONS.md` in the cutover PR (§16.3).
 
 ### 15.7 The fork (Reza decision) + deferred scope
 

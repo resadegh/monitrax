@@ -1,5 +1,34 @@
 # Changelog - 2026-06-27
 
+## Session: adoring-davinci-e2wb4d (5) — Neobrain §15 Phase 0 (privacy verify) + Vertex decision [2026-06-28]
+
+### Changes Made
+- **Type**: Compliance finding + decision (docs)
+- **Scope**: Neobrain grounding-layer Phase 0 — AI model-provider data governance vs CDR
+- **What happened**: Phase 0 (the gate before any FactPack code) verified — against Google's published terms, not recalled — how the app sends data to Gemini. **Finding:** the app uses the **consumer Gemini Developer API** (`@google/generative-ai` + `GEMINI_API_KEY`, `lib/ai/google/geminiClient.ts:12,26`); some surfaces already pass real figures (cashflow summary, debt analysis). Free tier *trains* on data + human-reviews; **paid tier confirmed by Reza (no training)** but it caches *"in any country"* — which **conflicts with CDR matrix row 2.3** ("data stays in Australia").
+- **Decision (Reza 2026-06-28)**: **migrate the AI gateway to Vertex AI** (`australia-southeast1`, WIF auth, no API key) → contractual no-training + AU residency + DPA; GCP-first (§12.7), reuses the Cloud SQL WIF identity, and *is* the "one gateway" SSOT move. Recorded as CDR matrix **Finding F-AI-1**.
+
+### Files Modified
+- `docs/compliance/CDR_BASIQ_COMPLIANCE_MATRIX.md` — Finding F-AI-1 under Step 2 (the §16.3-mandated CDR-posture doc).
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` — §15.6 Phase 0 marked DONE + new Phase 0.5 (Vertex migration) + §15.6.1 operator provisioning runbook.
+- `docs/implementation/01_ACTIVE_WORKSTREAMS.md` — Phase 0 done, Phase 0.5 next (blocked on operator provisioning).
+- `docs/IMPLEMENTATION_PLAN.md` — hub date.
+
+### Verification (§19/§20 — no recalled claims)
+- Terms verified live: [Gemini API terms](https://ai.google.dev/gemini-api/terms) (free=train+human-review; paid=no-train but multi-region cache), [Vertex AI data governance](https://cloud.google.com/vertex-ai/generative-ai/docs/data-governance) (no-train), [GCP gen-AI residency](https://cloud.google.com/blog/products/ai-machine-learning/google-cloud-generative-ai-data-residency-guarantees-for-data-stored-at-rest).
+
+### Testing
+- Docs-only; no code/schema/financial-logic → no build gates triggered.
+
+### Next (operator action required before code)
+- Phase 0.5 provisioning (runbook §15.6.1): enable `aiplatform.googleapis.com`, grant the WIF SA `roles/aiplatform.user`, set `VERTEX_PROJECT`/`VERTEX_LOCATION=australia-southeast1`/`USE_VERTEX`. Then the provider-pluggable Vertex gateway cutover (safe fallback to current paid Gemini until configured).
+
+### PR
+- PR URL: (to be filled after creation)
+- Status: Draft
+
+---
+
 ## Session: adoring-davinci-e2wb4d (4) — Neobrain factual-grounding-layer design (§15)
 
 ### Changes Made

@@ -74,6 +74,18 @@ Each requirement links to the specific code, config, or GCP service that satisfi
 **Can confirm YES today:** 2.1, 2.2, 2.3, 2.4, 2.5 (5/6 ✅)
 **Action required:** 2.6 — **TODO: Build public-facing consent management page** where consumers can view, manage, and revoke their CDR data consent.
 
+#### Finding F-AI-1 (2026-06-27) — AI model provider data residency vs row 2.3 [Neobrain Phase 0]
+
+> Raised by the Neobrain factual-grounding design Phase 0 (`PHASE_54_NEOBRAIN.md §15`). Verified against Google's published terms, not recalled.
+
+**Finding.** The app sends AI prompts via the **consumer Gemini Developer API** (`@google/generative-ai` + `GEMINI_API_KEY`, `lib/ai/google/geminiClient.ts:12,26`). Some surfaces already pass real financial figures (cashflow summary, debt analysis). Google's terms:
+- **Free tier** uses prompts/responses to *train* Google's models + allows human review (de-identified). **Confirmed NOT in use — Reza 2026-06-27: billing enabled (paid tier).** ✅ No training exposure.
+- **Paid tier** (current): no training, but *"data may be stored… in any country in which Google… maintain[s] facilities"* — which **conflicts with row 2.3** ("Disclose CDR data overseas? = False — data stays in Australia").
+
+**Decision (Reza 2026-06-27): migrate the AI gateway to Vertex AI** — contractual no-training + **AU data-residency** + DPA/CMEK, GCP-first (§12.7), reusing the existing WIF identity. This restores row 2.3 to true for the AI path. Until cut over, row 2.3's "stays in Australia" claim has a documented exception for AI prompts (paid-tier, no-training, but multi-region caching). Tracked as `PHASE_54_NEOBRAIN.md §15` Phase 0.5; provider migration + the env/IAM provisioning runbook ship before any expansion of CDR data sent to the model.
+
+Sources: [Gemini API Additional Terms](https://ai.google.dev/gemini-api/terms) · [Vertex AI data governance](https://cloud.google.com/vertex-ai/generative-ai/docs/data-governance) · [GCP gen-AI data residency](https://cloud.google.com/blog/products/ai-machine-learning/google-cloud-generative-ai-data-residency-guarantees-for-data-stored-at-rest).
+
 ---
 
 ## SECTION 1: User Authentication and Access Management (Step 3: 3.1–3.7)
