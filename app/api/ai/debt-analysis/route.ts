@@ -154,18 +154,12 @@ export const POST = withPermission('report.read', async (request, auth) => {
       }),
     ]);
 
-    // Calculate monthly totals - helper function
-    const convertToMonthly = (amount: number, freq: string): number => {
-      switch (freq) {
-        case 'WEEKLY': return amount * 52 / 12;
-        case 'FORTNIGHTLY': return amount * 26 / 12;
-        case 'MONTHLY': return amount;
-        case 'QUARTERLY': return amount / 3;
-        case 'HALF_YEARLY': return amount / 6;
-        case 'ANNUALLY': return amount / 12;
-        default: return amount;
-      }
-    };
+    // Frequency → monthly via the canonical SSOT converter (§12.2.1). Replaces
+    // a local switch with inline arithmetic — which the financial-surface lint
+    // forbids and which silently mis-handled 'ANNUAL' (the DB enum is 'ANNUAL',
+    // not 'ANNUALLY', so annual rows fell through to the identity default).
+    const convertToMonthly = (amount: number, freq: string): number =>
+      toMonthly(amount, freq as Parameters<typeof toMonthly>[1]);
 
     // Calculate NET income (after PAYG tax) - same as Cashflow API
     let monthlyNetIncome = 0;

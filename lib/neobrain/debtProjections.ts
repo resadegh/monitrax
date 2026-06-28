@@ -7,7 +7,7 @@
  * OVERWRITE whatever the AI produced. SSOT: reuses the engine, adds no new
  * calculation (§12.2.1) — it only maps + formats.
  */
-import { runDebtPlan, type LoanInput } from '@/lib/planning/debtPlanner';
+import { runDebtPlan, type LoanInput, type PlanResult } from '@/lib/planning/debtPlanner';
 
 /** Matches `DebtAnalysisResponse.projections` in the debt-analysis route. */
 export interface DebtProjections {
@@ -30,28 +30,14 @@ function formatMonthYear(d: Date): string {
 }
 
 /**
- * Compute the projections block from the canonical engine for a strategy +
- * monthly surplus. Pure (calls the pure `runDebtPlan`). Never fabricates a
- * payoff date — a non-payoffable portfolio returns an honest string.
+ * Pure FORMAT/branch layer — turn an engine `PlanResult` into the projections
+ * block. This is the unit-testable core (deterministic; no engine call): it
+ * never fabricates a payoff date — a null debt-free date (non-payoffable
+ * portfolio) returns an honest string.
  */
-export function buildEngineProjections(
-  loans: LoanInput[],
-  strategy: DebtStrategy,
-  monthlySurplus: number,
-): DebtProjections {
-  const plan = runDebtPlan(loans, {
-    strategy,
-    surplusPerPeriod: monthlySurplus,
-    surplusFrequency: 'MONTHLY',
-    emergencyBuffer: 0, // availableForExtra is already net of expenses + min repayments
-    respectFixedCaps: true,
-    rolloverRepayments: true,
-  });
-
+export function formatProjections(plan: PlanResult): DebtProjections {
   const totalInterestSaved = Math.round(plan.totalInterestSaved);
 
-  // Non-payoffable (e.g. interest-only with no surplus) → null debt-free date.
-  // Never fabricate one.
   if (!plan.debtFreeDate) {
     return {
       debtFreeDate: 'Not payable off at the recommended surplus',
@@ -77,6 +63,28 @@ export function buildEngineProjections(
     monthsSaved,
     comparedToMinimum,
   };
+}
+
+/**
+ * Compute the projections from the canonical engine for a strategy + monthly
+ * surplus. Thin: runs `runDebtPlan` then {@link formatProjections}. The numeric
+ * correctness lives in the engine (its own tested unit); this only wires +
+ * formats.
+ */
+export function buildEngineProjections(
+  loans: LoanInput[],
+  strategy: DebtStrategy,
+  monthlySurplus: number,
+): DebtProjections {
+  const plan = runDebtPlan(loans, {
+    strategy,
+    surplusPerPeriod: monthlySurplus,
+    surplusFrequency: 'MONTHLY',
+    emergencyBuffer: 0, // availableForExtra is already net of expenses + min repayments
+    respectFixedCaps: true,
+    rolloverRepayments: true,
+  });
+  return formatProjections(plan);
 }
 
 /** Map the route's Prisma loans → the engine's LoanInput contract (units 1:1). */
