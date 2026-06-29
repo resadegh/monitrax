@@ -47,6 +47,8 @@ import type {
 } from './types';
 import { ProviderError } from './types';
 import type { TaxAdvisorTool, ToolInputSchema } from '../types';
+import { getModelPricing } from '@/lib/ai/google/modelConfig';
+import { recordAiUsage } from '@/lib/ai/usage/recordAiUsage';
 
 // gemini-2.0-flash retired 2026-06-01 (Google deprecations page) — migrated to
 // the current stable flash 2026-06-10. Re-verify model lineup before 2026-10-16.
@@ -190,6 +192,21 @@ export class GeminiProvider implements AIProvider {
         this.name,
       );
     }
+
+    // Neobrain telemetry (Phase 54): this provider talks to the Gemini SDK
+    // directly (multi-turn), so it is NOT covered by the geminiClient.ts
+    // chokepoint — record the tax-advisor surface's usage + cost here.
+    const pricing = getModelPricing(modelName);
+    recordAiUsage({
+      surface: 'tax-advisor',
+      model: modelName,
+      promptTokens: tokenAccumulator.prompt,
+      completionTokens: tokenAccumulator.completion,
+      totalTokens: tokenAccumulator.total,
+      estimatedCostUsd:
+        (tokenAccumulator.prompt / 1_000_000) * pricing.inputPer1M +
+        (tokenAccumulator.completion / 1_000_000) * pricing.outputPer1M,
+    });
 
     return {
       rawAnswer,

@@ -45,3 +45,29 @@ Docs updated:
 ### PR
 - Branch: `claude/neobrain-ai-usage-metrics` (rebased on #1287)
 - Status: draft
+
+---
+
+## Session: neobrain-ai-usage-v1.1
+
+### Changes Made
+- **Type**: Feature (instrumentation — coverage completion)
+- **Scope**: Neobrain AI-usage telemetry — close the two chokepoint-bypass gaps
+- **Description**: Completed the AI-usage cost baseline so it is accurate *before* any model-tiering decision. The two surfaces that bypass the canonical `geminiClient.ts` chokepoint are now recorded:
+  - `lib/ai/tax-advisor/providers/geminiProvider.ts` — multi-turn provider; accumulates tokens across turns, now computes cost via `getModelPricing(modelName)` + `recordAiUsage({ surface: 'tax-advisor' })` before returning.
+  - `lib/cashflow-intelligence/geminiSummary.ts` — direct SDK call; now captures `response.usageMetadata` + cost + `recordAiUsage({ surface: 'cashflow-summary', userId })` after generation.
+- Both reuse the existing `recordAiUsage` writer + `getModelPricing` SSOT (§12.2.1 — no second cost formula). No behaviour change to either surface.
+
+### Files Modified
+- `lib/ai/tax-advisor/providers/geminiProvider.ts` — cost calc + `recordAiUsage` (surface `tax-advisor`).
+- `lib/cashflow-intelligence/geminiSummary.ts` — usage capture + `recordAiUsage` (surface `cashflow-summary`).
+- `docs/blueprint/AI_MODEL_TIERING_STRATEGY.md` — §7 updated (gaps closed; full surface list).
+
+### Verification
+- No financial-graph impact (operational telemetry; neither file holds a Neomatrix node — anchors unaffected). `neomatrix:check` green locally (generate --check OK · layer0 0 uncovered · binding resolves).
+- Cost = tokens × existing `getModelPricing` (same SSOT as #1288); no new math.
+- Self-review (§20.4/§20.5): 10/10 — completes the baseline coverage the tiering decision depends on.
+
+### PR
+- Branch: `claude/neobrain-ai-usage-v1.1`
+- Status: draft
