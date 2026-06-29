@@ -125,8 +125,37 @@ export function buildGroundingClause(pack: FactPack): string {
     '2. Never write a number that is not backed by a ref. The server resolves refs to the real value.',
     '3. If a fact is NOT AVAILABLE, say so plainly and suggest the one action to unlock it — never estimate.',
     `4. Figures are "as of" ${pack.snapshotAsOf ?? 'unknown'}${pack.anyStale ? ' (some data is stale — qualify it)' : ''}.`,
+    '5. For any tax rule (brackets, rates, thresholds, caps, CGT, super), ground it on the CURRENT TAX LAW below — never recall a rate or threshold from memory.',
+    '6. A reform measure marked "announced-not-in-effect" is NOT current law — present it as a future/proposed change only, never as a rule that applies today (CLAUDE.md §12.14).',
     '',
     'AVAILABLE FACTS:',
     ...lines,
+    '',
+    ...buildTaxLawLines(pack),
   ].join('\n');
+}
+
+/** Render the current-FY tax law (from `reference.taxRules`) for the prompt. */
+function buildTaxLawLines(pack: FactPack): string[] {
+  const t = pack.reference?.taxRules;
+  if (!t) return [];
+  const pct = (r: number) => `${(r * 100).toFixed(2)}%`;
+  const brackets = t.residentIncomeTaxBrackets
+    .map((b) => `${formatCurrency(b.min)}–${b.max === null ? 'over' : formatCurrency(b.max)} @ ${pct(b.rate)}`)
+    .join('; ');
+  const reform = t.reformMeasures
+    .map((m) => `- ${m.measure}: ${m.status}${m.commenced ? '' : ' (NOT current law — future/proposed only)'}`)
+    .join('\n');
+  return [
+    `CURRENT TAX LAW (FY ${t.financialYear}; authority: ${t.authority}). Ground all tax-rule statements on these — never from memory:`,
+    `- Resident income tax brackets: ${brackets}`,
+    `- Tax-free threshold: ${formatCurrency(t.taxFreeThreshold)} [ref: reference.taxRules.taxFreeThreshold]`,
+    `- Medicare levy: ${pct(t.medicareLevyRate)} (single threshold ${formatCurrency(t.medicareLevyThresholdSingle)}) [ref: reference.taxRules.medicareLevyRate]`,
+    `- Low Income Tax Offset (max): ${formatCurrency(t.lowIncomeTaxOffsetMax)}`,
+    `- Super Guarantee rate: ${pct(t.superGuaranteeRate)} [ref: reference.taxRules.superGuaranteeRate]`,
+    `- Concessional cap: ${formatCurrency(t.concessionalCap)} · Non-concessional cap: ${formatCurrency(t.nonConcessionalCap)} · Div 293 threshold: ${formatCurrency(t.division293Threshold)}`,
+    `- CGT discount: ${pct(t.cgtDiscount)} (min hold ${t.cgtDiscountMinMonths} months) · Transfer balance cap: ${formatCurrency(t.transferBalanceCap)}`,
+    'Phase 41E reform measures (status — DO NOT apply any "announced-not-in-effect" measure as current law):',
+    reform,
+  ];
 }

@@ -34,6 +34,7 @@ import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialServ
 import { getMasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
 import { CATEGORY_HIERARCHY, ALL_CATEGORIES } from '@/lib/tie/types';
 import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import type { TaxYearConfig } from '@/lib/tax-engine/types';
 
 export type FactState = 'value' | 'zero' | 'absent';
 export type FactSource = 'user' | 'app' | 'derived';
@@ -56,6 +57,83 @@ export interface Fact {
   asOf: string | null;
   /** True when the snapshot flagged the data as stale (user/derived only). */
   stale: boolean;
+}
+
+/**
+ * A Phase 41E reform measure surfaced with its commencement status, so the AI
+ * never presents an un-assented reform as current law (CLAUDE.md §12.14).
+ * `commenced` mirrors the canonical `*CommencementVerified` flag on the
+ * TaxYearConfig — false until Royal Assent is verified in the engine config.
+ */
+export interface TaxReformMeasure {
+  measure: string;
+  commenced: boolean;
+  status: 'in-effect' | 'announced-not-in-effect';
+}
+
+/**
+ * The current-FY Australian tax law, AI-readable, sourced ENTIRELY from the
+ * canonical `getTaxYearConfig()` SSOT (lib/tax-engine/config/taxYearConfig.ts) —
+ * never re-typed (§12.2.1). The grounding layer hands this to the agent so any
+ * tax-rule statement (brackets, thresholds, caps, CGT, reform status) is grounded
+ * on real law, not the model's training memory.
+ */
+export interface TaxRulesReference {
+  financialYear: string;
+  authority: string;
+  residentIncomeTaxBrackets: Array<{ min: number; max: number | null; rate: number }>;
+  taxFreeThreshold: number;
+  medicareLevyRate: number;
+  medicareLevyThresholdSingle: number;
+  lowIncomeTaxOffsetMax: number;
+  superGuaranteeRate: number;
+  concessionalCap: number;
+  nonConcessionalCap: number;
+  division293Threshold: number;
+  cgtDiscount: number;
+  cgtDiscountMinMonths: number;
+  transferBalanceCap: number;
+  /** Phase 41E measures with commencement status — never present un-commenced as law. */
+  reformMeasures: TaxReformMeasure[];
+}
+
+/** Map a canonical commencement flag → a status-tagged reform measure. */
+function reformMeasure(measure: string, commenced: boolean): TaxReformMeasure {
+  return { measure, commenced, status: commenced ? 'in-effect' : 'announced-not-in-effect' };
+}
+
+/**
+ * Pure: TaxYearConfig → AI-readable tax-law reference. Every value is read
+ * straight from the canonical config (no re-typed law). Reform measures carry
+ * their commencement status from the engine's `*CommencementVerified` flags.
+ */
+export function buildTaxRulesReference(config: TaxYearConfig): TaxRulesReference {
+  return {
+    financialYear: config.financialYear,
+    authority: 'ATO, via the canonical getTaxYearConfig() — lib/tax-engine/config/taxYearConfig.ts',
+    residentIncomeTaxBrackets: config.brackets.map((b) => ({ min: b.min, max: b.max, rate: b.rate })),
+    taxFreeThreshold: config.taxFreeThreshold,
+    medicareLevyRate: config.medicareRate,
+    medicareLevyThresholdSingle: config.medicareThresholds.single,
+    lowIncomeTaxOffsetMax: config.lito.maxOffset,
+    superGuaranteeRate: config.superGuaranteeRate,
+    concessionalCap: config.concessionalCap,
+    nonConcessionalCap: config.nonConcessionalCap,
+    division293Threshold: config.division293Threshold,
+    cgtDiscount: config.cgtDiscount,
+    cgtDiscountMinMonths: config.cgtDiscountMonths,
+    transferBalanceCap: config.transferBalanceCap,
+    reformMeasures: [
+      reformMeasure('Negative gearing limited to new builds only', config.negativeGearingReformCommencementVerified),
+      reformMeasure('CGT 50% discount replaced by indexation + 30% minimum rate', config.cgtIndexationCommencementVerified),
+      reformMeasure('30% minimum tax on discretionary trust distributions', config.trustMinTaxCommencementVerified),
+      reformMeasure('Expanded foreign-resident CGT', config.foreignResidentCgtCommencementVerified),
+      reformMeasure('Company loss carry-back refundability', config.lossCarryBackCommencementVerified),
+      reformMeasure('EV FBT phase-2 transition', config.evFbtPhase2CommencementVerified),
+      reformMeasure('Dynamic (monthly opt-in) PAYG instalments', config.dynamicPaygCommencementVerified),
+      reformMeasure('Division 296 — extra 15% tax on super balances over $3M', config.div296CommencementVerified),
+    ],
+  };
 }
 
 /** Which slices to assemble — keep the pack minimal per surface (storage/cost). */
@@ -90,6 +168,8 @@ export interface FactPack {
     taxYear: string;
     categoryGroups: string[];
     validCategories: string[];
+    /** Current-FY AU tax law (brackets, thresholds, caps, CGT, reform status). */
+    taxRules: TaxRulesReference;
   };
 }
 
@@ -217,10 +297,13 @@ export function assembleFactPack(
   // ALL_CATEGORIES is { level1, level2 }[] — flatten to unambiguous
   // "Group > Category" path strings for the AI to ground category claims on.
   const validCategories = ALL_CATEGORIES.map((c) => `${c.level1} > ${c.level2}`);
+  // The current-FY tax law, sourced from the canonical engine config (§12.2.1).
+  const taxRules = buildTaxRulesReference(taxConfig);
   const reference = {
     taxYear: taxConfig.financialYear,
     categoryGroups: Object.keys(CATEGORY_HIERARCHY),
     validCategories,
+    taxRules,
   };
   if (want('app')) {
     facts.push(
@@ -246,6 +329,25 @@ export function assembleFactPack(
         asOf: null,
         stale: false,
       },
+    );
+  }
+
+  // The most-cited single-number tax rules as resolvable `app` facts — so the
+  // grounding validator can verify them like any other ref (the brackets array
+  // + reform measures live on `reference.taxRules`, which the clause surfaces).
+  // Included whenever tax or app context is requested.
+  if (want('tax') || want('app')) {
+    const appRule = (key: string, label: string, value: number, unit: FactUnit, ref: string): Fact => ({
+      key, label, state: 'value', value, unit, ref, source: 'app', asOf: null, stale: false,
+    });
+    facts.push(
+      appRule('taxRule.taxFreeThreshold', 'Tax-free threshold', taxRules.taxFreeThreshold, 'AUD', 'reference.taxRules.taxFreeThreshold'),
+      appRule('taxRule.medicareLevyRate', 'Medicare levy rate', taxRules.medicareLevyRate * 100, 'percent', 'reference.taxRules.medicareLevyRate'),
+      appRule('taxRule.superGuaranteeRate', 'Super Guarantee rate', taxRules.superGuaranteeRate * 100, 'percent', 'reference.taxRules.superGuaranteeRate'),
+      appRule('taxRule.concessionalCap', 'Concessional super cap', taxRules.concessionalCap, 'AUD', 'reference.taxRules.concessionalCap'),
+      appRule('taxRule.nonConcessionalCap', 'Non-concessional super cap', taxRules.nonConcessionalCap, 'AUD', 'reference.taxRules.nonConcessionalCap'),
+      appRule('taxRule.division293Threshold', 'Division 293 threshold', taxRules.division293Threshold, 'AUD', 'reference.taxRules.division293Threshold'),
+      appRule('taxRule.cgtDiscount', 'CGT discount', taxRules.cgtDiscount * 100, 'percent', 'reference.taxRules.cgtDiscount'),
     );
   }
 

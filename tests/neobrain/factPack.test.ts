@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
-import { assembleFactPack, type FactPack } from '@/lib/neobrain/factPack';
+import { assembleFactPack, buildTaxRulesReference, type FactPack } from '@/lib/neobrain/factPack';
+import { TAX_YEAR_2025_26 } from '@/lib/tax-engine/config/taxYearConfig';
 
 /**
  * Neobrain Phase A — the Personal Financial Index (FactPack) contract.
@@ -114,5 +115,61 @@ describe('assembleFactPack — Personal Financial Index contract', () => {
       if (f.state === 'absent') expect(f.value).toBeNull();
       if (f.value !== null && f.unit !== 'flag' && f.unit !== 'count') expect(f.state).not.toBe('absent');
     }
+  });
+});
+
+/**
+ * Tax-law grounding (Option A) — the AI grounds tax-rule statements on the
+ * canonical engine config, never on training memory. Test the pure mapper
+ * deterministically against a known config (§19.2).
+ */
+describe('buildTaxRulesReference — tax law sourced from the canonical engine config', () => {
+  it('maps the engine config verbatim (no re-typed law)', () => {
+    const t = buildTaxRulesReference(TAX_YEAR_2025_26);
+    expect(t.financialYear).toBe('2025-26');
+    expect(t.superGuaranteeRate).toBe(TAX_YEAR_2025_26.superGuaranteeRate); // 0.12
+    expect(t.taxFreeThreshold).toBe(18200);
+    expect(t.cgtDiscount).toBe(0.5);
+    expect(t.concessionalCap).toBe(TAX_YEAR_2025_26.concessionalCap);
+    expect(t.residentIncomeTaxBrackets.length).toBe(TAX_YEAR_2025_26.brackets.length);
+    expect(t.residentIncomeTaxBrackets[0]).toEqual({ min: 0, max: 18200, rate: 0 });
+  });
+
+  it('surfaces every Phase 41E reform measure with commencement status (§12.14)', () => {
+    const t = buildTaxRulesReference(TAX_YEAR_2025_26);
+    expect(t.reformMeasures.length).toBe(8);
+    // Every reform flag is false in the shipped config → NONE is current law.
+    for (const m of t.reformMeasures) {
+      expect(m.commenced).toBe(false);
+      expect(m.status).toBe('announced-not-in-effect');
+    }
+  });
+
+  it('flips a measure to in-effect only when its commencement flag is verified', () => {
+    const assented = { ...TAX_YEAR_2025_26, negativeGearingReformCommencementVerified: true };
+    const t = buildTaxRulesReference(assented);
+    const negGear = t.reformMeasures.find((m) => m.measure.includes('Negative gearing'))!;
+    expect(negGear.commenced).toBe(true);
+    expect(negGear.status).toBe('in-effect');
+  });
+});
+
+describe('assembleFactPack — tax-law reference block', () => {
+  it('attaches taxRules to the reference (brackets + reform measures)', () => {
+    const pack = assembleFactPack(makeSnapshot());
+    expect(pack.reference.taxRules.residentIncomeTaxBrackets.length).toBeGreaterThan(0);
+    expect(pack.reference.taxRules.reformMeasures.length).toBe(8);
+  });
+
+  it('exposes the most-cited tax rules as resolvable app facts when tax scope is requested', () => {
+    const pack = assembleFactPack(makeSnapshot(), { scopes: ['tax'] });
+    expect(find(pack, 'taxRule.taxFreeThreshold')?.source).toBe('app');
+    expect(find(pack, 'taxRule.taxFreeThreshold')?.value).toBe(18200); // stable across all FY configs
+    expect(find(pack, 'taxRule.superGuaranteeRate')).toBeTruthy();
+  });
+
+  it('omits the tax-rule facts when neither tax nor app scope is requested (minimal payload)', () => {
+    const pack = assembleFactPack(makeSnapshot(), { scopes: ['cashflow'] });
+    expect(find(pack, 'taxRule.taxFreeThreshold')).toBeUndefined();
   });
 });
