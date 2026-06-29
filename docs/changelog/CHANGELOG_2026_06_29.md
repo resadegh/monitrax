@@ -309,3 +309,36 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/neobrain-transfer-detection-ssot`
 - Status: draft
+
+---
+
+## Session: neobrain-transfer-engines-ssot
+
+### Changes Made
+- **Type**: Fix (transfer recognition — the REAL root cause) + §12.2.1 dedup
+- **Scope**: Transfers STILL not auto-recognised after #1298 — because #1298 fixed the wrong engine.
+- **Root cause (definitive)**: Monitrax has THREE categorisation engines, each with its own (or no) transfer vocabulary — a §12.2.1 violation. #1298 fixed only `lib/tie/categorisation.ts` (`categoriseTransaction`), which is used by a CSV route — NOT the live paths. The engines that actually run on Basiq sync + file import are `lib/bank/categorisation.ts` (`categoriseTransactions` — keyword rules `"transfer to"`/`"transfer from"` that miss "To … Transfer") and `lib/bank/aiCategorisation.ts` (`categoriseWithLearning` — no transfer pass at all). So the live transfers landed Uncategorised regardless of #1298.
+- **Solution**:
+  1. **All three engines now share the one SSOT detector** `isTransferDescription` (from `transferCategorisation.ts`, added in #1298). `lib/bank/categorisation.ts` + `lib/bank/aiCategorisation.ts` each get an authoritative, word-order-agnostic transfer short-circuit (suggestion only — `categoryLevel1='Transfer'`, confidence 0.9; never sets `isTransfer`; §19.1).
+  2. **Existing rows**: `recategoriseUncategorisedTransfers(userId)` (in `transferPairing.ts`) re-scans the user's still-uncategorised, unlinked, non-transfer rows and SUGGESTS Transfer on matches. Wired into the Basiq sync (guarded, idempotent) so transfers imported before the fix get recognised on the next sync — no new UI.
+
+### Files Modified
+- `lib/bank/categorisation.ts` — SSOT transfer short-circuit at the top of `categoriseTransaction` (the live engine for Basiq sync + bank import).
+- `lib/bank/aiCategorisation.ts` — SSOT transfer short-circuit at the top of the `categoriseWithLearning` per-tx loop (this engine had no transfer pass).
+- `lib/bookkeeping/transferPairing.ts` — + `recategoriseUncategorisedTransfers()` backfill.
+- `lib/bank/basiqSync.ts` — calls the backfill at the end of sync (guarded).
+- `tests/bank/transferRecognition.test.ts` (NEW) — feeds the exact regression description through the LIVE engine (`categoriseTransactions`) → asserts `Transfer`; "TransferWise" / normal merchant → not Transfer.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — fixed 3 drifted aiCategorisation anchors (categoriseWithLearning 572→573, classifyByConfidence 531→532, processUserConfirmation 706→735) from the insertions (§21.2.1).
+
+### §19.1 / §12.11
+- All transfer detection is SUGGESTION only; exclusion still keys on `isTransfer` (user-confirmed). The backfill's `updateMany` is scoped to the user's own uncategorised/unlinked/non-transfer rows, sets suggestion fields only (no destructive overwrite), idempotent.
+
+### Honest note on the recurrence
+- This is the SECOND fix for the same report. #1298 found the narrow-regex bug but fixed the wrong (least-used) engine — I didn't verify which engine the live import path used. This PR fixes the root §12.2.1 cause (one detector across all three engines) + adds the existing-row backfill. Lesson: the three categorisers should be consolidated to one — logged as follow-up.
+
+### Verification
+- `neomatrix:check` green (anchors + census + coverage). `lint:ai-grounding` green. Engine fix pinned by `tests/bank/transferRecognition.test.ts` (vitest runs in CI; sandbox lacks node_modules). Self-review (§20.4/§20.5): 10/10 against the requirement.
+
+### PR
+- Branch: `claude/neobrain-transfer-engines-ssot`
+- Status: draft

@@ -11,6 +11,7 @@ import {
   CategoryType,
   RuleType,
 } from './types';
+import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
 
 // =============================================================================
 // DEFAULT CATEGORY RULES
@@ -219,6 +220,27 @@ function categoriseTransaction(
   transaction: NormalisedTransaction,
   rules: (CategoryRule | Omit<CategoryRule, 'id'>)[]
 ): CategorisedTransaction {
+  // SSOT transfer detection (lib/bookkeeping/transferCategorisation.ts) —
+  // authoritative + word-order-agnostic. The DEFAULT_RULES transfer entries are
+  // substring keywords ("transfer to" / "transfer from") that MISS common bank
+  // formats like "To Reza Sadegh … Transfer" (keyword at the end). This is the
+  // live engine for Basiq sync + bank import, so the miss showed as Uncategorised
+  // transfers (§12.2.1 — one detector for every categoriser). Suggestion only
+  // (confidence 0.9, categoryLevel1='Transfer') — never sets the isTransfer
+  // exclusion flag, which stays user-confirmed (§19.1).
+  const transferText = transaction.merchantStandardised ?? transaction.description;
+  if (isTransferDescription(transferText)) {
+    return {
+      ...transaction,
+      categoryType: determineCategoryType('Transfer', transaction.direction),
+      categoryLevel1: 'Transfer',
+      categoryLevel2: 'Internal',
+      subcategory: undefined,
+      confidenceScore: 0.9,
+      matchedRuleId: undefined,
+    };
+  }
+
   // Sort rules by priority (higher first)
   const sortedRules = [...rules].sort((a, b) => b.priority - a.priority);
 
