@@ -19,6 +19,10 @@ import {
   PROJECTIONS_SYSTEM_PROMPT,
 } from '../google';
 import { sumLoanBalances } from '@/lib/calculations/assetValuation';
+import { groundNarrative } from '@/lib/neobrain/verifyNarrativeFigures';
+import { renderTaxLawLines } from '@/lib/neobrain/grounding';
+import { buildTaxRulesReference } from '@/lib/neobrain/factPack';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 
 import type {
   AIAdvisorRequest,
@@ -120,6 +124,11 @@ export async function askFinancialQuestion(
     };
   }
 
+  // Neobrain grounding (Phase C): the answer is free text, so (a) feed the
+  // canonical tax law for any tax-rule statement, and (b) verify the answer's
+  // figures against the real context numbers post-generation. The user never
+  // reads an invented number or a tax rate recalled from memory.
+  const taxLaw = renderTaxLawLines(buildTaxRulesReference(getCurrentTaxYearConfig())).join('\n');
   const userPrompt = `
 My Financial Situation:
 - Net Worth: ${formatCurrencyForPrompt(context.netWorth)}
@@ -132,6 +141,12 @@ My Financial Situation:
 - Investments: ${formatCurrencyForPrompt(context.totalInvestments)}
 - Risk Appetite: ${context.riskAppetite || 'Not specified'}
 
+<tax-law>
+${taxLaw}
+</tax-law>
+
+Grounding: use ONLY the figures in "My Financial Situation" above — never invent or estimate a number. For any tax rule (bracket, rate, threshold, cap, CGT, super), use ONLY the <tax-law> above, never recall a rate from memory; a measure marked "announced-not-in-effect" is NOT current law.
+
 My Question: ${question}
 `;
 
@@ -140,6 +155,7 @@ My Question: ${question}
       answer: string;
       suggestions: string[];
     }>({
+      surface: 'financial-advisor',
       model: GEMINI_MODELS.QUICK_RESPONSE,
       systemPrompt: QUESTION_ANSWERING_PROMPT,
       userPrompt,
@@ -147,8 +163,29 @@ My Question: ${question}
       temperature: 0.7,
     });
 
+    // Verify the free-text answer's $/% figures trace to the real context
+    // numbers (+ safe derivations); redact any that don't + append a caveat note.
+    const backedAmounts = [
+      context.netWorth,
+      context.totalAssets,
+      context.totalDebt,
+      context.monthlyIncome,
+      context.monthlyExpenses,
+      context.monthlySurplus,
+      context.totalPropertyValue,
+      context.totalInvestments,
+    ];
+    const backedPercents =
+      context.monthlyIncome > 0
+        ? [
+            (context.monthlySurplus / context.monthlyIncome) * 100,
+            (context.monthlyExpenses / context.monthlyIncome) * 100,
+          ]
+        : [];
+    const groundedAnswer = groundNarrative(data.answer, backedAmounts, backedPercents);
+
     return {
-      answer: data.answer,
+      answer: groundedAnswer.text,
       suggestions: data.suggestions,
       usage: {
         model: usage.model,
