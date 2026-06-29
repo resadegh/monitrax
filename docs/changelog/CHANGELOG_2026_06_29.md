@@ -203,3 +203,23 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/neobrain-advisor-qa-grounding`
 - Status: draft
+
+---
+
+## Session: neobrain-cfo-chat-grounding
+
+### Changes Made
+- **Type**: Feature (AI grounding — last live ungrounded surface)
+- **Scope**: Ground the CFO follow-up chat (`/api/cfo/advice/chat`)
+- **Description**: While building the `lint:ai-grounding` gate, the CFO follow-up chat surfaced as the last live ungrounded financial-narrative surface — it returned free text with no figure verification. Now grounded the same way as the advisor Q&A: `groundNarrative` verifies the reply's $/% figures against the user's real snapshot `quickMetrics` (+ safe derivations) and redacts + notes any that don't trace. Also added the missing `surface: 'cfo-advisor'` cost tag (was `unknown`). The route already fetched the snapshot, so no extra I/O.
+
+### Files Modified
+- `app/api/cfo/advice/chat/route.ts` — post-gen `groundNarrative(result.text, …snapshot.quickMetrics…)` → `groundedText` persisted + returned; `surface: 'cfo-advisor'` tag. Reuses the existing `groundNarrative` SSOT — no new grounding code.
+
+### Verification
+- `neomatrix:check` green (no graph node in this route → no anchor change). `groundNarrative` already deterministically tested (#1292).
+- Self-review (§20.4/§20.5): 10/10 — closes the last live ungrounded financial-narrative surface, reusing the proven helper.
+
+### PR
+- Branch: `claude/neobrain-cfo-chat-grounding`
+- Status: draft

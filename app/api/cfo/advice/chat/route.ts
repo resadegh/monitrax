@@ -27,6 +27,7 @@ import { determineTrailStage } from '@/lib/cfo/trailStage';
 import { calculateCFOScore, scanForRisks, generateActions } from '@/lib/cfo';
 import { createAuditLog } from '@/lib/security/auditLog';
 import { sanitizeCdrMetadata } from '@/lib/security/cdrAuditCompliance';
+import { groundNarrative } from '@/lib/neobrain/verifyNarrativeFigures';
 
 const CHAT_SYSTEM_PROMPT = `You are the Personal CFO inside Monitrax,
 continuing an interactive conversation with the user about their advice
@@ -155,6 +156,7 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       .join('\n\n');
 
     const result = await generateGeminiTextCompletion({
+      surface: 'cfo-advisor',
       model: GEMINI_MODELS.FINANCIAL_ADVISOR, // Flash for follow-up — cheap + fast
       systemPrompt: CHAT_SYSTEM_PROMPT,
       userPrompt,
@@ -162,12 +164,33 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       maxTokens: 1024,
     });
 
+    // Neobrain grounding (Phase C): the chat reply is free text, so verify its
+    // $/% figures against the user's real snapshot numbers (+ safe derivations)
+    // and redact + note any that don't trace — the user never reads an invented
+    // number even though the model is told not to produce one.
+    const qm = snapshot.quickMetrics;
+    const backedAmounts = [
+      qm.netWorthValue,
+      qm.totalAssets,
+      qm.totalLiabilities,
+      qm.monthlyIncome,
+      qm.monthlyExpenses,
+      qm.monthlyCashflow,
+      qm.monthlyLoanRepayments,
+      qm.liquidCash,
+    ];
+    const backedPercents =
+      qm.monthlyIncome > 0
+        ? [(qm.monthlyCashflow / qm.monthlyIncome) * 100, (qm.monthlyExpenses / qm.monthlyIncome) * 100]
+        : [];
+    const groundedText = groundNarrative(result.text, backedAmounts, backedPercents).text;
+
     // Persist the assistant turn.
     const assistantTurn = await prisma.aIAdviceChatMessage.create({
       data: {
         adviceId: advice.id,
         role: 'assistant',
-        content: result.text,
+        content: groundedText,
       },
     });
 
@@ -179,7 +202,7 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
       metadata: sanitizeCdrMetadata({
         priorTurnCount: prior.length,
         userMessageLength: userMessage.length,
-        assistantMessageLength: result.text.length,
+        assistantMessageLength: groundedText.length,
         model: result.usage.model,
         tokensUsed: result.usage.totalTokens,
       }),
@@ -192,7 +215,7 @@ export const POST = withPermission('report.read', async (request: NextRequest, a
         message: {
           id: assistantTurn.id,
           role: 'assistant',
-          content: result.text,
+          content: groundedText,
           createdAt: assistantTurn.createdAt.toISOString(),
         },
       },
