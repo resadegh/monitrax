@@ -5130,6 +5130,69 @@
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
+    },
+    {
+      "id": "engine.neobrain.buildTaxRulesReference",
+      "kind": "engine",
+      "label": "Tax-law reference (FactPack grounding)",
+      "file": "lib/neobrain/factPack.ts",
+      "line": 110,
+      "layer": "service",
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "AI-readable current-FY AU tax law (brackets, thresholds, Medicare, LITO, super caps, Div293, CGT, transfer balance cap + Phase 41E reform measures with commencement status) the AI grounds tax-rule statements on.",
+      "formula": "Read every value from getCurrentTaxYearConfig() (canonical SSOT, no re-typed law); reform measures tagged in-effect vs announced-not-in-effect by the *CommencementVerified flags (§12.14).",
+      "authority": "Phase 54 §15.9 (tax-law grounding) + lib/tax-engine/config/taxYearConfig.ts",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-06-29",
+      "status": "documented"
+    },
+    {
+      "id": "engine.neobrain.assembleFactPack",
+      "kind": "engine",
+      "label": "Personal Financial Index (FactPack)",
+      "file": "lib/neobrain/factPack.ts",
+      "line": 219,
+      "layer": "service",
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "A typed, read-through grounding pack: user financial facts (from the master snapshot) + app reference (categories + tax law) the AI cites by ref. Persists nothing.",
+      "formula": "Map master-snapshot quickMetrics/emergencyFund/tax fields → Facts (value/zero/absent + asOf/stale); attach reference.taxRules from buildTaxRulesReference; never invents a number.",
+      "authority": "Phase 54 §15 Phase A (Personal Financial Index)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-06-29",
+      "status": "documented"
+    },
+    {
+      "id": "engine.neobrain.validateGroundedNumbers",
+      "kind": "engine",
+      "label": "Grounding validator (anti-hallucination)",
+      "file": "lib/neobrain/grounding.ts",
+      "line": 78,
+      "layer": "service",
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "Partition of AI-claimed refs into resolved (backed by a real, non-absent fact) vs rejected (unknown / absent / non-numeric) — a number the AI cites that this rejects never reaches the user.",
+      "formula": "For each claimed ref: resolveFactRef(pack, ref); reject if unknown OR fact.state===absent OR value not finite; else resolved + rendered via SSOT formatters.",
+      "authority": "Phase 54 §15 Phase B (grounding validator)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-06-29",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -7863,6 +7926,46 @@
       "type": "feeds",
       "source": "verified",
       "evidence": "tenYearProjection.ts:43 — projects the snapshot forward"
+    },
+    {
+      "from": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
+      "to": "engine.neobrain.assembleFactPack",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "factPack.ts:375 — assembleFactPackForUser awaits getMasterFinancialSnapshot(userId), then assembleFactPack maps its quickMetrics/tax/emergencyFund into Facts.",
+      "verifiedDate": "2026-06-29"
+    },
+    {
+      "from": "engine.taxYearConfig.getCurrentTaxYearConfig",
+      "to": "engine.neobrain.buildTaxRulesReference",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "factPack.ts:296,301 — getCurrentTaxYearConfig() feeds buildTaxRulesReference(taxConfig).",
+      "verifiedDate": "2026-06-29"
+    },
+    {
+      "from": "engine.neobrain.buildTaxRulesReference",
+      "to": "engine.neobrain.assembleFactPack",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "factPack.ts:301 — taxRules = buildTaxRulesReference(...) attached to reference.taxRules.",
+      "verifiedDate": "2026-06-29"
+    },
+    {
+      "from": "engine.neobrain.assembleFactPack",
+      "to": "engine.neobrain.validateGroundedNumbers",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "grounding.ts:78 — validateGroundedNumbers(pack, claimed) resolves the AI-claimed refs against the assembled FactPack.",
+      "verifiedDate": "2026-06-29"
     }
   ]
 }

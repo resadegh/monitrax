@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 231 · **Edges:** 307
-- **By kind:** orchestrator 9 · engine 128 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 231
-- **Edge provenance:** verified 307 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/148 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 234 · **Edges:** 311
+- **By kind:** orchestrator 9 · engine 131 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
+- **By status:** documented 234
+- **Edge provenance:** verified 311 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/151 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -155,6 +155,9 @@
 | **Transaction frequency detection** | `lib/utils/reconciliation.ts:90` | engine | core | frequency + confidence — detects the recurring frequency of a transaction stream from its dates. | Monitrax transaction reconciliation. | lib/utils/reconciliation.ts:90 (NI-4 modelled; fixture pending) | documented |
 | **What-if: salary sacrifice to super** | `lib/cfo/scenarios/salarySacrificeToSuper.ts:519` | engine | cfo | ScenarioResult — take-home, tax saving, and super-balance impact of salary-sacrificing to super (with concessional-cap guard). | ITAA 1997 super concessional contributions + Monitrax what-if methodology. | lib/cfo/scenarios/salarySacrificeToSuper.ts:519 (NI-4 modelled; fixture pending) | documented |
 | **What-if: 10-year projection** | `lib/cfo/scenarios/tenYearProjection.ts:43` | engine | cfo | TenYearProjectionResult — net-worth / cashflow trajectory projected forward 10 years. | Monitrax projection methodology. | lib/cfo/scenarios/tenYearProjection.ts:43 (NI-4 modelled; fixture pending) | documented |
+| **Tax-law reference (FactPack grounding)** | `lib/neobrain/factPack.ts:110` | service | neobrain | AI-readable current-FY AU tax law (brackets, thresholds, Medicare, LITO, super caps, Div293, CGT, transfer balance cap + Phase 41E reform measures with commencement status) the AI grounds tax-rule statements on. | Phase 54 §15.9 (tax-law grounding) + lib/tax-engine/config/taxYearConfig.ts |  | documented |
+| **Personal Financial Index (FactPack)** | `lib/neobrain/factPack.ts:219` | service | neobrain | A typed, read-through grounding pack: user financial facts (from the master snapshot) + app reference (categories + tax law) the AI cites by ref. Persists nothing. | Phase 54 §15 Phase A (Personal Financial Index) |  | documented |
+| **Grounding validator (anti-hallucination)** | `lib/neobrain/grounding.ts:78` | service | neobrain | Partition of AI-claimed refs into resolved (backed by a real, non-absent fact) vs rejected (unknown / absent / non-numeric) — a number the AI cites that this rejects never reaches the user. | Phase 54 §15 Phase B (grounding validator) |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -559,6 +562,10 @@
 | UnifiedTransaction | → | Transaction frequency detection | feeds | — | verified | reconciliation.ts:90 — detects frequency from transaction dates |
 | Master financial snapshot | → | What-if: salary sacrifice to super | feeds | — | verified | salarySacrificeToSuper.ts:519 — reads ctx.snapshot |
 | Master financial snapshot | → | What-if: 10-year projection | feeds | — | verified | tenYearProjection.ts:43 — projects the snapshot forward |
+| Master financial snapshot | → | Personal Financial Index (FactPack) | feeds | — | verified | factPack.ts:375 — assembleFactPackForUser awaits getMasterFinancialSnapshot(userId), then assembleFactPack maps its quickMetrics/tax/emergencyFund into Facts. |
+| FY tax thresholds (canonical) | → | Tax-law reference (FactPack grounding) | feeds | — | verified | factPack.ts:296,301 — getCurrentTaxYearConfig() feeds buildTaxRulesReference(taxConfig). |
+| Tax-law reference (FactPack grounding) | → | Personal Financial Index (FactPack) | feeds | — | verified | factPack.ts:301 — taxRules = buildTaxRulesReference(...) attached to reference.taxRules. |
+| Personal Financial Index (FactPack) | → | Grounding validator (anti-hallucination) | feeds | — | verified | grounding.ts:78 — validateGroundedNumbers(pack, claimed) resolves the AI-claimed refs against the assembled FactPack. |
 
 ---
 

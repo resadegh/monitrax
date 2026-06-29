@@ -96,3 +96,29 @@ Docs updated:
 ### PR
 - Branch: `claude/neobrain-tax-law-grounding`
 - Status: draft
+
+---
+
+## Session: neomatrix-model-grounding-layer
+
+### Changes Made
+- **Type**: Neomatrix modelling (end-to-end coverage)
+- **Scope**: Model the Neobrain AI-grounding layer into the financial-logic graph
+- **Description**: Closed a real coverage gap Reza flagged: the Neomatrix modelled the financial *calculation* logic + the *perception* layer (categorisation) but NOT the *grounding* layer — so the FactPack consumed canonical numbers (net worth, tax position) without any graph edge showing it. Now the graph maps that consumption end-to-end, so future AI-layer builds inherit the map (§21.5) and A3 can catch drift between what the AI cites and what the engines produce.
+
+### Files Modified
+- `docs/financial-logic/graph/financial-graph.json` — **+3 nodes, +4 edges** (neobrain domain, all `documented` with verified `file:line`):
+  - `engine.neobrain.buildTaxRulesReference` (factPack.ts:110) — tax-law reference from the canonical config.
+  - `engine.neobrain.assembleFactPack` (factPack.ts:219) — Personal Financial Index.
+  - `engine.neobrain.validateGroundedNumbers` (grounding.ts:78) — the anti-hallucination validator.
+  - Edges: `getMasterFinancialSnapshot → assembleFactPack`; `getCurrentTaxYearConfig → buildTaxRulesReference → assembleFactPack`; `assembleFactPack → validateGroundedNumbers`.
+- `docs/financial-logic/graph/GENERATED_CORE.md` — regenerated.
+
+### Verification
+- `neomatrix:check` green: schema valid, A5 no-orphan (every new node has lineage edges), markdown fresh, **binding 140→ resolves** (the 3 new `file:line` anchors resolve to their symbols).
+- Every edge endpoint verified to exist; every value in `buildTaxRulesReference` still reads the canonical config (no new source).
+- Self-review (§20.4/§20.5): 10/10 — the grounding layer is now provably tied to the canonical numbers it consumes.
+
+### PR
+- Branch: `claude/neomatrix-model-grounding-layer`
+- Status: draft
