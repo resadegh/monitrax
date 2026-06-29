@@ -176,3 +176,30 @@ Docs updated:
 ### PR
 - Branch: `claude/neobrain-cfo-tax-grounding`
 - Status: draft
+
+---
+
+## Session: neobrain-advisor-qa-grounding
+
+### Changes Made
+- **Type**: Feature (AI grounding — close a live ungrounded surface)
+- **Scope**: Ground the AI Advisor Q&A panel (`/api/ai/ask` → `financialAdvisor.askFinancialQuestion`)
+- **Description**: Planning the bypass-proof `lint:ai-grounding` gate surfaced a hole: the live AI Advisor panel (`components/strategy/AiAdvisorPanel.tsx` → `/api/ai/ask`) narrated financial advice with **no grounding** — it could state an invented number or a tax rate from memory. Now grounded (Reza 2026-06-29: "ground the live one, flag the rest"): the free-text answer's $/% figures are verified against the real `FinancialContext` numbers (+ safe derivations) and redacted + noted if unbacked (`groundNarrative`); the prompt carries the canonical CURRENT TAX LAW so tax-rule statements ground on the engine config, reform-aware (§12.14). Also added the missing `surface: 'financial-advisor'` cost tag (it was logging as `unknown`).
+
+### Files Modified
+- `lib/ai/services/financialAdvisor.ts` — `askFinancialQuestion`: inject `<tax-law>` + grounding rule into the prompt; post-gen `groundNarrative(answer, backedAmounts, backedPercents)`; `surface: 'financial-advisor'` tag. Reuses the existing `groundNarrative` + `renderTaxLawLines` + `buildTaxRulesReference` SSOT — no new grounding code.
+
+### 🗑️ Flagged for Reza's dead-code decision (NOT deleted)
+Three sibling AI-advisor routes have **no frontend caller** found and reference no grounding — suspected dead:
+- `/api/ai/advisor` → `financialAdvisor.generateAIAdvice`
+- `/api/ai/scenario` → `strategyEnhancer.analyzeScenario`
+- `/api/ai/goal` → `strategyEnhancer.analyzeGoalProgress`
+Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned features. Tracked in `01_ACTIVE_WORKSTREAMS.md` Dead Code.
+
+### Verification
+- `neomatrix:check` green (no graph change — no node in this file). Grounding logic (`groundNarrative`) already deterministically tested (#1292); this PR reuses it.
+- Self-review (§20.4/§20.5): 10/10 — closes a live ungrounded surface by reusing the proven helpers; no new grounding code; the dead-code call surfaced for Reza, not assumed.
+
+### PR
+- Branch: `claude/neobrain-advisor-qa-grounding`
+- Status: draft
