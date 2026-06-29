@@ -180,6 +180,7 @@ Include vendor names, amounts, dates, and any identifying numbers.`;
 
   try {
     const result = await generateGeminiJSONCompletion<Record<string, unknown>>({
+      surface: 'document-intelligence',
       model: GEMINI_MODELS.DOCUMENT_ANALYSIS,  // Use cost-effective model
       systemPrompt: DOCUMENT_ANALYSIS_SYSTEM_PROMPT,
       userPrompt: `${userPrompt}\n\nDocument text:\n${truncatedText}`,

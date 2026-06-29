@@ -712,6 +712,7 @@ async function callGeminiAdvisor(input: GeminiAdvisorInput): Promise<AIAdviceDoc
   const userPrompt = `<context>\n${JSON.stringify(context, null, 2)}\n</context>\n\nReturn the advice document JSON now.`;
 
   const result = await generateGeminiJSONCompletion<RawAIResponse>({
+    surface: 'cfo-advisor',
     model: PRO_MODEL,
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,

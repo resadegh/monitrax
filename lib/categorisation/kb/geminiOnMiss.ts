@@ -17,7 +17,8 @@
 
 import prisma from '@/lib/db';
 import { CATEGORY_HIERARCHY } from '@/lib/tie/types';
-import { generateGeminiJSONCompletion, isGeminiConfigured, GEMINI_MODELS } from '@/lib/ai/gemini';
+import { generateGeminiJSONCompletion, isGeminiConfigured } from '@/lib/ai/google/geminiClient';
+import { GEMINI_MODELS } from '@/lib/ai/google/modelConfig';
 import { scrubToSignature } from './scrubSignature';
 
 /** Cost-control gate — Gemini-on-miss only runs when explicitly enabled. */
@@ -104,6 +105,7 @@ export async function geminiCategoriseOnMiss(rawDescription: string): Promise<Ge
     );
 
     const { data } = await generateGeminiJSONCompletion<GeminiRaw>({
+      surface: 'categorisation',
       systemPrompt,
       userPrompt,
       model: GEMINI_MODELS.FLASH,

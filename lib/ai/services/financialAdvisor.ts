@@ -65,6 +65,7 @@ export async function generateAIAdvice(
 
     // Generate AI response
     const { data, usage } = await generateGeminiJSONCompletion<AIAdvice>({
+      surface: 'financial-advisor',
       model,
       systemPrompt,
       userPrompt,

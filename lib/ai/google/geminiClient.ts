@@ -11,6 +11,7 @@
 
 import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GEMINI_MODELS, MODEL_FALLBACKS, getModelPricing } from './modelConfig';
+import { recordAiUsage } from '@/lib/ai/usage/recordAiUsage';
 
 // =============================================================================
 // CLIENT SINGLETON
@@ -55,6 +56,14 @@ export interface GeminiCompletionOptions {
   userPrompt: string;
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Neobrain telemetry (Phase 54): the logical surface making this call
+   * (e.g. 'categorisation', 'cfo-advisor'). Recorded to `AiUsageEvent` so the
+   * admin panel can attribute cost per surface. Defaults to 'unknown'.
+   */
+  surface?: string;
+  /** Owning user for telemetry attribution; omit for system calls. */
+  userId?: string | null;
 }
 
 export interface GeminiUsageMetrics {
@@ -279,9 +288,35 @@ export async function generateGeminiJSONCompletion<T>(
   // Build list of models to try (primary + fallbacks)
   const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
 
-  return withModelFallbackAndRetry(modelsToTry, (modelName) =>
-    tryGenerateWithModel<T>(client, modelName, fullPrompt, temperature, options.maxTokens)
-  );
+  try {
+    const result = await withModelFallbackAndRetry(modelsToTry, (modelName) =>
+      tryGenerateWithModel<T>(client, modelName, fullPrompt, temperature, options.maxTokens)
+    );
+    // Neobrain telemetry (Phase 54) — fire-and-forget; never blocks the response.
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: result.usage.model,
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+      estimatedCostUsd: result.usage.estimatedCost,
+      success: true,
+    });
+    return result;
+  } catch (err) {
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: primaryModel,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      estimatedCostUsd: 0,
+      success: false,
+    });
+    throw err;
+  }
 }
 
 /**
@@ -300,9 +335,34 @@ export async function generateGeminiTextCompletion(
   // Build list of models to try (primary + fallbacks)
   const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
 
-  return withModelFallbackAndRetry(modelsToTry, (modelName) =>
-    tryGenerateTextWithModel(client, modelName, fullPrompt, temperature, options.maxTokens)
-  );
+  try {
+    const result = await withModelFallbackAndRetry(modelsToTry, (modelName) =>
+      tryGenerateTextWithModel(client, modelName, fullPrompt, temperature, options.maxTokens)
+    );
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: result.usage.model,
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+      estimatedCostUsd: result.usage.estimatedCost,
+      success: true,
+    });
+    return result;
+  } catch (err) {
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: primaryModel,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      estimatedCostUsd: 0,
+      success: false,
+    });
+    throw err;
+  }
 }
 
 // =============================================================================

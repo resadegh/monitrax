@@ -87,6 +87,7 @@ const navSections: NavSection[] = [
       { label: 'Users', href: ADMIN_ROUTES.USERS, icon: icons.users, permission: 'users' },
       { label: 'Billing', href: ADMIN_ROUTES.BILLING, icon: icons.billing, permission: 'billing' },
       { label: 'Analytics', href: ADMIN_ROUTES.ANALYTICS, icon: icons.analytics, permission: 'analytics' },
+      { label: 'AI Usage & Cost', href: ADMIN_ROUTES.AI_USAGE, icon: icons.analytics, permission: 'analytics' },
       { label: 'Feature Flags', href: ADMIN_ROUTES.FEATURE_FLAGS, icon: icons.featureFlags, permission: 'featureFlags' },
     ],
   },

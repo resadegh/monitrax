@@ -7133,3 +7133,42 @@ enum ConsentSource {
   SETTINGS_UPDATE // user toggled an opt-in setting from /dashboard/settings/legal
   VERSION_REACCEPT // captured via the version-bump re-prompt
 }
+
+/// Neobrain AI-usage telemetry (Phase 54 — instrumentation).
+/// One row per Gemini completion call, written fire-and-forget from the
+/// canonical chokepoints (`lib/ai/google/geminiClient.ts`). The measurable
+/// baseline for the model-tiering cost/quality decision: aggregate by
+/// `surface` + `model` to see where AI spend actually goes as usage grows.
+/// NOT CDR data (no prompt/response content stored — counts + cost only).
+/// `userId` is a bare string (no FK) so system-level calls log cleanly and
+/// this telemetry table never blocks a User delete.
+model AiUsageEvent {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+
+  /// Logical surface that made the call (e.g. "categorisation", "cfo-advisor",
+  /// "debt-analysis", "financial-advisor"). "unknown" when a caller is unlabelled.
+  surface           String
+
+  /// The Gemini model the call actually used (post-fallback), e.g. "gemini-3.5-flash".
+  model             String
+
+  /// Owning user, if the call was made in a user context. Null for system calls.
+  userId            String?
+
+  promptTokens      Int
+  completionTokens  Int
+  totalTokens       Int
+
+  /// Estimated USD cost, computed at the call site from token counts ×
+  /// `getModelPricing()` (lib/ai/google/modelConfig.ts) — the SAME pricing SSOT
+  /// already used for per-call cost. No content, no PII.
+  estimatedCostUsd  Float
+
+  /// False when the call ultimately failed (all fallbacks exhausted).
+  success           Boolean  @default(true)
+
+  @@index([createdAt])
+  @@index([surface, createdAt])
+  @@index([model, createdAt])
+}
