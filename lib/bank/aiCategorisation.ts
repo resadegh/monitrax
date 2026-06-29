@@ -11,6 +11,7 @@ import {
 } from '@/lib/ai/google/geminiClient';
 import { GEMINI_MODELS } from '@/lib/ai/google/modelConfig';
 import { NormalisedTransaction, CategorisedTransaction, CategoryType } from './types';
+import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
 import {
   getMerchantLearnings,
   getPatternLearnings,
@@ -607,6 +608,34 @@ export async function categoriseWithLearning(
   const needsAI: NormalisedTransaction[] = [];
 
   for (const tx of transactions) {
+    // SSOT transfer detection (lib/bookkeeping/transferCategorisation.ts) —
+    // word-order-agnostic, runs BEFORE merchant-learning/AI. This engine had no
+    // transfer pass at all, so internal transfers like "To Reza Sadegh … Transfer"
+    // fell through to AI/uncategorised. Suggestion only (confidence 0.9,
+    // categoryLevel1='Transfer') — never sets the isTransfer exclusion flag
+    // (stays user-confirmed; §19.1 + §12.2.1 one detector for every categoriser).
+    const transferText = tx.merchantStandardised || tx.description;
+    if (isTransferDescription(transferText)) {
+      fromLearningResults.push({
+        transaction: tx,
+        prediction: {
+          categoryLevel1: 'Transfer',
+          categoryLevel2: 'Internal',
+          subcategory: null,
+          direction: tx.direction === 'IN' ? 'INCOME' : 'EXPENSE',
+          isEssential: false,
+          isRecurring: false,
+          suggestedFrequency: null,
+          confidence: 0.9,
+          reasoning: 'Recognised as an internal transfer from the description',
+        },
+        adjustedConfidence: 0.9,
+        boostReasons: ['Transfer description (SSOT detector)'],
+        penaltyReasons: [],
+      });
+      continue;
+    }
+
     const merchantKey = tx.merchantStandardised?.toLowerCase() || tx.description.toLowerCase();
     const learning = merchantLearnings.get(merchantKey);
 

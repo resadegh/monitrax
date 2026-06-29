@@ -20,6 +20,7 @@ import { PrismaClient, ImportStatus, ImportReviewStatus, TransactionSource } fro
 import { getTransactions, getAccount, mapBasiqTransactionDirection } from '@/lib/basiq';
 import { cleanMerchantName } from '@/lib/tie';
 import { categoriseTransactions } from './categorisation';
+import { recategoriseUncategorisedTransfers } from '@/lib/bookkeeping/transferPairing';
 import { generateHash } from './normalisation';
 import {
   categoriseWithLearning,
@@ -579,6 +580,19 @@ async function importBasiqTransactionsWithAI(
       importedCount: createdIds.length,
     },
   });
+
+  // Backfill: re-scan the user's still-uncategorised rows for internal transfers
+  // with the SSOT detector, so transfers imported BEFORE the detection fix get
+  // recognised (suggestion only — never sets isTransfer; §19.1). Guarded so a
+  // backfill failure never fails the sync.
+  try {
+    const recategorised = await recategoriseUncategorisedTransfers(userId);
+    if (recategorised > 0) {
+      console.log(`[basiqSync] re-recognised ${recategorised} existing transfer(s) for user ${userId}`);
+    }
+  } catch (err) {
+    console.error('[basiqSync] transfer backfill failed (sync unaffected):', err);
+  }
 
   return { imported: createdIds.length, aiStats };
 }

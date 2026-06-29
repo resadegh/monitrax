@@ -44,7 +44,7 @@
 
 import prisma from '@/lib/db';
 import type { UnifiedTransaction, TransactionDirection } from '@prisma/client';
-import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
+import { confirmedTransferFields, isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
 
 /** Match window in days (± from source date). */
 export const TRANSFER_PAIR_WINDOW_DAYS = 3;
@@ -292,4 +292,48 @@ export async function pairTransferAcrossAccounts(sourceId: string): Promise<stri
     }),
   ]);
   return match.id;
+}
+
+/**
+ * Backfill: re-scan the user's still-UNCATEGORISED rows for internal transfers
+ * and SUGGEST the Transfer category on matches (idempotent). Fixes transfers
+ * imported BEFORE the detection fix, which stay Uncategorised forever because
+ * the categorisation engines only run at import/sync time.
+ *
+ * Scope (narrow + safe): only rows that are uncategorised (categoryLevel1
+ * null/empty), unlinked (no expense/income/loan), and not already a transfer,
+ * whose description the SSOT detector (isTransferDescription, §12.2.1)
+ * recognises. Writes a SUGGESTION only — categoryLevel1='Transfer' at
+ * confidence 0.9 — and does NOT set `isTransfer` or `userCorrectedCategory`, so
+ * the spend/income exclusion + confirmation stay the user's to make (§19.1).
+ *
+ * §12.11: the only write is an updateMany scoped to the user's own
+ * uncategorised, unlinked, non-transfer rows, setting suggestion fields — no
+ * destructive overwrite (these rows have no category to clobber). Returns the
+ * number of rows newly suggested as transfers.
+ */
+export async function recategoriseUncategorisedTransfers(userId: string): Promise<number> {
+  const candidates = await prisma.unifiedTransaction.findMany({
+    where: {
+      userId,
+      isTransfer: { not: true },
+      expenseId: null,
+      incomeId: null,
+      loanId: null,
+      OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+    },
+    select: { id: true, description: true, merchantStandardised: true },
+  });
+
+  const transferIds = candidates
+    .filter((t) => isTransferDescription(t.merchantStandardised || t.description))
+    .map((t) => t.id);
+
+  if (transferIds.length === 0) return 0;
+
+  const res = await prisma.unifiedTransaction.updateMany({
+    where: { id: { in: transferIds }, userId },
+    data: { categoryLevel1: 'Transfer', categoryLevel2: 'Internal', confidenceScore: 0.9 },
+  });
+  return res.count;
 }
