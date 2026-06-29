@@ -24,6 +24,7 @@ import {
   VARIABLE_EXPENSE_ESTIMATION_PROMPT,
   buildVariableExpensePrompt,
   validateVariableExpenseResponse,
+  groundVariableExpenseTotal,
   calculateBenchmarkExpenses,
 } from '@/lib/budget-analysis/aiPrompt';
 import { VariableExpenseResponse } from '@/lib/budget-analysis/types';
@@ -286,7 +287,12 @@ export const POST = withPermission('expense.write', async (request, auth) => {
               trackedCategories
             );
           } else {
-            variableResponse = data;
+            // Neobrain grounding (Phase C.2): the AI estimates per category, but
+            // the headline total is recomputed deterministically as the sum of
+            // those categories — so "Variable $X" always equals the sum of the
+            // visible breakdown (never the AI's separately-stated, ±$50-tolerant
+            // figure). See groundVariableExpenseTotal + CLAUDE.md §19 / Part 21.
+            variableResponse = groundVariableExpenseTotal(data);
             usedAI = true;
           }
 

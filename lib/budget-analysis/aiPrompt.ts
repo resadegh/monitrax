@@ -241,6 +241,37 @@ export function validateVariableExpenseResponse(
 }
 
 // =============================================================================
+// Neobrain grounding — derive the headline total from its visible parts
+// =============================================================================
+
+/**
+ * Neobrain grounding (Phase C.2): the AI returns a per-category estimate AND a
+ * separately-stated `total`. `validateVariableExpenseResponse` only requires the
+ * two to agree within $50, so the headline "Variable $X" the user sees can drift
+ * from the sum of the category breakdown shown beneath it — a small aggregate
+ * that doesn't trace to its parts.
+ *
+ * The grounding principle (CLAUDE.md §19 / Part 21): never trust an AI-stated
+ * aggregate you can compute from its parts. This recomputes `total` as the exact
+ * sum of the category estimates, so the headline figure ALWAYS equals the sum of
+ * the visible categories. Estimation (the per-category numbers) stays the AI's
+ * job — only the aggregate is made deterministic.
+ *
+ * Pure; returns a new object (does not mutate). Scenario totals are left as the
+ * AI's estimates — they are a separate min/recommended/comfortable axis, already
+ * ordering- and bounds-validated, not a pure sum of the categories.
+ */
+export function groundVariableExpenseTotal(
+  response: VariableExpenseResponse
+): VariableExpenseResponse {
+  const categorySum = Object.values(response.categories || {}).reduce(
+    (sum, cat) => sum + (cat?.estimate || 0),
+    0
+  );
+  return { ...response, total: Math.round(categorySum) };
+}
+
+// =============================================================================
 // Fallback Benchmark Calculator
 // =============================================================================
 
