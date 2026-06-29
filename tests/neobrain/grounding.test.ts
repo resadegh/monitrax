@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import type { MasterFinancialSnapshot } from '@/lib/services/masterFinancialService';
-import { assembleFactPack } from '@/lib/neobrain/factPack';
+import { assembleFactPack, buildTaxRulesReference } from '@/lib/neobrain/factPack';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
 import {
   resolveFactRef,
   validateGroundedNumbers,
   renderFact,
   buildGroundingClause,
+  renderTaxLawLines,
 } from '@/lib/neobrain/grounding';
 
 /**
@@ -106,5 +108,21 @@ describe('buildGroundingClause', () => {
     expect(clause).toContain('Resident income tax brackets');
     expect(clause).toContain('never recall a rate'); // grounding rule 5 — no tax rates from memory
     expect(clause).toMatch(/announced-not-in-effect|NOT current law/); // reform measures gated
+  });
+});
+
+describe('renderTaxLawLines — the ONE shared tax-law clause (used by FactPack + CFO advisor)', () => {
+  it('renders the current-FY tax law with brackets, caps, CGT and reform status', () => {
+    const lines = renderTaxLawLines(buildTaxRulesReference(getCurrentTaxYearConfig())).join('\n');
+    expect(lines).toContain('CURRENT TAX LAW');
+    expect(lines).toMatch(/Resident income tax brackets:/);
+    expect(lines).toContain('Medicare levy');
+    expect(lines).toContain('CGT discount');
+    expect(lines).toContain('reform measures');
+  });
+
+  it('returns empty for missing rules — never fabricates law', () => {
+    expect(renderTaxLawLines(null)).toEqual([]);
+    expect(renderTaxLawLines(undefined)).toEqual([]);
   });
 });

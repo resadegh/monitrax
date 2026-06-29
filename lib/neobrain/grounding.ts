@@ -14,7 +14,7 @@
  * mandatory.
  */
 import { formatCurrency, formatPercentageValue } from '@/lib/utils/formatters';
-import type { Fact, FactPack } from '@/lib/neobrain/factPack';
+import type { Fact, FactPack, TaxRulesReference } from '@/lib/neobrain/factPack';
 
 /** A number the AI claimed, keyed by the ref it cited. */
 export interface ClaimedRef {
@@ -137,7 +137,16 @@ export function buildGroundingClause(pack: FactPack): string {
 
 /** Render the current-FY tax law (from `reference.taxRules`) for the prompt. */
 function buildTaxLawLines(pack: FactPack): string[] {
-  const t = pack.reference?.taxRules;
+  return renderTaxLawLines(pack.reference?.taxRules);
+}
+
+/**
+ * Render the current-FY tax law as prompt lines from a `TaxRulesReference`.
+ * The ONE source of the tax-law clause text (§12.2.1) — used by the FactPack
+ * grounding clause AND by any other surface that must ground tax-rule statements
+ * on canonical law (e.g. the CFO advisor). Empty when no rules are present.
+ */
+export function renderTaxLawLines(t: TaxRulesReference | null | undefined): string[] {
   if (!t) return [];
   const pct = (r: number) => `${(r * 100).toFixed(2)}%`;
   const brackets = t.residentIncomeTaxBrackets
