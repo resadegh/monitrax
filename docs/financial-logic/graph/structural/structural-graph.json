@@ -886,6 +886,7 @@
     "lib/neobrain/debtProjections.ts",
     "lib/neobrain/factPack.ts",
     "lib/neobrain/grounding.ts",
+    "lib/neobrain/verifyNarrativeFigures.ts",
     "lib/onboarding/accountsSync.ts",
     "lib/onboarding/applyWizardDelta.ts",
     "lib/onboarding/assetsSync.ts",
