@@ -14,6 +14,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GeminiSummary, CashflowIntelligence } from './types';
 import crypto from 'crypto';
 import { formatCurrencyForPrompt } from '@/lib/ai/google/geminiClient';
+import { getModelPricing } from '@/lib/ai/google/modelConfig';
+import { recordAiUsage } from '@/lib/ai/usage/recordAiUsage';
 
 // =============================================================================
 // CONFIGURATION
@@ -250,6 +252,24 @@ export async function generateGeminiSummary(
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
+
+    // Neobrain telemetry (Phase 54): direct SDK call, not covered by the
+    // geminiClient.ts chokepoint — record the cashflow-summary usage + cost.
+    const usage = response.usageMetadata;
+    const promptTokens = usage?.promptTokenCount ?? 0;
+    const completionTokens = usage?.candidatesTokenCount ?? 0;
+    const pricing = getModelPricing(GEMINI_MODEL);
+    recordAiUsage({
+      surface: 'cashflow-summary',
+      model: GEMINI_MODEL,
+      userId,
+      promptTokens,
+      completionTokens,
+      totalTokens: usage?.totalTokenCount ?? promptTokens + completionTokens,
+      estimatedCostUsd:
+        (promptTokens / 1_000_000) * pricing.inputPer1M +
+        (completionTokens / 1_000_000) * pricing.outputPer1M,
+    });
 
     // Validate response length
     let content = text.trim();
