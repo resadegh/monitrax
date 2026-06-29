@@ -5031,7 +5031,7 @@
       "kind": "engine",
       "label": "CFO AI advice",
       "file": "lib/cfo/aiAdvisor.ts",
-      "line": 160,
+      "line": 163,
       "layer": "engine",
       "domain": "cfo",
       "trailStage": null,
@@ -5042,7 +5042,7 @@
       "authority": "Monitrax CFO advisor (grounded in canonical snapshot).",
       "inputs": [],
       "astHash": null,
-      "verifiedBy": "lib/cfo/aiAdvisor.ts:160 (NI-4 modelled; fixture pending)",
+      "verifiedBy": "lib/cfo/aiAdvisor.ts:163 (NI-4 modelled; fixture pending)",
       "workedExample": null,
       "verifiedDate": "2026-06-26",
       "status": "documented"
@@ -7897,7 +7897,7 @@
       "to": "engine.cfo.aiAdvisor.generateOrFetchAdvice",
       "type": "feeds",
       "source": "verified",
-      "evidence": "aiAdvisor.ts:160 — grounds advice in the canonical snapshot"
+      "evidence": "aiAdvisor.ts:163 — grounds advice in the canonical snapshot"
     },
     {
       "from": "input.UnifiedTransaction",

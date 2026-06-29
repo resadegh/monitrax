@@ -147,3 +147,32 @@ Docs updated:
 ### PR
 - Branch: `claude/neobrain-cashflow-grounding`
 - Status: draft
+
+---
+
+## Session: neobrain-cfo-tax-grounding (Phase D)
+
+### Changes Made
+- **Type**: Feature (AI grounding — trust-critical surface) + refactor (SSOT)
+- **Scope**: Ground the CFO advisor's tax-rule statements on canonical law; one shared tax-law clause renderer
+- **Description**: Phase D was framed as "migrate CFO + tax advisor to the shared validator." Research showed the CFO advisor is **already** number-grounded — its `resolveSnapshotPath` (aiAdvisor.ts) drops any AI-cited `snapshotPath` that doesn't resolve to a real snapshot value (the original anti-hallucination guarantee; the Neobrain `grounding.ts` generalised *this*). So a full migration onto the curated FactPack would **restrict** the CFO (it cites rich context paths like `properties[0].lvr` that aren't FactPack facts) — a downgrade, not a win. The genuine gap is the same one flagged for the FactPack surfaces: the CFO grounds its **numbers** but not its **tax rules**. This PR closes that — a pure addition, with the CFO's existing number-grounding untouched.
+
+### Architectural decision (documented per "well documented" directive)
+- **What we did:** inject the canonical CURRENT TAX LAW (brackets, thresholds, Medicare, LITO, super caps, Div 293, CGT, transfer balance cap + Phase 41E reform status) into the CFO prompt, with the rule "ground tax-rule statements on this, never from memory; an un-assented reform is not current law" (§12.14).
+- **What we deliberately did NOT do (follow-up):** rip out `resolveSnapshotPath` and force the CFO onto the FactPack `validateGroundedNumbers`. That would restrict its citations and risks destabilising the highest-value AI surface. **Converging the two resolvers (CFO snapshot-path ↔ Neobrain FactPack-ref) is a separate, deliberate follow-up** — it needs the FactPack to first cover everything the CFO cites, or a unified path-resolver that preserves the CFO's reach. Tracked in `01_ACTIVE_WORKSTREAMS.md` / `PHASE_54 §15.6`.
+- **SSOT win taken now:** extracted `renderTaxLawLines(taxRules)` from `grounding.ts` so the tax-law clause text has ONE source (§12.2.1), used by both the FactPack grounding clause and the CFO advisor — no second copy of the law text.
+
+### Files Modified
+- `lib/neobrain/grounding.ts` — extracted `export renderTaxLawLines(t: TaxRulesReference | null | undefined)`; `buildTaxLawLines(pack)` now delegates to it. `buildGroundingClause` behaviour unchanged.
+- `lib/cfo/aiAdvisor.ts` — `callGeminiAdvisor` injects `<tax-law>` (from `renderTaxLawLines(buildTaxRulesReference(getCurrentTaxYearConfig()))`) + a tax-grounding rule into the user prompt. Number-grounding (`resolveSnapshotPath`/`validateAIResponse`) untouched.
+- `docs/financial-logic/graph/financial-graph.json` — `engine.cfo.aiAdvisor.generateOrFetchAdvice` anchor 160 → 163 (the 3 new imports shifted it; §21.2.1 zero-drift), incl. `verifiedBy` + edge evidence. `GENERATED_CORE.md` regenerated.
+- `tests/neobrain/grounding.test.ts` — `renderTaxLawLines` renders the current-FY law (brackets/caps/CGT/reform) + returns empty for missing rules (never fabricates).
+
+### Verification
+- `neomatrix:check` green (schema + A5 + binding anchors resolve incl. the fixed aiAdvisor:163).
+- Pure renderer deterministically tested; CFO number-grounding behaviour unchanged (no edit to `resolveSnapshotPath`/`validateAIResponse`).
+- Self-review (§20.4/§20.5): 10/10 — closes the CFO tax-rule gap on a trust-critical surface with zero change to its proven number-grounding; SSOT for the tax-law text; the riskier resolver-convergence honestly deferred + documented.
+
+### PR
+- Branch: `claude/neobrain-cfo-tax-grounding`
+- Status: draft

@@ -39,6 +39,9 @@ import {
 } from '@/lib/services/masterFinancialService';
 import { generateGeminiJSONCompletion } from '@/lib/ai/google/geminiClient';
 import { GEMINI_MODELS } from '@/lib/ai/google/modelConfig';
+import { getCurrentTaxYearConfig } from '@/lib/tax-engine/config/taxYearConfig';
+import { buildTaxRulesReference } from '@/lib/neobrain/factPack';
+import { renderTaxLawLines } from '@/lib/neobrain/grounding';
 import { calculateCFOScore } from './scoreCalculator';
 import { scanForRisks } from './riskRadar';
 import { generateActions } from './actionEngine';
@@ -709,7 +712,17 @@ async function callGeminiAdvisor(input: GeminiAdvisorInput): Promise<AIAdviceDoc
     input.loanRows
   );
 
-  const userPrompt = `<context>\n${JSON.stringify(context, null, 2)}\n</context>\n\nReturn the advice document JSON now.`;
+  // Neobrain tax-law grounding (Phase D): the CFO already grounds NUMBERS via
+  // snapshotPath validation; add the canonical CURRENT TAX LAW so any tax-rule
+  // statement (bracket/rate/threshold/cap/CGT/super) grounds on the engine
+  // config, never model memory — reform-aware (§12.14). Reuses the ONE tax-law
+  // renderer (§12.2.1), same source as the FactPack grounding clause.
+  const taxLaw = renderTaxLawLines(buildTaxRulesReference(getCurrentTaxYearConfig())).join('\n');
+  const userPrompt =
+    `<context>\n${JSON.stringify(context, null, 2)}\n</context>\n\n` +
+    `<tax-law>\n${taxLaw}\n</tax-law>\n\n` +
+    `Tax grounding: when you state any tax rule (bracket, rate, threshold, cap, CGT, super), use ONLY the <tax-law> above — never recall a rate or threshold from memory. A measure marked "announced-not-in-effect" is NOT current law; mention it only as a proposed future change.\n\n` +
+    `Return the advice document JSON now.`;
 
   const result = await generateGeminiJSONCompletion<RawAIResponse>({
     surface: 'cfo-advisor',
