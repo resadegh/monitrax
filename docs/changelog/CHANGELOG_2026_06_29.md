@@ -70,4 +70,29 @@ Docs updated:
 
 ### PR
 - Branch: `claude/neobrain-ai-usage-v1.1`
+- Status: merged (#1289)
+
+---
+
+## Session: neobrain-tax-law-grounding
+
+### Changes Made
+- **Type**: Feature (AI grounding correctness)
+- **Scope**: Neobrain FactPack + grounding clause — ground tax-rule statements on canonical law
+- **Description**: Closed the gap Reza flagged: general advisor surfaces (CFO, financial advisor, debt analysis) had the user's tax *numbers* (engine-computed, grounded) but not the tax *laws* — so an explanation citing a bracket/rate/threshold drew it from the model's training memory. Now the FactPack carries the current-FY AU tax law and the AI is instructed to ground every tax-rule statement on it, never recall from memory (Option A — match the engine, Reza 2026-06-29).
+
+### Files Modified
+- `lib/neobrain/factPack.ts` — new `TaxRulesReference` + `buildTaxRulesReference(config)` (pure; sourced ENTIRELY from `getCurrentTaxYearConfig()` — §12.2.1, no re-typed law): brackets, tax-free threshold, Medicare, LITO, super caps, Div 293, CGT discount, transfer balance cap, and the 8 Phase 41E reform measures **with commencement status** (§12.14 — un-assented = "announced-not-in-effect", never current law). Added `reference.taxRules` + the most-cited single rules as resolvable `app` facts (when tax/app scope).
+- `lib/neobrain/grounding.ts` — `buildGroundingClause` now appends a CURRENT TAX LAW block (brackets + thresholds + caps + CGT + reform status) and two new grounding rules: (5) ground all tax-rule statements on it, never from memory; (6) a measure marked announced-not-in-effect is NOT current law.
+- `tests/neobrain/factPack.test.ts` — `buildTaxRulesReference` mapped verbatim from config; reform measures gated on commencement flags (deterministic, §19.2); FactPack attaches taxRules + resolvable app facts; scope minimisation.
+- `tests/neobrain/grounding.test.ts` — clause surfaces the tax law + the §12.14 reform guard.
+
+### Verification
+- No financial-graph impact (grounding-layer files; neither holds a Neomatrix node). `neomatrix:check` green locally.
+- SSOT: every tax value reads straight from the canonical engine config — no second source of the law (§12.2.1). The reform commencement gating reuses the engine's `*CommencementVerified` flags.
+- Scope = **Option A (match the engine)** — grounds exactly what the engine canonically models; no invented/un-computable law.
+- Self-review (§20.4/§20.5): 10/10 — closes the "AI recalls a tax rule from memory" gap with the canonical law, reform-aware.
+
+### PR
+- Branch: `claude/neobrain-tax-law-grounding`
 - Status: draft

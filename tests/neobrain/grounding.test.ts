@@ -99,4 +99,12 @@ describe('buildGroundingClause', () => {
     expect(clause).toMatch(/NOT AVAILABLE/);
     expect(clause).toContain('2026-06-28T00:00:00.000Z'); // the "as of" freshness anchor
   });
+
+  it('surfaces the current tax law + the §12.14 "not current law" guard for reform measures', () => {
+    const clause = buildGroundingClause(assembleFactPack(snap()));
+    expect(clause).toContain('CURRENT TAX LAW');
+    expect(clause).toContain('Resident income tax brackets');
+    expect(clause).toContain('never recall a rate'); // grounding rule 5 — no tax rates from memory
+    expect(clause).toMatch(/announced-not-in-effect|NOT current law/); // reform measures gated
+  });
 });
