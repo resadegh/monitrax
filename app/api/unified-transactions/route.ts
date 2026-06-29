@@ -128,10 +128,13 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
       }
 
       if (search) {
+        // Matches the input placeholder "merchant, description, or category".
         where.OR = [
           { description: { contains: search, mode: 'insensitive' } },
           { merchantStandardised: { contains: search, mode: 'insensitive' } },
           { merchantRaw: { contains: search, mode: 'insensitive' } },
+          { categoryLevel1: { contains: search, mode: 'insensitive' } },
+          { categoryLevel2: { contains: search, mode: 'insensitive' } },
         ];
       }
 

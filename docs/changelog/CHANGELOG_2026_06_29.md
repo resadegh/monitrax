@@ -342,3 +342,23 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/neobrain-transfer-engines-ssot`
 - Status: draft
+
+---
+
+## Session: fix-activity-search-page-reset
+
+### Changes Made
+- **Type**: Fix (Activity page search returned nothing)
+- **Root cause**: the search `<input>` onChange called `setSearch()` but NOT `setPage(1)` — the ONLY filter that didn't (account/category/date all reset page on change). Typing a query while viewing a many-page account (e.g. Guildford Offsett, 264+ rows) refetched at the stale `page > 1`; the narrowed matches didn't fill that page → "No transactions match" even though matches exist. Pressing Enter worked (the form-submit `handleSearch` does reset page) — typing didn't. Confirmed the displayed name is `tx.description` (the field the server search already matches), so it was not a field mismatch.
+- **Solution**: search onChange now `setSearch(...) + setPage(1)`, consistent with every other filter. Also added `categoryLevel1`/`categoryLevel2` to the server search `OR` so the input's "…or category" promise actually holds.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — search onChange resets page to 1.
+- `app/api/unified-transactions/route.ts` — search `OR` now includes category fields.
+
+### Verification
+- `neomatrix:check` green (route not modelled; no anchor drift). vitest/typecheck in CI (sandbox lacks node_modules). Self-review (§20.5): 10/10 — root cause verified (the lone filter missing the page-reset every sibling has), low-risk, no money number touched.
+
+### PR
+- Branch: `claude/fix-activity-search-page-reset`
+- Status: draft
