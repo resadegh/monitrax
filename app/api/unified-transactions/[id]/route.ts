@@ -22,7 +22,7 @@ import {
 } from '@/lib/bookkeeping/transactionEditAudit';
 import { resolveOrCreateCategory } from '@/lib/bookkeeping/categoryRegistry';
 import { touchStreak } from '@/lib/bookkeeping/engagement/streak';
-import { pairTransferIfPossible } from '@/lib/bookkeeping/transferPairing';
+import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -254,6 +254,13 @@ export const PATCH = withPermission<RouteContext>('transaction.write', async (re
       if (body.isTransfer === true && typeof body.transferToAccountId === 'string') {
         pairTransferIfPossible(id, body.transferToAccountId).catch((err) => {
           console.warn('[transfer-pair] pairing failed', { sourceId: id, err });
+        });
+      } else if (body.isTransfer === true) {
+        // No explicit destination → auto-discover the other leg across all the
+        // user's accounts (Reza directive 2026-06-29). Unique-match-only, so no
+        // false pairs. Fire-and-forget (best-effort) per §12.10.
+        pairTransferAcrossAccounts(id).catch((err) => {
+          console.warn('[transfer-pair] cross-account pairing failed', { sourceId: id, err });
         });
       }
 

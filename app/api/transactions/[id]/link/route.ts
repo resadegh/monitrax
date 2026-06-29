@@ -14,6 +14,7 @@ import { prisma } from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
 import { getDefaultLegalEntityId } from '@/lib/services/legalEntityService';
 import { confirmedTransferFields } from '@/lib/bookkeeping/transferCategorisation';
+import { pairTransferIfPossible, pairTransferAcrossAccounts } from '@/lib/bookkeeping/transferPairing';
 import { applyCategoryToSimilarUnified } from '@/lib/bookkeeping/applyToSimilarUnified';
 import { resolveTransactionMatches } from '@/lib/bookkeeping/resolveTransaction';
 import { linkRepaymentToTransaction } from '@/lib/bookkeeping/loanLedger/matchRepayments';
@@ -977,6 +978,20 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
             data: transferData,
           });
 
+          // Auto-mark the OTHER leg (Reza directive 2026-06-29: the target-account
+          // transaction should also be marked as transfer automatically). With an
+          // explicit destination we search that account; without one we auto-discover
+          // across all the user's accounts. Either way we only pair on a UNIQUE
+          // match (no false pairs). Guarded so a pairing miss never fails the mark.
+          let pairedTxId: string | null = null;
+          try {
+            pairedTxId = body.transferToAccountId
+              ? await pairTransferIfPossible(transactionId, body.transferToAccountId)
+              : await pairTransferAcrossAccounts(transactionId);
+          } catch (pairErr) {
+            console.error('[link route] transfer pairing failed (source still marked):', pairErr);
+          }
+
           // Batch-mark additional transactions as the same transfer (§12.2.1 —
           // the batch path must apply to transfers too, not just expense/income).
           let transferBatchCount = 0;
@@ -1004,11 +1019,14 @@ export const POST = withPermission<RouteContext>('transaction.write', async (req
           return NextResponse.json({
             success: true,
             batchCount: transferBatchCount,
+            pairedTransactionId: pairedTxId,
             message: transferBatchCount > 0
               ? `Marked ${transferBatchCount + 1} transactions as transfers`
-              : body.transferToAccountId
-                ? 'Marked as transfer to another account'
-                : 'Marked as transfer',
+              : pairedTxId
+                ? 'Marked as transfer — matched the other account automatically'
+                : body.transferToAccountId
+                  ? 'Marked as transfer to another account'
+                  : 'Marked as transfer',
           });
         }
 

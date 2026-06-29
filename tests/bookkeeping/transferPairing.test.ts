@@ -151,3 +151,32 @@ describe('TRANSFER_PAIR_AMOUNT_TOLERANCE constant', () => {
     expect(TRANSFER_PAIR_AMOUNT_TOLERANCE).toBe(0.01);
   });
 });
+
+describe('filterPairCandidates — across-accounts (null destination, Reza 2026-06-29)', () => {
+  // With a null destination the matcher auto-discovers across ALL other accounts.
+  it('matches a unique opposite candidate on ANY other account', () => {
+    const out = filterPairCandidates(source, null, [tx({ accountId: 'C' })]);
+    expect(out).toHaveLength(1);
+    expect(out[0].id).toBe('c1');
+  });
+
+  it('still rejects a candidate on the SAME account as the source', () => {
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'A' })])).toHaveLength(0);
+  });
+
+  it('returns multiple when two accounts each have a match (caller treats !=1 as no-pair)', () => {
+    const out = filterPairCandidates(source, null, [
+      tx({ id: 'c1', accountId: 'B' }),
+      tx({ id: 'c2', accountId: 'C' }),
+    ]);
+    expect(out).toHaveLength(2); // pairTransferAcrossAccounts will NOT guess → no-op
+  });
+
+  it('still enforces opposite-direction / amount / window / unlinked across accounts', () => {
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'C', direction: 'OUT' })])).toHaveLength(0);
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'C', amount: 250 })])).toHaveLength(0);
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'C', date: day(2026, 5, 20) })])).toHaveLength(0);
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'C', isTransfer: true })])).toHaveLength(0);
+    expect(filterPairCandidates(source, null, [tx({ accountId: 'C', expenseId: 'e1' })])).toHaveLength(0);
+  });
+});
