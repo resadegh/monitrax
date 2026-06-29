@@ -16,7 +16,7 @@ import { AdminTable } from '@/components/admin/ui/AdminTable';
 import { AdminButton } from '@/components/admin/ui/AdminButton';
 import { Select } from '@/components/admin/ui/AdminForm';
 import { AdminFeatureGate } from '@/components/admin/AdminFeatureGate';
-import { API_ROUTES } from '@/lib/admin/constants';
+import { ADMIN_API_ROUTES } from '@/lib/admin/constants';
 
 interface BreakdownRow {
   key: string;
@@ -52,7 +52,7 @@ export default function AiUsagePage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_ROUTES.AI_USAGE}?days=${days}`);
+      const res = await fetch(`${ADMIN_API_ROUTES.AI_USAGE}?days=${days}`);
       if (!res.ok) throw new Error('Failed to fetch AI usage metrics');
       const json = await res.json();
       setMetrics(json.data as AiUsageMetrics);
