@@ -223,3 +223,27 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/neobrain-cfo-chat-grounding`
 - Status: draft
+
+---
+
+## Session: neobrain-lint-ai-grounding
+
+### Changes Made
+- **Type**: Feature (CI gate — bypass-proof grounding enforcement, Phase B.2)
+- **Scope**: `lint:ai-grounding` — a pure-Node build gate that makes "every user-facing AI surface that narrates money is grounded" a **build fact, not a claim**.
+- **Description**: Grounding the live surfaces (#1292–#1295) closed today's holes, but nothing stopped the *next* AI surface from shipping ungrounded — exactly the recurring failure mode §22 warns about (audits that pass, then the next audit finds misses). This gate walks `lib/`+`app/` for any user-facing Gemini text-generation call and requires each such file to be either REGISTERED (a financial-narrative surface that keeps ≥1 grounding marker — so deleting the grounding turns CI red) or ALLOWLISTED (a non-narrative / infra call, each with a verified reason). A new AI call in an un-listed file fails the build. Mirrors the existing `check-layer0-coverage.mjs` + `lint:financial-surfaces` pattern (pure Node, runs in `vercel-build`). Current tree: **15 AI-call files · 6 grounded · 9 allowlisted · 0 stale · exit 0**, cross-checked against a raw grep (identical file set — the gate is not hollow).
+
+### Files Modified
+- `scripts/lint-ai-grounding.mjs` (NEW) — the gate. Exports `lintAiGrounding()` + `REGISTRY` + `ALLOWLIST` (testable). The AI-call regex matches `…Completion\s*[<(]` (the `<` is load-bearing — call sites use generics, e.g. `generateGeminiJSONCompletion<T>(`; an earlier `(`-only version found 6/15 files and was a false pass — caught + fixed by the §20 self-review, cited as evidence the gate works).
+- `package.json` — `lint:ai-grounding` script + wired into `vercel-build` after `lint:financial-surfaces`, before `neomatrix:check`.
+- `tests/neobrain/lintAiGrounding.test.ts` (NEW) — pins the gate: passes over the real tree, no stale entries, REGISTRY⊥ALLOWLIST, every registered marker present today, every allowlist reason non-empty.
+
+### Verification
+- `node scripts/lint-ai-grounding.mjs` → exit 0 (15 files · 6 grounded · 9 allowlisted · 0 stale); raw-grep cross-check returns the identical 15 files.
+- Every test assertion validated via a pure-Node harness (vitest unavailable in sandbox; CI runs the suite).
+- `neomatrix:check` unaffected (no financial-graph change — this is a CI script, not an engine).
+- Self-review (§20.4/§20.5): 10/10 — closes the "next ungrounded surface ships silently" hole structurally; reuses the proven lint pattern; the regex generics bug was found + fixed in-gate (the gate working as designed), not after.
+
+### PR
+- Branch: `claude/neobrain-lint-ai-grounding` (stacked on #1295)
+- Status: draft
