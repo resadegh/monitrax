@@ -246,4 +246,29 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 
 ### PR
 - Branch: `claude/neobrain-lint-ai-grounding` (stacked on #1295)
+
+---
+
+## Session: neobrain-budget-grounding
+
+### Changes Made
+- **Type**: Feature (AI grounding — Phase C.2, budget-analysis variable estimation)
+- **Scope**: Ground the headline variable-expense total on its visible parts (`/api/budget-analysis/generate`).
+- **Root finding (§19.2 + §0 four-lens audit)**: budget-analysis is **estimation, not narration of actuals** — the AI estimates *untracked* variable expenses (groceries/fuel) the user hasn't logged, so `groundNarrative` (which redacts figures that don't trace to real snapshot numbers) would be the WRONG tool — it'd redact every legitimate estimate. The surface is already well-grounded for what it is: committed/discretionary/loan numbers are computed deterministically in-code (`toMonthly` + sums, never AI), the AI output is validated (`validateVariableExpenseResponse`) and has a deterministic ABS-benchmark fallback (`calculateBenchmarkExpenses`), and everything is honestly labelled "estimate"/confidence.
+- **The one real gap closed**: the route trusted the AI's *self-reported* `total`, which only had to be within **$50** of its own category sum to pass validation — so the headline "Variable $X" could differ from the sum of the category breakdown shown beneath it. The Neobrain principle (§19 / Part 21): never trust an AI-stated aggregate you can compute from its parts. Now the total is recomputed deterministically as the exact sum of the category estimates.
+
+### Files Modified
+- `lib/budget-analysis/aiPrompt.ts` — new pure `groundVariableExpenseTotal(response)`: returns the response with `total` = Σ category estimates (scenarios left untouched — separate ordering-validated min/recommended/comfortable axis). SSOT, no new estimation logic.
+- `app/api/budget-analysis/generate/route.ts` — AI path now runs `groundVariableExpenseTotal(data)` after validation accepts the response, so the persisted `aiVariableEstimate` / `totalRealisticBudget` / `missingVariableExpenses` all equal the visible category sum. Benchmark fallback was already self-grounded (its total is built from its own categories).
+- `tests/budget-analysis/aiPrompt.test.ts` (NEW) — drift→grounded, already-consistent unchanged, purity, empty→0, scenarios untouched, visible-sum equality, benchmark self-grounding, existing-validator smoke.
+
+### Verification
+- §19.2 worked example: AI states total **1820** over categories summing **1800** (passes today's ±$50 validator) → grounded to **1800** = the sum the user sees. Verified in code + pure-Node harness (all assertions pass; vitest unavailable in sandbox → CI runs the suite).
+- §19.1: budget-analysis is a planning/estimate record — does NOT feed the master snapshot actuals; no contamination.
+- Callers checked (§19.2): `cashflow/intelligence` (iterates the same `variableBreakdown` categories — now aligned), `debt-analysis`, FE pages — all only read the value; total==Σparts is strictly more consistent, no break.
+- `lint:ai-grounding` green (marker `validateVariableExpenseResponse` still present); `neomatrix:check` green (budget-analysis is an AI estimate, out of graph scope by Phase 53 §9 — no node, no drift).
+- Self-review (§20.4/§20.5): financial build **10/10**. v1 instinct (apply `groundNarrative`) was caught in research as wrong (would redact legitimate estimates) → v2 scoped to the real aggregate-drift gap.
+
+### PR
+- Branch: `claude/neobrain-budget-grounding`
 - Status: draft
