@@ -828,7 +828,13 @@ function ActivityPageContent() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              // Reset to page 1 on every keystroke — every other filter
+              // (account/category/date, lines ~896-932) already does this. The
+              // search box was the ONLY one that didn't, so typing a query while
+              // on page > 1 (e.g. a many-page account view) refetched at the stale
+              // page and the narrowed results didn't fill it → "No transactions
+              // match" even when matches exist (Reza report 2026-06-29).
+              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search merchant, description, or category"
               className="w-full pl-9 pr-3 py-2 rounded-full border border-foreground/10 bg-card/70 backdrop-blur-xl text-sm shadow-[0_1px_2px_rgba(15,23,42,0.04)] focus:outline-none focus:ring-2 focus:ring-sky-500/30 focus:border-sky-500/40 transition"
             />
