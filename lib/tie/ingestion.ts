@@ -13,6 +13,7 @@
  */
 
 import { createHash } from 'crypto';
+import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
 import {
   RawTransactionInput,
   NormalisedTransaction,
@@ -111,18 +112,6 @@ const MERCHANT_NOISE_PATTERNS = [
   /\d{4,}/g, // Long numbers (card refs, etc)
   /[*#]+/g, // Asterisks and hashes
   /\s{2,}/g, // Multiple spaces
-];
-
-/**
- * Common transfer/internal transaction patterns
- */
-const TRANSFER_PATTERNS = [
-  /^transfer\s+(to|from)/i,
-  /^(internal|inter)\s*account/i,
-  /^pay\s+anyone/i,
-  /^osko/i,
-  /^bpay/i,
-  /^direct\s+(debit|credit)/i,
 ];
 
 // =============================================================================
@@ -244,7 +233,8 @@ export function generateDeduplicationHash(
  * Check if transaction is a transfer/internal
  */
 export function isTransferTransaction(description: string): boolean {
-  return TRANSFER_PATTERNS.some((pattern) => pattern.test(description));
+  // Delegates to the SSOT detector (§12.2.1) — was a divergent private list.
+  return isTransferDescription(description);
 }
 
 // =============================================================================
@@ -547,5 +537,4 @@ export function findDuplicatesInBatch(
 
 export {
   MERCHANT_ALIASES,
-  TRANSFER_PATTERNS,
 };

@@ -72,7 +72,7 @@ interface TxLite {
  */
 export function filterPairCandidates(
   source: TxLite,
-  destinationAccountId: string,
+  destinationAccountId: string | null,
   candidates: TxLite[],
   now: Date = new Date(),
 ): TxLite[] {
@@ -84,8 +84,15 @@ export function filterPairCandidates(
   return candidates.filter((c) => {
     // (1) same user
     if (c.userId !== source.userId) return false;
-    // (2) on destination account
-    if (c.accountId !== destinationAccountId) return false;
+    // (2) account scope. With an explicit destination, the candidate must be on
+    // it. With `null` (auto-discover across accounts), the candidate must be on
+    // ANY account other than the source's — the per-pair uniqueness guard below
+    // still prevents false pairs.
+    if (destinationAccountId !== null) {
+      if (c.accountId !== destinationAccountId) return false;
+    } else if (c.accountId === source.accountId) {
+      return false;
+    }
     // (3) opposite direction
     if (c.direction !== oppositeDirection) return false;
     // (4) absolute amount within tolerance.
@@ -195,5 +202,94 @@ export async function pairTransferIfPossible(
     // (§12.2.1) so it doesn't surface as "Uncategorised / Not confirmed yet".
     data: { ...confirmedTransferFields({ level2: 'Internal' }), transferToAccountId: source.accountId },
   });
+  return match.id;
+}
+
+/**
+ * Side-effect: mark a transfer's OTHER leg automatically when the user did NOT
+ * name the destination account (Reza directive 2026-06-29: "when a transaction
+ * is marked as transfer the transaction from the target account should also be
+ * marked as transfer automatically").
+ *
+ * Searches EVERY other account the user owns for the opposite-direction,
+ * same-amount, same-date counterpart. The "no false pairs" guarantee is
+ * preserved verbatim: it pairs ONLY when EXACTLY ONE candidate matches all
+ * criteria across all accounts; zero or multiple → no-op (the user can still
+ * name the destination explicitly). When it pairs, BOTH legs record each other
+ * via `transferToAccountId` so the link is symmetric.
+ *
+ * Returns the paired tx ID on a unique match, else null.
+ *
+ * §12.11: the only writes are (a) the uniquely-matched counterpart (same userId,
+ * not yet tagged/linked — criteria 1/6/7) and (b) back-filling the source's
+ * `transferToAccountId`. Both are safe and idempotent (criterion 6 excludes
+ * already-tagged rows, so re-running is a no-op).
+ */
+export async function pairTransferAcrossAccounts(sourceId: string): Promise<string | null> {
+  const source = await prisma.unifiedTransaction.findUnique({
+    where: { id: sourceId },
+    select: {
+      id: true,
+      userId: true,
+      accountId: true,
+      date: true,
+      amount: true,
+      direction: true,
+      isTransfer: true,
+      expenseId: true,
+      incomeId: true,
+      loanId: true,
+    },
+  });
+  if (!source) return null;
+
+  const sourceTime = source.date.getTime();
+  const windowMs = TRANSFER_PAIR_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  const dateLow = new Date(sourceTime - windowMs);
+  const dateHigh = new Date(sourceTime + windowMs);
+  const oppositeDirection: TransactionDirection = source.direction === 'IN' ? 'OUT' : 'IN';
+
+  // DB pre-filter across ALL other accounts (index-friendly: userId + date
+  // range + direction). The strict per-pair predicate runs below.
+  const dbCandidates = await prisma.unifiedTransaction.findMany({
+    where: {
+      userId: source.userId,
+      accountId: { not: source.accountId },
+      direction: oppositeDirection,
+      isTransfer: false,
+      expenseId: null,
+      incomeId: null,
+      loanId: null,
+      date: { gte: dateLow, lte: dateHigh },
+    },
+    select: {
+      id: true,
+      userId: true,
+      accountId: true,
+      date: true,
+      amount: true,
+      direction: true,
+      isTransfer: true,
+      expenseId: true,
+      incomeId: true,
+      loanId: true,
+    },
+  });
+
+  const matches = filterPairCandidates(source, null, dbCandidates);
+  if (matches.length !== 1) return null; // zero or multiple → don't guess
+
+  const match = matches[0];
+  await prisma.$transaction([
+    prisma.unifiedTransaction.update({
+      where: { id: match.id },
+      data: { ...confirmedTransferFields({ level2: 'Internal' }), transferToAccountId: source.accountId },
+    }),
+    // Back-fill the source's destination so the pairing is symmetric.
+    prisma.unifiedTransaction.update({
+      where: { id: source.id },
+      data: { transferToAccountId: match.accountId },
+    }),
+  ]);
   return match.id;
 }

@@ -272,3 +272,40 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/neobrain-budget-grounding`
 - Status: draft
+
+---
+
+## Session: neobrain-transfer-detection-ssot
+
+### Changes Made
+- **Type**: Fix (Pillar B — transfer recognition + auto-pairing) + SSOT dedup
+- **Scope**: Transfers not auto-recognised ("To Reza Sadegh … Transfer" landed Uncategorised), and the target-account leg not auto-marked.
+- **Root cause (why it recurred)**: THREE divergent transfer vocabularies, none canonical (§12.2.1) — the cascade rule that runs at import (`transfer_internal`) matched only `transfer (to|from|between)` (keyword BEFORE the direction word), so a description with the keyword at the END was missed; `ingestion.ts` had its own anchored `^transfer (to|from)` list (dead — no callers); `forecasting.ts` had a broad `/transfer/i` list used only by the forecaster. Each new bank format slipped through the narrow cascade regex, and the fix never generalised. Separately, the **link route** (`case 'transfer'`) marked only the source side and **never invoked the pairing engine**, and pairing couldn't run at all without an explicit destination account.
+- **Solution**:
+  1. **One SSOT detector** — `isTransferDescription()` + `TRANSFER_DESCRIPTION_PATTERNS` in `lib/bookkeeping/transferCategorisation.ts`, word-boundaried (`\btransfer\b` catches "… Transfer" without matching "TransferWise"), covering tfr/trf, osko, payid, bpay, pay anyone, internal transfer/account. Cascade `transfer_internal` now uses it; `ingestion.isTransferTransaction` delegates to it; the dead duplicate `TRANSFER_PATTERNS` removed. Detection only SUGGESTS the Transfers category — it never sets `isTransfer` (that stays user-confirmed; §19.1).
+  2. **Auto-pair the other leg** — new `pairTransferAcrossAccounts(sourceId)` searches ALL the user's other accounts for the unique opposite-direction/same-amount/same-date counterpart and marks both legs symmetrically (Reza directive 2026-06-29). Unique-match-only (no false pairs). Wired into the link route's `case 'transfer'` (explicit destination → `pairTransferIfPossible`; none → across-accounts) and the PATCH route.
+
+### Files Modified
+- `lib/bookkeeping/transferCategorisation.ts` — + `isTransferDescription` / `TRANSFER_DESCRIPTION_PATTERNS` (SSOT).
+- `lib/tie/categorisation.ts` — `transfer_internal` matcher uses the SSOT.
+- `lib/tie/ingestion.ts` — `isTransferTransaction` delegates to SSOT; removed dead `TRANSFER_PATTERNS` + its re-export.
+- `lib/bookkeeping/transferPairing.ts` — `filterPairCandidates` accepts `null` destination (any-other-account); + `pairTransferAcrossAccounts`.
+- `app/api/transactions/[id]/link/route.ts` — `case 'transfer'` now pairs the other leg (awaited, guarded).
+- `app/api/unified-transactions/[id]/route.ts` — across-accounts fallback when no destination.
+- `tests/bookkeeping/transferDescription.test.ts` (NEW) — detector incl. the exact regression case.
+- `tests/bookkeeping/transferPairing.test.ts` — across-accounts (null destination) cases.
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — fixed 2 drifted anchors (categoriseTransaction 692→695, pairTransferIfPossible 128→135 + edge 191→199); modelled `pairTransferAcrossAccounts` (§21.2.1).
+
+### §19.1 / §12.11
+- Detection is a SUGGESTION; exclusion keys ONLY on `isTransfer` (verified in `actualCashflow.ts` / `analytics.ts`). Cross-account pairing sets `isTransfer` on the unique matched leg — triggered only by an explicit user transfer-confirm, correct accounting (both legs excluded), guarded writes scoped to the same `userId` + unlinked + not-yet-transfer (§12.11-safe, idempotent).
+
+### Known limitation (honest)
+- The cascade runs at IMPORT, so rows already imported as Uncategorised won't retro-recognise without a re-categorise; the fix covers future imports + any re-categorisation, and the pairing now catches the partner leg once one side is marked.
+
+### Verification
+- Detector logic validated via pure-Node harness (all cases incl. "To Reza Sadegh … Transfer" → true, "TransferWise" → false). `neomatrix:check` green (anchors + census). `lint:ai-grounding` green. vitest runs in CI (sandbox lacks node_modules).
+- Self-review (§20.4/§20.5): 10/10 against the requirement (with the import-time caveat stated).
+
+### PR
+- Branch: `claude/neobrain-transfer-detection-ssot`
+- Status: draft

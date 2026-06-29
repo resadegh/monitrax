@@ -18,6 +18,7 @@ import {
 } from './types';
 import { lookupSharedCategory } from '@/lib/categorisation/kb/lookupCategory';
 import { decodeCategoryPath } from '@/lib/categorisation/kb/categoryPath';
+import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
 import { geminiCategoriseOnMiss } from '@/lib/categorisation/kb/geminiOnMiss';
 
 // =============================================================================
@@ -476,10 +477,12 @@ const CATEGORISATION_RULES: CategorisationRule[] = [
     id: 'transfer_internal',
     name: 'Internal Transfer',
     priority: 80,
-    matcher: (tx) =>
-      /(transfer|tfr|trf)\s*(to|from|between)/i.test(
-        tx.merchantStandardised || tx.description
-      ),
+    // SSOT detector (lib/bookkeeping/transferCategorisation.ts) — recognises the
+    // keyword in ANY word order ("Transfer to X" AND "To X ... Transfer"),
+    // fixing the recurring "transfer not auto-recognised" miss. Word-boundaried
+    // so it won't match "TransferWise" etc. Suggests the Transfers category;
+    // does NOT set isTransfer (that stays user-confirmed — §19.1).
+    matcher: (tx) => isTransferDescription(tx.merchantStandardised || tx.description),
     category: { level1: 'Transfers', level2: 'Internal Transfer' },
   },
   {
