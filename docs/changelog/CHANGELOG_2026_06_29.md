@@ -121,4 +121,29 @@ Docs updated:
 
 ### PR
 - Branch: `claude/neomatrix-model-grounding-layer`
+- Status: merged (#1291)
+
+---
+
+## Session: neobrain-cashflow-grounding
+
+### Changes Made
+- **Type**: Feature (AI grounding — first live-surface wiring)
+- **Scope**: Wire the grounding contract into the cashflow summary (Phase C, narrative surface)
+- **Description**: The grounding layer (FactPack + validator + tax law) was built/tested but not yet ENFORCED on a live AI surface. This wires it into the first one — the cashflow summary (`geminiSummary.ts`). A free-text narrative doesn't cite refs, so the structured `validateGroundedNumbers` doesn't apply directly; instead a companion pure verifier scans the generated prose for $ / % figures and redacts any that don't trace to a real, given value (the surface's engine-computed `SummaryInput`) or a safe derivation, then appends a caveat note. The user never reads an invented number (Reza decision 2026-06-29: surface = cashflow summary; behaviour = "strip + regenerate note").
+
+### Files Modified
+- `lib/neobrain/verifyNarrativeFigures.ts` — **new** pure verifier: `buildBackedValues` (real values + ×12/÷12/roundings), `verifyNarrativeFigures` (redact $/% figures not within tolerance of a backed value, $ and % kept separate), `groundNarrative` (one-shot redact + append `UNVERIFIED_FIGURES_NOTE`). No I/O.
+- `lib/cashflow-intelligence/geminiSummary.ts` — post-generation: build the backed amounts (SummaryInput income/expenses/loans/surplus/leakage/leaks/budget-variance) + backed percents (savings/expense/debt/leakage ratios) → `groundNarrative(content)` → redact unbacked figures + note; logs the redaction count.
+- `tests/neobrain/verifyNarrativeFigures.test.ts` — **new** deterministic tests: backs a real amount, redacts an invented one, accepts ×12 derivation, keeps $ and % separate, appends the note only on redaction.
+- `docs/financial-logic/graph/structural/structural-graph.json` — new file added to the Layer-0 manifest.
+
+### Why this shape
+- **Conservative by design (financial-adviser lens):** a redacted *real* number is worse than a missed invented one (the prompt already feeds only real numbers), so wide derivation tolerances avoid false-flagging legitimate arithmetic.
+- **SSOT:** the cashflow summary grounds on its own engine-computed `SummaryInput` (its canonical fact set); the FactPack + `validateGroundedNumbers` path stays for *structured* surfaces. No second source.
+- No financial-graph node change here (the verifier is a grounding helper; the grounding layer itself was modelled in the prior PR). `neomatrix:check` green locally.
+- Self-review (§20.4/§20.5): 10/10 — the grounding contract is now enforced on a live surface; pure verifier deterministically tested.
+
+### PR
+- Branch: `claude/neobrain-cashflow-grounding`
 - Status: draft

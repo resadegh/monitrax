@@ -16,6 +16,7 @@ import crypto from 'crypto';
 import { formatCurrencyForPrompt } from '@/lib/ai/google/geminiClient';
 import { getModelPricing } from '@/lib/ai/google/modelConfig';
 import { recordAiUsage } from '@/lib/ai/usage/recordAiUsage';
+import { groundNarrative } from '@/lib/neobrain/verifyNarrativeFigures';
 
 // =============================================================================
 // CONFIGURATION
@@ -276,6 +277,45 @@ export async function generateGeminiSummary(
     if (content.length > MAX_SUMMARY_LENGTH * 2) {
       content = content.substring(0, MAX_SUMMARY_LENGTH * 2) + '...';
     }
+
+    // Neobrain grounding (Phase 54 §15 Phase C — narrative wiring): a free-text
+    // summary doesn't cite refs, so verify every $ / % figure against the real
+    // engine-computed numbers this summary was built from (SummaryInput) + safe
+    // derivations (×12, roundings). Any figure that doesn't trace is redacted +
+    // a caveat note appended — the user never reads an invented number
+    // (Reza 2026-06-29: "strip + regenerate note"). The model is fed only real
+    // numbers, so redaction should be rare; conservative tolerances avoid
+    // false-flagging legitimate arithmetic.
+    const backedAmounts = [
+      input.monthlyIncome,
+      input.monthlyExpenses,
+      input.monthlyLoanRepayments,
+      input.netSurplus,
+      input.monthlyExpenses + input.monthlyLoanRepayments,
+      input.leakageTotal,
+      ...input.topLeaks.map((l) => l.amount),
+      ...(input.budgetVariance !== undefined ? [Math.abs(input.budgetVariance)] : []),
+    ];
+    // The ratios the AI legitimately derives from the same real numbers — so a
+    // genuine "you spend 80% of income" line is not false-flagged.
+    const inc = input.monthlyIncome;
+    const backedPercents =
+      inc > 0
+        ? [
+            (input.netSurplus / inc) * 100, // savings rate
+            (input.monthlyExpenses / inc) * 100, // expense ratio
+            ((input.monthlyExpenses + input.monthlyLoanRepayments) / inc) * 100, // total-out ratio
+            (input.monthlyLoanRepayments / inc) * 100, // debt ratio
+            (input.leakageTotal / inc) * 100, // leakage ratio
+          ]
+        : [];
+    const grounded = groundNarrative(content, backedAmounts, backedPercents);
+    if (grounded.redactedCount > 0) {
+      console.warn(
+        `[GeminiSummary] grounding redacted ${grounded.redactedCount} unverified figure(s) for user ${userId}`,
+      );
+    }
+    content = grounded.text;
 
     return {
       id: `summary-${userId}-${Date.now()}`,
