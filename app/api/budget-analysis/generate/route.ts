@@ -256,6 +256,7 @@ export const POST = withPermission('expense.write', async (request, auth) => {
           });
 
           const { data, usage } = await generateGeminiJSONCompletion<VariableExpenseResponse>({
+            surface: 'budget-analysis',
             model: GEMINI_MODELS.FINANCIAL_ADVISOR,
             systemPrompt: VARIABLE_EXPENSE_ESTIMATION_PROMPT,
             userPrompt,

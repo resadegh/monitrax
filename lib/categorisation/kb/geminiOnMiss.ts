@@ -104,6 +104,7 @@ export async function geminiCategoriseOnMiss(rawDescription: string): Promise<Ge
     );
 
     const { data } = await generateGeminiJSONCompletion<GeminiRaw>({
+      surface: 'categorisation',
       systemPrompt,
       userPrompt,
       model: GEMINI_MODELS.FLASH,

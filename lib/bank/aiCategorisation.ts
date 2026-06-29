@@ -314,6 +314,7 @@ export async function categoriseWithAI(
       reasoning: string;
     }>;
   }>({
+    surface: 'categorisation',
     model: GEMINI_MODELS.FLASH,
     systemPrompt: TRANSACTION_CATEGORIZATION_SYSTEM_PROMPT,
     userPrompt: buildUserPrompt(txData),

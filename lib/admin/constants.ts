@@ -41,6 +41,7 @@ export const ADMIN_ROUTES = {
   ANALYTICS_GROWTH: '/admin/analytics/growth',
   ANALYTICS_FEATURES: '/admin/analytics/features',
   ANALYTICS_RETENTION: '/admin/analytics/retention',
+  AI_USAGE: '/admin/ai-usage',
 
   // Feature flags
   FEATURE_FLAGS: '/admin/feature-flags',
@@ -92,6 +93,7 @@ export const ADMIN_API_ROUTES = {
   ANALYTICS_GROWTH: '/api/admin/analytics/growth',
   ANALYTICS_FEATURE_USAGE: '/api/admin/analytics/feature-usage',
   ANALYTICS_ACTIVE_USERS: '/api/admin/analytics/active-users',
+  AI_USAGE: '/api/admin/ai-usage',
   ANALYTICS_RETENTION: '/api/admin/analytics/retention',
 
   // Feature flags

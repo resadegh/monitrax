@@ -231,6 +231,7 @@ export const POST = withPermission('report.read', async (request, auth) => {
 
     // Generate AI analysis
     const { data, usage } = await generateGeminiJSONCompletion<DebtAnalysisResponse>({
+      surface: 'debt-analysis',
       model: GEMINI_MODELS.FINANCIAL_ADVISOR,
       systemPrompt: DEBT_ANALYSIS_PROMPT,
       userPrompt,
