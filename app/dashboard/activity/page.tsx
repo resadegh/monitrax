@@ -25,8 +25,9 @@
  *     anomalies, uncategorised, direction, excludeTransfers
  *   - 4 click-to-filter summary tiles (Spend / Income / Net / Count)
  *   - "Uncategorised first" default — pushes users into the categorisation loop
- *   - Click row → TransactionLinkDialog; swipe left → categorise sheet;
- *     swipe right → transfer sheet; long-press → dialog; double-tap → always-rule
+ *   - Tap row (or swipe left, or "+ Add") → category picker sheet; swipe
+ *     right → transfer sheet; long-press → full Link/route dialog; double-tap
+ *     → always-rule (Phase 56.1: tap categorises, no longer the link dialog)
  *   - Import wizard (CSV / QIF / OFX)
  *
  * Phase 49 additions:
@@ -1016,10 +1017,12 @@ function ActivityPageContent() {
                         onToggleSelected={() => toggleSelected(tx.id)}
                         advancedView={advancedView}
                         onConfirm={() => confirmRow(tx)}
-                        onClick={() => {
-                          setLinkingTransaction(tx);
-                          setShowLinkDialog(true);
-                        }}
+                        // Phase 56.1 (Reza 2026-06-30) — tap a transaction →
+                        // the new category picker (Suggested hero), NOT the old
+                        // Link Transaction dialog. Categorise is the primary
+                        // intent; the full link/route dialog stays one step away
+                        // via long-press (mobile) + the picker's "More options".
+                        onClick={() => setPickerTx(tx)}
                         onSwipeLeft={() => setPickerTx(tx)}
                         onSwipeRight={() => setTransferTx(tx)}
                         onLongPress={() => {
@@ -1124,6 +1127,17 @@ function ActivityPageContent() {
           const tx = pickerTx;
           setPickerTx(null);
           if (tx) setTransferTx(tx);
+        }}
+        onMoreOptions={() => {
+          // Phase 56.1 — the advanced "link to an account / entity" router
+          // (the old Link Transaction dialog) is now one step away, not the
+          // default tap. Preserves desktop access (no long-press there).
+          const tx = pickerTx;
+          setPickerTx(null);
+          if (tx) {
+            setLinkingTransaction(tx);
+            setShowLinkDialog(true);
+          }
         }}
       />
 
@@ -1710,7 +1724,8 @@ function FilterField({ label, children }: { label: string; children: React.React
 }
 
 // ---------------------------------------------------------------------------
-// Transaction row — clicking opens TransactionLinkDialog
+// Transaction row — tap (or swipe-left, or "+ Add") opens the category picker;
+// long-press opens the full Link/route dialog (Phase 56.1).
 // ---------------------------------------------------------------------------
 
 function TransactionRow({

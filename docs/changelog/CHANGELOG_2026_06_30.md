@@ -1,5 +1,40 @@
 # Changelog — 2026-06-30
 
+## Session: mobile-tap-to-categorise (Phase 56.1)
+
+### Changes Made
+- **Type**: Fix (mobile UX wiring) — Reza feedback on shipped PR-C
+- **Scope**: Activity page row-tap target + the category picker sheet
+- **Description**: Reza reported (2026-06-30) that tapping a transaction still opened the **old Link Transaction dialog** (Categorise / More options / Skip), not the new category-picker half-sheet built in PR-C — the clean flow was only reachable via the undiscoverable swipe-left. Fix: the row **tap** (`onClick`, used by the row body + the mobile "+ Add" + the desktop Add/suggested pills) now opens the **new `CategoryPickerSheet`** (Suggested hero) directly. Categorise is the primary intent → it's now the default tap. The full Link/route dialog (link-to-account/entity, mark transfer, skip) is preserved one step away: **long-press** (mobile, unchanged) + a new quiet **"More options"** link in the picker (the only path on desktop, which has no long-press) → so nothing is lost.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — row `onClick` → `setPickerTx(tx)` (was `setShowLinkDialog`); first `CategoryPickerSheet` instance gains `onMoreOptions` → opens the legacy `TransactionLinkDialog` for the advanced router; header + row JSDoc comments corrected.
+- `components/bookkeeping/CategoryPickerSheet.tsx` — new optional `onMoreOptions?: () => void` prop + a quiet bottom "More options — link to an account, mark transfer, or skip" button rendered only when provided.
+
+### Verification (§19 — no fabricated numbers)
+- Pure UX wiring. No new endpoint or categoriser (§12.2.1) — tap reuses the existing PR-C picker (PATCH `/api/unified-transactions/[id]`). `TransactionLinkDialog` is still mounted (long-press + queue-edit + More options) — not dead code. No financial number touched; `neomatrix:check` green.
+- Static pass: prop declared/destructured/rendered; `pickerTx`/`linkingTransaction` state exist; `onLongPress` still routes to the link dialog. Local build/vitest not runnable in sandbox — CI is the gate.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (tap target re-pointed to the already-shipped PR-C picker + a quiet "More options" affordance — true tweak to an existing surface, §18.2.1 code-first allowed; no new section composition)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure · [ ] strategic decision
+
+Docs updated: `PHASE_56_MOBILE_ACTIVITY_REDESIGN.md` (56.1 + 56.2 deck plan), `01_ACTIVE_WORKSTREAMS.md`, this changelog, component JSDoc.
+
+### Testing
+- [x] `neomatrix:check` — OK. [ ] CI is the gate for Build + vitest.
+- [x] Self-review gate (§20.4/§20.5): 3× vs requirement → 10/10 (tap opens the new picker; advanced router preserved via long-press + More options so desktop loses nothing; no duplicate categoriser/endpoint; no fabricated data).
+
+### Follow-up (Phase 56.2 — the card-deck, Reza decision "A" 2026-06-30)
+- Reza wants the mobile Activity view to become a **finite swipeable card-deck** ("browse like a notebook"), set as the **default landing when there's work to do** (unreviewed/uncategorised items exist), with the list always one tap away. This is the deferred "Review Mode". It's a new section composition → **Stitch-first, §18.8 ≥9/10, sign-off before React** — designed next, shipped as a separate PR.
+
+### PR
+- Branch: `claude/mobile-tap-to-categorise`
+- Status: draft
+
+---
+
 ## Session: mobile-activity-row-redesign (Phase 56 PR-C)
 
 ### Changes Made

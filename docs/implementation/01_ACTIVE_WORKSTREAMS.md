@@ -10,14 +10,14 @@
 
 ### 0·MOBILE-ACTIVITY. Mobile Activity / Reconciliation redesign (Reza report 2026-06-30)
 
-- **Status:** 🟢 SHIPPING — PR-A (FAB) + PR-B (scroll) = #1303 (merged-ready). **PR-C** (mobile row redesign + on-row Confirm + picker "Suggested" hero) built after Reza design sign-off (4 Stitch screens, §18.8 9.4/10) → PR open.
+- **Status:** 🟢 SHIPPING — PR-A/B = **#1303 merged**; PR-C = **#1304 merged** (mobile row + on-row Confirm + picker hero). **56.1 tap-to-categorise** (tap → new picker, not the old Link dialog) → PR open. **56.2 card-deck** ("Review" view, Reza decision A) = Stitch-first, design pending sign-off.
 - **Started:** 2026-06-30.
 - **Owner:** Reza (direction + design sign-off) + Claude (research + build).
-- **Last touched:** 2026-06-30 — PR-C built (mobile `TransactionRow` redesign + on-row ✓ Confirm + `CategoryPickerSheet` Suggested hero; checkbox desktop-only). Open decisions resolved; confidence-%/apply-scope-footer/card-stack deferred (Build Log in the Phase doc).
+- **Last touched:** 2026-06-30 — Reza feedback on PR-C: (a) tap still opened the old Link dialog → **56.1** re-points tap to the new `CategoryPickerSheet` (advanced router preserved via long-press + a quiet "More options"); (b) wants the view to become a **finite swipeable card-deck** ("notebook") → **56.2**, decision **A** = deck is the default landing when there's work, list one tap away — Stitch-first, ≥9/10, sign-off before React.
 - **Source of truth:** [`docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md`](../blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md).
 - **The four issues (root-caused in source):** (1) **FAB overlap** — two independent fixed FABs (`CashQuickAddButton` in the page + `GlobalScanReceipt` in `DashboardLayout`) share the bottom-right with no owner; (2) **cramped/truncated list** — desktop `TransactionRow` shrunk to phone (the Stitch-first redesign); (3) **no on-row Confirm on mobile** — action cluster is `hidden sm:block` (desktop-only), mobile relies on hidden swipe; (4) **footer scrolls / black gap** — `100vh`/`min-h-screen` + document scroll + `position:fixed` nav rubber-bands on iOS Safari.
 - **Plan:** PR-A FAB (one owner / speed-dial) · PR-B scroll (contained `100dvh` + `overscroll-contain` + safe-area) · **PR-C** mobile row redesign + on-row Confirm + consistent swipe grammar + half-sheet category picker (top-2 AI guesses first) + finite **Review card-stack** — Stitch-first, **§18.8 ≥9/10** before any React.
-- **Open decisions (Reza):** FAB speed-dial vs keep-both-stacked · build the Review card-stack now or just on-row-Confirm first · scope of PR-C.
+- **Open decisions (Reza):** ~~FAB speed-dial vs keep-both-stacked~~ (stacked, #1303) · ~~card-stack now vs later~~ → **now, as the default mobile view (decision A, 56.2)** · ~~scope of PR-C~~ (row+Confirm+picker, #1304).
 - **Dependency:** the on-row Confirm + AI-guess-first picker are only as strong as the suggestion behind them → compounds with the **"consolidate the 3 categorisers into one"** follow-up.
 
 ### 0·NEO-INVENTORY. Neo Inventory — one inventory of every calculation & surface (Reza directive 2026-06-26)
