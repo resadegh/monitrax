@@ -3,12 +3,17 @@
  * Phase 56.2 (2026-06-30) — REDESIGNED to the signed "card-deck" (Reza
  * decision "A"): a finite, finishable triage deck you flip through like a
  * notebook. One transaction fills a large glass card; the tops of the next
- * cards peek behind it (the physical-stack "notebook" feel). Swipe right =
- * Confirm the AI's suggestion, swipe left = Recategorise (opens the picker);
- * explicit buttons do the same (swipe alone is undiscoverable). "X of N" +
- * a progress bar make it a finishable ritual; "all caught up" celebrates the
- * end. On mobile it is the DEFAULT landing when there's work to do (the parent
- * auto-opens it); the scannable list is always one tap away via "Skip to list".
+ * cards peek behind it (the physical-stack "notebook" feel).
+ *
+ * Phase 56.4 (Reza 2026-06-30) — gesture remap + fit: SWIPE LEFT/RIGHT NOW
+ * BROWSES between transactions (left = next, right = previous), it no longer
+ * categorises. Categorisation is done by the pencil button (opens the picker)
+ * and confirmation by the tick button — gestures are pure navigation. The card
+ * is also sized to fit the mobile viewport (long merchant names + large
+ * amounts no longer run off the right edge). "X of N" + a progress bar make it
+ * a finishable ritual; "all caught up" celebrates the end. On mobile it is the
+ * DEFAULT landing when there's work to do (the parent auto-opens it); the
+ * scannable list is always one tap away via "Skip to list".
  *
  * Stitch design (project 4167588157712714472, §18.8 9.4/10):
  *   light 0c621478890b437587d68b0a146158da · dark e0d2f869f1dc4e98a73002d66be650a7
@@ -46,6 +51,7 @@ import {
   ArrowUp,
   Check,
   ChevronLeft,
+  ChevronRight,
   Pencil,
   Sparkles,
   X,
@@ -133,11 +139,13 @@ export function ReviewQueueCards({
   // Action history — enables a single Back step.
   const [history, setHistory] = useState<number[]>([]);
 
-  // framer-motion drag for the front card.
+  // framer-motion drag for the front card. Swipe is BROWSE-only (Phase 56.4):
+  // drag left → next card, drag right → previous card.
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-220, 220], [-7, 7]);
-  const rightHintOpacity = useTransform(x, [0, COMMIT_THRESHOLD], [0, 1]);
-  const leftHintOpacity = useTransform(x, [-COMMIT_THRESHOLD, 0], [1, 0]);
+  // Drag right (x > 0) reveals the "previous" hint; drag left (x < 0) the "next".
+  const prevHintOpacity = useTransform(x, [0, COMMIT_THRESHOLD], [0, 1]);
+  const nextHintOpacity = useTransform(x, [-COMMIT_THRESHOLD, 0], [1, 0]);
 
   const total = queue.length;
   const current = queue[index];
@@ -170,6 +178,8 @@ export function ReviewQueueCards({
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
+  // `advance()` is the ACTION step (after Confirm / Recategorise / Skip): it can
+  // run off the end of the deck → "all caught up". History enables a Back undo.
   function advance() {
     setHistory((h) => [...h, index]);
     setIndex((i) => i + 1);
@@ -180,6 +190,17 @@ export function ReviewQueueCards({
     const prev = history[history.length - 1];
     setHistory((h) => h.slice(0, -1));
     setIndex(prev);
+  }
+
+  // Phase 56.4 — pure BROWSE navigation (swipe). Clamped to [0, total-1] so
+  // browsing never completes the deck or runs before the first card. Does NOT
+  // touch the action history (it's navigation, not an action to undo).
+  function goToNext() {
+    setIndex((i) => Math.min(i + 1, total - 1));
+  }
+
+  function goToPrev() {
+    setIndex((i) => Math.max(i - 1, 0));
   }
 
   async function categorise(level1: string) {
@@ -255,15 +276,15 @@ export function ReviewQueueCards({
   }
 
   function onDragEnd(_e: unknown, info: PanInfo) {
-    if (busy) {
-      animate(x, 0, { type: 'spring', stiffness: 320, damping: 28 });
-      return;
-    }
-    const offset = info.offset.x;
-    if (offset > COMMIT_THRESHOLD) {
-      handleConfirm();
-    } else if (offset < -COMMIT_THRESHOLD) {
-      handleRecategorise();
+    // Swipe BROWSES (Phase 56.4): right → previous, left → next. It never
+    // categorises or confirms — those are the pencil/tick buttons.
+    if (!busy) {
+      const offset = info.offset.x;
+      if (offset > COMMIT_THRESHOLD) {
+        goToPrev();
+      } else if (offset < -COMMIT_THRESHOLD) {
+        goToNext();
+      }
     }
     animate(x, 0, { type: 'spring', stiffness: 320, damping: 28 });
   }
@@ -353,68 +374,68 @@ export function ReviewQueueCards({
       </div>
 
       {/* Card deck */}
-      <main className="flex-1 flex items-center justify-center px-5 py-4 overflow-hidden">
-        <div className="relative w-full max-w-md">
+      <main className="flex-1 flex items-center justify-center px-4 py-3 overflow-hidden">
+        <div className="relative w-full max-w-sm mx-auto">
           {/* Peeking cards behind (the physical "stack") */}
           {index + 2 < total && (
             <div
               aria-hidden
-              className="absolute inset-x-0 top-0 mx-auto h-full rounded-[28px] border border-foreground/10 bg-card/40 backdrop-blur-xl"
-              style={{ transform: 'translateY(-26px) scaleX(0.86)', opacity: 0.4 }}
+              className="absolute inset-x-0 top-0 mx-auto h-full rounded-[26px] border border-foreground/10 bg-card/40 backdrop-blur-xl"
+              style={{ transform: 'translateY(-24px) scaleX(0.88)', opacity: 0.4 }}
             />
           )}
           {index + 1 < total && (
             <div
               aria-hidden
-              className="absolute inset-x-0 top-0 mx-auto h-full rounded-[28px] border border-foreground/10 bg-card/60 backdrop-blur-xl"
-              style={{ transform: 'translateY(-13px) scaleX(0.93)', opacity: 0.65 }}
+              className="absolute inset-x-0 top-0 mx-auto h-full rounded-[26px] border border-foreground/10 bg-card/60 backdrop-blur-xl"
+              style={{ transform: 'translateY(-12px) scaleX(0.94)', opacity: 0.65 }}
             />
           )}
 
-          {/* Edge swipe hints (revealed by drag direction) */}
+          {/* Edge browse hints (revealed by drag direction — navigation only) */}
           <motion.div
             aria-hidden
-            style={{ opacity: leftHintOpacity }}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 flex items-center gap-1 rounded-r-2xl bg-slate-500 text-white pl-2 pr-3 py-2 text-xs font-semibold"
+            style={{ opacity: prevHintOpacity }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -ml-1 flex items-center gap-1 rounded-r-2xl bg-foreground/80 text-background pl-2 pr-3 py-2 text-xs font-semibold"
           >
-            <Pencil className="w-3.5 h-3.5" /> Recategorise
+            <ChevronLeft className="w-3.5 h-3.5" /> Previous
           </motion.div>
           <motion.div
             aria-hidden
-            style={{ opacity: rightHintOpacity }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 flex items-center gap-1 rounded-l-2xl bg-emerald-500 text-white pr-2 pl-3 py-2 text-xs font-semibold"
+            style={{ opacity: nextHintOpacity }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 -mr-1 flex items-center gap-1 rounded-l-2xl bg-foreground/80 text-background pr-2 pl-3 py-2 text-xs font-semibold"
           >
-            <Check className="w-3.5 h-3.5" /> Confirm
+            Next <ChevronRight className="w-3.5 h-3.5" />
           </motion.div>
 
-          {/* Front card — draggable */}
+          {/* Front card — draggable (browse-only) */}
           <motion.article
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             dragElastic={0.5}
             style={{ x, rotate }}
             onDragEnd={onDragEnd}
-            className="relative z-10 select-none touch-pan-y rounded-[28px] border border-foreground/10 bg-card/80 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.05),0_18px_50px_-12px_rgba(15,23,42,0.18)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] px-6 py-7"
-            aria-label={`Categorise ${merchant}, ${fmtAmount(current)}, ${dateFmt}`}
+            className="relative z-10 w-full select-none touch-pan-y overflow-hidden rounded-[26px] border border-foreground/10 bg-card/80 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.05),0_18px_50px_-12px_rgba(15,23,42,0.18)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.4),inset_0_1px_0_0_rgba(255,255,255,0.05)] px-5 py-6"
+            aria-label={`${merchant}, ${fmtAmount(current)}, ${dateFmt}`}
           >
             {/* inner-top highlight */}
             <span
               aria-hidden
-              className="pointer-events-none absolute inset-x-0 top-0 h-[40%] rounded-t-[28px] bg-gradient-to-b from-white/40 dark:from-white/[0.06] to-transparent"
+              className="pointer-events-none absolute inset-x-0 top-0 h-[40%] rounded-t-[26px] bg-gradient-to-b from-white/40 dark:from-white/[0.06] to-transparent"
             />
 
             {/* gem + date */}
-            <div className="relative flex items-start justify-between">
-              <div className={`flex items-center justify-center w-14 h-14 rounded-[18px] text-white shadow-sm ring-1 ring-black/5 ${gemGradient(current)}`}>
+            <div className="relative flex items-start justify-between gap-2">
+              <div className={`flex items-center justify-center w-12 h-12 rounded-[16px] text-white shadow-sm ring-1 ring-black/5 shrink-0 ${gemGradient(current)}`}>
                 {current.isTransfer ? (
-                  <ArrowLeftRight className="w-6 h-6" />
+                  <ArrowLeftRight className="w-5 h-5" />
                 ) : isIn ? (
-                  <ArrowDown className="w-6 h-6" />
+                  <ArrowDown className="w-5 h-5" />
                 ) : (
-                  <ArrowUp className="w-6 h-6" />
+                  <ArrowUp className="w-5 h-5" />
                 )}
               </div>
-              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mt-1">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mt-1 shrink-0">
                 {dateFmt}
               </span>
             </div>
@@ -427,11 +448,11 @@ export function ReviewQueueCards({
             )}
 
             {/* merchant + amount */}
-            <p className="relative text-[22px] leading-tight font-semibold text-foreground mt-4 truncate">
+            <p className="relative text-lg leading-tight font-semibold text-foreground mt-4 truncate">
               {merchant}
             </p>
             <p
-              className={`relative text-[40px] leading-none font-semibold tabular-nums mt-2 ${
+              className={`relative text-[32px] leading-none font-semibold tabular-nums mt-2 truncate ${
                 isIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
               }`}
             >
@@ -446,9 +467,9 @@ export function ReviewQueueCards({
             {suggestion && (
               <div className="relative mt-5 rounded-2xl border border-sky-400/40 bg-sky-500/[0.08] px-4 py-3">
                 <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <Sparkles className="w-3.5 h-3.5 text-sky-500" /> Suggested
+                  <Sparkles className="w-3.5 h-3.5 text-sky-500 shrink-0" /> Suggested
                 </p>
-                <p className="flex items-center gap-2 mt-1">
+                <p className="flex items-center gap-2 mt-1 min-w-0">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" aria-hidden />
                   <span className="text-base font-semibold text-foreground truncate">{suggestion}</span>
                 </p>
