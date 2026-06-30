@@ -2111,7 +2111,10 @@ function TransactionRow({
         </div>
         {/* name + one quiet category · time line */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
+          {/* Phase 56.8c (Reza 2026-06-30) — min-w-0 on the name row so a long
+              merchant name TRUNCATES instead of shoving the amount off the
+              card's right edge (the amount was being clipped on mobile). */}
+          <div className="flex items-center gap-1.5 min-w-0">
             <span className="font-medium text-[15px] truncate text-foreground">{label}</span>
             {isLinked && <Link2 className="w-3 h-3 text-sky-600 shrink-0" aria-label="Linked" />}
             {tx.isRecurring && !isLinked && <Repeat className="w-3 h-3 text-sky-600 shrink-0" aria-label="Recurring" />}
@@ -2182,7 +2185,7 @@ function TransactionRow({
 
       {/* Main info — two clean lines: merchant, then "Account · Date" */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 min-w-0">
           <span className="font-medium text-[15px] truncate text-foreground">{label}</span>
           {isLinked && <Link2 className="w-3 h-3 text-sky-600 shrink-0" aria-label="Linked" />}
           {tx.isRecurring && !isLinked && <Repeat className="w-3 h-3 text-sky-600 shrink-0" aria-label="Recurring" />}
