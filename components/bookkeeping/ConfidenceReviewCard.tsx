@@ -1,272 +1,233 @@
 'use client';
 
 /**
- * Phase 49 — "Your AI bookkeeper" confidence review card.
+ * Phase 56.7 — the state-aware "Review" tile (Reza-approved 2026-06-30).
  *
- * The protagonist of the redesigned Activity page: shows how the AI sorted
- * the user's transactions by confidence band and offers ONE clear action per
- * band — high is auto-filed (a quiet receipt), medium gets one-tap
- * "Confirm all", low routes into the per-row review flow.
+ * The protagonist of the Activity hub. Its COLOUR carries the state so the user
+ * reads where they stand in half a second (behaviour-psychology, §0):
+ *   • AMBER  "action needed"  — when there are transactions to review. Warm and
+ *            motivating ("101 transactions to categorise"), never a red alarm.
+ *   • EMERALD "all caught up"  — when the pile is clear. Calm, celebratory, a
+ *            quiet reward for being done; offers the optional next thing (import).
  *
- * Stitch design source (CLAUDE.md §18.4): project 1859462351962811110,
- * screens 351c6db2f6f34996a93da26f60c47a2b (desktop light) /
- * c86cfc05ff8d4a129bc1c608d7748a55 (desktop dark) /
- * 1f2e9df37c16409c99a448871ff69277 (mobile light) /
- * fa6a2ea95aab4679be793c2cc8144927 (mobile dark).
- * Artefacts: .stitch/designs/activity-redesign/.
+ * SSOT (§12.2.1 / §56.3): reads the ONE canonical review count — `reviewCount`
+ * from /api/unified-transactions/bulk-confirm (= the unconfirmed, all-time pile
+ * the Home tile, the chips and the inbox all read). This kills the old
+ * confidence-summary framing ("365 sorted / 253 low") that diverged from 101.
  *
- * Glass vocabulary per CLAUDE.md §18.7.2 — 28px hero radius, bg-card/70 +
- * backdrop-blur-xl, 3px sky→indigo top-accent, layered float shadow.
- * Behaviour-psychology: celebratory framing ("74% filed automatically"),
- * never shame; the helper line makes the learning payoff explicit.
+ * Progress is REAL (§19 — never fabricated): pct categorised =
+ *   (categorisableTotal − reviewCount) / categorisableTotal.
  *
- * Self-hides when there is nothing to confirm (medium + low = 0) — the card
- * earns its place only while there is a pile to clear.
+ * Glass vocabulary §18.7.2 — rounded-[28px] hero, bg-card/70 + backdrop-blur-xl,
+ * 3px gradient top-accent, layered float shadow, 1px inner-top highlight,
+ * luminous solid-gradient gem, tabular-nums, 1.5px Lucide icons.
+ *
+ * Stitch sign-off (§18.8, 9.3/10): project 1859462351962811110, state sheet
+ * screen 75395671e5264c83911c4c0d2531a741 (.stitch/designs/phase56/).
+ *
+ * NOTE (Phase 56.7 scope) — the amber "Statement import due" trigger from the
+ * approved design is NOT wired here: its cadence is unconfirmed, and §19 forbids
+ * inventing a signal. It lands in the immediate follow-up against real
+ * ImportBatch data once Reza picks the cadence. Both states still surface an
+ * import affordance (the emerald state's ghost CTA).
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Check, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Inbox, Loader2, Upload } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
-interface ConfidenceSummary {
-  high: number;
-  /** Phase 49.13 — high rows the user hasn't signed off yet. */
+interface ReviewSnapshot {
+  /** The ONE canonical "needs your review" count (unconfirmed, all-time). */
+  reviewCount: number;
+  /** Non-transfer, non-investment transactions — the % denominator. */
+  categorisableTotal: number;
+  /** High-confidence auto-filed rows the user hasn't signed off (power action). */
   highUnconfirmed: number;
-  medium: number;
-  low: number;
-  /** Phase 52.5c-fix — booked (already-real) transactions in the medium/low
-   *  confidence bands. The staging counts above MISS these, which is why the
-   *  card used to hide while hundreds of booked uncategorised rows remained. */
-  txMedium?: number;
-  txLow?: number;
 }
 
 export function ConfidenceReviewCard({
   refreshKey,
+  onStartReview,
+  onImport,
   onConfirmed,
-  onReviewBand,
 }: {
-  /** Bump to re-fetch the summary (e.g. after an import or bulk action). */
+  /** Bump to re-fetch (e.g. after an import or a categorise). */
   refreshKey?: number;
-  /** Called after a successful bulk confirm so the parent can refresh its list. */
+  /** Primary CTA — the parent routes it (deck on mobile, inbox on desktop). */
+  onStartReview: () => void;
+  /** Optional next action in the caught-up state — open the import flow. */
+  onImport?: () => void;
+  /** After a bulk-confirm so the parent can refresh its list. */
   onConfirmed?: (count: number) => void;
-  /** Open the item-level review surface for a band (Phase 49.4). */
-  onReviewBand?: (band: 'medium' | 'low') => void;
 }) {
   const { token } = useAuth();
-  const [summary, setSummary] = useState<ConfidenceSummary | null>(null);
+  const [snap, setSnap] = useState<ReviewSnapshot | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [justConfirmed, setJustConfirmed] = useState<number | null>(null);
 
-  const fetchSummary = useCallback(async () => {
+  const fetchSnapshot = useCallback(async () => {
     if (!token) return;
     try {
       const res = await fetch('/api/unified-transactions/bulk-confirm', {
         headers: { Authorization: `Bearer ${token}` },
       });
       const json = await res.json();
-      if (res.ok && json.success) setSummary(json.data);
+      if (res.ok && json.success) {
+        setSnap({
+          reviewCount: json.data.reviewCount ?? 0,
+          categorisableTotal: json.data.categorisableTotal ?? 0,
+          highUnconfirmed: json.data.highUnconfirmed ?? 0,
+        });
+      }
     } catch {
-      // Quiet — the card simply doesn't render without a summary.
+      // Quiet — the tile simply doesn't render without a snapshot.
     }
   }, [token]);
 
   useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary, refreshKey]);
+    fetchSnapshot();
+  }, [fetchSnapshot, refreshKey]);
 
-  const confirmBand = useCallback(
-    async (band: 'high' | 'medium' | 'low') => {
-      if (!token || confirming) return;
-      setConfirming(true);
-      try {
-        const res = await fetch('/api/unified-transactions/bulk-confirm', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ band }),
-        });
-        const json = await res.json();
-        if (res.ok && json.success) {
-          setJustConfirmed(json.data.confirmedCount);
-          onConfirmed?.(json.data.confirmedCount);
-          await fetchSummary();
-        }
-      } catch {
-        // Leave the card as-is; the user can retry.
-      } finally {
-        setConfirming(false);
+  const confirmHigh = useCallback(async () => {
+    if (!token || confirming) return;
+    setConfirming(true);
+    try {
+      const res = await fetch('/api/unified-transactions/bulk-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ band: 'high' }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        onConfirmed?.(json.data.confirmedCount ?? 0);
+        await fetchSnapshot();
       }
-    },
-    [token, confirming, onConfirmed, fetchSummary]
-  );
+    } catch {
+      // Leave the tile as-is; the user can retry.
+    } finally {
+      setConfirming(false);
+    }
+  }, [token, confirming, onConfirmed, fetchSnapshot]);
 
-  if (!summary) return null;
+  if (!snap) return null;
 
-  const { high, highUnconfirmed, medium, low } = summary;
-  // Phase 52.5c-fix — booked low/medium-confidence rows (the txLow/txMedium gap).
-  const bookedReview = (summary.txMedium ?? 0) + (summary.txLow ?? 0);
-  // SSOT (Reza 2026-06-23): the band COUNTS shown here must match the Activity
-  // band chips, which count the whole band = staging queue + booked rows. The
-  // staging-only `medium`/`low` understated (e.g. "0 low" while the chip showed
-  // "Low · 283"). `confirmBand('medium')` still bulk-confirms only the staging
-  // portion; booked rows route to the per-band review surface (onReviewBand).
-  const mediumCount = medium + (summary.txMedium ?? 0);
-  const lowCount = low + (summary.txLow ?? 0);
-  const total = high + medium + low + bookedReview;
-  // Phase 49.13 — unconfirmed HIGH rows are pending work too (auto-filed
-  // is not confirmed; they still count toward the Home "to categorise"
-  // pile until signed off). Phase 52.5c-fix — booked low/medium rows are also
-  // pending review work, so the card no longer hides while they exist (the
-  // "Open review inbox" link is the path to clearing them).
-  const pending = medium + low + highUnconfirmed + bookedReview;
+  const { reviewCount, categorisableTotal, highUnconfirmed } = snap;
+  // Real progress — never fabricated (§19). No categorisable tx yet → 100% (clean slate).
+  const categorisedPct =
+    categorisableTotal > 0
+      ? Math.round(((categorisableTotal - reviewCount) / categorisableTotal) * 100)
+      : 100;
 
-  // Nothing sorted yet, or everything already confirmed → stay out of the way.
-  if (total === 0 || (pending === 0 && justConfirmed === null)) return null;
-
-  const pct = (n: number) => (total > 0 ? Math.max(n > 0 ? 2 : 0, (n / total) * 100) : 0);
-  const highShare = total > 0 ? Math.round((high / total) * 100) : 0;
-
-  return (
-    <section
-      className="relative mb-6 overflow-hidden rounded-[28px] border border-foreground/10 bg-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] anim-rise"
-    >
-      {/* 3px sky→indigo top-accent strip (§18.7.2 tile anatomy) */}
-      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-sky-400 to-indigo-500" />
-      {/* 1px inner-top curved-glass highlight */}
-      <div className="pointer-events-none absolute inset-x-0 top-[3px] h-[40%] bg-gradient-to-b from-white/40 to-transparent opacity-60 dark:from-white/10" />
-
-      <div className="relative p-5 sm:p-6">
-        {pending > 0 ? (
-          <>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg sm:text-xl font-semibold tracking-tight">
-                  Your AI bookkeeper sorted {total.toLocaleString('en-AU')} transactions
-                </h2>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {highShare}% filed automatically — nice and tidy
-                </p>
-                {/* Phase 52.5c — deep-link into the dedicated full-page triage
-                    inbox for clearing the whole pile calmly. */}
-                <Link
-                  href="/dashboard/activity/review"
-                  className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-sky-700 transition hover:gap-1.5 dark:text-sky-300"
-                >
-                  Open review inbox
-                  <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
-              <span className="hidden sm:inline-flex items-center justify-center w-11 h-11 rounded-[14px] bg-gradient-to-br from-sky-400 to-indigo-500 text-white shadow-lg shadow-indigo-500/20 shrink-0">
-                <Sparkles className="w-5 h-5" />
-              </span>
-            </div>
-
-            {/* Segmented confidence bar */}
-            <div className="mt-4 flex h-2.5 w-full overflow-hidden rounded-full bg-foreground/5" aria-hidden>
-              <div className="bg-emerald-500 transition-all duration-500" style={{ width: `${pct(high)}%` }} />
-              <div className="bg-amber-400 transition-all duration-500" style={{ width: `${pct(medium)}%` }} />
-              <div className="bg-rose-400 transition-all duration-500" style={{ width: `${pct(low)}%` }} />
-            </div>
-
-            {/* Band actions — Phase 49.12 (Reza, live test 2026-06-11): all
-                THREE bands always render, each in its band colour (matching
-                the segmented bar above), so the row can never be misread as
-                mislabeled when one band is empty. High = emerald receipt;
-                medium = amber with the bulk "Confirm all" (49.10 rule: bulk
-                confirm is medium-only); low = rose, review-only. Empty bands
-                show a quiet zero chip instead of disappearing. */}
-            <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-2.5">
-              {highUnconfirmed > 0 ? (
-                // Phase 49.13 — auto-filed ≠ confirmed. One tap signs off the
-                // whole high band (the AI was ≥90% sure on every one) and
-                // clears them from the Home "to categorise" pile.
-                <button
-                  type="button"
-                  onClick={() => confirmBand('high')}
-                  disabled={confirming}
-                  className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-emerald-500 to-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 w-full sm:w-auto"
-                >
-                  {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Confirm all {highUnconfirmed.toLocaleString('en-AU')} high
-                </button>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 self-start rounded-full bg-emerald-500/12 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-500/20 dark:text-emerald-300 dark:ring-emerald-400/25">
-                  <Check className="w-3.5 h-3.5" />
-                  {high.toLocaleString('en-AU')} high — confirmed
-                </span>
-              )}
-              {medium > 0 ? (
-                <div className="flex items-stretch gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => confirmBand('medium')}
-                    disabled={confirming}
-                    className="inline-flex flex-1 items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:opacity-95 active:scale-[0.99] disabled:opacity-60 sm:flex-none"
-                  >
-                    {confirming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                    Confirm all {medium.toLocaleString('en-AU')} medium
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onReviewBand?.('medium')}
-                    className="inline-flex items-center justify-center rounded-[14px] border border-amber-500/30 bg-amber-500/[0.08] px-3.5 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 backdrop-blur transition hover:bg-amber-500/15"
-                  >
-                    Review
-                  </button>
-                </div>
-              ) : mediumCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => onReviewBand?.('medium')}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-amber-500/30 bg-amber-500/[0.08] px-4 py-2 text-sm font-medium text-amber-700 dark:text-amber-300 transition hover:bg-amber-500/15 w-full sm:w-auto"
-                >
-                  Review {mediumCount.toLocaleString('en-AU')} medium
-                </button>
-              ) : (
-                <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
-                  0 medium — nothing waiting
-                </span>
-              )}
-              {lowCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => onReviewBand?.('low')}
-                  className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-rose-500/30 bg-rose-500/[0.08] px-4 py-2 text-sm font-medium text-rose-700 dark:text-rose-300 transition hover:bg-rose-500/15 w-full sm:w-auto"
-                >
-                  Review {lowCount.toLocaleString('en-AU')} low
-                </button>
-              ) : (
-                <span className="inline-flex items-center self-start rounded-full bg-foreground/[0.04] px-3 py-2 text-xs font-medium text-muted-foreground/70 ring-1 ring-foreground/10">
-                  0 low — nothing waiting
-                </span>
-              )}
-            </div>
-
-            <p className="mt-3 text-xs text-muted-foreground/80">
-              Confirming teaches your AI — the next import gets smarter. Low-confidence items are
-              best reviewed before you confirm them.
-            </p>
-          </>
-        ) : (
-          // Post-confirm receipt: a calm one-liner, then the card self-hides on next mount.
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-9 h-9 rounded-[12px] bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/20 shrink-0">
-              <Check className="w-4.5 h-4.5" />
+  // ── EMERALD: all caught up ───────────────────────────────────────────────
+  if (reviewCount === 0) {
+    return (
+      <section className="relative mb-6 overflow-hidden rounded-[28px] border border-emerald-500/15 bg-gradient-to-br from-emerald-50/40 to-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)] dark:from-emerald-500/[0.06] dark:to-card/70 dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] anim-rise">
+        <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-emerald-400 to-emerald-600" />
+        <div className="pointer-events-none absolute inset-x-0 top-[3px] h-[40%] bg-gradient-to-b from-white/40 to-transparent opacity-60 dark:from-white/10" />
+        <div className="relative p-5 sm:p-6">
+          <div className="flex items-start gap-4">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-500/25">
+              <CheckCircle2 className="h-5 w-5" />
             </span>
-            <div>
-              <p className="text-sm font-semibold">
-                {justConfirmed?.toLocaleString('en-AU')} categorisations confirmed
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-300">
+                All caught up
               </p>
-              <p className="text-xs text-muted-foreground">
-                Your AI just got smarter for the next import.
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">You&apos;re up to date</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Everything&apos;s reviewed — nothing needs you right now.
               </p>
             </div>
           </div>
-        )}
+          <div className="mt-4 h-2.5 w-full overflow-hidden rounded-full bg-emerald-500/10" aria-hidden>
+            <div className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-600" style={{ width: '100%' }} />
+          </div>
+          <div className="mt-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">100% categorised</div>
+          {onImport && (
+            <button
+              type="button"
+              onClick={onImport}
+              className="mt-4 inline-flex items-center gap-2 rounded-[14px] border border-foreground/15 bg-background/50 px-4 py-2 text-sm font-medium text-foreground backdrop-blur transition hover:bg-muted"
+            >
+              <Upload className="h-4 w-4" />
+              Import a statement
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </section>
+    );
+  }
+
+  // ── AMBER: action needed ─────────────────────────────────────────────────
+  return (
+    <section className="relative mb-6 overflow-hidden rounded-[28px] border border-amber-500/20 bg-gradient-to-br from-amber-50/50 to-card/70 backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_12px_36px_rgba(15,23,42,0.08)] dark:from-amber-500/[0.08] dark:to-card/70 dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] anim-rise">
+      <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-amber-400 to-orange-500" />
+      <div className="pointer-events-none absolute inset-x-0 top-[3px] h-[40%] bg-gradient-to-b from-white/40 to-transparent opacity-60 dark:from-white/10" />
+      <div className="relative p-5 sm:p-6">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-4 min-w-0">
+            <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-500/25">
+              <Inbox className="h-5 w-5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700 dark:text-amber-300">
+                Needs your review
+              </p>
+              <h2 className="mt-1 text-lg font-semibold tracking-tight sm:text-xl">
+                <span className="bg-gradient-to-r from-amber-500 to-orange-500 bg-clip-text tabular-nums text-transparent">
+                  {reviewCount.toLocaleString('en-AU')}
+                </span>{' '}
+                {reviewCount === 1 ? 'transaction to categorise' : 'transactions to categorise'}
+              </h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Confirm or fix each one — it teaches your bookkeeper for next time.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onStartReview}
+            className="hidden shrink-0 items-center gap-2 rounded-[14px] bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:opacity-95 active:scale-[0.99] sm:inline-flex"
+          >
+            Start review
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* Progress */}
+        <div className="mt-4 flex items-center justify-between text-xs">
+          <span className="font-medium text-amber-700 dark:text-amber-300">{categorisedPct}% categorised</span>
+          <span className="tabular-nums text-muted-foreground">{reviewCount.toLocaleString('en-AU')} remaining</span>
+        </div>
+        <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-amber-500/10" aria-hidden>
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 transition-[width] duration-500"
+            style={{ width: `${Math.max(categorisedPct, 2)}%` }}
+          />
+        </div>
+
+        {/* Mobile CTA (full-width) + the optional power action */}
+        <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-center">
+          <button
+            type="button"
+            onClick={onStartReview}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-[14px] bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-amber-500/25 transition hover:opacity-95 active:scale-[0.99] sm:hidden"
+          >
+            Start review
+            <ArrowRight className="h-4 w-4" />
+          </button>
+          {highUnconfirmed > 0 && (
+            <button
+              type="button"
+              onClick={confirmHigh}
+              disabled={confirming}
+              className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-emerald-500/30 bg-emerald-500/[0.08] px-4 py-2 text-sm font-medium text-emerald-700 backdrop-blur transition hover:bg-emerald-500/15 disabled:opacity-60 dark:text-emerald-300"
+            >
+              {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+              Confirm {highUnconfirmed.toLocaleString('en-AU')} auto-filed
+            </button>
+          )}
+        </div>
       </div>
     </section>
   );

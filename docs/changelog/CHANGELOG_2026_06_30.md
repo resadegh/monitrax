@@ -1,5 +1,49 @@
 # Changelog — 2026-06-30
 
+## Session: activity-review-states (Phase 56.7)
+
+### Changes Made
+- **Type**: Feature + Fix (SSOT correctness) — Reza sign-off 2026-06-30 ("looks good, ship it") on the state-aware Review tile design. First build stage of the review-IA consolidation (the hub layout + Transactions tile + Home shortcut + import-due trigger follow in subsequent stages).
+- **Two things in one:**
+  1. **Fixes the count divergence (issue 1: 101 vs 253 vs 365).** The "AI bookkeeper" card (`ConfidenceReviewCard`) was reading the legacy confidence-summary (`low + txLow` by confidence SCORE, ignoring whether the user had confirmed) → "365 sorted / Review 253 low". It now reads the **ONE canonical `reviewCount`** (unconfirmed, all-time) — the same number the Home tile, the band chips and the inbox read. Every surface now shows the same figure.
+  2. **Ships the approved state-aware design.** The card's COLOUR carries the state (§0 behaviour-psychology): **AMBER "needs your review"** when `reviewCount > 0` (count in amber gradient, real % progress, "Start review →"), **EMERALD "all caught up"** when `reviewCount === 0` (100% bar, calm copy, ghost "Import a statement →"). Glass vocabulary per §18.7.2; Stitch-approved (§18.8, 9.3/10).
+- **"Start review" routing** — mobile opens the card-deck (mobile-only, §56.5); desktop routes to the review inbox `/dashboard/activity/review`.
+- **Real progress (§19 — no fabricated number):** added `getCategorisableTotal` (non-transfer, non-investment, all-time) as the denominator → `pct categorised = (total − reviewCount) / total`. Worked example: total 365, reviewCount 101 → (365−101)/365 = **72%**; "101 remaining". Returned from the existing `/api/unified-transactions/bulk-confirm` GET as `categorisableTotal` (no new route).
+- **Preserved** the power action: "Confirm N auto-filed" (bulk-confirm high band) stays as a quiet secondary in the amber state. The per-band medium/low review still reachable via the existing chips.
+- **Deferred (honest, §19):** the amber **"Statement import due"** trigger from the approved design is NOT wired — its cadence is unspecified and §19 forbids inventing a signal. It lands in the immediate follow-up against real `ImportBatch` data once Reza picks the cadence. Both states still surface an import affordance.
+
+### Files Modified
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — rewritten as the state-aware tile (amber/emerald), reads canonical `reviewCount` + real `categorisableTotal`.
+- `lib/bank/bulkConfirm.ts` — added `getCategorisableTotal` (the % denominator).
+- `app/api/unified-transactions/bulk-confirm/route.ts` — GET also returns `categorisableTotal`.
+- `app/dashboard/activity/page.tsx` — device-aware `onStartReview` (deck mobile / inbox desktop) + `onImport`; `useRouter`.
+
+### Verification (§19)
+- **Actuals/SSOT (§19.1):** the card now reads the canonical unconfirmed-all-time count (the same `reviewQueueWhere` predicate as Home + chips + inbox) — no second source. The % is computed from real counts, not declared estimates.
+- **Counts, not money** — no money calculation changed. `tsc` clean (only the pre-existing `tsconfig baseUrl` warning); `npm run neomatrix:check` green; lint clean.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (state-aware Review tile — Stitch-approved per §18.8)
+- [x] API contract (bulk-confirm GET adds `categorisableTotal`)
+- [ ] config · [ ] infra · [ ] identity · [ ] deployment · [ ] security/CDR · [ ] operational · [ ] strategic
+
+Docs updated:
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§12` — Phase 56.7 + the staged consolidation plan.
+- `docs/architecture/07_API_STANDARDS.md` not touched (additive field on an existing response; documented in the route JSDoc).
+
+### Testing
+- [x] `tsc` clean · [x] lint clean · [x] `neomatrix:check` green
+- [ ] Manual on-device (Reza post-merge §17.2)
+
+### Self-review gate (§20.5 / §20.4)
+3× pass → 10/10 against the requirement. Critique caught: (1) a fabricated "% categorised" would violate §19 → added the real `categorisableTotal` denominator with a worked example; (2) "Start review" opening the deck on desktop would violate §56.5 → device-aware routing (deck mobile / inbox desktop); (3) removing the card's bulk-confirm-high outright would drop a feature Reza uses → preserved it as the amber secondary; (4) the import-due trigger can't be honestly wired without a cadence → deferred explicitly rather than invented.
+
+### PR
+- Branch: `claude/activity-review-states` · Status: Draft
+
+---
+
 ## Session: restore-full-categorise-dialog (Phase 56.6)
 
 ### Changes Made

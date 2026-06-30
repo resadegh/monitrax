@@ -22,6 +22,7 @@ import { withPermission } from '@/lib/auth/guards';
 import {
   bulkConfirmCategorisations,
   bulkConfirmHighBand,
+  getCategorisableTotal,
   getConfidenceSummary,
   getReviewQueueBands,
   type ConfidenceBand,
@@ -32,13 +33,16 @@ export const GET = withPermission('transaction.read', async (_request: NextReque
   // review-queue count + bands (the SSOT every surface reads): `reviewCount` +
   // `reviewBands` (high/medium/low partition the same unconfirmed set → they
   // sum to reviewCount). Fixes the "Home 78 vs Activity 365" divergence.
-  const [summary, reviewBands] = await Promise.all([
+  // Phase 56.7 — also return `categorisableTotal` (the real denominator) so the
+  // state-aware Review tile can show a TRUE "% categorised" (§19), not a guess.
+  const [summary, reviewBands, categorisableTotal] = await Promise.all([
     getConfidenceSummary(auth.userId),
     getReviewQueueBands(auth.userId),
+    getCategorisableTotal(auth.userId),
   ]);
   return NextResponse.json({
     success: true,
-    data: { ...summary, reviewCount: reviewBands.total, reviewBands },
+    data: { ...summary, reviewCount: reviewBands.total, reviewBands, categorisableTotal },
   });
 });
 

@@ -43,7 +43,7 @@
  */
 
 import React, { Suspense, useEffect, useState, useCallback, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -692,6 +692,7 @@ function ActivityPageContent() {
   // here since Phase 42 but the param was never read — the click silently
   // landed on the default view (Reza report 2026-06-11).
   const searchParams = useSearchParams();
+  const router = useRouter();
   const appliedFilterParam = useRef(false);
   useEffect(() => {
     if (appliedFilterParam.current) return;
@@ -859,8 +860,21 @@ function ActivityPageContent() {
             // inline receipt and the toast is reserved for clearing the pile.
             await fetchTransactions();
             fetchSummary();
+            fetchBandCounts();
           }}
-          onReviewBand={(band) => setConfidenceBand(band)}
+          // Phase 56.7 — "Start review": mobile opens the card-deck (mobile-only
+          // per §56.5); desktop routes to the review inbox (the review surface).
+          onStartReview={() => {
+            if (
+              typeof window !== 'undefined' &&
+              window.matchMedia('(max-width: 767px)').matches
+            ) {
+              setReviewMode(true);
+            } else {
+              router.push('/dashboard/activity/review');
+            }
+          }}
+          onImport={() => setShowImportWizard(true)}
         />
 
         {/* Phase 49.11 — "Possible subscriptions" review card. The dedicated

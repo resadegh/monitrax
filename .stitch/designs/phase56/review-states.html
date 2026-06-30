@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<title>Monitrax Activity Review - State Comparison</title>
+<style>
+        .glass-card {
+            background-color: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            box-shadow: 0 1px 2px 0 rgba(11, 18, 32, 0.05), 0 20px 30px -10px rgba(11, 18, 32, 0.08);
+            position: relative;
+            overflow: hidden;
+        }
+        .inner-highlight {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+        }
+        .text-gradient-amber {
+            background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-amber {
+            background: linear-gradient(135deg, #F59E0B 0%, #EA580C 100%);
+        }
+        .bg-gradient-emerald {
+            background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+        }
+        .tabular { font-variant-numeric: tabular-nums; }
+        
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface-variant": "#3e4a3d",
+                      "background": "#f4fcf0",
+                      "primary-fixed": "#7ffc97",
+                      "trail-indigo": "#6366F1",
+                      "on-surface": "#171d16",
+                      "surface-variant": "#dde5d9",
+                      "surface": "#f4fcf0",
+                      "secondary": "#585e6f",
+                      "on-primary-fixed-variant": "#005320",
+                      "primary-container": "#00873a",
+                      "on-tertiary-fixed-variant": "#38485d",
+                      "inverse-surface": "#2b322b",
+                      "inverse-on-surface": "#ecf3e7",
+                      "surface-dim": "#d5dcd1",
+                      "on-primary": "#ffffff",
+                      "surface-container-high": "#e3eadf",
+                      "secondary-container": "#d9dff4",
+                      "surface-container-highest": "#dde5d9",
+                      "outline-variant": "#bdcaba",
+                      "on-error-container": "#93000a",
+                      "inverse-primary": "#62df7d",
+                      "outline-slate": "#94A3B8",
+                      "primary": "#006b2c",
+                      "error-red": "#DC2626",
+                      "surface-container": "#e9f0e5",
+                      "trail-amber": "#F59E0B",
+                      "on-primary-fixed": "#002109",
+                      "outline": "#6e7b6c",
+                      "secondary-fixed": "#dce2f6",
+                      "on-tertiary-fixed": "#0b1c30",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-container": "#fdfcff",
+                      "tertiary-container": "#66768d",
+                      "on-secondary-fixed-variant": "#404757",
+                      "on-error": "#ffffff",
+                      "surface-container-low": "#eff6ea",
+                      "trail-violet": "#8B5CF6",
+                      "tertiary-fixed": "#d3e4fe",
+                      "on-background": "#171d16",
+                      "on-secondary": "#ffffff",
+                      "surface-bright": "#f4fcf0",
+                      "primary-fixed-dim": "#62df7d",
+                      "error": "#ba1a1a",
+                      "secondary-fixed-dim": "#c0c6da",
+                      "on-secondary-container": "#5c6274",
+                      "on-primary-container": "#f7fff2",
+                      "surface-tint": "#006e2d",
+                      "trail-sky": "#0EA5E9",
+                      "on-secondary-fixed": "#151b2a",
+                      "trail-emerald": "#16A34A",
+                      "tertiary-fixed-dim": "#b7c8e1",
+                      "surface-ivory": "#FAFAF7",
+                      "tertiary": "#4d5d73",
+                      "surface-container-lowest": "#ffffff",
+                      "error-container": "#ffdad6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "container-max": "1280px",
+                      "section-gap": "48px",
+                      "margin-desktop": "48px",
+                      "unit": "4px",
+                      "gutter": "24px"
+              },
+              "fontFamily": {
+                      "headline-sm": ["Inter"],
+                      "headline-lg": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "data-lg": ["Inter"],
+                      "body-sm": ["Inter"],
+                      "body-md": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "label-md": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "headline-md": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-sm": ["20px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-lg": ["32px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "data-xl": ["40px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-lg": ["28px", {"lineHeight": "1.0", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-sm": ["14px", {"lineHeight": "1.6", "letterSpacing": "0", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "eyebrow": ["12px", {"lineHeight": "1.2", "letterSpacing": "0.18em", "fontWeight": "500"}],
+                      "display-lg": ["48px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "label-md": ["14px", {"lineHeight": "1.2", "letterSpacing": "0", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "1.65", "letterSpacing": "0", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "1.05", "letterSpacing": "-0.03em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory font-body-md text-on-surface antialiased min-h-screen py-16">
+<!-- Top Navigation (Immutable Logic) -->
+<header class="fixed top-0 w-full z-50 bg-surface/80 backdrop-blur-xl border-b border-white/10 shadow-sm h-20">
+<div class="max-w-container-max mx-auto px-margin-desktop h-full flex justify-between items-center">
+<div class="text-headline-lg font-headline-lg font-bold text-on-surface tracking-tighter">Monitrax</div>
+<nav class="hidden md:flex items-center gap-8 font-label-md text-label-md">
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">The TRAIL</a>
+<a class="text-primary font-bold border-b-2 border-primary pb-1" href="#">Capabilities</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Pricing</a>
+<a class="text-on-surface-variant hover:text-on-surface transition-colors" href="#">Security</a>
+</nav>
+<div class="flex items-center gap-4">
+<button class="font-label-md text-label-md text-on-surface-variant hover:bg-white/5 transition-all duration-300 px-4 py-2 rounded-lg active:scale-95">Login</button>
+<button class="font-label-md text-label-md bg-primary text-on-primary px-5 py-2.5 rounded-xl hover:opacity-90 transition-all active:scale-95">Get Started</button>
+</div>
+</div>
+</header>
+<main class="max-w-[1000px] mx-auto px-6 mt-12 flex flex-col gap-[40px]">
+<!-- SECTION 1 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-secondary uppercase mb-4">Activity Review Tile · Action Needed</h2>
+<div class="glass-card rounded-[28px] border border-outline-variant inner-highlight bg-trail-amber/5">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full bg-gradient-amber absolute top-0 left-0"></div>
+<div class="p-8 md:p-10">
+<div class="flex flex-col md:flex-row md:items-start gap-8">
+<!-- Icon Gem -->
+<div class="bg-gradient-amber w-14 h-14 rounded-[14px] flex items-center justify-center text-white shadow-lg shrink-0">
+<span class="material-symbols-outlined icon-fill">inbox</span>
+</div>
+<div class="flex-grow">
+<span class="font-eyebrow text-eyebrow text-trail-amber tracking-widest block mb-2">NEEDS YOUR REVIEW</span>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-6">
+<span class="text-gradient-amber tabular">101</span> transactions to categorise
+                            </h3>
+<!-- Row 2: Status Pill -->
+<div class="flex flex-wrap items-center gap-4 mb-8">
+<div class="bg-trail-amber/10 text-trail-amber px-4 py-1.5 rounded-full flex items-center gap-2 border border-trail-amber/20">
+<span class="material-symbols-outlined text-[16px]">download</span>
+<span class="font-label-md text-label-md">Statement import due</span>
+</div>
+<p class="text-on-surface-variant text-body-md">Your latest .QIF/.OFX is ready to bring in.</p>
+</div>
+<!-- Progress Section -->
+<div class="space-y-3 mb-10">
+<div class="w-full bg-on-surface/5 h-2 rounded-full overflow-hidden">
+<div class="bg-trail-amber h-full rounded-full transition-all duration-700 ease-out" style="width: 53%"></div>
+</div>
+<div class="flex justify-between font-label-md text-label-md tabular">
+<span class="text-trail-amber">53% categorised</span>
+<span class="text-on-surface-variant">46 remaining</span>
+</div>
+</div>
+<!-- Action -->
+<button class="bg-gradient-amber text-white font-label-md text-label-md px-8 py-4 rounded-xl flex items-center gap-2 hover:shadow-xl hover:-translate-y-0.5 transition-all active:scale-95">
+                                Start review <span class="material-symbols-outlined">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 2 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-secondary uppercase mb-4">Activity Review Tile · All Caught Up</h2>
+<div class="glass-card rounded-[28px] border border-outline-variant inner-highlight bg-trail-emerald/5">
+<!-- Top Accent Strip -->
+<div class="h-[3px] w-full bg-gradient-emerald absolute top-0 left-0"></div>
+<div class="p-8 md:p-10">
+<div class="flex flex-col md:flex-row md:items-start gap-8">
+<!-- Icon Gem -->
+<div class="bg-gradient-emerald w-14 h-14 rounded-[14px] flex items-center justify-center text-white shadow-lg shrink-0">
+<span class="material-symbols-outlined icon-fill">check_circle</span>
+</div>
+<div class="flex-grow">
+<span class="font-eyebrow text-eyebrow text-trail-emerald tracking-widest block mb-2">ALL CAUGHT UP</span>
+<h3 class="font-headline-lg text-headline-lg text-on-surface mb-2">You're up to date</h3>
+<p class="text-on-surface-variant text-body-lg mb-8">Everything's reviewed and your statements are in. Nothing needs you right now.</p>
+<!-- Progress Section -->
+<div class="space-y-3 mb-10">
+<div class="w-full bg-on-surface/5 h-2 rounded-full overflow-hidden">
+<div class="bg-trail-emerald h-full rounded-full transition-all duration-700 ease-out" style="width: 100%"></div>
+</div>
+<div class="font-label-md text-label-md tabular text-trail-emerald">
+                                    100% categorised
+                                </div>
+</div>
+<!-- Action -->
+<button class="bg-transparent border border-outline-slate text-on-surface-variant font-label-md text-label-md px-8 py-4 rounded-xl flex items-center gap-2 hover:bg-on-surface/5 transition-all active:scale-95">
+                                Import a statement <span class="material-symbols-outlined">upload</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- SECTION 3 -->
+<section>
+<h2 class="font-eyebrow text-eyebrow text-secondary uppercase mb-4">Home Dashboard Shortcut Tile (Both States)</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Left Card: Action -->
+<div class="glass-card rounded-[22px] border border-outline-variant inner-highlight group hover:-translate-y-1 transition-transform duration-300">
+<div class="h-[3px] w-full bg-trail-amber absolute top-0 left-0"></div>
+<div class="p-6">
+<div class="flex items-start justify-between mb-4">
+<div class="bg-trail-amber/10 w-10 h-10 rounded-lg flex items-center justify-center text-trail-amber">
+<span class="material-symbols-outlined text-[20px] icon-fill">inbox</span>
+</div>
+<div class="bg-trail-amber w-2 h-2 rounded-full ring-4 ring-trail-amber/10"></div>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-amber tracking-widest block mb-1">NEXT ACTIONS</span>
+<p class="font-headline-sm text-headline-sm text-on-surface mb-6 tabular">101 transactions need review</p>
+<div class="flex items-center gap-2 mb-6">
+<div class="px-2 py-0.5 rounded-full bg-trail-amber/10 text-trail-amber font-label-md text-[10px] uppercase">import due</div>
+</div>
+<button class="text-trail-amber font-label-md text-label-md flex items-center gap-1 hover:gap-2 transition-all">
+                            Review now <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+<!-- Right Card: Caught Up -->
+<div class="glass-card rounded-[22px] border border-outline-variant inner-highlight group hover:-translate-y-1 transition-transform duration-300">
+<div class="h-[3px] w-full bg-trail-emerald absolute top-0 left-0"></div>
+<div class="p-6">
+<div class="flex items-start mb-4">
+<div class="bg-trail-emerald/10 w-10 h-10 rounded-lg flex items-center justify-center text-trail-emerald">
+<span class="material-symbols-outlined text-[20px] icon-fill">check_circle</span>
+</div>
+</div>
+<span class="font-eyebrow text-[10px] text-trail-emerald tracking-widest block mb-1">YOU'RE ON TRACK</span>
+<p class="font-headline-sm text-headline-sm text-on-surface mb-10">All caught up — nothing to review</p>
+<button class="text-on-surface-variant font-label-md text-label-md flex items-center gap-1 hover:gap-2 transition-all">
+                            Open Activity <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer (Immutable Logic) -->
+<footer class="mt-20 border-t border-white/5 bg-surface-container-lowest w-full py-12">
+<div class="max-w-container-max mx-auto px-margin-desktop flex flex-col md:flex-row justify-between items-center gap-gutter">
+<div class="text-label-md font-label-md font-bold text-on-surface">Monitrax</div>
+<div class="flex flex-wrap justify-center gap-6 text-on-surface-variant font-label-sm text-label-sm">
+<a class="hover:text-primary transition-colors" href="#">Regulatory Disclosure</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Security Architecture</a>
+<a class="hover:text-primary transition-colors" href="#">Contact</a>
+</div>
+<div class="text-on-surface-variant font-label-sm text-label-sm opacity-80">
+                © 2024 Monitrax. Australian Financial Services Licensee.
+            </div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for buttons
+        document.querySelectorAll('button').forEach(button => {
+            button.addEventListener('mousedown', () => {
+                button.style.transform = 'scale(0.96)';
+            });
+            button.addEventListener('mouseup', () => {
+                button.style.transform = '';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = '';
+            });
+        });
+
+        // Ambient glass movement effect
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                card.style.setProperty('--mouse-x', `${x}px`);
+                card.style.setProperty('--mouse-y', `${y}px`);
+            });
+        });
+    </script>
+</body></html>

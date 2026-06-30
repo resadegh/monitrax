@@ -232,4 +232,24 @@ The "photo" = the full **`TransactionLinkDialog`** (Phase 51 v3): vendor card, s
 
 **Honest scope:** `CategoryPickerSheet` is not yet deleted — it still backs (a) the band-review **staging-queue** edit (`queueEditItem`; review-queue items aren't transactions, so the dialog can't host them) and (b) the **mobile card-deck** pencil. Both are removed by the consolidation (§10.3) where their flows are redesigned — not force-removed here at the risk of breaking the staging path.
 
-*Phase 56 v1.5 — 56.5 deck mobile-only + 56.6 full-dialog restore shipped; IA hub (decided (a)) in Stitch design for sign-off. Governed by §18.2.1, §12.2.1 (one count source + one categorisation surface), §20.5.*
+*Phase 56 v1.5 — 56.5 deck mobile-only + 56.6 full-dialog restore shipped.*
+
+## 12. Phase 56.7 — state-aware Review tile + canonical count (Reza sign-off 2026-06-30)
+
+Reza approved the hub IA (hub + 2 tiles) AND a **state-aware Review tile** whose COLOUR carries the state, then said *"looks good, ship it."* Stitch design sign-off: §18.8 9.0 (hub) + 9.3 (state sheet); project 1859462351962811110, screens `f2a90f88dfe04d1a8b8aca2f277994dd` (hub) / `75395671e5264c83911c4c0d2531a741` (state sheet); artefacts `.stitch/designs/phase56/`.
+
+**The state rule (Reza's brief):** the tile feels like **action is required** when (1) transactions need review OR (2) a statement/QIF import is due; and feels **green/OK** when up to date. The Home shortcut tile follows the same rule and routes to the hub.
+
+**Shipped in STAGE 1 (this PR — `ConfidenceReviewCard` rewrite):**
+- **Canonical count** — the card reads the ONE `reviewCount` (unconfirmed, all-time), killing the "365 sorted / 253 low" divergence (issue 1). Every surface now shows the same number.
+- **AMBER "needs your review"** (reviewCount > 0): count in amber→orange gradient, real `% categorised` (denominator `getCategorisableTotal`, §19 — worked example 365/101 → 72%), "Start review →" (mobile deck / desktop inbox), "Confirm N auto-filed" secondary.
+- **EMERALD "all caught up"** (reviewCount === 0): 100% bar, calm copy, ghost "Import a statement →".
+
+**The staged remainder (subsequent PRs, each shippable):**
+- **56.8** — Activity **hub layout**: KPI strip + the Review tile + the **Transactions** tile (full list moves behind it). The structural route change.
+- **56.9** — **Home shortcut tile** adopts the same two states + routes to the hub.
+- **56.10** — **import-due trigger** (the amber "Statement import due" pill) wired to real `ImportBatch` data once Reza confirms the cadence (deferred from 56.7 — §19 forbids inventing the signal).
+- **56.11** — finish removing `CategoryPickerSheet` (band-review staging edit + deck pencil) as those flows are reworked.
+- Each stage ships dark + mobile variants per §18.7.2.
+
+*Phase 56 v1.6 — **56.7 state-aware Review tile + canonical count this PR**; 56.8–56.11 staged. Governed by §18.8 (design ≥9 signed), §12.2.1 (one count source), §19 (real % + no invented import signal), §20.5 (autonomy on the 10/10 build).*
