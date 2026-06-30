@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Activity Category Picker</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#f9f9ff",
+                      "inverse-surface": "#2a3040",
+                      "secondary-fixed": "#e1e0ff",
+                      "primary-fixed-dim": "#89ceff",
+                      "card-glass-light": "rgba(255, 255, 255, 0.70)",
+                      "primary": "#006591",
+                      "card-glass-dark": "#0E1424",
+                      "on-tertiary": "#ffffff",
+                      "tertiary": "#5d5f5d",
+                      "inverse-primary": "#89ceff",
+                      "primary-container": "#0ea5e9",
+                      "surface-dim": "#d3daee",
+                      "on-background": "#151b2a",
+                      "tertiary-fixed-dim": "#c6c7c4",
+                      "surface-container": "#e9edff",
+                      "on-primary-container": "#003751",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-container": "#fffbff",
+                      "on-surface": "#151b2a",
+                      "on-secondary-fixed-variant": "#2f2ebe",
+                      "tertiary-container": "#9b9c9a",
+                      "on-secondary": "#ffffff",
+                      "surface-container-highest": "#dce2f6",
+                      "dark-ground": "#050913",
+                      "surface-bright": "#FFFFFF",
+                      "surface-container-low": "#f1f3ff",
+                      "tertiary-fixed": "#e2e3e0",
+                      "on-surface-variant": "#3e4850",
+                      "on-error": "#ffffff",
+                      "on-secondary-fixed": "#07006c",
+                      "outline": "#6e7881",
+                      "on-primary-fixed": "#001e2f",
+                      "trail-live": "#8B5CF6",
+                      "outline-variant": "#bec8d2",
+                      "surface-variant": "#dce2f6",
+                      "on-tertiary-fixed-variant": "#454745",
+                      "on-primary-fixed-variant": "#004c6e",
+                      "entity-rental": "#14B8A6",
+                      "secondary": "#4648d4",
+                      "error-container": "#ffdad6",
+                      "growth": "#16A34A",
+                      "primary-fixed": "#c9e6ff",
+                      "entity-home": "#F59E0B",
+                      "error": "#DC2626",
+                      "on-primary": "#ffffff",
+                      "growth-lift": "#22C55E",
+                      "background": "#f9f9ff",
+                      "on-error-container": "#93000a",
+                      "inverse-on-surface": "#edf0ff",
+                      "surface-container-high": "#e2e8fc",
+                      "caution": "#F59E0B",
+                      "surface-tint": "#006591",
+                      "on-tertiary-fixed": "#1a1c1b",
+                      "secondary-fixed-dim": "#c0c1ff",
+                      "on-tertiary-container": "#323432",
+                      "secondary-container": "#6063ee"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "touch-target": "44px",
+                      "hero-padding": "20px",
+                      "screen-margin": "20px",
+                      "tab-bar-height": "56px",
+                      "section-gap": "20px",
+                      "card-padding": "16px"
+              },
+              "fontFamily": {
+                      "headline-md": ["Inter"],
+                      "body-md": ["Inter"],
+                      "data-xl": ["Inter"],
+                      "data-hero": ["Inter"],
+                      "eyebrow": ["Inter"],
+                      "label-sm": ["Inter"],
+                      "body-lg": ["Inter"],
+                      "display-lg": ["Inter"],
+                      "headline-lg": ["Inter"]
+              },
+              "fontSize": {
+                      "headline-md": ["22px", {"lineHeight": "24px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["15px", {"lineHeight": "22px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "data-xl": ["32px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "data-hero": ["44px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "eyebrow": ["11px", {"lineHeight": "13px", "letterSpacing": "0.16em", "fontWeight": "500"}],
+                      "label-sm": ["12px", {"lineHeight": "14px", "letterSpacing": "0.02em", "fontWeight": "600"}],
+                      "body-lg": ["17px", {"lineHeight": "25px", "letterSpacing": "0", "fontWeight": "400"}],
+                      "display-lg": ["40px", {"lineHeight": "42px", "letterSpacing": "-0.03em", "fontWeight": "600"}],
+                      "headline-lg": ["28px", {"lineHeight": "31px", "letterSpacing": "-0.02em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .bg-gradient-sky-indigo { background: linear-gradient(135deg, #38BDF8 0%, #4F46E5 100%); }
+        .text-gradient-sky-indigo { background: linear-gradient(135deg, #38BDF8 0%, #4F46E5 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .border-gradient-sky-indigo { border-image: linear-gradient(135deg, #38BDF8, #4F46E5) 1; }
+        .bottom-sheet-anim { animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        /* Simulated background content */
+        .scrim-bg { background-color: rgba(5, 9, 19, 0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-[#050913] text-[#FAFAF7] h-screen w-full flex justify-center items-end md:items-center overflow-hidden">
+<!-- Scrim (Dimmed Background) -->
+<div class="absolute inset-0 scrim-bg z-40"></div>
+<!-- Mobile Container -->
+<div class="relative w-full max-w-[390px] h-full flex flex-col justify-end z-50">
+<!-- Bottom Sheet -->
+<div class="bottom-sheet-anim bg-[#0E1424]/85 backdrop-blur-xl rounded-t-[28px] shadow-[0_-10px_40px_rgba(5,9,19,0.3)] border-t border-white/10 flex flex-col h-[751px] w-full">
+<!-- Grabber Handle -->
+<div class="w-full flex justify-center pt-3 pb-4">
+<div class="w-12 h-1 bg-white/20 rounded-full"></div>
+</div>
+<!-- Header -->
+<div class="px-screen-margin flex items-center justify-between pb-4">
+<div class="flex items-center gap-3">
+<div class="w-11 h-11 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 shadow-sm">
+<span class="material-symbols-outlined text-[#FAFAF7]">local_cafe</span>
+</div>
+<div>
+<h2 class="font-body-lg text-body-lg text-[#FAFAF7] font-semibold">Local Cafe</h2>
+<p class="font-body-md text-body-md text-[#94A3B8] tabular-nums">$4.50 · 9:30am</p>
+</div>
+</div>
+<button class="font-body-md text-body-md text-[#FAFAF7] font-medium px-2 py-1">Cancel</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto pb-32">
+<!-- Suggested Hero -->
+<div class="px-screen-margin pb-6">
+<div class="flex items-center gap-1.5 mb-3">
+<span class="material-symbols-outlined text-[16px] text-gradient-sky-indigo" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-eyebrow text-eyebrow text-[#94A3B8] uppercase tracking-wider">Suggested</span>
+</div>
+<div class="flex flex-col gap-3">
+<!-- Primary Suggestion -->
+<div class="w-full p-4 rounded-xl bg-[#0E1424]/85 border border-gradient-sky-indigo border-[1px] shadow-sm flex items-center justify-between transition-transform active:scale-[0.98]" style="border-image: linear-gradient(135deg, #38BDF8, #4F46E5) 1;">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]"></div>
+<span class="font-body-lg text-body-lg font-medium text-[#FAFAF7]">Dining out</span>
+</div>
+<div class="bg-gradient-sky-indigo px-3 py-1 rounded-full">
+<span class="font-label-sm text-label-sm text-white tabular-nums">92% match</span>
+</div>
+</div>
+<!-- Secondary Suggestion -->
+<div class="w-full p-4 rounded-xl bg-[#0E1424]/85 border border-white/10 shadow-sm flex items-center justify-between transition-transform active:scale-[0.98]">
+<div class="flex items-center gap-3">
+<div class="w-3 h-3 rounded-full bg-amber-800"></div>
+<span class="font-body-lg text-body-lg text-[#FAFAF7]">Cafes &amp; coffee</span>
+</div>
+<div class="bg-white/10 px-3 py-1 rounded-full">
+<span class="font-label-sm text-label-sm text-[#94A3B8] tabular-nums">74%</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Search -->
+<div class="px-screen-margin pb-6">
+<div class="relative h-12 w-full">
+<div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+<span class="material-symbols-outlined text-[#94A3B8]">search</span>
+</div>
+<input class="w-full h-full pl-11 pr-4 bg-[#0E1424]/85 border border-white/8 rounded-full font-body-md text-body-md text-[#FAFAF7] placeholder-[#94A3B8] focus:ring-2 focus:ring-primary/20 shadow-inner" placeholder="Search categories" type="text"/>
+</div>
+</div>
+<!-- Recent -->
+<div class="px-screen-margin pb-6">
+<span class="font-eyebrow text-eyebrow text-[#94A3B8] uppercase tracking-wider mb-3 block">Recent</span>
+<div class="flex flex-wrap gap-2">
+<button class="h-8 px-4 bg-[#0E1424]/85 border border-white/8 rounded-full font-label-sm text-label-sm text-[#FAFAF7] flex items-center shadow-sm">Groceries</button>
+<button class="h-8 px-4 bg-[#0E1424]/85 border border-white/8 rounded-full font-label-sm text-label-sm text-[#FAFAF7] flex items-center shadow-sm">Transport</button>
+<button class="h-8 px-4 bg-[#0E1424]/85 border border-white/8 rounded-full font-label-sm text-label-sm text-[#FAFAF7] flex items-center shadow-sm">Subscriptions</button>
+</div>
+</div>
+<!-- All Categories -->
+<div class="px-screen-margin pb-safe">
+<span class="font-eyebrow text-eyebrow text-[#94A3B8] uppercase tracking-wider mb-2 block">All Categories</span>
+<div class="flex flex-col">
+<div class="h-touch-target flex items-center justify-between border-b border-white/8 active:bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+<span class="font-body-md text-body-md text-[#FAFAF7]">Groceries</span>
+</div>
+<span class="material-symbols-outlined text-[#94A3B8]">chevron_right</span>
+</div>
+<div class="h-touch-target flex items-center justify-between border-b border-white/8 active:bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
+<span class="font-body-md text-body-md text-[#FAFAF7]">Transport</span>
+</div>
+<span class="material-symbols-outlined text-[#94A3B8]">chevron_right</span>
+</div>
+<div class="h-touch-target flex items-center justify-between border-b border-white/8 active:bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-rose-400"></div>
+<span class="font-body-md text-body-md text-[#FAFAF7]">Health</span>
+</div>
+<span class="material-symbols-outlined text-[#94A3B8]">chevron_right</span>
+</div>
+<div class="h-touch-target flex items-center justify-between border-b border-white/8 active:bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
+<span class="font-body-md text-body-md text-[#FAFAF7]">Entertainment</span>
+</div>
+<span class="material-symbols-outlined text-[#94A3B8]">chevron_right</span>
+</div>
+<div class="h-touch-target flex items-center justify-between active:bg-white/5">
+<div class="flex items-center gap-3">
+<div class="w-2.5 h-2.5 rounded-full bg-slate-500"></div>
+<span class="font-body-md text-body-md text-[#FAFAF7]">Bills &amp; utilities</span>
+</div>
+<span class="material-symbols-outlined text-[#94A3B8]">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Sticky Footer -->
+<div class="absolute bottom-0 w-full bg-[#0E1424]/90 backdrop-blur-xl border-t border-white/10 px-screen-margin py-4 pb-safe flex flex-col gap-4 shadow-[0_-4px_24px_rgba(5,9,19,0.3)]">
+<!-- Segmented Control -->
+<div class="flex p-1 bg-white/5 rounded-xl border border-white/10">
+<button class="flex-1 py-1.5 bg-sky-500/20 rounded-lg shadow-sm font-label-sm text-label-sm text-sky-400 font-medium border border-sky-400/30">Just this</button>
+<button class="flex-1 py-1.5 rounded-lg font-label-sm text-label-sm text-[#94A3B8]">All Local Cafe</button>
+<button class="flex-1 py-1.5 rounded-lg font-label-sm text-label-sm text-sky-400 flex items-center justify-center gap-1">
+<span class="material-symbols-outlined text-[14px]">add</span>
+                        Make rule
+                    </button>
+</div>
+<!-- Apply Button -->
+<button class="w-full h-11 bg-gradient-sky-indigo rounded-xl text-white font-body-md text-body-md font-semibold shadow-md active:scale-[0.98] transition-transform">
+                    Apply
+                </button>
+</div>
+</div>
+</div>
+</body></html>
