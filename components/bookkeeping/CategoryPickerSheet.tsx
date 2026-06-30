@@ -63,6 +63,13 @@ interface CategoryPickerSheetProps {
    * the TransferDestinationSheet.
    */
   onMarkTransfer?: () => void | Promise<void>;
+  /**
+   * Phase 56.1 — quiet escape hatch to the full Link/route dialog ("link to
+   * an account / entity", skip, etc.). Tap is now the categorise picker, so
+   * this keeps the advanced router reachable in one more tap (the only path
+   * on desktop, which has no long-press).
+   */
+  onMoreOptions?: () => void;
 }
 
 const DEFAULT_SUGGESTIONS = [
@@ -81,6 +88,7 @@ export function CategoryPickerSheet({
   onClose,
   onPickOverride,
   onMarkTransfer,
+  onMoreOptions,
 }: CategoryPickerSheetProps) {
   const { token } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -341,6 +349,20 @@ export function CategoryPickerSheet({
         </div>
 
         {error && <p className="mt-3 text-xs text-rose-600">{error}</p>}
+
+        {/* Phase 56.1 — quiet escape hatch to the full Link/route dialog.
+            Categorise is the primary intent (everything above); linking to an
+            account/entity or skipping is the advanced path, one tap away. */}
+        {onMoreOptions && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onMoreOptions}
+            className="mt-4 w-full text-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-60"
+          >
+            More options — link to an account, mark transfer, or skip
+          </button>
+        )}
       </div>
     </>
   );

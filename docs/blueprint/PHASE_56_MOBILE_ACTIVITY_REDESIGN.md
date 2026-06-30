@@ -132,4 +132,20 @@ Design: 4 Stitch screens (Activity list light/dark + category picker light/dark)
 
 ---
 
-*Phase 56 v1.0 — PR-A/B shipped (#1303), PR-C built (this PR) after Reza design sign-off. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2 (in-app glass vocabulary), §0 (four lenses), §19 (no fabricated numbers), §15 (registered workstream).*
+## 6. Phase 56.1 — tap-to-categorise (post-PR-C feedback, 2026-06-30)
+
+Reza tested the shipped PR-C and reported two things: (a) the row looks better but the view is still a **list**, and (b) **tapping** a transaction still opened the **old Link Transaction dialog**, not the new picker — the clean flow was only reachable via the undiscoverable swipe-left.
+
+**Fixed (56.1, this PR — code-first, a true tweak to an already-shipped surface §18.2.1):**
+- Row **tap** (`onClick` — row body + mobile "+ Add" + desktop Add/suggested pills) now opens the **new `CategoryPickerSheet`** directly. Categorise is the primary intent, so it's the default tap.
+- The full Link/route dialog (link-to-account/entity, mark transfer, skip) is preserved one step away: **long-press** (mobile, unchanged) + a new quiet **"More options"** link inside the picker (the only path on desktop — no long-press there). Nothing is lost; `TransactionLinkDialog` stays mounted.
+
+## 7. Phase 56.2 — the card-deck "Review" view (Reza decision "A", 2026-06-30)
+
+Reza clarified the original "tiles, not a long list" intent: he wants a **finite swipeable card-deck** — one transaction per card, flip through like a notebook (Apple Wallet / Rocket-Money triage). Decision **"A"**: the deck is the **default landing for the Activity tab _when there's work to do_** (unreviewed/uncategorised items exist) — open Activity → flip cards → swipe-right confirms the AI category, swipe-left/tap opens the picker, "all caught up ✓" drops into the existing list. When nothing's to review, Activity opens to the (cleaner) list. The **list stays the permanent scan/search view, one tap away** — the deck *adds*, it never replaces (a deck-only browse kills scannability — behaviour + architect lenses).
+
+This is the deferred **Review Mode**, now promoted to the primary mobile experience. It's a **new section composition → Stitch-first, §18.8 ≥9/10, Reza sign-off before any React** (§18.2.1 STRICT). Designed next; ships as a separate PR (56.2). Honest dependency: the swipe-right magic is only as good as the per-card AI suggestion → compounds with the "consolidate the 3 categorisers" debt.
+
+---
+
+*Phase 56 v1.1 — PR-A/B shipped (#1303), PR-C shipped (#1304, design-signed-off), **56.1 tap-to-categorise this PR**; **56.2 card-deck = Stitch-first, design pending sign-off**. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2 (in-app glass vocabulary), §0 (four lenses), §19 (no fabricated numbers), §15 (registered workstream).*
