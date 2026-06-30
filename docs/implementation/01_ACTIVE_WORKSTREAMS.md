@@ -10,7 +10,7 @@
 
 ### 0·MOBILE-ACTIVITY. Mobile Activity / Reconciliation redesign (Reza report 2026-06-30)
 
-- **Status:** 🟢 SHIPPING — PR-A/B = **#1303 merged**; PR-C = **#1304 merged** (mobile row + on-row Confirm + picker hero). **56.1 tap-to-categorise** (tap → new picker, not the old Link dialog) → PR open. **56.2 card-deck** ("Review" view, Reza decision A) = Stitch-first, design pending sign-off.
+- **Status:** 🟢 SHIPPING — PR-A/B = **#1303 merged**; PR-C = **#1304 merged**. **56.1 tap-to-categorise** = #1305 (open). **56.2 card-deck** ("Review" view, decision A) = built + design-signed-off → PR open (stacks on #1305).
 - **Started:** 2026-06-30.
 - **Owner:** Reza (direction + design sign-off) + Claude (research + build).
 - **Last touched:** 2026-06-30 — Reza feedback on PR-C: (a) tap still opened the old Link dialog → **56.1** re-points tap to the new `CategoryPickerSheet` (advanced router preserved via long-press + a quiet "More options"); (b) wants the view to become a **finite swipeable card-deck** ("notebook") → **56.2**, decision **A** = deck is the default landing when there's work, list one tap away — Stitch-first, ≥9/10, sign-off before React.
