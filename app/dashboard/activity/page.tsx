@@ -1924,16 +1924,19 @@ function TransactionRow({
     if (rowStatus.actionLabel === 'Confirm' && onConfirm) onConfirm();
     else onClick();
   };
-  // Phase 56 (mobile row redesign) — the new mobile body wants a 44px
-  // gradient "gem", a short time, and a category-tone dot. Income →
-  // emerald, transfer → slate, spending → a calm indigo (NOT rose: §18.7.2
-  // reserves red/rose for true loss, never routine spend). All real data —
-  // the time is `tx.date` formatted, no invented values (§19).
+  // Gem colour (mobile + desktop share this). Income → emerald (the one
+  // positive highlight, §18.7.2). Spending → a NEUTRAL slate, NOT red/rose:
+  // §18.7.2 reserves red for true loss/attention, and a wall of red debit rows
+  // reads as constant alarm (behaviour-psychology — calm, not anxious). The
+  // ↑/↓ arrow + the "−" sign already signal direction, so the gem stays calm.
+  // Transfer → a LIGHTER slate so it's distinct from spend (the ⇄ icon is the
+  // primary differentiator). Reza decision 2026-06-30 (indigo → slate): the
+  // 4-lens review recommended a calm neutral over either indigo or red.
   const gemGradient = isTransfer
-    ? 'bg-gradient-to-br from-slate-400 to-slate-600'
+    ? 'bg-gradient-to-br from-slate-300 to-slate-500'
     : isIn
       ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
-      : 'bg-gradient-to-br from-indigo-400 to-indigo-600';
+      : 'bg-gradient-to-br from-slate-400 to-slate-600';
   const dotTone = rowStatus.done ? 'bg-emerald-500' : rowStatus.state === 'suggested' ? 'bg-sky-400' : 'bg-slate-300';
   let timeStr = '';
   try {
