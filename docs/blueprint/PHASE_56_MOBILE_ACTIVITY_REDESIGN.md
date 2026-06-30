@@ -167,4 +167,22 @@ After 56.2 shipped, Reza reported the deck didn't appear (even after a clean rel
 - **The deck is fed the full all-time review set** (`reviewTxns`, via the list route — enriched, no duplicate query) so it opens reliably with the real queue. Auto-open is **session-dismissible** (anti-nag, honours the ↩️ reverted pop-on-arrival lesson) and opens on `?review=1` on any device.
 - **Numeric search** — the list route now also matches `amount` when the query is a number.
 
-*Phase 56 v1.2 — PR-A/B (#1303) + PR-C (#1304) + 56.1 tap (#1305) + 56.2 card-deck (#1306) shipped; **56.3 review-count SSOT + reliable deck + numeric search this PR**. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2, §0 (four lenses), §12.2.1 (one source), §19 (no fabricated numbers), §15 (registered workstream).*
+*Phase 56 v1.2 — PR-A/B (#1303) + PR-C (#1304) + 56.1 tap (#1305) + 56.2 card-deck (#1306) + 56.3 SSOT (#1307) shipped.*
+
+## 9. Phase 56.4 — deck gesture remap + viewport fit (Reza feedback, 2026-06-30)
+
+After 56.3 made the deck open reliably, Reza flagged two interaction/layout issues on his device:
+
+> *"2 issues 1. the size doesn't fit the mobile screen 2. swipe right is opening the categorisation page (same as clicking on the pencil icon), I want the swipe right and left to navigate between transactions rather than opening categorisation page. Categorisation should be done via pencil and confirmation via tick button."*
+
+**Root cause (verified in source):**
+- **Gesture conflict** — `onDragEnd` mapped *swipe-right → Confirm* and *swipe-left → Recategorise* (opens the picker). So a swipe and the pencil button did the same thing, and the gesture overloaded the action it should only *browse*. The buttons (pencil = recategorise, tick = confirm) were already correct — the swipe was the problem.
+- **Overflow** — the card amount used `text-[40px]` with no `truncate`; a long, comma-formatted value like `+$1,234,567.89` is a single unbreakable token that ran off the right edge. The container was `max-w-md` (448px) and the gem/merchant were oversized for a 360–390px viewport.
+
+**Fixed (56.4) — code-first per §18.2.1 (a gesture remap + sizing tweak on an already-signed composition is a "true tweak", not a new section):**
+- **Swipe now BROWSES only** — drag right → previous card, drag left → next card, clamped to `[0, total-1]` (browsing never completes the deck or runs before the first card). New `goToNext()` / `goToPrev()` helpers, separate from the action-history `advance()`/`goBack()`. Swipe no longer categorises or confirms.
+- **Categorise = pencil button** (`handleRecategorise` → picker), **Confirm = tick button** (`handleConfirm` → accept the AI suggestion) — unchanged, now the *only* way to act.
+- **Edge hints relabelled** — the emerald "Confirm" / slate "Recategorise" swipe hints are now neutral **"‹ Previous" / "Next ›"** chevrons matching the browse semantics.
+- **Viewport fit** — container `max-w-md → max-w-sm` + `mx-auto`; card `px-6 py-7 → px-5 py-6` + `w-full overflow-hidden`; gem `w-14 → w-12`; merchant `text-[22px] → text-lg`; amount `text-[40px] → text-[32px]` + `truncate`; `shrink-0` on the date/gem so a long merchant can't shove them off-screen.
+
+*Phase 56 v1.3 — **56.4 deck gesture remap + viewport fit this PR**. No financial number touched (presentational + interaction only); `neomatrix:check` green (existing covered file, no new files). Governed by CLAUDE.md §18.2.1 (true-tweak code-first), §18.7.2 (glass vocabulary preserved), §0 (designer + behaviour-psychologist lenses).*

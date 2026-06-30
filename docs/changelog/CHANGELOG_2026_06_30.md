@@ -1,5 +1,49 @@
 # Changelog — 2026-06-30
 
+## Session: deck-fit-and-swipe-nav (Phase 56.4)
+
+### Changes Made
+- **Type**: Fix (interaction + layout) — Reza feedback 2026-06-30, after 56.3 made the deck open reliably.
+- **Scope**: the mobile card-deck (`components/bookkeeping/ReviewQueueCards.tsx`) — swipe semantics + card sizing. No server / financial change.
+- **Two issues Reza reported:**
+  1. **Swipe overloaded the categorise action** — swipe-right opened the categorisation picker (identical to the pencil button) and swipe-left confirmed. Reza wants the swipe to **browse between transactions** (right = previous, left = next), with **categorise on the pencil button** and **confirm on the tick button** only.
+  2. **Card didn't fit the mobile screen** — a long, comma-formatted amount (`+$1,234,567.89`) is a single unbreakable token that ran off the right edge; the container (`max-w-md` = 448px) and the gem/merchant were oversized for a 360–390px viewport.
+- **The fix (code-first per §18.2.1 — a gesture remap + sizing tweak on an already-signed composition is a "true tweak", not a new section):**
+  - **Swipe browses only** — `onDragEnd` now calls new clamped `goToPrev()` (drag right) / `goToNext()` (drag left), bounded to `[0, total-1]` so browsing never completes the deck or runs before the first card. Swipe no longer categorises or confirms; the action-history `advance()`/`goBack()` path (used by the buttons + Skip + Back) is untouched.
+  - **Edge hints relabelled** to neutral **"‹ Previous" / "Next ›"** chevrons (was emerald "Confirm" / slate "Recategorise"), matching the browse semantics. Added `ChevronRight` import.
+  - **Viewport fit** — `max-w-md → max-w-sm` + `mx-auto`; card `px-6 py-7 → px-5 py-6` + `w-full overflow-hidden`; gem `w-14 → w-12`; merchant `text-[22px] → text-lg`; amount `text-[40px] → text-[32px]` + `truncate`; `shrink-0` on gem/date so a long merchant can't shove them off-screen.
+
+### Files Modified
+- `components/bookkeeping/ReviewQueueCards.tsx` — swipe → browse (clamped `goToNext`/`goToPrev`), neutral nav edge-hints, card sized to fit the viewport, header JSDoc updated for the 56.4 semantics.
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md` — added §9 (Phase 56.4 gesture remap + viewport fit).
+
+### Verification (§19 — no financial number)
+- Presentational + interaction only — no calc/engine/count change. `npx tsc --noEmit` clean on the component; `npm run lint` clean; `npm run neomatrix:check` green (existing covered file, no new files). Buttons verified unchanged: pencil → `handleRecategorise` (picker), tick → `handleConfirm` (accept AI suggestion).
+- §0 lenses: designer (glass vocabulary preserved — only sizes/labels changed); behaviour-psychologist (browse-to-explore is calmer than swipe-to-commit; the user acts deliberately via the two buttons, no accidental categorisation).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (deck sizing + nav hints — a true tweak on a signed §18.2.1 composition)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure · [ ] strategic decision
+
+Docs updated in this PR:
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§9` — Phase 56.4 gesture remap + viewport fit.
+
+### Testing
+- [x] TypeScript compiles (component)
+- [x] Lint passes
+- [x] `neomatrix:check` passes
+- [ ] Manual on-device (Reza to confirm post-merge per §17.2)
+
+### PR
+- Branch: `claude/deck-fit-and-swipe-nav`
+- Status: Draft (opened after push)
+
+### Self-review gate (§20.5)
+- 3× pass against the requirement. Pass 1 (draft): swap the two onDragEnd branches. Pass 2 (critique): swapping alone would let swipe-left complete the deck (`advance()` runs off the end → "all caught up" while merely browsing) — introduced clamped `goToNext/goToPrev` instead, separate from the action history. Pass 3: the old emerald/slate hints would still imply Confirm/Recategorise on swipe (misleading) → relabelled to Previous/Next; and confirmed the amount overflow is an unbreakable token, so added `truncate` + smaller type rather than only shrinking the container. Overall 10/10 against the brief — non-financial, so the autonomy grant applies: proceeding through PR + CI.
+
+---
+
 ## Session: review-count-ssot (Phase 56.3)
 
 ### Changes Made
