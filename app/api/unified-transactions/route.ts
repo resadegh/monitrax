@@ -129,12 +129,23 @@ export const GET = withPermission('transaction.read', async (request, auth) => {
 
       if (search) {
         // Matches the input placeholder "merchant, description, or category".
+        // Phase 56.3 (Reza 2026-06-30) — also match the AMOUNT when the query
+        // is a number (e.g. "750" finds the −$750 row, which has no "750" in
+        // its text). Prisma can't `contains` a Float, so it's an exact match on
+        // |amount|, covering both sign conventions (signed −750 or positive
+        // 750 + direction). Strips $ , and spaces so "$1,750" works too.
+        const numericQuery = Number(search.replace(/[$,\s]/g, ''));
+        const amountClauses =
+          search.trim() !== '' && Number.isFinite(numericQuery)
+            ? [{ amount: numericQuery }, { amount: -numericQuery }]
+            : [];
         where.OR = [
           { description: { contains: search, mode: 'insensitive' } },
           { merchantStandardised: { contains: search, mode: 'insensitive' } },
           { merchantRaw: { contains: search, mode: 'insensitive' } },
           { categoryLevel1: { contains: search, mode: 'insensitive' } },
           { categoryLevel2: { contains: search, mode: 'insensitive' } },
+          ...amountClauses,
         ];
       }
 

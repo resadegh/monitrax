@@ -156,4 +156,15 @@ Honest dependency: the swipe-right magic is only as good as the per-card AI sugg
 
 ---
 
-*Phase 56 v1.1 — PR-A/B shipped (#1303), PR-C shipped (#1304, design-signed-off), **56.1 tap-to-categorise this PR**; **56.2 card-deck = Stitch-first, design pending sign-off**. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2 (in-app glass vocabulary), §0 (four lenses), §19 (no fabricated numbers), §15 (registered workstream).*
+## 8. Phase 56.3 — review-count SSOT + reliable deck + numeric search (Reza feedback, 2026-06-30)
+
+After 56.2 shipped, Reza reported the deck didn't appear (even after a clean reload) and that **the Home hero said "78 unreconciled" while Activity showed 110/255 = 365** — "another SSOT issue" — plus numeric search ("750") didn't match amounts. An audit found the root cause: **three independent counters** for "needs review" (Home `pendingActions` 60-day window · Activity `bulkConfirm` all-time confidence bands incl. import-queue · the deck's `!categoryLevel1` on the paginated page), and the deck auto-opening off the **25-row display page** (usually already categorised → it found 0 and never opened).
+
+**Fixed (56.3), per Reza directive "anything the user hasn't confirmed, all-time":**
+- **One SSOT** — `lib/bookkeeping/reviewQueue.ts`: `reviewQueueWhere` (not linked, not transfer/investment, `userCorrectedCategory != true`, all-time) + `getReviewQueueCount` + `getReviewQueueBands` (High/Med/Low **partition the same set → sum to total**). Mirrors the list route's `uncategorized=true` filter.
+- **`GET /api/bookkeeping/review-queue`** → `{ count, bands }`. Home hero, Activity chips, and the deck all read this one number.
+- **Home "Fix now"** → `/dashboard/activity?review=1` (opens the deck). The 60-day `CATEGORISE_TRAILING_DAYS` window is **retired**.
+- **The deck is fed the full all-time review set** (`reviewTxns`, via the list route — enriched, no duplicate query) so it opens reliably with the real queue. Auto-open is **session-dismissible** (anti-nag, honours the ↩️ reverted pop-on-arrival lesson) and opens on `?review=1` on any device.
+- **Numeric search** — the list route now also matches `amount` when the query is a number.
+
+*Phase 56 v1.2 — PR-A/B (#1303) + PR-C (#1304) + 56.1 tap (#1305) + 56.2 card-deck (#1306) shipped; **56.3 review-count SSOT + reliable deck + numeric search this PR**. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2, §0 (four lenses), §12.2.1 (one source), §19 (no fabricated numbers), §15 (registered workstream).*

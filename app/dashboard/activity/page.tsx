@@ -289,16 +289,6 @@ function ActivityPageContent() {
   const autoReviewOpened = useRef(false);
   // Phase 49 — bump to re-fetch the AI bookkeeper confidence summary.
   const [confidenceRefresh, setConfidenceRefresh] = useState(0);
-  useEffect(() => {
-    if (loading || autoReviewOpened.current) return;
-    if (typeof window === 'undefined') return;
-    // Mobile only — the deck is a one-thumb ritual; desktop keeps the list.
-    if (!window.matchMedia('(max-width: 767px)').matches) return;
-    const reviewable = transactions.filter((t) => !t.categoryLevel1 && !t.isTransfer);
-    if (reviewable.length === 0) return;
-    autoReviewOpened.current = true;
-    setReviewMode(true);
-  }, [loading, transactions]);
   // Phase 49.4 / 49.14 — confidence-band lens. When set, the page shows
   // EVERYTHING in that band as one simple view (Reza directives 2026-06-12:
   // band chips act as filters; "the solution must be simple enough for
@@ -310,13 +300,44 @@ function ActivityPageContent() {
   const [queueItems, setQueueItems] = useState<ReviewQueueItem[]>([]);
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueSelected, setQueueSelected] = useState<Set<string>>(() => new Set());
+  // Phase 56.3 — the band chips now read the ONE canonical review-queue SSOT
+  // (`/api/bookkeeping/review-queue`), so High+Medium+Low === `total` === the
+  // Home hero count === the deck (fixes the "78 vs 365" divergence).
   const [bandCounts, setBandCounts] = useState<{
     high: number;
     medium: number;
     low: number;
-    txMedium: number;
-    txLow: number;
-  }>({ high: 0, medium: 0, low: 0, txMedium: 0, txLow: 0 });
+    total: number;
+  }>({ high: 0, medium: 0, low: 0, total: 0 });
+  // Phase 56.3 — the full, all-time review set for the card-deck (fetched via
+  // the list route's canonical `uncategorized=true` filter — same predicate as
+  // the count — so the deck opens reliably with the real queue, not the 25-row
+  // display page it was filtering before).
+  const [reviewTxns, setReviewTxns] = useState<Transaction[]>([]);
+  // Phase 56.2/56.3 — open the card-deck off the CANONICAL review set (all-time),
+  // not the paginated display page. The old `transactions.filter` saw only the
+  // current 25 rows (usually already categorised) → the deck never opened.
+  useEffect(() => {
+    if (loading || autoReviewOpened.current) return;
+    if (typeof window === 'undefined') return;
+    const hasWork = reviewTxns.length > 0 || bandCounts.total > 0;
+    if (!hasWork) return;
+    // Arrived via Home "Fix now" (?review=1) → open regardless of device.
+    const explicit = new URLSearchParams(window.location.search).get('review') === '1';
+    if (explicit) {
+      autoReviewOpened.current = true;
+      setReviewMode(true);
+      return;
+    }
+    // Else (decision "A"): auto-open on MOBILE when there's work — but only
+    // ONCE PER SESSION (sessionStorage), so navigating back doesn't re-pop —
+    // keeps it the default landing without the pop-on-arrival nag that was
+    // reverted before (↩️ Reversed Decisions).
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    if (sessionStorage.getItem('monitrax.reviewDeck.dismissed') === '1') return;
+    autoReviewOpened.current = true;
+    setReviewMode(true);
+  }, [loading, reviewTxns, bandCounts.total]);
   // Phase 49.5 — queue item whose category is being corrected via the picker.
   const [queueEditItem, setQueueEditItem] = useState<ReviewQueueItem | null>(null);
 
@@ -324,18 +345,30 @@ function ActivityPageContent() {
   const fetchBandCounts = useCallback(async () => {
     if (!token) return;
     try {
-      const res = await fetch('/api/unified-transactions/bulk-confirm', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const json = await res.json();
-      if (res.ok && json.success) {
+      // Canonical review-queue summary: count + confidence bands that PARTITION
+      // the same unconfirmed set (high+medium+low === count). One SSOT (§12.2.1).
+      const [summaryRes, txRes] = await Promise.all([
+        fetch('/api/bookkeeping/review-queue', { headers: { Authorization: `Bearer ${token}` } }),
+        // The actual rows for the deck — the canonical `uncategorized=true`
+        // filter, all-time, enriched (account + Neobrain suggestion) by the
+        // list route. High limit so the deck has the real queue, not a page.
+        fetch('/api/unified-transactions?uncategorized=true&excludeTransfers=true&limit=300&page=1', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+      const summary = await summaryRes.json().catch(() => null);
+      if (summaryRes.ok && summary?.success) {
+        const b = summary.data.bands ?? {};
         setBandCounts({
-          high: json.data.high ?? 0,
-          medium: json.data.medium ?? 0,
-          low: json.data.low ?? 0,
-          txMedium: json.data.txMedium ?? 0,
-          txLow: json.data.txLow ?? 0,
+          high: b.high ?? 0,
+          medium: b.medium ?? 0,
+          low: b.low ?? 0,
+          total: summary.data.count ?? 0,
         });
+      }
+      const txJson = await txRes.json().catch(() => null);
+      if (txRes.ok && txJson?.success && Array.isArray(txJson.data)) {
+        setReviewTxns(txJson.data as Transaction[]);
       }
     } catch {
       // Quiet — chips just show 0.
@@ -885,13 +918,13 @@ function ActivityPageContent() {
               active={confidenceBand === 'medium'}
               onClick={() => { setConfidenceBand(confidenceBand === 'medium' ? null : 'medium'); setPage(1); }}
               dot="bg-amber-400"
-              label={`Medium · ${(bandCounts.medium + bandCounts.txMedium).toLocaleString('en-AU')}`}
+              label={`Medium · ${bandCounts.medium.toLocaleString('en-AU')}`}
             />
             <ConfidenceChip
               active={confidenceBand === 'low'}
               onClick={() => { setConfidenceBand(confidenceBand === 'low' ? null : 'low'); setPage(1); }}
               dot="bg-rose-400"
-              label={`Low · ${(bandCounts.low + bandCounts.txLow).toLocaleString('en-AU')}`}
+              label={`Low · ${bandCounts.low.toLocaleString('en-AU')}`}
             />
             <ChipToggle
               active={showRecurringOnly}
@@ -1265,15 +1298,23 @@ function ActivityPageContent() {
           list; each successful PATCH advances + we refresh on close. */}
       <ReviewQueueCards
         open={reviewMode}
-        transactions={transactions.filter((t) => !t.categoryLevel1 && !t.isTransfer)}
+        // Phase 56.3 — the FULL canonical review set (all-time, enriched), not
+        // the paginated display page. Fixes "deck won't open / too thin".
+        transactions={reviewTxns}
         onPatchSuccess={() => {
           // Bump celebration trigger when the queue clears completely.
           setCelebrationTrigger((t) => t + 1);
         }}
         onClose={() => {
           setReviewMode(false);
+          // Phase 56.3 — remember the dismissal for this tab session so the
+          // deck doesn't auto-re-pop on the next Activity visit (anti-nag).
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem('monitrax.reviewDeck.dismissed', '1');
+          }
           setConfidenceRefresh((n) => n + 1);
           fetchTransactions();
+          fetchBandCounts();
           fetchSummary();
         }}
       />
