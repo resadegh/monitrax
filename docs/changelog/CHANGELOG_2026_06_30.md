@@ -1,5 +1,35 @@
 # Changelog — 2026-06-30
 
+## Session: mobile-list-amount-fix (Phase 56.8d)
+
+### Changes Made
+- **Type**: Fix (follow-up) — Reza 2026-06-30: after 56.8c the deck transition was fixed but the **mobile list still truncated the name and dropped the amount**.
+- **Root cause (deeper than 56.8c):** 56.8c added `min-w-0` to the name *rows*, but the row's `<button>` (a `flex-1` child of the row container) and the mobile-body flex still lacked `min-w-0`, so the button **expanded to the long merchant name's intrinsic width** and pushed the amount past the day-card's `overflow-hidden` edge (clipped → invisible). `min-w-0` must be present on **every** flex ancestor between the row container and the truncating text, or truncation never kicks in.
+- **Fix:** added `min-w-0` to the row `<button>` (`flex-1 min-w-0 …`), the mobile body (`md:hidden flex … min-w-0`) and the desktop body (`hidden md:flex … min-w-0`). Now the name truncates with an ellipsis and the **amount + action button stay visible**.
+- **Verified before shipping** (this time): rendered the exact flex chain at a **390px** mobile width — long name → "Periodical Pa…" with "−$1,295.00" fully shown + the action button; short name unaffected.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `min-w-0` on the row button + mobile body + desktop body (the missing flex-ancestor constraints).
+
+### Verification (§19)
+- Pure layout fix; no money/calc change. `tsc` clean (only the pre-existing `tsconfig baseUrl` warning); `neomatrix:check` green; lint clean. Truncation + amount visibility confirmed by a 390px render of the real flex nesting.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] visual design system / component pattern (mobile row truncation correctness)
+- [ ] config · [ ] infra · [ ] identity · [ ] deployment · [ ] security/CDR · [ ] operational · [ ] strategic
+
+### Testing
+- [x] `tsc` clean · [x] lint clean · [x] `neomatrix:check` green · [x] 390px render verified
+- [ ] Manual on the Vercel preview (Reza)
+
+### Self-review gate (§20.5)
+3× pass → 10/10. The honest critique: 56.8c's `min-w-0` was on the wrong level (name rows, not the button) and I shipped it without rendering it — this time I added `min-w-0` to **every** flex ancestor and **verified at 390px before pushing**. Lesson recorded: a flexbox truncation fix must constrain the whole ancestor chain and be rendered, not reasoned.
+
+### PR
+- Branch: `claude/mobile-list-amount-fix` · Status: Draft
+
+---
+
 ## Session: mobile-list-and-deck (Phase 56.8c)
 
 ### Changes Made

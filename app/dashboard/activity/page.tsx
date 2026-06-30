@@ -2088,7 +2088,7 @@ function TransactionRow({
             : 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           touchAction: 'pan-y', // allow vertical scroll; we own horizontal
         }}
-        className="flex-1 text-left px-3 sm:px-4 md:px-5 py-3 sm:py-3.5 md:py-4 hover-lift bg-card"
+        className="flex-1 min-w-0 text-left px-3 sm:px-4 md:px-5 py-3 sm:py-3.5 md:py-4 hover-lift bg-card"
       >
       {/* ===================================================================
           MOBILE BODY (< md) — Phase 56 redesign. Apple-Wallet restraint:
@@ -2099,7 +2099,7 @@ function TransactionRow({
           (issue 2) and the missing on-row Confirm (issue 3). Stitch screens
           1e164f52…/fa5445ad… (project 4167588157712714472, §18.8 9.4/10).
           =================================================================== */}
-      <div className="md:hidden flex items-center gap-3">
+      <div className="md:hidden flex items-center gap-3 min-w-0">
         {/* 44px gem + unreviewed dot (sky + white ring → reads on any gem) */}
         <div className="relative shrink-0">
           <div className={`flex items-center justify-center w-11 h-11 rounded-[14px] text-white shadow-sm ring-1 ring-black/5 ${gemGradient}`}>
@@ -2170,7 +2170,7 @@ function TransactionRow({
           inline confidence chrome, the one derived status + at-most-one
           action cluster, amount, chevron.
           =================================================================== */}
-      <div className="hidden md:flex items-center gap-4 w-full">
+      <div className="hidden md:flex items-center gap-4 w-full min-w-0">
       {/* Direction gem — Phase 56.8b cleaner refresh: a luminous 40px gradient
           gem (My-Wealth glass vocabulary, §18.7.2) replaces the flat tinted
           square; an unreviewed sky dot mirrors the mobile row. Visual only. */}
