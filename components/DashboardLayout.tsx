@@ -345,7 +345,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           banner — single source of truth, see
           `useOnboardingState.shouldShowResumeBanner`). The CSS lives in
           styles/wizard-animations.css under "ONBOARDING ACTIVE SHELL". */}
-      <div className="flex min-h-screen bg-editorial-ivory text-editorial-ink">
+      {/* min-h-[100dvh] (dynamic viewport) instead of min-h-screen (100vh) so the
+          layout tracks iOS Safari's collapsing toolbar — with the fixed bottom
+          nav this stops the rubber-band that revealed a black gap below content
+          (Reza report 2026-06-30). overscroll-y-contain stops the scroll bounce
+          bleeding to the document. */}
+      <div className="flex min-h-[100dvh] overscroll-y-contain bg-editorial-ivory text-editorial-ink">
         <EditorialSidebar
           user={{ name: user.name, email: user.email }}
           onSignOut={logout}

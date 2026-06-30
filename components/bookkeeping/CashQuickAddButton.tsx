@@ -144,10 +144,13 @@ export function CashQuickAddButton({ onCreated, onCaptureReceipt }: CashQuickAdd
           type="button"
           onClick={() => setOpen(true)}
           aria-label="Quick add cash transaction"
-          // Phase 14.6 — bottom inset bumped on phones (`bottom-24`) to
-          // clear the fixed `<MobileTabBar />` (~64px + safe-area). z-35
-          // sits above the tab bar (z-30) so the FAB stays tappable.
-          className="fixed bottom-24 right-6 sm:bottom-8 sm:right-8 z-[35] md:z-30 w-14 h-14 rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center motion-reduce:transition-none motion-reduce:hover:scale-100"
+          // Mobile (<md): the global scan/camera FAB (GlobalScanReceipt, also
+          // md:hidden) sits at bottom ≈ calc(4rem + safe-area + 0.75rem), right-4.
+          // Stack this "+" ABOVE it (same right edge, clear gap) so the two no
+          // longer overlap (Reza report 2026-06-30). md+ hides the camera FAB, so
+          // restore the normal corner position there. z-35 keeps it above the
+          // fixed bottom nav (z-30).
+          className="fixed right-4 bottom-[calc(9.5rem+env(safe-area-inset-bottom,0px))] md:bottom-8 md:right-8 z-[35] md:z-30 w-14 h-14 rounded-full bg-emerald-600 text-white shadow-xl hover:bg-emerald-700 hover:scale-105 active:scale-95 transition-all duration-200 flex items-center justify-center motion-reduce:transition-none motion-reduce:hover:scale-100"
         >
           <Plus className="w-6 h-6" />
         </button>

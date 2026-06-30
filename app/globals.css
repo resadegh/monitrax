@@ -259,6 +259,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* Stop the document-level rubber-band on iOS Safari that dragged the page
+       (and the fixed bottom nav) up, revealing a black gap (Reza 2026-06-30).
+       `contain` halts the bounce-bleed without disabling intentional scroll. */
+    overscroll-behavior-y: contain;
   }
 }
 
