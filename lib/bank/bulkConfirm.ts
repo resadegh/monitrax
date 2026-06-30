@@ -132,6 +132,22 @@ export async function getReviewQueueCount(userId: string): Promise<number> {
   return prisma.unifiedTransaction.count({ where: reviewQueueWhere(userId) });
 }
 
+/**
+ * Phase 56.7 — the denominator for "% categorised": every CATEGORISABLE
+ * transaction (non-transfer, non-investment, all-time). `reviewCount` of these
+ * are still unconfirmed; the rest (linked OR user-confirmed) are done. A REAL
+ * progress figure (§19 — never fabricated): pct = (total − reviewCount) / total.
+ */
+export async function getCategorisableTotal(userId: string): Promise<number> {
+  return prisma.unifiedTransaction.count({
+    where: {
+      userId,
+      isTransfer: { not: true },
+      isInvestmentContribution: { not: true },
+    },
+  });
+}
+
 export interface ReviewQueueBands {
   /** AI is confident (≥0.9) but the user hasn't confirmed → one-tap Confirm. */
   high: number;

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Activity Hub | Monitrax</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(11, 18, 32, 0.04), 0 2px 4px -2px rgba(11, 18, 32, 0.04);
+        }
+        .inner-highlight {
+            box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.8);
+        }
+        .tabular-nums {
+            font-variant-numeric: tabular-nums;
+        }
+        .text-gradient-sky-indigo {
+            background: linear-gradient(135deg, #0EA5E9, #6366F1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .bg-gradient-sky-indigo {
+            background: linear-gradient(135deg, #0EA5E9, #6366F1);
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-primary-fixed": "#002109",
+                        "outline": "#6e7b6c",
+                        "trail-amber": "#F59E0B",
+                        "surface-container": "#e9f0e5",
+                        "error-red": "#DC2626",
+                        "primary": "#006b2c",
+                        "surface-dim": "#F1EFE8",
+                        "outline-slate": "#94A3B8",
+                        "inverse-primary": "#62df7d",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bdcaba",
+                        "surface-container-highest": "#dde5d9",
+                        "surface-container-high": "#e3eadf",
+                        "secondary-container": "#d9dff4",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed-variant": "#38485d",
+                        "inverse-surface": "#2b322b",
+                        "inverse-on-surface": "#ecf3e7",
+                        "primary-container": "#00873a",
+                        "on-primary-fixed-variant": "#005320",
+                        "surface": "#f4fcf0",
+                        "secondary": "#585e6f",
+                        "surface-variant": "#dde5d9",
+                        "trail-indigo": "#6366F1",
+                        "on-surface": "#171d16",
+                        "background": "#f4fcf0",
+                        "primary-fixed": "#7ffc97",
+                        "on-surface-variant": "#3e4a3d",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-ivory": "#FAFAF7",
+                        "tertiary": "#4d5d73",
+                        "trail-emerald": "#16A34A",
+                        "tertiary-fixed-dim": "#b7c8e1",
+                        "trail-sky": "#0EA5E9",
+                        "on-secondary-fixed": "#151b2a",
+                        "surface-tint": "#006e2d",
+                        "on-secondary-container": "#5c6274",
+                        "on-primary-container": "#f7fff2",
+                        "secondary-fixed-dim": "#c0c6da",
+                        "error": "#ba1a1a",
+                        "surface-bright": "#f4fcf0",
+                        "primary-fixed-dim": "#62df7d",
+                        "on-secondary": "#ffffff",
+                        "trail-violet": "#8B5CF6",
+                        "tertiary-fixed": "#d3e4fe",
+                        "on-background": "#171d16",
+                        "surface-container-low": "#eff6ea",
+                        "on-secondary-fixed-variant": "#404757",
+                        "on-error": "#ffffff",
+                        "tertiary-container": "#66768d",
+                        "on-tertiary-container": "#fdfcff",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed": "#dce2f6",
+                        "on-tertiary-fixed": "#0b1c30"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px",
+                        "28": "28px"
+                    },
+                    "spacing": {
+                        "section-gap": "48px",
+                        "margin-desktop": "48px",
+                        "unit": "4px",
+                        "gutter": "24px",
+                        "margin-mobile": "20px",
+                        "container-max": "1100px"
+                    },
+                    "fontFamily": {
+                        "display-lg": ["Inter"],
+                        "label-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "data-xl": ["Inter"],
+                        "data-lg": ["Inter"],
+                        "body-sm": ["Inter"]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface-ivory text-on-surface font-body-md antialiased min-h-screen">
+<!-- Sidebar (Shared Component Anchor) -->
+<aside class="fixed inset-y-0 left-0 flex flex-col z-40 bg-surface-ivory border-r border-outline-variant w-64">
+<div class="p-6 flex flex-col items-start gap-1">
+<span class="font-headline-md text-headline-md font-bold text-on-surface">Monitrax</span>
+<span class="text-on-surface-variant font-label-md text-label-md opacity-60">Wealth OS</span>
+</div>
+<nav class="flex-1 mt-4 px-2 space-y-1">
+<!-- Reports Active logic used as placeholder, but for Activity Hub we might not highlight Reports -->
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3">home</span>
+<span class="font-label-md">Home</span>
+</a>
+<a class="flex items-center h-11 bg-primary/10 text-primary font-medium border-l-4 border-primary px-4 rounded-r-lg" href="#">
+<span class="material-symbols-outlined mr-3" style="font-variation-settings: 'FILL' 1;">analytics</span>
+<span class="font-label-md">Activity</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-label-md">My Household</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3">account_balance_wallet</span>
+<span class="font-label-md">My Budget</span>
+</a>
+<a class="flex items-center h-11 text-on-surface-variant hover:bg-surface-container-high transition-colors px-4 rounded-lg group" href="#">
+<span class="material-symbols-outlined mr-3">trending_up</span>
+<span class="font-label-md">My Wealth</span>
+</a>
+</nav>
+<div class="p-4 mt-auto">
+<button class="w-full py-2.5 bg-primary text-white font-medium rounded-xl hover:opacity-90 transition-all duration-200">
+                Update Plan
+            </button>
+</div>
+</aside>
+<!-- Main Content Shell -->
+<main class="ml-64 min-h-screen">
+<!-- Top Navigation (Shared Component Anchor) -->
+<header class="fixed top-0 right-0 left-64 h-16 flex justify-between items-center px-8 z-30 backdrop-blur-md bg-surface-ivory/80">
+<div class="flex items-center bg-surface-container-low px-4 py-1.5 rounded-full border border-outline-variant w-96">
+<span class="material-symbols-outlined text-on-surface-variant mr-2 text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full p-0 placeholder:text-outline-slate" placeholder="Quick find..." type="text"/>
+</div>
+<div class="flex items-center gap-6">
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+</div></header></main></body></html>
