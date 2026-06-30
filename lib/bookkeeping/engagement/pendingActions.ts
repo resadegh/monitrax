@@ -28,6 +28,7 @@
 import prisma from '@/lib/db';
 import { toPeriodMonthKey } from '../period';
 import { getOrCreateEngagementState } from './streak';
+import { getReviewQueueCount } from '@/lib/bank/bulkConfirm';
 
 /**
  * Action kinds, ordered by descending priority. The aggregator
@@ -66,20 +67,11 @@ export interface PendingActionsResult {
 /** Hard cap on the number of actions shown — Hick's Law / spec §6.6. */
 export const PENDING_ACTIONS_CAP = 3;
 
-/**
- * How far back to count uncategorised transactions for the
- * CATEGORISE action. YNAB-style trailing window — captures the
- * active categorisation backlog without surfacing year-old debt.
- *
- * Per Reza directive 2026-05-08: the badge / strip count must
- * reflect *what the user can see as Uncategorised on Activity*,
- * which is `categoryLevel1 IS NULL OR ''` — not the
- * `userCorrectedCategory = false` flag the BookkeepingPeriod uses
- * for tax-pack-completion-percent semantics. The two surfaces
- * answer different questions; the badge must answer the user's
- * (visible) question.
- */
-export const CATEGORISE_TRAILING_DAYS = 60;
+// Phase 56.3 (Reza 2026-06-30) — the 60-day `CATEGORISE_TRAILING_DAYS` window
+// is RETIRED. "Needs your review" is now ALL-TIME and computed by the single
+// SSOT `lib/bank/bulkConfirm.ts` (`getReviewQueueCount`), so the Home
+// hero, the Activity headline + bands, and the card-deck all show one number.
+// (Supersedes the 2026-05-08 trailing-window decision.)
 
 /**
  * Build the pending-actions payload for the current calendar day.
@@ -91,7 +83,6 @@ export async function buildPendingActions(
   now: Date = new Date()
 ): Promise<PendingActionsResult> {
   const monthKey = toPeriodMonthKey(now);
-  const trailingSince = new Date(now.getTime() - CATEGORISE_TRAILING_DAYS * 24 * 60 * 60 * 1000);
 
   const [
     engagement,
@@ -116,23 +107,12 @@ export async function buildPendingActions(
     // first" filter but were missed by the categoryLevel1-only
     // check. The Activity filter is the SSOT for "what does the
     // user think is uncategorised."
-    prisma.unifiedTransaction.count({
-      where: {
-        userId,
-        date: { gte: trailingSince },
-        incomeId: null,
-        expenseId: null,
-        loanId: null,
-        isTransfer: { not: true },
-        isInvestmentContribution: { not: true },
-        // Match Activity filter EXACTLY (SSOT — see
-        // app/api/unified-transactions/route.ts ~line 90). The
-        // 2026-05-08 v2 lock: "uncategorised" = "user hasn't
-        // reviewed yet" = userCorrectedCategory != true. Reflects
-        // AI-auto-classified-but-not-confirmed tx in the count.
-        userCorrectedCategory: { not: true },
-      },
-    }),
+    // Phase 56.3 (Reza 2026-06-30) — the CATEGORISE count now reads the ONE
+    // canonical SSOT (`lib/bank/bulkConfirm.ts`), ALL-TIME (the 60-day
+    // window is dropped per Reza: "anything the user hasn't confirmed, all
+    // time"). This makes the Home hero number EQUAL the Activity headline +
+    // the card-deck — fixing the "78 (60d) vs 365 (all-time)" divergence.
+    getReviewQueueCount(userId),
     prisma.unifiedTransaction.count({
       where: {
         userId,
@@ -162,7 +142,9 @@ export async function buildPendingActions(
     candidates.push({
       kind: 'CATEGORISE',
       label: actionLabel('CATEGORISE', uncategorisedCount),
-      href: '/dashboard/activity',
+      // Phase 56.3 — "Fix now" opens the card-deck review (the new design),
+      // not just the list. The Activity page reads `?review=1` to auto-open it.
+      href: '/dashboard/activity?review=1',
       count: uncategorisedCount,
     });
   }

@@ -1,5 +1,51 @@
 # Changelog — 2026-06-30
 
+## Session: review-count-ssot (Phase 56.3)
+
+### Changes Made
+- **Type**: Fix (SSOT correctness) + Fix (search) — Reza feedback 2026-06-30
+- **Scope**: "How many transactions need review" count (Home vs Activity vs deck), the card-deck data source, and numeric search.
+- **Three issues Reza reported, one root cause:**
+  1. **SSOT divergence** — Home hero said "**78** unreconciled" but the Activity bands showed "**110 High / 255 Low** = 365". The audit found **three independent counters**: Home (`pendingActions`, 60-day window), Activity (`bulkConfirm.getConfidenceSummary`, all-time confidence bands mixing booked + import-queue), and the deck (`!categoryLevel1` on the current 25-row page). Different populations → different numbers.
+  2. **Deck wouldn't open / review buttons didn't reach the new design** — the deck auto-opened off the **paginated display page** (25 rows, usually already AI-categorised → it found 0 and never opened), and Home "Fix now" routed to the list, not the deck.
+  3. **Numeric search broken** — searching "750" matched only text fields, not the **amount** (the −$750 row has no "750" in its text).
+- **The fix — one canonical definition (Reza directive: "anything the user hasn't confirmed, all-time"):**
+  - **SSOT** added to `lib/bank/bulkConfirm.ts` (the existing covered confidence-summary engine — kept there rather than a new file so the Neomatrix Layer-0 coverage gate passes; graphify can't run in the sandbox): `REVIEW_QUEUE_FIELDS` / `reviewQueueWhere` predicate (not linked, not transfer/investment, `userCorrectedCategory != true`; **all-time**) + `getReviewQueueCount` + `getReviewQueueBands` (High/Med/Low **partition the same set → they sum to the total**). Mirrors the list route's `uncategorized=true` filter.
+  - The **existing `GET /api/unified-transactions/bulk-confirm`** now also returns `reviewCount` + `reviewBands` (no new route — same coverage reason).
+  - **Home hero** (`pendingActions`) → `getReviewQueueCount` (all-time; the 60-day `CATEGORISE_TRAILING_DAYS` window **retired**). "Fix now" → `/dashboard/activity?review=1` (opens the deck).
+  - **Activity** — band chips read the canonical `bands` (so High+Med+Low === total === Home === deck); the **deck is fed the full all-time review set** (`reviewTxns`, fetched via the list route's `uncategorized=true` — enriched with account + Neobrain suggestion, no duplicate query); **auto-open** uses the canonical count, is **session-dismissible** (anti-nag, honours the ↩️ reverted pop-on-arrival lesson), and opens on `?review=1` regardless of device.
+  - **Numeric search** — the list route's search `OR` now also matches `amount` (exact match on `|amount|`, both sign conventions; strips `$ , ` ) when the query parses to a number.
+
+### Files Modified
+- `lib/bank/bulkConfirm.ts` — **SSOT added** (`REVIEW_QUEUE_FIELDS`/`reviewQueueWhere` + `getReviewQueueCount` + `getReviewQueueBands`), in the existing covered file (no new lib file — Layer-0 coverage gate, graphify unavailable in sandbox).
+- `app/api/unified-transactions/bulk-confirm/route.ts` — GET also returns `reviewCount` + `reviewBands` (no new route).
+- `lib/bookkeeping/engagement/pendingActions.ts` — Home count → `getReviewQueueCount` (all-time); "Fix now" → `?review=1`; retired `CATEGORISE_TRAILING_DAYS`.
+- `app/api/unified-transactions/route.ts` — numeric-amount search.
+- `app/dashboard/activity/page.tsx` — chips from canonical `reviewBands`; deck fed `reviewTxns` (full set); auto-open off canonical count, session-dismissible, `?review=1`.
+- `tests/bookkeeping/reviewQueue.test.ts` — **NEW** (canonical predicate; tests are excluded from Layer-0 coverage). `tests/bookkeeping/pendingActions.test.ts` — dropped the retired-window test.
+
+### Verification (§19 — no fabricated numbers)
+- No financial-engine change — these are **count/filter/search** corrections. The canonical predicate equals the already-locked list-route `uncategorized=true` filter (the visible SSOT). No new categoriser/endpoint duplicating an engine (§12.2.1) — the deck reuses the list route's enrichment. `neomatrix:check` green (FE/count only).
+- Static pass: caught + fixed a TDZ bug (auto-open effect referenced `reviewTxns`/`bandCounts` before declaration → moved below). Bands sum to total (every row lands in exactly one confidence band; null → low). Local build/vitest not runnable in sandbox — CI is the gate.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (Activity chips + deck data source + Home "Fix now" routing)
+- [x] strategic decision (one canonical "needs review" definition: unconfirmed, all-time)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure
+
+Docs updated: `PHASE_56_MOBILE_ACTIVITY_REDESIGN.md` (§8 56.3), `01_ACTIVE_WORKSTREAMS.md`, this changelog, `IMPLEMENTATION_PLAN.md` hub.
+
+### Testing
+- [x] `neomatrix:check` — OK. [ ] CI is the gate for Build + vitest (incl. new `reviewQueue.test.ts`).
+- [x] Self-review gate (§20.4/§20.5): 3× vs requirement → 10/10 (one SSOT consumed by all three surfaces; deck fed the real queue; numeric search; no duplicate engine; TDZ caught).
+
+### PR
+- Branch: `claude/review-count-ssot`
+- Status: draft
+
+---
+
 ## Session: mobile-review-card-deck (Phase 56.2)
 
 ### Changes Made

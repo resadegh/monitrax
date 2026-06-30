@@ -23,12 +23,23 @@ import {
   bulkConfirmCategorisations,
   bulkConfirmHighBand,
   getConfidenceSummary,
+  getReviewQueueBands,
   type ConfidenceBand,
 } from '@/lib/bank/bulkConfirm';
 
 export const GET = withPermission('transaction.read', async (_request: NextRequest, auth) => {
-  const summary = await getConfidenceSummary(auth.userId);
-  return NextResponse.json({ success: true, data: summary });
+  // Phase 56.3 — return the legacy confidence summary AND the ONE canonical
+  // review-queue count + bands (the SSOT every surface reads): `reviewCount` +
+  // `reviewBands` (high/medium/low partition the same unconfirmed set → they
+  // sum to reviewCount). Fixes the "Home 78 vs Activity 365" divergence.
+  const [summary, reviewBands] = await Promise.all([
+    getConfidenceSummary(auth.userId),
+    getReviewQueueBands(auth.userId),
+  ]);
+  return NextResponse.json({
+    success: true,
+    data: { ...summary, reviewCount: reviewBands.total, reviewBands },
+  });
 });
 
 interface BulkConfirmBody {

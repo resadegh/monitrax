@@ -22,7 +22,7 @@
  */
 
 import prisma from '@/lib/db';
-import { ImportReviewStatus } from '@prisma/client';
+import { ImportReviewStatus, type Prisma } from '@prisma/client';
 import { confirmReviewItem } from '@/lib/bank/reviewQueue';
 
 export type ConfidenceBand = 'medium' | 'low';
@@ -92,6 +92,73 @@ export async function getConfidenceSummary(userId: string): Promise<ConfidenceSu
   ]);
 
   return { high, highUnconfirmed, medium, low, txMedium, txLow };
+}
+
+// ---------------------------------------------------------------------------
+// Phase 56.3 (Reza 2026-06-30) — the ONE canonical "needs your review" SSOT.
+//
+// Reza directive: "anything the user has not confirmed" needs review (high-
+// confidence rows are auto-categorised but STILL need a user confirm), and the
+// count is ALL-TIME (no rolling window). This is the single definition the Home
+// hero, the Activity bands, and the card-deck all read — fixing the SSOT
+// violation where the same concept was counted 3 different ways (Home 60-day
+// `pendingActions`; Activity all-time confidence bands incl. import-queue; the
+// deck's `!categoryLevel1` on the paginated page) → 3 different numbers.
+//
+// The predicate is IDENTICAL to the Activity list route's `uncategorized=true`
+// filter (`app/api/unified-transactions/route.ts` ~§101 — the SSOT for "what the
+// user sees as uncategorised"): not linked, not transfer/investment,
+// `userCorrectedCategory != true`. The deck fetches its rows via that same list
+// route (reusing the enrichment); these helpers own the COUNT + the BANDS.
+// ---------------------------------------------------------------------------
+
+/** The canonical "needs your review" filter FIELDS — compose under a `userId`. */
+export const REVIEW_QUEUE_FIELDS = {
+  incomeId: null,
+  expenseId: null,
+  loanId: null,
+  isTransfer: { not: true },
+  isInvestmentContribution: { not: true },
+  userCorrectedCategory: { not: true },
+} satisfies Prisma.UnifiedTransactionWhereInput;
+
+/** The canonical `where` for one user's review queue (all-time). */
+export function reviewQueueWhere(userId: string): Prisma.UnifiedTransactionWhereInput {
+  return { userId, ...REVIEW_QUEUE_FIELDS };
+}
+
+/** The ONE canonical count of transactions needing the user's review. */
+export async function getReviewQueueCount(userId: string): Promise<number> {
+  return prisma.unifiedTransaction.count({ where: reviewQueueWhere(userId) });
+}
+
+export interface ReviewQueueBands {
+  /** AI is confident (≥0.9) but the user hasn't confirmed → one-tap Confirm. */
+  high: number;
+  /** Medium confidence (0.7–0.9). */
+  medium: number;
+  /** Low confidence (<0.7) or no score yet → needs a real look. */
+  low: number;
+  /** high + medium + low — every row lands in exactly one band. */
+  total: number;
+}
+
+/**
+ * The review queue partitioned by AI confidence. Because every row in the
+ * canonical set has a score in exactly one band (null → low), the three bands
+ * sum to the total — so the chips can never disagree with the headline again.
+ */
+export async function getReviewQueueBands(userId: string): Promise<ReviewQueueBands> {
+  const base = reviewQueueWhere(userId);
+  const [total, high, medium, low] = await Promise.all([
+    prisma.unifiedTransaction.count({ where: base }),
+    prisma.unifiedTransaction.count({ where: { ...base, confidenceScore: { gte: 0.9 } } }),
+    prisma.unifiedTransaction.count({ where: { ...base, confidenceScore: { gte: 0.7, lt: 0.9 } } }),
+    prisma.unifiedTransaction.count({
+      where: { ...base, OR: [{ confidenceScore: { lt: 0.7 } }, { confidenceScore: null }] },
+    }),
+  ]);
+  return { high, medium, low, total };
 }
 
 /**
