@@ -1,22 +1,18 @@
-'use client';
-
 /**
- * MY ACCOUNTS → ACTIVITY → Review categories (Phase 52.5c)
+ * MY ACCOUNTS → ACTIVITY → Review (Phase 56.8, Reza 2026-06-30)
  *
- * Dedicated full-page categorisation triage inbox. The calm surface for
- * clearing a backlog — complements the inline Activity `ConfidenceReviewCard`
- * (which deep-links here). Reuses the existing, KB-wired review-queue +
- * bulk-confirm endpoints (no new endpoints). See ReviewCategoriesInbox for the
- * Stitch design refs + glass vocabulary.
+ * RETIRED as a separate surface. Per the review-IA consolidation, "Review" is
+ * now the ONE transaction list filtered to uncategorised — not a second,
+ * separately-designed inbox (which caused the duplicate-list drift, e.g. the
+ * 69% vs 54% "% categorised" split). This route now redirects to the canonical
+ * Activity surface with the review deep-link, which opens the filtered list on
+ * desktop and the card-deck on mobile.
+ *
+ * Follow-up (56.11): delete the now-orphaned `ReviewCategoriesInbox` component.
  */
 
-import DashboardLayout from '@/components/DashboardLayout';
-import { ReviewCategoriesInbox } from '@/components/bookkeeping/ReviewCategoriesInbox';
+import { redirect } from 'next/navigation';
 
 export default function ReviewCategoriesPage() {
-  return (
-    <DashboardLayout>
-      <ReviewCategoriesInbox />
-    </DashboardLayout>
-  );
+  redirect('/dashboard/activity?review=1');
 }

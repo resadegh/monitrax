@@ -252,4 +252,22 @@ Reza approved the hub IA (hub + 2 tiles) AND a **state-aware Review tile** whose
 - **56.11** — finish removing `CategoryPickerSheet` (band-review staging edit + deck pencil) as those flows are reworked.
 - Each stage ships dark + mobile variants per §18.7.2.
 
-*Phase 56 v1.6 — **56.7 state-aware Review tile + canonical count this PR**; 56.8–56.11 staged. Governed by §18.8 (design ≥9 signed), §12.2.1 (one count source), §19 (real % + no invented import signal), §20.5 (autonomy on the 10/10 build).*
+*Phase 56 v1.6 — 56.7 state-aware Review tile + canonical count shipped.*
+
+## 13. Phase 56.8 — Activity hub layout + one-list Review (Reza 2026-06-30)
+
+Reza, after seeing 56.7 live: *"continue with the build, I still see the transaction list on the activity page, and another view of the transaction list when I click on start review … I am not sure if I want a new view for review or just the same transaction list filtered on the uncategorised … keep the search bar, category pill, confidence colour hue but change it to a cleaner design"* — and (next turn) *"make sure you don't break the working functionalities of the list."*
+
+**Decisions locked (Reza, 4-lens advisory):**
+- **Review (desktop) = the ONE transaction list filtered to uncategorised** (his Option B). The separate "Review categories" inbox is **retired** — it was a second, separately-designed list that drifted (the 69% vs 54% "% categorised" split). One list = one design = one source (§12.2.1). Mobile keeps the card-deck.
+- **List redesign = cleaner refresh** (keep search + confidence-hue category pills + inline categorise; modernise to My-Wealth glass). Deferred to a careful follow-up — NOT bundled with the structural change, per "don't break the list".
+- **Import-due cadence = no import in 30 days** (for 56.10).
+
+**Shipped this PR (56.8 — structural, NON-BREAKING):**
+- Activity landing is a clean **hub**: KPI snapshot + state-aware Review tile + a **Transactions** tile. The full list lives behind the Transactions tile (`view === 'list'`).
+- Desktop "Start review" + Home "Fix now" (`?review=1`) → the **same list filtered to uncategorised**. `/dashboard/activity/review` retired (redirects to the canonical surface). The 69/54% split is gone.
+- The list, `TransactionRow`, search, confidence-hue chips, advanced filters, `QueueReviewList`, pagination, FAB, bulk toolbar and modals are **untouched** — only visibility is gated by `view`. Every prior entry point (Transactions tile · KPI clicks · Start review · `?review=1` · `?filter=` · mobile deck) opens the list.
+
+**The staged remainder:** 56.8b cleaner-refresh rows (Stitch-backfill — the preview generator was flaking, so it's verified live on the Vercel preview per §18.2.1 backfill) · 56.9 Home shortcut states · 56.10 import-due (30-day) · 56.11 delete the orphaned `ReviewCategoriesInbox`.
+
+*Phase 56 v1.7 — **56.8 hub layout + one-list Review this PR** (list untouched, gated). Governed by §12.2.1 (one list/source), §18.2.1 (cleaner-refresh deferred + live-verified), §20.5, §0 (architect: retire the duplicate; psychology: clean hub + familiar list).*
