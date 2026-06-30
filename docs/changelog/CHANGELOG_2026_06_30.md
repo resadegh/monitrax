@@ -1,5 +1,42 @@
 # Changelog — 2026-06-30
 
+## Session: deck-mobile-only (Phase 56.5)
+
+### Changes Made
+- **Type**: Fix (interaction gating) — Reza feedback 2026-06-30 (issue 2 of 3).
+- **Scope**: the mobile review card-deck must be **mobile-only**; it was opening on desktop via the Home "Fix now" (`?review=1`) deep-link and a desktop-visible "Quick review" pill.
+- **Reza**: *"the transaction tile categorisation method should be only for mobile view but it is showing on desktop as well (it shouldn't)."*
+- **Root cause** — `app/dashboard/activity/page.tsx`: (a) the auto-open effect treated `?review=1` as "open regardless of device" (the desktop guard sat *after* the explicit branch); (b) the "Quick review →" pill had no viewport gate, so it rendered on desktop and opened the deck.
+- **Fix** — the card-deck NEVER opens on desktop: moved the `matchMedia('(max-width: 767px)')` mobile guard *above* the `?review=1` branch (so the deep-link opens the deck only on mobile; on desktop "Fix now" lands on Activity and the desktop surfaces handle review), and added `md:hidden` to the "Quick review" pill. No server / data change.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — mobile guard hoisted above the `?review=1` branch; `md:hidden` on the Quick-review pill.
+
+### Verification (§19 — no financial number)
+- Interaction-gating only — no calc/count/engine change. `tsc` clean on the page (only the pre-existing `tsconfig baseUrl` deprecation warning, unrelated); `neomatrix:check` green; lint clean.
+- §0 lenses: behaviour-psychologist (desktop users get the calm list/inbox they expect; the deck stays the focused mobile triage ritual it was designed for); architect (deck = one well-scoped mobile interaction, not a cross-device surface).
+- **Scope note** — this PR fixes ONLY issue 2. Issue 1 (count divergence 101/253/365) and issue 3 (IA consolidation — make the review inbox the main review page + move the full list behind a "Transactions" tile) are a structural redesign presented to Reza for sign-off before build (they depend on the chosen IA).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (deck entry gating — a true tweak per §18.2.1)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure · [ ] strategic decision
+
+Docs updated:
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§10` — Phase 56.5 deck mobile-only + the 1+3 plan parked for sign-off.
+
+### Testing
+- [x] TypeScript compiles (page) · [x] Lint clean · [x] `neomatrix:check` green
+- [ ] Manual on-device (Reza post-merge §17.2)
+
+### PR
+- Branch: `claude/deck-mobile-only` · Status: Draft
+
+### Self-review gate (§20.5)
+3× pass → 10/10 for the isolated issue-2 fix. Critique caught: (1) gating only the auto-open path would still leave `?review=1` opening the deck on desktop → hoisted the mobile guard above the explicit branch; (2) the effect wasn't the only entry — the "Quick review" pill also opened the deck on desktop → added `md:hidden`. Issues 1+3 deliberately NOT bundled (load-bearing IA decision only Reza can make, §20.5 counterweight) — presented for sign-off instead.
+
+---
+
 ## Session: deck-fit-and-swipe-nav (Phase 56.4)
 
 ### Changes Made

@@ -185,4 +185,38 @@ After 56.3 made the deck open reliably, Reza flagged two interaction/layout issu
 - **Edge hints relabelled** — the emerald "Confirm" / slate "Recategorise" swipe hints are now neutral **"‹ Previous" / "Next ›"** chevrons matching the browse semantics.
 - **Viewport fit** — container `max-w-md → max-w-sm` + `mx-auto`; card `px-6 py-7 → px-5 py-6` + `w-full overflow-hidden`; gem `w-14 → w-12`; merchant `text-[22px] → text-lg`; amount `text-[40px] → text-[32px]` + `truncate`; `shrink-0` on the date/gem so a long merchant can't shove them off-screen.
 
-*Phase 56 v1.3 — **56.4 deck gesture remap + viewport fit this PR**. No financial number touched (presentational + interaction only); `neomatrix:check` green (existing covered file, no new files). Governed by CLAUDE.md §18.2.1 (true-tweak code-first), §18.7.2 (glass vocabulary preserved), §0 (designer + behaviour-psychologist lenses).*
+*Phase 56 v1.3 — 56.4 deck gesture remap + viewport fit shipped.*
+
+## 10. Phase 56.5 — deck mobile-only + the review-IA consolidation plan (Reza feedback, 2026-06-30)
+
+Reza reported three issues from desktop, with the meta-observation that *"the process is confusing and also multiple places to do activities related to transactions."*
+
+> *"1. next action tile on dashboard shows 101 uncategorised but the AI bookkeeper shows review 253 low and then the low filter on the list also shows 101 (confusing and SSOT divergence). 2. the transaction tile categorisation method should be only for mobile view but it is showing on desktop as well. 3. there is another page for reviewing through the AI bookkeeping tile ('Open review inbox') — this should be the main review page and the main transaction list currently on the activity page should be accessed through a tile called 'Transactions' (to simplify the activity page)."*
+
+### 10.1 The verified current state (audit, file:line)
+
+Four overlapping review surfaces + three different "needs review" counts:
+
+| Surface | File | Count source | Number |
+|---|---|---|---|
+| Home "Next actions" tile | `lib/bookkeeping/engagement/pendingActions.ts:115` | `getReviewQueueCount` (canonical, all-time) | **101** |
+| Activity band chips | `app/dashboard/activity/page.tsx:345-379` | `getReviewQueueBands` (canonical, partitions the same set) | High·0 / Med·0 / **Low·101** |
+| Review-inbox page header | `components/bookkeeping/ReviewCategoriesInbox.tsx` | canonical count | **101** |
+| **AI-bookkeeper hero card** | `components/bookkeeping/ConfidenceReviewCard.tsx:109-118` | `getConfidenceSummary` (`low + txLow`, by confidence SCORE, ignoring whether the user already confirmed) | **365 sorted / Review 253 low** ← the diverging one |
+
+Review/categorise can happen in **four** places: the AI-bookkeeper hero band actions, the full inline transaction list (per-row Confirm/picker), the card-deck (`ReviewQueueCards`), and the dedicated `/dashboard/activity/review` inbox (`ReviewCategoriesInbox`).
+
+### 10.2 Issue 2 — FIXED this PR (56.5, isolated, code-first)
+
+The card-deck is now **mobile-only**: the `matchMedia('(max-width: 767px)')` guard was hoisted *above* the `?review=1` branch (so the Home "Fix now" deep-link opens the deck only on mobile — on desktop it lands on Activity), and the desktop-visible "Quick review" pill got `md:hidden`. The deck never opens on desktop.
+
+### 10.3 Issues 1 + 3 — the consolidation (PARKED for Reza sign-off — load-bearing IA)
+
+Root cause of all three symptoms is **IA fragmentation**: review work is scattered, and the hero card counts by confidence-score (`txLow`) instead of the canonical "unconfirmed" predicate. The proposed end-state (to be designed Stitch-first per §18.2.1 once the shape is signed off):
+
+- **One review surface = the inbox.** Promote `/dashboard/activity/review` (the `ReviewCategoriesInbox`) to THE review destination. On mobile that surface launches the card-deck; on desktop it's the calm two-section list. Everything that needs a category is cleared here, against the **one canonical count (101)**.
+- **Activity → "Transactions".** The full filterable/searchable ledger (the bulk of today's `activity/page.tsx`) moves behind a clearly-named **Transactions** tile/tab — for browsing & editing history, not the primary review CTA.
+- **Kill the count conflation.** The AI-bookkeeper card's review numbers (and anything that says "Review N low") read the canonical `getReviewQueueBands` so every surface shows the same number. "Sorted / auto-filed" stays only as a clearly-separated lifetime stat, never mixed into the review pile.
+- **The fork for Reza:** does Activity become (a) a hub landing with two tiles — "Review (N to categorise)" + "Transactions (browse all)" — or (b) two peer sub-tabs under My Accounts — "Review" | "Transactions"? Recommendation: **(a) hub**, because it gives the review CTA primacy (behaviour lens) while keeping the ledger one tap away.
+
+*Phase 56 v1.4 — **56.5 deck mobile-only this PR**; issues 1+3 (review-IA consolidation) parked for sign-off. Governed by §18.2.1 (issue 2 = true-tweak code-first; issues 1+3 = Stitch-first after sign-off), §12.2.1 (one count source), §20.5 (load-bearing IA decision surfaced, not auto-built).*
