@@ -11,6 +11,14 @@
  * fa6a2ea95aab4679be793c2cc8144927 (mobile dark);
  * artefacts committed at .stitch/designs/activity-redesign/.
  *
+ * Phase 56 (2026-06-30): mobile transaction-row redesign + on-row Confirm
+ * (Reza-signed-off). The `md:hidden` row body is the Apple-Wallet-restraint
+ * layout (44px gem + unreviewed dot + locked amount column + trailing one-tap
+ * ✓ Confirm); desktop body unchanged. Stitch project 4167588157712714472,
+ * screens 1e164f529c5f452eb6e925ccba0e6d4e (mobile light) /
+ * fa5445ad24d4476f89df0b3ef3658ef7 (mobile dark) — §18.8 9.4/10; artefacts at
+ * .stitch/designs/phase56/. See docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md.
+ *
  * Functionality preserved verbatim from the Phase 36 v2 page:
  *   - Server-side pagination (25/page) via /api/unified-transactions
  *   - Server-side filters: search, account, category, date range, recurring,
@@ -55,6 +63,7 @@ import {
   Check,
   ChevronDown,
   Sparkles,
+  Plus,
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
@@ -1102,6 +1111,7 @@ function ActivityPageContent() {
               }
             : null
         }
+        suggestions={pickerTx?.suggestedCategoryLevel1 ? [pickerTx.suggestedCategoryLevel1] : undefined}
         onClose={() => setPickerTx(null)}
         onSuccess={() => {
           setPickerTx(null);
@@ -1761,6 +1771,23 @@ function TransactionRow({
     if (rowStatus.actionLabel === 'Confirm' && onConfirm) onConfirm();
     else onClick();
   };
+  // Phase 56 (mobile row redesign) — the new mobile body wants a 44px
+  // gradient "gem", a short time, and a category-tone dot. Income →
+  // emerald, transfer → slate, spending → a calm indigo (NOT rose: §18.7.2
+  // reserves red/rose for true loss, never routine spend). All real data —
+  // the time is `tx.date` formatted, no invented values (§19).
+  const gemGradient = isTransfer
+    ? 'bg-gradient-to-br from-slate-400 to-slate-600'
+    : isIn
+      ? 'bg-gradient-to-br from-emerald-400 to-emerald-600'
+      : 'bg-gradient-to-br from-indigo-400 to-indigo-600';
+  const dotTone = rowStatus.done ? 'bg-emerald-500' : rowStatus.state === 'suggested' ? 'bg-sky-400' : 'bg-slate-300';
+  let timeStr = '';
+  try {
+    timeStr = new Date(tx.date).toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+  } catch {
+    timeStr = '';
+  }
   const confidenceLabel = lowBand ? 'Low confidence' : 'Medium confidence';
   const confidenceTone = lowBand ? 'text-rose-600' : 'text-amber-600';
   // Anomaly badge: also gated behind Advanced view per the same rule.
@@ -1867,8 +1894,12 @@ function TransactionRow({
         </div>
       )}
 
+      {/* Phase 56 — bulk-select checkbox is desktop-only (hidden md:flex). On
+          mobile it was the biggest contributor to the cramped row and isn't in
+          the redesign; bulk-select stays a desktop/tablet power action. A
+          long-press selection mode is the mobile-native fast-follow. */}
       <label
-        className="flex items-center justify-center w-10 sm:w-11 self-stretch shrink-0 cursor-pointer hover:bg-muted/60 transition-colors"
+        className="hidden md:flex items-center justify-center w-11 self-stretch shrink-0 cursor-pointer hover:bg-muted/60 transition-colors"
         onClick={(e) => e.stopPropagation()}
         title={selected ? 'Unselect' : 'Select for bulk action'}
       >
@@ -1894,8 +1925,86 @@ function TransactionRow({
             : 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           touchAction: 'pan-y', // allow vertical scroll; we own horizontal
         }}
-        className="flex-1 text-left flex items-center gap-3 sm:gap-4 px-3 sm:px-4 py-3.5 hover-lift bg-card"
+        className="flex-1 text-left px-3 sm:px-4 py-3 sm:py-3.5 hover-lift bg-card"
       >
+      {/* ===================================================================
+          MOBILE BODY (< md) — Phase 56 redesign. Apple-Wallet restraint:
+          44px gradient gem + unreviewed dot, one clean name line, one quiet
+          "category · time" line, a LOCKED right-aligned amount column, and a
+          trailing 44px one-tap action lane (✓ Confirm when the AI proposed a
+          category; + Add when it's uncategorised). Fixes the cramped reflow
+          (issue 2) and the missing on-row Confirm (issue 3). Stitch screens
+          1e164f52…/fa5445ad… (project 4167588157712714472, §18.8 9.4/10).
+          =================================================================== */}
+      <div className="md:hidden flex items-center gap-3">
+        {/* 44px gem + unreviewed dot (sky + white ring → reads on any gem) */}
+        <div className="relative shrink-0">
+          <div className={`flex items-center justify-center w-11 h-11 rounded-[14px] text-white shadow-sm ring-1 ring-black/5 ${gemGradient}`}>
+            {isTransfer ? <ArrowLeftRight className="w-5 h-5" /> : isIn ? <ArrowDown className="w-5 h-5" /> : <ArrowUp className="w-5 h-5" />}
+          </div>
+          {!rowStatus.done && (
+            <span aria-hidden className="absolute -top-0.5 -right-0.5 w-[11px] h-[11px] rounded-full bg-sky-300 ring-2 ring-card" />
+          )}
+        </div>
+        {/* name + one quiet category · time line */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="font-medium text-[15px] truncate text-foreground">{label}</span>
+            {isLinked && <Link2 className="w-3 h-3 text-sky-600 shrink-0" aria-label="Linked" />}
+            {tx.isRecurring && !isLinked && <Repeat className="w-3 h-3 text-sky-600 shrink-0" aria-label="Recurring" />}
+          </div>
+          <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+            <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotTone}`} aria-hidden />
+            <span className="truncate">{rowStatus.label}</span>
+            {timeStr && (
+              <>
+                <span aria-hidden>·</span>
+                <span className="tabular-nums shrink-0">{timeStr}</span>
+              </>
+            )}
+          </div>
+        </div>
+        {/* locked amount column — same right edge on every row */}
+        <div className={`text-right tabular-nums font-semibold text-[15px] shrink-0 ${isIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
+          {isIn ? '+' : '-'}{formatCurrency(tx.amount, { currency: tx.currency })}
+        </div>
+        {/* trailing 44px action lane — reserved on every row so amounts stay
+            column-aligned (done rows leave it empty). One-tap, opens nothing. */}
+        <div className="w-11 shrink-0 flex items-center justify-center">
+          {rowStatus.state === 'suggested' ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onConfirm ? onConfirm() : onClick(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onConfirm ? onConfirm() : onClick(); } }}
+              aria-label={`Confirm ${rowStatus.label}`}
+              title="Confirm the AI's category"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full border-[1.5px] border-sky-400/40 bg-sky-500/10 text-sky-600 dark:text-sky-300 active:scale-95 transition-transform"
+            >
+              <Check className="w-5 h-5" />
+            </span>
+          ) : rowStatus.state === 'needs-category' ? (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); onClick(); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onClick(); } }}
+              aria-label="Add a category"
+              title="Add a category"
+              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-foreground/15 bg-muted/50 text-muted-foreground active:scale-95 transition-transform"
+            >
+              <Plus className="w-4 h-4" />
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      {/* ===================================================================
+          DESKTOP BODY (md+) — unchanged from Phase 55. Bulk-select checkbox,
+          inline confidence chrome, the one derived status + at-most-one
+          action cluster, amount, chevron.
+          =================================================================== */}
+      <div className="hidden md:flex items-center gap-4 w-full">
       {/* Direction icon */}
       <div
         className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${
@@ -1922,27 +2031,13 @@ function TransactionRow({
             </>
           )}
         </div>
-        {/* Phase 55 — mobile shows the ONE derived label under the merchant
-            (strongest signal: transfer/link wins over raw category). */}
-        <span
-          className={`md:hidden mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
-            rowStatus.state === 'needs-category'
-              ? 'border-foreground/15 bg-muted/50 text-muted-foreground'
-              : rowStatus.done
-                ? 'border-foreground/10 bg-foreground/[0.04] text-muted-foreground'
-                : getCategoryTone(rowStatus.label)
-          }`}
-        >
-          {rowStatus.done && <Check className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />}
-          {rowStatus.label}
-        </span>
       </div>
 
       {/* Phase 55 — ONE derived status per row (desktop): the strongest-signal
           label + AT MOST one action. Replaces the old "Looks right" chip + raw
           category pill + "Confirmed / Not confirmed yet" trio that contradicted
           each other (CLAUDE.md §12.2; design `PHASE_55_…`). */}
-      <div className="hidden md:flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5 shrink-0">
         <span
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border ${
             rowStatus.state === 'needs-category'
@@ -2001,6 +2096,7 @@ function TransactionRow({
         </div>
       </div>
       <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-foreground/70 transition-colors shrink-0" />
+      </div>
       </button>
     </div>
   );

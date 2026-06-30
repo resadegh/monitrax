@@ -1,7 +1,7 @@
 # PHASE 56 — Mobile Activity / Reconciliation Redesign
 
 **Monitrax Blueprint — Phase 56**
-**Status:** 🟡 Planning (documented issues + plan; redesign is Stitch-first, not yet built)
+**Status:** 🟢 Shipping — PR-A + PR-B merged-ready (#1303); PR-C (row redesign + on-row Confirm + picker hero) built, Reza design sign-off 2026-06-30.
 **Created:** 2026-06-30
 **Owner:** Reza (direction + design sign-off) + Claude (research + build)
 **Trigger:** Reza report 2026-06-30 with mobile screenshots — four issues on the Activity page mobile view.
@@ -101,11 +101,35 @@ This is the main piece. **Issue 3 (on-row Confirm) is folded in** because it's p
 
 A and B are independent quick wins. C is the design-led redesign and absorbs Issue 3.
 
-## 5. Open decisions for Reza
-1. **FAB**: speed-dial (one `+` → Add cash / Scan) *(rec)* or keep-both-stacked?
-2. **Review Mode**: build the finite **card-stack** review now, or start with just the **on-row Confirm + swipe** and add the card-stack later?
-3. **Scope of C**: row + on-row Confirm only first, or the full row + picker-sheet + card-stack together?
+## 5. Open decisions for Reza — RESOLVED (2026-06-30)
+1. **FAB** → **keep-both-stacked** (PR-A shipped #1303): the `+` now stacks above the camera FAB. Full speed-dial deferred (a new visual; revisit if Reza wants it).
+2. **Review Mode** → **start with on-row Confirm + swipe**; finite **card-stack** is the fast-follow (not in PR-C).
+3. **Scope of C** → **row + on-row Confirm + a focused picker hero** now; full picker (confidence pills + apply-scope footer) deferred (see Build Log).
 
 ---
 
-*Phase 56 v0.1 — planning + root-cause record. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2 (in-app glass vocabulary), §0 (four lenses), §15 (this is a registered workstream). No React written yet — design sign-off gates the build of PR-C.*
+## 6. Build Log
+
+### PR-A + PR-B — #1303 (merged-ready 2026-06-30)
+FAB stack (`CashQuickAddButton`) + iOS scroll (`min-h-[100dvh]` + `overscroll-behavior-y: contain` on the shell + `body`). Pure FE/CSS. PR-B wants Reza on-device iOS verification.
+
+### PR-C — mobile row redesign + on-row Confirm + picker hero (this PR)
+Design: 4 Stitch screens (Activity list light/dark + category picker light/dark), §18.8 self-review **9.4/10**, Reza sign-off 2026-06-30. Artefacts at `.stitch/designs/phase56/`.
+
+**Built (verified in source against the live page — most machinery already existed: `useSwipeGesture`, `CategoryPickerSheet`, `deriveRowStatus`, the glass grouped list):**
+- **Mobile `TransactionRow` body** (`md:hidden`, `app/dashboard/activity/page.tsx`): 44px gradient gem + unreviewed dot (sky + white ring, `!rowStatus.done`) + clean name line + one quiet `category · time` line + **locked amount column** (44px trailing lane reserved on every row) + **trailing one-tap ✓ Confirm** when `state==='suggested'` (→ `onConfirm`, the existing Phase-49 PATCH) / **+ Add** when `needs-category` (→ opens dialog). Fixes **Issue 2** (cramped reflow) + **Issue 3** (no on-row Confirm). Desktop body unchanged (`hidden md:flex`).
+- **Per-row bulk-select checkbox** is now desktop-only (`hidden md:flex`) — it was the biggest mobile cramping contributor and isn't in the signed design. Mobile bulk-select returns later via a long-press selection mode (fast-follow).
+- **Category picker hero** (`CategoryPickerSheet`): when the caller passes a real (merchant-mapping) suggestion, the sheet leads with a **"Suggested"** section — the top guess is the emphasised one-tap **"Best match"** (sky-tinted), the rest are quieter chips. Wired from `tx.suggestedCategoryLevel1` (Neobrain). Absent → the plain default grid (no fabricated suggestion).
+
+**Decisions (4-lens):**
+- **Swipe grammar kept as-is** (left = Categorise picker, right = Transfer). Issue 3 was literally *"the confirm button is not available on the transaction row"* — the fix is a **visible on-row ✓ button**, not another hidden gesture (undiscoverable gestures were the complaint). The design's swipe-right-confirm intent is realised more strongly + discoverably as the explicit button; transfer-swipe is preserved (no behaviour remap, lower risk).
+
+**Honest deferrals (documented, not silently dropped):**
+- **Confidence % pills** ("92% / 74%") shown in the Stitch design are **NOT shipped** — the sheet has no real ranked-confidence score, and inventing a percentage is false precision (§19, §0 financial-adviser lens). They ship when the categorisation engine surfaces real ranked candidates with scores.
+- **"Apply to … / make a rule" footer** (apply-scope segmented control) — a separate feature needing its own endpoint params (apply-to-all-merchant; the always-rule path already exists via double-tap). Fast-follow.
+- **Finite card-stack Review Mode** — per Reza's decision (#2 above), fast-follow.
+- **Icons**: the Stitch artefacts use Material Symbols as stand-ins; the React build uses the app's Lucide set (1.5px) per §18.7.2.
+
+---
+
+*Phase 56 v1.0 — PR-A/B shipped (#1303), PR-C built (this PR) after Reza design sign-off. Governed by CLAUDE.md §18 (Stitch-first + §18.8 ≥9/10), §18.7.2 (in-app glass vocabulary), §0 (four lenses), §19 (no fabricated numbers), §15 (registered workstream).*
