@@ -144,7 +144,15 @@ Reza tested the shipped PR-C and reported two things: (a) the row looks better b
 
 Reza clarified the original "tiles, not a long list" intent: he wants a **finite swipeable card-deck** — one transaction per card, flip through like a notebook (Apple Wallet / Rocket-Money triage). Decision **"A"**: the deck is the **default landing for the Activity tab _when there's work to do_** (unreviewed/uncategorised items exist) — open Activity → flip cards → swipe-right confirms the AI category, swipe-left/tap opens the picker, "all caught up ✓" drops into the existing list. When nothing's to review, Activity opens to the (cleaner) list. The **list stays the permanent scan/search view, one tap away** — the deck *adds*, it never replaces (a deck-only browse kills scannability — behaviour + architect lenses).
 
-This is the deferred **Review Mode**, now promoted to the primary mobile experience. It's a **new section composition → Stitch-first, §18.8 ≥9/10, Reza sign-off before any React** (§18.2.1 STRICT). Designed next; ships as a separate PR (56.2). Honest dependency: the swipe-right magic is only as good as the per-card AI suggestion → compounds with the "consolidate the 3 categorisers" debt.
+This is the deferred **Review Mode**, now promoted to the primary mobile experience. It's a **new section composition → Stitch-first, §18.8 ≥9/10, Reza sign-off before any React** (§18.2.1 STRICT).
+
+**Built (56.2, signed off "looks good, ship it"):** the existing `ReviewQueueCards` (Phase-42 card-stack, old white-card visual, entered only via the "Quick review" pill) is **redesigned in place** (§12.1) to the signed deck:
+- **Physical 3-card stack** (the next cards' tops peek behind — the "notebook" feel), a large glass front card (gem + merchant + `data-xl` amount + account + the AI **Suggested** block), **edge swipe hints** (emerald Confirm right / slate Recategorise left), a **"X of N" progress bar**, circular Confirm/Recategorise buttons, Back/Skip, and an "all caught up" celebration. framer-motion drives the drag; the queue/index/PATCH spine is unchanged.
+- **Swipe-right = Confirm** the AI suggestion (one-tap accept `suggestedCategoryLevel1`); **swipe-left / Recategorise = the Phase-56 `CategoryPickerSheet`** (Suggested hero). No double-PATCH — the picker PATCHes, the deck advances. No fabricated confidence % (§19).
+- **Default mobile landing (decision A):** a mobile-only `useEffect` auto-opens the deck once per load when there are unreviewed (uncategorised, non-transfer) items (`autoReviewOpened` ref guards re-open); "Skip to list" + X always exit to the list. Desktop untouched.
+- **Stitch:** light `0c621478890b437587d68b0a146158da` (9.4/10) canonical; dark `e0d2f869f1dc4e98a73002d66be650a7` directional (Stitch drifted the dark twin's composition — in React the dark is a token-flip of the same JSX, so it matches the light). Artefacts `.stitch/designs/phase56/review-deck-{light,dark}.{html,png}`.
+
+Honest dependency: the swipe-right magic is only as good as the per-card AI suggestion → compounds with the "consolidate the 3 categorisers" debt.
 
 ---
 

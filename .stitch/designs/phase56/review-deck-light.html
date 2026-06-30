@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<title>Monitrax - Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<style>
+        body { font-family: 'Inter', sans-serif; background-color: #FAFAF7; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24; }
+        
+        /* Glassmorphism & Effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.70);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(110, 120, 129, 0.1);
+            box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.04);
+        }
+        .glass-highlight {
+            position: absolute;
+            top: 0; left: 0; right: 0; height: 40%;
+            background: linear-gradient(180deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 100%);
+            border-radius: 28px 28px 0 0;
+            pointer-events: none;
+            opacity: 0.5;
+        }
+        .gradient-gem {
+            background: linear-gradient(135deg, #89ceff 0%, #4648d4 100%);
+        }
+        .ai-glass {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(14, 165, 233, 0.15) 100%);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+        }
+        
+        /* Stack Effect */
+        .card-stack-1 { transform: translateY(12px) scale(0.95); opacity: 0.7; z-index: 10; }
+        .card-stack-2 { transform: translateY(24px) scale(0.9); opacity: 0.4; z-index: 5; }
+        
+        /* Progress Bar Animation */
+        @keyframes fillProgress { from { width: 0%; } to { width: 25%; } }
+        .progress-fill { animation: fillProgress 1s cubic-bezier(0.4, 0, 0.2, 1) forwards; }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary-fixed-dim": "#c6c7c4",
+                        "inverse-surface": "#2a3040",
+                        "outline": "#6e7881",
+                        "on-tertiary-fixed-variant": "#454745",
+                        "surface-container-high": "#e2e8fc",
+                        "tertiary-fixed": "#e2e3e0",
+                        "inverse-on-surface": "#edf0ff",
+                        "surface-container-highest": "#dce2f6",
+                        "error": "#DC2626",
+                        "secondary-fixed-dim": "#c0c1ff",
+                        "on-secondary": "#ffffff",
+                        "entity-home": "#F59E0B",
+                        "primary-fixed-dim": "#89ceff",
+                        "tertiary": "#5d5f5d",
+                        "surface-dim": "#F1EFE8",
+                        "inverse-primary": "#89ceff",
+                        "on-secondary-container": "#fffbff",
+                        "on-surface": "#151b2a",
+                        "secondary-fixed": "#e1e0ff",
+                        "on-secondary-fixed": "#07006c",
+                        "caution": "#F59E0B",
+                        "on-error": "#ffffff",
+                        "on-primary-fixed": "#001e2f",
+                        "growth-lift": "#22C55E",
+                        "growth": "#16A34A",
+                        "on-tertiary": "#ffffff",
+                        "surface-bright": "#FFFFFF",
+                        "on-primary-fixed-variant": "#004c6e",
+                        "on-error-container": "#93000a",
+                        "outline-variant": "#bec8d2",
+                        "on-background": "#151b2a",
+                        "secondary-container": "#6063ee",
+                        "trail-live": "#8B5CF6",
+                        "surface": "#f9f9ff",
+                        "card-glass-light": "rgba(255, 255, 255, 0.70)",
+                        "surface-variant": "#dce2f6",
+                        "on-tertiary-fixed": "#1a1c1b",
+                        "error-container": "#ffdad6",
+                        "card-glass-dark": "#0E1424",
+                        "entity-rental": "#14B8A6",
+                        "on-tertiary-container": "#323432",
+                        "on-secondary-fixed-variant": "#2f2ebe",
+                        "on-surface-variant": "#3e4850",
+                        "surface-tint": "#006591",
+                        "dark-ground": "#050913",
+                        "surface-container": "#e9edff",
+                        "on-primary-container": "#003751",
+                        "surface-container-low": "#f1f3ff",
+                        "primary-container": "#0ea5e9",
+                        "primary": "#006591",
+                        "secondary": "#4648d4",
+                        "primary-fixed": "#c9e6ff",
+                        "tertiary-container": "#9b9c9a",
+                        "background": "#f9f9ff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1.125rem",
+                        "3xl": "1.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "tab-bar-height": "56px",
+                        "hero-padding": "20px",
+                        "touch-target": "44px",
+                        "section-gap": "20px",
+                        "card-padding": "16px",
+                        "screen-margin": "20px"
+                    },
+                    fontFamily: {
+                        "data-xl": ["Inter"],
+                        "headline-lg": ["Inter"],
+                        "data-hero": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "label-sm": ["Inter"],
+                        "body-md": ["Inter"],
+                        "eyebrow": ["Inter"],
+                        "headline-md": ["Inter"],
+                        "display-lg": ["Inter"]
+                    },
+                    fontSize: {
+                        "data-xl": ["32px", { lineHeight: "32px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "headline-lg": ["28px", { lineHeight: "31px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "data-hero": ["44px", { lineHeight: "44px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "body-lg": ["17px", { lineHeight: "25px", letterSpacing: "0", fontWeight: "400" }],
+                        "label-sm": ["12px", { lineHeight: "14px", letterSpacing: "0.02em", fontWeight: "600" }],
+                        "body-md": ["15px", { lineHeight: "22px", letterSpacing: "0", fontWeight: "400" }],
+                        "eyebrow": ["11px", { lineHeight: "13px", letterSpacing: "0.16em", fontWeight: "500" }],
+                        "headline-md": ["22px", { lineHeight: "24px", letterSpacing: "-0.02em", fontWeight: "600" }],
+                        "display-lg": ["40px", { lineHeight: "42px", letterSpacing: "-0.03em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="text-on-surface h-screen flex flex-col overflow-hidden relative">
+<!-- Ambient Halo -->
+<div class="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+<div class="w-96 h-96 bg-primary-container/10 rounded-full blur-[80px]"></div>
+</div>
+<!-- TopAppBar (Transactional Context - No BottomNav) -->
+<header class="w-full flex justify-between items-center px-screen-margin h-16 bg-transparent z-50 relative shrink-0">
+<button class="w-10 h-10 flex items-center justify-center -ml-2 text-on-surface hover:bg-surface-container-high/50 rounded-full transition-colors active:scale-95">
+<span class="material-symbols-outlined text-2xl">chevron_left</span>
+</button>
+<div class="flex flex-col items-center">
+<h1 class="font-headline-md text-headline-md-mobile text-on-surface tracking-tight">Review</h1>
+<span class="font-label-sm text-label-sm text-on-surface-variant">3 of 12</span>
+</div>
+<button class="text-primary font-body-md text-sm font-medium hover:opacity-80 active:scale-95 transition-all">
+            Skip list
+        </button>
+</header>
+<!-- Progress Bar -->
+<div class="w-full h-1 bg-surface-container-highest z-50 relative shrink-0">
+<div class="h-full bg-gradient-to-r from-primary-fixed-dim to-secondary progress-fill"></div>
+</div>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col items-center justify-center px-6 relative z-10 w-full max-w-md mx-auto">
+<!-- Card Deck Container -->
+<div class="relative w-full h-[480px] flex items-center justify-center mt-10"><!-- Swipe Hint Left (Tucked) -->
+<div class="absolute left-0 top-1/2 -translate-y-1/2 w-12 h-20 bg-slate-500 rounded-l-xl flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 300">edit</span>
+</div>
+<!-- Swipe Hint Right (Tucked) -->
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-12 h-20 bg-growth-lift rounded-r-xl flex items-center justify-center z-10 shadow-sm">
+<span class="material-symbols-outlined text-white text-[20px]" style="font-variation-settings: 'wght' 300">check</span>
+</div>
+<!-- Card 3 (Furthest Back) -->
+<div class="absolute top-0 inset-x-2 h-[440px] glass-card rounded-[28px] opacity-40 border border-white/20 z-0"></div>
+<!-- Card 2 (Middle) -->
+<div class="absolute top-[14px] inset-x-4 h-[450px] glass-card rounded-[28px] opacity-65 border border-white/20 z-10"></div>
+<!-- Card 1 (Front) -->
+<div class="absolute top-[28px] inset-x-6 h-[452px] glass-card rounded-[28px] flex flex-col overflow-hidden z-20 shadow-[0_20px_50px_-12px_rgba(0,55,81,0.15)] border border-white/20 bg-white/70 backdrop-blur-xl">
+<!-- Light Catching Lens Highlight -->
+<div class="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent"></div>
+<div class="h-[3px] w-full bg-gradient-to-r from-primary-container to-secondary"></div>
+<div class="flex-1 p-8 flex flex-col items-center text-center relative">
+<!-- Icon Gem -->
+<div class="w-16 h-16 rounded-[18px] gradient-gem flex items-center justify-center shadow-inner mb-8 relative">
+<div class="absolute inset-0 rounded-[18px] border border-white/20"></div>
+<span class="material-symbols-outlined text-white text-3xl" style="font-variation-settings: 'wght' 200">arrow_outward</span>
+</div>
+<!-- Transaction Details -->
+<h2 class="font-headline-md text-headline-md text-on-surface mb-2 truncate w-full">Cincotta Merrylands</h2>
+<!-- Amount -->
+<div class="font-data-xl text-[40px] leading-[48px] tracking-tight text-on-surface mb-2 tabular-nums">
+            -$65.00
+        </div>
+<p class="font-body-md text-body-md text-on-surface-variant mb-auto">
+            25 May 2026 · Everyday account
+        </p>
+<!-- AI Suggestion Block -->
+<div class="w-full ai-glass rounded-2xl p-4 mt-6 flex flex-col items-center border-t border-white/40 shadow-sm relative overflow-hidden">
+<div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent animate-[shimmer_3s_infinite]"></div>
+<div class="flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-[14px] text-primary-container" style="font-variation-settings: 'wght' 400">temp_preferences_custom</span>
+<span class="font-eyebrow text-eyebrow text-primary uppercase tracking-widest">Suggested</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2.5 h-2.5 rounded-full bg-growth animate-pulse"></div>
+<span class="font-headline-md text-[20px] font-medium text-on-surface">Groceries</span>
+</div>
+</div>
+</div>
+</div></div>
+<!-- Action Area (Safe Zone) -->
+<div class="w-full mt-12 flex flex-col items-center gap-8">
+<div class="flex items-center justify-center gap-8 w-full px-4">
+<!-- Recategorise Button -->
+<button class="w-16 h-16 rounded-full bg-surface-container-highest border border-outline-variant/30 flex items-center justify-center text-on-surface-variant shadow-sm hover:bg-surface-container-high active:scale-90 transition-all duration-200">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'wght' 300">edit</span>
+</button>
+<!-- Confirm Button -->
+<button class="w-20 h-20 rounded-full bg-growth border border-growth-lift/30 flex items-center justify-center text-white shadow-lg shadow-growth/20 hover:brightness-110 active:scale-90 transition-all duration-200 relative overflow-hidden group">
+<div class="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+<span class="material-symbols-outlined text-4xl font-bold" style="font-variation-settings: 'wght' 300">check</span>
+</button>
+</div>
+<button class="font-body-md text-sm text-outline hover:text-on-surface-variant transition-colors active:scale-95 pb-safe">
+                Skip for now
+            </button>
+</div>
+</main>
+<style>
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</body></html>

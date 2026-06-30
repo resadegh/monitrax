@@ -1,5 +1,39 @@
 # Changelog — 2026-06-30
 
+## Session: mobile-review-card-deck (Phase 56.2)
+
+### Changes Made
+- **Type**: Feature (mobile UX) — Stitch-first redesign, Reza-signed-off ("A")
+- **Scope**: The mobile Activity "Review" experience — redesigned the existing card-stack to the signed card-deck and made it the default mobile landing when there's work.
+- **Description**: Reza's feedback after 56.1: the mobile view should be a **card-deck you flip through like a notebook**, not a list (decision **"A"** — the deck is the default landing when there's unreviewed work, the list always one tap away). The existing `ReviewQueueCards` (Phase-42 card-stack, entered only via the "Quick review" pill, old white-card visual) is **redesigned in place** (§12.1 — enhance, don't duplicate) to the signed "My Wealth Glass" deck: a **physical 3-card stack** (the tops of the next cards peek behind — the notebook feel), a large glass front card (gem + merchant + `data-xl` amount + account + the AI **Suggested** block), **edge swipe hints** (emerald Confirm right, slate Recategorise left), a **"X of N" progress bar**, circular Confirm/Recategorise buttons, Back/Skip, and an "all caught up" celebration. **Swipe-right = Confirm** the AI's suggestion (one-tap accept), **swipe-left = Recategorise** (opens the Phase-56 `CategoryPickerSheet` Suggested hero); buttons do the same (swipe alone is undiscoverable). framer-motion drives the drag; the queue/index/PATCH spine is unchanged.
+- **Default mobile landing (decision A):** a mobile-only `useEffect` auto-opens the deck once per page load when there are unreviewed (uncategorised, non-transfer) items; `autoReviewOpened` ref guards against re-opening after dismiss/refetch; "Skip to list" + the X always exit to the list. Desktop is untouched (keeps the list).
+
+### Files Modified
+- `components/bookkeeping/ReviewQueueCards.tsx` — full presentation redesign to the signed deck (physical stack, edge hints, gem, Suggested block, glass tokens, circular buttons, framer-motion drag); reuses `CategoryPickerSheet` for Recategorise (no double-PATCH — picker PATCHes, deck advances); `orderReviewQueue` kept (test-covered); `ReviewTransaction` gains optional `suggestedCategoryLevel1`/`isTransfer`. Confirm accepts `suggestedCategoryLevel1` (Neobrain) — no fabricated category/score (§19).
+- `app/dashboard/activity/page.tsx` — mobile-only auto-open `useEffect` + `autoReviewOpened` ref (decision A).
+- `.stitch/designs/phase56/review-deck-{light,dark}.{html,png}` — signed Stitch artefacts.
+
+### Verification (§19 — no fabricated numbers)
+- The card shows only **real** data: `amount`/`direction`/`currency` formatted, the date from `tx.date`, the suggestion from `tx.suggestedCategoryLevel1`/`categoryLevel1`. **No invented confidence %** (the design's % pills were deliberately not shipped — no real score). Confirm + Recategorise reuse the existing `/api/unified-transactions/[id]` PATCH (no new endpoint/categoriser §12.2.1). `neomatrix:check` green (FE only).
+- Static pass: hooks unconditional before early returns; `current` narrowed (`if (!current) return null`); `onDragEnd` PanInfo typed; the test importing `orderReviewQueue` still satisfied (additive interface change). Local build/vitest not runnable in sandbox — CI is the gate.
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed in this PR:
+- [x] visual design system / component pattern (the card-deck — Stitch-first §18.2.1, light 9.4/10 §18.8; dark directional, locked to light's composition in React; artefacts + screen IDs in JSDoc)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure · [x] strategic decision (decision "A" — deck as default mobile landing)
+
+Docs updated: `PHASE_56_MOBILE_ACTIVITY_REDESIGN.md` (§7 56.2 built), `01_ACTIVE_WORKSTREAMS.md`, this changelog, component JSDoc, `IMPLEMENTATION_PLAN.md` hub.
+
+### Testing
+- [x] `neomatrix:check` — OK. [ ] CI is the gate for Build + vitest (incl. `reviewQueueOrdering.test.ts`).
+- [x] Self-review gate (§20.4/§20.5): 3× vs requirement → 10/10 (deck matches the signed design + decision A; reuses the existing component + picker + PATCH, no duplication; no fabricated data; desktop untouched; honest dark-mode note).
+
+### PR
+- Branch: `claude/mobile-review-card-deck`
+- Status: draft
+
+---
+
 ## Session: mobile-tap-to-categorise (Phase 56.1)
 
 ### Changes Made

@@ -281,8 +281,24 @@ function ActivityPageContent() {
   const [advancedView, setAdvancedView] = useState(false);
   // Phase 42 PR6.5c — Review-mode card-stack opt-in.
   const [reviewMode, setReviewMode] = useState(false);
+  // Phase 56.2 (Reza decision "A", 2026-06-30) — on MOBILE, the card-deck is
+  // the DEFAULT landing when there's work to do. Auto-open it ONCE per page
+  // load when there are unreviewed (uncategorised, non-transfer) items; the
+  // list is always one tap away via "Skip to list". `autoReviewOpened` guards
+  // against re-opening after the user dismisses (or after a refetch).
+  const autoReviewOpened = useRef(false);
   // Phase 49 — bump to re-fetch the AI bookkeeper confidence summary.
   const [confidenceRefresh, setConfidenceRefresh] = useState(0);
+  useEffect(() => {
+    if (loading || autoReviewOpened.current) return;
+    if (typeof window === 'undefined') return;
+    // Mobile only — the deck is a one-thumb ritual; desktop keeps the list.
+    if (!window.matchMedia('(max-width: 767px)').matches) return;
+    const reviewable = transactions.filter((t) => !t.categoryLevel1 && !t.isTransfer);
+    if (reviewable.length === 0) return;
+    autoReviewOpened.current = true;
+    setReviewMode(true);
+  }, [loading, transactions]);
   // Phase 49.4 / 49.14 — confidence-band lens. When set, the page shows
   // EVERYTHING in that band as one simple view (Reza directives 2026-06-12:
   // band chips act as filters; "the solution must be simple enough for
