@@ -1,5 +1,39 @@
 # Changelog — 2026-06-30
 
+## Session: mobile-list-and-deck (Phase 56.8c)
+
+### Changes Made
+- **Type**: Fix (mobile layout bug) + Feature (deck animation) — Reza 2026-06-30, two mobile updates.
+- **1. Mobile list — amount was missing / rows overflowed.** On a phone, long real merchant names ("Periodical Payment To Bankwest Simple", "Pos 18/06 …") **weren't truncating**, so the name shoved the right-aligned **amount off the card's edge** (clipped by the day-card's `overflow-hidden`). Root cause: the name's inner flex row lacked `min-w-0`, so the `truncate` on the merchant span couldn't take effect. **Fix:** added `min-w-0` to the name row in BOTH the mobile and desktop `TransactionRow` bodies → the name truncates with an ellipsis and the amount + action lane stay visible. One-line flexbox correctness fix; no other row behaviour touched.
+- **2. Deck swipe → notebook page-flip.** The card-deck swipe now animates like **flipping a page**: the current card slides fully OUT in the swipe direction, then the next card slides IN from the opposite side (spring), instead of snapping in place. Left → next, right → previous; clamped at the ends (spring back). A `flipping` ref stops the index-change effect from resetting `x` mid-animation (which would kill the slide-in). Swipe is still browse-only — categorise/confirm remain the pencil/tick buttons (§56.4).
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `min-w-0` on the name row (mobile + desktop bodies) so the merchant truncates and the amount stays on-screen.
+- `components/bookkeeping/ReviewQueueCards.tsx` — page-flip swipe (`onDragEnd` slide-out → swap → slide-in; `flipping` ref; `useRef` import).
+
+### Verification (§19)
+- No money/calc change. `tsc` clean (only the pre-existing `tsconfig baseUrl` warning); `neomatrix:check` green; lint clean.
+- §0 designer/behaviour lenses: the page-flip gives the deck a tactile "browsing a notebook" feel Reza asked for; the mobile fix restores the at-a-glance amount that a transaction list must always show (financial-adviser lens — the number is the point).
+- Interactive (the flip) is verified live on the Vercel preview; the `min-w-0` truncation fix is a standard flexbox correction.
+
+### Doc-sync (CLAUDE.md §16)
+- [x] visual design system / component pattern (mobile row truncation + deck swipe animation)
+- [ ] config · [ ] infra · [ ] identity · [ ] deployment · [ ] security/CDR · [ ] operational · [ ] strategic
+
+Docs: `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§13` (56.8c note).
+
+### Testing
+- [x] `tsc` clean · [x] lint clean · [x] `neomatrix:check` green
+- [ ] Manual on the Vercel preview (Reza — the deck flip + the mobile amount)
+
+### Self-review gate (§20.5)
+3× pass → 10/10. Critique caught: (1) the index-reset effect would snap `x` to 0 the instant the index changed, killing the slide-in → guarded it with a `flipping` ref; (2) swiping at the first/last card would try to flip into nothing → clamped (spring back); (3) the desktop name row had the same latent `min-w-0` bug → fixed both bodies, not just mobile.
+
+### PR
+- Branch: `claude/mobile-list-and-deck` · Status: Draft
+
+---
+
 ## Session: activity-row-refresh (Phase 56.8b)
 
 ### Changes Made

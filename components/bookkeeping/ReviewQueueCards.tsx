@@ -37,7 +37,7 @@
 
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   motion,
   useMotionValue,
@@ -138,6 +138,9 @@ export function ReviewQueueCards({
   const [pickerOpen, setPickerOpen] = useState(false);
   // Action history — enables a single Back step.
   const [history, setHistory] = useState<number[]>([]);
+  // Phase 56.8c — true during a swipe page-flip so the index-change effect
+  // doesn't snap x back to 0 mid-animation (it would kill the slide-in).
+  const flipping = useRef(false);
 
   // framer-motion drag for the front card. Swipe is BROWSE-only (Phase 56.4):
   // drag left → next card, drag right → previous card.
@@ -163,9 +166,10 @@ export function ReviewQueueCards({
     }
   }, [open]);
 
-  // Snap the drag back to centre whenever the active card changes.
+  // Snap the drag back to centre whenever the active card changes — UNLESS a
+  // swipe page-flip is animating (it owns x: slide out → swap → slide in).
   useEffect(() => {
-    x.set(0);
+    if (!flipping.current) x.set(0);
   }, [index, x]);
 
   // Esc to dismiss (desktop accessibility).
@@ -276,17 +280,34 @@ export function ReviewQueueCards({
   }
 
   function onDragEnd(_e: unknown, info: PanInfo) {
-    // Swipe BROWSES (Phase 56.4): right → previous, left → next. It never
-    // categorises or confirms — those are the pencil/tick buttons.
-    if (!busy) {
-      const offset = info.offset.x;
-      if (offset > COMMIT_THRESHOLD) {
-        goToPrev();
-      } else if (offset < -COMMIT_THRESHOLD) {
-        goToNext();
-      }
+    // Phase 56.8c (Reza 2026-06-30) — swipe BROWSES like flipping a notebook
+    // page: the current card slides fully OUT in the swipe direction, then the
+    // next card slides IN from the opposite side (rather than snapping in place).
+    // Right → previous, left → next. Never categorises/confirms (that's the
+    // pencil/tick buttons). Clamped at the ends → just spring back.
+    if (busy || flipping.current) {
+      animate(x, 0, { type: 'spring', stiffness: 320, damping: 28 });
+      return;
     }
-    animate(x, 0, { type: 'spring', stiffness: 320, damping: 28 });
+    const offset = info.offset.x;
+    const W = typeof window !== 'undefined' ? window.innerWidth : 420;
+    const goNext = offset < -COMMIT_THRESHOLD && index < total - 1;
+    const goPrev = offset > COMMIT_THRESHOLD && index > 0;
+    if (!goNext && !goPrev) {
+      animate(x, 0, { type: 'spring', stiffness: 320, damping: 28 });
+      return;
+    }
+    const out = goNext ? -W : W; // current card exits this way…
+    const inFrom = goNext ? W : -W; // …and the next card enters from here.
+    flipping.current = true;
+    animate(x, out, { duration: 0.22, ease: [0.4, 0, 1, 1] }).then(() => {
+      if (goNext) goToNext();
+      else goToPrev();
+      x.set(inFrom);
+      animate(x, 0, { type: 'spring', stiffness: 300, damping: 30 }).then(() => {
+        flipping.current = false;
+      });
+    });
   }
 
   if (!open) return null;
