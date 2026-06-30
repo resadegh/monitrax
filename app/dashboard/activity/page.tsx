@@ -322,7 +322,14 @@ function ActivityPageContent() {
     if (typeof window === 'undefined') return;
     const hasWork = reviewTxns.length > 0 || bandCounts.total > 0;
     if (!hasWork) return;
-    // Arrived via Home "Fix now" (?review=1) → open regardless of device.
+    // Phase 56.5 (Reza 2026-06-30) — the card-deck is a MOBILE-ONLY interaction
+    // ("the card categorisation method should be only for mobile view"). The
+    // deck NEVER opens on desktop — not on auto-open, and not via the Home
+    // "Fix now" (?review=1) deep-link. Desktop reviews via the on-page surfaces
+    // (the AI-bookkeeper card + the list); the dedicated inbox is one click away.
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) return;
+    // Arrived via Home "Fix now" (?review=1) → open immediately on mobile.
     const explicit = new URLSearchParams(window.location.search).get('review') === '1';
     if (explicit) {
       autoReviewOpened.current = true;
@@ -333,7 +340,6 @@ function ActivityPageContent() {
     // ONCE PER SESSION (sessionStorage), so navigating back doesn't re-pop —
     // keeps it the default landing without the pop-on-arrival nag that was
     // reverted before (↩️ Reversed Decisions).
-    if (!window.matchMedia('(max-width: 767px)').matches) return;
     if (sessionStorage.getItem('monitrax.reviewDeck.dismissed') === '1') return;
     autoReviewOpened.current = true;
     setReviewMode(true);
@@ -727,12 +733,15 @@ function ActivityPageContent() {
               <MonthlyReviewPill />
               {/* Phase 42 PR6.5c — Quick review pill. Enters the
                   full-screen card-stack review mode. Self-hides when
-                  there's nothing to review. */}
+                  there's nothing to review.
+                  Phase 56.5 (Reza 2026-06-30) — MOBILE-ONLY (`md:hidden`): the
+                  card-deck is a mobile interaction; desktop reviews via the
+                  AI-bookkeeper card / list / inbox, never the deck. */}
               {transactions.some((t) => !t.categoryLevel1) && (
                 <button
                   type="button"
                   onClick={() => setReviewMode(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
+                  className="md:hidden inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full border bg-emerald-600 text-white border-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 transition-colors"
                 >
                   Quick review →
                 </button>
