@@ -19,12 +19,20 @@
  * a single satisfying micro-action. The sheet auto-dismisses on
  * success with a toast-free flow (the row in the parent visually
  * "ticks" — that's the celebration).
+ *
+ * Phase 56 (2026-06-30): when the caller passes a real (merchant-mapping)
+ * suggestion, the sheet leads with a "Suggested" hero — the top guess is the
+ * emphasised one-tap "Best match" (sky-tinted), the rest are quieter chips.
+ * No confidence % is shown (we have no real score; inventing one is false
+ * precision — §19). Stitch project 4167588157712714472, screens
+ * 29cb5b5c96044a7da90c8ae093dfb02d (light) / 647daad18b4845a9ae7da3c5c9f632b7
+ * (dark) — §18.8 9.4/10; artefacts at .stitch/designs/phase56/.
  */
 
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowLeftRight, Loader2, X } from 'lucide-react';
+import { ArrowLeftRight, Loader2, Sparkles, X } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
 interface CategoryPickerSheetProps {
@@ -118,7 +126,12 @@ export function CategoryPickerSheet({
     return () => document.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  const chips = (suggestions && suggestions.length > 0 ? suggestions : DEFAULT_SUGGESTIONS).slice(0, 6);
+  // Phase 56 — only treat the list as AI "Suggested" when the caller passed
+  // real merchant-mapping-aware suggestions. With the generic defaults we must
+  // NOT claim a "best match" (no confidence to back it — §19 no false
+  // precision); those render as a plain chip grid instead.
+  const hasRealSuggestions = !!(suggestions && suggestions.length > 0);
+  const chips = (hasRealSuggestions ? suggestions! : DEFAULT_SUGGESTIONS).slice(0, 6);
 
   async function categorise(level1: string) {
     if (busy || !token) return;
@@ -242,20 +255,66 @@ export function CategoryPickerSheet({
           </button>
         )}
 
-        {/* Suggestion chips — large mobile-first tap targets */}
-        <div className="grid grid-cols-2 gap-2.5 mb-4">
-          {chips.map((cat) => (
+        {/* Phase 56 — when we have real AI suggestions, surface them as a
+            "Suggested" hero: the top guess is the emphasised one-tap action
+            (sky-tinted glass + sky→indigo hairline), the next two are quieter
+            secondary chips. Turns the common case into a single tap (Copilot
+            pattern). No confidence % — we don't have a real score to show, and
+            inventing one would be false precision (§19). Stitch screen
+            29cb5b5c…/647daad1… (§18.8 9.4/10). */}
+        {hasRealSuggestions ? (
+          <div className="mb-4">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+              <Sparkles className="w-3.5 h-3.5 text-sky-500" /> Suggested
+            </p>
             <button
-              key={cat}
               type="button"
               disabled={busy}
-              onClick={() => categorise(cat)}
-              className="px-4 py-3.5 text-sm font-medium rounded-2xl bg-muted hover:bg-muted/70 active:bg-muted/60 text-foreground transition-colors disabled:opacity-60 min-h-[52px] text-left"
+              onClick={() => categorise(chips[0])}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3.5 mb-2 rounded-2xl border border-sky-400/40 bg-sky-500/[0.08] text-foreground hover:bg-sky-500/15 active:scale-[0.99] transition-all disabled:opacity-60 min-h-[56px]"
             >
-              {cat}
+              <span className="flex items-center gap-2.5 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-sky-400 shrink-0" aria-hidden />
+                <span className="font-semibold truncate">{chips[0]}</span>
+              </span>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white px-2.5 py-1 rounded-full bg-gradient-to-r from-sky-500 to-indigo-500 shrink-0">
+                <Sparkles className="w-3 h-3" /> Best match
+              </span>
             </button>
-          ))}
-        </div>
+            {chips.length > 1 && (
+              <div className="grid grid-cols-2 gap-2.5">
+                {chips.slice(1, 3).map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => categorise(cat)}
+                    className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-muted hover:bg-muted/70 active:bg-muted/60 text-foreground transition-colors disabled:opacity-60 min-h-[48px] text-left"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" aria-hidden />
+                    <span className="truncate text-sm font-medium">{cat}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* No real suggestions — plain chip grid of common defaults (no
+             "best match" claim). */
+          <div className="grid grid-cols-2 gap-2.5 mb-4">
+            {chips.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                disabled={busy}
+                onClick={() => categorise(cat)}
+                className="px-4 py-3.5 text-sm font-medium rounded-2xl bg-muted hover:bg-muted/70 active:bg-muted/60 text-foreground transition-colors disabled:opacity-60 min-h-[52px] text-left"
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Phase 49.9 (Reza) — dropdown of the user's EXISTING categories
             (replaces the free-text "Other category" input). */}
