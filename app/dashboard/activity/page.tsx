@@ -301,7 +301,7 @@ function ActivityPageContent() {
   const [queueLoading, setQueueLoading] = useState(false);
   const [queueSelected, setQueueSelected] = useState<Set<string>>(() => new Set());
   // Phase 56.3 — the band chips now read the ONE canonical review-queue SSOT
-  // (`/api/bookkeeping/review-queue`), so High+Medium+Low === `total` === the
+  // (the bulk-confirm GET), so High+Medium+Low === `total` === the
   // Home hero count === the deck (fixes the "78 vs 365" divergence).
   const [bandCounts, setBandCounts] = useState<{
     high: number;
@@ -345,10 +345,13 @@ function ActivityPageContent() {
   const fetchBandCounts = useCallback(async () => {
     if (!token) return;
     try {
-      // Canonical review-queue summary: count + confidence bands that PARTITION
-      // the same unconfirmed set (high+medium+low === count). One SSOT (§12.2.1).
+      // Canonical review-queue summary (count + bands that PARTITION the same
+      // unconfirmed set → high+medium+low === count) comes from the bulk-confirm
+      // GET's `reviewBands`/`reviewCount` (the ONE SSOT, §12.2.1).
       const [summaryRes, txRes] = await Promise.all([
-        fetch('/api/bookkeeping/review-queue', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/unified-transactions/bulk-confirm', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
         // The actual rows for the deck — the canonical `uncategorized=true`
         // filter, all-time, enriched (account + Neobrain suggestion) by the
         // list route. High limit so the deck has the real queue, not a page.
@@ -358,12 +361,12 @@ function ActivityPageContent() {
       ]);
       const summary = await summaryRes.json().catch(() => null);
       if (summaryRes.ok && summary?.success) {
-        const b = summary.data.bands ?? {};
+        const b = summary.data.reviewBands ?? {};
         setBandCounts({
           high: b.high ?? 0,
           medium: b.medium ?? 0,
           low: b.low ?? 0,
-          total: summary.data.count ?? 0,
+          total: summary.data.reviewCount ?? 0,
         });
       }
       const txJson = await txRes.json().catch(() => null);

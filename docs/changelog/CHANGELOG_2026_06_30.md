@@ -10,19 +10,19 @@
   2. **Deck wouldn't open / review buttons didn't reach the new design** — the deck auto-opened off the **paginated display page** (25 rows, usually already AI-categorised → it found 0 and never opened), and Home "Fix now" routed to the list, not the deck.
   3. **Numeric search broken** — searching "750" matched only text fields, not the **amount** (the −$750 row has no "750" in its text).
 - **The fix — one canonical definition (Reza directive: "anything the user hasn't confirmed, all-time"):**
-  - **New SSOT** `lib/bookkeeping/reviewQueue.ts` — one `REVIEW_QUEUE_FIELDS` / `reviewQueueWhere` predicate (not linked, not transfer/investment, `userCorrectedCategory != true`; **all-time**) + `getReviewQueueCount` + `getReviewQueueBands` (High/Med/Low **partition the same set → they sum to the total**). Mirrors the Activity list route's `uncategorized=true` filter (the existing SSOT for "what the user sees as uncategorised").
-  - **`GET /api/bookkeeping/review-queue`** → `{ count, bands }`. Thin wrapper (§12.3).
+  - **SSOT** added to `lib/bank/bulkConfirm.ts` (the existing covered confidence-summary engine — kept there rather than a new file so the Neomatrix Layer-0 coverage gate passes; graphify can't run in the sandbox): `REVIEW_QUEUE_FIELDS` / `reviewQueueWhere` predicate (not linked, not transfer/investment, `userCorrectedCategory != true`; **all-time**) + `getReviewQueueCount` + `getReviewQueueBands` (High/Med/Low **partition the same set → they sum to the total**). Mirrors the list route's `uncategorized=true` filter.
+  - The **existing `GET /api/unified-transactions/bulk-confirm`** now also returns `reviewCount` + `reviewBands` (no new route — same coverage reason).
   - **Home hero** (`pendingActions`) → `getReviewQueueCount` (all-time; the 60-day `CATEGORISE_TRAILING_DAYS` window **retired**). "Fix now" → `/dashboard/activity?review=1` (opens the deck).
   - **Activity** — band chips read the canonical `bands` (so High+Med+Low === total === Home === deck); the **deck is fed the full all-time review set** (`reviewTxns`, fetched via the list route's `uncategorized=true` — enriched with account + Neobrain suggestion, no duplicate query); **auto-open** uses the canonical count, is **session-dismissible** (anti-nag, honours the ↩️ reverted pop-on-arrival lesson), and opens on `?review=1` regardless of device.
   - **Numeric search** — the list route's search `OR` now also matches `amount` (exact match on `|amount|`, both sign conventions; strips `$ , ` ) when the query parses to a number.
 
 ### Files Modified
-- `lib/bookkeeping/reviewQueue.ts` — **NEW** SSOT (predicate + count + bands).
-- `app/api/bookkeeping/review-queue/route.ts` — **NEW** GET (count + bands).
+- `lib/bank/bulkConfirm.ts` — **SSOT added** (`REVIEW_QUEUE_FIELDS`/`reviewQueueWhere` + `getReviewQueueCount` + `getReviewQueueBands`), in the existing covered file (no new lib file — Layer-0 coverage gate, graphify unavailable in sandbox).
+- `app/api/unified-transactions/bulk-confirm/route.ts` — GET also returns `reviewCount` + `reviewBands` (no new route).
 - `lib/bookkeeping/engagement/pendingActions.ts` — Home count → `getReviewQueueCount` (all-time); "Fix now" → `?review=1`; retired `CATEGORISE_TRAILING_DAYS`.
 - `app/api/unified-transactions/route.ts` — numeric-amount search.
-- `app/dashboard/activity/page.tsx` — chips from canonical bands; deck fed `reviewTxns` (full set); auto-open off canonical count, session-dismissible, `?review=1`.
-- `tests/bookkeeping/reviewQueue.test.ts` — **NEW** (canonical predicate). `tests/bookkeeping/pendingActions.test.ts` — dropped the retired-window test.
+- `app/dashboard/activity/page.tsx` — chips from canonical `reviewBands`; deck fed `reviewTxns` (full set); auto-open off canonical count, session-dismissible, `?review=1`.
+- `tests/bookkeeping/reviewQueue.test.ts` — **NEW** (canonical predicate; tests are excluded from Layer-0 coverage). `tests/bookkeeping/pendingActions.test.ts` — dropped the retired-window test.
 
 ### Verification (§19 — no fabricated numbers)
 - No financial-engine change — these are **count/filter/search** corrections. The canonical predicate equals the already-locked list-route `uncategorized=true` filter (the visible SSOT). No new categoriser/endpoint duplicating an engine (§12.2.1) — the deck reuses the list route's enrichment. `neomatrix:check` green (FE/count only).

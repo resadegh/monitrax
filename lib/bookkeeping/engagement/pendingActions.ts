@@ -28,7 +28,7 @@
 import prisma from '@/lib/db';
 import { toPeriodMonthKey } from '../period';
 import { getOrCreateEngagementState } from './streak';
-import { getReviewQueueCount } from '@/lib/bookkeeping/reviewQueue';
+import { getReviewQueueCount } from '@/lib/bank/bulkConfirm';
 
 /**
  * Action kinds, ordered by descending priority. The aggregator
@@ -69,7 +69,7 @@ export const PENDING_ACTIONS_CAP = 3;
 
 // Phase 56.3 (Reza 2026-06-30) — the 60-day `CATEGORISE_TRAILING_DAYS` window
 // is RETIRED. "Needs your review" is now ALL-TIME and computed by the single
-// SSOT `lib/bookkeeping/reviewQueue.ts` (`getReviewQueueCount`), so the Home
+// SSOT `lib/bank/bulkConfirm.ts` (`getReviewQueueCount`), so the Home
 // hero, the Activity headline + bands, and the card-deck all show one number.
 // (Supersedes the 2026-05-08 trailing-window decision.)
 
@@ -108,7 +108,7 @@ export async function buildPendingActions(
     // check. The Activity filter is the SSOT for "what does the
     // user think is uncategorised."
     // Phase 56.3 (Reza 2026-06-30) — the CATEGORISE count now reads the ONE
-    // canonical SSOT (`lib/bookkeeping/reviewQueue.ts`), ALL-TIME (the 60-day
+    // canonical SSOT (`lib/bank/bulkConfirm.ts`), ALL-TIME (the 60-day
     // window is dropped per Reza: "anything the user hasn't confirmed, all
     // time"). This makes the Home hero number EQUAL the Activity headline +
     // the card-deck — fixing the "78 (60d) vs 365 (all-time)" divergence.

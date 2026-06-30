@@ -1,5 +1,5 @@
 /**
- * Phase 56.3 — the review-queue SSOT (`lib/bookkeeping/reviewQueue.ts`).
+ * Phase 56.3 — the review-queue SSOT (`lib/bank/bulkConfirm.ts`).
  *
  * Guards the canonical "needs your review" predicate (Reza 2026-06-30:
  * "anything the user hasn't confirmed, all-time"). If these fields drift, the
@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { REVIEW_QUEUE_FIELDS, reviewQueueWhere } from '../../lib/bookkeeping/reviewQueue';
+import { REVIEW_QUEUE_FIELDS, reviewQueueWhere } from '../../lib/bank/bulkConfirm';
 
 describe('REVIEW_QUEUE_FIELDS (the canonical "needs review" predicate)', () => {
   it('requires no income / expense / loan link', () => {
