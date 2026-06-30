@@ -795,9 +795,16 @@ export function TransactionLinkDialog({
   // and (when expanded) the Suggested tab. Defined once to avoid duplication.
   const hasResolution =
     resolution.loanRepayments.length > 0 || resolution.transfers.length > 0;
-  const resolutionCards = hasResolution ? (
+
+  // Render resolution cards from a given set of matches. The resolver already
+  // sorts each list by confidence DESC (resolveTransaction.ts), so the first of
+  // each is the best.
+  const renderResolutionCards = (
+    loanReps: LoanRepaymentMatch[],
+    txfers: TransferMatch[],
+  ) => (
     <div className="space-y-2">
-      {resolution.loanRepayments.map((m) => (
+      {loanReps.map((m) => (
         <div
           key={m.loanTransactionId}
           className="p-3 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20"
@@ -825,7 +832,7 @@ export function TransactionLinkDialog({
           </div>
         </div>
       ))}
-      {resolution.transfers.map((m) => (
+      {txfers.map((m) => (
         <div
           key={m.transactionId}
           className="p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-950/20"
@@ -854,7 +861,43 @@ export function TransactionLinkDialog({
         </div>
       ))}
     </div>
+  );
+
+  // How many candidates are demoted to "More options" (identical-amount recurring
+  // transfers produce several same-account matches; the auto-pairer won't guess,
+  // and stacking equal-looking cards reads as a duplicate — Reza 2026-06-29).
+  // Show only the single highest-confidence match up front (One Clear Action);
+  // the rest stay available under "More options".
+  const extraResolutionCount =
+    Math.max(0, resolution.loanRepayments.length - 1) +
+    Math.max(0, resolution.transfers.length - 1);
+
+  // Primary (collapsed) view: the best of each kind only.
+  const resolutionCards = hasResolution ? (
+    <div className="space-y-2">
+      {renderResolutionCards(
+        resolution.loanRepayments.slice(0, 1),
+        resolution.transfers.slice(0, 1),
+      )}
+      {extraResolutionCount > 0 && (
+        <button
+          type="button"
+          onClick={() => {
+            setMoreView('menu');
+            setShowMore(true);
+          }}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors pl-1"
+        >
+          +{extraResolutionCount} other possible match{extraResolutionCount > 1 ? 'es' : ''} — see More options
+        </button>
+      )}
+    </div>
   ) : null;
+
+  // Full set — every candidate, shown inside the "More options" views.
+  const allResolutionCards = hasResolution
+    ? renderResolutionCards(resolution.loanRepayments, resolution.transfers)
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1057,7 +1100,7 @@ export function TransactionLinkDialog({
                 row sets moreView to the section, shown with a Back affordance. */}
             {moreView === 'menu' ? (
               <div className="space-y-3">
-                {resolutionCards}
+                {allResolutionCards}
                 <div className="space-y-1.5">
                   {([
                     { v: 'create', icon: Plus, label: isIncome ? 'Categorise as income' : 'Categorise as an expense' },
@@ -1090,9 +1133,9 @@ export function TransactionLinkDialog({
 
             {/* Suggested Matches */}
             <TabsContent value="match" className="space-y-2 max-h-64 overflow-auto">
-              {/* Phase 51.2 resolution cards (shared) — also shown in the
-                  collapsed one-clear-action view above; here for the expanded tab. */}
-              {resolutionCards}
+              {/* Phase 51.2 resolution cards — the FULL candidate set here in the
+                  expanded tab (the collapsed view above shows only the best). */}
+              {allResolutionCards}
               {/* Transaction Pattern Alert */}
               {transactionPattern && transactionPattern.count >= 3 && (
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800 mb-2">

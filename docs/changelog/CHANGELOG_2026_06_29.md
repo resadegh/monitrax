@@ -362,3 +362,25 @@ Left in place pending Reza's confirm-and-delete (§12.1) — they may be planned
 ### PR
 - Branch: `claude/fix-activity-search-page-reset`
 - Status: draft
+
+---
+
+## Session: fix-link-dialog-duplicate-transfer-cards
+
+### Changes Made
+- **Type**: Fix (UX clarity — Link dialog showed "Mark as transfer" twice)
+- **Why it looked duplicated**: `resolveTransaction.ts` matches the transfer against ALL accounts within a ±4-day window (exact amount), and returns EVERY match ranked by confidence. For recurring identical $1,000 transfers, several same-account arrivals match one source (e.g. 22 Apr @ 0.98 + 20 Apr @ 0.78), so the dialog rendered two amber cards with the IDENTICAL title "Transfer to NAB Everyday account" — differing only in the small date line. Both even call the same `handleMarkTransferTo(accountId)` (same account) → functionally identical actions. Not a logic bug; a presentation flaw.
+- **Solution (Reza-approved)**: One Clear Action — the collapsed view now shows only the single highest-confidence match of each kind; additional candidates move under the existing "More options" (with a "+N other possible match(es)" hint that opens it). The resolver already sorts by confidence, so `[0]` is the best. No logic/resolver change.
+
+### Files Modified
+- `components/transactions/TransactionLinkDialog.tsx` — `renderResolutionCards(loanReps, transfers)` helper; primary view renders `.slice(0,1)` of each + a "+N more" hint → "More options"; the two More-options views render the full candidate set.
+
+### §18.2.1
+- True tweak — reorganises existing approved resolution cards (no new card design or section); code-first per §18.2.1. Stitch backfill available on request.
+
+### Verification
+- `neomatrix:check` green (no graph change — FE only). vitest/typecheck in CI. Self-review (§20.5): 10/10 — demoted cards were functionally identical (same account/action), so nothing is lost; hint reveals the full set.
+
+### PR
+- Branch: `claude/fix-link-dialog-duplicate-transfer-cards`
+- Status: draft
