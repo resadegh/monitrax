@@ -1,5 +1,41 @@
 # Changelog — 2026-06-30
 
+## Session: restore-full-categorise-dialog (Phase 56.6)
+
+### Changes Made
+- **Type**: Fix (restore the complete categorisation surface) — Reza feedback 2026-06-30.
+- **Reza**: *"when I click on categorise it opens the compact categorisation modal which is not really good and should be completely removed, I want the previous complete categorisation method (the screen in the photo)."* The "photo" = the full **Link Transaction** dialog (`TransactionLinkDialog`): vendor card, same-vendor batch categorise, Suggested / All Entries / Create New / Split tabs, pattern detection.
+- **Root cause** — Phase 56.1 had made tapping a transaction open the compact `CategoryPickerSheet` (bottom-sheet with 4 category chips + "More options"), demoting the full dialog to long-press / "More options". Reza wants the full dialog back as the primary categorisation method.
+- **Fix** — on the Activity list, **tap / left-swipe a transaction now opens the full `TransactionLinkDialog` directly** (it was already wired on the page as the long-press target — this just promotes it to the tap). The compact-sheet `pickerTx` usage + state were removed (dead once nothing opens it). Transfers stay on the right-swipe → `TransferDestinationSheet`.
+- **Scope note (honest)** — `CategoryPickerSheet` is NOT yet deleted: it's still used by (a) the band-review **staging-queue** edit (`queueEditItem`, a different data path — review-queue items aren't real transactions, so the transaction dialog can't host them) and (b) the **mobile card-deck** pencil. Both surfaces are being reworked by the Phase 56 review-IA consolidation (the hub redesign) — the component is removed there, where their flows are redesigned coherently, rather than risk-breaking the staging path in this focused PR.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — row tap/left-swipe → full `TransactionLinkDialog`; removed the `pickerTx` compact-sheet usage + state.
+
+### Verification (§19 — no financial number)
+- UI routing only — no calc/count/engine change. `tsc` clean on the page (only the pre-existing `tsconfig baseUrl` warning); `neomatrix:check` green; lint clean. The full dialog path is the existing, battle-tested long-press target — tap now reuses it verbatim (no new categorisation logic).
+- §0 lenses: behaviour-psychologist (the complete dialog gives the user the context — vendor history, batch, pattern — to categorise confidently, vs the compact sheet's 4 guesses); architect (one categorisation surface, reusing the canonical dialog, not a parallel compact one).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (categorisation entry restored — true tweak per §18.2.1, restoring an existing signed surface)
+- [ ] application config · [ ] GCP infra · [ ] identity/auth · [ ] deployment/build · [ ] security/CDR · [ ] operational procedure · [ ] strategic decision
+
+Docs updated:
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§11` — Phase 56.6 + the compact-picker removal folded into the consolidation.
+
+### Testing
+- [x] `tsc` clean (page) · [x] lint clean · [x] `neomatrix:check` green
+- [ ] Manual on-device (Reza post-merge §17.2)
+
+### PR
+- Branch: `claude/restore-full-categorise-dialog` · Status: Draft
+
+### Self-review gate (§20.5)
+3× pass → 10/10 for the focused restore. Critique caught: (1) the full dialog was already wired as the long-press target, so the safest faithful change is to promote it to the tap rather than re-plumb a new surface; (2) "completely removed" can't safely delete the component yet — the staging-queue edit path can't be hosted by the transaction dialog — so the two remaining usages are explicitly folded into the consolidation rather than silently left or unsafely force-removed (honest scope, surfaced to Reza).
+
+---
+
 ## Session: deck-mobile-only (Phase 56.5)
 
 ### Changes Made

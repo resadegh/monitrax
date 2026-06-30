@@ -219,4 +219,17 @@ Root cause of all three symptoms is **IA fragmentation**: review work is scatter
 - **Kill the count conflation.** The AI-bookkeeper card's review numbers (and anything that says "Review N low") read the canonical `getReviewQueueBands` so every surface shows the same number. "Sorted / auto-filed" stays only as a clearly-separated lifetime stat, never mixed into the review pile.
 - **The fork for Reza:** does Activity become (a) a hub landing with two tiles — "Review (N to categorise)" + "Transactions (browse all)" — or (b) two peer sub-tabs under My Accounts — "Review" | "Transactions"? Recommendation: **(a) hub**, because it gives the review CTA primacy (behaviour lens) while keeping the ledger one tap away.
 
-*Phase 56 v1.4 — **56.5 deck mobile-only this PR**; issues 1+3 (review-IA consolidation) parked for sign-off. Governed by §18.2.1 (issue 2 = true-tweak code-first; issues 1+3 = Stitch-first after sign-off), §12.2.1 (one count source), §20.5 (load-bearing IA decision surfaced, not auto-built).*
+- **The fork for Reza:** ✅ **DECIDED 2026-06-30 — (a) hub landing with two tiles** ("Review — N to categorise" primary + "Transactions — browse all" secondary). Stitch design in progress (project 1859462351962811110, screen 51b4df2c024f4014a6efe2f38884149e); presented for design sign-off before React.
+- **Categorisation method = the full Link Transaction dialog** (decided 2026-06-30, shipped in part as 56.6 below). The compact `CategoryPickerSheet` is retired — the consolidation removes its two remaining usages (band-review staging edit + the mobile deck pencil) as those surfaces are reworked.
+
+## 11. Phase 56.6 — restore the full categorisation dialog (Reza feedback, 2026-06-30)
+
+> *"when I click on categorise it opens the compact categorisation modal which is not really good and should be completely removed, I want the previous complete categorisation method (the screen in the photo)."*
+
+The "photo" = the full **`TransactionLinkDialog`** (Phase 51 v3): vendor card, same-vendor batch categorise, Suggested / All Entries / Create New / Split, pattern detection. Phase 56.1 had demoted it — tapping a row opened the compact `CategoryPickerSheet` (4 chips + "More options") instead.
+
+**Fixed (56.6) — code-first per §18.2.1 (restoring an already-signed surface, not a new composition):** on the Activity list, **tap / left-swipe a transaction now opens the full `TransactionLinkDialog` directly** (it was already the long-press target — this promotes it to the tap). The compact-sheet `pickerTx` usage + state were removed.
+
+**Honest scope:** `CategoryPickerSheet` is not yet deleted — it still backs (a) the band-review **staging-queue** edit (`queueEditItem`; review-queue items aren't transactions, so the dialog can't host them) and (b) the **mobile card-deck** pencil. Both are removed by the consolidation (§10.3) where their flows are redesigned — not force-removed here at the risk of breaking the staging path.
+
+*Phase 56 v1.5 — 56.5 deck mobile-only + 56.6 full-dialog restore shipped; IA hub (decided (a)) in Stitch design for sign-off. Governed by §18.2.1, §12.2.1 (one count source + one categorisation surface), §20.5.*

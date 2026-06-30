@@ -270,12 +270,9 @@ function ActivityPageContent() {
   // child's useEffect.
   const [celebrationTrigger, setCelebrationTrigger] = useState(0);
 
-  // Phase 42 PR6.5 — swipe-to-categorise. Sheet state lives at the
-  // page level so a single sheet renders for whichever row was
-  // swiped. Mobile-first; desktop users still get the existing
-  // tap → dialog flow (the swipe is a per-pointer-event capture
-  // that doesn't disturb the click).
-  const [pickerTx, setPickerTx] = useState<Transaction | null>(null);
+  // Phase 56.6 (Reza 2026-06-30) — the `pickerTx` compact-sheet state was
+  // removed; tap / left-swipe now opens the full TransactionLinkDialog
+  // (`linkingTransaction` + `showLinkDialog`) directly.
   // Phase 42 PR6.5h — destination picker for swipe-right Transfer.
   const [transferTx, setTransferTx] = useState<Transaction | null>(null);
   const [advancedView, setAdvancedView] = useState(false);
@@ -1078,13 +1075,21 @@ function ActivityPageContent() {
                         onToggleSelected={() => toggleSelected(tx.id)}
                         advancedView={advancedView}
                         onConfirm={() => confirmRow(tx)}
-                        // Phase 56.1 (Reza 2026-06-30) — tap a transaction →
-                        // the new category picker (Suggested hero), NOT the old
-                        // Link Transaction dialog. Categorise is the primary
-                        // intent; the full link/route dialog stays one step away
-                        // via long-press (mobile) + the picker's "More options".
-                        onClick={() => setPickerTx(tx)}
-                        onSwipeLeft={() => setPickerTx(tx)}
+                        // Phase 56.6 (Reza 2026-06-30) — tap / left-swipe a
+                        // transaction → the FULL "Link Transaction" dialog (the
+                        // complete categorisation method: vendor card, same-vendor
+                        // batch, Suggested / All / Create / Split, pattern
+                        // detection). The compact CategoryPickerSheet was removed
+                        // per Reza: "the compact categorisation modal … should be
+                        // completely removed, I want the previous complete method."
+                        onClick={() => {
+                          setLinkingTransaction(tx);
+                          setShowLinkDialog(true);
+                        }}
+                        onSwipeLeft={() => {
+                          setLinkingTransaction(tx);
+                          setShowLinkDialog(true);
+                        }}
                         onSwipeRight={() => setTransferTx(tx)}
                         onLongPress={() => {
                           setLinkingTransaction(tx);
@@ -1158,49 +1163,12 @@ function ActivityPageContent() {
           Self-gated to once-per-day max via the server. Self-dismissing. */}
       <CompletionCelebration trigger={celebrationTrigger} />
 
-      {/* Phase 42 PR6.5 — Category picker bottom-sheet (opens on
-          left-swipe of any row). Mobile-first; backdrop dismisses. */}
-      <CategoryPickerSheet
-        open={pickerTx !== null}
-        transactionId={pickerTx?.id ?? null}
-        context={
-          pickerTx
-            ? {
-                merchant:
-                  pickerTx.description ||
-                  pickerTx.merchantStandardised ||
-                  pickerTx.merchantRaw ||
-                  null,
-                amount: pickerTx.amount,
-              }
-            : null
-        }
-        suggestions={pickerTx?.suggestedCategoryLevel1 ? [pickerTx.suggestedCategoryLevel1] : undefined}
-        onClose={() => setPickerTx(null)}
-        onSuccess={() => {
-          setPickerTx(null);
-          fetchTransactions();
-          fetchSummary();
-        }}
-        onMarkTransfer={() => {
-          // Phase 49.9 — hand off to the destination picker (the canonical
-          // transfer flow for existing transactions).
-          const tx = pickerTx;
-          setPickerTx(null);
-          if (tx) setTransferTx(tx);
-        }}
-        onMoreOptions={() => {
-          // Phase 56.1 — the advanced "link to an account / entity" router
-          // (the old Link Transaction dialog) is now one step away, not the
-          // default tap. Preserves desktop access (no long-press there).
-          const tx = pickerTx;
-          setPickerTx(null);
-          if (tx) {
-            setLinkingTransaction(tx);
-            setShowLinkDialog(true);
-          }
-        }}
-      />
+      {/* Phase 56.6 (Reza 2026-06-30) — the compact CategoryPickerSheet for
+          tapping a transaction was REMOVED. Tap / left-swipe now opens the full
+          TransactionLinkDialog directly (wired below). Transfers stay on the
+          right-swipe → TransferDestinationSheet. (The band-review staging-item
+          edit below still uses the sheet on review-queue items — a different
+          data path that the Phase 56 review-IA consolidation reworks next.) */}
 
       {/* Phase 49.5 — same picker sheet, but for a review-queue item being
           corrected: the override files the item with the chosen category
