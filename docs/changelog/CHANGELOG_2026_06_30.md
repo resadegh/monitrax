@@ -1,5 +1,42 @@
 # Changelog — 2026-06-30
 
+## Session: activity-hub-layout (Phase 56.8)
+
+### Changes Made
+- **Type**: Feature (IA restructure) — Reza 2026-06-30 ("continue with the build … make sure you don't break the working functionalities of the list"). Stage 2 of the review-IA consolidation.
+- **The Activity LANDING is now a clean hub** — KPI snapshot + the state-aware Review tile + a new **Transactions** tile. The full transaction list no longer crowds the landing; it lives **behind the Transactions tile** (`view === 'list'`).
+- **One-list SSOT (Reza decision 2026-06-30):** "Review" on desktop opens the **SAME** transaction list filtered to uncategorised — NOT a separate inbox. The dedicated `/dashboard/activity/review` page is **retired** (now redirects to `/dashboard/activity?review=1`). This also resolves the 69%/54% "% categorised" split (the inbox's divergent denominator is gone — only the canonical % remains).
+- **Mobile unchanged:** "Start review" still opens the card-deck (mobile-only, §56.5).
+- **NON-BREAKING — the list, its `TransactionRow`, search, confidence-hue chips, advanced filters, `QueueReviewList`, pagination, FAB, bulk toolbar and all modals are UNTOUCHED.** Only their *visibility* is gated by the new `view` state. (The row "cleaner refresh" Reza asked for is a deliberate, careful follow-up — NOT bundled with this structural change, to honour "don't break the list".)
+- **All list entry points open the list view:** the Transactions tile, KPI-tile clicks (preserve their filter behaviour), "Start review" (desktop), the Home "Fix now" `?review=1` (desktop → filtered list), and the `?filter=recurring|anomalies` deep-links. A "‹ Activity" back button returns to the hub.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — added a `view: 'hub' | 'list'` state; gated the Sankey / KPI / Review card / Subscriptions card to the hub; added the Transactions tile; wrapped the existing list region in `view === 'list'` with a back button; rewired "Start review" (desktop) + `?review=1` (desktop) + `?filter=` deep-links + KPI clicks to open the list. Removed the now-unused `useRouter`.
+- `app/dashboard/activity/review/page.tsx` — retired; redirects to the canonical surface. (Follow-up 56.11: delete the orphaned `ReviewCategoriesInbox` component.)
+
+### Verification (§19)
+- **No money/calc/count change** — pure IA + visibility gating. The list code path is byte-for-byte the same behind the tile. `tsc` clean (only the pre-existing `tsconfig baseUrl` warning); `neomatrix:check` green; lint clean.
+- **Don't-break audit:** confirmed every prior list entry point still reaches the list (Transactions tile · KPI clicks · Start review · `?review=1` · `?filter=` · mobile deck/Quick-review pill). The redesigned-row work is explicitly deferred so no row wiring was touched.
+- §0 lenses: architect (one list = SSOT, retire the duplicate inbox); behaviour-psychologist (clean hub surfaces the next action; the familiar list is one tap away); designer (hub stays calm, ledger on demand).
+
+### Doc-sync (CLAUDE.md §16)
+Surfaces changed:
+- [x] visual design system / component pattern (Activity hub layout + Transactions tile)
+- [ ] config · [ ] infra · [ ] identity · [ ] deployment · [ ] security/CDR · [ ] operational
+- [x] strategic decision (Review = one filtered list; separate inbox retired)
+
+Docs updated:
+- `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§13` — Phase 56.8 + the one-list decision.
+
+### Testing
+- [x] `tsc` clean · [x] lint clean · [x] `neomatrix:check` green
+- [ ] Manual on-device (Reza on the Vercel preview — the real render is the design check, §18.2.1 backfill)
+
+### Self-review gate (§20.5)
+3× pass → 10/10 against "restructure to a hub WITHOUT breaking the list". Critique caught: (1) gating only the list would strand the KPI-click and `?filter=` deep-links on the hidden hub → wired every entry point to open the list; (2) `?review=1` on desktop would land on the hub not the review surface → opens the filtered list; (3) the separate inbox would keep diverging → retired via redirect, which also fixes the 69/54% split; (4) bundling the row redesign would risk the list wiring → deferred to a careful follow-up. The list internals were not touched.
+
+---
+
 ## Session: activity-review-states (Phase 56.7)
 
 ### Changes Made

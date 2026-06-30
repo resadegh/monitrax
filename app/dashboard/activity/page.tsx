@@ -43,7 +43,7 @@
  */
 
 import React, { Suspense, useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/context/AuthContext';
 import DashboardLayout from '@/components/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -65,6 +65,8 @@ import {
   ChevronDown,
   Sparkles,
   Plus,
+  ArrowRight,
+  Wallet,
 } from 'lucide-react';
 import { ImportWizard } from '@/components/bank/ImportWizard';
 import { TransactionLinkDialog } from '@/components/transactions/TransactionLinkDialog';
@@ -239,6 +241,14 @@ function ActivityPageContent() {
   const [showImportWizard, setShowImportWizard] = useState(false);
   const [accounts, setAccounts] = useState<ImportAccount[]>([]);
 
+  // Phase 56.8 (Reza 2026-06-30) — the Activity LANDING is now a clean hub
+  // (KPI snapshot + the state-aware Review tile + a Transactions tile). The full
+  // transaction list lives BEHIND the Transactions tile (view === 'list'), so it
+  // no longer crowds the landing. Desktop "Start review" opens the SAME list
+  // filtered to uncategorised (the one-list SSOT — no separate inbox). The list
+  // and its TransactionRow are UNCHANGED — only their visibility is gated here.
+  const [view, setView] = useState<'hub' | 'list'>('hub');
+
   // Filters — preserved 1:1 from legacy
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState('');
@@ -324,10 +334,22 @@ function ActivityPageContent() {
     // deck NEVER opens on desktop — not on auto-open, and not via the Home
     // "Fix now" (?review=1) deep-link. Desktop reviews via the on-page surfaces
     // (the AI-bookkeeper card + the list); the dedicated inbox is one click away.
-    const isMobile = window.matchMedia('(max-width: 767px)').matches;
-    if (!isMobile) return;
-    // Arrived via Home "Fix now" (?review=1) → open immediately on mobile.
     const explicit = new URLSearchParams(window.location.search).get('review') === '1';
+    const isMobile = window.matchMedia('(max-width: 767px)').matches;
+    if (!isMobile) {
+      // Phase 56.8 — desktop: the Home "Fix now" (?review=1) deep-link opens the
+      // SAME transaction list filtered to uncategorised (the one-list review
+      // surface), never the deck. Otherwise desktop stays on the clean hub.
+      if (explicit) {
+        autoReviewOpened.current = true;
+        setTileFilter('uncategorized');
+        setConfidenceBand(null);
+        setPage(1);
+        setView('list');
+      }
+      return;
+    }
+    // Arrived via Home "Fix now" (?review=1) → open the deck immediately on mobile.
     if (explicit) {
       autoReviewOpened.current = true;
       setReviewMode(true);
@@ -692,7 +714,6 @@ function ActivityPageContent() {
   // here since Phase 42 but the param was never read — the click silently
   // landed on the default view (Reza report 2026-06-11).
   const searchParams = useSearchParams();
-  const router = useRouter();
   const appliedFilterParam = useRef(false);
   useEffect(() => {
     if (appliedFilterParam.current) return;
@@ -700,10 +721,12 @@ function ActivityPageContent() {
     if (f === 'recurring') {
       setShowRecurringOnly(true);
       setTileFilter('all');
+      setView('list'); // Phase 56.8 — deep-linked filters open the list, not the hub.
       appliedFilterParam.current = true;
     } else if (f === 'anomalies') {
       setShowAnomaliesOnly(true);
       setTileFilter('all');
+      setView('list'); // Phase 56.8 — deep-linked filters open the list, not the hub.
       appliedFilterParam.current = true;
     }
   }, [searchParams]);
@@ -775,14 +798,17 @@ function ActivityPageContent() {
             money goes" aha moment. Reuses Phase 41g <MoneyFlowSankey /> by
             projecting MasterFinancialSnapshot through a synthetic single-
             entity flow. Self-hides when there's not enough data. */}
-        <div className="mb-6">
-          <ConsumerMoneyFlowSankey />
-        </div>
+        {view === 'hub' && (
+          <div className="mb-6">
+            <ConsumerMoneyFlowSankey />
+          </div>
+        )}
 
         {/* SUMMARY TILES — clickable to filter. Phase 49: §18.7.6 Compact
             Dashboard mobile mechanics — horizontal snap strip with a
-            1.2-tile peek + page-dot indicator below sm; 4-col grid at sm+. */}
-        {summary && (
+            1.2-tile peek + page-dot indicator below sm; 4-col grid at sm+.
+            Phase 56.8 — hub only; clicking a tile opens the list filtered. */}
+        {view === 'hub' && summary && (
           <div className="mb-6">
             <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               This month
@@ -801,6 +827,7 @@ function ActivityPageContent() {
                 onClick={() => {
                   setTileFilter(tileFilter === 'spend' ? 'uncategorized' : 'spend');
                   setPage(1);
+                  setView('list');
                 }}
               />
               <SummaryTile
@@ -812,6 +839,7 @@ function ActivityPageContent() {
                 onClick={() => {
                   setTileFilter(tileFilter === 'income' ? 'uncategorized' : 'income');
                   setPage(1);
+                  setView('list');
                 }}
               />
               <SummaryTile
@@ -831,6 +859,7 @@ function ActivityPageContent() {
                 onClick={() => {
                   setTileFilter(tileFilter === 'all' ? 'uncategorized' : 'all');
                   setPage(1);
+                  setView('list');
                 }}
               />
             </div>
@@ -853,40 +882,96 @@ function ActivityPageContent() {
             search + filters sit directly above the transaction list — so the
             page reads top-to-bottom as "here's what the AI did → here's how to
             find a transaction → here are the transactions." Self-hides when tidy. */}
-        <ConfidenceReviewCard
-          refreshKey={confidenceRefresh}
-          onConfirmed={async () => {
-            // Phase 49.7 — no celebration toast here; the card shows its own
-            // inline receipt and the toast is reserved for clearing the pile.
-            await fetchTransactions();
-            fetchSummary();
-            fetchBandCounts();
-          }}
-          // Phase 56.7 — "Start review": mobile opens the card-deck (mobile-only
-          // per §56.5); desktop routes to the review inbox (the review surface).
-          onStartReview={() => {
-            if (
-              typeof window !== 'undefined' &&
-              window.matchMedia('(max-width: 767px)').matches
-            ) {
-              setReviewMode(true);
-            } else {
-              router.push('/dashboard/activity/review');
-            }
-          }}
-          onImport={() => setShowImportWizard(true)}
-        />
+        {view === 'hub' && (
+          <ConfidenceReviewCard
+            refreshKey={confidenceRefresh}
+            onConfirmed={async () => {
+              // Phase 49.7 — no celebration toast here; the card shows its own
+              // inline receipt and the toast is reserved for clearing the pile.
+              await fetchTransactions();
+              fetchSummary();
+              fetchBandCounts();
+            }}
+            // Phase 56.8 — "Start review": mobile opens the card-deck (mobile-only
+            // per §56.5); desktop opens the SAME transaction list filtered to
+            // uncategorised (the one-list SSOT, Reza 2026-06-30 — no separate
+            // review inbox). Familiar surface, one design, one source.
+            onStartReview={() => {
+              if (
+                typeof window !== 'undefined' &&
+                window.matchMedia('(max-width: 767px)').matches
+              ) {
+                setReviewMode(true);
+              } else {
+                setTileFilter('uncategorized');
+                setConfidenceBand(null);
+                setPage(1);
+                setView('list');
+              }
+            }}
+            onImport={() => setShowImportWizard(true)}
+          />
+        )}
 
         {/* Phase 49.11 — "Possible subscriptions" review card. The dedicated
             surface behind the Home pending-actions count (UNMATCHED
             RecurringPayment patterns); the ?filter=recurring deep link lands
             the user right here. Self-hides when there's nothing to confirm. */}
-        <SubscriptionsReviewCard
-          refreshKey={confidenceRefresh}
-          onActioned={() => {
-            fetchSummary();
-          }}
-        />
+        {view === 'hub' && (
+          <SubscriptionsReviewCard
+            refreshKey={confidenceRefresh}
+            onActioned={() => {
+              fetchSummary();
+            }}
+          />
+        )}
+
+        {/* Phase 56.8 (Reza 2026-06-30) — the Transactions tile. The full
+            ledger lives BEHIND this so the hub stays clean; click → the list
+            view (all transactions). The list + its rows are unchanged. */}
+        {view === 'hub' && (
+          <button
+            type="button"
+            onClick={() => {
+              setTileFilter('all');
+              setConfidenceBand(null);
+              setPage(1);
+              setView('list');
+            }}
+            className="group mb-6 flex w-full items-center justify-between gap-4 rounded-[28px] border border-foreground/10 bg-card/70 px-5 py-5 text-left backdrop-blur-xl shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_30px_rgba(15,23,42,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.30),inset_0_1px_0_0_rgba(255,255,255,0.04)] transition hover:-translate-y-0.5 sm:px-6"
+          >
+            <div className="flex min-w-0 items-center gap-4">
+              <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-slate-400 to-slate-600 text-white shadow-lg shadow-slate-500/20">
+                <Wallet className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Your ledger
+                </p>
+                <p className="mt-1 text-lg font-semibold tracking-tight">Browse all transactions</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Search, filter and edit your full history
+                  {summary ? ` — ${summary.transactionCount.toLocaleString('en-AU')} this month` : ''}.
+                </p>
+              </div>
+            </div>
+            <span className="hidden shrink-0 items-center gap-1.5 rounded-[14px] border border-foreground/15 bg-background/50 px-4 py-2 text-sm font-medium text-foreground backdrop-blur transition group-hover:bg-muted sm:inline-flex">
+              Open transactions
+              <ArrowRight className="h-4 w-4" />
+            </span>
+          </button>
+        )}
+
+        {view === 'list' && (
+          <>
+            {/* Phase 56.8 — back to the clean hub */}
+            <button
+              type="button"
+              onClick={() => setView('hub')}
+              className="mb-4 inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+            >
+              <ChevronLeft className="w-4 h-4" /> Activity
+            </button>
 
         {/* Phase 55 — honest, calm sort cue: this is a SORT (needs-you first),
             not a filter. Neutral sky tone, not an amber alert. */}
@@ -1144,6 +1229,8 @@ function ActivityPageContent() {
             <p className="mt-3 text-center text-[11px] text-muted-foreground/70 sm:hidden">
               ← swipe to categorise · swipe to mark transfer →
             </p>
+          </>
+        )}
           </>
         )}
       </div>
