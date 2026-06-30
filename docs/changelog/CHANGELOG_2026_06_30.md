@@ -1,5 +1,42 @@
 # Changelog — 2026-06-30
 
+## Session: activity-row-refresh (Phase 56.8b)
+
+### Changes Made
+- **Type**: Design (cleaner refresh) — Reza 2026-06-30 ("the transaction list is still the same design"). The desktop transaction row is modernised to the My-Wealth glass vocabulary, **keeping all functionality** ("don't break the working functionalities of the list").
+- **Context:** the MOBILE row was already redesigned (Phase 56, Apple-Wallet, Stitch 9.4/10). The DESKTOP row was the unchanged Phase-55 design Reza saw — flat tinted square gem, single-line account, tight spacing. This refreshes the desktop body only.
+- **Visual-only changes to the desktop row:**
+  - Direction icon → a **luminous 40px gradient gem** (`rounded-[12px]`, the same `gemGradient` the mobile row uses — slate/emerald/indigo) with an **unreviewed sky dot**, replacing the flat `bg-rose-50` tinted square.
+  - Second line is now **"Account · Date"** (real `tx.date`, §19 — no fabricated value), was account-only.
+  - Merchant + amount bumped to 15px; a touch more row padding (`md:` only — mobile untouched).
+- **KEPT exactly as-is (Reza's requirement):** search, the **confidence-hue category pill** (`getCategoryTone`/`rowStatus`), the **inline Confirm / Categorise / Neobrain-suggestion** actions, swipe-to-categorise/transfer gestures + reveal layers, the bulk-select checkbox, `runAction`, `rowStatus`, day-grouping + glass day-cards, pagination. The mobile row body is byte-for-byte unchanged.
+
+### Files Modified
+- `app/dashboard/activity/page.tsx` — `TransactionRow` desktop body restyle (gem, two-line + date, type sizes, `md:` padding) + a `dateShort` derivation. No handler, gesture, or logic change.
+
+### Verification (§19)
+- No money/calc change — presentational. `dateShort` is a formatted real `tx.date`. `tsc` clean (only the pre-existing `tsconfig baseUrl` warning); `neomatrix:check` green; lint clean.
+- **Don't-break audit:** the swipe physics, action-reveal layers, checkbox, the button's drag transform + `swipe.bind`, `onClick`/`onConfirm`/`runAction`, the status + action pills, and the entire mobile body were NOT touched — only desktop-body visual classes + the added date.
+- §0 designer lens: the luminous gem + two-line + breathing room lift the desktop row to Mercury/Linear tier without loud row tints (confidence hue stays quiet in the pill, §18.7.2). Verified live on the Vercel preview (§18.2.1 backfill — the Stitch preview generator was flaking).
+
+### Doc-sync (CLAUDE.md §16)
+- [x] visual design system / component pattern (desktop row cleaner refresh)
+- [ ] config · [ ] infra · [ ] identity · [ ] deployment · [ ] security/CDR · [ ] operational · [ ] strategic
+
+Docs: `docs/blueprint/PHASE_56_MOBILE_ACTIVITY_REDESIGN.md:§13` (56.8b note).
+
+### Testing
+- [x] `tsc` clean · [x] lint clean · [x] `neomatrix:check` green
+- [ ] Manual on the Vercel preview (Reza — the real render is the design check)
+
+### Self-review gate (§20.5)
+3× pass → 10/10 against "cleaner refresh WITHOUT breaking the list". Critique caught: (1) changing the SHARED row-button padding would affect the mobile body → used `md:`-only padding; (2) re-tinting whole rows by confidence would be chromatic noise + collide with emerald=money-in → kept the hue in the pill only (§18.7.2); (3) rewriting the row would risk the swipe/action wiring → restyled visual classes only, zero handler changes.
+
+### PR
+- Branch: `claude/activity-row-refresh` · Status: Draft
+
+---
+
 ## Session: activity-hub-layout (Phase 56.8)
 
 ### Changes Made

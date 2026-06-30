@@ -1941,6 +1941,13 @@ function TransactionRow({
   } catch {
     timeStr = '';
   }
+  // Phase 56.8b — short date for the desktop row's second line (real tx.date, §19).
+  let dateShort = '';
+  try {
+    dateShort = new Date(tx.date).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+  } catch {
+    dateShort = '';
+  }
   const confidenceLabel = lowBand ? 'Low confidence' : 'Medium confidence';
   const confidenceTone = lowBand ? 'text-rose-600' : 'text-amber-600';
   // Anomaly badge: also gated behind Advanced view per the same rule.
@@ -2078,7 +2085,7 @@ function TransactionRow({
             : 'transform 320ms cubic-bezier(0.34, 1.56, 0.64, 1)',
           touchAction: 'pan-y', // allow vertical scroll; we own horizontal
         }}
-        className="flex-1 text-left px-3 sm:px-4 py-3 sm:py-3.5 hover-lift bg-card"
+        className="flex-1 text-left px-3 sm:px-4 md:px-5 py-3 sm:py-3.5 md:py-4 hover-lift bg-card"
       >
       {/* ===================================================================
           MOBILE BODY (< md) — Phase 56 redesign. Apple-Wallet restraint:
@@ -2158,29 +2165,38 @@ function TransactionRow({
           action cluster, amount, chevron.
           =================================================================== */}
       <div className="hidden md:flex items-center gap-4 w-full">
-      {/* Direction icon */}
-      <div
-        className={`flex items-center justify-center w-9 h-9 rounded-xl shrink-0 ${
-          isTransfer ? 'bg-slate-50 text-slate-500' : isIn ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
-        }`}
-      >
-        {isTransfer ? <ArrowLeftRight className="w-4 h-4" /> : isIn ? <ArrowDown className="w-4 h-4" /> : <ArrowUp className="w-4 h-4" />}
+      {/* Direction gem — Phase 56.8b cleaner refresh: a luminous 40px gradient
+          gem (My-Wealth glass vocabulary, §18.7.2) replaces the flat tinted
+          square; an unreviewed sky dot mirrors the mobile row. Visual only. */}
+      <div className="relative shrink-0">
+        <div className={`flex items-center justify-center w-10 h-10 rounded-[12px] text-white shadow-sm ring-1 ring-black/5 ${gemGradient}`}>
+          {isTransfer ? <ArrowLeftRight className="w-[18px] h-[18px]" /> : isIn ? <ArrowDown className="w-[18px] h-[18px]" /> : <ArrowUp className="w-[18px] h-[18px]" />}
+        </div>
+        {!rowStatus.done && (
+          <span aria-hidden className="absolute -top-0.5 -right-0.5 w-[10px] h-[10px] rounded-full bg-sky-400 ring-2 ring-card" />
+        )}
       </div>
 
-      {/* Main info */}
+      {/* Main info — two clean lines: merchant, then "Account · Date" */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-sm truncate">{label}</span>
+          <span className="font-medium text-[15px] truncate text-foreground">{label}</span>
           {isLinked && <Link2 className="w-3 h-3 text-sky-600 shrink-0" aria-label="Linked" />}
           {tx.isRecurring && !isLinked && <Repeat className="w-3 h-3 text-sky-600 shrink-0" aria-label="Recurring" />}
           {showAnomalyBadge && <AlertTriangle className="w-3 h-3 text-amber-600 shrink-0" aria-label={tx.anomalyFlags.join(', ')} />}
         </div>
-        <div className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+        <div className="mt-0.5 text-xs text-muted-foreground truncate flex items-center gap-1.5">
           <span className="truncate">{tx.account.name}</span>
+          {dateShort && (
+            <>
+              <span aria-hidden>·</span>
+              <span className="shrink-0 tabular-nums">{dateShort}</span>
+            </>
+          )}
           {showConfidence && (
             <>
-              <span>·</span>
-              <span className={confidenceTone}>{confidenceLabel}</span>
+              <span aria-hidden>·</span>
+              <span className={`shrink-0 ${confidenceTone}`}>{confidenceLabel}</span>
             </>
           )}
         </div>
@@ -2244,7 +2260,7 @@ function TransactionRow({
 
       {/* Amount */}
       <div className="text-right shrink-0">
-        <div className={`font-semibold tabular-nums text-sm ${isIn ? 'text-emerald-600' : 'text-foreground'}`}>
+        <div className={`font-semibold tabular-nums text-[15px] ${isIn ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'}`}>
           {isIn ? '+' : '-'}{formatCurrency(tx.amount, { currency: tx.currency })}
         </div>
       </div>
