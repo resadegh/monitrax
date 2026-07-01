@@ -233,3 +233,22 @@ User confirmation: NOT REQUIRED — fills only empty categories on the user's ow
 - Guardrails: leading-only (won't eat mid-string pairs like `SOMESHOP 1234 SYDNEY`), and won't strip a leading 4-digit (`1300 SMILES`). 61 neobrain tests green.
 - Scope note (Reza's Q): noise-removal generalises to all descriptions; known-merchant resolution covers rules/seed/mappings; the `hjs` alias is one verified entry (NOT the general mechanism); arbitrary unknown merchants need the AI/grounded tail (the backfill skips the paid LLM by design — a scope decision pending Reza).
 - Neomatrix `law.neobrain.merchantNoise` formula updated; `neomatrix:check` green.
+
+---
+
+### Phase 54.2f — backfill guard fix: "uncategorised" = userCorrectedCategory, not categoryLevel1 null
+
+**Type**: Fix (the real "nothing to tidy" root cause). After 54.2d/e still didn't tidy existing HJS rows, traced it definitively: the re-scan fetched ZERO rows.
+
+- Root cause (verified against `app/api/unified-transactions/route.ts:121` + the comment at :118): the Activity list's canonical "Uncategorised" = **`userCorrectedCategory != true`**, NOT `categoryLevel1 null` — because **the import cascade sets `categoryLevel1` on EVERY imported row** (fallback → 'Other'). The 54.2d backfill guard `categoryLevel1 null OR ''` therefore matched none of the user's actual uncategorised rows.
+- Fix: `recategoriseUncategorised` guard now = `userCorrectedCategory: { not: true }` + unlinked + `isTransfer/isInvestmentContribution: { not: true }` — the exact canonical filter. It re-normalises the merchant name + overwrites the AI's OWN unconfirmed guess ('Other' → 'Hungry Jacks'/'Food & Dining') with a confident deterministic match; NEVER touches a user-confirmed row (guard re-asserted at write time, §12.11). AI never auto-files.
+- 40 neobrain tests green; `tsc` clean. So `14 44hjs`/`09 19hjs` rows now (a) get fetched, (b) re-normalised via #1321, (c) categorised deterministically.
+
+## Destructive write checklist (CLAUDE.md §12.11)
+
+- [lib/bank/recategoriseExisting.ts] `prisma.unifiedTransaction.updateMany(...)`
+1. **`where` matches:** only THIS user's rows that are NOT user-confirmed (`userCorrectedCategory != true`), unlinked, not transfer/investment — re-asserted at write time.
+2. **Columns overwritten:** `merchantStandardised` (cleaned) + `categoryLevel1/2`/`subcategory`/`confidenceScore` — now overwriting the AI's OWN unconfirmed guess ('Other' etc.), only when a confident non-AI (RULE/USER/KB ≥0.9) match is found. Never overwrites a user-set category (userCorrectedCategory guard).
+3. **Guard:** `userCorrectedCategory: { not: true }` in the updateMany WHERE; only non-AI ≥0.9 results write a category; monotonic (a low-confidence re-run leaves the existing category, just cleans the name).
+
+User confirmation: NOT REQUIRED — only overwrites the AI's own unconfirmed guesses on the user's rows; user-confirmed rows are never touched.
