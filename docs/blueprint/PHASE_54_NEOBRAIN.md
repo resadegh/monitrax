@@ -525,4 +525,36 @@ Path A could **auto-file an AI guess silently** (its results flowed through `cla
 
 ---
 
+## 18. Phase 54.2b — grounded merchant identification ("compare online", 2026-07-01)
+
+> **Reza's vision:** *"the AI helper to read the transaction description, compare against the merchant list and even compare online … 'this looks like Hungry Jacks, is that correct?'"* Reza decision 2026-07-01: build now on the current SDK, **gated off**; verify on prod when enabled.
+
+### 18.1 What it does
+
+A **last-resort** step inside `geminiCategoriseOnMiss` (`lib/categorisation/kb/geminiOnMiss.ts`): when the free/cheap **ungrounded** pass missed or scored `< 0.6`, and grounding is enabled, a single **Gemini 2.x `google_search`-grounded** call looks the merchant up on the web and proposes a **merchant NAME + category** — surfaced as *"This looks like Hungry Jacks — confirm?"* (`merchantGuess` on `GeminiCategoryResult`).
+
+### 18.2 The guarantees (built on what already exists)
+
+- **De-identified egress only (CDR §13.3):** `scrubToSignature` runs ONCE at the top of `geminiCategoriseOnMiss`; both the ungrounded LLM call **and** the grounded web search receive only the scrubbed token (e.g. `HUNGRY JACKS NORTH PARRAMATTA`) — never the raw description, amount, or account. Same egress class already accepted for Gemini-on-miss.
+- **Never auto-files:** grounded results are `source: 'AI'` → demoted out of auto-accept by `classifyByConfidence` (§54.2) → always the user's confirm.
+- **Cost-bounded:** grounded call is LAST resort only (ungrounded miss / `<0.6`), separate gate.
+- **Never breaks categorisation:** any grounding error (incl. the pinned SDK not supporting the tool) → the ungrounded result is kept; grounding is pure enrichment.
+
+### 18.3 The gate + the SDK caveat
+
+- **`KB_GEMINI_GROUNDING_ENABLED`** (default **off**) — merging egresses nothing; enabling is a CDR-posture decision (operator).
+- `@google/generative-ai@0.24.1` under-types the 2.x tool (its `Tool` only declares `googleSearchRetrieval`); we pass the correct `googleSearch` tool via a narrow cast — forwarded to the REST API. Grounding is incompatible with JSON mode, so it is a **text** call parsed by `parseGroundedMerchantResult` (strips fences, validates level1, clamps confidence). **This path cannot be verified in the sandbox** (no API key + live search); it is verified on prod when the flag is turned on.
+
+### 18.4 Data residency (the Vertex path)
+
+Runs today on the **global** Gemini API (pre-Basiq, per Reza's standing decision — synthetic data, de-identified token only). At Basiq go-live it rides the **Vertex-AU (`australia-southeast1`) cutover** (§15.6.1, parked on Sydney model availability), where Google-Search grounding is first-class + AU-resident. Expect this grounded call to be **re-pointed at Vertex** then.
+
+### 18.5 Neomatrix + tests + self-review
+
+- **Neomatrix (§21.2):** new `engine.kbGrounding.geminiIdentifyMerchantGrounded` + edges (`scrubToSignature → grounded-identify` feeds; `geminiCategoriseOnMiss → grounded-identify` feeds; `→ law.neobrain.deidentification` governed-by); `geminiCategoriseOnMiss` formula + anchor updated. `neomatrix:check` green.
+- **Tests:** `tests/neobrain/groundedIdentify.test.ts` (9) — parser robustness (fences / prose / null merchant / invalid level1 / clamp / unparseable) + gating (off by default → no web-search call).
+- **Self-review §20.4: v1 8.5 → v2 10/10** — the critique made grounding a bounded last-resort (not every unknown), forced the de-id-once-at-top ordering, and made every failure fall back to the ungrounded result so categorisation can never break.
+
+---
+
 *Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

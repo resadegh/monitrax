@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 239 · **Edges:** 318
-- **By kind:** orchestrator 9 · engine 134 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
-- **By status:** documented 239
-- **Edge provenance:** verified 318 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/154 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 240 · **Edges:** 321
+- **By kind:** orchestrator 9 · engine 135 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
+- **By status:** documented 240
+- **Edge provenance:** verified 321 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/155 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -72,7 +72,7 @@
 | **Per-user learning loop** | `lib/bank/aiCategorisation.ts:851` | engine | neobrain | Learning write: updates the per-user MerchantMapping + logs prediction-vs-final in AICategorizationLearning; optionally applies the category to similar past transactions. | Phase 29 (learn from confirmations) |  | documented |
 | **Review-queue confirm (SSOT)** | `lib/bank/reviewQueue.ts:140` | engine | neobrain | Creates the confirmed UnifiedTransaction from a review-queue item and fires the learning writes (KB contribution + per-user confirmation). | Phase 51.2 + CLAUDE.md §12.3 (SSOT) |  | documented |
 | **Shared-KB lookup (free, instant)** | `lib/categorisation/kb/lookupCategory.ts:74` | engine | neobrain | KbMatch\|null — a community category prior for a transaction signature, only when graduated (isGlobal, ≥k users) and ≥ KB_MIN_CONFIDENCE. | Phase 52 §2 (deterministic lookup) |  | documented |
-| **Gemini-on-miss (RAG)** | `lib/categorisation/kb/geminiOnMiss.ts:84` | engine | neobrain | GeminiCategoryResult\|null — an LLM category for a genuinely unknown signature, RAG-seeded with the closest known KB patterns. | Phase 52 §2 (Gemini-on-miss, RAG not fine-tuning) |  | documented |
+| **Gemini-on-miss (RAG)** | `lib/categorisation/kb/geminiOnMiss.ts:110` | engine | neobrain | GeminiCategoryResult\|null — an LLM category for a genuinely unknown signature, RAG-seeded with the closest known KB patterns. | Phase 52 §2 (Gemini-on-miss, RAG not fine-tuning) |  | documented |
 | **KB vote aggregation + graduation** | `lib/categorisation/kb/recordContribution.ts:66` | engine | neobrain | Vote aggregation + graduation: upserts the signature, records the per-(signature,user) vote, recomputes topCategory/confidence/distinctUserCount, sets isGlobal at k. | Phase 52 §3 (k-anon graduation, k=5) |  | documented |
 | **KB write gate (human-only)** | `lib/categorisation/kb/recordFromConfirmation.ts:35` | engine | neobrain | Fire-and-forget gate that records a HUMAN confirmation into the shared KB (never AI auto-accepts — echo-chamber-safe). | Phase 52 (echo-chamber safety) |  | documented |
 | **De-identifier (PII scrub)** | `lib/categorisation/kb/scrubSignature.ts:47` | engine | neobrain | ScrubResult — a de-identified merchant signature (e.g. 'WOOLWORTHS METRO'), or rejection when no safe merchant token remains. | CLAUDE.md §13.3 (CDR sanitisation) + Phase 52 |  | documented |
@@ -161,6 +161,7 @@
 | **Grounding validator (anti-hallucination)** | `lib/neobrain/grounding.ts:78` | service | neobrain | Partition of AI-claimed refs into resolved (backed by a real, non-absent fact) vs rejected (unknown / absent / non-numeric) — a number the AI cites that this rejects never reaches the user. | Phase 54 §15 Phase B (grounding validator) |  | documented |
 | **Merchant identity normaliser (per-user standardised name)** | `lib/bank/normalisation.ts:95` | engine | neobrain | merchantStandardised — the canonical per-user merchant name stored on UnifiedTransaction and used as the EXACT-match key for MerchantMapping learning + auto-apply, and tested by the ~50 categorisation rules. | Phase 18 (normalisation) + Phase 54.1 (denoise) — docs/blueprint/PHASE_54_NEOBRAIN.md §16 |  | documented |
 | **Import-unknowns → KB cascade bridge (Phase 54.2)** | `lib/bank/aiCategorisation.ts:684` | engine | neobrain | AICategorizationResult[] — the import's remaining unknowns categorised through the KB cascade (categoriseTransactionBatch), each carrying its cascade `source` so classifyByConfidence can keep AI proposals out of auto-accept. | Phase 54.2 reconciliation — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §12.2.1 |  | documented |
+| **Grounded merchant identify (Google-Search, Phase 54.2b)** | `lib/categorisation/kb/geminiOnMiss.ts:230` | engine | neobrain | GeminiCategoryResult\|null — a merchant NAME guess (merchantGuess) + category from a single Gemini 2.x google_search grounded call on the DE-IDENTIFIED signature. grounded=true, source 'AI' (never auto-files). | docs/blueprint/PHASE_54_NEOBRAIN.md §18; CLAUDE.md §13.3 (CDR sanitisation), §12.7 (managed service) |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -229,7 +230,7 @@
 | **Categorisation confidence bands** | autoAccept ≥ 0.90 (write straight to ledger); 0.70–0.90 → review queue; < 0.70 → manual. Thresholds are per-user (UserCategorizationSettings). | Phase 29 + UserCategorizationSettings defaults | Confidence-band classifier |
 | **k-anonymity KB graduation** | A signature→category pattern becomes a shared cross-user prior only after ≥ k distinct users confirm it (k=5, KB_GRADUATION_K); graduation is sticky (never demoted). Private mappings stay authoritative for their owner. | Phase 52 §3 (hybrid private + k-anon shared) | KB vote aggregation + graduation |
 | **Echo-chamber safety (human-only learning)** | Only HUMAN confirmations/corrections write to the shared KB; AI auto-accepts never re-train it; an edit weighs more than a passive confirm. | Phase 52 (echo-chamber safety) | KB write gate (human-only) |
-| **De-identification before shared KB** | Every description is scrubbed to a merchant-only signature (strip names, BSBs, card masks, transfer/payid markers) before any shared-KB read or write. No PII/CDR ever enters the community brain. | CLAUDE.md §13.3 + Phase 52 | De-identifier (PII scrub) |
+| **De-identification before shared KB** | Every description is scrubbed to a merchant-only signature (strip names, BSBs, card masks, transfer/payid markers) before any shared-KB read or write. No PII/CDR ever enters the community brain. | CLAUDE.md §13.3 + Phase 52 | De-identifier (PII scrub), Grounded merchant identify (Google-Search, Phase 54.2b) |
 | **Transfer match + exclusion** | A transfer pair = opposite direction, different account, same user, \|Δamount\| ≤ tolerance, \|Δdate\| ≤ window; auto-pair only when exactly one candidate; isTransfer rows are excluded from all spend/income. | Phase 51 + CLAUDE.md §19.1 | Transfer / repayment matcher, Transfer auto-pairer |
 | **Document extraction confidence bands** | Extraction confidence ≥0.90 AUTO / 0.70–0.90 CONFIRM / <0.70 ASK; AUTO auto-write is gated (not yet wired) and downgraded to CONFIRM for TRACK/REDUCE stages — the user confirms before any entity is created. | Phase 50 D.1 (confidencePolicy.ts) | Document Intelligence Engine (DIE) |
 | **ITAA 1997 Div 102-A / s100-50 — capital loss netting & ordering** | ITAA 1997 Div 102-A / s100-50 — capital loss netting & ordering | ITAA 1997 Div 102-A, s100-50 (FIFO prior-year loss ordering), s115-100 | Capital loss netting & ordering |
@@ -578,6 +579,9 @@
 | Import-unknowns → KB cascade bridge (Phase 54.2) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/bank/aiCategorisation.ts:695 categoriseTransactionBatch(unified, {}) |
 | Import categoriser (learning-aware) | → | Import-unknowns → KB cascade bridge (Phase 54.2) | feeds | — | verified | lib/bank/aiCategorisation.ts:701 categoriseUnknownsViaCascade(userId, needsAI) |
 | Confidence-band classifier | → | AI proposes, the user confirms (AI never auto-files) | governed-by | — | verified | lib/bank/aiCategorisation.ts:549 source==='AI' demoted from autoAccept |
+| De-identifier (PII scrub) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:117 scrubToSignature(raw) → geminiIdentifyMerchantGrounded(scrub.pattern) |
+| Gemini-on-miss (RAG) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:125 geminiIdentifyMerchantGrounded(scrub.pattern) |
+| Grounded merchant identify (Google-Search, Phase 54.2b) | → | De-identification before shared KB | governed-by | — | verified | de-identified token only egresses to Google Search (§13.3) |
 
 ---
 

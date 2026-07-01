@@ -162,3 +162,31 @@ Hand-maintaining an alias table can't cover the near-infinite description space.
 
 #### Self-review (§20.4 — financial build, 10/10)
 v1 8.5 → v2 10/10: scope tightened to surgical (swap one call, keep import structure), risky deletion split to a follow-up, source-guard proven exclusive/exhaustive across the three bands.
+
+---
+
+### Phase 54.2b — grounded merchant identification ("compare online") + Prisma sandbox fix
+
+**Type**: Feature (gated off) + dev-tooling fix. **Reza decision 2026-07-01**: build the "compare online → this looks like Hungry Jacks" grounding now on the current SDK, gated off; verify on prod when enabled.
+
+**54.2b — grounded identify (gated `KB_GEMINI_GROUNDING_ENABLED`, default off):**
+- Last-resort step in `geminiCategoriseOnMiss`: when the ungrounded pass missed / scored `<0.6`, a single Gemini 2.x `google_search`-grounded call proposes a merchant NAME + category (`merchantGuess`). De-identified token ONLY (scrubToSignature runs once at the top — CDR §13.3). Never auto-files (`source:'AI'`, §54.2). Any grounding error → keep the ungrounded result (never breaks categorisation).
+- `lib/ai/google/geminiClient.ts` — new `generateGeminiGroundedText` (google_search tool + grounding metadata + usage telemetry). SDK 0.24.1 under-types the 2.x tool → `googleSearch` passed via a narrow cast (forwarded to REST); grounding is text-mode (JSON-incompatible) → parsed by pure `parseGroundedMerchantResult`.
+- Data residency: global Gemini pre-Basiq (Reza's standing decision); re-points to Vertex-AU at Basiq go-live (§15.6.1).
+- Tests: `tests/neobrain/groundedIdentify.test.ts` (9) — parser + gating. Neomatrix: new `engine.kbGrounding.geminiIdentifyMerchantGrounded` + de-id edges; `neomatrix:check` green. §20.4 v1 8.5 → **10/10**.
+
+**Prisma sandbox fix (Reza directive "fix that rather than workaround"):**
+- Root cause: `prisma generate` in the Claude Code Web sandbox dies on (1) a telemetry ping to checkpoint.prisma.io and (2) a schema-engine download from binaries.prisma.sh — and Prisma's Node downloader does NOT honor the agent proxy (curl does), so the direct connection is reset (ECONNRESET). No client generated → every DB-touching test failed to load.
+- Fix: `scripts/dev/sandbox-prisma-generate.sh` — curls the schema-engine via the proxy, points `PRISMA_SCHEMA_ENGINE_BINARY`/`PRISMA_QUERY_ENGINE_LIBRARY` at local binaries, `CHECKPOINT_DISABLE=1`. Real client now generates; full vitest suite runs locally as in CI.
+- Removed the `vi.mock('@/lib/db')` workaround from `cascadeReconcile.test.ts` + `groundedIdentify.test.ts` — they now run against the real generated client (46 tests green). Local `tsc` confirmed 54.2b files type-clean (the pre-push check that would have caught the #1318 import error).
+
+#### Files Modified
+- `lib/categorisation/kb/geminiOnMiss.ts` — grounded last-resort + `KB_GEMINI_GROUNDING_ENABLED` + `parseGroundedMerchantResult` + `geminiIdentifyMerchantGrounded`; `GeminiCategoryResult.merchantGuess/grounded`.
+- `lib/ai/google/geminiClient.ts` — `generateGeminiGroundedText` + `GeminiGroundedResult`.
+- `tests/neobrain/groundedIdentify.test.ts` (NEW); mocks removed from `cascadeReconcile.test.ts`.
+- `scripts/dev/sandbox-prisma-generate.sh` (NEW); `docs/blueprint/PHASE_54_NEOBRAIN.md` §18; `docs/financial-logic/graph/*`.
+
+#### Testing
+- [x] `tests/neobrain/*` — **98 passed** (against the REAL generated client).
+- [x] `tsc --noEmit` — 54.2b files clean (pre-existing `@vercel/oidc`/recharts env-only errors unrelated).
+- [x] `npm run neomatrix:check` — green.

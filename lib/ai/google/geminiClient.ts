@@ -9,7 +9,7 @@
  * - Error handling with retries
  */
 
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel, type Tool } from '@google/generative-ai';
 import { GEMINI_MODELS, MODEL_FALLBACKS, getModelPricing } from './modelConfig';
 import { recordAiUsage } from '@/lib/ai/usage/recordAiUsage';
 
@@ -81,6 +81,14 @@ export interface GeminiCompletionResult<T> {
 
 export interface GeminiTextResult {
   text: string;
+  usage: GeminiUsageMetrics;
+}
+
+export interface GeminiGroundedResult {
+  /** The model's grounded answer (text — grounding is incompatible with JSON mode). */
+  text: string;
+  /** The web-search queries the model actually issued (grounding metadata). */
+  webSearchQueries: string[];
   usage: GeminiUsageMetrics;
 }
 
@@ -269,6 +277,95 @@ async function tryGenerateTextWithModel(
       estimatedCost,
     },
   };
+}
+
+/**
+ * Try a grounded text generation with a specific model (internal).
+ *
+ * Attaches the Gemini 2.x `google_search` grounding tool so the model can look
+ * the merchant up on the web. NOTE: `@google/generative-ai@0.24.1` under-types
+ * the 2.x tool — its `Tool` interface only declares `googleSearchRetrieval`
+ * (the 1.5 tool). We pass the correct 2.x `googleSearch` tool via a narrow cast;
+ * the request is forwarded to the REST API which accepts it. Grounding is
+ * incompatible with `responseMimeType: application/json`, so this is a TEXT call.
+ */
+async function tryGenerateGroundedWithModel(
+  client: GoogleGenerativeAI,
+  modelName: string,
+  fullPrompt: string,
+  temperature: number,
+  maxTokens?: number
+): Promise<GeminiGroundedResult> {
+  const genModel = client.getGenerativeModel({
+    model: modelName,
+    tools: [{ googleSearch: {} } as unknown as Tool],
+    generationConfig: { temperature, maxOutputTokens: maxTokens },
+  });
+
+  const result = await genModel.generateContent(fullPrompt);
+  const response = result.response;
+  const text = response.text();
+  const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+  const webSearchQueries = groundingMetadata?.webSearchQueries ?? [];
+
+  const usageMetadata = response.usageMetadata;
+  const promptTokens = usageMetadata?.promptTokenCount || 0;
+  const completionTokens = usageMetadata?.candidatesTokenCount || 0;
+  const totalTokens = usageMetadata?.totalTokenCount || 0;
+  const pricing = getModelPricing(modelName);
+  const estimatedCost =
+    (promptTokens / 1000000) * pricing.inputPer1M +
+    (completionTokens / 1000000) * pricing.outputPer1M;
+
+  return {
+    text,
+    webSearchQueries,
+    usage: { model: modelName, promptTokens, completionTokens, totalTokens, estimatedCost },
+  };
+}
+
+/**
+ * Generate a Google-Search-grounded text response (Gemini 2.x `google_search`
+ * tool) with model fallback + usage telemetry. The caller sends ONLY a
+ * de-identified token (never raw PII/CDR) — see lib/categorisation/kb/geminiOnMiss.ts.
+ */
+export async function generateGeminiGroundedText(
+  options: GeminiCompletionOptions
+): Promise<GeminiGroundedResult> {
+  const client = getGeminiClient();
+  const primaryModel = options.model || GEMINI_MODELS.FLASH;
+  const temperature = options.temperature ?? 0.2;
+  const fullPrompt = `${options.systemPrompt}\n\n${options.userPrompt}`;
+  const modelsToTry = [primaryModel, ...(MODEL_FALLBACKS[primaryModel] || [])];
+
+  try {
+    const result = await withModelFallbackAndRetry(modelsToTry, (modelName) =>
+      tryGenerateGroundedWithModel(client, modelName, fullPrompt, temperature, options.maxTokens)
+    );
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: result.usage.model,
+      promptTokens: result.usage.promptTokens,
+      completionTokens: result.usage.completionTokens,
+      totalTokens: result.usage.totalTokens,
+      estimatedCostUsd: result.usage.estimatedCost,
+      success: true,
+    });
+    return result;
+  } catch (err) {
+    recordAiUsage({
+      surface: options.surface ?? 'unknown',
+      userId: options.userId,
+      model: primaryModel,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      estimatedCostUsd: 0,
+      success: false,
+    });
+    throw err;
+  }
 }
 
 /**
