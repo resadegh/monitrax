@@ -574,11 +574,28 @@ A **user-triggered** backfill (`recategoriseUncategorised`, `lib/bank/recategori
 
 ### 19.3 Scope note
 
-v1 does **not** run the grounded AI over existing unknown rows (cost + review-queue plumbing) — those get a clean name + rules/suggestion, and once the user categorises one, auto-apply sweeps its siblings. A future opt-in could run the AI tail over the remaining unknowns.
+54.2d/f v1 does **not** run the grounded AI over existing unknown rows — those get a clean name + rules/suggestion, and once the user categorises one, auto-apply sweeps its siblings. **54.2g (below) adds that opt-in AI tail.**
 
 ### 19.4 Verify + self-review
 
 `tests/neobrain/recategoriseBackfill.test.ts` (9) — write-policy (AI/FALLBACK never fill; RULE/USER/KB ≥0.9 fill; rename only when changed; never write "Unknown") + `skipAiOnMiss` (rules still resolve, unknowns fall back with no LLM). `tsc` clean; Neomatrix new `engine.recategorise.recategoriseUncategorised` + edges; `neomatrix:check` green. **§20.4 v1 8.5 → 10/10** (the critique forced deterministic-only for cost safety + the write-time guard re-assertion).
+
+## 19A. Phase 54.2g — cost-bounded AI re-scan over unknowns ("Ask AI for the rest") (2026-07-01)
+
+**What it does.** An OPT-IN second pass on the "Re-scan existing" tile. After the free deterministic pass, the rows STILL unknown are handed to a cost-bounded Gemini tail (`aiSuggestDistinctUnknowns`) that proposes a category — and, when the grounded pass names the merchant, a clean display name — as an unconfirmed **suggestion** the user confirms.
+
+**Cost bound (the load-bearing design).**
+- **One Gemini call per DISTINCT merchant** — still-unknown rows are grouped by de-identified signature (`scrubToSignature`), so N noisy rows from one vendor cost ONE call, and every row of that vendor reuses the single result.
+- **Hard cap** `MAX_AI_MERCHANTS_PER_RUN = 50` distinct merchants per run; `aiCapped` surfaces "more remain — run again" (no silent truncation).
+- **Opt-in + gated** — a separate "Ask AI for the rest" button; no-op when `KB_GEMINI_ENABLED` is off. The free deterministic button is unchanged.
+
+**Stored so future similar rows need no call?** Yes — via **user confirmation**, never by caching an unconfirmed guess (§54.2 anti-echo-chamber). On confirm the existing learning fires: private `merchantMapping` (that user → zero AI thereafter) + a shared-KB vote (`recordContribution`) that graduates to a global prior at K distinct users (everyone → zero AI). Within a run, signature-dedup already prevents per-row re-calls.
+
+**Never auto-files (§54.2).** `planAiSuggestionWrite` writes `categoryLevel1/2/subcategory/confidenceScore` (+ cleaned name from a grounded guess) but NEVER `userCorrectedCategory` — the row stays in the review queue. §12.11 guard re-asserted at write time; only de-identified signatures reach the LLM (transfers/PII skipped).
+
+**Tidy-up scope (answering Reza's Q).** Merchant-name tidy-up is automatic-by-code at IMPORT for ALL rows (`normaliseMerchantName`), and a full-ledger `POST /unified-transactions/renormalize` route re-cleans all rows regardless of category. The "Re-scan existing" button (54.2d) tidies + fills only **uncategorised/unlinked** rows — broadening its name-tidy to already-confirmed rows (safe/cosmetic) is queued as Reza's call.
+
+**Verify + self-review.** `tests/neobrain/recategoriseBackfill.test.ts` (+5, 14 total; 116 neobrain green) — `planAiSuggestionWrite` never sets `userCorrectedCategory`, cleans name from a grounded guess, no-op on null/empty level1. `tsc` clean; Neomatrix new `engine.recategorise.aiSuggestDistinctUnknowns` node + edges (`recategorise → aiTail → geminiCategoriseOnMiss`), anchors fixed (§21.2.1), `neomatrix:check` green (149/149). **§20.4 financial build 10/10** (v1 per-row → dedup-by-signature + cap; durable no-repeat = confirmation→KB graduation, not guess-caching).
 
 ---
 

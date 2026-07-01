@@ -7,30 +7,52 @@
  * "16:49hjs North Parramattanorthmead") keeps its old name and no suggestion.
  * This backfill lets the user re-run the smarts over their existing rows.
  *
- * SAFE + COST-FREE by design:
- *   - DETERMINISTIC layers only (`skipAiOnMiss: true`) — a full-ledger re-scan can
- *     never trigger an unbounded LLM/grounding bill. The paid AI tail stays an
- *     import-time / on-demand concern.
- *   - Re-normalises `merchantStandardised` via the P1/P2 denoiser (so "16:49hjs …"
- *     → "Hungry Jacks", which then matches the rules + the read-time suggestion).
- *   - NEVER overwrites a category the user set (§12.11): only touches rows that are
- *     STILL uncategorised + unlinked + not transfer/investment, and only FILLS an
- *     empty category from a non-AI (RULE/USER/KB) high-confidence match. AI is
- *     skipped here, so nothing is ever auto-filed from a guess (§54.2).
+ * TWO passes:
+ *   1. DETERMINISTIC (always, free) — re-normalises `merchantStandardised` via the
+ *      P1/P2 denoiser (so "16:49hjs …" → "Hungry Jacks", which then matches the
+ *      rules + the read-time suggestion) and FILLS an empty category ONLY from a
+ *      non-AI (RULE/USER/KB) high-confidence match. `skipAiOnMiss: true` here, so
+ *      this pass can never trigger an LLM bill.
+ *   2. AI TAIL (opt-in, `useAI: true`, Reza 2026-07-01: "cost-bounded") — the rows
+ *      STILL unknown are grouped by de-identified signature so all rows of one
+ *      merchant share a SINGLE Gemini call, capped at `MAX_AI_MERCHANTS_PER_RUN`
+ *      distinct merchants per run. Each result is written to every row of that
+ *      merchant as an unconfirmed SUGGESTION (`userCorrectedCategory` untouched) —
+ *      never auto-filed (§54.2). No-op when `KB_GEMINI_ENABLED` is off.
  *
- * SSOT (§12.2.1): reuses `categoriseTransaction` (the one cascade) + the one
- * `renormaliseMerchant` denoiser — no parallel categorisation logic.
+ * NEVER overwrites a category the user set (§12.11): both passes only touch rows
+ * STILL uncategorised + unlinked + not transfer/investment, and the guard is
+ * re-asserted at WRITE time. The durable "no repeat AI call for similar" comes from
+ * the user CONFIRMING a suggestion (→ private merchantMapping + shared-KB vote that
+ * graduates to a global prior at k users) — an unconfirmed guess is never cached as
+ * if trusted (anti-echo-chamber, §54.2).
+ *
+ * SSOT (§12.2.1): reuses `categoriseTransaction` (the one cascade), the one
+ * `renormaliseMerchant` denoiser, `scrubToSignature` (the one de-identifier) and
+ * `geminiCategoriseOnMiss` (the one AI-on-miss engine) — no parallel logic.
  */
 import type { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/db';
 import { renormaliseMerchant } from '@/lib/bank/normalisation';
 import { categoriseTransaction } from '@/lib/tie/categorisation';
+import { scrubToSignature } from '@/lib/categorisation/kb/scrubSignature';
+import { geminiCategoriseOnMiss, type GeminiCategoryResult } from '@/lib/categorisation/kb/geminiOnMiss';
 import type { UnifiedTransaction, MerchantMapping } from '@/lib/tie/types';
 
 /** Matches the import-time auto-accept threshold — deterministic matches only. */
 const AUTO_FILL_MIN_CONFIDENCE = 0.9;
 /** Bound a single re-scan (user can run it again); protects against a runaway. */
 const MAX_ROWS_PER_RUN = 2000;
+/**
+ * COST BOUND for the opt-in AI tail (Reza 2026-07-01: "cost-bounded"). We make at
+ * most this many Gemini calls per run — ONE per DISTINCT unknown merchant
+ * signature (every row sharing a signature reuses the single result), and never
+ * more than this many distinct merchants. A user can run it again to continue;
+ * `aiCapped` in the result tells the UI when the tail was truncated (no silent
+ * caps). This is what keeps a full-ledger AI re-scan from ever being an unbounded
+ * LLM bill.
+ */
+const MAX_AI_MERCHANTS_PER_RUN = 50;
 
 export interface RecategoriseResult {
   /** Uncategorised rows examined. */
@@ -39,6 +61,59 @@ export interface RecategoriseResult {
   recategorised: number;
   /** Rows whose merchant name was cleaned by re-normalisation. */
   renamed: number;
+  /**
+   * Rows that received an AI-proposed category SUGGESTION (opt-in tail only).
+   * These stay `userCorrectedCategory = false` — a suggestion the user confirms,
+   * NEVER auto-filed (§54.2). 0 when `useAI` is off or Gemini-on-miss is disabled.
+   */
+  aiSuggested: number;
+  /** Distinct unknown merchants a Gemini call was made for (the cost signal). */
+  aiMerchantsQueried: number;
+  /** True when more distinct unknowns existed than `MAX_AI_MERCHANTS_PER_RUN`. */
+  aiCapped: boolean;
+}
+
+export interface RecategoriseOptions {
+  /**
+   * Opt-in AI tail. When true, after the free deterministic pass, the rows STILL
+   * unknown are grouped by de-identified signature and each DISTINCT merchant gets
+   * ONE Gemini call (cost-bounded by `MAX_AI_MERCHANTS_PER_RUN`); the result is
+   * written to every row of that merchant as an unconfirmed SUGGESTION. Requires
+   * `KB_GEMINI_ENABLED` server-side (else the tail is a no-op). Default false — the
+   * button's deterministic behaviour is unchanged unless AI is explicitly requested.
+   */
+  useAI?: boolean;
+}
+
+/**
+ * Pure write-policy for one AI SUGGESTION (the §54.2-critical decision, unit-tested).
+ * Writes the AI's proposed category (+ confidence) so the review card pre-fills the
+ * guess — and, when a grounded pass named the merchant, cleans the display name too.
+ * CRITICALLY it NEVER sets `userCorrectedCategory`: the row stays in the review queue
+ * for the user to confirm. AI never auto-files (§54.2). Returns empty data when the
+ * AI produced no usable level1 (caller writes nothing).
+ */
+export function planAiSuggestionWrite(
+  currentStandardised: string | null | undefined,
+  ai: Pick<
+    GeminiCategoryResult,
+    'categoryLevel1' | 'categoryLevel2' | 'subcategory' | 'confidence' | 'merchantGuess'
+  > | null,
+): { data: Record<string, unknown>; suggested: boolean } {
+  if (!ai || !ai.categoryLevel1) return { data: {}, suggested: false };
+  const data: Record<string, unknown> = {
+    categoryLevel1: ai.categoryLevel1,
+    categoryLevel2: ai.categoryLevel2 ?? null,
+    subcategory: ai.subcategory ?? null,
+    confidenceScore: ai.confidence,
+  };
+  // A grounded pass ("this looks like Hungry Jacks") also cleans the display name —
+  // cosmetic + non-destructive (the row is still uncategorised, category unconfirmed).
+  const guess = ai.merchantGuess?.trim();
+  if (guess && guess.length > 0 && guess !== currentStandardised) {
+    data.merchantStandardised = guess;
+  }
+  return { data, suggested: true };
 }
 
 /**
@@ -100,7 +175,17 @@ function uncategorisedGuard(userId: string): Prisma.UnifiedTransactionWhereInput
   };
 }
 
-export async function recategoriseUncategorised(userId: string): Promise<RecategoriseResult> {
+/** A row still uncategorised after the deterministic pass — an AI-tail candidate. */
+interface UnknownRow {
+  id: string;
+  rawForAi: string;
+  currentStandardised: string | null;
+}
+
+export async function recategoriseUncategorised(
+  userId: string,
+  opts: RecategoriseOptions = {},
+): Promise<RecategoriseResult> {
   const rows = await prisma.unifiedTransaction.findMany({
     where: uncategorisedGuard(userId),
     select: {
@@ -116,7 +201,15 @@ export async function recategoriseUncategorised(userId: string): Promise<Recateg
     },
     take: MAX_ROWS_PER_RUN,
   });
-  if (rows.length === 0) return { scanned: 0, recategorised: 0, renamed: 0 };
+  const empty: RecategoriseResult = {
+    scanned: 0,
+    recategorised: 0,
+    renamed: 0,
+    aiSuggested: 0,
+    aiMerchantsQueried: 0,
+    aiCapped: false,
+  };
+  if (rows.length === 0) return empty;
 
   // Cascade layer 1 — the user's private + global merchant mappings (one query).
   const merchantMappings = (await prisma.merchantMapping.findMany({
@@ -125,9 +218,11 @@ export async function recategoriseUncategorised(userId: string): Promise<Recateg
 
   let recategorised = 0;
   let renamed = 0;
+  const stillUnknown: UnknownRow[] = [];
 
   for (const row of rows) {
-    const cleaned = renormaliseMerchant(row.merchantRaw || row.description || '');
+    const rawForAi = row.merchantRaw || row.description || '';
+    const cleaned = renormaliseMerchant(rawForAi);
 
     const uni: UnifiedTransaction = {
       id: row.id,
@@ -152,20 +247,88 @@ export async function recategoriseUncategorised(userId: string): Promise<Recateg
 
     const result = await categoriseTransaction(uni, { merchantMappings, skipAiOnMiss: true });
     const plan = planBackfillWrite(row.merchantStandardised, cleaned, result);
-    if (Object.keys(plan.data).length === 0) continue;
 
-    // §12.11 — re-assert the guard at WRITE time (updateMany, not update): the row
-    // must STILL be uncategorised/unlinked, so a category the user set between the
-    // read and the write is never clobbered.
-    const written = await prisma.unifiedTransaction.updateMany({
-      where: { id: row.id, ...uncategorisedGuard(userId) },
-      data: plan.data,
-    });
-    if (written.count > 0) {
-      if (plan.renamed) renamed++;
-      if (plan.recategorised) recategorised++;
+    if (Object.keys(plan.data).length > 0) {
+      // §12.11 — re-assert the guard at WRITE time (updateMany, not update): the row
+      // must STILL be uncategorised/unlinked, so a category the user set between the
+      // read and the write is never clobbered.
+      const written = await prisma.unifiedTransaction.updateMany({
+        where: { id: row.id, ...uncategorisedGuard(userId) },
+        data: plan.data,
+      });
+      if (written.count > 0) {
+        if (plan.renamed) renamed++;
+        if (plan.recategorised) recategorised++;
+      }
+    }
+
+    // Deterministic layers missed → an AI-tail candidate (name is now cleaned).
+    if (!plan.recategorised) {
+      stillUnknown.push({ id: row.id, rawForAi, currentStandardised: cleaned || row.merchantStandardised });
     }
   }
 
-  return { scanned: rows.length, recategorised, renamed };
+  const ai = opts.useAI
+    ? await aiSuggestDistinctUnknowns(userId, stillUnknown)
+    : { aiSuggested: 0, aiMerchantsQueried: 0, aiCapped: false };
+
+  return { scanned: rows.length, recategorised, renamed, ...ai };
+}
+
+/**
+ * The opt-in, cost-bounded AI tail. Groups the still-unknown rows by
+ * de-identified signature so all rows of one merchant share a SINGLE Gemini call
+ * (Reza 2026-07-01: "no need for another call for similar transactions"), caps the
+ * number of DISTINCT merchants queried per run (`MAX_AI_MERCHANTS_PER_RUN`), and
+ * writes each result to every row of that merchant as an unconfirmed SUGGESTION.
+ *
+ * COST + SAFETY:
+ *   - One call per distinct signature, ≤ MAX_AI_MERCHANTS_PER_RUN calls per run.
+ *   - Only a DE-IDENTIFIED signature ever reaches the LLM (`scrubToSignature`);
+ *     rows that scrub to nothing (transfers/PII) are skipped (never sent).
+ *   - Never auto-files: the write sets a category SUGGESTION with
+ *     `userCorrectedCategory` untouched (§54.2). Durable "no repeat call" comes
+ *     from the user CONFIRMING (→ private merchantMapping + shared-KB vote that
+ *     graduates to a global prior at k users) — an unconfirmed guess is never
+ *     cached as if trusted (anti-echo-chamber).
+ *   - No-op when `KB_GEMINI_ENABLED` is off (`geminiCategoriseOnMiss` → null).
+ */
+async function aiSuggestDistinctUnknowns(
+  userId: string,
+  unknown: UnknownRow[],
+): Promise<{ aiSuggested: number; aiMerchantsQueried: number; aiCapped: boolean }> {
+  // Group by de-identified signature; carry a representative raw + all row ids.
+  const groups = new Map<string, { rawForAi: string; rows: UnknownRow[] }>();
+  for (const row of unknown) {
+    const scrub = scrubToSignature(row.rawForAi);
+    if (!scrub.ok) continue; // transfer/PII/no merchant token — never send to AI
+    const g = groups.get(scrub.pattern);
+    if (g) g.rows.push(row);
+    else groups.set(scrub.pattern, { rawForAi: row.rawForAi, rows: [row] });
+  }
+
+  const distinct = [...groups.values()];
+  const aiCapped = distinct.length > MAX_AI_MERCHANTS_PER_RUN;
+  const toQuery = distinct.slice(0, MAX_AI_MERCHANTS_PER_RUN);
+
+  let aiSuggested = 0;
+  let aiMerchantsQueried = 0;
+
+  for (const group of toQuery) {
+    const result = await geminiCategoriseOnMiss(group.rawForAi);
+    aiMerchantsQueried++;
+    const plan = planAiSuggestionWrite(group.rows[0].currentStandardised, result);
+    if (!plan.suggested) continue;
+
+    // §12.11 — guard re-asserted at write time; only still-uncategorised rows of
+    // this merchant get the suggestion. Never sets userCorrectedCategory (§54.2).
+    const ids = group.rows.map((r) => r.id);
+    const written = await prisma.unifiedTransaction.updateMany({
+      where: { id: { in: ids }, ...uncategorisedGuard(userId) },
+      data: plan.data,
+    });
+    aiSuggested += written.count;
+  }
+
+  return { aiSuggested, aiMerchantsQueried, aiCapped };
 }
