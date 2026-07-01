@@ -85,3 +85,38 @@ export function expandMerchantAliases(input: string): string {
 export function denoiseMerchantText(input: string): string {
   return expandMerchantAliases(stripTransactionTimes(input));
 }
+
+/**
+ * Phase 54.1 P2 — identifying NUMERIC/noise tokens a bank feed appends to a
+ * merchant string: BSBs, card masks (`xxxx1234`), reference tails (`ref 998…`),
+ * and long digit runs (store numbers, account/reference numbers). Stripped by
+ * BOTH the per-user identity (`normaliseMerchantName`) and the shared-KB
+ * signature (`scrubToSignature`) — ONE source (§12.2.1) so the two keys denoise
+ * numeric noise identically and can never drift.
+ *
+ * CONSERVATIVE BY DESIGN (§19 — over-merge misstates spend-by-category): this
+ * strips only *numeric* noise. It NEVER strips location/suburb words — so
+ * `SOMESHOP 1234 SYDNEY` and `SOMESHOP 9981 SYDNEY` (same store, different store
+ * number) collapse to one key, but `SOMESHOP SYDNEY` and `SOMESHOP MELBOURNE`
+ * (different locations) stay distinct. Cross-location matching for UNKNOWN
+ * merchants is deferred to the guarded KB token-prefix / AI tail, not done here.
+ *
+ * Note: `\b\d{4,}\b` is word-boundary-anchored, so digits GLUED inside a token
+ * (e.g. `1300SMILES`) are preserved — only free-standing numeric runs are noise.
+ */
+const NUMERIC_NOISE_STRIPS: ReadonlyArray<readonly [RegExp, string]> = [
+  [/\b\d{3}-?\d{3}\b/g, ' '], // BSB (123-456 / 123456)
+  [/x{2,}\d*/gi, ' '], // card masks (xxxx1234)
+  [/\bref\b[:#]?\s*\S+/gi, ' '], // reference tails (REF: 99812)
+  [/\b\d{4,}\b/g, ' '], // long digit runs (store / account / reference numbers)
+];
+
+export function stripMerchantNumericNoise(input: string): string {
+  if (!input) return '';
+  let out = input;
+  for (const [re, repl] of NUMERIC_NOISE_STRIPS) {
+    re.lastIndex = 0;
+    out = out.replace(re, repl);
+  }
+  return out.replace(/\s+/g, ' ').trim();
+}

@@ -123,3 +123,17 @@ Hand-maintaining an alias table can't cover the near-infinite description space.
 ### PR
 - Branch: `claude/adoring-davinci-e2wb4d`
 - Status: Draft (opened this session)
+
+---
+
+### Phase 54.1 — P2: shared numeric-noise strip + per-user key unification (same PR)
+
+**Type**: Enhancement (merchant-identity key). **Reza chose the reframed P2** after I surfaced a regression finding (naive key-merge would break known-merchant location-independence).
+
+- Extracted `stripMerchantNumericNoise` (BSB / card masks / reference tails / long free-standing digit runs) into `lib/bank/merchantNoise.ts` — ONE source used by **both** `normaliseMerchantName` (per-user) and `scrubToSignature` (KB), so the two keys de-noise identically (§12.2.1).
+- Wired into `normaliseMerchantName` → the per-user key now collapses `SOMESHOP 1234 SYDNEY` and `SOMESHOP 9981 SYDNEY` to one key (auto-apply matches across store numbers). **No location stripping** (over-merge guarded, §19); **no known-merchant regression** (Woolworths stays location-independent). Digits glued inside a token (`1300SMILES`) preserved.
+- Refactored `scrubToSignature` to call the shared helper (dates + payment-tokens stay inline) — all prior scrub tests green.
+- **All 3 per-user match sites key on `merchantStandardised`** (`buildSimilarUncategorisedWhere`, `getLearnedCategorySuggestions`, `MerchantMapping` write) → improving that one producer fixes all three; **no schema/match-site change**.
+- Tests: `tests/neobrain/merchantNoise.test.ts` extended (P2 numeric strip, same-location match, over-merge guardrail, no-regression) — **38 passed**. Neomatrix formulas updated; `neomatrix:check` green.
+- Self-review §20.4: **v1 9.0 → v2 10/10** (the reframe was the unlock).
+- Cross-location matching for *unknown* merchants remains deferred to the KB token-prefix / AI tail (the Step-2 AI+KB plan).

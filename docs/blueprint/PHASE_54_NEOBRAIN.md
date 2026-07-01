@@ -474,6 +474,20 @@ Hand-maintaining an alias table caps out fast. The scalable answer is the alread
 
 3× adversarial review against requirement. **v1 8.5 → v2 10/10.** The critique changed the build: (a) do **not** introduce a competing `merchantKey()` — harden the existing SSOT normaliser + a shared helper (§12.2.1); (b) leading-time strip is unconditionally safe, but trailing-location strip is **not** — keep it conservative (over-merge misstates spend-by-category + tax sums, §19); (c) split the known-abbreviation fix (P1, ships now) from per-user key-unification (P2, behaviour-changing, separate PR). Financial build → **10/10 required** and met (worked example + over-merge guardrail + no regression).
 
+### 16.7 P2 — shared numeric-noise strip + per-user key unification (2026-07-01)
+
+> **Reza chose the reframed P2** after I surfaced a regression finding: a *naive* "merge the two keys" would break known-merchant location-independence (Woolworths Sydney and Melbourne both resolve to "Woolworths" today; the KB signature keeps location, so switching to it would stop them matching). The safe reframe keeps that behaviour.
+
+**The two keys have complementary semantics** — `merchantStandardised` (per-user) resolves **known** merchants to a canonical short name (location-independent) and keeps everything for unknowns; `scrubToSignature` (KB) keeps location but strips more numeric noise. Rather than merge the *outputs* (which regresses), P2 unifies the **transforms**: the numeric-noise strip is extracted to ONE shared helper `stripMerchantNumericNoise` (BSB / card masks / reference tails / long free-standing digit runs) used by **both** producers (§12.2.1).
+
+**What P2 delivers:** the per-user identity key now strips store-numbers/refs/card-masks, so `SOMESHOP 1234 SYDNEY` and `SOMESHOP 9981 SYDNEY` (same store, different store number) collapse to one key → per-user auto-apply matches them. **No location stripping** — `SOMESHOP SYDNEY` ≠ `SOMESHOP MELBOURNE` stay distinct (cross-location matching for *unknown* merchants remains the guarded KB token-prefix / AI-tail job, not done here). **No regression** — known merchants still resolve to their canonical short name regardless of location, and digits glued inside a token (`1300SMILES`) are preserved (word-boundary-anchored).
+
+**Discovery seam (the three per-user match sites all key on `merchantStandardised`):** `buildSimilarUncategorisedWhere` (auto-apply), `getLearnedCategorySuggestions` (suggestion pill), and the `MerchantMapping` write. Because they all key on the output of `normaliseMerchantName`, improving that ONE producer fixes all three — **no schema change, no match-site change**.
+
+**Verification (§19.2):** `SOMESHOP 1234 SYDNEY` == `SOMESHOP 9981 SYDNEY` → `"Someshop Sydney"` ✓; over-merge guardrail `…SYDNEY` ≠ `…MELBOURNE` ✓; no-regression `WOOLWORTHS 1234 SYDNEY` == `WOOLWORTHS TOWN HALL MELBOURNE` → `"Woolworths"` ✓; `scrubToSignature` refactor keeps all prior tests green (38 passed). **Self-review §20.4: v1 9.0 → v2 10/10** (the reframe from the regression finding was the 10/10 unlock).
+
+**Neomatrix:** `stripMerchantNumericNoise` folded into `law.neobrain.merchantNoise` + both producer node formulas; `neomatrix:check` green.
+
 ---
 
 *Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

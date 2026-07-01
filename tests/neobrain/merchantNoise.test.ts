@@ -20,6 +20,7 @@ import {
   stripTransactionTimes,
   expandMerchantAliases,
   denoiseMerchantText,
+  stripMerchantNumericNoise,
   MERCHANT_ALIASES,
 } from '@/lib/bank/merchantNoise';
 import { renormaliseMerchant } from '@/lib/bank/normalisation';
@@ -108,5 +109,51 @@ describe('end-to-end — shared-KB signature (scrubToSignature)', () => {
   });
   it('does not regress the existing store-number strip', () => {
     expect(pattern('WOOLWORTHS 1234 SYDNEY')).toBe('WOOLWORTHS SYDNEY');
+  });
+});
+
+// ─── Phase 54.1 P2 — shared numeric-noise strip + per-user key unification ───
+
+describe('stripMerchantNumericNoise', () => {
+  it('strips a long free-standing digit run (store / ref number)', () => {
+    expect(stripMerchantNumericNoise('SOMESHOP 1234 SYDNEY')).toBe('SOMESHOP SYDNEY');
+  });
+  it('strips a BSB', () => {
+    expect(stripMerchantNumericNoise('MERCHANT 062-000')).toBe('MERCHANT');
+  });
+  it('strips a card mask', () => {
+    expect(stripMerchantNumericNoise('AMAZON xxxx4521')).toBe('AMAZON');
+  });
+  it('strips a reference tail', () => {
+    expect(stripMerchantNumericNoise('TELSTRA REF: 99812')).toBe('TELSTRA');
+  });
+  it('PRESERVES digits glued inside a token (1300SMILES stays)', () => {
+    expect(stripMerchantNumericNoise('1300SMILES DENTAL')).toBe('1300SMILES DENTAL');
+  });
+  it('NEVER strips a location word (only numeric noise)', () => {
+    expect(stripMerchantNumericNoise('SOMESHOP SYDNEY')).toBe('SOMESHOP SYDNEY');
+  });
+  it('keeps short numbers (a 2-digit level/unit is not noise)', () => {
+    expect(stripMerchantNumericNoise('LEVEL 33 BAR')).toBe('LEVEL 33 BAR');
+  });
+});
+
+describe('P2 per-user identity — store-number robustness WITHOUT over-merge', () => {
+  it('same vendor + same location, different store number → ONE key', () => {
+    const a = renormaliseMerchant('SOMESHOP 1234 SYDNEY');
+    const b = renormaliseMerchant('SOMESHOP 9981 SYDNEY');
+    expect(a).toBe('Someshop Sydney');
+    expect(a).toBe(b); // per-user auto-apply now matches across store numbers
+  });
+  it('OVER-MERGE GUARDRAIL: same vendor, DIFFERENT location stays distinct', () => {
+    const syd = renormaliseMerchant('SOMESHOP 1234 SYDNEY');
+    const mel = renormaliseMerchant('SOMESHOP 5678 MELBOURNE');
+    expect(syd).not.toBe(mel); // location is never stripped (cross-location → KB/AI, P-tail)
+  });
+  it('NO REGRESSION: a KNOWN merchant stays location-independent (canonical short name)', () => {
+    // The pre-P2 behaviour — known merchants collapse to their canonical name
+    // regardless of location — MUST be preserved (this was the reframe-P2 risk).
+    expect(renormaliseMerchant('WOOLWORTHS 1234 SYDNEY')).toBe('Woolworths');
+    expect(renormaliseMerchant('WOOLWORTHS TOWN HALL MELBOURNE')).toBe('Woolworths');
   });
 });
