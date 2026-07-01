@@ -252,3 +252,36 @@ User confirmation: NOT REQUIRED — fills only empty categories on the user's ow
 3. **Guard:** `userCorrectedCategory: { not: true }` in the updateMany WHERE; only non-AI ≥0.9 results write a category; monotonic (a low-confidence re-run leaves the existing category, just cleans the name).
 
 User confirmation: NOT REQUIRED — only overwrites the AI's own unconfirmed guesses on the user's rows; user-confirmed rows are never touched.
+
+---
+
+### Anthropic/Claude DISABLED — Monitrax runs Gemini-only (cost simplicity)
+
+**Type**: Chore / Cost-control (Reza directive 2026-07-01, on a ~US$26.54/mo Sonnet bill — invoice #NRJTGWOJ-0005: *"disable that and only stay on gemini for simplicity"*).
+
+**Root of the spend (verified map):** ONE lever — `isAnthropicConfigured()` (`lib/ai/anthropic.ts:62`) = `Boolean(process.env.ANTHROPIC_API_KEY)`. Four call sites gate on it, none a financial-advice surface (tax advisor / CFO is already Gemini-only — no `claudeProvider.ts` exists):
+- `lib/ai/onboarding-agent/gateway.ts:153` — onboarding chat extraction on **Sonnet 4.6** (the $26.54 line item; forced structured extraction).
+- `lib/ai/onboarding-agent/companionGateway.ts:149` — onboarding companion reflections (Haiku).
+- `lib/services/feedbackService.ts:588` — consumer feedback chat triage (Haiku).
+- `lib/bookkeeping/engagement/anomalyNarrator.ts:153` — daily-pulse anomaly narrator (Haiku, fallback-wrapped).
+
+**The change (fail-closed kill-switch):** `isAnthropicConfigured()` now requires `ANTHROPIC_ENABLED === 'true'` FIRST and defaults **OFF**, so no Claude call fires even while `ANTHROPIC_API_KEY` remains set in Vercel — the spend stops on merge with **no operator action**. Reversible via one env flag (`ANTHROPIC_ENABLED=true`). `@anthropic-ai/sdk` dep retained (no deletion).
+
+**Graceful degradation (verified — none breaks):**
+- onboarding chat extract → form-only wizard (503 `AGENT_NOT_CONFIGURED`, "Try the form instead") — the one *visible* change.
+- onboarding companion → scripted intro (invisible).
+- feedback drawer → form-only + "Reza will reply" (`ai-status` route returns `aiEnabled:false`).
+- anomaly narrator → deterministic 1-line copy (invisible).
+
+### Files Modified
+- `lib/ai/anthropic.ts` — `isAnthropicConfigured()` gated behind `ANTHROPIC_ENABLED==='true'`, default OFF; header documents the kill-switch + per-site degradation + re-enable path.
+- `tests/ai/anthropicKillSwitch.test.ts` — NEW. Pins fail-closed semantics (key alone → OFF; enabled alone → OFF; only enabled+keyed → ON; flag must be exact `"true"`).
+- `docs/operational/cost-control/00_VENDOR_INVENTORY.md` — Anthropic row → 🔴 DISABLED, June actual recorded, re-enable path.
+- `docs/architecture/AI_PROVIDER_STRATEGY.md` — status banner (Gemini-only).
+
+### Testing
+- [x] `tests/ai/anthropicKillSwitch.test.ts` (5) + `tests/bookkeeping/anomalyNarrator.test.ts` (13) green.
+- [x] `npm run neomatrix:check` green (no financial engine/number changed — Anthropic is not a money-number producer).
+
+### Self-review gate (§20.5)
+Requirement: disable all Claude usage, Gemini-only. 3× review: v1 hardcode `false` (rejected — not reversible); v2 `DISABLE_ANTHROPIC=true` env (rejected — fails OPEN, spend continues until operator acts); v3 `ANTHROPIC_ENABLED` opt-in default-OFF (chosen — fails CLOSED, zero spend on merge, one-flag reversible). **10/10** — one lever kills all 4 sites, every feature degrades (none breaks), no financial surface touched.
