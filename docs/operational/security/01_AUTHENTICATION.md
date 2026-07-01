@@ -52,16 +52,22 @@ instance asked to verify it).
    `useAuth().register()` — best-effort, a failed send never fails the signup.
 2. User lands on `/verify-email-sent` (interstitial; soft gate — "Skip for
    now" goes to the dashboard).
-3. User clicks the emailed link. Two shapes are handled by `/verify-email`:
-   `?mode=verifyEmail&oobCode=…` (custom action URL) or a bare continue-URL
-   landing (Firebase's hosted handler already applied it).
-   - **Prefetch-safe (2026-06-10):** for the `oobCode` shape the page does
-     **not** consume the code on load — it runs `checkActionCode`
-     (read-only) to validate + show the email, then waits for an explicit
-     "Verify my email" button tap before calling `applyActionCode`. This
-     defends against mail-client / security-scanner link prefetch, which
-     otherwise silently burns the single-use code and produces a spurious
-     "link expired or already used" error. See § Troubleshooting below.
+3. User clicks the emailed link. **It goes to Firebase's HOSTED handler**
+   `https://monitrax-479700.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=…`
+   — NOT to our own page. The custom action URL that would repoint it at us is
+   **platform-locked** on this project (`EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED` —
+   see § Troubleshooting). The hosted handler applies the code, then redirects
+   to the `continueUrl` = `/dashboard` (set in `AuthContext`).
+   - **We DO also ship prefetch-safe handlers** `/verify-email` and
+     `/auth/action` (validate read-only via `checkActionCode`, consume the
+     code only on an explicit button tap). They are correct and deployed, but
+     because the `callbackUri` can't be repointed, they are **not in the live
+     email path** today — they handle the continue-URL bounce + any future
+     move to custom SMTP (which unlocks `callbackUri`). The firebaseapp.com
+     hosted handler applies the code on load, so the prefetch protection does
+     not apply to the live path — a mail scanner CAN burn a live verify link
+     (mitigation: the `/verify-email-sent` interstitial's "I've verified —
+     continue" re-checks status without the original link).
 4. Client calls `useAuth().confirmEmailVerified()` — reloads the Firebase
    user, **force-refreshes the ID token** (`getIdToken(true)`, required:
    `email_verified` only flips on refresh), then POSTs
@@ -85,13 +91,17 @@ instance asked to verify it).
 banner) — Firebase's client SDK can only send to `currentUser`. Firebase
 applies its own rate limiting (`auth/too-many-requests`).
 
-**Verification email not arriving?** Same diagnosis as password reset: GCP
-Identity Platform → Templates → "Email address verification" (template
-enabled + sender domain verified), then spam folder. Optional console
-customisation: set the template's action URL to
-`https://www.monitrax.com.au/verify-email` to keep users in Monitrax-branded
-chrome end-to-end; the default Firebase-hosted handler also works (the
-continue URL routes back to `/verify-email`).
+**Verification email not arriving?** GCP Identity Platform → Templates →
+"Email address verification" (template enabled), then spam folder. **Do NOT
+try to set a custom action URL** — it returns `EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`
+on this project (§ Troubleshooting). Sender name = "Monitrax", public-facing
+name = "Monitrax", support email = admin@monitrax.com.au are set. The From
+stays `noreply@monitrax-479700.firebaseapp.com` (a custom sending domain was
+attempted and abandoned — it needs DNS + doesn't affect deliverability).
+
+**Verify link 403s / "Requests to this API … are blocked"?** The key the
+link uses (the Maps key) lost its auth scopes. See § Troubleshooting —
+`API_KEY_HTTP_REFERRER_BLOCKED` / the gcloud one-liner restores it.
 
 ### Troubleshooting — "link expired or already used" on the FIRST click
 
@@ -142,22 +152,67 @@ referrer list didn't include `firebaseapp.com` → 403. Editing "Monitrax Auth
 param — `…&apiKey=AIzaSy…`. Match that value in **GCP Console → APIs &
 Services → Credentials → (Show key)**.
 
-**Permanent fix (shipped 2026-06-12):** the unified `/auth/action` handler
-above takes Firebase's hosted handler — and therefore the Maps key — out of
-the auth path entirely. Auth emails are now applied by our SDK = the
-**Monitrax Auth (Web)** key on `www.monitrax.com.au`. Required key config on
-**Monitrax Auth (Web)**: Application restrictions → Websites include
-`https://www.monitrax.com.au/*`, `https://monitrax.com.au/*`,
-`https://monitrax-479700.firebaseapp.com/*`, `localhost:*`; API restrictions
-→ **Identity Toolkit API** + **Token Service API**. The Maps key no longer
-needs any auth scopes.
+**The clean fix we ATTEMPTED and why it was blocked (2026-06-12 → 07-01):**
+The intended fix was to move email links onto our own `/auth/action` handler
+(built + deployed, PR #1088) by setting Firebase's custom action URL. **That
+is not possible on this project.** Setting `notification.sendEmail.callbackUri`
+returns **`400 EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`** via BOTH the Firebase
+console AND the raw Identity Platform REST API. The config is otherwise clean
+(`method: DEFAULT`, `customDomainState: NOT_STARTED`), so this is a
+platform-level lock on this `IDENTITY_PLATFORM`-subtype project, not stuck
+state. **Conclusion: the email-link domain (`firebaseapp.com/__/auth/action`)
+cannot be changed.** `/auth/action` stays deployed and is correct — it would
+activate with a one-line PATCH if the project ever moves to custom SMTP (which
+unlocks `callbackUri`) — but it is NOT in the live email path today.
 
-> ⚠️ **No registered Firebase Web app.** This project shows "There are no apps
-> in your project" — the JS SDK config is injected via `NEXT_PUBLIC_FIREBASE_*`
-> env vars instead. That's why the project's default web key (used by the
-> hosted handler) drifted to an unrelated Maps key. Registering a proper Web
-> app would give a clean canonical web key; until then, the `/auth/action`
-> custom handler is what keeps auth on the right key.
+**Also confirmed read-only:** `config.client.apiKey` (the key Firebase embeds
+in email action links) is **`AIzaSyCk0pG…` = the "Monitrax frontend (Maps
+Embed + Places)" key**, and it is **OUTPUT_ONLY** — a PATCH with
+`updateMask=client.apiKey` is accepted but ignored (the value doesn't change).
+So we cannot re-sign the link with a different key either.
+
+**The fix that ACTUALLY resolved it (verified working 2026-07-01):** since the
+link is permanently `firebaseapp.com/__/auth/action` signed with the Maps
+key, that key MUST be allowed to call the auth APIs. Add `identitytoolkit` +
+`securetoken` to the Maps key's API targets and `firebaseapp.com` to its
+referrers — **without wiping its Maps scopes** — via one gcloud command:
+
+```bash
+gcloud services api-keys update <MAPS_KEY_UID> \
+  --allowed-referrers="https://monitrax.com.au/*,https://*.monitrax.com.au/*,https://*.vercel.app/*,http://localhost:3000/*,https://monitrax-479700.firebaseapp.com/*" \
+  --api-target=service=maps-embed-backend.googleapis.com \
+  --api-target=service=maps-backend.googleapis.com \
+  --api-target=service=places.googleapis.com \
+  --api-target=service=identitytoolkit.googleapis.com \
+  --api-target=service=securetoken.googleapis.com
+```
+(Maps key UID as of 2026-07-01: `03e1218e-c2e4-4bbc-b803-8302121a122e`.
+`gcloud services api-keys list --format=json` shows current UIDs + targets.)
+
+**Deterministic test (no email needed)** — confirms the key change before
+burning a single-use link:
+```bash
+curl -s -H "Referer: https://monitrax-479700.firebaseapp.com/" \
+  "https://identitytoolkit.googleapis.com/v1/recaptchaParams?key=<MAPS_KEY_VALUE>"
+```
+`API_KEY_HTTP_REFERRER_BLOCKED` → referrer missing. `API_KEY_SERVICE_BLOCKED`
+→ `identitytoolkit` missing from the key's API targets. A normal 200/params
+response → the verify link will work.
+
+**Note on the Firebase-console error `EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED`**: it
+is misleading — it is NOT about stuck custom-domain/SMTP state (both were
+clean). It is the platform refusing any `callbackUri` change on this project.
+Don't chase custom-domain removal; it won't help.
+
+> ⚠️ **Root cause — no registered Firebase Web app.** This project shows "There
+> are no apps in your project"; the JS SDK config is injected via
+> `NEXT_PUBLIC_FIREBASE_*` env vars instead. That's why `client.apiKey` (the
+> email-link signer) drifted to an unrelated **Maps** key. The proper long-term
+> tidy-up is to **register a Firebase Web app** so the project gets a clean
+> dedicated web key; then drop the `identitytoolkit`/`securetoken` scopes back
+> off the Maps key. Not urgent — the key config above is safe (referrer-locked
+> browser key; the key is public by design and grants no data access; the
+> `oobCode` is the single-use credential).
 
 ---
 
