@@ -5248,7 +5248,7 @@
       "regime": null,
       "semanticKey": null,
       "produces": null,
-      "formula": "ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip glued/standalone clock-times HH:MM(:SS); (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name; (3) P2 — strip identifying NUMERIC noise (BSB / card masks / reference tails / long free-standing digit runs) while NEVER stripping location words. So same-vendor rows differing only by time/store-number/ref collapse to one key; different-location rows stay distinct (over-merge would misstate spend-by-category, §19). Aliases are never populated speculatively (§19).",
+      "formula": "ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip clock-times — HH:MM(:SS) anywhere AND a LEADING time whose colon became a space at import ('14 44hjs' → 'hjs', 54.2e), so existing ledger rows de-noise too; (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name; (3) P2 — strip identifying NUMERIC noise (BSB / card masks / reference tails / long free-standing digit runs) while NEVER stripping location words. So same-vendor rows differing only by time/store-number/ref collapse to one key; different-location rows stay distinct (over-merge would misstate spend-by-category, §19). Aliases are never populated speculatively (§19).",
       "authority": "Phase 54.1 — docs/blueprint/PHASE_54_NEOBRAIN.md §16; CLAUDE.md §12.2.1 + §19",
       "inputs": [],
       "astHash": null,
