@@ -5319,6 +5319,27 @@
       "workedExample": null,
       "verifiedDate": "2026-07-01",
       "status": "documented"
+    },
+    {
+      "id": "engine.recategorise.recategoriseUncategorised",
+      "kind": "engine",
+      "label": "Re-categorise backfill (existing uncategorised rows, Phase 54.2d)",
+      "file": "lib/bank/recategoriseExisting.ts",
+      "line": 91,
+      "layer": "engine",
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "RecategoriseResult {scanned, recategorised, renamed} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows so import-time engine improvements reach data already in the ledger.",
+      "formula": "For each uncategorised/unlinked/non-transfer/non-investment row (§12.11 guard): re-normalise merchantStandardised (renormaliseMerchant P1/P2) → categoriseTransaction(..., skipAiOnMiss:true) [FREE deterministic layers only, no LLM] → planBackfillWrite: fill category ONLY from a non-AI RULE/USER/KB match ≥0.9, clean the name if changed; write via updateMany re-asserting the uncategorised guard so a user-set category is never clobbered. AI never auto-files (§54.2).",
+      "authority": "docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade)",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-01",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -8191,6 +8212,26 @@
       "fromUnit": null,
       "toUnit": null,
       "evidence": "de-identified token only egresses to Google Search (§13.3)",
+      "verifiedDate": "2026-07-01"
+    },
+    {
+      "from": "engine.recategorise.recategoriseUncategorised",
+      "to": "engine.tieCategorisation.categoriseTransaction",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/bank/recategoriseExisting.ts:142 categoriseTransaction(uni,{skipAiOnMiss:true})",
+      "verifiedDate": "2026-07-01"
+    },
+    {
+      "from": "engine.recategorise.recategoriseUncategorised",
+      "to": "engine.normalisation.normaliseMerchantName",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/bank/recategoriseExisting.ts:117 renormaliseMerchant(...) re-normalises existing rows",
       "verifiedDate": "2026-07-01"
     }
   ]

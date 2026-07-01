@@ -33,7 +33,7 @@
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, Inbox, Loader2, Upload } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Inbox, Loader2, Sparkles, Upload } from 'lucide-react';
 import { useAuth } from '@/lib/context/AuthContext';
 
 interface ReviewSnapshot {
@@ -63,6 +63,8 @@ export function ConfidenceReviewCard({
   const { token } = useAuth();
   const [snap, setSnap] = useState<ReviewSnapshot | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const [rescanning, setRescanning] = useState(false);
+  const [rescanMsg, setRescanMsg] = useState<string | null>(null);
 
   const fetchSnapshot = useCallback(async () => {
     if (!token) return;
@@ -107,6 +109,35 @@ export function ConfidenceReviewCard({
       setConfirming(false);
     }
   }, [token, confirming, onConfirmed, fetchSnapshot]);
+
+  // Phase 54.2d — re-run the current denoiser + deterministic categoriser over
+  // EXISTING uncategorised rows (cost-free; never overwrites a set category).
+  const rescan = useCallback(async () => {
+    if (!token || rescanning) return;
+    setRescanning(true);
+    setRescanMsg(null);
+    try {
+      const res = await fetch('/api/unified-transactions/recategorise', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        const { recategorised = 0, renamed = 0 } = json.data ?? {};
+        setRescanMsg(
+          recategorised + renamed === 0
+            ? 'No new matches — nothing to tidy.'
+            : `Filed ${recategorised.toLocaleString('en-AU')} · cleaned ${renamed.toLocaleString('en-AU')} name${renamed === 1 ? '' : 's'}.`
+        );
+        onConfirmed?.(recategorised);
+        await fetchSnapshot();
+      }
+    } catch {
+      setRescanMsg('Re-scan failed — try again.');
+    } finally {
+      setRescanning(false);
+    }
+  }, [token, rescanning, onConfirmed, fetchSnapshot]);
 
   if (!snap) return null;
 
@@ -227,7 +258,18 @@ export function ConfidenceReviewCard({
               Confirm {highUnconfirmed.toLocaleString('en-AU')} auto-filed
             </button>
           )}
+          <button
+            type="button"
+            onClick={rescan}
+            disabled={rescanning}
+            title="Re-run the latest merchant recognition over your existing uncategorised transactions"
+            className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-foreground/15 bg-background/50 px-4 py-2 text-sm font-medium text-foreground backdrop-blur transition hover:bg-muted disabled:opacity-60"
+          >
+            {rescanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Re-scan existing
+          </button>
         </div>
+        {rescanMsg && <p className="mt-2 text-xs text-muted-foreground">{rescanMsg}</p>}
       </div>
     </section>
   );

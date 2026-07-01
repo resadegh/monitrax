@@ -557,4 +557,29 @@ Runs today on the **global** Gemini API (pre-Basiq, per Reza's standing decision
 
 ---
 
+## 19. Phase 54.2d — re-categorise backfill for EXISTING rows (2026-07-01)
+
+> **Reza, seeing a pre-change HJS row still noisy:** *"I have checked the transaction and it is still the same as before. no AI suggestion."* The honest gap: every engine improvement this session runs at **import time** — nothing re-touches rows already in the ledger.
+
+### 19.1 What it does
+
+A **user-triggered** backfill (`recategoriseUncategorised`, `lib/bank/recategoriseExisting.ts`) that re-runs the current **denoiser + deterministic cascade** over the user's existing **uncategorised** rows, so the improvements reach data already imported. Surfaced as a **"Re-scan existing"** button on the Review tile (`ConfidenceReviewCard`), `POST /api/unified-transactions/recategorise`.
+
+### 19.2 Safe + cost-free by design
+
+- **Deterministic layers only** — `categoriseTransaction(..., { skipAiOnMiss: true })` (new option) skips the paid Gemini/grounded layer, so a full-ledger re-scan can never trigger an unbounded LLM bill. The AI tail stays import-time / on-demand.
+- **Re-normalises `merchantStandardised`** (P1/P2) → `16:49hjs North Parramattanorthmead` becomes **Hungry Jacks**, which then matches the rules **and** the read-time suggestion. This alone fixes the HJS class.
+- **§12.11 guarded** — only touches rows that are **still uncategorised + unlinked + not transfer/investment** (guard re-asserted at write time via `updateMany`); only **fills** a category from a **non-AI RULE/USER/KB** match ≥ 0.9. A category the user set is **never** clobbered; AI **never** auto-files (§54.2).
+- **SSOT** — reuses the one cascade + the one `renormaliseMerchant`; no parallel categoriser. Pure write-policy `planBackfillWrite` is unit-tested.
+
+### 19.3 Scope note
+
+v1 does **not** run the grounded AI over existing unknown rows (cost + review-queue plumbing) — those get a clean name + rules/suggestion, and once the user categorises one, auto-apply sweeps its siblings. A future opt-in could run the AI tail over the remaining unknowns.
+
+### 19.4 Verify + self-review
+
+`tests/neobrain/recategoriseBackfill.test.ts` (9) — write-policy (AI/FALLBACK never fill; RULE/USER/KB ≥0.9 fill; rename only when changed; never write "Unknown") + `skipAiOnMiss` (rules still resolve, unknowns fall back with no LLM). `tsc` clean; Neomatrix new `engine.recategorise.recategoriseUncategorised` + edges; `neomatrix:check` green. **§20.4 v1 8.5 → 10/10** (the critique forced deterministic-only for cost safety + the write-time guard re-assertion).
+
+---
+
 *Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

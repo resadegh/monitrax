@@ -696,6 +696,13 @@ export async function categoriseTransaction(
   tx: UnifiedTransaction,
   options: {
     merchantMappings?: MerchantMapping[];
+    /**
+     * Phase 54.2d — skip the paid Gemini-on-miss layer (layer 4) so only the
+     * FREE deterministic layers run (user mapping → rules → shared-KB → fallback).
+     * Used by the bulk re-categorise backfill (`recategoriseUncategorised`) so a
+     * full-ledger re-scan can't trigger an unbounded LLM/grounding bill.
+     */
+    skipAiOnMiss?: boolean;
   } = {}
 ): Promise<CategorisationResult> {
   // 1. Try merchant mappings first (includes user corrections)
@@ -732,9 +739,12 @@ export async function categoriseTransaction(
   // 4. Gemini-on-miss (RAG) — increment 52.3. Gated by KB_GEMINI_ENABLED
   //    (default OFF) → returns null with no LLM call until enabled. Receives the
   //    KB as retrieval context; its confirmed answers write back via 52.1c.
-  const aiResult = await geminiCategoriseOnMiss(kbText);
-  if (aiResult) {
-    return aiResult;
+  //    Skipped entirely when the caller opts out (bulk backfill — cost bound).
+  if (!options.skipAiOnMiss) {
+    const aiResult = await geminiCategoriseOnMiss(kbText);
+    if (aiResult) {
+      return aiResult;
+    }
   }
 
   // 5. Fallback
