@@ -190,3 +190,13 @@ v1 8.5 → v2 10/10: scope tightened to surgical (swap one call, keep import str
 - [x] `tests/neobrain/*` — **98 passed** (against the REAL generated client).
 - [x] `tsc --noEmit` — 54.2b files clean (pre-existing `@vercel/oidc`/recharts env-only errors unrelated).
 - [x] `npm run neomatrix:check` — green.
+
+---
+
+### Phase 54.2c — delete the retired bulk-Gemini categoriser (dead-code cleanup)
+
+**Type**: Cleanup (§12.1). The follow-up promised in 54.2, now that Prisma generates locally so a large deletion is `tsc`-verifiable.
+
+- Deleted `categoriseWithAI` + `categoriseInBatches` (the retired Path A bulk-Gemini categoriser, no runtime caller since 54.2) and their exclusively-used dead code: `TRANSACTION_CATEGORIZATION_SYSTEM_PROMPT`, `buildUserPrompt`, `calculateAdjustedConfidence`, and the now-unused `AIBatchCategorizationResult` + `MerchantLearning` interfaces. Removed the now-unused imports (`generateGeminiJSONCompletion`, `isGeminiConfigured`, `GEMINI_MODELS`). Kept `buildUncategorisedResults` (still used by `categoriseUnknownsViaCascade`) + `GeminiUsageMetrics` (still used by `categoriseWithLearning`).
+- No behaviour change — the one AI categoriser (KB cascade + `geminiCategoriseOnMiss`) is unaffected. `lib/bank/aiCategorisation.ts` −~390 lines.
+- Verified: `tsc --noEmit` clean for the file; `tests/neobrain/cascadeReconcile.test.ts` (10) green; Neomatrix anchors re-pointed (`classifyByConfidence:134`, `categoriseUnknownsViaCascade:269`, `categoriseWithLearning:303`, `processUserConfirmation:436`), `neomatrix:check` green.
