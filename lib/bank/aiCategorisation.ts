@@ -12,6 +12,8 @@ import {
 import { GEMINI_MODELS } from '@/lib/ai/google/modelConfig';
 import { NormalisedTransaction, CategorisedTransaction, CategoryType } from './types';
 import { isTransferDescription } from '@/lib/bookkeeping/transferCategorisation';
+import { categoriseTransactionBatch, type CategorisationResult } from '@/lib/tie/categorisation';
+import type { UnifiedTransaction } from '@/lib/tie/types';
 import {
   getMerchantLearnings,
   getPatternLearnings,
@@ -48,6 +50,13 @@ export interface AICategorizationResult {
   transaction: NormalisedTransaction;
   prediction: AICategorizationPrediction;
   adjustedConfidence: number;
+  /**
+   * Phase 54.2 — the cascade layer that produced this result. Drives the
+   * "AI-sourced results never auto-file" rule in `classifyByConfidence`
+   * (source==='AI' is demoted out of auto-accept → always user-confirmed).
+   * Optional for back-compat with results built by the legacy path.
+   */
+  source?: CategorisationResult['source'];
   boostReasons: string[];
   penaltyReasons: string[];
 }
@@ -264,7 +273,9 @@ export function calculateAdjustedConfidence(
 // =============================================================================
 
 /**
- * Categorise transactions using Gemini AI
+ * @deprecated Phase 54.2 (2026-07-01) — RETIRED alongside `categoriseInBatches`
+ * (its only caller). The KB cascade's `geminiCategoriseOnMiss` is now the ONE
+ * AI categoriser. Scheduled for deletion in the immediate follow-up PR. Do NOT call.
  */
 export async function categoriseWithAI(
   transactions: NormalisedTransaction[],
@@ -380,7 +391,13 @@ export async function categoriseWithAI(
 }
 
 /**
- * Categorise transactions in batches for large imports
+ * @deprecated Phase 54.2 (2026-07-01) — RETIRED. This was a SECOND AI
+ * categoriser (bulk Gemini) competing with the KB cascade
+ * (lib/tie/categorisation.ts) — a §12.2.1 single-source violation that could
+ * auto-file an AI guess silently. Import now routes through
+ * `categoriseUnknownsViaCascade`. No runtime caller remains; scheduled for
+ * deletion in the immediate follow-up PR (kept here to isolate the behaviour
+ * change from the code removal). Do NOT call.
  */
 export async function categoriseInBatches(
   transactions: NormalisedTransaction[],
@@ -537,11 +554,21 @@ export function classifyByConfidence(
   needsReview: AICategorizationResult[];
   requiresManual: AICategorizationResult[];
 } {
+  // Phase 54.2 — AI-sourced results NEVER auto-file. An `source==='AI'` proposal
+  // above the auto-accept threshold is demoted to needsReview so the user always
+  // confirms it (matches "AI proposes, user confirms" + KB echo-chamber safety —
+  // only human confirmations feed the shared KB, lib/categorisation/kb/recordFromConfirmation.ts).
+  // Deterministic sources (RULE / USER / KB / transfer) auto-file as before.
+  const isAiProposal = (r: AICategorizationResult) => r.source === 'AI';
   return {
-    autoAccept: results.filter(r => r.adjustedConfidence >= settings.autoAcceptThreshold),
-    needsReview: results.filter(r =>
-      r.adjustedConfidence >= settings.showForReviewThreshold &&
-      r.adjustedConfidence < settings.autoAcceptThreshold
+    autoAccept: results.filter(
+      r => !isAiProposal(r) && r.adjustedConfidence >= settings.autoAcceptThreshold
+    ),
+    needsReview: results.filter(
+      r =>
+        r.adjustedConfidence < settings.autoAcceptThreshold
+          ? r.adjustedConfidence >= settings.showForReviewThreshold
+          : isAiProposal(r) // AI at/above auto-accept lands here, not in autoAccept
     ),
     requiresManual: results.filter(r => r.adjustedConfidence < settings.showForReviewThreshold),
   };
@@ -557,6 +584,124 @@ export function getCategorizationSettings(
     ...DEFAULT_SETTINGS,
     ...userSettings,
   };
+}
+
+// =============================================================================
+// CASCADE ADAPTER (Phase 54.2 — reconcile onto the ONE AI categoriser)
+// =============================================================================
+
+/**
+ * Map an import-side `NormalisedTransaction` (lib/bank) to the TIE
+ * `UnifiedTransaction` the KB cascade consumes. Only the fields the cascade
+ * reads are meaningful (id, merchantStandardised, merchantRaw, description,
+ * direction); the rest are type-satisfying defaults the cascade never inspects
+ * (`source` is a placeholder — the cascade does not branch on it). Pure.
+ */
+export function mapNormalisedToUnified(
+  tx: NormalisedTransaction,
+  userId: string
+): UnifiedTransaction {
+  return {
+    id: tx.id,
+    userId,
+    accountId: tx.bankAccountId ?? '',
+    date: tx.date,
+    amount: tx.amount,
+    currency: 'AUD',
+    direction: tx.direction,
+    description: tx.description,
+    merchantRaw: tx.merchantRaw ?? null,
+    merchantStandardised: tx.merchantStandardised ?? null,
+    merchantCategoryCode: tx.merchantCategoryCode ?? null,
+    tags: [],
+    userCorrectedCategory: false,
+    isRecurring: false,
+    anomalyFlags: [],
+    source: 'CSV', // not consumed by the cascade; placeholder for the type
+    createdAt: tx.date,
+    updatedAt: tx.date,
+  };
+}
+
+const CASCADE_REASONING: Record<CategorisationResult['source'], string> = {
+  RULE: 'Matched a categorisation rule',
+  KB: 'Matched the community knowledge base',
+  AI: 'AI suggestion — please confirm',
+  USER: 'Matched your learned merchant',
+  FALLBACK: 'No confident match — needs manual categorisation',
+};
+
+/**
+ * Map one cascade `CategorisationResult` back to the `AICategorizationResult`
+ * shape the import + Basiq consumers already expect — so the downstream DB-write
+ * code does not change. Carries `source` (drives never-auto-file). `isEssential`
+ * / `isRecurring` are not inferred by the cascade → default false (the user sets
+ * them on confirm); `direction` derives from the tx as the legacy path did. Pure.
+ */
+export function cascadeResultToAIResult(
+  tx: NormalisedTransaction,
+  result: CategorisationResult | undefined
+): AICategorizationResult {
+  const r: CategorisationResult = result ?? {
+    categoryLevel1: 'Other',
+    categoryLevel2: 'Uncategorised',
+    subcategory: null,
+    confidence: 0.1,
+    source: 'FALLBACK',
+  };
+  const reasoning =
+    r.source === 'RULE' && r.ruleMatched
+      ? `Matched rule: ${r.ruleMatched}`
+      : CASCADE_REASONING[r.source] ?? 'Categorised';
+  return {
+    transaction: tx,
+    prediction: {
+      categoryLevel1: r.categoryLevel1,
+      categoryLevel2: r.categoryLevel2 ?? null,
+      subcategory: r.subcategory ?? null,
+      direction: tx.direction === 'IN' ? 'INCOME' : 'EXPENSE',
+      isEssential: false,
+      isRecurring: false,
+      suggestedFrequency: null,
+      confidence: r.confidence,
+      reasoning,
+    },
+    adjustedConfidence: r.confidence,
+    source: r.source,
+    boostReasons: [],
+    penaltyReasons: [],
+  };
+}
+
+/**
+ * Categorise import unknowns through the KB cascade (the SSOT AI categoriser).
+ * Passes NO merchantMappings so the cascade skips its layer-1 merchant lookup —
+ * `categoriseWithLearning` already ran the merchant-learning pass, so this runs
+ * only rules → shared-KB prior → Gemini-on-miss → fallback. Never throws:
+ * degrades to uncategorised so the import can never fail (matches the legacy
+ * enrichment contract).
+ */
+export async function categoriseUnknownsViaCascade(
+  userId: string,
+  txs: NormalisedTransaction[]
+): Promise<{ results: AICategorizationResult[]; degraded: boolean; degradedReason?: string }> {
+  if (txs.length === 0) return { results: [], degraded: false };
+  try {
+    const unified = txs.map(tx => mapNormalisedToUnified(tx, userId));
+    const resultMap = await categoriseTransactionBatch(unified, {});
+    const results = txs.map((tx, i) =>
+      cascadeResultToAIResult(tx, resultMap.get(unified[i].id))
+    );
+    return { results, degraded: false };
+  } catch (err) {
+    // Enrichment, not a gate — a cascade/LLM hiccup must never fail the upload.
+    console.error('Cascade categorisation failed during import — importing uncategorised:', err);
+    return {
+      results: buildUncategorisedResults(txs, 'Categorisation unavailable, requires manual categorisation'),
+      degraded: true,
+      degradedReason: 'Categorisation failed for all transactions',
+    };
+  }
 }
 
 // =============================================================================
@@ -663,57 +808,28 @@ export async function categoriseWithLearning(
     }
   }
 
-  // Step 4: Use AI for remaining transactions.
-  //
-  // AI categorisation is an ENRICHMENT, not a prerequisite for importing
-  // transactions. A Gemini failure (rate limit, timeout, quota, model change,
-  // outage, malformed response) must NEVER fail the whole import — otherwise a
-  // transient upstream blip throws a generic 500 and the user loses their
-  // upload. On any AI error (or when Gemini is unconfigured) we fall back to
-  // uncategorised + confidence 0, so every transaction still imports and lands
-  // in the review queue for manual categorisation.
+  // Step 4: Categorise the remaining unknowns via the ONE canonical AI
+  // categoriser — the KB lookup-first cascade (Phase 54.2 reconciliation,
+  // §12.2.1). The old bulk-Gemini path (categoriseInBatches, now @deprecated) is
+  // retired: it was a SECOND AI categoriser that could auto-file an AI guess
+  // silently. The cascade runs rules → shared-KB prior → Gemini-on-miss (gated
+  // KB_GEMINI_ENABLED) → Uncategorised fallback, and every AI-sourced result is
+  // demoted out of auto-accept by classifyByConfidence (AI proposes, the user
+  // always confirms — echo-chamber safety). Categorisation remains an
+  // ENRICHMENT: any failure degrades to uncategorised, the import never fails.
   let aiResults: AICategorizationResult[] = [];
-  let usage: GeminiUsageMetrics | null = null;
+  // Gemini-on-miss records its own AI-usage telemetry inside the cascade
+  // (lib/categorisation/kb/geminiOnMiss.ts → recordAiUsage); this legacy
+  // aggregate metric is null on the cascade path.
+  const usage: GeminiUsageMetrics | null = null;
   let degraded = false;
   let degradedReason: string | undefined;
 
-  if (needsAI.length > 0 && settings.enableAI && isGeminiConfigured()) {
-    try {
-      const aiResponse = await categoriseInBatches(
-        needsAI,
-        merchantLearnings,
-        recurringPatterns,
-        settings
-      );
-      aiResults = aiResponse.results;
-      usage = aiResponse.usage;
-      if (aiResponse.degraded) {
-        degraded = true;
-        degradedReason = `${aiResponse.failedBatches} categorisation batch(es) failed — affected transactions imported uncategorised`;
-      }
-    } catch (err) {
-      // Degrade gracefully — import proceeds, categorisation is deferred to
-      // manual review rather than failing the upload.
-      console.error('AI categorisation failed during import — importing uncategorised:', err);
-      aiResults = buildUncategorisedResults(
-        needsAI,
-        'AI categorisation unavailable, requires manual categorisation'
-      );
-      degraded = true;
-      degradedReason = 'AI categorisation failed for all transactions';
-    }
-  } else if (needsAI.length > 0) {
-    // Gemini unconfigured / AI disabled. Loud by design: this branch used to
-    // log nothing, which made a missing GEMINI_API_KEY indistinguishable from
-    // a healthy import in prod logs (2026-06-10 incident).
-    console.error(
-      `[aiCategorisation] Gemini ${settings.enableAI ? 'NOT CONFIGURED (GEMINI_API_KEY missing)' : 'disabled by settings'} — ${needsAI.length} transactions imported uncategorised`
-    );
-    aiResults = buildUncategorisedResults(needsAI, 'AI not available, requires manual categorisation');
-    degraded = true;
-    degradedReason = settings.enableAI
-      ? 'AI categorisation is not configured'
-      : 'AI categorisation is disabled';
+  if (needsAI.length > 0) {
+    const cascade = await categoriseUnknownsViaCascade(userId, needsAI);
+    aiResults = cascade.results;
+    degraded = cascade.degraded;
+    degradedReason = cascade.degradedReason;
   }
 
   // Step 5: Combine results
