@@ -46,7 +46,6 @@ export const REGISTRY = {
 export const ALLOWLIST = {
   'lib/ai/google/geminiClient.ts': 'AI client infrastructure — the canonical chokepoint, not a surface.',
   'lib/ai/gemini.ts': 'Duplicate AI client (Phase-D dedup target) — infrastructure, not a surface.',
-  'lib/bank/aiCategorisation.ts': 'Categorisation — outputs category labels, not a financial-number narrative.',
   'lib/categorisation/kb/geminiOnMiss.ts': 'Categorisation-on-miss — category label, not a narrative.',
   'lib/documents/intelligence/analyzers/aiDocumentAnalyzer.ts': 'Document field extraction (confidencePolicy) — not a financial narrative.',
   'lib/integrations/trust-deed/geminiExtractor.ts': 'Trust-deed field extraction — structured, not a narrative.',

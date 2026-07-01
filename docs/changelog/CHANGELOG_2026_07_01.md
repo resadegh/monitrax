@@ -190,3 +190,35 @@ v1 8.5 → v2 10/10: scope tightened to surgical (swap one call, keep import str
 - [x] `tests/neobrain/*` — **98 passed** (against the REAL generated client).
 - [x] `tsc --noEmit` — 54.2b files clean (pre-existing `@vercel/oidc`/recharts env-only errors unrelated).
 - [x] `npm run neomatrix:check` — green.
+
+---
+
+### Phase 54.2c — delete the retired bulk-Gemini categoriser (dead-code cleanup)
+
+**Type**: Cleanup (§12.1). The follow-up promised in 54.2, now that Prisma generates locally so a large deletion is `tsc`-verifiable.
+
+- Deleted `categoriseWithAI` + `categoriseInBatches` (the retired Path A bulk-Gemini categoriser, no runtime caller since 54.2) and their exclusively-used dead code: `TRANSACTION_CATEGORIZATION_SYSTEM_PROMPT`, `buildUserPrompt`, `calculateAdjustedConfidence`, and the now-unused `AIBatchCategorizationResult` + `MerchantLearning` interfaces. Removed the now-unused imports (`generateGeminiJSONCompletion`, `isGeminiConfigured`, `GEMINI_MODELS`). Kept `buildUncategorisedResults` (still used by `categoriseUnknownsViaCascade`) + `GeminiUsageMetrics` (still used by `categoriseWithLearning`).
+- No behaviour change — the one AI categoriser (KB cascade + `geminiCategoriseOnMiss`) is unaffected. `lib/bank/aiCategorisation.ts` −~390 lines.
+- Verified: `tsc --noEmit` clean for the file; `tests/neobrain/cascadeReconcile.test.ts` (10) green; Neomatrix anchors re-pointed (`classifyByConfidence:134`, `categoriseUnknownsViaCascade:269`, `categoriseWithLearning:303`, `processUserConfirmation:436`), `neomatrix:check` green.
+
+---
+
+### Phase 54.2d — re-categorise backfill for existing rows
+
+**Type**: Feature (financial — categorisation). **Reza** flagged a pre-change HJS row unchanged: the engine improvements all run at import time, never re-touching existing rows.
+
+- New `recategoriseUncategorised` (`lib/bank/recategoriseExisting.ts`) — user-triggered backfill: re-normalises `merchantStandardised` (P1/P2) + runs the DETERMINISTIC cascade (`categoriseTransaction(..., { skipAiOnMiss: true })` — new option) over existing uncategorised/unlinked/non-transfer rows. Fixes the HJS class (→ Hungry Jacks → Fast Food) + cleans noisy names.
+- **Cost-free** (no paid LLM in a bulk re-scan). **§12.11-guarded**: only fills a category from a non-AI RULE/USER/KB match ≥0.9; guard re-asserted at write time (`updateMany`) so a user-set category is never clobbered; AI never auto-files. Pure write-policy `planBackfillWrite` unit-tested.
+- `POST /api/unified-transactions/recategorise` (thin wrapper, `transaction.write`). UI: "Re-scan existing" button on the Review tile (`ConfidenceReviewCard`) with a result line.
+- Tests: `tests/neobrain/recategoriseBackfill.test.ts` (9). Neomatrix: new `engine.recategorise.recategoriseUncategorised` + edges; structural Layer-0 registered (graphify binary absent in sandbox — files hand-added to `structural-graph.json`); `neomatrix:check` green. §20.4 **10/10**.
+
+## Destructive write checklist (CLAUDE.md §12.11)
+
+Operations touching existing rows:
+- [lib/bank/recategoriseExisting.ts] `prisma.unifiedTransaction.updateMany(...)`
+
+1. **`where` clause matches:** only THIS user's rows that are STILL uncategorised (`categoryLevel1` null/''), unlinked (expenseId/incomeId/loanId null), not transfer, not investment — re-asserted at write time, not just read time.
+2. **Columns overwritten:** `merchantStandardised` (a cleaned version of the auto-generated noisy name, not user-entered) + `categoryLevel1/2`/`subcategory`/`confidenceScore` — the last four only on rows where the category was EMPTY (filling, never clobbering a user choice).
+3. **Guard:** the `updateMany` WHERE includes the full uncategorised/unlinked guard, so a category the user set between read and write is never overwritten; and only non-AI (RULE/USER/KB) ≥0.9 results fill a category.
+
+User confirmation: NOT REQUIRED — fills only empty categories on the user's own uncategorised rows; never overwrites user data (guarded).
