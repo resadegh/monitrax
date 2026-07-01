@@ -169,3 +169,29 @@ The proper BAU-grade answer: configure a Vercel Log Drain to forward all logs to
 - Helper script source: `scripts/vercel-logs.sh`
 - Long-term log drain candidate: `https://github.com/kym6464/vercel-google-cloud-logging`
 - Originating firefight: `docs/changelog/CHANGELOG_2026_05_20.md` (Cloud SQL TLS-handshake + connection-pool exhaustion debugging session)
+
+---
+
+## Prisma client generation in the sandbox (2026-07-01)
+
+**Symptom:** `npx prisma generate` in a Claude Code Web session dies with
+`Error: aborted … code: 'ECONNRESET'` and no client is generated. Every vitest
+file that imports a Prisma-touching module then fails to load with
+`Cannot find module '.prisma/client/default'`.
+
+**Root cause (two proxy-reset network calls):**
+1. Prisma CLI pings `checkpoint.prisma.io` (telemetry) on every command.
+2. `generate` downloads the **schema-engine** from `binaries.prisma.sh` — and
+   Prisma's Node downloader (node-fetch) does **not** honor `HTTPS_PROXY`, so it
+   connects directly and the agent proxy resets it. (The query engine is already
+   bundled in `@prisma/engines`; only the schema-engine is fetched.) `curl`
+   **does** honor the proxy + CA bundle, so the binary can be fetched manually.
+
+**Fix:** run `bash scripts/dev/sandbox-prisma-generate.sh`. It curls the
+schema-engine via the proxy into `~/.cache/prisma/…`, then runs
+`prisma generate` with `CHECKPOINT_DISABLE=1` and
+`PRISMA_SCHEMA_ENGINE_BINARY` / `PRISMA_QUERY_ENGINE_LIBRARY` pointed at the
+local binaries — so no download happens. After it runs, `@prisma/client`
+resolves to a real generated client and the full vitest suite (plus local
+`tsc --noEmit`) runs exactly as in CI. This is the real fix — do NOT
+`vi.mock('@/lib/db')` in tests to dodge a missing client.

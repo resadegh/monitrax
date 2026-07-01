@@ -12,14 +12,7 @@
  * ledger without a human confirm (echo-chamber breach + wrong-number risk).
  */
 
-import { describe, it, expect, vi } from 'vitest';
-
-// The functions under test are PURE, but the module imports DB-touching siblings
-// at load time. Mock the Prisma accessor so the module loads without a generated
-// client (this container can't `prisma generate` — network). The mocked prisma
-// is never called by the pure functions exercised here.
-vi.mock('@/lib/db', () => ({ default: {}, prisma: {} }));
-vi.mock('@prisma/client', () => new Proxy({}, { get: () => ({}) }));
+import { describe, it, expect } from 'vitest';
 
 import {
   classifyByConfidence,
