@@ -54,12 +54,30 @@ export const ANTHROPIC_MODELS = {
 } as const;
 
 /**
- * True when ANTHROPIC_API_KEY is configured. Server-side only — call sites
- * must check this before invoking any client method, and gracefully fall
- * back when false. The consumer feedback drawer uses this to switch
- * between chat-style (AI on) and form-only (AI off).
+ * True when Anthropic/Claude is BOTH enabled AND a key is configured.
+ * Server-side only — call sites must check this before invoking any client
+ * method, and gracefully fall back when false. The consumer feedback drawer
+ * uses this to switch between chat-style (AI on) and form-only (AI off).
+ *
+ * KILL-SWITCH (Reza 2026-07-01): Anthropic is DISABLED by default — Monitrax
+ * runs Gemini-only for cost simplicity (a ~US$26.54/mo Sonnet bill on the
+ * onboarding extractor drove the call). Every call site degrades gracefully
+ * with the key off:
+ *   - onboarding chat extract → form-only wizard (`extractWizardStepDelta`)
+ *   - onboarding companion    → scripted intro (`generateCompanionReflection`)
+ *   - feedback triage         → form-only drawer + "Reza will reply"
+ *   - anomaly narrator        → deterministic 1-line copy
+ * The in-app financial advice / tax-advisor surface is ALREADY Gemini-only
+ * (no Claude provider exists), so nothing financial is affected.
+ *
+ * The gate is `ANTHROPIC_ENABLED === 'true'` FIRST, so it fails CLOSED: no
+ * Claude call can fire even while `ANTHROPIC_API_KEY` remains set in the
+ * runtime env. Re-enable = set `ANTHROPIC_ENABLED=true` (the key must also be
+ * present). This is intentionally a code default, not just an env removal, so
+ * the spend stops the moment this ships without any operator action.
  */
 export function isAnthropicConfigured(): boolean {
+  if (process.env.ANTHROPIC_ENABLED !== 'true') return false;
   return Boolean(process.env.ANTHROPIC_API_KEY);
 }
 
