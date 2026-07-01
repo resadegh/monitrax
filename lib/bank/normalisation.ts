@@ -12,6 +12,7 @@ import {
   TransactionDirection,
 } from './types';
 import { lookupMCC } from './mccCatalog';
+import { denoiseMerchantText } from './merchantNoise';
 
 // =============================================================================
 // MERCHANT NORMALISATION
@@ -103,6 +104,14 @@ function normaliseMerchantName(rawDescription: string): string {
     .replace(/\s+[A-Z]{2}\s*$/g, '') // Remove state codes
     .replace(/AUS$/i, '')
     .trim();
+
+  // Phase 54.1: strip glued clock-times ("09:19hjs" → "hjs") then expand verified
+  // AU merchant abbreviations ("hjs" → "hungry jacks") so the mappings below and
+  // the downstream rules/KB resolve noisy same-vendor descriptions to ONE
+  // canonical name — making import-time rules and per-user auto-apply match
+  // across different times/locations. See lib/bank/merchantNoise.ts +
+  // docs/blueprint/PHASE_54_NEOBRAIN.md §16.
+  cleaned = denoiseMerchantText(cleaned);
 
   // Check against known mappings
   const lowerCleaned = cleaned.toLowerCase();

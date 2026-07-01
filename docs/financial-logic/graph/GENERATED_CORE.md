@@ -3,16 +3,16 @@
 
 # Neomatrix — Generated Core View
 
-> Rendered from `financial-graph.json` (v0.56.0, reviewed 2026-06-25). 
+> Rendered from `financial-graph.json` (v0.56.0, reviewed 2026-07-01). 
 > This file is derived — edit the JSON, not this. Markdown and JSON cannot diverge (CI-checked).
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 235 · **Edges:** 312
-- **By kind:** orchestrator 9 · engine 132 · input-field 27 · number 11 · ui-surface 12 · law 37 · verification 7
-- **By status:** documented 235
-- **Edge provenance:** verified 312 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/152 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 237 · **Edges:** 315
+- **By kind:** orchestrator 9 · engine 133 · input-field 27 · number 11 · ui-surface 12 · law 38 · verification 7
+- **By status:** documented 237
+- **Edge provenance:** verified 315 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/153 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -75,7 +75,7 @@
 | **Gemini-on-miss (RAG)** | `lib/categorisation/kb/geminiOnMiss.ts:84` | engine | neobrain | GeminiCategoryResult\|null — an LLM category for a genuinely unknown signature, RAG-seeded with the closest known KB patterns. | Phase 52 §2 (Gemini-on-miss, RAG not fine-tuning) |  | documented |
 | **KB vote aggregation + graduation** | `lib/categorisation/kb/recordContribution.ts:66` | engine | neobrain | Vote aggregation + graduation: upserts the signature, records the per-(signature,user) vote, recomputes topCategory/confidence/distinctUserCount, sets isGlobal at k. | Phase 52 §3 (k-anon graduation, k=5) |  | documented |
 | **KB write gate (human-only)** | `lib/categorisation/kb/recordFromConfirmation.ts:35` | engine | neobrain | Fire-and-forget gate that records a HUMAN confirmation into the shared KB (never AI auto-accepts — echo-chamber-safe). | Phase 52 (echo-chamber safety) |  | documented |
-| **De-identifier (PII scrub)** | `lib/categorisation/kb/scrubSignature.ts:46` | engine | neobrain | ScrubResult — a de-identified merchant signature (e.g. 'WOOLWORTHS METRO'), or rejection when no safe merchant token remains. | CLAUDE.md §13.3 (CDR sanitisation) + Phase 52 |  | documented |
+| **De-identifier (PII scrub)** | `lib/categorisation/kb/scrubSignature.ts:47` | engine | neobrain | ScrubResult — a de-identified merchant signature (e.g. 'WOOLWORTHS METRO'), or rejection when no safe merchant token remains. | CLAUDE.md §13.3 (CDR sanitisation) + Phase 52 |  | documented |
 | **Transfer / repayment matcher** | `lib/bookkeeping/resolveTransaction.ts:78` | engine | neobrain | ResolutionResult — candidate transfer pairs + loan-repayment matches for a transaction under review. | Phase 51 + CLAUDE.md §19.1 (transfers excluded) |  | documented |
 | **Transfer auto-pairer** | `lib/bookkeeping/transferPairing.ts:135` | engine | neobrain | Symmetric transfer tag — marks BOTH sides isTransfer=true when exactly one safe counterpart exists (else leaves it to the user). | Phase 51 (no false pairs) + §19.1 + §12.2.1 (one confirmed-transfer field-set) |  | documented |
 | **Transfer auto-pairer (across accounts)** | `lib/bookkeeping/transferPairing.ts:228` | engine | neobrain | Symmetric transfer tag with auto-discovered destination — when a tx is marked a transfer WITHOUT a named destination, finds the counterpart across ALL the user's other accounts and marks both legs (else leaves it to the user). | Reza directive 2026-06-29 (target-account leg auto-marked) + Phase 51 (no false pairs) + §19.1 + §12.2.1 |  | documented |
@@ -159,6 +159,7 @@
 | **Tax-law reference (FactPack grounding)** | `lib/neobrain/factPack.ts:110` | service | neobrain | AI-readable current-FY AU tax law (brackets, thresholds, Medicare, LITO, super caps, Div293, CGT, transfer balance cap + Phase 41E reform measures with commencement status) the AI grounds tax-rule statements on. | Phase 54 §15.9 (tax-law grounding) + lib/tax-engine/config/taxYearConfig.ts |  | documented |
 | **Personal Financial Index (FactPack)** | `lib/neobrain/factPack.ts:219` | service | neobrain | A typed, read-through grounding pack: user financial facts (from the master snapshot) + app reference (categories + tax law) the AI cites by ref. Persists nothing. | Phase 54 §15 Phase A (Personal Financial Index) |  | documented |
 | **Grounding validator (anti-hallucination)** | `lib/neobrain/grounding.ts:78` | service | neobrain | Partition of AI-claimed refs into resolved (backed by a real, non-absent fact) vs rejected (unknown / absent / non-numeric) — a number the AI cites that this rejects never reaches the user. | Phase 54 §15 Phase B (grounding validator) |  | documented |
+| **Merchant identity normaliser (per-user standardised name)** | `lib/bank/normalisation.ts:95` | engine | neobrain | merchantStandardised — the canonical per-user merchant name stored on UnifiedTransaction and used as the EXACT-match key for MerchantMapping learning + auto-apply, and tested by the ~50 categorisation rules. | Phase 18 (normalisation) + Phase 54.1 (denoise) — docs/blueprint/PHASE_54_NEOBRAIN.md §16 |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -239,6 +240,7 @@
 | **SIS Act — SMSF compliance (sole purpose / in-house / LRBA / NALI)** | SIS Act — SMSF compliance (sole purpose / in-house / LRBA / NALI) | SIS Act s62 (sole purpose), Pt 8 (in-house asset cap), s67A (LRBA); PCG 2016/5; ITAA 1997 s295-160 (non-complying 45%) / NALI | SMSF triumvirate compliance classifier |
 | **ITAA 1936 Sch 2F — trust loss quarantining tests** | ITAA 1936 Sch 2F — trust loss quarantining tests | ITAA 1936 Sch 2F (trust loss tests: income injection, 50% stake, pattern of distributions, control, same business) | Trust loss quarantining (Sch 2F) |
 | **ITAA 1936 Div 6 — trust net income distribution (s95/s97)** | ITAA 1936 Div 6 — trust net income distribution (s95/s97) | ITAA 1936 Div 6, s95 (net income), s97 (present entitlement → beneficiary assessment) | Trust net income distribution (Div 6) |
+| **Merchant-noise denoising (time-strip + verified alias expansion)** | ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip glued/standalone clock-times HH:MM(:SS); (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name. Order: strip-times → expand-aliases. Aliases are never populated speculatively (§19 — a wrong alias mis-files real money). | Phase 54.1 — docs/blueprint/PHASE_54_NEOBRAIN.md §16; CLAUDE.md §12.2.1 + §19 | Merchant identity normaliser (per-user standardised name), De-identifier (PII scrub) |
 
 ## Assurance — the Trust Engine (what proves each number correct)
 
@@ -449,7 +451,7 @@
 | Confidence-band classifier | → | Categorisation confidence bands | governed-by | — | verified | lib/bank/aiCategorisation.ts:539 |
 | KB vote aggregation + graduation | → | k-anonymity KB graduation | governed-by | — | verified | lib/categorisation/kb/recordContribution.ts:55 |
 | KB write gate (human-only) | → | Echo-chamber safety (human-only learning) | governed-by | — | verified | lib/bank/reviewQueue.ts:243 |
-| De-identifier (PII scrub) | → | De-identification before shared KB | governed-by | — | verified | lib/categorisation/kb/scrubSignature.ts:46 |
+| De-identifier (PII scrub) | → | De-identification before shared KB | governed-by | — | verified | lib/categorisation/kb/scrubSignature.ts:47 |
 | Transfer / repayment matcher | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/resolveTransaction.ts:135 |
 | Transfer auto-pairer | → | Transfer match + exclusion | governed-by | — | verified | lib/bookkeeping/transferPairing.ts:127 |
 | Document Intelligence Engine (DIE) | → | Document extraction confidence bands | governed-by | — | verified | lib/documents/intelligence/confidencePolicy.ts:1 |
@@ -568,6 +570,9 @@
 | FY tax thresholds (canonical) | → | Tax-law reference (FactPack grounding) | feeds | — | verified | factPack.ts:296,301 — getCurrentTaxYearConfig() feeds buildTaxRulesReference(taxConfig). |
 | Tax-law reference (FactPack grounding) | → | Personal Financial Index (FactPack) | feeds | — | verified | factPack.ts:301 — taxRules = buildTaxRulesReference(...) attached to reference.taxRules. |
 | Personal Financial Index (FactPack) | → | Grounding validator (anti-hallucination) | feeds | — | verified | grounding.ts:78 — validateGroundedNumbers(pack, claimed) resolves the AI-claimed refs against the assembled FactPack. |
+| Merchant identity normaliser (per-user standardised name) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/tie/categorisation.ts:710 — categoriseByRules tests tx.merchantStandardised |
+| Merchant identity normaliser (per-user standardised name) | → | Merchant-noise denoising (time-strip + verified alias expansion) | governed-by | — | verified | lib/bank/normalisation.ts:114 denoiseMerchantText(cleaned) |
+| De-identifier (PII scrub) | → | Merchant-noise denoising (time-strip + verified alias expansion) | governed-by | — | verified | lib/categorisation/kb/scrubSignature.ts:58 denoiseMerchantText(raw) |
 
 ---
 

@@ -20,6 +20,7 @@
  */
 
 import { normaliseDescription } from '@/lib/bookkeeping/normaliseDescription';
+import { denoiseMerchantText } from '@/lib/bank/merchantNoise';
 
 export type ScrubResult =
   | { ok: true; pattern: string }
@@ -50,8 +51,11 @@ export function scrubToSignature(raw: string | null | undefined): ScrubResult {
     return { ok: false, reason: 'transfer-or-non-merchant (potential PII)' };
   }
 
-  // Strip identifying tokens BEFORE normalising.
-  const stripped = raw
+  // Strip identifying tokens BEFORE normalising. Phase 54.1: first strip glued
+  // clock-times and expand verified merchant abbreviations (shared with the
+  // per-user identity via lib/bank/merchantNoise.ts) so a noisy same-vendor
+  // signature de-noises the same way on both the private and shared paths.
+  const stripped = denoiseMerchantText(raw)
     .replace(/\b\d{3}-?\d{3}\b/g, ' ') // BSB
     .replace(/x{2,}\d*/gi, ' ') // card masks (xxxx1234)
     .replace(/\b\d{1,2}[\/\-.]\d{1,2}([\/\-.]\d{2,4})?\b/g, ' ') // dates
