@@ -430,4 +430,64 @@ Reza asked whether the FactPack (the data the AI grounds feedback on) includes t
 
 ---
 
+## 16. Phase 54.1 — merchant-noise denoising (P1, 2026-07-01)
+
+> **Origin (Reza, 2026-07-01):** a live CBA feed row `"09:19hjs North Parramattanorthmead"` (time `09:19` + `HJS` = Hungry Jacks + suburb, all glued in one line) would **not** match a later `"13:42hjs Blacktown"` from the same vendor — so Neobrain never recognises them as one merchant. Reza's follow-up insight reframed the fix: *"the large number of possible transaction descriptions might be very hard to code"* — you cannot hand-code the long tail.
+
+### 16.1 The verified gap (no guessing — read in source)
+
+Two independent merchant-identity keys existed, neither of which stripped the leading time or resolved the `hjs` abbreviation:
+
+| Key | Producer | Match | Why HJS failed |
+|---|---|---|---|
+| Per-user `merchantStandardised` | `normaliseMerchantName` (`lib/bank/normalisation.ts:95`) | EXACT equality (auto-apply + suggestions) + substring by rules | date regex was `\d{2}/\d{2}` only (no colon-time); `hjs` in no table |
+| Shared-KB signature | `scrubToSignature` (`lib/categorisation/kb/scrubSignature.ts`) | EXACT + graduated token-prefix | date regex `[\/\-.]` (no `:`); `hjs` in no table |
+
+Both reduced the two rows to **different** strings → learning never carried across time/location noise.
+
+### 16.2 The fix (build ON existing work — §12.2.1)
+
+ONE shared, pure helper `lib/bank/merchantNoise.ts` used by **both** producers (so they can never drift):
+
+1. **`stripTransactionTimes`** — removes glued/standalone `HH:MM(:SS)`. General: helps *every* timestamped row and cleans the input for the AI layer too. This is the structural win.
+2. **`expandMerchantAliases`** — rewrites **evidence-gated, whole-token** AU abbreviations to the canonical name (`hjs → hungry jacks`, verified from Reza's sample). Applied *after* time-strip (order matters — `09:19hjs` has no word boundary before `hjs` until the time is removed). The canonical name then resolves via the existing `MERCHANT_MAPPINGS` / `CATEGORISATION_RULES` / KB seed.
+
+Result: `09:19hjs North Parramatta` and `13:42hjs Blacktown` **both → "Hungry Jacks"** → import-time rules *and* per-user auto-apply match.
+
+**Scope discipline:** conservative on trailing location (no arbitrary trailing-word stripping — that would risk merging `SMITH ST CAFE` with `SMITH ST BAR`; the guarded token-prefix mechanism owns trailing-location, and unifying the two keys is **P2**). The alias table is kept **tiny and evidence-gated** — it is *not* the long-tail answer (§16.4). A wrong alias mis-files real money (§19), so entries are never populated speculatively.
+
+### 16.3 Worked example (§19.2) + over-merge guardrail
+
+- `renormaliseMerchant('09:19hjs North Parramattanorthmead')` → `'Hungry Jacks'`; `renormaliseMerchant('13:42hjs Blacktown')` → `'Hungry Jacks'` → equal ✓ (pinned in `tests/neobrain/merchantNoise.test.ts`).
+- **Over-merge guardrail (§19):** `'08:00 SMITH ST CAFE MANLY'` ≠ `'22:00 SMITH ST BAR MANLY'` (distinct merchants stay distinct) ✓. Whole-token alias never rewrites a substring (`'ashjs'` unchanged) ✓. Existing `scrubToSignature` behaviour unchanged (`WOOLWORTHS 1234 SYDNEY` → `WOOLWORTHS SYDNEY`) ✓.
+
+### 16.4 The long tail is NOT solved by code (Reza's point) — deferred to the AI+KB layer
+
+Hand-maintaining an alias table caps out fast. The scalable answer is the already-built-but-gated **shared KB (layer 3) + Gemini-on-miss (layer 4)**: the AI reads a messy description *once*, a human confirms, and it's remembered forever (the tail shrinks, doesn't grow). **P1 (this section) is the free/safe denoise that makes every layer — including the AI — better.** Enabling the AI+KB tail is a **separate plan** (Reza decision 2026-07-01: "ship P1 denoise now, then plan turning on AI+KB tail"), presented for cost/accuracy sign-off before any build.
+
+### 16.5 Neomatrix (§21.2)
+
+- `engine.scrubSignature.scrubToSignature` anchor 46→47 + formula updated (denoise pre-step).
+- **New:** `engine.normalisation.normaliseMerchantName` (the per-user identity producer — a modelled gap, §21.2.1 rule 4) + `law.neobrain.merchantNoise` (the shared denoise rule). Edges: normaliser → `categoriseTransaction` (feeds), both producers → `law.neobrain.merchantNoise` (governed-by). `npm run neomatrix:check` green.
+
+### 16.6 Self-review record (§20.4)
+
+3× adversarial review against requirement. **v1 8.5 → v2 10/10.** The critique changed the build: (a) do **not** introduce a competing `merchantKey()` — harden the existing SSOT normaliser + a shared helper (§12.2.1); (b) leading-time strip is unconditionally safe, but trailing-location strip is **not** — keep it conservative (over-merge misstates spend-by-category + tax sums, §19); (c) split the known-abbreviation fix (P1, ships now) from per-user key-unification (P2, behaviour-changing, separate PR). Financial build → **10/10 required** and met (worked example + over-merge guardrail + no regression).
+
+### 16.7 P2 — shared numeric-noise strip + per-user key unification (2026-07-01)
+
+> **Reza chose the reframed P2** after I surfaced a regression finding: a *naive* "merge the two keys" would break known-merchant location-independence (Woolworths Sydney and Melbourne both resolve to "Woolworths" today; the KB signature keeps location, so switching to it would stop them matching). The safe reframe keeps that behaviour.
+
+**The two keys have complementary semantics** — `merchantStandardised` (per-user) resolves **known** merchants to a canonical short name (location-independent) and keeps everything for unknowns; `scrubToSignature` (KB) keeps location but strips more numeric noise. Rather than merge the *outputs* (which regresses), P2 unifies the **transforms**: the numeric-noise strip is extracted to ONE shared helper `stripMerchantNumericNoise` (BSB / card masks / reference tails / long free-standing digit runs) used by **both** producers (§12.2.1).
+
+**What P2 delivers:** the per-user identity key now strips store-numbers/refs/card-masks, so `SOMESHOP 1234 SYDNEY` and `SOMESHOP 9981 SYDNEY` (same store, different store number) collapse to one key → per-user auto-apply matches them. **No location stripping** — `SOMESHOP SYDNEY` ≠ `SOMESHOP MELBOURNE` stay distinct (cross-location matching for *unknown* merchants remains the guarded KB token-prefix / AI-tail job, not done here). **No regression** — known merchants still resolve to their canonical short name regardless of location, and digits glued inside a token (`1300SMILES`) are preserved (word-boundary-anchored).
+
+**Discovery seam (the three per-user match sites all key on `merchantStandardised`):** `buildSimilarUncategorisedWhere` (auto-apply), `getLearnedCategorySuggestions` (suggestion pill), and the `MerchantMapping` write. Because they all key on the output of `normaliseMerchantName`, improving that ONE producer fixes all three — **no schema change, no match-site change**.
+
+**Verification (§19.2):** `SOMESHOP 1234 SYDNEY` == `SOMESHOP 9981 SYDNEY` → `"Someshop Sydney"` ✓; over-merge guardrail `…SYDNEY` ≠ `…MELBOURNE` ✓; no-regression `WOOLWORTHS 1234 SYDNEY` == `WOOLWORTHS TOWN HALL MELBOURNE` → `"Woolworths"` ✓; `scrubToSignature` refactor keeps all prior tests green (38 passed). **Self-review §20.4: v1 9.0 → v2 10/10** (the reframe from the regression finding was the 10/10 unlock).
+
+**Neomatrix:** `stripMerchantNumericNoise` folded into `law.neobrain.merchantNoise` + both producer node formulas; `neomatrix:check` green.
+
+---
+
 *Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

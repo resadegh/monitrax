@@ -12,6 +12,7 @@ import {
   TransactionDirection,
 } from './types';
 import { lookupMCC } from './mccCatalog';
+import { denoiseMerchantText, stripMerchantNumericNoise } from './merchantNoise';
 
 // =============================================================================
 // MERCHANT NORMALISATION
@@ -103,6 +104,21 @@ function normaliseMerchantName(rawDescription: string): string {
     .replace(/\s+[A-Z]{2}\s*$/g, '') // Remove state codes
     .replace(/AUS$/i, '')
     .trim();
+
+  // Phase 54.1 P1: strip glued clock-times ("09:19hjs" → "hjs") then expand
+  // verified AU merchant abbreviations ("hjs" → "hungry jacks") so the mappings
+  // below and the downstream rules/KB resolve noisy same-vendor descriptions to
+  // ONE canonical name — making import-time rules and per-user auto-apply match
+  // across different times/locations. See lib/bank/merchantNoise.ts +
+  // docs/blueprint/PHASE_54_NEOBRAIN.md §16.
+  cleaned = denoiseMerchantText(cleaned);
+
+  // Phase 54.1 P2: strip identifying numeric noise (store numbers, refs, card
+  // masks, BSBs) — the SAME shared helper the KB signature uses (§12.2.1), so
+  // this per-user identity key gains the same robustness: "SOMESHOP 1234 SYDNEY"
+  // and "SOMESHOP 9981 SYDNEY" collapse to one key. Conservative — never strips
+  // location, so different-location rows stay distinct (no over-merge, §19).
+  cleaned = stripMerchantNumericNoise(cleaned);
 
   // Check against known mappings
   const lowerCleaned = cleaned.toLowerCase();

@@ -625,6 +625,7 @@
     "lib/bank/duplicateDetection.ts",
     "lib/bank/index.ts",
     "lib/bank/mccCatalog.ts",
+    "lib/bank/merchantNoise.ts",
     "lib/bank/normalisation.ts",
     "lib/bank/parsers/csv.ts",
     "lib/bank/parsers/qif.ts",

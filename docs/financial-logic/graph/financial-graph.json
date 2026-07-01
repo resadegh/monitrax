@@ -4,7 +4,7 @@
   "name": "Monitrax Neomatrix — financial logic knowledge graph",
   "generatedNote": "Layer 1 (semantic graph) — the canonical model. Hand-verified per CLAUDE.md §19.2; every `verified` node/edge cites file:line read in source. Markdown views render FROM this file (do not hand-edit the generated md). Phase 53 N1 core slice + N4.1 income-tax spine + N4.2 reform CGT/neg-gearing + tax domain + health + CFO (score + what-if) + intelligence + reports (property portfolio). All 6 domains represented. + neobrain domain (Neobrain — the perception & learning layer: AI transaction-categorisation cascade, per-user + k-anon shared knowledge base, transfer detection, and document/receipt intelligence). All numbers feed core via UnifiedTransaction / Expense / Loan.",
   "builtAtCommit": null,
-  "lastReviewed": "2026-06-25",
+  "lastReviewed": "2026-07-01",
   "nodes": [
     {
       "id": "orchestrator.masterFinancialService.getMasterFinancialSnapshot",
@@ -2878,20 +2878,20 @@
       "kind": "engine",
       "label": "De-identifier (PII scrub)",
       "file": "lib/categorisation/kb/scrubSignature.ts",
-      "line": 46,
+      "line": 47,
       "layer": "engine",
       "domain": "neobrain",
       "trailStage": null,
       "regime": null,
       "semanticKey": null,
       "produces": "ScrubResult — a de-identified merchant signature (e.g. 'WOOLWORTHS METRO'), or rejection when no safe merchant token remains.",
-      "formula": "Reject transfer/payid/person markers → strip BSBs, card masks, dates, ref tails, payment-method noise → uppercase normalise → reject if <3 alpha chars. No PII/CDR ever enters the shared KB.",
+      "formula": "Phase 54.1 denoise FIRST (strip glued clock-times + expand verified abbreviations) + SHARED stripMerchantNumericNoise (BSB / card masks / reference tails / long digit runs — one source with the per-user identity, §12.2.1), THEN: reject transfer/payid/person markers → strip dates + payment-method tokens → uppercase normalise → reject if <3 alpha chars. No PII/CDR ever enters the shared KB.",
       "authority": "CLAUDE.md §13.3 (CDR sanitisation) + Phase 52",
       "inputs": [],
       "astHash": null,
       "verifiedBy": null,
       "workedExample": null,
-      "verifiedDate": "2026-06-25",
+      "verifiedDate": "2026-07-01",
       "status": "documented"
     },
     {
@@ -5214,6 +5214,48 @@
       "workedExample": null,
       "verifiedDate": "2026-06-29",
       "status": "documented"
+    },
+    {
+      "id": "engine.normalisation.normaliseMerchantName",
+      "kind": "engine",
+      "label": "Merchant identity normaliser (per-user standardised name)",
+      "file": "lib/bank/normalisation.ts",
+      "line": 95,
+      "layer": "engine",
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": "merchantStandardised — the canonical per-user merchant name stored on UnifiedTransaction and used as the EXACT-match key for MerchantMapping learning + auto-apply, and tested by the ~50 categorisation rules.",
+      "formula": "Strip payment-method prefixes / slash-dates / state codes → Phase 54.1 P1 denoise (strip glued clock-times, expand verified AU abbreviations e.g. 'hjs'→'hungry jacks') → P2 stripMerchantNumericNoise (BSB / card mask / ref / long digit runs — SHARED with the KB signature, §12.2.1) → MERCHANT_MAPPINGS substring resolve (known merchant → canonical short name, location-independent) → else Title Case. Same-vendor rows differing only by time/store-number collapse to ONE key; location kept (no over-merge).",
+      "authority": "Phase 18 (normalisation) + Phase 54.1 (denoise) — docs/blueprint/PHASE_54_NEOBRAIN.md §16",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-01",
+      "status": "documented"
+    },
+    {
+      "id": "law.neobrain.merchantNoise",
+      "kind": "law",
+      "label": "Merchant-noise denoising (time-strip + verified alias expansion)",
+      "file": "lib/bank/merchantNoise.ts",
+      "line": null,
+      "layer": null,
+      "domain": "neobrain",
+      "trailStage": null,
+      "regime": null,
+      "semanticKey": null,
+      "produces": null,
+      "formula": "ONE shared denoise applied identically by BOTH merchant-identity producers (per-user normaliseMerchantName + shared-KB scrubToSignature) so they never drift (§12.2.1): (1) strip glued/standalone clock-times HH:MM(:SS); (2) expand EVIDENCE-GATED whole-token AU abbreviations to the canonical merchant name; (3) P2 — strip identifying NUMERIC noise (BSB / card masks / reference tails / long free-standing digit runs) while NEVER stripping location words. So same-vendor rows differing only by time/store-number/ref collapse to one key; different-location rows stay distinct (over-merge would misstate spend-by-category, §19). Aliases are never populated speculatively (§19).",
+      "authority": "Phase 54.1 — docs/blueprint/PHASE_54_NEOBRAIN.md §16; CLAUDE.md §12.2.1 + §19",
+      "inputs": [],
+      "astHash": null,
+      "verifiedBy": null,
+      "workedExample": null,
+      "verifiedDate": "2026-07-01",
+      "status": "documented"
     }
   ],
   "edges": [
@@ -7148,8 +7190,8 @@
       "source": "verified",
       "fromUnit": null,
       "toUnit": null,
-      "evidence": "lib/categorisation/kb/scrubSignature.ts:46",
-      "verifiedDate": "2026-06-25"
+      "evidence": "lib/categorisation/kb/scrubSignature.ts:47",
+      "verifiedDate": "2026-07-01"
     },
     {
       "from": "engine.resolveTransaction.resolveTransactionMatches",
@@ -7997,6 +8039,36 @@
       "toUnit": null,
       "evidence": "grounding.ts:78 — validateGroundedNumbers(pack, claimed) resolves the AI-claimed refs against the assembled FactPack.",
       "verifiedDate": "2026-06-29"
+    },
+    {
+      "from": "engine.normalisation.normaliseMerchantName",
+      "to": "engine.tieCategorisation.categoriseTransaction",
+      "type": "feeds",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/tie/categorisation.ts:710 — categoriseByRules tests tx.merchantStandardised",
+      "verifiedDate": "2026-07-01"
+    },
+    {
+      "from": "engine.normalisation.normaliseMerchantName",
+      "to": "law.neobrain.merchantNoise",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/bank/normalisation.ts:114 denoiseMerchantText(cleaned)",
+      "verifiedDate": "2026-07-01"
+    },
+    {
+      "from": "engine.scrubSignature.scrubToSignature",
+      "to": "law.neobrain.merchantNoise",
+      "type": "governed-by",
+      "source": "verified",
+      "fromUnit": null,
+      "toUnit": null,
+      "evidence": "lib/categorisation/kb/scrubSignature.ts:58 denoiseMerchantText(raw)",
+      "verifiedDate": "2026-07-01"
     }
   ]
 }
