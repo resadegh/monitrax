@@ -490,4 +490,39 @@ Hand-maintaining an alias table caps out fast. The scalable answer is the alread
 
 ---
 
+## 17. Phase 54.2 — reconcile onto ONE AI categoriser (Step-2a, 2026-07-01)
+
+> **Finding that reshaped Step-2** (verified file:line, not guessed): there were **two** AI categorisers. Enabling the gated `geminiCategoriseOnMiss` (`KB_GEMINI_ENABLED`) would not have touched the main import — because the import ran a *different*, older bulk-Gemini path.
+
+### 17.1 The two engines (the §12.2.1 violation)
+
+| Path | Engine | Gate | Used by |
+|---|---|---|---|
+| **A (retired)** | `categoriseWithLearning` → `categoriseInBatches` (`aiCategorisation.ts`) | `settings.enableAI` (**default true**) + `GEMINI_API_KEY` | main import (`app/api/accounts/[id]/import/route.ts:247`) + Basiq sync (`basiqSync.ts:471`) |
+| **B (canonical)** | `categoriseTransaction` → `geminiCategoriseOnMiss` (KB cascade) | `KB_GEMINI_ENABLED` (default off) | single-row (`unified-transactions/route.ts`) |
+
+Path A could **auto-file an AI guess silently** (its results flowed through `classifyByConfidence`, which auto-accepts ≥0.90) — contradicting "AI proposes, user confirms" and the KB echo-chamber rule.
+
+### 17.2 The reconciliation (surgical — Reza decision 2026-07-01)
+
+- **Route import unknowns through the KB cascade** — `categoriseWithLearning`'s `needsAI` branch now calls **`categoriseUnknownsViaCascade`** (`aiCategorisation.ts:684`), a thin adapter that maps `NormalisedTransaction → UnifiedTransaction` and calls `categoriseTransactionBatch` with **no** `merchantMappings` (skips the cascade's layer-1 — merchant-learning already ran), so unknowns get rules → shared-KB prior → Gemini-on-miss → fallback. **The import route + Basiq sync are unchanged** — the adapter preserves the consumed `AICategorizationResult` shape.
+- **AI never auto-files** — `classifyByConfidence` now demotes `source==='AI'` out of `autoAccept` (always review → user confirm). New `law.neobrain.aiNeverAutoFiles`. Deterministic sources (RULE/USER/KB/transfer) auto-file as before.
+- **Retire Path A** — `categoriseInBatches` + `categoriseWithAI` marked `@deprecated` (no runtime caller); **full deletion is the immediate follow-up PR** (kept here to isolate the behaviour change from the code removal, and because this container can't compile-verify a large deletion — the preview build confirms the cascade path first).
+
+### 17.3 Behaviour changes (flagged — not silent)
+
+1. **AI at import now needs `KB_GEMINI_ENABLED=true`** (operator env). Until flipped, imports categorise via rules + shared-KB only; genuinely-unknown merchants land **uncategorised in review** (not AI-guessed). **Flip the flag when merging** to keep AI on import — now propose→confirm, never silent.
+2. **`isEssential`/`isRecurring` on AI-unknowns default `false`** (the cascade doesn't infer them; the user sets them on confirm). Learned/rule rows keep theirs.
+3. **Transfer parity preserved** — both engines use the `isTransferDescription` SSOT.
+
+### 17.4 Verification (§19.2) + self-review (§20.4)
+
+- `classifyByConfidence`: AI@0.97 → **needsReview** (never auto-file) ✓; RULE/USER/KB@≥0.90 → autoAccept ✓; anything <0.70 → requiresManual ✓ (`tests/neobrain/cascadeReconcile.test.ts`, 10 tests).
+- Adapter: `CategorisationResult → AICategorizationResult` maps category/confidence/source, defaults essential/recurring false, derives direction, undefined → Uncategorised (never drops a row) ✓.
+- 48 neobrain/scrub tests pass; Neomatrix anchors fixed (`classifyByConfidence:549`, `categoriseWithLearning:718`, `processUserConfirmation:851`) + new `engine.aiCategorisation.categoriseUnknownsViaCascade` + `law.neobrain.aiNeverAutoFiles`; `neomatrix:check` green.
+- **Financial build §20.4: v1 8.5 → v2 10/10.** The critique tightened scope to surgical (swap the one call, keep the import structure), separated the risky deletion into a follow-up, and forced the source-guard to be exclusive/exhaustive across the three bands.
+- **Step-2b (deferred, decided):** the "compare online" enrichment will use **Gemini-native Google-Search grounding** (same provider, de-identified token only) — a separate PR after this lands + `KB_GEMINI_ENABLED` is on.
+
+---
+
 *Phase 54 v1.0 — Neobrain consolidation SSOT. §14 (2026-06-27) adds the manual-reconciliation auto-apply loop; §15 (2026-06-27) is the factual-grounding-layer design (Apple Intelligence concept — Personal Financial Index + Capability Registry + privacy guarantee; zero-storage; bypass-proof gate; read-and-compute v1). Governed by CLAUDE.md §0 (four lenses), §12.2.1 (one source), §13.3 (CDR sanitisation), §19.1 (actuals), §20.4 (10/10 financial builds), Part 21 (Neomatrix). Update this doc — not the superseded phase docs — when the AI-perception architecture changes (§16 doc-sync).*

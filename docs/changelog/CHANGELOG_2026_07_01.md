@@ -137,3 +137,28 @@ Hand-maintaining an alias table can't cover the near-infinite description space.
 - Tests: `tests/neobrain/merchantNoise.test.ts` extended (P2 numeric strip, same-location match, over-merge guardrail, no-regression) — **38 passed**. Neomatrix formulas updated; `neomatrix:check` green.
 - Self-review §20.4: **v1 9.0 → v2 10/10** (the reframe was the unlock).
 - Cross-location matching for *unknown* merchants remains deferred to the KB token-prefix / AI tail (the Step-2 AI+KB plan).
+
+---
+
+### Phase 54.2 — reconcile onto ONE AI categoriser (Step-2a)
+
+**Type**: Refactor + safety (live import categorisation). **Reza decision 2026-07-01** after I surfaced a two-engine finding: enabling the gated Gemini-on-miss would NOT have touched the main import (it ran a different, older bulk-Gemini path that could auto-file an AI guess silently).
+
+- **Two AI categorisers found (§12.2.1 violation):** Path A `categoriseWithLearning → categoriseInBatches` (import + Basiq, gated `enableAI` default-true + `GEMINI_API_KEY`) vs Path B `categoriseTransaction → geminiCategoriseOnMiss` (KB cascade, `KB_GEMINI_ENABLED`).
+- **Fix (surgical):** `categoriseWithLearning`'s `needsAI` branch now calls new `categoriseUnknownsViaCascade` (`lib/bank/aiCategorisation.ts:684`) — maps `NormalisedTransaction→UnifiedTransaction` + `categoriseTransactionBatch({})` (skips cascade layer-1; merchant-learning already ran) → rules → KB prior → Gemini-on-miss → fallback. **Import route + Basiq sync unchanged** (adapter preserves `AICategorizationResult`).
+- **AI never auto-files:** `classifyByConfidence` demotes `source==='AI'` out of auto-accept (always review → user confirm; echo-chamber safe). New `law.neobrain.aiNeverAutoFiles`.
+- **Retire Path A:** `categoriseInBatches` + `categoriseWithAI` `@deprecated` (no caller); full deletion is the immediate follow-up PR (isolate behaviour change from removal; container can't compile-verify a large deletion — preview confirms first).
+- **Behaviour flags:** (1) AI at import now needs `KB_GEMINI_ENABLED=true` (operator) — flip when merging, else unknowns land uncategorised-in-review not AI-guessed; (2) `isEssential`/`isRecurring` on AI-unknowns default false (user sets on confirm); (3) transfer parity preserved (`isTransferDescription` SSOT).
+
+#### Files Modified
+- `lib/bank/aiCategorisation.ts` — new `mapNormalisedToUnified` / `cascadeResultToAIResult` / `categoriseUnknownsViaCascade`; `classifyByConfidence` AI-never-auto-file guard; `source?` on `AICategorizationResult`; `categoriseInBatches`/`categoriseWithAI` `@deprecated`.
+- `tests/neobrain/cascadeReconcile.test.ts` — NEW (10 tests): the never-auto-file guard + adapter mapping.
+- `docs/blueprint/PHASE_54_NEOBRAIN.md` §17; `docs/financial-logic/graph/*` (anchors fixed + new cascade-adapter engine + aiNeverAutoFiles law).
+
+#### Testing
+- [x] `tests/neobrain/{merchantNoise,cascadeReconcile}.test.ts` + `scrubSignature` — **48 passed** (pure-logic; DB siblings mocked so they run without a generated Prisma client).
+- [x] `npm run neomatrix:check` — green (anchors resolve 146/146; census 0).
+- [ ] Full vitest + `next build` — **Vercel preview** (container can't `npm ci`/`prisma generate` — network).
+
+#### Self-review (§20.4 — financial build, 10/10)
+v1 8.5 → v2 10/10: scope tightened to surgical (swap one call, keep import structure), risky deletion split to a follow-up, source-guard proven exclusive/exhaustive across the three bands.
