@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 241 · **Edges:** 323
-- **By kind:** orchestrator 9 · engine 136 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
-- **By status:** documented 241
-- **Edge provenance:** verified 323 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/156 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 242 · **Edges:** 325
+- **By kind:** orchestrator 9 · engine 137 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
+- **By status:** documented 242
+- **Edge provenance:** verified 325 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/157 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -162,7 +162,8 @@
 | **Merchant identity normaliser (per-user standardised name)** | `lib/bank/normalisation.ts:95` | engine | neobrain | merchantStandardised — the canonical per-user merchant name stored on UnifiedTransaction and used as the EXACT-match key for MerchantMapping learning + auto-apply, and tested by the ~50 categorisation rules. | Phase 18 (normalisation) + Phase 54.1 (denoise) — docs/blueprint/PHASE_54_NEOBRAIN.md §16 |  | documented |
 | **Import-unknowns → KB cascade bridge (Phase 54.2)** | `lib/bank/aiCategorisation.ts:269` | engine | neobrain | AICategorizationResult[] — the import's remaining unknowns categorised through the KB cascade (categoriseTransactionBatch), each carrying its cascade `source` so classifyByConfidence can keep AI proposals out of auto-accept. | Phase 54.2 reconciliation — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §12.2.1 |  | documented |
 | **Grounded merchant identify (Google-Search, Phase 54.2b)** | `lib/categorisation/kb/geminiOnMiss.ts:230` | engine | neobrain | GeminiCategoryResult\|null — a merchant NAME guess (merchantGuess) + category from a single Gemini 2.x google_search grounded call on the DE-IDENTIFIED signature. grounded=true, source 'AI' (never auto-files). | docs/blueprint/PHASE_54_NEOBRAIN.md §18; CLAUDE.md §13.3 (CDR sanitisation), §12.7 (managed service) |  | documented |
-| **Re-categorise backfill (existing uncategorised rows, Phase 54.2d)** | `lib/bank/recategoriseExisting.ts:103` | engine | neobrain | RecategoriseResult {scanned, recategorised, renamed} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows so import-time engine improvements reach data already in the ledger. | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade) |  | documented |
+| **Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g)** | `lib/bank/recategoriseExisting.ts:185` | engine | neobrain | RecategoriseResult {scanned, recategorised, renamed, aiSuggested, aiMerchantsQueried, aiCapped} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows (and, opt-in, a cost-bounded AI tail) so import-time engine improvements reach data already in the ledger. | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade) |  | documented |
+| **Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g)** | `lib/bank/recategoriseExisting.ts:296` | engine | neobrain | {aiSuggested, aiMerchantsQueried, aiCapped} — for the rows the deterministic pass still missed, proposes a category SUGGESTION per merchant (never auto-filed, §54.2). | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §54.2 (AI never auto-files), §12.11 (guarded write), §12.2.1 (reuses scrubToSignature + geminiCategoriseOnMiss) |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -583,8 +584,10 @@
 | De-identifier (PII scrub) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:117 scrubToSignature(raw) → geminiIdentifyMerchantGrounded(scrub.pattern) |
 | Gemini-on-miss (RAG) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:125 geminiIdentifyMerchantGrounded(scrub.pattern) |
 | Grounded merchant identify (Google-Search, Phase 54.2b) | → | De-identification before shared KB | governed-by | — | verified | de-identified token only egresses to Google Search (§13.3) |
-| Re-categorise backfill (existing uncategorised rows, Phase 54.2d) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/bank/recategoriseExisting.ts:142 categoriseTransaction(uni,{skipAiOnMiss:true}) |
-| Re-categorise backfill (existing uncategorised rows, Phase 54.2d) | → | Merchant identity normaliser (per-user standardised name) | feeds | — | verified | lib/bank/recategoriseExisting.ts:117 renormaliseMerchant(...) re-normalises existing rows |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/bank/recategoriseExisting.ts:248 categoriseTransaction(uni,{merchantMappings,skipAiOnMiss:true}) |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Merchant identity normaliser (per-user standardised name) | feeds | — | verified | lib/bank/recategoriseExisting.ts:225 renormaliseMerchant(rawForAi) re-normalises existing rows |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | feeds | — | verified | lib/bank/recategoriseExisting.ts:271 opts.useAI ? aiSuggestDistinctUnknowns(userId, stillUnknown) |
+| Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/bank/recategoriseExisting.ts:318 geminiCategoriseOnMiss(group.rawForAi) — one call per distinct merchant |
 
 ---
 

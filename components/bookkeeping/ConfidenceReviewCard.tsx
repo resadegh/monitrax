@@ -63,7 +63,7 @@ export function ConfidenceReviewCard({
   const { token } = useAuth();
   const [snap, setSnap] = useState<ReviewSnapshot | null>(null);
   const [confirming, setConfirming] = useState(false);
-  const [rescanning, setRescanning] = useState(false);
+  const [rescanning, setRescanning] = useState<'none' | 'det' | 'ai'>('none');
   const [rescanMsg, setRescanMsg] = useState<string | null>(null);
 
   const fetchSnapshot = useCallback(async () => {
@@ -112,22 +112,30 @@ export function ConfidenceReviewCard({
 
   // Phase 54.2d — re-run the current denoiser + deterministic categoriser over
   // EXISTING uncategorised rows (cost-free; never overwrites a set category).
-  const rescan = useCallback(async () => {
-    if (!token || rescanning) return;
-    setRescanning(true);
+  // Phase 54.2g — `useAI` adds a cost-bounded Gemini tail for the merchants the
+  // deterministic layers still miss (one call per distinct merchant, capped, written
+  // as an unconfirmed suggestion — never auto-filed, §54.2).
+  const rescan = useCallback(async (useAI: boolean) => {
+    if (!token || rescanning !== 'none') return;
+    setRescanning(useAI ? 'ai' : 'det');
     setRescanMsg(null);
     try {
       const res = await fetch('/api/unified-transactions/recategorise', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ useAI }),
       });
       const json = await res.json();
       if (res.ok && json.success) {
-        const { recategorised = 0, renamed = 0 } = json.data ?? {};
+        const { recategorised = 0, renamed = 0, aiSuggested = 0, aiCapped = false } = json.data ?? {};
+        const parts: string[] = [];
+        if (recategorised > 0) parts.push(`filed ${recategorised.toLocaleString('en-AU')}`);
+        if (renamed > 0) parts.push(`cleaned ${renamed.toLocaleString('en-AU')} name${renamed === 1 ? '' : 's'}`);
+        if (aiSuggested > 0) parts.push(`AI suggested ${aiSuggested.toLocaleString('en-AU')} to confirm`);
         setRescanMsg(
-          recategorised + renamed === 0
+          parts.length === 0
             ? 'No new matches — nothing to tidy.'
-            : `Filed ${recategorised.toLocaleString('en-AU')} · cleaned ${renamed.toLocaleString('en-AU')} name${renamed === 1 ? '' : 's'}.`
+            : parts.join(' · ') + '.' + (aiCapped ? ' More remain — run again to continue.' : '')
         );
         onConfirmed?.(recategorised);
         await fetchSnapshot();
@@ -135,7 +143,7 @@ export function ConfidenceReviewCard({
     } catch {
       setRescanMsg('Re-scan failed — try again.');
     } finally {
-      setRescanning(false);
+      setRescanning('none');
     }
   }, [token, rescanning, onConfirmed, fetchSnapshot]);
 
@@ -260,13 +268,23 @@ export function ConfidenceReviewCard({
           )}
           <button
             type="button"
-            onClick={rescan}
-            disabled={rescanning}
+            onClick={() => rescan(false)}
+            disabled={rescanning !== 'none'}
             title="Re-run the latest merchant recognition over your existing uncategorised transactions"
             className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-foreground/15 bg-background/50 px-4 py-2 text-sm font-medium text-foreground backdrop-blur transition hover:bg-muted disabled:opacity-60"
           >
-            {rescanning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {rescanning === 'det' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             Re-scan existing
+          </button>
+          <button
+            type="button"
+            onClick={() => rescan(true)}
+            disabled={rescanning !== 'none'}
+            title="Ask AI to identify the merchants we still can't recognise — it proposes a category for you to confirm (never auto-filed)"
+            className="inline-flex items-center justify-center gap-1.5 rounded-[14px] border border-sky-500/30 bg-sky-500/[0.08] px-4 py-2 text-sm font-medium text-sky-700 backdrop-blur transition hover:bg-sky-500/15 disabled:opacity-60 dark:text-sky-300"
+          >
+            {rescanning === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            Ask AI for the rest
           </button>
         </div>
         {rescanMsg && <p className="mt-2 text-xs text-muted-foreground">{rescanMsg}</p>}

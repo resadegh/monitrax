@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { planBackfillWrite } from '@/lib/bank/recategoriseExisting';
+import { planBackfillWrite, planAiSuggestionWrite } from '@/lib/bank/recategoriseExisting';
 import { categoriseTransaction } from '@/lib/tie/categorisation';
 import type { UnifiedTransaction } from '@/lib/tie/types';
 
@@ -51,6 +51,45 @@ describe('planBackfillWrite — the §12.11 write policy', () => {
     const p = planBackfillWrite('Old', 'Unknown', R('FALLBACK', 0.1));
     expect(p.renamed).toBe(false);
     expect(p.data.merchantStandardised).toBeUndefined();
+  });
+});
+
+describe('planAiSuggestionWrite — the §54.2 AI-suggestion policy (opt-in tail)', () => {
+  const AI = (over: Partial<Parameters<typeof planAiSuggestionWrite>[1]> = {}) => ({
+    categoryLevel1: 'Food & Dining',
+    categoryLevel2: 'Fast Food',
+    subcategory: null,
+    confidence: 0.82,
+    merchantGuess: null,
+    ...over,
+  });
+
+  it('writes the AI category as a SUGGESTION with confidence', () => {
+    const p = planAiSuggestionWrite('16 49hjs North Parramatta', AI());
+    expect(p.suggested).toBe(true);
+    expect(p.data.categoryLevel1).toBe('Food & Dining');
+    expect(p.data.confidenceScore).toBe(0.82);
+  });
+
+  it('NEVER sets userCorrectedCategory — the row stays in review (§54.2, never auto-files)', () => {
+    const p = planAiSuggestionWrite('x', AI({ confidence: 0.99 }));
+    expect(p.data.userCorrectedCategory).toBeUndefined();
+  });
+
+  it('cleans the display name when a grounded pass named the merchant', () => {
+    const p = planAiSuggestionWrite('16 49hjs North Parramatta', AI({ merchantGuess: 'Hungry Jacks' }));
+    expect(p.data.merchantStandardised).toBe('Hungry Jacks');
+  });
+
+  it('does NOT rewrite the name when the guess equals the current name', () => {
+    const p = planAiSuggestionWrite('Hungry Jacks', AI({ merchantGuess: 'Hungry Jacks' }));
+    expect(p.data.merchantStandardised).toBeUndefined();
+  });
+
+  it('writes nothing when the AI produced no usable category (null / no level1)', () => {
+    expect(planAiSuggestionWrite('x', null).suggested).toBe(false);
+    expect(planAiSuggestionWrite('x', AI({ categoryLevel1: '' })).suggested).toBe(false);
+    expect(Object.keys(planAiSuggestionWrite('x', null).data)).toHaveLength(0);
   });
 });
 

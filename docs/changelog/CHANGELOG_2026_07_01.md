@@ -285,3 +285,33 @@ User confirmation: NOT REQUIRED — only overwrites the AI's own unconfirmed gue
 
 ### Self-review gate (§20.5)
 Requirement: disable all Claude usage, Gemini-only. 3× review: v1 hardcode `false` (rejected — not reversible); v2 `DISABLE_ANTHROPIC=true` env (rejected — fails OPEN, spend continues until operator acts); v3 `ANTHROPIC_ENABLED` opt-in default-OFF (chosen — fails CLOSED, zero spend on merge, one-flag reversible). **10/10** — one lever kills all 4 sites, every feature degrades (none breaks), no financial surface touched.
+
+---
+
+### Phase 54.2g — Neobrain: cost-bounded AI re-scan over unknowns ("Ask AI for the rest")
+
+**Type**: Feature (Reza approved 2026-07-01: "Build it, cost-bounded"; "consult neomatrix before doing that").
+
+**What & why:** the deterministic backfill (54.2d/f) fixes merchants the rules/KB know. For the genuine unknown tail it left rows uncategorised. This adds an OPT-IN, cost-bounded Gemini pass that proposes a category (and, when grounded, a merchant name) for those rows — as an unconfirmed **suggestion** the user confirms.
+
+**Cost bound (the load-bearing design, Reza's Q):**
+- **One Gemini call per DISTINCT merchant** — still-unknown rows are grouped by de-identified signature (`scrubToSignature`), so 500 noisy rows from one vendor = ONE call, not 500.
+- **Hard cap** `MAX_AI_MERCHANTS_PER_RUN = 50` distinct merchants/run; `aiCapped` tells the UI "more remain — run again."
+- **Opt-in** — a separate "Ask AI for the rest" button; the free "Re-scan existing" button is unchanged. No-op when `KB_GEMINI_ENABLED` is off.
+
+**"Stored so no future call for similar?" (Reza's Q):** yes — via **confirmation**, not by caching a guess (§54.2 anti-echo-chamber). On confirm, the existing learning fires: private `merchantMapping` (that user's future rows → zero AI) + a shared-KB vote (`recordContribution`) that graduates to a global prior at K distinct users (everyone → zero AI). Within a run, signature-dedup already means similar rows never trigger separate calls.
+
+**Never auto-files (§54.2):** `planAiSuggestionWrite` writes `categoryLevel1/2/subcategory/confidenceScore` (+ cleaned name from a grounded guess) but NEVER `userCorrectedCategory` — the row stays in review. §12.11 guard re-asserted at write time; only de-identified signatures reach the LLM (transfers/PII skipped).
+
+### Files Modified
+- `lib/bank/recategoriseExisting.ts` — `RecategoriseOptions{useAI}`, `planAiSuggestionWrite` (pure, §54.2), `aiSuggestDistinctUnknowns` (dedup + cap + one-call-per-merchant). Reuses `scrubToSignature` + `geminiCategoriseOnMiss` (SSOT §12.2.1).
+- `app/api/unified-transactions/recategorise/route.ts` — accepts `{ useAI }`.
+- `components/bookkeeping/ConfidenceReviewCard.tsx` — "Ask AI for the rest" button + AI-suggested/capped result copy.
+- `tests/neobrain/recategoriseBackfill.test.ts` — +5 `planAiSuggestionWrite` tests (never sets userCorrectedCategory; grounded name-clean; no-op on null).
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — new `engine.recategorise.aiSuggestDistinctUnknowns` node + edges; recategorise node line/formula updated; drifted anchors fixed (§21.2.1).
+
+### Testing
+- [x] 116 neobrain tests green (incl. 14 recategorise-backfill). `tsc` clean on touched files. `neomatrix:check` green (149/149 anchors, census 0 uncovered).
+
+### Self-review gate (§20.5) — financial build 10/10
+Requirement: cost-bounded AI re-scan, results learned so no repeat calls, honest on tidy-up scope. 3× review: v1 per-row AI (rejected — no dedup, unbounded cost) → v2 dedup-by-signature + cap (chosen) → v3 confirmed the durable "no repeat call" is confirmation→KB graduation, NOT caching an unconfirmed guess (anti-echo-chamber §54.2). Cost is provably bounded (≤50 calls/run, opt-in); never auto-files; SSOT-reuses the one scrubber + one AI engine.
