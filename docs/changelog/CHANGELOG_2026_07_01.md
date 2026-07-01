@@ -222,3 +222,14 @@ Operations touching existing rows:
 3. **Guard:** the `updateMany` WHERE includes the full uncategorised/unlinked guard, so a category the user set between read and write is never overwritten; and only non-AI (RULE/USER/KB) ≥0.9 results fill a category.
 
 User confirmation: NOT REQUIRED — fills only empty categories on the user's own uncategorised rows; never overwrites user data (guarded).
+
+---
+
+### Phase 54.2e — general fix: strip LEADING space-separated timestamps
+
+**Type**: Fix (categorisation denoising). **Reza** ran the backfill on existing HJS rows → "No new matches — nothing to tidy". Root cause (verified empirically): `renormaliseMerchant('14:44hjs …')` → "Hungry Jacks" ✓, but the STORED form `'14 44hjs …'` → unchanged ✗. Import's `cleanDescription` rewrites `:`→` ` before storage, so P1's colon-time regex + the glued `44hjs` both miss on existing rows.
+
+- **General** (not HJS-specific): `stripTransactionTimes` now also strips a LEADING space-separated time (`^\d{1,2}\s+\d{2}(?=\D|$)`) — helps EVERY existing row with a timestamp prefix ("10 30 Woolworths Metro" → "Woolworths Metro" too). New imports still carry the colon and hit the existing regex.
+- Guardrails: leading-only (won't eat mid-string pairs like `SOMESHOP 1234 SYDNEY`), and won't strip a leading 4-digit (`1300 SMILES`). 61 neobrain tests green.
+- Scope note (Reza's Q): noise-removal generalises to all descriptions; known-merchant resolution covers rules/seed/mappings; the `hjs` alias is one verified entry (NOT the general mechanism); arbitrary unknown merchants need the AI/grounded tail (the backfill skips the paid LLM by design — a scope decision pending Reza).
+- Neomatrix `law.neobrain.merchantNoise` formula updated; `neomatrix:check` green.

@@ -38,10 +38,25 @@
  */
 const TRANSACTION_TIME_RE = /\d{1,2}:\d{2}(?::\d{2})?/g;
 
+/**
+ * Phase 54.2e — a LEADING clock-time whose colon became a SPACE. Import's
+ * `cleanDescription` rewrites `:` → ` ` before the row is stored, so an existing
+ * ledger row reads "14 44hjs North Parramatta" (not "14:44hjs"). Anchored to the
+ * START and requiring a non-digit right after the minutes so it strips the glued
+ * "HH MMmerchant" prefix ("14 44hjs" → "hjs") WITHOUT eating a legitimate
+ * mid-string number pair (e.g. "SOMESHOP 1234 SYDNEY" is untouched — it doesn't
+ * start with the pair). New imports still carry the colon and hit TRANSACTION_TIME_RE.
+ */
+const LEADING_SPACE_TIME_RE = /^\s*\d{1,2}\s+\d{2}(?=\D|$)/;
+
 /** Strip glued/standalone clock times and collapse the resulting whitespace. */
 export function stripTransactionTimes(input: string): string {
   if (!input) return '';
-  return input.replace(TRANSACTION_TIME_RE, ' ').replace(/\s+/g, ' ').trim();
+  return input
+    .replace(LEADING_SPACE_TIME_RE, ' ')
+    .replace(TRANSACTION_TIME_RE, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 /**

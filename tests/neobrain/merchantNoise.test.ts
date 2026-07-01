@@ -42,6 +42,21 @@ describe('stripTransactionTimes', () => {
   it('does not strip a slash-date (that is a different noise class)', () => {
     expect(stripTransactionTimes('TELSTRA 05/06/2026')).toBe('TELSTRA 05/06/2026');
   });
+  it('strips a LEADING space-separated time (colon → space at import) — 54.2e', () => {
+    // cleanDescription rewrites "14:44hjs" → "14 44hjs" before storage; the
+    // backfill must still recognise it as a leading time.
+    expect(stripTransactionTimes('14 44hjs North Parramattanorthmead')).toBe(
+      'hjs North Parramattanorthmead'
+    );
+    expect(stripTransactionTimes('09 56hjs North Parramatta')).toBe('hjs North Parramatta');
+  });
+  it('does NOT strip a mid-string number pair (only a LEADING time)', () => {
+    expect(stripTransactionTimes('SOMESHOP 1234 SYDNEY')).toBe('SOMESHOP 1234 SYDNEY');
+    expect(stripTransactionTimes('LEVEL 33 BAR')).toBe('LEVEL 33 BAR');
+  });
+  it('does NOT strip a leading 4-digit number (not a time)', () => {
+    expect(stripTransactionTimes('1300 SMILES DENTAL')).toBe('1300 SMILES DENTAL');
+  });
 });
 
 describe('expandMerchantAliases', () => {
@@ -82,6 +97,10 @@ describe('end-to-end — per-user identity (renormaliseMerchant)', () => {
     expect(a).toBe('Hungry Jacks');
     expect(b).toBe('Hungry Jacks');
     expect(a).toBe(b); // → per-user auto-apply + rules match across location/time
+  });
+  it('the SPACE form as stored on existing rows also resolves (54.2e backfill fix)', () => {
+    expect(renormaliseMerchant('14 44hjs North Parramattanorthmead')).toBe('Hungry Jacks');
+    expect(renormaliseMerchant('09 56hjs North Parramattanorthmead')).toBe('Hungry Jacks');
   });
   it('a clean known merchant is unaffected by the new denoise', () => {
     expect(renormaliseMerchant('WOOLWORTHS 1234 NSW')).toBe('Woolworths');
