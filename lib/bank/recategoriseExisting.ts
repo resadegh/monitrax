@@ -75,16 +75,28 @@ export function planBackfillWrite(
   return { data, renamed, recategorised };
 }
 
-/** The §12.11 guard — the ONLY rows this backfill may ever write to. */
+/**
+ * The §12.11 guard — the ONLY rows this backfill may ever write to.
+ *
+ * "Uncategorised" is the CANONICAL definition the Activity list uses
+ * (app/api/unified-transactions/route.ts:121): `userCorrectedCategory != true`
+ * — NOT `categoryLevel1 = null`. The import cascade sets `categoryLevel1` on
+ * EVERY row (fallback → 'Other'), so a row the user sees as "Uncategorised" has
+ * a category value the user simply hasn't confirmed. Guarding on
+ * `categoryLevel1 null` (the original 54.2d guard) fetched ZERO of these rows —
+ * that was the "nothing to tidy" bug. We never touch a user-confirmed row
+ * (`userCorrectedCategory = true`), and only overwrite the AI's own unconfirmed
+ * guess with a better deterministic match.
+ */
 function uncategorisedGuard(userId: string): Prisma.UnifiedTransactionWhereInput {
   return {
     userId,
-    OR: [{ categoryLevel1: null }, { categoryLevel1: '' }],
+    userCorrectedCategory: { not: true },
     expenseId: null,
     incomeId: null,
     loanId: null,
-    isTransfer: false,
-    isInvestmentContribution: false,
+    isTransfer: { not: true },
+    isInvestmentContribution: { not: true },
   };
 }
 
