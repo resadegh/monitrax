@@ -315,3 +315,26 @@ Requirement: disable all Claude usage, Gemini-only. 3× review: v1 hardcode `fal
 
 ### Self-review gate (§20.5) — financial build 10/10
 Requirement: cost-bounded AI re-scan, results learned so no repeat calls, honest on tidy-up scope. 3× review: v1 per-row AI (rejected — no dedup, unbounded cost) → v2 dedup-by-signature + cap (chosen) → v3 confirmed the durable "no repeat call" is confirmation→KB graduation, NOT caching an unconfirmed guess (anti-echo-chamber §54.2). Cost is provably bounded (≤50 calls/run, opt-in); never auto-files; SSOT-reuses the one scrubber + one AI engine.
+
+---
+
+### Phase 54.2g.1 — broaden the merchant-name tidy-up to ALL rows (regardless of category)
+
+**Type**: Enhancement (Reza approved 2026-07-01: "yes thats a good idea broaden the tidy up").
+
+**Gap:** the "Re-scan existing" button tidied names only on *uncategorised* rows, so a row the user confirmed long ago kept its noisy name ("16 49hjs North Parramatta"). The name is a DERIVED display field (never user-entered), so cleaning it is safe on any row.
+
+**Change:** extracted `renameAllMerchants(userId)` — a cosmetic, name-only pass over ALL of a user's rows regardless of category, reusing the tested `planBackfillWrite` rename policy (§12.2.1). `recategoriseUncategorised` now runs it as **Pass A** (before the uncategorised category-fill Pass B, so names are clean when Pass B reads them — no double write). The existing `POST /unified-transactions/renormalize` route was repointed to the same helper (removed its duplicate inline loop — SSOT §12.2.1).
+
+**§12.11 safety:** name-only — touches `merchantStandardised` (derived) and NEVER category/amount/links/`userCorrectedCategory`. Cleaning a confirmed row only fixes how its name reads.
+
+### Files Modified
+- `lib/bank/recategoriseExisting.ts` — new `renameAllMerchants`; `recategoriseUncategorised` restructured into Pass A (all-rows rename) + Pass B (uncategorised category-fill).
+- `app/api/unified-transactions/renormalize/route.ts` — thin wrapper over `renameAllMerchants` (dedup; −~40 lines).
+- `docs/financial-logic/graph/financial-graph.json` + `GENERATED_CORE.md` — new `engine.recategorise.renameAllMerchants` node; edges repointed (rename now flows through it); anchors fixed (§21.2.1).
+
+### Testing
+- [x] 116 neobrain tests green (the `planBackfillWrite` rename-policy tests cover the reused logic). `tsc` clean on touched files. `neomatrix:check` green.
+
+### Self-review gate (§20.5) — 10/10
+Requirement: broaden name tidy-up to all rows safely. 3× review: v1 duplicate loop in the button (rejected — §12.2.1) → v2 shared `renameAllMerchants` reused by both the button and the renormalize route → v3 ordered Pass A before Pass B to avoid double rename-writes + confirmed name-only is §12.11-safe on confirmed rows.

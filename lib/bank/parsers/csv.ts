@@ -164,7 +164,7 @@ function detectBankMapping(headers: string[]): BankMapping | null {
   for (const mapping of BANK_MAPPINGS) {
     const normalizedPatterns = mapping.patterns.map(p => p.toLowerCase());
     const matchCount = normalizedPatterns.filter(p =>
-      normalizedHeaders.some(h => h.includes(p) || p.includes(h))
+      normalizedHeaders.some(h => headerMatches(h, p))
     ).length;
 
     // Require at least 60% match
@@ -177,13 +177,28 @@ function detectBankMapping(headers: string[]): BankMapping | null {
 }
 
 /**
+ * True when header `h` corresponds to the target name `p`. CRITICAL: an EMPTY
+ * header never matches — otherwise `p.includes('')` (always true) lets a blank
+ * column (common in AMEX/Qantas exports) satisfy EVERY pattern, so any bank
+ * "matches" 100% and every column lookup collapses onto the blank column
+ * (2026-07-02: "Missing or invalid amount"). The reverse direction
+ * (`p.includes(h)`) is only allowed for headers ≥3 chars so a stray 1-2 char
+ * header can't capture unrelated targets.
+ */
+function headerMatches(h: string, p: string): boolean {
+  const hh = h.trim().toLowerCase();
+  const pp = p.trim().toLowerCase();
+  if (!hh || !pp) return false;
+  if (hh.includes(pp)) return true;
+  if (hh.length >= 3 && pp.includes(hh)) return true;
+  return false;
+}
+
+/**
  * Find column index by name (case-insensitive, partial match)
  */
 function findColumnIndex(headers: string[], columnName: string): number {
-  const normalized = columnName.toLowerCase();
-  return headers.findIndex(h =>
-    h.toLowerCase().includes(normalized) || normalized.includes(h.toLowerCase())
-  );
+  return headers.findIndex(h => headerMatches(h, columnName));
 }
 
 /**
@@ -269,6 +284,86 @@ function parseAmount(amountStr: string | undefined): number | undefined {
 }
 
 /**
+ * A row "looks like data" (not a header) if any cell parses as a date. Header
+ * rows are labels ("Date", "Amount") which never parse as dates. Used to
+ * auto-detect headerless CSVs (common for NAB / some AU banks).
+ */
+function rowLooksLikeData(row: string[]): boolean {
+  return row.some((cell) => parseDate(cell, 'DD/MM/YYYY') !== null);
+}
+
+/**
+ * Infer the date / amount / description columns from the DATA when a CSV has no
+ * header and no recognised bank format. Samples up to 20 rows and classifies
+ * each column by content:
+ *   - dateCol   = the column with the most parseable dates.
+ *   - amountCol = a money column, PREFERRING one that carries negatives (real
+ *     spend) and the smallest typical magnitude — so a running "balance" column
+ *     (large, mostly one sign) is not mistaken for the transaction amount.
+ *   - descCol   = the most text-like column (fewest date/number parses).
+ * Returns -1 for a column it can't infer (caller leaves it absent). Conservative
+ * by design (§19): a wrong amount column mis-states every transaction, so the
+ * negatives-first + smallest-magnitude heuristic avoids grabbing the balance.
+ */
+function inferColumns(dataRows: string[][]): { dateCol: number; amountCol: number; descCol: number } {
+  const sample = dataRows.filter((r) => r.length > 0).slice(0, 20);
+  const colCount = sample.reduce((m, r) => Math.max(m, r.length), 0);
+
+  let dateCol = -1;
+  let bestDateHits = 0;
+  const numericStats: Array<{ col: number; hasNegative: boolean; avgMag: number; numericRate: number }> = [];
+  const textScore: number[] = [];
+
+  for (let c = 0; c < colCount; c++) {
+    let dateHits = 0;
+    let numericHits = 0;
+    let negatives = 0;
+    let magSum = 0;
+    let nonEmpty = 0;
+    for (const row of sample) {
+      const cell = (row[c] ?? '').trim();
+      if (!cell) continue;
+      nonEmpty++;
+      if (parseDate(cell, 'DD/MM/YYYY') !== null) dateHits++;
+      const amt = parseAmount(cell);
+      if (amt !== undefined) {
+        numericHits++;
+        if (amt < 0) negatives++;
+        magSum += Math.abs(amt);
+      }
+    }
+    if (dateHits > bestDateHits) {
+      bestDateHits = dateHits;
+      dateCol = c;
+    }
+    const numericRate = nonEmpty > 0 ? numericHits / nonEmpty : 0;
+    numericStats.push({ col: c, hasNegative: negatives > 0, avgMag: numericHits > 0 ? magSum / numericHits : Infinity, numericRate });
+    // text-like = non-empty cells that are neither a date nor a number
+    textScore[c] = nonEmpty > 0 ? (nonEmpty - dateHits - numericHits) / nonEmpty : 0;
+  }
+
+  // Amount: numeric columns (rate ≥ 0.6) that aren't the date column, preferring
+  // ones with negatives, then smallest average magnitude (amount not balance).
+  const amountCandidates = numericStats
+    .filter((s) => s.col !== dateCol && s.numericRate >= 0.6)
+    .sort((a, b) => (Number(b.hasNegative) - Number(a.hasNegative)) || (a.avgMag - b.avgMag));
+  const amountCol = amountCandidates.length > 0 ? amountCandidates[0].col : -1;
+
+  // Description: most text-like column that isn't date or amount.
+  let descCol = -1;
+  let bestText = -1;
+  for (let c = 0; c < colCount; c++) {
+    if (c === dateCol || c === amountCol) continue;
+    if (textScore[c] > bestText) {
+      bestText = textScore[c];
+      descCol = c;
+    }
+  }
+
+  return { dateCol: dateCol >= 0 ? dateCol : 0, amountCol, descCol: descCol >= 0 ? descCol : 1 };
+}
+
+/**
  * Main CSV parsing function
  */
 export function parseCSV(
@@ -285,9 +380,15 @@ export function parseCSV(
     };
   }
 
-  // Determine if first row is header
+  // Determine if first row is a header. Many AU banks (NAB, some ING exports)
+  // export HEADERLESS CSVs — the first row is already a transaction. If the
+  // caller didn't say, auto-detect: a header row has no cell that parses as a
+  // date, whereas a data row does. Without this, a headerless file loses its
+  // first row to a phantom "header" and every remaining row fails column
+  // detection → 0 transactions → the import route used to 500 (2026-07-02).
   const skipRows = options?.skipRows ?? 0;
-  const hasHeader = options?.hasHeader ?? true;
+  const firstRow = rows[skipRows] ?? [];
+  const hasHeader = options?.hasHeader ?? !rowLooksLikeData(firstRow);
 
   const dataStartRow = skipRows + (hasHeader ? 1 : 0);
   const headers = hasHeader ? rows[skipRows] : [];
@@ -296,47 +397,41 @@ export function parseCSV(
   // Detect bank format or use provided options
   const bankMapping = headers.length > 0 ? detectBankMapping(headers) : null;
 
-  const dateCol = options?.dateColumn
-    ? findColumnIndex(headers, options.dateColumn)
-    : bankMapping?.dateColumn
-    ? findColumnIndex(headers, bankMapping.dateColumn)
-    : 0;
+  // Unknown-format fallback: infer the date, amount and description columns from
+  // the DATA itself (which column parses as dates, which as a signed money value,
+  // which is text). Runs whenever NO known bank matched — headerless OR a headed
+  // CSV from a bank we don't have a mapping for (Reza 2026-07-02: "CSV files can
+  // be different formats from different banks"). A headed known-bank CSV keeps its
+  // named mapping. Only ever supplies FALLBACKS (via resolveCol) — never overrides
+  // a column a mapping/option resolved successfully.
+  const inferred = !bankMapping ? inferColumns(dataRows) : null;
 
-  const descCol = options?.descriptionColumn
-    ? findColumnIndex(headers, options.descriptionColumn)
-    : bankMapping?.descriptionColumn
-    ? findColumnIndex(headers, bankMapping.descriptionColumn)
-    : 1;
+  // Resolve a column: explicit option → detected-bank column → positional
+  // fallback. CRITICAL: when the explicit/mapping column NAME isn't found in the
+  // actual headers (findColumnIndex → -1), fall THROUGH to the fallback rather
+  // than returning -1. Without this, a generic "date,description,amount" CSV that
+  // fuzzy-matches a bank whose column is named differently (e.g. ANZ's "Details")
+  // silently dropped the description → blank merchants. `fallback` is -1 for
+  // optional columns (amount/credit/debit/balance/ref) so those stay truly absent.
+  const resolveCol = (explicit: string | undefined, mappingCol: string | undefined, fallback: number): number => {
+    if (explicit) {
+      const i = findColumnIndex(headers, explicit);
+      if (i >= 0) return i;
+    }
+    if (mappingCol) {
+      const i = findColumnIndex(headers, mappingCol);
+      if (i >= 0) return i;
+    }
+    return fallback;
+  };
 
-  const amountCol = options?.amountColumn
-    ? findColumnIndex(headers, options.amountColumn)
-    : bankMapping?.amountColumn
-    ? findColumnIndex(headers, bankMapping.amountColumn)
-    : -1;
-
-  const creditCol = options?.creditColumn
-    ? findColumnIndex(headers, options.creditColumn)
-    : bankMapping?.creditColumn
-    ? findColumnIndex(headers, bankMapping.creditColumn)
-    : -1;
-
-  const debitCol = options?.debitColumn
-    ? findColumnIndex(headers, options.debitColumn)
-    : bankMapping?.debitColumn
-    ? findColumnIndex(headers, bankMapping.debitColumn)
-    : -1;
-
-  const balanceCol = options?.balanceColumn
-    ? findColumnIndex(headers, options.balanceColumn)
-    : bankMapping?.balanceColumn
-    ? findColumnIndex(headers, bankMapping.balanceColumn)
-    : -1;
-
-  const refCol = options?.referenceColumn
-    ? findColumnIndex(headers, options.referenceColumn)
-    : bankMapping?.referenceColumn
-    ? findColumnIndex(headers, bankMapping.referenceColumn)
-    : -1;
+  const dateCol = resolveCol(options?.dateColumn, bankMapping?.dateColumn, inferred?.dateCol ?? 0);
+  const descCol = resolveCol(options?.descriptionColumn, bankMapping?.descriptionColumn, inferred?.descCol ?? 1);
+  const amountCol = resolveCol(options?.amountColumn, bankMapping?.amountColumn, inferred?.amountCol ?? -1);
+  const creditCol = resolveCol(options?.creditColumn, bankMapping?.creditColumn, -1);
+  const debitCol = resolveCol(options?.debitColumn, bankMapping?.debitColumn, -1);
+  const balanceCol = resolveCol(options?.balanceColumn, bankMapping?.balanceColumn, -1);
+  const refCol = resolveCol(options?.referenceColumn, bankMapping?.referenceColumn, -1);
 
   const dateFormat = options?.dateFormat ?? bankMapping?.dateFormat ?? 'DD/MM/YYYY';
 

@@ -6,60 +6,23 @@
  */
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/db';
 import { withPermission } from '@/lib/auth/guards';
-import { renormaliseMerchant } from '@/lib/bank';
+import { renameAllMerchants } from '@/lib/bank/recategoriseExisting';
 
 // =============================================================================
 // POST - Re-normalize All Merchant Names
 // =============================================================================
+// Thin wrapper (§12.3): the cosmetic all-rows name tidy-up lives in the one
+// canonical service (`renameAllMerchants`) shared with the "Re-scan existing"
+// backfill — no parallel loop (§12.2.1).
 
-export const POST = withPermission('transaction.write', async (request, auth) => {
+export const POST = withPermission('transaction.write', async (_request, auth) => {
     try {
-      const userId = auth.userId;
-
-      // Get all transactions with merchantRaw
-      const transactions = await prisma.unifiedTransaction.findMany({
-        where: {
-          userId,
-          merchantRaw: { not: null },
-        },
-        select: {
-          id: true,
-          merchantRaw: true,
-          merchantStandardised: true,
-        },
-      });
-
-      let updated = 0;
-      let unchanged = 0;
-
-      // Re-normalize each transaction
-      for (const tx of transactions) {
-        if (!tx.merchantRaw) continue;
-
-        const newStandardised = renormaliseMerchant(tx.merchantRaw);
-
-        // Only update if different
-        if (newStandardised !== tx.merchantStandardised) {
-          await prisma.unifiedTransaction.update({
-            where: { id: tx.id },
-            data: { merchantStandardised: newStandardised },
-          });
-          updated++;
-        } else {
-          unchanged++;
-        }
-      }
-
+      const updated = await renameAllMerchants(auth.userId);
       return NextResponse.json({
         success: true,
-        message: `Re-normalized ${updated} transactions, ${unchanged} unchanged`,
-        stats: {
-          total: transactions.length,
-          updated,
-          unchanged,
-        },
+        message: `Re-normalized ${updated} transactions`,
+        stats: { updated },
       });
     } catch (error) {
       console.error('Re-normalize error:', error);

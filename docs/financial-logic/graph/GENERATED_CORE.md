@@ -8,11 +8,11 @@
 
 ## Coverage & trust (C10)
 
-- **Nodes:** 243 · **Edges:** 327
-- **By kind:** orchestrator 9 · engine 138 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
-- **By status:** documented 243
-- **Edge provenance:** verified 327 *(verified > graphify > inferred)*
-- **Trust Engine assurance:** 3/158 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
+- **Nodes:** 244 · **Edges:** 328
+- **By kind:** orchestrator 9 · engine 139 · input-field 27 · number 11 · ui-surface 12 · law 39 · verification 7
+- **By status:** documented 244
+- **Edge provenance:** verified 328 *(verified > graphify > inferred)*
+- **Trust Engine assurance:** 3/159 engines+numbers proven (2%) · 7 verification node(s) · by layer L0 1 · L1 2 · L2 2 · L3 2 *(L0 golden · L1 recompute · L2 invariant · L3 reconciliation)*
 
 ## Engine / orchestrator registry
 
@@ -68,9 +68,9 @@
 | **Dashboard insights composer** | `app/api/dashboard/insights/route.ts:186` | route | core | The dashboard insights payload — composes the master snapshot (core position) AND the Money Story 12-month trend into one response the dashboard renders. Phase 57: kpiTiles.canonical serves the trailing-12-month basis (declared-plan fallback) that the dashboard KPI tiles headline. | CLAUDE.md §6.1 (Master Financial Service SSOT) — this route is a thin composer, no inline calc | app/api/dashboard/insights/route.ts:186,191,212 (read 2026-07-02) | documented |
 | **Portfolio relational snapshot (SnapshotV2 — GRDCS SSOT)** | `app/api/portfolio/snapshot/route.ts:512` | route | intelligence | SnapshotV2 (v2.0) — the GRDCS relational snapshot: per-entity _links/_meta, entityCounts, linkageHealth, moduleCompleteness, relationalInsights. The second SSOT (§12.2), distinct from master. | CLAUDE.md §12.2 (the GRDCS/relational snapshot SSOT — NOT a duplicate of master) | app/api/portfolio/snapshot/route.ts:519,525-596,918 (read this session) | documented |
 | **Transaction categoriser (hybrid cascade)** | `lib/tie/categorisation.ts:695` | engine | neobrain | CategoryResult — categoryLevel1/2, subcategory, isEssential, isRecurring, confidence, source (USER\|RULE\|KB\|AI\|FALLBACK). The categorised label for one transaction. | CLAUDE.md §12.2.1 (one source) + Phase 52 §2 (two-layer KB) |  | documented |
-| **Import categoriser (learning-aware)** | `lib/bank/aiCategorisation.ts:303` | engine | neobrain | Per-transaction predictions enriched with the user's learned MerchantMappings + adjusted confidence, for the import pipeline. | Phase 29 (AI transaction categorisation & smart import) |  | documented |
+| **Import categoriser (learning-aware)** | `lib/bank/aiCategorisation.ts:311` | engine | neobrain | Per-transaction predictions enriched with the user's learned MerchantMappings + adjusted confidence, for the import pipeline. | Phase 29 (AI transaction categorisation & smart import) |  | documented |
 | **Confidence-band classifier** | `lib/bank/aiCategorisation.ts:134` | engine | neobrain | Partition of results into autoAccept (≥0.90) / needsReview (0.70–0.90) / requiresManual (<0.70). | Phase 29 + UserCategorizationSettings defaults |  | documented |
-| **Per-user learning loop** | `lib/bank/aiCategorisation.ts:436` | engine | neobrain | Learning write: updates the per-user MerchantMapping + logs prediction-vs-final in AICategorizationLearning; optionally applies the category to similar past transactions. | Phase 29 (learn from confirmations) |  | documented |
+| **Per-user learning loop** | `lib/bank/aiCategorisation.ts:444` | engine | neobrain | Learning write: updates the per-user MerchantMapping + logs prediction-vs-final in AICategorizationLearning; optionally applies the category to similar past transactions. | Phase 29 (learn from confirmations) |  | documented |
 | **Review-queue confirm (SSOT)** | `lib/bank/reviewQueue.ts:140` | engine | neobrain | Creates the confirmed UnifiedTransaction from a review-queue item and fires the learning writes (KB contribution + per-user confirmation). | Phase 51.2 + CLAUDE.md §12.3 (SSOT) |  | documented |
 | **Shared-KB lookup (free, instant)** | `lib/categorisation/kb/lookupCategory.ts:74` | engine | neobrain | KbMatch\|null — a community category prior for a transaction signature, only when graduated (isGlobal, ≥k users) and ≥ KB_MIN_CONFIDENCE. | Phase 52 §2 (deterministic lookup) |  | documented |
 | **Gemini-on-miss (RAG)** | `lib/categorisation/kb/geminiOnMiss.ts:110` | engine | neobrain | GeminiCategoryResult\|null — an LLM category for a genuinely unknown signature, RAG-seeded with the closest known KB patterns. | Phase 52 §2 (Gemini-on-miss, RAG not fine-tuning) |  | documented |
@@ -88,7 +88,7 @@
 | **Routing memory (write)** | `lib/documents/intelligence/learnedRouting.ts:78` | engine | neobrain | Routing memory write — increments (userId, vendorKey, entityType, entityId) so a vendor's documents pre-select the same asset next time (suggestion only). | Phase 50 D.4 (learned routing) |  | documented |
 | **Routing memory (read)** | `lib/documents/intelligence/learnedRouting.ts:123` | engine | neobrain | Most-used entity hint for a vendor (or null) — the pre-selection for 'What is this for?' on a new scan/upload. Suggestion, never auto-applied. | Phase 50 D.4 |  | documented |
 | **Document Management Engine (DME)** | `lib/documents/engine/DocumentManagementEngine.ts:79` | engine | neobrain | EngineResult — stores the file (GCS/Monitrax), dedups by SHA256, routes to the right Vault path/folder, creates entity DocumentLinks. | Phase 25 (DME) + Phase 50 |  | documented |
-| **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:105` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
+| **Transaction import pipeline** | `app/api/accounts/[id]/import/route.ts:106` | route | neobrain | QIF/CSV import — parse, dedup, categoriseWithLearning, classifyByConfidence, write auto-accepts to UnifiedTransaction + park the rest in the review queue. | Phase 29 / Phase 51 |  | documented |
 | **Document upload intake** | `app/api/documents/upload/route.ts:25` | route | neobrain | Upload intake — DME.processUpload (store + route) then optional DIE.analyzeDocument (recognise + extract). | Phase 25/26/50 |  | documented |
 | **Document (re)analysis** | `app/api/documents/analyze/route.ts:20` | route | neobrain | On-demand (re)analysis of a stored document → DocumentAnalysis. | Phase 26/50 |  | documented |
 | **Document confirm → create entity** | `app/api/documents/analyze/confirm/route.ts:55` | route | neobrain | Confirms an extraction and executes the suggested action — creates the Expense/Income/Loan (after a duplicate reconcile) from the stored DocumentAnalysis. | Phase 26/50 + CLAUDE.md §12.11 (guarded create) |  | documented |
@@ -163,8 +163,9 @@
 | **Merchant identity normaliser (per-user standardised name)** | `lib/bank/normalisation.ts:95` | engine | neobrain | merchantStandardised — the canonical per-user merchant name stored on UnifiedTransaction and used as the EXACT-match key for MerchantMapping learning + auto-apply, and tested by the ~50 categorisation rules. | Phase 18 (normalisation) + Phase 54.1 (denoise) — docs/blueprint/PHASE_54_NEOBRAIN.md §16 |  | documented |
 | **Import-unknowns → KB cascade bridge (Phase 54.2)** | `lib/bank/aiCategorisation.ts:269` | engine | neobrain | AICategorizationResult[] — the import's remaining unknowns categorised through the KB cascade (categoriseTransactionBatch), each carrying its cascade `source` so classifyByConfidence can keep AI proposals out of auto-accept. | Phase 54.2 reconciliation — docs/blueprint/PHASE_54_NEOBRAIN.md §17; CLAUDE.md §12.2.1 |  | documented |
 | **Grounded merchant identify (Google-Search, Phase 54.2b)** | `lib/categorisation/kb/geminiOnMiss.ts:230` | engine | neobrain | GeminiCategoryResult\|null — a merchant NAME guess (merchantGuess) + category from a single Gemini 2.x google_search grounded call on the DE-IDENTIFIED signature. grounded=true, source 'AI' (never auto-files). | docs/blueprint/PHASE_54_NEOBRAIN.md §18; CLAUDE.md §13.3 (CDR sanitisation), §12.7 (managed service) |  | documented |
-| **Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g)** | `lib/bank/recategoriseExisting.ts:185` | engine | neobrain | RecategoriseResult {scanned, recategorised, renamed, aiSuggested, aiMerchantsQueried, aiCapped} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows (and, opt-in, a cost-bounded AI tail) so import-time engine improvements reach data already in the ledger. | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade) |  | documented |
-| **Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g)** | `lib/bank/recategoriseExisting.ts:296` | engine | neobrain | {aiSuggested, aiMerchantsQueried, aiCapped} — for the rows the deterministic pass still missed, proposes a category SUGGESTION per merchant (never auto-filed, §54.2). | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §54.2 (AI never auto-files), §12.11 (guarded write), §12.2.1 (reuses scrubToSignature + geminiCategoriseOnMiss) |  | documented |
+| **Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g)** | `lib/bank/recategoriseExisting.ts:225` | engine | neobrain | RecategoriseResult {scanned, recategorised, renamed, aiSuggested, aiMerchantsQueried, aiCapped} — re-runs the current denoiser + DETERMINISTIC cascade over the user's EXISTING uncategorised rows (and, opt-in, a cost-bounded AI tail) so import-time engine improvements reach data already in the ledger. | docs/blueprint/PHASE_54_NEOBRAIN.md §19/§19A; CLAUDE.md §12.11 (guarded write), §12.2.1 (reuses the one cascade) |  | documented |
+| **All-rows merchant-name tidy-up (cosmetic, Phase 54.2g.1)** | `lib/bank/recategoriseExisting.ts:206` | engine | neobrain | number — count of rows whose merchantStandardised was cleaned. Re-runs the P1/P2 denoiser over ALL of a user's rows REGARDLESS of category. | docs/blueprint/PHASE_54_NEOBRAIN.md §19A; CLAUDE.md §12.11 (name-only, non-destructive), §12.2.1 (one source shared with the renormalize route) |  | documented |
+| **Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g)** | `lib/bank/recategoriseExisting.ts:333` | engine | neobrain | {aiSuggested, aiMerchantsQueried, aiCapped} — for the rows the deterministic pass still missed, proposes a category SUGGESTION per merchant (never auto-filed, §54.2). | docs/blueprint/PHASE_54_NEOBRAIN.md §19; CLAUDE.md §54.2 (AI never auto-files), §12.11 (guarded write), §12.2.1 (reuses scrubToSignature + geminiCategoriseOnMiss) |  | documented |
 
 ## Worked examples (the A1 fixtures — §14)
 
@@ -426,10 +427,10 @@
 | Transaction categoriser (hybrid cascade) | → | Gemini-on-miss (RAG) | falls-back-to | — | verified | lib/tie/categorisation.ts:732 |
 | UnifiedTransaction.description (raw text) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:571 |
 | MerchantMapping (per-user learned map) | → | Import categoriser (learning-aware) | feeds | — | verified | lib/bank/aiCategorisation.ts:600 |
-| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:247 |
+| Import categoriser (learning-aware) | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:278 |
 | UserCategorizationSettings (thresholds) | → | Confidence-band classifier | feeds | — | verified | lib/bank/aiCategorisation.ts:539 |
-| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:254 |
-| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:338 |
+| Confidence-band classifier | → | Transaction import pipeline | feeds | — | verified | app/api/accounts/[id]/import/route.ts:285 |
+| Transaction import pipeline | → | UnifiedTransaction | feeds | — | verified | app/api/accounts/[id]/import/route.ts:369 |
 | Review-queue confirm (SSOT) | → | UnifiedTransaction | feeds | — | verified | lib/bank/reviewQueue.ts:194 |
 | Review-queue confirm (SSOT) | → | KB write gate (human-only) | feeds | — | verified | lib/bank/reviewQueue.ts:244 |
 | Review-queue confirm (SSOT) | → | Per-user learning loop | feeds | — | verified | lib/bank/reviewQueue.ts:282 |
@@ -588,10 +589,11 @@
 | De-identifier (PII scrub) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:117 scrubToSignature(raw) → geminiIdentifyMerchantGrounded(scrub.pattern) |
 | Gemini-on-miss (RAG) | → | Grounded merchant identify (Google-Search, Phase 54.2b) | feeds | — | verified | lib/categorisation/kb/geminiOnMiss.ts:125 geminiIdentifyMerchantGrounded(scrub.pattern) |
 | Grounded merchant identify (Google-Search, Phase 54.2b) | → | De-identification before shared KB | governed-by | — | verified | de-identified token only egresses to Google Search (§13.3) |
-| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/bank/recategoriseExisting.ts:248 categoriseTransaction(uni,{merchantMappings,skipAiOnMiss:true}) |
-| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Merchant identity normaliser (per-user standardised name) | feeds | — | verified | lib/bank/recategoriseExisting.ts:225 renormaliseMerchant(rawForAi) re-normalises existing rows |
-| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | feeds | — | verified | lib/bank/recategoriseExisting.ts:271 opts.useAI ? aiSuggestDistinctUnknowns(userId, stillUnknown) |
-| Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/bank/recategoriseExisting.ts:318 geminiCategoriseOnMiss(group.rawForAi) — one call per distinct merchant |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Transaction categoriser (hybrid cascade) | feeds | — | verified | lib/bank/recategoriseExisting.ts:289 categoriseTransaction(uni,{merchantMappings,skipAiOnMiss:true}) |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | All-rows merchant-name tidy-up (cosmetic, Phase 54.2g.1) | feeds | — | verified | lib/bank/recategoriseExisting.ts:233 const renamed = await renameAllMerchants(userId) — Pass A, all rows |
+| All-rows merchant-name tidy-up (cosmetic, Phase 54.2g.1) | → | Merchant identity normaliser (per-user standardised name) | feeds | — | verified | lib/bank/recategoriseExisting.ts:213 renormaliseMerchant(row.merchantRaw \|\| row.description) re-normalises ALL rows |
+| Re-categorise backfill (existing uncategorised rows, Phase 54.2d/g) | → | Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | feeds | — | verified | lib/bank/recategoriseExisting.ts:308 opts.useAI ? aiSuggestDistinctUnknowns(userId, stillUnknown) |
+| Re-categorise AI tail (opt-in, cost-bounded, Phase 54.2g) | → | Gemini-on-miss (RAG) | feeds | — | verified | lib/bank/recategoriseExisting.ts:355 geminiCategoriseOnMiss(group.rawForAi) — one call per distinct merchant |
 
 ---
 
