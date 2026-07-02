@@ -77,6 +77,10 @@ property "financial structure" shows each as **"monthly · rental"** and annuali
 
 **Why it matters.** Because each surface re-derives property cashflow its own way, the figures **disagree across surfaces** (this is the mechanism behind P-7's -$100,912 vs -$46,897). One number, one source.
 
+**🔴 SHARPENED — loan cost silently $0 (Thornlands Lot 2 evidence, 2026-07-03).** `computeAnnualLoanRepayments` (`page.tsx:152`) sums `toAnnual(l.minRepayment ?? 0, …)`. `Loan.minRepayment` is a non-null `Float` (`schema:1629`) but is **0 whenever the user didn't enter a repayment amount** → the loan cost vanishes. On **Thornlands Lot 2**: CASHFLOW/YR = **$33,800** = ANNUAL RENT = **$33,800** *exactly* (rent $650/wk ×52) — i.e. **nothing was subtracted for the $482,000 @ 6.69% loan**. The property reads cash-flow **positive** when its interest alone is ~**$32,246/yr** (`principal × rate`), making it roughly break-even/negative. The loan cost must be **computed from the loan** (canonical `engine.loanAggregator.aggregateLoanRepayments` = principal × interestRateAnnual, or a full P&I from rate+term), **never** read from a possibly-zero `minRepayment`. This is the crux of Reza's *"the loan repayments are not calculated in the cashflow at all."*
+
+**Decision needed (folds in P-6 — the product meaning of "Cashflow / yr"):** cash basis (rent − expenses − **P&I repayment**) vs holding/tax basis (rent − expenses − **interest only**). Interest is always computable + tax-aligned; P&I is the true cash figure but needs a repayment amount or a term. This choice sets the number.
+
 **Proposed fix.** Route per-property cashflow/rent/expenses through a single canonical helper that (a) uses **actuals when transactions exist**, declared as fallback (§19.1), and (b) is **modelled in the Neomatrix with a `semanticKey`** so A3 convergence catches any future second source (§21.2.1). This subsumes much of P-1.
 
 ---
