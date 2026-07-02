@@ -67,3 +67,25 @@ Requirement: accept CSV so QIF-less banks can import. 3× review: v1 wire parseC
 
 ### Self-review gate (§20.5) — financial build 10/10
 Requirement: make real bank CSVs import; never 500. 3× review: v1 crash-guard only (rejected — stops the 500 but Reza's file still wouldn't import) → v2 add headerless detection + positional inference → v3 hardened the amount inference against grabbing the balance column (§19 — a wrong amount mis-states every transaction), verified by a dedicated test. Honest residual: I couldn't read Reza's exact file or the prod logs, so if a bank uses an unusual layout the new 400 now names the reason instead of a blind 500.
+
+---
+
+## Fix — CSV import: blank-column immunity + content-aware detection for any bank
+
+**Type**: Fix (Reza uploaded a real AMEX/Qantas CSV that still failed — now with the CLEAR message from the previous fix: "We read 20 row(s) but couldn't understand any of them (Missing or invalid amount)" — and asked "CSV files can be different formats from different banks, how can we manage this?").
+
+**Root cause (reproduced with the real file, §19.2):** the CSV had a **blank column** (`Date,Amount,Account Number,,Transaction Type,…`). Both `detectBankMapping` and `findColumnIndex` matched columns with `h.includes(p) || p.includes(h)` — and `p.includes('')` is **always true**, so the empty header matched EVERY pattern. Result: "CBA Transaction Export" matched 100% via the blank column, and every column lookup (amount/description/credit/debit) collapsed onto that blank column → amount read from an empty cell → "Missing or invalid amount". Any bank's CSV with a blank column would hit this.
+
+**Fix (robust + general — answers the "different banks" question):**
+1. **Blank-column immunity:** extracted `headerMatches(h, p)` used by both detectors — an empty header never matches; the reverse `p.includes(h)` direction is gated to headers ≥3 chars so a stray short header can't capture unrelated targets. With this, the real file correctly matches on Date / Amount / Transaction Details (amount +$500 IN, desc "BPAY PAYMENT").
+2. **Content-aware inference for unknown banks:** `inferColumns` (date = most parseable-dates column; amount = signed column preferring negatives + smallest magnitude so a running balance is never mistaken for it; description = most text-like) now runs for **any** headed CSV where no known bank matches — not just headerless — so a bank we don't have a mapping for still parses from its data.
+
+### Files Modified
+- `lib/bank/parsers/csv.ts` — `headerMatches()` (blank-column immunity, shared by `detectBankMapping` + `findColumnIndex`); inference now runs for any no-known-bank CSV (headed or headerless).
+- `tests/bank/csvParser.test.ts` — +2 (AMEX/Qantas blank-column format with full-month dates; unknown-bank headed CSV inferred from data). Real file kept OUT of the repo (user financial data) — a synthetic equivalent is used.
+
+### Testing
+- [x] 131 bank + neobrain tests green (9 CSV). Verified the real uploaded file: 20 rows → 20 normalised, 0 errors. `tsc` clean; `neomatrix:check` green.
+
+### Self-review gate (§20.5) — financial build 10/10
+Requirement: make different-bank CSVs import; the reported AMEX/Qantas file must work. 3× review: v1 add the missing bank mapping (rejected — an ever-growing bank list doesn't scale + doesn't fix the blank-column poison) → v2 fix the empty-header match (root cause, one shared helper) + run data inference for any unknown bank → v3 hardened `headerMatches` reverse-direction to ≥3 chars, verified amount inference still ignores the balance column. Reproduced the real file end-to-end before + after.

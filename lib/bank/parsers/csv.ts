@@ -164,7 +164,7 @@ function detectBankMapping(headers: string[]): BankMapping | null {
   for (const mapping of BANK_MAPPINGS) {
     const normalizedPatterns = mapping.patterns.map(p => p.toLowerCase());
     const matchCount = normalizedPatterns.filter(p =>
-      normalizedHeaders.some(h => h.includes(p) || p.includes(h))
+      normalizedHeaders.some(h => headerMatches(h, p))
     ).length;
 
     // Require at least 60% match
@@ -177,13 +177,28 @@ function detectBankMapping(headers: string[]): BankMapping | null {
 }
 
 /**
+ * True when header `h` corresponds to the target name `p`. CRITICAL: an EMPTY
+ * header never matches — otherwise `p.includes('')` (always true) lets a blank
+ * column (common in AMEX/Qantas exports) satisfy EVERY pattern, so any bank
+ * "matches" 100% and every column lookup collapses onto the blank column
+ * (2026-07-02: "Missing or invalid amount"). The reverse direction
+ * (`p.includes(h)`) is only allowed for headers ≥3 chars so a stray 1-2 char
+ * header can't capture unrelated targets.
+ */
+function headerMatches(h: string, p: string): boolean {
+  const hh = h.trim().toLowerCase();
+  const pp = p.trim().toLowerCase();
+  if (!hh || !pp) return false;
+  if (hh.includes(pp)) return true;
+  if (hh.length >= 3 && pp.includes(hh)) return true;
+  return false;
+}
+
+/**
  * Find column index by name (case-insensitive, partial match)
  */
 function findColumnIndex(headers: string[], columnName: string): number {
-  const normalized = columnName.toLowerCase();
-  return headers.findIndex(h =>
-    h.toLowerCase().includes(normalized) || normalized.includes(h.toLowerCase())
-  );
+  return headers.findIndex(h => headerMatches(h, columnName));
 }
 
 /**
@@ -382,11 +397,14 @@ export function parseCSV(
   // Detect bank format or use provided options
   const bankMapping = headers.length > 0 ? detectBankMapping(headers) : null;
 
-  // Headerless / unknown-format fallback: infer the date, amount and description
-  // columns from the DATA itself (which column parses as dates, which as a
-  // signed money value, which is text). Only used when there's no header and no
-  // detected bank — a headed known-bank CSV keeps its named mapping.
-  const inferred = !hasHeader && !bankMapping ? inferColumns(dataRows) : null;
+  // Unknown-format fallback: infer the date, amount and description columns from
+  // the DATA itself (which column parses as dates, which as a signed money value,
+  // which is text). Runs whenever NO known bank matched — headerless OR a headed
+  // CSV from a bank we don't have a mapping for (Reza 2026-07-02: "CSV files can
+  // be different formats from different banks"). A headed known-bank CSV keeps its
+  // named mapping. Only ever supplies FALLBACKS (via resolveCol) — never overrides
+  // a column a mapping/option resolved successfully.
+  const inferred = !bankMapping ? inferColumns(dataRows) : null;
 
   // Resolve a column: explicit option → detected-bank column → positional
   // fallback. CRITICAL: when the explicit/mapping column NAME isn't found in the
