@@ -55,7 +55,15 @@ property "financial structure" shows each as **"monthly · rental"** and annuali
 - correct: 1195 × 26 = **$31,070/yr**; stored MONTHLY: 1195 × 12 = **$14,340/yr** → **understated $16,730/yr (~54%)** per stream.
 - (Conversely, if several actual fortnightly payments were each created as *separate* monthly income rows — 4 rows visible on Reza's screen — the sum ×12 can *overstate* instead. Both are the same defect: the stored frequency/record-shape doesn't reflect the actual cadence.)
 
-**Proposed fix.** On the reconcile write paths, persist the detected/selected frequency: wire the existing detection (`reconciliation.ts:90` or the inline `link/route.ts:1280`) into the `create`/`update` writes, and add a frequency picker for income in `TransactionLinkDialog`. **Deeper fix (preferred, §19.1):** per-property rent/cashflow should read **actual reconciled transactions** (the API already computes `actualFromTransactions`/`monthlyAverageActual`, `route.ts:194-237`) rather than a declared record's frequency at all — see P-2.
+**UX gap (Reza, 2026-07-03) — no frequency control at the point of use.** Verified:
+- **At reconcile:** `TransactionLinkDialog` has **no frequency picker for income** (the recurring-frequency selector is expense-only — `TransactionLinkDialog.tsx:577` sends `'MONTHLY'` for income). So the user can't tell Monitrax the rent is fortnightly; it "looks automatic" but is really just the MONTHLY default.
+- **Edit later:** frequency **is** editable — but only on the global `/dashboard/income` edit dialog (`app/dashboard/income/page.tsx:1484-1500`, a Select incl. **Fortnightly**). It is **not surfaced at the point of use**: the property page's income row links to the income *list* (`page.tsx:700` → `/dashboard/income`), not an in-context edit of that record's frequency, and nothing on the property page or the reconcile flow exposes it. So from where the user actually is (property view / reconciliation) there is effectively no way to set or correct it — matching Reza's report.
+- **Multi-record trap:** if reconciliation created *several* income rows for one rental (the 4 rows Reza sees), fixing frequency per-row is both poor UX and still wrong (double-count). The real answer is actuals-driven (P-2), not hand-editing declared rows.
+
+**Proposed fix.**
+1. **Add an income frequency control in `TransactionLinkDialog`** (default via the already-computed detection — `reconciliation.ts:90` / inline `link/route.ts:1280` — so fortnightly is pre-selected, user-overridable), and **persist it** on the `create`/`update` writes (`transactions/[id]/link/route.ts:318` / `:156-166` / `:656-663`, which today never set `frequency`).
+2. **Surface an in-context frequency edit** on the property page's income row (quick-edit / deep-link straight to that record's edit), so it's fixable from where the user is.
+3. **Deeper fix (preferred, §19.1):** per-property rent/cashflow should read **actual reconciled transactions** (the API already computes `actualFromTransactions`/`monthlyAverageActual`, `route.ts:194-237`) rather than a declared record's frequency at all — see P-2. This makes the stored frequency non-load-bearing for the displayed number, so a wrong default can't silently corrupt the rent.
 
 ---
 
