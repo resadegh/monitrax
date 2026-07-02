@@ -1626,6 +1626,82 @@ export default function DashboardPage() {
                 </>
               )}
 
+              {selectedDetail === 'income' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <TrendingUpIcon className="h-5 w-5 text-emerald-600" />
+                      Annual Income
+                    </DialogTitle>
+                    <DialogDescription>
+                      Money in over the last 12 months — {cf.basis === 'declared' ? 'your plan (no transactions yet)' : 'from your actual deposits'}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    <div className="text-center p-6 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Annual income</p>
+                      <p className="text-5xl font-bold text-emerald-700 dark:text-emerald-400">
+                        {cf.annualInflow > 0 ? formatCompactCurrency(cf.annualInflow) : '—'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">{cfBasisLabel}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Average per month</span>
+                        <span className="font-semibold">{formatCurrency(cf.monthlyInflow)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Gross monthly income (declared plan)</span>
+                        <span className="font-semibold">{insights?.kpiTiles ? formatCurrency(insights.kpiTiles.incomeMonthly) : '—'}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-lg text-sm text-muted-foreground leading-relaxed">
+                      {cf.basis === 'declared'
+                        ? 'Based on your declared income plan — import transactions to see your actual money in.'
+                        : 'Based on the average of your complete recent months of actual deposits. The in-progress current month is excluded, so a mid-month view is never understated.'}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {selectedDetail === 'outgoings' && (
+                <>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Receipt className="h-5 w-5 text-slate-600" />
+                      Annual Outgoings
+                    </DialogTitle>
+                    <DialogDescription>
+                      Money out over the last 12 months — everything that left your accounts (expenses + loan repayments)
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-6 pt-4">
+                    <div className="text-center p-6 bg-slate-100 dark:bg-slate-900/40 rounded-lg">
+                      <p className="text-sm text-muted-foreground mb-1">Annual outgoings</p>
+                      <p className="text-5xl font-bold text-slate-700 dark:text-slate-300">
+                        {cf.annualOutflow > 0 ? formatCompactCurrency(cf.annualOutflow) : '—'}
+                      </p>
+                      <p className="text-sm text-muted-foreground mt-2">{cfBasisLabel}</p>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Average per month</span>
+                        <span className="font-semibold">{formatCurrency(cf.monthlyOutflow)}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-muted/50 rounded-lg">
+                        <span>Planned outgoings (declared)</span>
+                        <span className="font-semibold">{insights?.kpiTiles ? formatCurrency(insights.kpiTiles.outgoingsAnnual) : '—'}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 bg-muted/30 rounded-lg text-sm text-muted-foreground leading-relaxed">
+                      {cf.basis === 'declared'
+                        ? 'Based on your declared expense + loan plan — import transactions to see what actually left your accounts.'
+                        : 'Based on the average of your complete recent months of actual spending (transfers excluded, uncategorised included). The in-progress current month is excluded.'}
+                    </div>
+                  </div>
+                </>
+              )}
+
               {selectedDetail === 'lvr' && (
                 <>
                   <DialogHeader>
